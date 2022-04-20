@@ -1,2 +1,6 @@
 /target
 Cargo.lock
+*.c
+.vscode
+gmon.out
+a.out
