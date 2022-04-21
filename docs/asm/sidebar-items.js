@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["Error","An error returned by the assembly language."]],"mod":[["core","Core Assembly Variant"],["location","Assembly Memory Location"],["std","Standard Assembly Variant"]]});
+initSidebarItems({"mod":[["asm","Assembly Module"],["targets",""],["vm","Virtual Machine Module"]],"trait":[["CompilerTarget","Implement a compiler for the given target."]]});
