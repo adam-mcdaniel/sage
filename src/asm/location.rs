@@ -97,7 +97,7 @@ pub const D: Location = Location::Address(6);
 pub const E: Location = Location::Address(7);
 /// The "F" general purpose register.
 pub const F: Location = Location::Address(8);
-/// The offset of the bottom of the stack.
+/// The location of the bottom of the stack.
 pub const BOTTOM_OF_STACK: Location = F;
 
 /// A location in memory (on the tape of the virtual machine).
