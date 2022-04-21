@@ -54,7 +54,7 @@
 //!                                                                 |  
 //!                                                                 v 
 //!   tape: [(tape + 12)  (?)    (tape + 12) 0 0 0 0 0 0 7 8 9  (tape + 9)  ]
-//!          sp           tmp    fp          A B C D E F (args)
+//!          sp           tmp    fp          A B C D E F (args) (old fp)
 //!   ```
 //! * `A`, `B`, `C`, `D`, `E`, `F`: General purpose registers.
 //! 
