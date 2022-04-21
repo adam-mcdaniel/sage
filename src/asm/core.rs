@@ -3,258 +3,52 @@
 //! This variant of the assembly language is intended to be used
 //! with the core variant of the virtual machine. It is extremely
 //! portable, but minimal.
-use std::collections::HashMap;
-use super::Error;
+//! 
+//! ## What kinds of instructions are supported by this variant?
+//! 
+//! This variant attempts to support *as many instructions as possible
+//! that can be implemented WITHOUT the standard virtual machine variant*.
+//! This includes  instructions for operations like `Copy` (a `memcpy` clone),
+//! static stack allocation, `Swap` (which uses a TMP register without the
+//! more optimized standard `Swap` instruction), and `DivMod`, which
+//! performs a division and modulo operation in a single instruction.
+//! 
+//! ## What kinds of instructions are *not* supported by this variant?
+//! 
+//! Mainly, this variant is lacking in I/O instructions and memory
+//! allocation instructions. This is because of the bare bones
+//! core virtual machine specification which only includes 2 I/O
+//! instructions (GetChar and PutChar), and does not include
+//! any memory allocation instructions.
+//! 
+//! Standard instructions, like `PutInt`, can be implemented as
+//! user defined functions in the core assembly language simply
+//! using `PutChar` to display the integer in decimal.
+use super::{Location, TMP, FP, SP, BOTTOM_OF_STACK, Env, Error};
 use crate::vm::{self, VirtualMachineProgram};
 
+/// A program composed of core instructions, which can be assembled
+/// into the core virtual machine instructions.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct CoreProgram(pub Vec<CoreOp>);
 
 impl CoreProgram {
+    /// Assemble a program of core assembly instructions into the
+    /// core virtual machine instructions.
     pub fn assemble(&self) -> Result<vm::CoreProgram, Error> {
         let mut result = vm::CoreProgram(vec![]);
         let mut env = Env::default();
-        SP.offset(BOTTOM_OF_STACK).copy_address_to(&SP, &mut result);
+        BOTTOM_OF_STACK.copy_address_to(&SP, &mut result);
         SP.copy_to(&FP, &mut result);
-        for op in &self.0 {
-            op.assemble(&mut env, &mut result)?
+        for (i, op) in self.0.iter().enumerate() {
+            op.assemble(i, &mut env, &mut result)?
         }
+
+        if let Ok((unmatched, last_instruction)) = env.pop_matching(self.0.len()-1) {
+            return Err(Error::Unmatched(unmatched, last_instruction));
+        }
+
         Ok(result)
-    }
-}
-
-/// The stack pointer register.
-pub const SP: Location = Location::Address(0);
-/// A temporary register. It can be used as a trash can.
-const TMP: Location = Location::Address(1);
-/// The frame pointer register.
-pub const FP: Location = Location::Address(2);
-/// The "A" general purpose register.
-pub const A: Location = Location::Address(3);
-/// The "B" general purpose register.
-pub const B: Location = Location::Address(4);
-/// The "C" general purpose register.
-pub const C: Location = Location::Address(5);
-/// The "D" general purpose register.
-pub const D: Location = Location::Address(6);
-/// The "E" general purpose register.
-pub const E: Location = Location::Address(7);
-/// The "F" general purpose register.
-pub const F: Location = Location::Address(8);
-/// The offset of the bottom of the stack.
-const BOTTOM_OF_STACK: isize = 9;
-
-/// A location in memory (on the tape of the virtual machine).
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum Location {
-    /// A fixed position in the tape (a constant address known at compile time).
-    Address(usize),
-    /// Use the value of a cell on the tape as an address.
-    /// For example, Indirect(SP) is the location of the top item on the stack.
-    Indirect(Box<Self>),
-    /// Go to a position in memory, and then move the pointer according to an offset.
-    /// For example, `Offset(Address(8), -2)` is equivalent to `Address(6)`.
-    Offset(Box<Self>, isize),
-}
-
-impl Location {
-    pub fn offset(&self, offset: isize) -> Self {
-        Location::Offset(Box::new(self.clone()), offset)
-    }
-
-    pub fn deref(&self) -> Self {
-        Location::Indirect(Box::new(self.clone()))
-    }
-
-    pub fn push(&self, result: &mut dyn VirtualMachineProgram) {
-        SP.deref().offset(1).copy_address_to(&SP, result);
-        self.copy_to(&SP.deref(), result)
-    }
-
-    pub fn pop(&self, result: &mut dyn VirtualMachineProgram) {
-        SP.deref().copy_to(self, result);
-        SP.deref().offset(-1).copy_address_to(&SP, result)
-    }
-
-    pub fn copy_address_to(&self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.to(result);
-        result.where_is_pointer();
-        self.from(result);
-        dst.save_to(result);
-    }
-
-    pub fn to(&self, result: &mut dyn VirtualMachineProgram) {
-        match self {
-            Location::Address(addr) => result.move_pointer(*addr as isize),
-            Location::Indirect(loc) => {
-                loc.to(result);
-                result.deref();
-            },
-            Location::Offset(loc, offset) => {
-                loc.to(result);
-                result.move_pointer(*offset);
-            },
-        }
-    }
-
-    pub fn from(&self, result: &mut dyn VirtualMachineProgram) {
-        match self {
-            Location::Address(addr) => result.move_pointer(-(*addr as isize)),
-            Location::Indirect(loc) => {
-                result.refer();
-                loc.from(result);
-            },
-
-            Location::Offset(loc, offset) => {
-                result.move_pointer(-*offset);
-                loc.from(result);
-            },
-        }
-    }
-
-
-    pub fn whole_int(&self, result: &mut dyn VirtualMachineProgram) {
-        self.to(result);
-        result.restore();
-        result.whole();
-        result.save();
-        self.from(result);
-    }
-
-    pub fn save_to(&self, result: &mut dyn VirtualMachineProgram) {
-        self.to(result);
-        result.save();
-        self.from(result);
-    }
-
-    pub fn restore_from(&self, result: &mut dyn VirtualMachineProgram) {
-        self.to(result);
-        result.restore();
-        self.from(result);
-    }
-
-    pub fn inc(&self, result: &mut dyn VirtualMachineProgram) {
-        self.to(result);
-        result.restore();
-        result.inc();
-        result.save();
-        self.from(result);
-    }
-
-    pub fn dec(&self, result: &mut dyn VirtualMachineProgram) {
-        self.to(result);
-        result.restore();
-        result.dec();
-        result.save();
-        self.from(result);
-    }
-
-    fn binop(&self, op: vm::CoreOp, src: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.restore_from(result);
-        src.to(result);
-        result.append_core_op(op);
-        src.from(result);
-        self.save_to(result);
-    }
-
-    pub fn not(&self, result: &mut dyn VirtualMachineProgram) {
-        self.to(result);
-        result.restore();
-        result.begin_if();
-            result.set_register(0);
-        result.begin_else();
-            result.set_register(1);
-        result.end();
-        result.save();
-        self.from(result);
-    }
-
-    pub fn and(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.to(result);
-        result.restore();
-        result.begin_if();
-            self.from(result);
-            other.restore_from(result);
-            self.to(result);
-        result.begin_else();
-            result.set_register(0);
-        result.end();
-        result.save();
-        self.from(result);
-    }
-
-    pub fn or(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.to(result);
-        result.restore();
-        result.begin_if();
-            result.set_register(1);
-        result.begin_else();
-            self.from(result);
-            other.restore_from(result);
-            self.to(result);
-        result.end();
-        result.save();
-        self.from(result);
-    }
-
-    pub fn is_greater_than(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.copy_to(&TMP, result);
-        TMP.sub(other, result);
-        TMP.dec(result);
-        TMP.whole_int(result);
-        self.save_to(result);
-    }
-
-    pub fn is_greater_or_equal_to(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.copy_to(&TMP, result);
-        TMP.sub(other, result);
-        TMP.whole_int(result);
-        self.save_to(result);
-    }
-
-    pub fn is_less_than(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        other.copy_to(&TMP, result);
-        TMP.sub(self, result);
-        TMP.dec(result);
-        TMP.whole_int(result);
-        self.save_to(result);
-    }
-
-    pub fn is_less_or_equal_to(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        other.copy_to(&TMP, result);
-        TMP.sub(self, result);
-        TMP.whole_int(result);
-        self.save_to(result);
-    }
-
-    pub fn add(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.binop(vm::CoreOp::Add, other, result);
-    }
-
-    pub fn sub(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.binop(vm::CoreOp::Sub, other, result);
-    }
-
-    pub fn mul(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.binop(vm::CoreOp::Mul, other, result);
-    }
-
-    pub fn div(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.binop(vm::CoreOp::Div, other, result);
-    }
-
-    pub fn rem(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.binop(vm::CoreOp::Rem, other, result);
-    }
-
-    pub fn set(&self, val: isize, result: &mut dyn VirtualMachineProgram) {
-        result.set_register(val);
-        self.save_to(result)
-    }
-
-    pub fn copy_to(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.restore_from(result);
-        other.save_to(result);
     }
 }
 
@@ -302,9 +96,9 @@ pub enum CoreOp {
     /// Swap the values of two locations.
     Swap(Location, Location),
 
-    /// Make this pointer point to the next cell.
+    /// Make this pointer point to the next cell (or the nth next cell).
     Next(Location, Option<isize>),
-    /// Make this pointer point to the previous cell.
+    /// Make this pointer point to the previous cell (or the nth previous cell).
     Prev(Location, Option<isize>),
 
     /// Increment the integer value of a location.
@@ -429,136 +223,103 @@ pub enum CoreOp {
 }
 
 
-#[derive(Default, Clone, Debug)]
-struct Env {
-    labels: HashMap<String, usize>,
-    label: usize,
-    matching: Vec<CoreOp>,
-}
-
-impl Env {
-    fn define(&mut self, name: &str) {
-        self.labels.insert(name.to_string(), self.label);
-        self.label += 1;
-    }
-    fn get(&self, name: &str) -> Result<usize, Error> {
-        self.labels.get(name).copied().ok_or_else(|| Error::UndefinedLabel(name.to_string()))
-    }
-    fn push_matching(&mut self, op: &CoreOp) {
-        self.matching.push(op.clone());
-    }
-    fn pop_matching(&mut self) -> Result<CoreOp, Error> {
-        self.matching.pop().ok_or(Error::UnmatchedEnd)
-    }
-}
-
 impl CoreOp {
-    fn assemble(&self, env: &mut Env, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    fn assemble(&self, current_instruction: usize, env: &mut Env, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         match self {
             CoreOp::Comment(comment) => result.comment(comment),
             CoreOp::PutLiteral(msg) => {
+                // For every character in the message
                 for ch in msg.chars() {
+                    // Set the register to the ASCII value
                     result.set_register(ch as isize);
+                    // Put the register
                     result.putchar();
                 }
             },
             CoreOp::PushLiteral(msg) => {
+                // For every character in the message
+                // Go to the top of the stack, and push the ASCII value of the character
+                SP.deref().to(result);
                 for ch in msg.chars() {
-                    SP.deref().offset(1).to(result);
+                    result.move_pointer(1);
+                    // Goto the pushed character's address above the top of the stack
+                    // Set the register to the ASCII value
                     result.set_register(ch as isize);
+                    // Save the register to the memory location
                     result.save();
-                    result.where_is_pointer();
-                    SP.deref().offset(1).from(result);
-                    SP.save_to(result);
+                    // SP.deref().offset(i as isize + 1).from(result);
                 }
+                // Move the pointer back where we came from
+                result.where_is_pointer();
+                SP.deref().offset(msg.len() as isize).from(result);
+                result.save();
             },
+
             CoreOp::StackAllocateLiteral(dst, msg) => {
                 SP.deref().offset(1).copy_address_to(dst, result);
-                for ch in msg.chars() {
-                    SP.deref().offset(1).to(result);
-                    result.set_register(ch as isize);
-                    result.save();
-                    result.where_is_pointer();
-                    SP.deref().offset(1).from(result);
-                    SP.save_to(result);
-                }
+                CoreOp::PushLiteral(msg.clone()).assemble(current_instruction, env, result)?;
             },
 
 
             CoreOp::GetAddress { addr, dst } => addr.copy_address_to(dst, result),
-            CoreOp::Next(dst, Some(count)) => dst.deref().offset(*count).copy_address_to(dst, result),
-            CoreOp::Prev(dst, Some(count)) => dst.deref().offset(-count).copy_address_to(dst, result),
-            CoreOp::Next(dst, None) => dst.deref().offset(1).copy_address_to(dst, result),
-            CoreOp::Prev(dst, None) => dst.deref().offset(-1).copy_address_to(dst, result),
+            CoreOp::Next(dst, count) => dst.next(count.unwrap_or(1), result),
+            CoreOp::Prev(dst, count) => dst.prev(count.unwrap_or(1), result),
 
-            CoreOp::Set(dst, value) => {
-                dst.set(*value, result);
-            },
-            CoreOp::SetLabel(dst, name) => {
-                dst.set(env.get(name)? as isize, result);
-            },
+            CoreOp::Set(dst, value) => dst.set(*value, result),
+            CoreOp::SetLabel(dst, name) => dst.set(env.get(name, current_instruction)? as isize, result),
 
             CoreOp::Call(src) => {
-                // Call function
                 src.restore_from(result);
                 result.call();
             }
 
             CoreOp::CallLabel(name) => {
-                // Call function
-                result.set_register(env.get(name)? as isize);
+                result.set_register(env.get(name, current_instruction)? as isize);
                 result.call();
             }
 
             CoreOp::Return => {
-                // Pop FP
                 FP.pop(result);
-                // Return
                 result.ret();
             }
 
             CoreOp::Fn(name) => {
-                env.define(name);
-                env.push_matching(self);
-                // Begin function
+                env.declare(name);
+                env.push_matching(self, current_instruction);
                 result.begin_function();
-                // Push FP
                 FP.push(result);
-                // Set FP to SP
                 SP.copy_to(&FP, result);
             },
             CoreOp::While(src) => {
                 src.restore_from(result);
                 result.begin_while();
-                env.push_matching(self);
+                env.push_matching(self, current_instruction);
             },
             CoreOp::If(src) => {
                 src.restore_from(result);
                 result.begin_if();
-                env.push_matching(self);
+                env.push_matching(self, current_instruction);
             },
             CoreOp::Else => {
-                if let Ok(CoreOp::If(_)) = env.pop_matching() {
+                if let Ok((CoreOp::If(_), _)) = env.pop_matching(current_instruction) {
                     result.begin_else();
-                    env.push_matching(self);
+                    env.push_matching(self, current_instruction);
                 } else {
-                    return Err(Error::UnexpectedElse);
+                    return Err(Error::Unexpected(CoreOp::Else, current_instruction));
                 }
             },
             CoreOp::End => {
-                match env.pop_matching() {
-                    Ok(CoreOp::Fn(_)) => {
-                        // Pop FP
+                match env.pop_matching(current_instruction) {
+                    Ok((CoreOp::Fn(_), _)) => {
                         FP.pop(result);
-                        // End
                         result.end();
                     }
-                    Ok(CoreOp::While(src)) => {
+                    Ok((CoreOp::While(src), _)) => {
                         src.restore_from(result);
                         result.end();
                     },
                     Ok(_) => result.end(),
-                    _ => return Err(Error::UnmatchedEnd)
+                    Err(_) => return Err(Error::Unmatched(CoreOp::End, current_instruction))
                 }
             }
 
@@ -593,17 +354,9 @@ impl CoreOp {
             CoreOp::And { src, dst } => dst.and(src, result),
             CoreOp::Or  { src, dst } => dst.or(src, result),
 
-            CoreOp::Push(src) => {
-                src.push(result);
-            },
-            CoreOp::Pop(Some(dst)) => {
-                // SP.deref().copy_to(dst, result);
-                // SP.dec(result);
-                dst.pop(result);
-            },
-            CoreOp::Pop(None) => {
-                SP.deref().offset(-1).copy_address_to(&SP, result);
-            },
+            CoreOp::Push(src) => src.push(result),
+            CoreOp::Pop(Some(dst)) => dst.pop(result),
+            CoreOp::Pop(None) => SP.prev(1, result),
 
             CoreOp::IsGreater { src, dst } => dst.is_greater_than(src, result),
             CoreOp::IsGreaterEqual { src, dst } => dst.is_greater_or_equal_to(src, result),
@@ -612,7 +365,7 @@ impl CoreOp {
             CoreOp::IsNotEqual { src, dst } => dst.sub(src, result),
             CoreOp::IsEqual { src, dst } => {
                 dst.sub(src, result);
-                dst.not(result);
+                dst.not(result)
             },
 
             CoreOp::Compare { dst, a, b } => {
@@ -634,24 +387,26 @@ impl CoreOp {
 
             CoreOp::GetChar(dst) => {
                 result.getchar();
-                dst.save_to(result);
+                dst.save_to(result)
             }
             CoreOp::PutChar(dst) => {
                 dst.restore_from(result);
-                result.putchar();
+                result.putchar()
             }
 
             CoreOp::Load(src, size) => {
                 for i in 0..*size {
-                    SP.deref().offset(1).copy_address_to(&SP, result);
-                    src.deref().offset(i as isize).copy_to(&SP.deref(), result);
+                    src.deref().offset(i as isize)
+                        .copy_to(&SP.deref().offset(i as isize + 1), result);
                 }
+                SP.next(*size as isize, result);
             }
             CoreOp::Store(dst, size) => {
                 for i in 0..*size {
-                    SP.deref().copy_to(&dst.deref().offset((*size - i - 1) as isize), result);
-                    SP.deref().offset(-1).copy_address_to(&SP, result)
+                    SP.deref().offset(-(i as isize))
+                        .copy_to(&dst.deref().offset((*size - i - 1) as isize), result);
                 }
+                SP.prev(*size as isize, result);
             }
             CoreOp::Copy{ src, dst, size } => {
                 for i in 0..*size {
@@ -660,6 +415,7 @@ impl CoreOp {
                 }
             }
         }
+
         Ok(())
     }
 }

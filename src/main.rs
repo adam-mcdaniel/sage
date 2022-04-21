@@ -111,14 +111,13 @@ fn main() {
 
     let program = CoreProgram(vec![
         Fn(String::from("putstr")),
-            Move { src: FP.deref().offset(-1), dst: A },
-            While(A.deref()),
-                PutChar(A.deref()),
-                Next(A, None),
+            Move { src: FP.deref().offset(-1), dst: C },
+            While(C.deref()),
+                PutChar(C.deref()),
+                Next(C, None),
             End,
         End,
 
-        
         StackAllocateLiteral(A, String::from("Hello world!\n\0")),
         StackAllocateLiteral(B, String::from("Dontshowme!!\n\0")),
 
@@ -126,10 +125,24 @@ fn main() {
         Copy { src: A, dst: B, size: 14 },
         
         // Overwrite A
-        PushLiteral(String::from("abcdefghijkl\n\0")),
+        PushLiteral(String::from("abcdefghijk?\n\0")),
         Store(A, 14),
-
+        
         // Print A
+        Push(A),
+        CallLabel(String::from("putstr")),
+        Pop(None),
+
+        // Print B
+        Push(B),
+        CallLabel(String::from("putstr")),
+        Pop(None),
+
+        // Copy A to B
+        Load(A, 14),
+        Store(B, 14),
+
+        // Print B
         Push(A),
         CallLabel(String::from("putstr")),
         Pop(None),

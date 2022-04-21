@@ -17,11 +17,11 @@ impl VirtualMachineProgram for StandardProgram {
     }
 }
 
-/// A program of core and standard instructions.
+/// A program of core and standard virtual machine instructions.
 #[derive(Default, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct StandardProgram(pub Vec<StandardOp>);
 
-/// A standard instruction.
+/// An individual standard virtual machine instruction.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum StandardOp {
     /// Execute a core instruction.

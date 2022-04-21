@@ -15,11 +15,11 @@ impl VirtualMachineProgram for CoreProgram {
     }
 }
 
-/// A program of only core instructions.
+/// A program of only core virtual machine instructions.
 #[derive(Default, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct CoreProgram(pub Vec<CoreOp>);
 
-/// An individual core instruction.
+/// An individual core virtual machine instruction.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum CoreOp {
     Comment(String),
