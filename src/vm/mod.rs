@@ -107,7 +107,7 @@ pub trait VirtualMachineProgram {
         self.append_core_op(CoreOp::PutChar)
     }
 
-    fn is_whole_int(&mut self) {
+    fn whole(&mut self) {
         self.append_core_op(CoreOp::IsWhole)
     }
 }

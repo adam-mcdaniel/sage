@@ -113,10 +113,10 @@ impl Location {
     }
 
 
-    pub fn is_whole_int(&self, result: &mut dyn VirtualMachineProgram) {
+    pub fn whole_int(&self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.restore();
-        result.is_whole_int();
+        result.whole();
         result.save();
         self.from(result);
     }
@@ -170,7 +170,17 @@ impl Location {
     }
 
     pub fn and(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.binop(vm::CoreOp::Mul, other, result);
+        self.to(result);
+        result.restore();
+        result.begin_if();
+            self.from(result);
+            other.restore_from(result);
+            self.to(result);
+        result.begin_else();
+            result.set_register(0);
+        result.end();
+        result.save();
+        self.from(result);
     }
 
     pub fn or(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
@@ -180,9 +190,7 @@ impl Location {
             result.set_register(1);
         result.begin_else();
             self.from(result);
-            other.to(result);
-            result.restore();
-            other.from(result);
+            other.restore_from(result);
             self.to(result);
         result.end();
         result.save();
@@ -193,14 +201,14 @@ impl Location {
         self.copy_to(&TMP, result);
         TMP.sub(other, result);
         TMP.dec(result);
-        TMP.is_whole_int(result);
+        TMP.whole_int(result);
         self.save_to(result);
     }
 
     pub fn is_greater_or_equal_to(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
         self.copy_to(&TMP, result);
         TMP.sub(other, result);
-        TMP.is_whole_int(result);
+        TMP.whole_int(result);
         self.save_to(result);
     }
 
@@ -208,14 +216,14 @@ impl Location {
         other.copy_to(&TMP, result);
         TMP.sub(self, result);
         TMP.dec(result);
-        TMP.is_whole_int(result);
+        TMP.whole_int(result);
         self.save_to(result);
     }
 
     pub fn is_less_or_equal_to(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
         other.copy_to(&TMP, result);
         TMP.sub(self, result);
-        TMP.is_whole_int(result);
+        TMP.whole_int(result);
         self.save_to(result);
     }
 
@@ -363,32 +371,32 @@ pub enum CoreOp {
         a: Location,
         b: Location
     },
-    /// Store the result of destination > source in destination.
+    /// Perform dst = dst > src.
     IsGreater {
         dst: Location,
         src: Location
     },
-    /// Store the result of destination > source in destination.
+    /// Perform dst = dst >= src.
     IsGreaterEqual {
         dst: Location,
         src: Location
     },
-    /// Store the result of destination < source in destination.
+    /// Perform dst = dst < src.
     IsLess {
         dst: Location,
         src: Location
     },
-    /// Store the result of destination < source in destination.
+    /// Perform dst = dst <= src.
     IsLessEqual {
         dst: Location,
         src: Location
     },
-    /// Store the result of destination == source in destination.
+    /// Perform dst = dst == src.
     IsEqual {
         dst: Location,
         src: Location
     },
-    /// Store the result of destination != source in destination.
+    /// Perform dst = dst != src.
     IsNotEqual {
         dst: Location,
         src: Location
@@ -398,12 +406,28 @@ pub enum CoreOp {
     Load(Location, usize),
     /// Store a number of cells to a destination location from the stack.
     Store(Location, usize),
+    /// Copy a number of cells from a source location to a destination location.
+    Copy {
+        src: Location,
+        dst: Location,
+        size: usize
+    },
 
     /// Get a character from the input stream and store it in a destination register.
     GetChar(Location),
     /// Put a character from a source register to the output stream.
     PutChar(Location),
+
+    /// Print a string to the output stream.
+    PutLiteral(String),
+    /// Push a list of characters (each stored in consecutive cells) onto the stack.
+    PushLiteral(String),
+
+    /// Push a list of characters (each stored in consecutive cells) onto the stack,
+    /// and store their address in a destination register.
+    StackAllocateLiteral(Location, String),
 }
+
 
 #[derive(Default, Clone, Debug)]
 struct Env {
@@ -418,13 +442,13 @@ impl Env {
         self.label += 1;
     }
     fn get(&self, name: &str) -> Result<usize, Error> {
-        self.labels.get(name).map(|&id| id).ok_or_else(|| Error::UndefinedLabel(name.to_string()))
+        self.labels.get(name).copied().ok_or_else(|| Error::UndefinedLabel(name.to_string()))
     }
     fn push_matching(&mut self, op: &CoreOp) {
         self.matching.push(op.clone());
     }
     fn pop_matching(&mut self) -> Result<CoreOp, Error> {
-        self.matching.pop().ok_or_else(|| Error::UnmatchedEnd)
+        self.matching.pop().ok_or(Error::UnmatchedEnd)
     }
 }
 
@@ -432,6 +456,34 @@ impl CoreOp {
     fn assemble(&self, env: &mut Env, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         match self {
             CoreOp::Comment(comment) => result.comment(comment),
+            CoreOp::PutLiteral(msg) => {
+                for ch in msg.chars() {
+                    result.set_register(ch as isize);
+                    result.putchar();
+                }
+            },
+            CoreOp::PushLiteral(msg) => {
+                for ch in msg.chars() {
+                    SP.deref().offset(1).to(result);
+                    result.set_register(ch as isize);
+                    result.save();
+                    result.where_is_pointer();
+                    SP.deref().offset(1).from(result);
+                    SP.save_to(result);
+                }
+            },
+            CoreOp::StackAllocateLiteral(dst, msg) => {
+                SP.deref().offset(1).copy_address_to(dst, result);
+                for ch in msg.chars() {
+                    SP.deref().offset(1).to(result);
+                    result.set_register(ch as isize);
+                    result.save();
+                    result.where_is_pointer();
+                    SP.deref().offset(1).from(result);
+                    SP.save_to(result);
+                }
+            },
+
 
             CoreOp::GetAddress { addr, dst } => addr.copy_address_to(dst, result),
             CoreOp::Next(dst, Some(count)) => dst.deref().offset(*count).copy_address_to(dst, result),
@@ -514,7 +566,7 @@ impl CoreOp {
 
             CoreOp::Swap(a, b) => {
                 a.copy_to(&TMP, result);
-                b.copy_to(&a, result);
+                b.copy_to(a, result);
                 TMP.copy_to(b, result);
             },
 
@@ -596,9 +648,15 @@ impl CoreOp {
                 }
             }
             CoreOp::Store(dst, size) => {
-                for i in *size..0 {
-                    SP.deref().copy_to(&dst.offset(i as isize), result);
+                for i in 0..*size {
+                    SP.deref().copy_to(&dst.deref().offset((*size - i - 1) as isize), result);
                     SP.deref().offset(-1).copy_address_to(&SP, result)
+                }
+            }
+            CoreOp::Copy{ src, dst, size } => {
+                for i in 0..*size {
+                    src.deref().offset(i as isize)
+                        .copy_to(&dst.deref().offset(i as isize), result);
                 }
             }
         }

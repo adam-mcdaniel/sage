@@ -78,7 +78,7 @@ int main() {
                         result += &format!("{}}} else {{\n", tab.repeat(indent-1));
                         matching.push(op);
                     } else {
-                        return Err(format!("Unexpected else"));
+                        return Err("Unexpected else".to_string());
                     }
                 },
                 CoreOp::End => {
@@ -102,9 +102,9 @@ int main() {
                 },
                 
                 CoreOp::Move(n) => {
-                    if *n > 0 {
+                    if *n >= 0 {
                         result += &format!("{}ptr += {};\n", tab.repeat(indent), n);
-                    } else if *n < 0 {
+                    } else {
                         result += &format!("{}ptr -= {};\n", tab.repeat(indent), -n);
                     }
                 },
@@ -148,6 +148,7 @@ int main() {
                     result += &format!("{}reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;\n", tab.repeat(indent));
                 },
                 CoreOp::PutChar => {
+                    // result += &format!("{}printf(\"%d\\n\", reg.i);\n", tab.repeat(indent));
                     result += &format!("{}putchar(reg.i);\n", tab.repeat(indent));
                 },
             }
@@ -315,9 +316,9 @@ int main() {
                 },
                 
                 StandardOp::CoreOp(CoreOp::Move(n)) => {
-                    if *n > 0 {
+                    if *n >= 0 {
                         result += &format!("{}ptr += {};\n", tab.repeat(indent), n);
-                    } else if *n < 0 {
+                    } else {
                         result += &format!("{}ptr -= {};\n", tab.repeat(indent), -n);
                     }
                 },

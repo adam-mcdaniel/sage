@@ -75,36 +75,73 @@ fn main() {
     // eprintln!("{:?}", program);
     
 
+    // let program = CoreProgram(vec![
+    //     Fn(String::from("putint")),
+    //         Move { src: FP.deref().offset(-1), dst: A },
+
+    //         Set(B, 10),
+    //         DivRem { src: B, dst: A },
+    //         If(A),
+    //             Push(B),
+    //             Push(A),
+    //             CallLabel(String::from("putint")),
+    //             Pop(None),
+    //             Pop(Some(B)),
+    //         End,
+    //         Set(A, '0' as isize),
+    //         Add { src: A, dst: B},
+    //         PutChar(B),
+    //     End,
+        
+    //     PutLiteral(String::from("ladies and gentlemen, one million ints!\n")),
+    //     Set(F, 1000000),
+    //     While(F),
+    //         Push(F),
+    //         CallLabel(String::from("putint")),
+    //         Pop(None),
+
+    //         Set(E, '\n' as isize), PutChar(E),
+    //         Dec(F),
+    //     End,
+    // ]).assemble().unwrap();
+    // eprintln!("{:?}", program);
+
+
+    
+
     let program = CoreProgram(vec![
-        Fn(String::from("putint")),
+        Fn(String::from("putstr")),
             Move { src: FP.deref().offset(-1), dst: A },
-
-            Set(B, 10),
-            DivRem { src: B, dst: A },
-            If(A),
-                Push(B),
-                Push(A),
-                CallLabel(String::from("putint")),
-                Pop(None),
-                Pop(Some(B)),
+            While(A.deref()),
+                PutChar(A.deref()),
+                Next(A, None),
             End,
-            Set(A, '0' as isize),
-            Add { src: A, dst: B},
-            PutChar(B),
         End,
 
-        Set(F, 1000000),
-        While(F),
-            Push(F),
-            CallLabel(String::from("putint")),
-            Pop(None),
+        
+        StackAllocateLiteral(A, String::from("Hello world!\n\0")),
+        StackAllocateLiteral(B, String::from("Dontshowme!!\n\0")),
 
-            Set(E, '\n' as isize), PutChar(E),
-            Dec(F),
-        End,
+        // Copy A to B
+        Copy { src: A, dst: B, size: 14 },
+        
+        // Overwrite A
+        PushLiteral(String::from("abcdefghijkl\n\0")),
+        Store(A, 14),
+
+        // Print A
+        Push(A),
+        CallLabel(String::from("putstr")),
+        Pop(None),
+
+        // Print B
+        Push(B),
+        CallLabel(String::from("putstr")),
+        Pop(None),
     ]).assemble().unwrap();
     eprintln!("{:?}", program);
-    
+
+
 
     // let program = StandardProgram(vec![
     //     StandardOp::CoreOp(Fn),
