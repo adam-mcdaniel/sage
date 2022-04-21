@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Virtual Machine Module"><meta name="keywords" content="rust, rustlang, rust-lang, vm"><title>asm::vm - Rust</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../asm/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a><h2 class="location">Module vm</h2><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></div><div id="sidebar-vars" data-name="vm" data-ty="mod" data-relpath="./"></div><script defer src="./sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main" class="content"><h1 class="fqn"><span class="in-band">Module <a href="../index.html">asm</a>::<wbr><a class="mod" href="#">vm</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span><span class="out-of-band"><span id="render-detail"><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span><a class="srclink" href="../../src/asm/vm/mod.rs.html#1-150" title="goto source code">[src]</a></span></h1><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h1 id="virtual-machine-module" class="section-header"><a href="#virtual-machine-module">Virtual Machine Module</a></h1>
+<p>This module contains all things related to the virtual machine.</p>
+<h2 id="what-is-this-machine" class="section-header"><a href="#what-is-this-machine">What is this machine?</a></h2>
+<p>This virtual machine is a simple turing tape machine.
+There is one register, a tape of cells, and a tape pointer. Cells are
+restricted to integers in the core variant of the machine code, but floats
+are supported in the standard variant.</p>
+<h2 id="what-should-i-know-first" class="section-header"><a href="#what-should-i-know-first">What should I know first?</a></h2>
+<p>You should <em><strong>NOT</strong></em> use pointers (values used with the Deref, Refer, Where,
+Alloc, and Free operations) as if they are integers. Think about pointers
+and integers as two completely separate types.</p>
+<h4 id="why" class="section-header"><a href="#why">Why?</a></h4>
+<p>This is because virtual machine <strong>implementations are bound to vary</strong>.
+For example: my C implementation uses <em>real pointers</em> (which are retrieved
+through virtual machine instructions <code>Where</code> and <code>Alloc</code>, and allows the
+implementation to be used with valgrind, gprof, a custom allocater, or
+potentially garbage collection!), but an implementation in a language
+like Python might use integer indices in a list instead.</p>
+<p>If the backend implementation uses pointers, <em>using <code>Inc</code> to move a pointer
+to the next cell <strong>will not work</strong></em>. This is because pointers need to be
+incremented by the size of the data type they point to. Because the virtual
+machine’s cell size is undefined (purposely, to make it as portable as possible),
+<em><strong>you cannot know this size</strong></em>. Therefore you cannot use <code>Inc</code> to move a pointer
+to the next cell unless <em>you want your code to be unportable</em>.</p>
+<p><em><strong>DO NOT USE <code>Inc</code> AND <code>Dec</code> TO MOVE POINTERS! NAVIGATE THE POINTER TO THE
+DESIRED POSITION AND USE <code>Where</code> INSTEAD! OR YOUR CODE WILL NOT PORT TO ALL
+IMPLEMENTATIONS!!</strong></em> </p>
+<h2 id="what-data-can-it-use" class="section-header"><a href="#what-data-can-it-use">What data can it use?</a></h2>
+<p><em><strong>The virtual machine uses cells of any arbitrary bit width &gt;= 16.</strong></em>
+<strong>The bit width is undefined</strong>, but <strong>it must remain constant for every cells.</strong>
+Additionally, <strong>the floating point (and pointer) representation must be identical
+in size to the integer representation</strong>.</p>
+<p>In this particular assembler, we assume that the bit width is 64. Supporting
+smaller or larger bit widths is supported just by using integers of the 
+appropriate size, or using addition / multiplication to reach larger numbers.</p>
+<p><strong>An implementation of the virtual machine <em>should</em> be of any reasonable
+bit width like: 16, 32, 64 bits (the standard), or unbounded.</strong> For each implementation, the bits
+of the integer and floats supported should be identical. The 
+default implementation should be with 64 bit ints and floats, but
+16 bit ints + no floats for a hardware implementation would suffice.
+Infinitely large ints and floats are also supported, but the implementation
+must be able to handle them.</p>
+</div></details><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2>
+<div class="item-table"><div class="item-left module-item"><a class="struct" href="struct.CoreProgram.html" title="asm::vm::CoreProgram struct">CoreProgram</a></div><div class="item-right docblock-short"><p>A program of only core virtual machine instructions.</p>
+</div><div class="item-left module-item"><a class="struct" href="struct.StandardProgram.html" title="asm::vm::StandardProgram struct">StandardProgram</a></div><div class="item-right docblock-short"><p>A program of core and standard virtual machine instructions.</p>
+</div></div><h2 id="enums" class="section-header"><a href="#enums">Enums</a></h2>
+<div class="item-table"><div class="item-left module-item"><a class="enum" href="enum.CoreOp.html" title="asm::vm::CoreOp enum">CoreOp</a></div><div class="item-right docblock-short"><p>An individual core virtual machine instruction.</p>
+</div><div class="item-left module-item"><a class="enum" href="enum.StandardOp.html" title="asm::vm::StandardOp enum">StandardOp</a></div><div class="item-right docblock-short"><p>An individual standard virtual machine instruction.</p>
+</div></div><h2 id="traits" class="section-header"><a href="#traits">Traits</a></h2>
+<div class="item-table"><div class="item-left module-item"><a class="trait" href="trait.VirtualMachineProgram.html" title="asm::vm::VirtualMachineProgram trait">VirtualMachineProgram</a></div><div class="item-right docblock-short"><p>An interface to conveniently create virtual machine programs,
+of either the core or standard variant.</p>
+</div></div></section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="asm" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
+    <script src="../../main.js"></script>
+</body></html>
