@@ -4,4 +4,5 @@ Cargo.lock
 .vscode
 gmon.out
 a.out
+redirect.html
 build-docs.sh
