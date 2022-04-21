@@ -415,7 +415,7 @@
 <span class="doccomment">//!                                                                 |  </span>
 <span class="doccomment">//!                                                                 v </span>
 <span class="doccomment">//!   tape: [(tape + 12)  (?)    (tape + 12) 0 0 0 0 0 0 7 8 9  (tape + 9)  ]</span>
-<span class="doccomment">//!          sp           tmp    fp          A B C D E F (args)</span>
+<span class="doccomment">//!          sp           tmp    fp          A B C D E F (args) (old fp)</span>
 <span class="doccomment">//!   ```</span>
 <span class="doccomment">//! * `A`, `B`, `C`, `D`, `E`, `F`: General purpose registers.</span>
 <span class="doccomment">//! </span>
@@ -684,28 +684,28 @@
     }
 
     <span class="doccomment">/// This cell += source cell.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
-        <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">vm::CoreOp::Add</span>, <span class="ident">other</span>, <span class="ident">result</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
+        <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">vm::CoreOp::Add</span>, <span class="ident">src</span>, <span class="ident">result</span>);
     }
     
     <span class="doccomment">/// This cell -= source cell.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sub</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
-        <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">vm::CoreOp::Sub</span>, <span class="ident">other</span>, <span class="ident">result</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sub</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
+        <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">vm::CoreOp::Sub</span>, <span class="ident">src</span>, <span class="ident">result</span>);
     }
     
     <span class="doccomment">/// This cell *= source cell.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mul</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
-        <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">vm::CoreOp::Mul</span>, <span class="ident">other</span>, <span class="ident">result</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mul</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
+        <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">vm::CoreOp::Mul</span>, <span class="ident">src</span>, <span class="ident">result</span>);
     }
     
     <span class="doccomment">/// This cell /= source cell.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">div</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
-        <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">vm::CoreOp::Div</span>, <span class="ident">other</span>, <span class="ident">result</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">div</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
+        <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">vm::CoreOp::Div</span>, <span class="ident">src</span>, <span class="ident">result</span>);
     }
 
     <span class="doccomment">/// This cell %= source cell.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">rem</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
-        <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">vm::CoreOp::Rem</span>, <span class="ident">other</span>, <span class="ident">result</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">rem</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
+        <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">vm::CoreOp::Rem</span>, <span class="ident">src</span>, <span class="ident">result</span>);
     }
 
     <span class="doccomment">/// This cell = a constant value.</span>
@@ -715,9 +715,9 @@
     }
 
     <span class="doccomment">/// Store the value of this cell into another cell.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">copy_to</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">copy_to</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dst</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
         <span class="self">self</span>.<span class="ident">restore_from</span>(<span class="ident">result</span>);
-        <span class="ident">other</span>.<span class="ident">save_to</span>(<span class="ident">result</span>);
+        <span class="ident">dst</span>.<span class="ident">save_to</span>(<span class="ident">result</span>);
     }
 }
 </code></pre></div>

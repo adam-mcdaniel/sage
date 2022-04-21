@@ -26,10 +26,10 @@ to the next cell unless <em>you want your code to be unportable</em>.</p>
 DESIRED POSITION AND USE <code>Where</code> INSTEAD! OR YOUR CODE WILL NOT PORT TO ALL
 IMPLEMENTATIONS!!</strong></em> </p>
 <h2 id="what-data-can-it-use" class="section-header"><a href="#what-data-can-it-use">What data can it use?</a></h2>
-<p><em><strong>The virtual machine uses cells of any arbitrary bit width &gt;= 16.</strong></em>
-<strong>The bit width is undefined</strong>, but <strong>it must remain constant for every cells.</strong>
-Additionally, <strong>the floating point (and pointer) representation must be identical
-in size to the integer representation</strong>.</p>
+<p><em><strong>The virtual machine uses cells of any arbitrary bit width &gt;= 16. The tape
+must contain at least 4096 cells.</strong></em> The bit width is undefined, but <strong>it must
+remain constant for every cells.</strong> Additionally, <strong>the floating point (and pointer)
+representation must be identical in size to the integer representation</strong>.</p>
 <p>In this particular assembler, we assume that the bit width is 64. Supporting
 smaller or larger bit widths is supported just by using integers of the 
 appropriate size, or using addition / multiplication to reach larger numbers.</p>

@@ -12,9 +12,10 @@ impl CompilerTarget for C {
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-typedef union {
+typedef union int_or_float {
     long long int i;
     double f;
+    union int_or_float *p;
 } int_or_float;
 int_or_float tape[30000], *ref_stack[30000], *ptr = tape, reg, tmp;
 unsigned int ref_stack_ptr = 0;
@@ -30,53 +31,48 @@ int main() {
         result += tab;
         result += "reg.i = 0;\n";
 
+        let mut comment = String::new();
         let mut indent = 1;
         for op in ops {
-            match op {
+            result += &tab.repeat(indent);
+            result += &match op {
                 CoreOp::Comment(n) => {
+                    comment.clear();
                     for line in n.split('\n') {
-                        result += &tab.repeat(indent);
-                        result += "// ";
-                        result += line;
-                        result += "\n";
+                        comment += &format!("\n{}// {}", tab.repeat(indent), line.trim());
                     }
+                    comment.clone()
                 },
-                CoreOp::Constant(n) => {
-                    result += &format!("{}reg.i = {};\n", tab.repeat(indent), n);
-                },
+                CoreOp::Constant(n) => format!("reg.i = {};", n),
                 CoreOp::Function => {
                     matching.push(op);
                     
                     funs.push(fun);
-                    result += &format!("{}void f{}() {{\n", tab.repeat(indent), fun);
+                    let fun_header = format!("void f{}() {{", fun);
                     fun += 1;
                     
                     indent += 1;
+                    fun_header
                 },
-                CoreOp::Call => {
-                    result += &format!("{}funs[reg.i]();\n", tab.repeat(indent));
-                    
-                },
-                CoreOp::Return => {
-                    result += &format!("{}return;\n", tab.repeat(indent));
-                },
+                CoreOp::Call => "funs[reg.i]();".to_string(),
+                CoreOp::Return => "return;".to_string(),
 
                 CoreOp::While => {
                     matching.push(op);
-                    
-                    result += &format!("{}while (reg.i) {{\n", tab.repeat(indent));
                     indent += 1;
+                    
+                    "while (reg.i) {".to_string()
                 },
                 CoreOp::If => {
                     matching.push(op);
-                    
-                    result += &format!("{}if (reg.i) {{\n", tab.repeat(indent));
                     indent += 1;
+                    
+                    "if (reg.i) {".to_string()
                 },
                 CoreOp::Else => {
                     if let Some(CoreOp::If) = matching.pop() {
-                        result += &format!("{}}} else {{\n", tab.repeat(indent-1));
                         matching.push(op);
+                        format!("\n{}}} else {{", tab.repeat(indent-1))
                     } else {
                         return Err("Unexpected else".to_string());
                     }
@@ -84,74 +80,33 @@ int main() {
                 CoreOp::End => {
                     indent -= 1;
                     match matching.pop() {
-                        Some(CoreOp::Function) => {
-                            result += &format!("{}}} funs[{fun}] = f{fun};\n", tab.repeat(indent), fun=funs.pop().unwrap());
-                        }
-                        Some(CoreOp::While) | Some(CoreOp::If) | Some(CoreOp::Else) => {
-                            result += &format!("{}}}\n", tab.repeat(indent));
-                        }
-                        _ => {}
+                        Some(CoreOp::Function) => format!("\n{}}} funs[{fun}] = f{fun};", tab.repeat(indent), fun=funs.pop().unwrap()),
+                        Some(CoreOp::While) | Some(CoreOp::If) | Some(CoreOp::Else) => "}".to_string(),
+                        _ => "".to_string()
                     }
                 },
 
-                CoreOp::Save => {
-                    result += &format!("{}*ptr = reg;\n", tab.repeat(indent));
-                },
-                CoreOp::Restore => {
-                    result += &format!("{}reg = *ptr;\n", tab.repeat(indent));
-                },
+                CoreOp::Save => "*ptr = reg;".to_string(),
+                CoreOp::Restore => "reg = *ptr;".to_string(),
                 
-                CoreOp::Move(n) => {
-                    if *n >= 0 {
-                        result += &format!("{}ptr += {};\n", tab.repeat(indent), n);
-                    } else {
-                        result += &format!("{}ptr -= {};\n", tab.repeat(indent), -n);
-                    }
-                },
-                CoreOp::Where => {
-                    result += &format!("{}reg.i = (long long int)ptr;\n", tab.repeat(indent));
-                },
-                CoreOp::Deref => {
-                    result += &format!("{}ref_stack[ref_stack_ptr++] = ptr; ptr = (int_or_float*)ptr->i;\n", tab.repeat(indent));
-                },
-                CoreOp::Refer => {
-                    result += &format!("{}ptr = ref_stack[--ref_stack_ptr];\n", tab.repeat(indent));
-                },
+                CoreOp::Move(n) => format!("ptr += {};", n),
+                CoreOp::Where => "reg.p = ptr;".to_string(),
+                CoreOp::Deref => "ref_stack[ref_stack_ptr++] = ptr; ptr = ptr->p;".to_string(),
+                CoreOp::Refer => "ptr = ref_stack[--ref_stack_ptr];".to_string(),
 
-                CoreOp::Inc => {
-                    result += &format!("{}reg.i++;\n", tab.repeat(indent));
-                },
-                CoreOp::Dec => {
-                    result += &format!("{}reg.i--;\n", tab.repeat(indent));
-                },
-                CoreOp::Add => {
-                    result += &format!("{}reg.i += ptr->i;\n", tab.repeat(indent));
-                },
-                CoreOp::Sub => {
-                    result += &format!("{}reg.i -= ptr->i;\n", tab.repeat(indent));
-                },
-                CoreOp::Mul => {
-                    result += &format!("{}reg.i *= ptr->i;\n", tab.repeat(indent));
-                },
-                CoreOp::Div => {
-                    result += &format!("{}reg.i /= ptr->i;\n", tab.repeat(indent));
-                },
-                CoreOp::Rem => {
-                    result += &format!("{}reg.i %= ptr->i;\n", tab.repeat(indent));
-                },
-
-                CoreOp::IsWhole => {
-                    result += &format!("{}reg.i = reg.i >= 0;\n", tab.repeat(indent));
-                },
-
-                CoreOp::GetChar => {
-                    result += &format!("{}reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;\n", tab.repeat(indent));
-                },
-                CoreOp::PutChar => {
-                    // result += &format!("{}printf(\"%d\\n\", reg.i);\n", tab.repeat(indent));
-                    result += &format!("{}putchar(reg.i);\n", tab.repeat(indent));
-                },
-            }
+                CoreOp::Inc => "reg.i++;".to_string(),
+                CoreOp::Dec => "reg.i--;".to_string(),
+                CoreOp::Add => "reg.i += ptr->i;".to_string(),
+                CoreOp::Sub => "reg.i -= ptr->i;".to_string(),
+                CoreOp::Mul => "reg.i *= ptr->i;".to_string(),
+                CoreOp::Div => "reg.i /= ptr->i;".to_string(),
+                CoreOp::Rem => "reg.i %= ptr->i;".to_string(),
+                CoreOp::IsWhole => "reg.i = reg.i >= 0;".to_string(),
+                
+                CoreOp::GetChar => "reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;".to_string(),
+                CoreOp::PutChar => "putchar(reg.i);".to_string(),
+            };
+            result.push('\n')
         }
 
         Ok(result + tab + "return 0;\n}")

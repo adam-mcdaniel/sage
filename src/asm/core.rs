@@ -346,8 +346,11 @@ impl CoreOp {
                 src.rem(&TMP, result);
             },
             CoreOp::Neg(dst) => {
-                TMP.set(-1, result);
-                dst.mul(&TMP, result)
+                result.set_register(-1);
+                dst.to(result);
+                result.append_core_op(vm::CoreOp::Mul);
+                result.save();
+                dst.from(result)
             },
             
             CoreOp::Not(dst) => dst.not(result),

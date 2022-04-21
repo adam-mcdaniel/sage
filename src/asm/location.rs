@@ -323,28 +323,28 @@ impl Location {
     }
 
     /// This cell += source cell.
-    pub fn add(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.binop(vm::CoreOp::Add, other, result);
+    pub fn add(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.binop(vm::CoreOp::Add, src, result);
     }
     
     /// This cell -= source cell.
-    pub fn sub(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.binop(vm::CoreOp::Sub, other, result);
+    pub fn sub(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.binop(vm::CoreOp::Sub, src, result);
     }
     
     /// This cell *= source cell.
-    pub fn mul(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.binop(vm::CoreOp::Mul, other, result);
+    pub fn mul(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.binop(vm::CoreOp::Mul, src, result);
     }
     
     /// This cell /= source cell.
-    pub fn div(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.binop(vm::CoreOp::Div, other, result);
+    pub fn div(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.binop(vm::CoreOp::Div, src, result);
     }
 
     /// This cell %= source cell.
-    pub fn rem(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.binop(vm::CoreOp::Rem, other, result);
+    pub fn rem(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.binop(vm::CoreOp::Rem, src, result);
     }
 
     /// This cell = a constant value.
@@ -354,8 +354,8 @@ impl Location {
     }
 
     /// Store the value of this cell into another cell.
-    pub fn copy_to(&self, other: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub fn copy_to(&self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
         self.restore_from(result);
-        other.save_to(result);
+        dst.save_to(result);
     }
 }

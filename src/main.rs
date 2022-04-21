@@ -110,6 +110,34 @@ fn main() {
     
 
     let program = CoreProgram(vec![
+        Fn(String::from("return-test")),
+            PutLiteral(String::from("return test 1!\n")),
+            Return,
+            PutLiteral(String::from("return test 2!\n")),
+        End,
+        
+        Fn(String::from("putint")),
+            Move { src: FP.deref().offset(-1), dst: A },
+
+            Set(B, 10),
+            DivRem { src: B, dst: A },
+            If(A),
+                Push(B),
+                Push(A),
+                CallLabel(String::from("putint")),
+                Pop(None),
+                Pop(Some(B)),
+            End,
+            Set(A, '0' as isize),
+            Add { src: A, dst: B},
+            PutChar(B),
+        End,
+        
+        Comment(String::from(r#"Hey jude!
+                                Hello world!
+                                Testing!
+                                This is a comment!"#)),
+
         Fn(String::from("putstr")),
             Move { src: FP.deref().offset(-1), dst: C },
             While(C.deref()),
@@ -117,6 +145,35 @@ fn main() {
                 Next(C, None),
             End,
         End,
+
+        Fn(String::from("getstr")),
+            Move { src: FP.deref().offset(-1), dst: C },
+            Move { src: C, dst: B },
+            GetChar(C.deref()),
+            Set(D, '\n' as isize),
+            IsNotEqual { src: C.deref(), dst: D },
+            While(D),
+                Next(C, None),
+                GetChar(C.deref()),
+
+                Set(D, '\n' as isize),
+                IsNotEqual { src: C.deref(), dst: D },
+            End,
+            Set(C.deref(), '\0' as isize),
+            
+            Move { src: B, dst: FP.deref().offset(-1) },
+        End,
+
+        Fn(String::from("strlen")),
+            Move { src: FP.deref().offset(-1), dst: C },
+            Set(D, 0),
+            While(C.deref()),
+                Next(C, None),
+                Inc(D),
+            End,
+            Move { src: D, dst: FP.deref().offset(-1) },
+        End,
+
 
         StackAllocateLiteral(A, String::from("Hello world!\n\0")),
         StackAllocateLiteral(B, String::from("Dontshowme!!\n\0")),
@@ -128,29 +185,39 @@ fn main() {
         PushLiteral(String::from("abcdefghijk?\n\0")),
         Store(A, 14),
         
-        // Print A
-        Push(A),
-        CallLabel(String::from("putstr")),
-        Pop(None),
+        Set(D, 4),
+        While(D),
+            // Print A
+            Push(A),
+            CallLabel(String::from("putstr")),
+            Pop(None),
 
-        // Print B
-        Push(B),
-        CallLabel(String::from("putstr")),
-        Pop(None),
+            // Print B
+            Push(B),
+            CallLabel(String::from("putstr")),
+            Pop(None),
 
-        // Copy A to B
-        Load(A, 14),
-        Store(B, 14),
+            Dec(D),
+        End,
 
-        // Print B
-        Push(A),
-        CallLabel(String::from("putstr")),
-        Pop(None),
+        StackAllocateLiteral(C, "\0".repeat(1024).to_string()),
+        
+        
+        PutLiteral(String::from(">> ")),
+        Push(C),
+        CallLabel(String::from("getstr")),
+        Pop(Some(F)),
 
-        // Print B
-        Push(B),
+        PutLiteral(String::from("you entered: `")),
+
+        Push(F),
         CallLabel(String::from("putstr")),
+        PutLiteral(String::from("`\nwhich is ")),
+        CallLabel(String::from("strlen")),
+        CallLabel(String::from("putint")),
         Pop(None),
+        
+        PutLiteral(String::from(" characters long!\n")),
     ]).assemble().unwrap();
     eprintln!("{:?}", program);
 

@@ -325,51 +325,6 @@
 <span id="325">325</span>
 <span id="326">326</span>
 <span id="327">327</span>
-<span id="328">328</span>
-<span id="329">329</span>
-<span id="330">330</span>
-<span id="331">331</span>
-<span id="332">332</span>
-<span id="333">333</span>
-<span id="334">334</span>
-<span id="335">335</span>
-<span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
-<span id="339">339</span>
-<span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
-<span id="343">343</span>
-<span id="344">344</span>
-<span id="345">345</span>
-<span id="346">346</span>
-<span id="347">347</span>
-<span id="348">348</span>
-<span id="349">349</span>
-<span id="350">350</span>
-<span id="351">351</span>
-<span id="352">352</span>
-<span id="353">353</span>
-<span id="354">354</span>
-<span id="355">355</span>
-<span id="356">356</span>
-<span id="357">357</span>
-<span id="358">358</span>
-<span id="359">359</span>
-<span id="360">360</span>
-<span id="361">361</span>
-<span id="362">362</span>
-<span id="363">363</span>
-<span id="364">364</span>
-<span id="365">365</span>
-<span id="366">366</span>
-<span id="367">367</span>
-<span id="368">368</span>
-<span id="369">369</span>
-<span id="370">370</span>
-<span id="371">371</span>
-<span id="372">372</span>
 </pre><pre class="rust"><code><span class="doccomment">//! An implementation of the virtual machine for the C language.</span>
 <span class="doccomment">//! </span>
 <span class="doccomment">//! This allows the virtual machine to target C programs.</span>
@@ -384,9 +339,10 @@
 #include &lt;string.h&gt;
 #include &lt;stdlib.h&gt;
 #include &lt;math.h&gt;
-typedef union {
+typedef union int_or_float {
     long long int i;
     double f;
+    union int_or_float *p;
 } int_or_float;
 int_or_float tape[30000], *ref_stack[30000], *ptr = tape, reg, tmp;
 unsigned int ref_stack_ptr = 0;
@@ -402,53 +358,48 @@ int main() {
         <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="ident">tab</span>;
         <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="string">&quot;reg.i = 0;\n&quot;</span>;
 
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">comment</span> <span class="op">=</span> <span class="ident">String::new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">indent</span> <span class="op">=</span> <span class="number">1</span>;
         <span class="kw">for</span> <span class="ident">op</span> <span class="kw">in</span> <span class="ident">ops</span> {
-            <span class="kw">match</span> <span class="ident">op</span> {
+            <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>);
+            <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw">match</span> <span class="ident">op</span> {
                 <span class="ident">CoreOp::Comment</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">comment</span>.<span class="ident">clear</span>();
                     <span class="kw">for</span> <span class="ident">line</span> <span class="kw">in</span> <span class="ident">n</span>.<span class="ident">split</span>(<span class="string">&#39;\n&#39;</span>) {
-                        <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>);
-                        <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="string">&quot;// &quot;</span>;
-                        <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="ident">line</span>;
-                        <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="string">&quot;\n&quot;</span>;
+                        <span class="ident">comment</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;\n{}// {}&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>), <span class="ident">line</span>.<span class="ident">trim</span>());
                     }
+                    <span class="ident">comment</span>.<span class="ident">clone</span>()
                 },
-                <span class="ident">CoreOp::Constant</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}reg.i = {};\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>), <span class="ident">n</span>);
-                },
+                <span class="ident">CoreOp::Constant</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">format!</span>(<span class="string">&quot;reg.i = {};&quot;</span>, <span class="ident">n</span>),
                 <span class="ident">CoreOp::Function</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="ident">matching</span>.<span class="ident">push</span>(<span class="ident">op</span>);
                     
                     <span class="ident">funs</span>.<span class="ident">push</span>(<span class="ident">fun</span>);
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}void f{}() {{\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>), <span class="ident">fun</span>);
+                    <span class="kw">let</span> <span class="ident">fun_header</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;void f{}() {{&quot;</span>, <span class="ident">fun</span>);
                     <span class="ident">fun</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
                     
                     <span class="ident">indent</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+                    <span class="ident">fun_header</span>
                 },
-                <span class="ident">CoreOp::Call</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}funs[reg.i]();\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                    
-                },
-                <span class="ident">CoreOp::Return</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}return;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
+                <span class="ident">CoreOp::Call</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;funs[reg.i]();&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">CoreOp::Return</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;return;&quot;</span>.<span class="ident">to_string</span>(),
 
                 <span class="ident">CoreOp::While</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="ident">matching</span>.<span class="ident">push</span>(<span class="ident">op</span>);
-                    
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}while (reg.i) {{\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
                     <span class="ident">indent</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+                    
+                    <span class="string">&quot;while (reg.i) {&quot;</span>.<span class="ident">to_string</span>()
                 },
                 <span class="ident">CoreOp::If</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="ident">matching</span>.<span class="ident">push</span>(<span class="ident">op</span>);
-                    
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}if (reg.i) {{\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
                     <span class="ident">indent</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+                    
+                    <span class="string">&quot;if (reg.i) {&quot;</span>.<span class="ident">to_string</span>()
                 },
                 <span class="ident">CoreOp::Else</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">CoreOp::If</span>) <span class="op">=</span> <span class="ident">matching</span>.<span class="ident">pop</span>() {
-                        <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}}} else {{\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span><span class="op">-</span><span class="number">1</span>));
                         <span class="ident">matching</span>.<span class="ident">push</span>(<span class="ident">op</span>);
+                        <span class="macro">format!</span>(<span class="string">&quot;\n{}}} else {{&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span><span class="op">-</span><span class="number">1</span>))
                     } <span class="kw">else</span> {
                         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Unexpected else&quot;</span>.<span class="ident">to_string</span>());
                     }
@@ -456,74 +407,33 @@ int main() {
                 <span class="ident">CoreOp::End</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="ident">indent</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
                     <span class="kw">match</span> <span class="ident">matching</span>.<span class="ident">pop</span>() {
-                        <span class="prelude-val">Some</span>(<span class="ident">CoreOp::Function</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}}} funs[{fun}] = f{fun};\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>), <span class="ident">fun</span><span class="op">=</span><span class="ident">funs</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>());
-                        }
-                        <span class="prelude-val">Some</span>(<span class="ident">CoreOp::While</span>) <span class="op">|</span> <span class="prelude-val">Some</span>(<span class="ident">CoreOp::If</span>) <span class="op">|</span> <span class="prelude-val">Some</span>(<span class="ident">CoreOp::Else</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}}}\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                        }
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
+                        <span class="prelude-val">Some</span>(<span class="ident">CoreOp::Function</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">format!</span>(<span class="string">&quot;\n{}}} funs[{fun}] = f{fun};&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>), <span class="ident">fun</span><span class="op">=</span><span class="ident">funs</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>()),
+                        <span class="prelude-val">Some</span>(<span class="ident">CoreOp::While</span>) <span class="op">|</span> <span class="prelude-val">Some</span>(<span class="ident">CoreOp::If</span>) <span class="op">|</span> <span class="prelude-val">Some</span>(<span class="ident">CoreOp::Else</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;}&quot;</span>.<span class="ident">to_string</span>(),
+                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>()
                     }
                 },
 
-                <span class="ident">CoreOp::Save</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}*ptr = reg;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
-                <span class="ident">CoreOp::Restore</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}reg = *ptr;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
+                <span class="ident">CoreOp::Save</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;*ptr = reg;&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">CoreOp::Restore</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;reg = *ptr;&quot;</span>.<span class="ident">to_string</span>(),
                 
-                <span class="ident">CoreOp::Move</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">n</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span> {
-                        <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}ptr += {};\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>), <span class="ident">n</span>);
-                    } <span class="kw">else</span> {
-                        <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}ptr -= {};\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>), <span class="op">-</span><span class="ident">n</span>);
-                    }
-                },
-                <span class="ident">CoreOp::Where</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}reg.i = (long long int)ptr;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
-                <span class="ident">CoreOp::Deref</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}ref_stack[ref_stack_ptr++] = ptr; ptr = (int_or_float*)ptr-&gt;i;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
-                <span class="ident">CoreOp::Refer</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}ptr = ref_stack[--ref_stack_ptr];\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
+                <span class="ident">CoreOp::Move</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">format!</span>(<span class="string">&quot;ptr += {};&quot;</span>, <span class="ident">n</span>),
+                <span class="ident">CoreOp::Where</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;reg.p = ptr;&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">CoreOp::Deref</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;ref_stack[ref_stack_ptr++] = ptr; ptr = ptr-&gt;p;&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">CoreOp::Refer</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;ptr = ref_stack[--ref_stack_ptr];&quot;</span>.<span class="ident">to_string</span>(),
 
-                <span class="ident">CoreOp::Inc</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}reg.i++;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
-                <span class="ident">CoreOp::Dec</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}reg.i--;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
-                <span class="ident">CoreOp::Add</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}reg.i += ptr-&gt;i;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
-                <span class="ident">CoreOp::Sub</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}reg.i -= ptr-&gt;i;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
-                <span class="ident">CoreOp::Mul</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}reg.i *= ptr-&gt;i;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
-                <span class="ident">CoreOp::Div</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}reg.i /= ptr-&gt;i;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
-                <span class="ident">CoreOp::Rem</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}reg.i %= ptr-&gt;i;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
-
-                <span class="ident">CoreOp::IsWhole</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}reg.i = reg.i &gt;= 0;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
-
-                <span class="ident">CoreOp::GetChar</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
-                <span class="ident">CoreOp::PutChar</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="comment">// result += &amp;format!(&quot;{}printf(\&quot;%d\\n\&quot;, reg.i);\n&quot;, tab.repeat(indent));</span>
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}putchar(reg.i);\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
-                },
-            }
+                <span class="ident">CoreOp::Inc</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;reg.i++;&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">CoreOp::Dec</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;reg.i--;&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">CoreOp::Add</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;reg.i += ptr-&gt;i;&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">CoreOp::Sub</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;reg.i -= ptr-&gt;i;&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">CoreOp::Mul</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;reg.i *= ptr-&gt;i;&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">CoreOp::Div</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;reg.i /= ptr-&gt;i;&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">CoreOp::Rem</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;reg.i %= ptr-&gt;i;&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">CoreOp::IsWhole</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;reg.i = reg.i &gt;= 0;&quot;</span>.<span class="ident">to_string</span>(),
+                
+                <span class="ident">CoreOp::GetChar</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">CoreOp::PutChar</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;putchar(reg.i);&quot;</span>.<span class="ident">to_string</span>(),
+            };
+            <span class="ident">result</span>.<span class="ident">push</span>(<span class="string">&#39;\n&#39;</span>)
         }
 
         <span class="prelude-val">Ok</span>(<span class="ident">result</span> <span class="op">+</span> <span class="ident">tab</span> <span class="op">+</span> <span class="string">&quot;return 0;\n}&quot;</span>)

@@ -37,10 +37,10 @@
 //! 
 //! ## What data can it use?
 //! 
-//! ***The virtual machine uses cells of any arbitrary bit width >= 16.***
-//! **The bit width is undefined**, but **it must remain constant for every cells.**
-//! Additionally, **the floating point (and pointer) representation must be identical
-//! in size to the integer representation**.
+//! ***The virtual machine uses cells of any arbitrary bit width >= 16. The tape
+//! must contain at least 4096 cells.*** The bit width is undefined, but **it must
+//! remain constant for every cells.** Additionally, **the floating point (and pointer)
+//! representation must be identical in size to the integer representation**.
 //! 
 //! In this particular assembler, we assume that the bit width is 64. Supporting
 //! smaller or larger bit widths is supported just by using integers of the 
