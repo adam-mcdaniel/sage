@@ -165,35 +165,41 @@ pub enum CoreOp {
         a: Location,
         b: Location
     },
-    /// Perform dst = dst > src.
+    /// Perform dst = a > b.
     IsGreater {
         dst: Location,
-        src: Location
+        a: Location,
+        b: Location
     },
-    /// Perform dst = dst >= src.
+    /// Perform dst = a >= b.
     IsGreaterEqual {
         dst: Location,
-        src: Location
+        a: Location,
+        b: Location
     },
-    /// Perform dst = dst < src.
+    /// Perform dst = a < b.
     IsLess {
         dst: Location,
-        src: Location
+        a: Location,
+        b: Location
     },
-    /// Perform dst = dst <= src.
+    /// Perform dst = a <= b.
     IsLessEqual {
         dst: Location,
-        src: Location
+        a: Location,
+        b: Location
     },
-    /// Perform dst = dst == src.
+    /// Perform dst = a == b.
     IsEqual {
         dst: Location,
-        src: Location
+        a: Location,
+        b: Location
     },
-    /// Perform dst = dst != src.
+    /// Perform dst = a != b.
     IsNotEqual {
         dst: Location,
-        src: Location
+        a: Location,
+        b: Location
     },
 
     /// Load a number of cells from a source location onto the stack.
@@ -212,52 +218,71 @@ pub enum CoreOp {
     /// Put a character from a source register to the output stream.
     PutChar(Location),
 
-    /// Print a string to the output stream.
-    PutLiteral(String),
-    /// Push a list of characters (each stored in consecutive cells) onto the stack.
-    PushLiteral(String),
+    /// Put a list of values to the output stream.
+    PutLiteral(Vec<isize>),
+    /// Push a list of values (each stored in consecutive cells) onto the stack.
+    PushLiteral(Vec<isize>),
 
     /// Push a list of characters (each stored in consecutive cells) onto the stack,
     /// and store their address in a destination register.
-    StackAllocateLiteral(Location, String),
+    StackAllocateLiteral(Location, Vec<isize>),
 }
 
 
 impl CoreOp {
+    pub fn put_string(msg: impl ToString) -> Self {
+        Self::PutLiteral(msg.to_string().chars().map(|c| c as isize).collect())
+    }
+
+    pub fn push_string(msg: impl ToString) -> Self {
+        let mut vals: Vec<isize> = msg.to_string().chars().map(|c| c as isize).collect();
+        vals.push(0);
+        Self::PushLiteral(vals)
+    }
+
+    pub fn stack_alloc_string(dst: Location, msg: impl ToString) -> Self {
+        let mut vals: Vec<isize> = msg.to_string().chars().map(|c| c as isize).collect();
+        vals.push(0);
+        Self::StackAllocateLiteral(dst, vals)
+    }
+
     fn assemble(&self, current_instruction: usize, env: &mut Env, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         match self {
             CoreOp::Comment(comment) => result.comment(comment),
-            CoreOp::PutLiteral(msg) => {
+            CoreOp::PutLiteral(vals) => {
                 // For every character in the message
-                for ch in msg.chars() {
+                for val in vals {
                     // Set the register to the ASCII value
-                    result.set_register(ch as isize);
+                    result.set_register(*val);
                     // Put the register
                     result.putchar();
                 }
             },
-            CoreOp::PushLiteral(msg) => {
+            CoreOp::PushLiteral(vals) => {
                 // For every character in the message
                 // Go to the top of the stack, and push the ASCII value of the character
                 SP.deref().to(result);
-                for ch in msg.chars() {
+                for val in vals {
                     result.move_pointer(1);
                     // Goto the pushed character's address above the top of the stack
                     // Set the register to the ASCII value
-                    result.set_register(ch as isize);
+                    result.set_register(*val);
                     // Save the register to the memory location
                     result.save();
                     // SP.deref().offset(i as isize + 1).from(result);
                 }
                 // Move the pointer back where we came from
                 result.where_is_pointer();
-                SP.deref().offset(msg.len() as isize).from(result);
+                SP.deref().offset(vals.len() as isize).from(result);
+                SP.to(result);
                 result.save();
+                SP.from(result);
             },
 
-            CoreOp::StackAllocateLiteral(dst, msg) => {
+            CoreOp::StackAllocateLiteral(dst, vals) => {
+                // Copy the address of the future literal on the stack
                 SP.deref().offset(1).copy_address_to(dst, result);
-                CoreOp::PushLiteral(msg.clone()).assemble(current_instruction, env, result)?;
+                CoreOp::PushLiteral(vals.clone()).assemble(current_instruction, env, result)?;
             },
 
 
@@ -361,24 +386,21 @@ impl CoreOp {
             CoreOp::Pop(Some(dst)) => dst.pop(result),
             CoreOp::Pop(None) => SP.prev(1, result),
 
-            CoreOp::IsGreater { src, dst } => dst.is_greater_than(src, result),
-            CoreOp::IsGreaterEqual { src, dst } => dst.is_greater_or_equal_to(src, result),
-            CoreOp::IsLess { src, dst } => dst.is_less_than(src, result),
-            CoreOp::IsLessEqual { src, dst } => dst.is_less_or_equal_to(src, result),
-            CoreOp::IsNotEqual { src, dst } => dst.sub(src, result),
-            CoreOp::IsEqual { src, dst } => {
-                dst.sub(src, result);
-                dst.not(result)
-            },
+            CoreOp::IsGreater { dst, a, b } => a.is_greater_than(b, dst, result),
+            CoreOp::IsGreaterEqual { dst, a, b } => a.is_greater_or_equal_to(b, dst, result),
+            CoreOp::IsLess { dst, a, b } => a.is_less_than(b, dst, result),
+            CoreOp::IsLessEqual { dst, a, b } => a.is_less_or_equal_to(b, dst, result),
+            CoreOp::IsNotEqual { dst, a, b } => a.is_not_equal(b, dst, result),
+            CoreOp::IsEqual { dst, a, b } => a.is_equal(b, dst, result),
 
             CoreOp::Compare { dst, a, b } => {
                 a.copy_to(dst, result);
-                dst.is_greater_than(b, result);
+                a.is_greater_than(b, dst, result);
                 result.begin_if();
                     result.set_register(1);
                 result.begin_else();
                     a.copy_to(dst, result);
-                    dst.is_less_than(b, result);
+                    a.is_less_than(b, dst, result);
                     result.begin_if();
                         result.set_register(-1);
                     result.begin_else();

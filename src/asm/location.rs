@@ -81,7 +81,8 @@ use crate::vm::{self, VirtualMachineProgram};
 
 /// The stack pointer register.
 pub const SP: Location = Location::Address(0);
-/// A temporary register. It can be used as a trash can.
+/// A volatile register. This register may be silently overwritten by
+/// some assembly instructions.
 pub const TMP: Location = Location::Address(1);
 /// The frame pointer register.
 pub const FP: Location = Location::Address(2);
@@ -111,6 +112,10 @@ pub enum Location {
     /// Go to a position in memory, and then move the pointer according to an offset.
     /// For example, `Offset(Address(8), -2)` is equivalent to `Address(6)`.
     Offset(Box<Self>, isize),
+}
+
+pub fn var(offset: usize) -> Location {
+    FP.deref().offset(-(offset as isize + 1))
 }
 
 impl Location {
@@ -288,38 +293,44 @@ impl Location {
         self.from(result);
     }
 
-    /// This cell = this cell > source cell.
-    pub fn is_greater_than(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.copy_to(&TMP, result);
-        TMP.sub(src, result);
-        TMP.dec(result);
-        TMP.whole_int(result);
-        self.save_to(result);
+    /// dst = this cell > source cell.
+    pub fn is_greater_than(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.copy_to(dst, result);
+        dst.sub(src, result);
+        dst.dec(result);
+        dst.whole_int(result);
     }
 
-    /// This cell = this cell >= source cell.
-    pub fn is_greater_or_equal_to(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.copy_to(&TMP, result);
-        TMP.sub(src, result);
-        TMP.whole_int(result);
-        self.save_to(result);
+    /// dst = this cell >= source cell.
+    pub fn is_greater_or_equal_to(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.copy_to(dst, result);
+        dst.sub(src, result);
+        dst.whole_int(result);
     }
 
-    /// This cell = this cell < source cell.
-    pub fn is_less_than(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
-        src.copy_to(&TMP, result);
-        TMP.sub(self, result);
-        TMP.dec(result);
-        TMP.whole_int(result);
-        self.save_to(result);
+    /// dst = this cell < source cell.
+    pub fn is_less_than(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+        src.copy_to(dst, result);
+        dst.sub(self, result);
+        dst.dec(result);
+        dst.whole_int(result);
     }
 
-    /// This cell = this cell <= source cell.
-    pub fn is_less_or_equal_to(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
-        src.copy_to(&TMP, result);
-        TMP.sub(self, result);
-        TMP.whole_int(result);
-        self.save_to(result);
+    /// dst = this cell <= source cell.
+    pub fn is_less_or_equal_to(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+        src.copy_to(dst, result);
+        dst.sub(self, result);
+        dst.whole_int(result);
+    }
+
+    pub fn is_not_equal(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+        src.copy_to(dst, result);
+        dst.sub(self, result);
+    }
+
+    pub fn is_equal(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.is_not_equal(src, dst, result);
+        dst.not(result);
     }
 
     /// This cell += source cell.

@@ -111,13 +111,13 @@ fn main() {
 
     let program = CoreProgram(vec![
         Fn(String::from("return-test")),
-            PutLiteral(String::from("return test 1!\n")),
+            CoreOp::put_string("return test 1!\n"),
             Return,
-            PutLiteral(String::from("return test 2!\n")),
+            CoreOp::put_string("return test 2!\n"),
         End,
         
         Fn(String::from("putint")),
-            Move { src: FP.deref().offset(-1), dst: A },
+            Move { src: var(0), dst: A },
 
             Set(B, 10),
             DivRem { src: B, dst: A },
@@ -139,7 +139,7 @@ fn main() {
                                 This is a comment!"#)),
 
         Fn(String::from("putstr")),
-            Move { src: FP.deref().offset(-1), dst: C },
+            Move { src: var(0), dst: C },
             While(C.deref()),
                 PutChar(C.deref()),
                 Next(C, None),
@@ -147,42 +147,62 @@ fn main() {
         End,
 
         Fn(String::from("getstr")),
-            Move { src: FP.deref().offset(-1), dst: C },
+            Move { src: var(0), dst: C },
             Move { src: C, dst: B },
             GetChar(C.deref()),
             Set(D, '\n' as isize),
-            IsNotEqual { src: C.deref(), dst: D },
-            While(D),
+            IsNotEqual { dst: E, a: C.deref(), b: D },
+            While(E),
+                PutChar(C.deref()),
                 Next(C, None),
                 GetChar(C.deref()),
-
+                
                 Set(D, '\n' as isize),
-                IsNotEqual { src: C.deref(), dst: D },
+                IsNotEqual { dst: E, a: C.deref(), b: D },
             End,
             Set(C.deref(), '\0' as isize),
             
-            Move { src: B, dst: FP.deref().offset(-1) },
+            Move { src: B, dst: var(0) },
         End,
 
         Fn(String::from("strlen")),
-            Move { src: FP.deref().offset(-1), dst: C },
+            Move { src: var(0), dst: C },
             Set(D, 0),
             While(C.deref()),
                 Next(C, None),
                 Inc(D),
             End,
-            Move { src: D, dst: FP.deref().offset(-1) },
+            Move { src: D, dst: var(0) },
+        End,
+
+        Fn(String::from("strrev")),
+            Move { src: var(0), dst: C },
+            Move { src: C, dst: D },
+            While(D.deref()),
+                Next(D, None),
+            End,
+            Prev(D, None),
+
+            Move { src: C, dst: B },
+            IsLess { dst: B, a: C, b: D },
+            While(B),
+                Swap(C.deref(), D.deref()),
+                Next(C, None),
+                Prev(D, None),
+                Move { src: C, dst: B },
+                IsLess { dst: B, a: C, b: D },
+            End,
         End,
 
 
-        StackAllocateLiteral(A, String::from("Hello world!\n\0")),
-        StackAllocateLiteral(B, String::from("Dontshowme!!\n\0")),
+        CoreOp::stack_alloc_string(A, "Hello world!\n"),
+        CoreOp::stack_alloc_string(B, "Dontshowme!!\n"),
 
         // Copy A to B
         Copy { src: A, dst: B, size: 14 },
         
         // Overwrite A
-        PushLiteral(String::from("abcdefghijk?\n\0")),
+        CoreOp::push_string("abcdefghijk?\n"),
         Store(A, 14),
         
         Set(D, 4),
@@ -200,24 +220,25 @@ fn main() {
             Dec(D),
         End,
 
-        StackAllocateLiteral(C, "\0".repeat(1024).to_string()),
+        StackAllocateLiteral(C, vec![0].repeat(1024)),
         
         
-        PutLiteral(String::from(">> ")),
+        CoreOp::put_string(">> "),
         Push(C),
         CallLabel(String::from("getstr")),
         Pop(Some(F)),
 
-        PutLiteral(String::from("you entered: `")),
+        CoreOp::put_string("you entered: `"),
 
         Push(F),
+        CallLabel(String::from("strrev")),
         CallLabel(String::from("putstr")),
-        PutLiteral(String::from("`\nwhich is ")),
+        CoreOp::put_string("`\nwhich is "),
         CallLabel(String::from("strlen")),
         CallLabel(String::from("putint")),
         Pop(None),
         
-        PutLiteral(String::from(" characters long!\n")),
+        CoreOp::put_string(" characters long!\n"),
     ]).assemble().unwrap();
     eprintln!("{:?}", program);
 
