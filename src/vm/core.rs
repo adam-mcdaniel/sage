@@ -1,9 +1,9 @@
 //! The core instructions of the virtual machine are defined here.
-//! 
+//!
 //! Core instructions are instructions that **must** be implemented for
 //! every target. Write programs in the core variant to guarantee ports
 //! for ***every*** target.
-use super::{VirtualMachineProgram, StandardOp};
+use super::{StandardOp, VirtualMachineProgram};
 
 impl VirtualMachineProgram for CoreProgram {
     fn append_core_op(&mut self, op: CoreOp) {
@@ -11,7 +11,10 @@ impl VirtualMachineProgram for CoreProgram {
     }
 
     fn append_standard_op(&mut self, op: StandardOp) {
-        panic!("the core virtual machine does not support standard instructions: tried to run `{:?}`", op)
+        panic!(
+            "the core virtual machine does not support standard instructions: tried to run `{:?}`",
+            op
+        )
     }
 }
 
@@ -22,6 +25,7 @@ pub struct CoreProgram(pub Vec<CoreOp>);
 /// An individual core virtual machine instruction.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum CoreOp {
+    /// A comment in the machine code (not in the compiled output).
     Comment(String),
 
     /// Set the register equal to a constant value.
@@ -37,13 +41,13 @@ pub enum CoreOp {
     /// Begin a "while the register is not zero" loop.
     While,
     /// Begin an "if the register is not zero" conditional.
-    /// 
+    ///
     /// If statements are structured like so:
-    /// ```
+    /// ```hs
     /// if
     ///     ...
     /// end
-    /// 
+    ///
     /// if
     ///     ...
     /// else
@@ -60,7 +64,7 @@ pub enum CoreOp {
     Save,
     /// Store the value pointed to on the tape to the register.
     Restore,
-    
+
     /// Move the pointer on the tape by a number of cells.
     Move(isize),
 
@@ -86,11 +90,19 @@ pub enum CoreOp {
     /// Store the remainder of the register and the value pointed to in the tape into the register.
     Rem,
 
-    /// Make the register equal to 1 if the register is a whole number, otherwise make it equal to 0.
-    IsWhole,
+    /// Make the register equal to 1 if the register is non-negative, otherwise make it equal to 0.
+    IsNonNegative,
 
-    /// Get a character from the input stream and store it in the register.
-    GetChar,
-    /// Put the character value of the register to the output stream.
-    PutChar,
+    /// Get a value from the input interface / device and store it in the register.
+    /// This is intended to function something like system calls for using any external
+    /// functionality that can't be implemented in the virtual machine, such as I/O or OS operations.
+    ///
+    /// The specific behavior of this instruction is purposefully not defined.
+    Get,
+    /// Write the value of the register to the output interface / device.
+    /// This is intended to function something like system calls for using any external
+    /// functionality that can't be implemented in the virtual machine, such as I/O or OS operations.
+    ///
+    /// The specific behavior of this instruction is purposefully not defined.
+    Put,
 }

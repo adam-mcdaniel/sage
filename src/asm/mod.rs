@@ -24,7 +24,7 @@ pub mod std;
 pub use self::std::{StandardOp, StandardProgram};
 
 pub mod location;
-pub use location::{Location, BOTTOM_OF_STACK, var, TMP, SP, FP, A, B, C, D, E, F};
+pub use location::{Location, var, FP_STACK, TMP, SP, FP, A, B, C, D, E, F};
 
 
 /// An environment used to assemble a program.

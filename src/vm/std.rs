@@ -1,11 +1,11 @@
 //! The standard instructions of the virtual machine are defined here.
-//! 
+//!
 //! Standard instructions are instructions that *should* be implemented for
 //! every target possible. Standard instructions should only not be implemented
 //! for targets like physical hardware, where the program is executed on the
 //! bare metal (a custom CPU or FPGA).
 
-use super::{VirtualMachineProgram, CoreOp};
+use super::{CoreOp, VirtualMachineProgram};
 
 impl VirtualMachineProgram for StandardProgram {
     fn append_core_op(&mut self, op: CoreOp) {
@@ -33,7 +33,7 @@ pub enum StandardOp {
 
     /// Free the memory pointed to by the register.
     Free,
-    
+
     /// Convert the register from a float to an integer.
     ToInt,
     /// Convert the register from an integer to a float.
@@ -55,9 +55,9 @@ pub enum StandardOp {
     Rem,
 
     /// Make the register equal to the integer 1 if the register (as a float)
-    /// is a whole number, otherwise make it equal to 0.
-    IsWhole,
-    
+    /// is not negative, otherwise make it equal to 0.
+    IsNonNegative,
+
     /// Store the sine of the register (as a float) into the register.
     Sin,
     /// Store the cosine of the register (as a float) into the register.
@@ -70,7 +70,13 @@ pub enum StandardOp {
     ACos,
     /// Store the inverse-tangent of the register (as a float) into the register.
     ATan,
-    
+    /// Store the value of the register (as a float) to the power of the value pointed to on the tape (as a float) into the register.
+    Pow,
+
+    /// Get a character from the input stream (like `getchar()`) and store it in the register.
+    GetChar,
+    /// Print the register as a character to the output stream (like `putchar(reg)`).
+    PutChar,
     /// Get an integer from the input stream (like `scanf("%lld", &reg)`) and store it in the register.
     GetInt,
     /// Print the register as an integer to the output stream (like `printf("%lld", reg)`).

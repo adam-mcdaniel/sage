@@ -101,10 +101,10 @@ int main() {
                 CoreOp::Mul => "reg.i *= ptr->i;".to_string(),
                 CoreOp::Div => "reg.i /= ptr->i;".to_string(),
                 CoreOp::Rem => "reg.i %= ptr->i;".to_string(),
-                CoreOp::IsWhole => "reg.i = reg.i >= 0;".to_string(),
+                CoreOp::IsNonNegative => "reg.i = reg.i >= 0;".to_string(),
                 
-                CoreOp::GetChar => "reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;".to_string(),
-                CoreOp::PutChar => "putchar(reg.i);".to_string(),
+                CoreOp::Get => "reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;".to_string(),
+                CoreOp::Put => "putchar(reg.i);".to_string(),
             };
             result.push('\n')
         }
@@ -138,6 +138,12 @@ int main() {
         let mut indent = 1;
         for op in ops {
             match op {
+                StandardOp::GetChar => {
+                    result += "reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;"
+                }
+                StandardOp::PutChar => {
+                    result += "putchar(reg.i);"
+                },
                 StandardOp::GetInt => {
                     result += &format!("{}scanf(\"%lld\", &reg.i);\n", tab.repeat(indent));
                 },
@@ -170,7 +176,10 @@ int main() {
                 StandardOp::Rem => {
                     result += &format!("{}reg.f = fmod(reg.f, ptr->f);\n", tab.repeat(indent));
                 },
-                StandardOp::IsWhole => {
+                StandardOp::Pow => {
+                    result += &format!("{}reg.f = powf(reg.f, ptr->f);\n", tab.repeat(indent));
+                },
+                StandardOp::IsNonNegative => {
                     result += &format!("{}reg.i = reg.f >= 0;\n", tab.repeat(indent));
                 },
             
@@ -309,14 +318,14 @@ int main() {
                     result += &format!("{}reg.i %= ptr->i;\n", tab.repeat(indent));
                 },
 
-                StandardOp::CoreOp(CoreOp::IsWhole) => {
+                StandardOp::CoreOp(CoreOp::IsNonNegative) => {
                     result += &format!("{}reg.i = reg.i >= 0;\n", tab.repeat(indent));
                 },
 
-                StandardOp::CoreOp(CoreOp::GetChar) => {
+                StandardOp::CoreOp(CoreOp::Get) => {
                     result += &format!("{}reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;\n", tab.repeat(indent));
                 },
-                StandardOp::CoreOp(CoreOp::PutChar) => {
+                StandardOp::CoreOp(CoreOp::Put) => {
                     result += &format!("{}putchar(reg.i);\n", tab.repeat(indent));
                 },
             }

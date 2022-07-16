@@ -24,7 +24,7 @@
 //! Standard instructions, like `PutInt`, can be implemented as
 //! user defined functions in the core assembly language simply
 //! using `PutChar` to display the integer in decimal.
-use super::{Location, TMP, FP, SP, BOTTOM_OF_STACK, Env, Error};
+use super::{Location, TMP, FP, SP, FP_STACK, F, Env, Error};
 use crate::vm::{self, VirtualMachineProgram};
 
 /// A program composed of core instructions, which can be assembled
@@ -35,10 +35,15 @@ pub struct CoreProgram(pub Vec<CoreOp>);
 impl CoreProgram {
     /// Assemble a program of core assembly instructions into the
     /// core virtual machine instructions.
-    pub fn assemble(&self) -> Result<vm::CoreProgram, Error> {
+    pub fn assemble(&self, allowed_recursion_depth: usize) -> Result<vm::CoreProgram, Error> {
         let mut result = vm::CoreProgram(vec![]);
         let mut env = Env::default();
-        BOTTOM_OF_STACK.copy_address_to(&SP, &mut result);
+        // Create the stack of frame pointers starting directly after the last register
+        F.copy_address_to(&FP_STACK, &mut result);
+        // Copy the address just after the allocated space to the stack pointer.
+        FP_STACK.deref().offset(allowed_recursion_depth as isize)
+            .copy_address_to(&SP, &mut result);
+        
         SP.copy_to(&FP, &mut result);
         for (i, op) in self.0.iter().enumerate() {
             op.assemble(i, &mut env, &mut result)?
@@ -58,6 +63,7 @@ impl CoreProgram {
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum CoreOp {
     Comment(String),
+    Many(Vec<CoreOp>),
 
     /// Set the value of a register, or any location in memory, to a given constant.
     Set(Location, isize),
@@ -152,10 +158,32 @@ pub enum CoreOp {
         dst: Location
     },
 
-    /// Push an integer at a memory location on the stack.
-    Push(Location),
-    /// Pop an integer from the stack and store it in a memory location.
-    Pop(Option<Location>),
+
+    /// Push a number of cells starting at a memory location on the stack.
+    Push(Location, usize),
+    /// Pop a number of cells from the stack and store it in a memory location.
+    Pop(Option<Location>, usize),
+
+    /// Push a number of cells starting at a memory location onto a specified stack.
+    /// This will increment the stack's pointer by the number of cells pushed.
+    PushTo {
+        src: Location,
+        sp: Location,
+        size: usize,
+    },
+    /// Pop a number of cells from a specified stack and store it in a memory location.
+    /// This will decrement the stack's pointer by the number of cells popped.
+    PopFrom {
+        sp: Location,
+        dst: Option<Location>,
+        size: usize,
+    },
+    /// Copy a number of cells from a source location to a destination location.
+    Copy {
+        src: Location,
+        dst: Location,
+        size: usize
+    },
 
     /// Store the comparison of "a" and "b" in a destination register.
     /// If "a" is less than "b", store -1. If "a" is greater than "b", store 1.
@@ -202,66 +230,87 @@ pub enum CoreOp {
         b: Location
     },
 
-    /// Load a number of cells from a source location onto the stack.
-    Load(Location, usize),
-    /// Store a number of cells to a destination location from the stack.
-    Store(Location, usize),
-    /// Copy a number of cells from a source location to a destination location.
-    Copy {
+    /// Get a value from the input device / interface and store it in a destination register.
+    Get(Location),
+    /// Put a value from a source register to the output device / interface.
+    Put(Location),
+    /// Store a list of values at a source location. Then, store the address past the
+    /// last value into the destination location.
+    Array {
         src: Location,
         dst: Location,
-        size: usize
+        vals: Vec<isize>,
     },
-
-    /// Get a character from the input stream and store it in a destination register.
-    GetChar(Location),
-    /// Put a character from a source register to the output stream.
-    PutChar(Location),
-
-    /// Put a list of values to the output stream.
-    PutLiteral(Vec<isize>),
-    /// Push a list of values (each stored in consecutive cells) onto the stack.
-    PushLiteral(Vec<isize>),
-
-    /// Push a list of characters (each stored in consecutive cells) onto the stack,
-    /// and store their address in a destination register.
-    StackAllocateLiteral(Location, Vec<isize>),
 }
 
 
 impl CoreOp {
     pub fn put_string(msg: impl ToString) -> Self {
-        Self::PutLiteral(msg.to_string().chars().map(|c| c as isize).collect())
+        Self::Many(
+            msg.to_string()
+                .chars()
+                .map(|ch| Self::Many(vec![
+                    Self::Set(TMP, ch as isize),
+                    Self::Put(TMP),
+                ]))
+                .collect(),
+        )
     }
 
     pub fn push_string(msg: impl ToString) -> Self {
         let mut vals: Vec<isize> = msg.to_string().chars().map(|c| c as isize).collect();
         vals.push(0);
-        Self::PushLiteral(vals)
+        Self::Array {
+            src: SP.deref(),
+            vals,
+            dst: SP,
+        }
     }
 
-    pub fn stack_alloc_string(dst: Location, msg: impl ToString) -> Self {
-        let mut vals: Vec<isize> = msg.to_string().chars().map(|c| c as isize).collect();
-        vals.push(0);
-        Self::StackAllocateLiteral(dst, vals)
-    }
-
-    fn assemble(&self, current_instruction: usize, env: &mut Env, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
-        match self {
-            CoreOp::Comment(comment) => result.comment(comment),
-            CoreOp::PutLiteral(vals) => {
-                // For every character in the message
-                for val in vals {
-                    // Set the register to the ASCII value
-                    result.set_register(*val);
-                    // Put the register
-                    result.putchar();
-                }
+    pub fn stack_alloc_cells(dst: Location, vals: Vec<isize>) -> Self {
+        Self::Many(vec![
+            Self::GetAddress {
+                addr: SP.deref().offset(1),
+                dst,
             },
-            CoreOp::PushLiteral(vals) => {
+            Self::Array {
+                src: SP.deref(),
+                vals,
+                dst: SP,
+            },
+        ])
+    }
+
+    pub fn stack_alloc_string(dst: Location, text: impl ToString) -> Self {
+        let mut vals: Vec<isize> = text.to_string().chars().map(|c| c as isize).collect();
+        vals.push(0);
+        Self::Many(vec![
+            Self::GetAddress {
+                addr: SP.deref().offset(1),
+                dst,
+            },
+            Self::Array {
+                src: SP.deref(),
+                vals,
+                dst: SP,
+            },
+        ])
+    }
+
+
+    pub(super) fn assemble(&self, current_instruction: usize, env: &mut Env, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        match self {
+            CoreOp::Many(many) => {
+                for op in many {
+                    op.assemble(current_instruction, env, result)?
+                }
+            }
+            CoreOp::Comment(comment) => result.comment(comment),
+
+            CoreOp::Array { src, vals, dst } => {
                 // For every character in the message
                 // Go to the top of the stack, and push the ASCII value of the character
-                SP.deref().to(result);
+                src.to(result);
                 for val in vals {
                     result.move_pointer(1);
                     // Goto the pushed character's address above the top of the stack
@@ -269,22 +318,14 @@ impl CoreOp {
                     result.set_register(*val);
                     // Save the register to the memory location
                     result.save();
-                    // SP.deref().offset(i as isize + 1).from(result);
                 }
                 // Move the pointer back where we came from
                 result.where_is_pointer();
-                SP.deref().offset(vals.len() as isize).from(result);
-                SP.to(result);
+                src.offset(vals.len() as isize).from(result);
+                dst.to(result);
                 result.save();
-                SP.from(result);
-            },
-
-            CoreOp::StackAllocateLiteral(dst, vals) => {
-                // Copy the address of the future literal on the stack
-                SP.deref().offset(1).copy_address_to(dst, result);
-                CoreOp::PushLiteral(vals.clone()).assemble(current_instruction, env, result)?;
-            },
-
+                dst.from(result);
+            }
 
             CoreOp::GetAddress { addr, dst } => addr.copy_address_to(dst, result),
             CoreOp::Next(dst, count) => dst.next(count.unwrap_or(1), result),
@@ -304,7 +345,7 @@ impl CoreOp {
             }
 
             CoreOp::Return => {
-                FP.pop(result);
+                FP.pop_from(&FP_STACK, result);
                 result.ret();
             }
 
@@ -312,7 +353,7 @@ impl CoreOp {
                 env.declare(name);
                 env.push_matching(self, current_instruction);
                 result.begin_function();
-                FP.push(result);
+                FP.push_to(&FP_STACK, result);
                 SP.copy_to(&FP, result);
             },
             CoreOp::While(src) => {
@@ -336,16 +377,15 @@ impl CoreOp {
             CoreOp::End => {
                 match env.pop_matching(current_instruction) {
                     Ok((CoreOp::Fn(_), _)) => {
-                        FP.pop(result);
-                        result.end();
+                        CoreOp::Return.assemble(current_instruction, env, result)?
                     }
                     Ok((CoreOp::While(src), _)) => {
                         src.restore_from(result);
-                        result.end();
                     },
-                    Ok(_) => result.end(),
+                    Ok(_) => {},
                     Err(_) => return Err(Error::Unmatched(CoreOp::End, current_instruction))
                 }
+                result.end();
             }
 
             CoreOp::Move { src, dst } => src.copy_to(dst, result),
@@ -382,9 +422,24 @@ impl CoreOp {
             CoreOp::And { src, dst } => dst.and(src, result),
             CoreOp::Or  { src, dst } => dst.or(src, result),
 
-            CoreOp::Push(src) => src.push(result),
-            CoreOp::Pop(Some(dst)) => dst.pop(result),
-            CoreOp::Pop(None) => SP.prev(1, result),
+            CoreOp::PushTo { sp, src, size } => {
+                for i in 0..*size {
+                    src.offset(i as isize)
+                        .copy_to(&sp.deref().offset(i as isize + 1), result);
+                }
+                sp.next(*size as isize, result);
+            }
+            CoreOp::PopFrom { sp, dst, size } => {
+                if let Some(dst) = dst {
+                    for i in 1..=*size {
+                        dst.offset((*size - i) as isize).pop_from(sp, result)
+                    }
+                } else {
+                    sp.prev(*size as isize, result)
+                }
+            }
+            CoreOp::Push(src, size) => CoreOp::PushTo { sp: SP, src: src.clone(), size: *size }.assemble(current_instruction, env, result)?,
+            CoreOp::Pop(dst, size) => CoreOp::PopFrom { sp: SP, dst: dst.clone(), size: *size }.assemble(current_instruction, env, result)?,
 
             CoreOp::IsGreater { dst, a, b } => a.is_greater_than(b, dst, result),
             CoreOp::IsGreaterEqual { dst, a, b } => a.is_greater_or_equal_to(b, dst, result),
@@ -410,29 +465,15 @@ impl CoreOp {
                 dst.save_to(result);
             },
 
-            CoreOp::GetChar(dst) => {
-                result.getchar();
+            CoreOp::Get(dst) => {
+                result.get();
                 dst.save_to(result)
             }
-            CoreOp::PutChar(dst) => {
+            CoreOp::Put(dst) => {
                 dst.restore_from(result);
-                result.putchar()
+                result.put()
             }
 
-            CoreOp::Load(src, size) => {
-                for i in 0..*size {
-                    src.deref().offset(i as isize)
-                        .copy_to(&SP.deref().offset(i as isize + 1), result);
-                }
-                SP.next(*size as isize, result);
-            }
-            CoreOp::Store(dst, size) => {
-                for i in 0..*size {
-                    SP.deref().offset(-(i as isize))
-                        .copy_to(&dst.deref().offset((*size - i - 1) as isize), result);
-                }
-                SP.prev(*size as isize, result);
-            }
             CoreOp::Copy{ src, dst, size } => {
                 for i in 0..*size {
                     src.deref().offset(i as isize)

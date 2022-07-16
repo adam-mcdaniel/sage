@@ -36,26 +36,11 @@
 //! * `SP`: The stack pointer. `SP.deref()` is the location of the top item
 //!   on the stack.
 //! * `FP`: The frame pointer. Automatically updated by `Call` and `Return`.
-//!   `FP.deref()` is the location of the old frame pointer on the stack.
-//!   `FP.deref().offset(-1)` is the address of the last callee pushed argument
-//!   and return value location.
-//!   
-//!   ***Before a call:***
-//!   ```
-//!                                                   fp    sp
-//!                                                    |     |  
-//!                                                    v     v 
-//!   tape: [(tape + 11)  (?)    (tape + 9)  0 0 0 0 0 0 7 8 9]
-//!          sp           tmp    fp          A B C D E F (args)
-//!   ```
-//!   ***After a call:***
-//!   ```
-//!                                                              fp & sp
-//!                                                                 |  
-//!                                                                 v 
-//!   tape: [(tape + 12)  (?)    (tape + 12) 0 0 0 0 0 0 7 8 9  (tape + 9)  ]
-//!          sp           tmp    fp          A B C D E F (args) (old fp)
-//!   ```
+//!   The `FP` register points to the top of the stack when the function was called.
+//! * `FP_STACK`: The stack of frame pointers. Whenever the program starts,
+//!   a frame pointer stack is initialized. Whenever a function is called,
+//!   the old frame pointer is pushed to the `FP_STACK`. Whenever a function
+//!   returns, it pops the frame pointer from the `FP_STACK`.
 //! * `A`, `B`, `C`, `D`, `E`, `F`: General purpose registers.
 //! 
 //! ## What kinds of locations are there?
@@ -86,20 +71,22 @@ pub const SP: Location = Location::Address(0);
 pub const TMP: Location = Location::Address(1);
 /// The frame pointer register.
 pub const FP: Location = Location::Address(2);
+/// The stack pointer register for the stack of frames.
+/// This always points to the parent frame's saved frame pointer.
+/// At the beginning of the program, this is allocated with a specified number of cells.
+pub const FP_STACK: Location = Location::Address(3);
 /// The "A" general purpose register.
-pub const A: Location = Location::Address(3);
+pub const A: Location = Location::Address(4);
 /// The "B" general purpose register.
-pub const B: Location = Location::Address(4);
+pub const B: Location = Location::Address(5);
 /// The "C" general purpose register.
-pub const C: Location = Location::Address(5);
+pub const C: Location = Location::Address(6);
 /// The "D" general purpose register.
-pub const D: Location = Location::Address(6);
+pub const D: Location = Location::Address(7);
 /// The "E" general purpose register.
-pub const E: Location = Location::Address(7);
+pub const E: Location = Location::Address(8);
 /// The "F" general purpose register.
-pub const F: Location = Location::Address(8);
-/// The location of the bottom of the stack.
-pub const BOTTOM_OF_STACK: Location = F;
+pub const F: Location = Location::Address(9);
 
 /// A location in memory (on the tape of the virtual machine).
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -115,14 +102,20 @@ pub enum Location {
 }
 
 pub fn var(offset: usize) -> Location {
-    FP.deref().offset(-(offset as isize + 1))
+    FP.deref().offset(-(offset as isize))
 }
 
 impl Location {
     /// Get the location offset by a constant number of cells from a starting location.
     /// For example, `Offset(Address(8), -2)` is equivalent to `Address(6)`.
     pub fn offset(&self, offset: isize) -> Self {
-        Location::Offset(Box::new(self.clone()), offset)
+        if offset == 0 {
+            self.clone()
+        } else if let Self::Offset(addr, x) = self {
+            Location::Offset(addr.clone(), *x + offset)
+        } else {
+            Location::Offset(Box::new(self.clone()), offset)
+        }
     }
 
     /// Get the location of the value pointed to by this location.
@@ -132,14 +125,24 @@ impl Location {
 
     /// Push the value of this location to the stack.
     pub fn push(&self, result: &mut dyn VirtualMachineProgram) {
-        SP.deref().offset(1).copy_address_to(&SP, result);
-        self.copy_to(&SP.deref(), result)
+        self.push_to(&SP, result)
     }
 
     /// Pop the top item off the stack and store it in this location.
     pub fn pop(&self, result: &mut dyn VirtualMachineProgram) {
-        SP.deref().copy_to(self, result);
-        SP.deref().offset(-1).copy_address_to(&SP, result)
+        self.pop_from(&SP, result)
+    }
+
+    /// Push the value of this location to a given stack.
+    pub fn push_to(&self, sp: &Location, result: &mut dyn VirtualMachineProgram) {
+        sp.deref().offset(1).copy_address_to(sp, result);
+        self.copy_to(&sp.deref(), result)
+    }
+
+    /// Pop the top item off a given stack and store it in this location.
+    pub fn pop_from(&self, sp: &Location, result: &mut dyn VirtualMachineProgram) {
+        sp.deref().copy_to(self, result);
+        sp.deref().offset(-1).copy_address_to(sp, result)
     }
 
     /// Copy the address of this location to another location.
@@ -198,7 +201,7 @@ impl Location {
     pub fn whole_int(&self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.restore();
-        result.whole_int();
+        result.is_non_negative();
         result.save();
         self.from(result);
     }

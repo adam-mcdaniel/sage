@@ -1,7 +1,7 @@
-use asm::{CompilerTarget, asm::*, vm::{Interpreter, TestingDevice}, targets};
+use asm::{asm::*, vm::{Interpreter, TestingDevice}};
 
-
-fn main() {
+#[test]
+fn test_putint() {
     use CoreOp::*;
 
     let putint = CoreOp::Many(vec![
@@ -86,7 +86,6 @@ fn main() {
         End,
     ]);
 
-
     let program = CoreProgram(vec![
         Fn(String::from("return-test")),
             CoreOp::put_string("return test 1!\n"),
@@ -150,40 +149,9 @@ fn main() {
         
         CoreOp::put_string(" characters long!\n"),
     ]).assemble(16).unwrap();
-    // eprintln!("{:?}", program);
-    // let i = Interpreter::default();
+    
     let i = Interpreter::new(TestingDevice::new("testing\n"));
+
     let device = i.run(&program).unwrap();
-    println!("{:?}", device.input);
-    println!("{:?}", device.output_str());
-
-
-    // let program = StandardProgram(vec![
-    //     StandardOp::CoreOp(Fn),
-    //         StandardOp::CoreOp(Constant(33)),
-    //         StandardOp::CoreOp(PutChar),
-    //         StandardOp::CoreOp(Constant(10)),
-    //         StandardOp::CoreOp(PutChar),
-    //     StandardOp::CoreOp(End),
-
-    //     StandardOp::CoreOp(Fn),
-    //         StandardOp::CoreOp(Move(-2)),
-    //         StandardOp::CoreOp(Restore),
-    //         StandardOp::CoreOp(Move(1)),
-    //         StandardOp::CoreOp(Add),
-    //         StandardOp::PutInt,
-    //     StandardOp::CoreOp(End),
-
-    //     StandardOp::CoreOp(Constant('Z' as usize)),
-    //     StandardOp::CoreOp(Save),
-    //     StandardOp::CoreOp(Move(1)),
-
-    //     StandardOp::CoreOp(Constant(3)),
-    //     StandardOp::CoreOp(Save),
-    //     StandardOp::CoreOp(Move(1)),
-
-    //     StandardOp::CoreOp(Constant(1)),
-    //     StandardOp::CoreOp(Call),
-    // ]);
-    println!("{}", targets::C.compile_core(&program).unwrap());
+    assert_eq!(device.output_str(), "abcdefghijk?\nHello world!\nabcdefghijk?\nHello world!\nabcdefghijk?\nHello world!\nabcdefghijk?\nHello world!\n>> you entered: `gnitset`\nwhich is 7 characters long!\n")
 }
