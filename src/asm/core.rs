@@ -98,9 +98,23 @@ pub enum CoreOp {
     End,
 
     /// Copy a value from a source location to a destination location.
+    /// 
+    /// `dst = src`
     Move {
         src: Location,
         dst: Location,
+    },
+    /// Copy a number of cells from a source referenced location to a destination
+    /// referenced location.
+    /// 
+    /// This will dereference `src`, copy its contents, and store them at the location pointed
+    /// to by `dst`.
+    /// 
+    /// `*dst = *src`
+    Copy {
+        src: Location,
+        dst: Location,
+        size: usize,
     },
 
     /// Swap the values of two locations.
@@ -179,12 +193,6 @@ pub enum CoreOp {
     PopFrom {
         sp: Location,
         dst: Option<Location>,
-        size: usize,
-    },
-    /// Copy a number of cells from a source location to a destination location.
-    Copy {
-        src: Location,
-        dst: Location,
         size: usize,
     },
 
@@ -359,41 +367,65 @@ impl CoreOp {
             }
 
             CoreOp::Fn(name) => {
+                // Declare the function in the environment.
                 env.declare(name);
+                // Push this instruction to the stack of instructions
+                // matched with `End`.
                 env.push_matching(self, current_instruction);
+                // Start the function
                 result.begin_function();
+                // Push the frame pointer to the frame pointer stack
                 FP.push_to(&FP_STACK, result);
+                // Overwrite the old frame pointer with the stack pointer
                 SP.copy_to(&FP, result);
             }
             CoreOp::While(src) => {
+                // Read the condition
                 src.restore_from(result);
+                // Begin the while loop
                 result.begin_while();
+                // Push this instruction to the stack of instructions
+                // matched with `End`.
                 env.push_matching(self, current_instruction);
             }
             CoreOp::If(src) => {
+                // Read the condition
                 src.restore_from(result);
+                // Begin the if statement
                 result.begin_if();
+                // Push this instruction to the stack of instructions
+                // matched with `End`.
                 env.push_matching(self, current_instruction);
             }
             CoreOp::Else => {
                 if let Ok((CoreOp::If(_), _)) = env.pop_matching(current_instruction) {
+                    // If the last block-creating instruction was an `If`,
+                    // begin the else.
                     result.begin_else();
                     env.push_matching(self, current_instruction);
                 } else {
+                    // Otherwise, we've encountered invalid syntax.
                     return Err(Error::Unexpected(CoreOp::Else, current_instruction));
                 }
             }
             CoreOp::End => {
+                // Get the matching instruction for this `End` declaration.
                 match env.pop_matching(current_instruction) {
                     Ok((CoreOp::Fn(_), _)) => {
+                        // If it's the end of a function, return from the function.
                         CoreOp::Return.assemble(current_instruction, env, result)?
                     }
                     Ok((CoreOp::While(src), _)) => {
+                        // If it's the end of a loop, reread the condition.
                         src.restore_from(result);
                     }
-                    Ok(_) => {}
-                    Err(_) => return Err(Error::Unmatched(CoreOp::End, current_instruction)),
+                    // If it's an if or else statement, there's no setup we need to do.
+                    Ok((CoreOp::If(_), _)) | Ok((CoreOp::Else, _)) => {}
+                    // If there was no matching instruction, or a non-block-creating
+                    // instruction, then the syntax is invalid.
+                    Ok(_) | Err(_) => return Err(Error::Unmatched(CoreOp::End, current_instruction)),
                 }
+                // Terminate the block.
                 result.end();
             }
 
