@@ -4,7 +4,7 @@
 //! with the standard variant of the virtual machine. It is very
 //! portable, but probably not supported on older systems or
 //! hardware implementations.
-use super::{CoreOp, Env, Error, Location, F, FP_STACK, FP, SP};
+use super::{location::FP_STACK, CoreOp, Env, Error, Location, F, FP, SP};
 use crate::vm::{self, VirtualMachineProgram};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
@@ -17,15 +17,17 @@ impl StandardProgram {
         // Create the stack of frame pointers starting directly after the last register
         F.copy_address_to(&FP_STACK, &mut result);
         // Copy the address just after the allocated space to the stack pointer.
-        FP_STACK.deref().offset(allowed_recursion_depth as isize)
+        FP_STACK
+            .deref()
+            .offset(allowed_recursion_depth as isize)
             .copy_address_to(&SP, &mut result);
-        
+
         SP.copy_to(&FP, &mut result);
         for (i, op) in self.0.iter().enumerate() {
             op.assemble(i, &mut env, &mut result)?
         }
 
-        if let Ok((unmatched, last_instruction)) = env.pop_matching(self.0.len()-1) {
+        if let Ok((unmatched, last_instruction)) = env.pop_matching(self.0.len() - 1) {
             return Err(Error::Unmatched(unmatched, last_instruction));
         }
 

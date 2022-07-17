@@ -1,6 +1,6 @@
-pub mod vm;
 pub mod asm;
 pub mod targets;
+pub mod vm;
 
 /// Implement a compiler for the given target.
 pub trait CompilerTarget {

@@ -1,30 +1,33 @@
 //! # Core Assembly Variant
-//! 
+//!
 //! This variant of the assembly language is intended to be used
 //! with the core variant of the virtual machine. It is extremely
 //! portable, but minimal.
-//! 
+//!
 //! ## What kinds of instructions are supported by this variant?
-//! 
+//!
 //! This variant attempts to support *as many instructions as possible
 //! that can be implemented WITHOUT the standard virtual machine variant*.
 //! This includes  instructions for operations like `Copy` (a `memcpy` clone),
 //! static stack allocation, `Swap` (which uses a TMP register without the
 //! more optimized standard `Swap` instruction), and `DivMod`, which
 //! performs a division and modulo operation in a single instruction.
-//! 
+//!
 //! ## What kinds of instructions are *not* supported by this variant?
-//! 
+//!
 //! Mainly, this variant is lacking in I/O instructions and memory
 //! allocation instructions. This is because of the bare bones
 //! core virtual machine specification which only includes 2 I/O
-//! instructions (GetChar and PutChar), and does not include
-//! any memory allocation instructions.
-//! 
+//! instructions (Get and Put), and does not include any memory
+//! allocation instructions.
+//!
 //! Standard instructions, like `PutInt`, can be implemented as
 //! user defined functions in the core assembly language simply
-//! using `PutChar` to display the integer in decimal.
-use super::{Location, TMP, FP, SP, FP_STACK, F, Env, Error};
+//! using `Put`, and assuming-standard out, to display the integer in decimal.
+use super::{
+    location::{FP_STACK, TMP},
+    Env, Error, Location, F, FP, SP,
+};
 use crate::vm::{self, VirtualMachineProgram};
 
 /// A program composed of core instructions, which can be assembled
@@ -41,22 +44,23 @@ impl CoreProgram {
         // Create the stack of frame pointers starting directly after the last register
         F.copy_address_to(&FP_STACK, &mut result);
         // Copy the address just after the allocated space to the stack pointer.
-        FP_STACK.deref().offset(allowed_recursion_depth as isize)
+        FP_STACK
+            .deref()
+            .offset(allowed_recursion_depth as isize)
             .copy_address_to(&SP, &mut result);
-        
+
         SP.copy_to(&FP, &mut result);
         for (i, op) in self.0.iter().enumerate() {
             op.assemble(i, &mut env, &mut result)?
         }
 
-        if let Ok((unmatched, last_instruction)) = env.pop_matching(self.0.len()-1) {
+        if let Ok((unmatched, last_instruction)) = env.pop_matching(self.0.len() - 1) {
             return Err(Error::Unmatched(unmatched, last_instruction));
         }
 
         Ok(result)
     }
 }
-
 
 /// A core instruction of the assembly language. These are instructions
 /// guaranteed to be implemented for every target possible.
@@ -74,14 +78,14 @@ pub enum CoreOp {
         addr: Location,
         dst: Location,
     },
-    
+
     /// Get a value in memory and call it as a label ID.
     Call(Location),
     /// Call a function with a given label.
     CallLabel(String),
     /// Return from the current function.
     Return,
-    
+
     /// Declare a new label.
     Fn(String),
     /// Begin a "while the value is not zero" loop over a given register or location in memory.
@@ -96,7 +100,7 @@ pub enum CoreOp {
     /// Copy a value from a source location to a destination location.
     Move {
         src: Location,
-        dst: Location
+        dst: Location,
     },
 
     /// Swap the values of two locations.
@@ -114,33 +118,33 @@ pub enum CoreOp {
     /// Add an integer value from a source location to a destination location.
     Add {
         src: Location,
-        dst: Location
+        dst: Location,
     },
     /// Subtract a source integer value from a destination location.
     Sub {
         src: Location,
-        dst: Location
+        dst: Location,
     },
     /// Multiply a destination location by a source value.
     Mul {
         src: Location,
-        dst: Location
+        dst: Location,
     },
     /// Divide a destination location by a source value.
     Div {
         src: Location,
-        dst: Location
+        dst: Location,
     },
     /// Store the remainder of the destination modulus the source in the destination.
     Rem {
         src: Location,
-        dst: Location
+        dst: Location,
     },
     /// Divide a destination location by a source value.
     /// Store the quotient in the destination, and the remainder in the source.
     DivRem {
         src: Location,
-        dst: Location
+        dst: Location,
     },
     /// Negate an integer.
     Neg(Location),
@@ -150,14 +154,13 @@ pub enum CoreOp {
     /// Logical "and" a destination with a source value.
     And {
         src: Location,
-        dst: Location
+        dst: Location,
     },
     /// Logical "or" a destination with a source value.
     Or {
         src: Location,
-        dst: Location
+        dst: Location,
     },
-
 
     /// Push a number of cells starting at a memory location on the stack.
     Push(Location, usize),
@@ -182,7 +185,7 @@ pub enum CoreOp {
     Copy {
         src: Location,
         dst: Location,
-        size: usize
+        size: usize,
     },
 
     /// Store the comparison of "a" and "b" in a destination register.
@@ -191,43 +194,43 @@ pub enum CoreOp {
     Compare {
         dst: Location,
         a: Location,
-        b: Location
+        b: Location,
     },
     /// Perform dst = a > b.
     IsGreater {
         dst: Location,
         a: Location,
-        b: Location
+        b: Location,
     },
     /// Perform dst = a >= b.
     IsGreaterEqual {
         dst: Location,
         a: Location,
-        b: Location
+        b: Location,
     },
     /// Perform dst = a < b.
     IsLess {
         dst: Location,
         a: Location,
-        b: Location
+        b: Location,
     },
     /// Perform dst = a <= b.
     IsLessEqual {
         dst: Location,
         a: Location,
-        b: Location
+        b: Location,
     },
     /// Perform dst = a == b.
     IsEqual {
         dst: Location,
         a: Location,
-        b: Location
+        b: Location,
     },
     /// Perform dst = a != b.
     IsNotEqual {
         dst: Location,
         a: Location,
-        b: Location
+        b: Location,
     },
 
     /// Get a value from the input device / interface and store it in a destination register.
@@ -243,16 +246,16 @@ pub enum CoreOp {
     },
 }
 
-
 impl CoreOp {
+    /// Put a string literal as UTF-8 to the output device.
     pub fn put_string(msg: impl ToString) -> Self {
         Self::Many(
             msg.to_string()
+                // For every character
                 .chars()
-                .map(|ch| Self::Many(vec![
-                    Self::Set(TMP, ch as isize),
-                    Self::Put(TMP),
-                ]))
+                // Set the TMP register to the character,
+                // and Put the TMP register.
+                .map(|ch| Self::Many(vec![Self::Set(TMP, ch as isize), Self::Put(TMP)]))
                 .collect(),
         )
     }
@@ -297,8 +300,12 @@ impl CoreOp {
         ])
     }
 
-
-    pub(super) fn assemble(&self, current_instruction: usize, env: &mut Env, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub(super) fn assemble(
+        &self,
+        current_instruction: usize,
+        env: &mut Env,
+        result: &mut dyn VirtualMachineProgram,
+    ) -> Result<(), Error> {
         match self {
             CoreOp::Many(many) => {
                 for op in many {
@@ -332,7 +339,9 @@ impl CoreOp {
             CoreOp::Prev(dst, count) => dst.prev(count.unwrap_or(1), result),
 
             CoreOp::Set(dst, value) => dst.set(*value, result),
-            CoreOp::SetLabel(dst, name) => dst.set(env.get(name, current_instruction)? as isize, result),
+            CoreOp::SetLabel(dst, name) => {
+                dst.set(env.get(name, current_instruction)? as isize, result)
+            }
 
             CoreOp::Call(src) => {
                 src.restore_from(result);
@@ -355,17 +364,17 @@ impl CoreOp {
                 result.begin_function();
                 FP.push_to(&FP_STACK, result);
                 SP.copy_to(&FP, result);
-            },
+            }
             CoreOp::While(src) => {
                 src.restore_from(result);
                 result.begin_while();
                 env.push_matching(self, current_instruction);
-            },
+            }
             CoreOp::If(src) => {
                 src.restore_from(result);
                 result.begin_if();
                 env.push_matching(self, current_instruction);
-            },
+            }
             CoreOp::Else => {
                 if let Ok((CoreOp::If(_), _)) = env.pop_matching(current_instruction) {
                     result.begin_else();
@@ -373,7 +382,7 @@ impl CoreOp {
                 } else {
                     return Err(Error::Unexpected(CoreOp::Else, current_instruction));
                 }
-            },
+            }
             CoreOp::End => {
                 match env.pop_matching(current_instruction) {
                     Ok((CoreOp::Fn(_), _)) => {
@@ -381,9 +390,9 @@ impl CoreOp {
                     }
                     Ok((CoreOp::While(src), _)) => {
                         src.restore_from(result);
-                    },
-                    Ok(_) => {},
-                    Err(_) => return Err(Error::Unmatched(CoreOp::End, current_instruction))
+                    }
+                    Ok(_) => {}
+                    Err(_) => return Err(Error::Unmatched(CoreOp::End, current_instruction)),
                 }
                 result.end();
             }
@@ -394,7 +403,7 @@ impl CoreOp {
                 a.copy_to(&TMP, result);
                 b.copy_to(a, result);
                 TMP.copy_to(b, result);
-            },
+            }
 
             CoreOp::Inc(dst) => dst.inc(result),
             CoreOp::Dec(dst) => dst.dec(result),
@@ -409,18 +418,18 @@ impl CoreOp {
                 dst.copy_to(src, result);
                 dst.div(&TMP, result);
                 src.rem(&TMP, result);
-            },
+            }
             CoreOp::Neg(dst) => {
                 result.set_register(-1);
                 dst.to(result);
                 result.append_core_op(vm::CoreOp::Mul);
                 result.save();
                 dst.from(result)
-            },
-            
+            }
+
             CoreOp::Not(dst) => dst.not(result),
             CoreOp::And { src, dst } => dst.and(src, result),
-            CoreOp::Or  { src, dst } => dst.or(src, result),
+            CoreOp::Or { src, dst } => dst.or(src, result),
 
             CoreOp::PushTo { sp, src, size } => {
                 for i in 0..*size {
@@ -438,8 +447,18 @@ impl CoreOp {
                     sp.prev(*size as isize, result)
                 }
             }
-            CoreOp::Push(src, size) => CoreOp::PushTo { sp: SP, src: src.clone(), size: *size }.assemble(current_instruction, env, result)?,
-            CoreOp::Pop(dst, size) => CoreOp::PopFrom { sp: SP, dst: dst.clone(), size: *size }.assemble(current_instruction, env, result)?,
+            CoreOp::Push(src, size) => CoreOp::PushTo {
+                sp: SP,
+                src: src.clone(),
+                size: *size,
+            }
+            .assemble(current_instruction, env, result)?,
+            CoreOp::Pop(dst, size) => CoreOp::PopFrom {
+                sp: SP,
+                dst: dst.clone(),
+                size: *size,
+            }
+            .assemble(current_instruction, env, result)?,
 
             CoreOp::IsGreater { dst, a, b } => a.is_greater_than(b, dst, result),
             CoreOp::IsGreaterEqual { dst, a, b } => a.is_greater_or_equal_to(b, dst, result),
@@ -452,18 +471,18 @@ impl CoreOp {
                 a.copy_to(dst, result);
                 a.is_greater_than(b, dst, result);
                 result.begin_if();
-                    result.set_register(1);
+                result.set_register(1);
                 result.begin_else();
-                    a.copy_to(dst, result);
-                    a.is_less_than(b, dst, result);
-                    result.begin_if();
-                        result.set_register(-1);
-                    result.begin_else();
-                        result.set_register(0);
-                    result.end();
+                a.copy_to(dst, result);
+                a.is_less_than(b, dst, result);
+                result.begin_if();
+                result.set_register(-1);
+                result.begin_else();
+                result.set_register(0);
+                result.end();
                 result.end();
                 dst.save_to(result);
-            },
+            }
 
             CoreOp::Get(dst) => {
                 result.get();
@@ -474,9 +493,10 @@ impl CoreOp {
                 result.put()
             }
 
-            CoreOp::Copy{ src, dst, size } => {
+            CoreOp::Copy { src, dst, size } => {
                 for i in 0..*size {
-                    src.deref().offset(i as isize)
+                    src.deref()
+                        .offset(i as isize)
                         .copy_to(&dst.deref().offset(i as isize), result);
                 }
             }

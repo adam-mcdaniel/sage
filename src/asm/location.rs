@@ -1,36 +1,36 @@
 //! # Assembly Memory Location
-//! 
+//!
 //! This module contains the `Location` type, which represents a memory
 //! location on the virtual machine's tape in the assembly language.
-//! 
+//!
 //! ## What should I know first?
-//! 
+//!
 //! You should ***NOT*** use pointers as if they are integers.
 //! Think about pointers and integers as two completely separate types.
-//! 
+//!
 //! #### Why?
-//! 
+//!
 //! This is because virtual machine implementations are **bound** to vary.
 //! For example: my C implementation uses *real pointers* (which are retrieved
 //! through virtual machine instructions `Where` and `Alloc`, and allows the
 //! implementation to be used with valgrind, gprof, a custom allocater, or
 //! potentially garbage collection!), but an implementation in a language
 //! like Python might use integer indices in a list instead.
-//! 
+//!
 //! If the backend implementation uses pointers, *using `Inc` to move a pointer
 //! to the next cell **will not work***. This is because pointers need to be
 //! incremented by the size of the data type they point to. Because the virtual
 //! machine's cell size is undefined (purposely, to make this backend as flexible
 //! as possible), ***you cannot know this size***. Therefore you cannot use `Inc`
 //! to move a pointer to the next cell unless *you want your code to be unportable*.
-//! 
+//!
 //! ***DO NOT USE `Inc` AND `Dec` TO MOVE POINTERS! USE `Next` AND `Prev` INSTEAD!
-//! OR YOUR CODE WILL NOT PORT TO ALL VIRTUAL MACHINE IMPLEMENTATIONS!!*** 
-//! 
+//! OR YOUR CODE WILL NOT PORT TO ALL VIRTUAL MACHINE IMPLEMENTATIONS!!***
+//!
 //! ## What locations are available?
-//! 
+//!
 //! There are several constant locations to use:
-//! 
+//!
 //! * `BOTTOM_OF_STACK`: The bottom of the stack.
 //! * `TMP`: A volatile register. Essentially a trashcan.
 //! * `SP`: The stack pointer. `SP.deref()` is the location of the top item
@@ -42,11 +42,11 @@
 //!   the old frame pointer is pushed to the `FP_STACK`. Whenever a function
 //!   returns, it pops the frame pointer from the `FP_STACK`.
 //! * `A`, `B`, `C`, `D`, `E`, `F`: General purpose registers.
-//! 
+//!
 //! ## What kinds of locations are there?
-//! 
+//!
 //! There are three kinds of locations:
-//! 
+//!
 //! * Constant addresses: these are addresses that are known at compile time.
 //!   They're simply just offsets from the base of the tape.
 //! * Offset addresses: these are addresses that are relative to other addresses.
@@ -68,13 +68,13 @@ use crate::vm::{self, VirtualMachineProgram};
 pub const SP: Location = Location::Address(0);
 /// A volatile register. This register may be silently overwritten by
 /// some assembly instructions.
-pub const TMP: Location = Location::Address(1);
+pub(super) const TMP: Location = Location::Address(1);
 /// The frame pointer register.
 pub const FP: Location = Location::Address(2);
 /// The stack pointer register for the stack of frames.
 /// This always points to the parent frame's saved frame pointer.
 /// At the beginning of the program, this is allocated with a specified number of cells.
-pub const FP_STACK: Location = Location::Address(3);
+pub(super) const FP_STACK: Location = Location::Address(3);
 /// The "A" general purpose register.
 pub const A: Location = Location::Address(4);
 /// The "B" general purpose register.
@@ -160,11 +160,11 @@ impl Location {
             Location::Indirect(loc) => {
                 loc.to(result);
                 result.deref();
-            },
+            }
             Location::Offset(loc, offset) => {
                 loc.to(result);
                 result.move_pointer(*offset);
-            },
+            }
         }
     }
 
@@ -175,16 +175,16 @@ impl Location {
             Location::Indirect(loc) => {
                 result.refer();
                 loc.from(result);
-            },
+            }
 
             Location::Offset(loc, offset) => {
                 result.move_pointer(-*offset);
                 loc.from(result);
-            },
+            }
         }
     }
 
-    /// Take the pointer value of this location, and make it point 
+    /// Take the pointer value of this location, and make it point
     /// `count` number of cells to the right of its original position.
     pub fn next(&self, count: isize, result: &mut dyn VirtualMachineProgram) {
         self.deref().offset(count).copy_address_to(self, result);
@@ -252,15 +252,15 @@ impl Location {
 
     /// If this cell is non-zero, then the value of this location is now 0.
     /// Otherwise, the value of this location is now 1.
-    /// 
+    ///
     /// Perform boolean not on the value of this cell
     pub fn not(&self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.restore();
         result.begin_if();
-            result.set_register(0);
+        result.set_register(0);
         result.begin_else();
-            result.set_register(1);
+        result.set_register(1);
         result.end();
         result.save();
         self.from(result);
@@ -271,11 +271,11 @@ impl Location {
         self.to(result);
         result.restore();
         result.begin_if();
-            self.from(result);
-            src.restore_from(result);
-            self.to(result);
+        self.from(result);
+        src.restore_from(result);
+        self.to(result);
         result.begin_else();
-            result.set_register(0);
+        result.set_register(0);
         result.end();
         result.save();
         self.from(result);
@@ -286,11 +286,11 @@ impl Location {
         self.to(result);
         result.restore();
         result.begin_if();
-            result.set_register(1);
+        result.set_register(1);
         result.begin_else();
-            self.from(result);
-            src.restore_from(result);
-            self.to(result);
+        self.from(result);
+        src.restore_from(result);
+        self.to(result);
         result.end();
         result.save();
         self.from(result);
@@ -305,7 +305,12 @@ impl Location {
     }
 
     /// dst = this cell >= source cell.
-    pub fn is_greater_or_equal_to(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub fn is_greater_or_equal_to(
+        &self,
+        src: &Self,
+        dst: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) {
         self.copy_to(dst, result);
         dst.sub(src, result);
         dst.whole_int(result);
@@ -320,7 +325,12 @@ impl Location {
     }
 
     /// dst = this cell <= source cell.
-    pub fn is_less_or_equal_to(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub fn is_less_or_equal_to(
+        &self,
+        src: &Self,
+        dst: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) {
         src.copy_to(dst, result);
         dst.sub(self, result);
         dst.whole_int(result);
@@ -340,17 +350,17 @@ impl Location {
     pub fn add(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.binop(vm::CoreOp::Add, src, result);
     }
-    
+
     /// This cell -= source cell.
     pub fn sub(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.binop(vm::CoreOp::Sub, src, result);
     }
-    
+
     /// This cell *= source cell.
     pub fn mul(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.binop(vm::CoreOp::Mul, src, result);
     }
-    
+
     /// This cell /= source cell.
     pub fn div(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.binop(vm::CoreOp::Div, src, result);

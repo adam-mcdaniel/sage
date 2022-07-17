@@ -1,6 +1,5 @@
-use crate::vm::{CoreProgram, CoreOp};
+use crate::vm::{CoreOp, CoreProgram};
 use std::io::{stdin, stdout, Read, Write};
-
 
 /// Create an input / output device for the virtual machine interpreter
 /// to operate on. The method `get` retrieves the device's input, and the
@@ -13,7 +12,7 @@ pub trait Device {
 /// A device used for testing the compiler. This simply keeps a buffer
 /// of sample input to supply to the virtual machine, and keeps an output
 /// buffer to keep track of the output of the virtual machine.
-/// 
+///
 /// The tests interpret the program and populate the device with output.
 /// Then, we check the devices output against the correct output.
 pub struct TestingDevice {
@@ -24,11 +23,14 @@ pub struct TestingDevice {
 impl TestingDevice {
     /// Create a new testing device with some given sample input.
     pub fn new(sample_input: impl ToString) -> Self {
-        Self { input: sample_input
-            .to_string()
-            .chars()
-            .map(|ch| ch as isize)
-            .collect(), output: vec![] }
+        Self {
+            input: sample_input
+                .to_string()
+                .chars()
+                .map(|ch| ch as isize)
+                .collect(),
+            output: vec![],
+        }
     }
 
     /// Get the output of the testing device as a string (ascii).
@@ -59,7 +61,10 @@ impl Device for TestingDevice {
 
 impl Default for TestingDevice {
     fn default() -> Self {
-        Self { input: vec![], output: vec![] }
+        Self {
+            input: vec![],
+            output: vec![],
+        }
     }
 }
 
@@ -108,7 +113,10 @@ impl Default for Interpreter<StandardDevice> {
 }
 
 /// The interpreter which runs the virtual machine program.
-pub struct Interpreter<T> where T: Device {
+pub struct Interpreter<T>
+where
+    T: Device,
+{
     /// The interpreter's I/O device.
     device: T,
     /// The current pointer on the turing tape.
@@ -130,10 +138,13 @@ pub struct Interpreter<T> where T: Device {
     /// The instruction pointer.
     i: usize,
     /// Is the interpreter finished interpreting?s
-    done: bool
+    done: bool,
 }
 
-impl<T> Interpreter<T> where T: Device {
+impl<T> Interpreter<T>
+where
+    T: Device,
+{
     pub fn new(device: T) -> Self {
         Self {
             device,
@@ -156,7 +167,7 @@ impl<T> Interpreter<T> where T: Device {
             None
         }
     }
-    
+
     /// Dereference the current pointer on the tape.
     fn deref(&mut self) {
         // Add the old pointer to the dereference stack.
@@ -211,9 +222,7 @@ impl<T> Interpreter<T> where T: Device {
             match self.fetch(code) {
                 Some(CoreOp::If) | Some(CoreOp::While) | Some(CoreOp::Function) => matching += 1,
                 Some(CoreOp::End) => matching -= 1,
-                Some(CoreOp::Else) if matching == 1 => {
-                    return
-                }
+                Some(CoreOp::Else) if matching == 1 => return,
                 _ => {}
             }
         }
@@ -234,7 +243,7 @@ impl<T> Interpreter<T> where T: Device {
     }
 
     /// Jump back to the matching instruction for a given "End" instruction.
-    /// 
+    ///
     /// ```hs
     /// If (ends up here)
     ///     ...
@@ -253,7 +262,7 @@ impl<T> Interpreter<T> where T: Device {
     }
 
     /// Get the matching instruction for a given "End" instruction.
-    /// 
+    ///
     /// ```hs
     /// If (this function would return this instruction)
     ///    ...
@@ -308,22 +317,20 @@ impl<T> Interpreter<T> where T: Device {
                         self.functions.sort()
                     }
                     self.jmp_to_end(code)
-                },
+                }
                 CoreOp::Call => self.call()?,
                 CoreOp::Return => self.ret(),
                 CoreOp::While => {
                     if self.register == 0 {
                         self.jmp_to_end(code)
                     }
-                },
+                }
                 CoreOp::If => {
                     if self.register == 0 {
                         self.jmp_to_else(code)
                     }
                 }
-                CoreOp::Else => {
-                    self.jmp_to_end(code)
-                },
+                CoreOp::Else => self.jmp_to_end(code),
                 CoreOp::End => {
                     if self.register != 0 {
                         if let Some(CoreOp::While) = self.get_matching_for_end(code) {
@@ -331,22 +338,22 @@ impl<T> Interpreter<T> where T: Device {
                         }
                     }
                 }
-    
+
                 CoreOp::Save => *self.get_cell() = self.register,
                 CoreOp::Restore => self.register = *self.get_cell(),
-    
+
                 CoreOp::Move(n) => {
                     if *n >= 0 {
                         self.pointer += *n as usize
                     } else {
                         self.pointer -= -*n as usize
                     }
-                },
-    
+                }
+
                 CoreOp::Where => self.register = self.pointer as isize,
                 CoreOp::Deref => self.deref(),
                 CoreOp::Refer => self.refer()?,
-    
+
                 CoreOp::Inc => self.register += 1,
                 CoreOp::Dec => self.register -= 1,
                 CoreOp::Add => self.register += *self.get_cell(),
@@ -357,19 +364,17 @@ impl<T> Interpreter<T> where T: Device {
                     if d != 0 {
                         self.register /= d
                     }
-                },
+                }
                 CoreOp::Rem => {
                     let d = *self.get_cell();
                     if d != 0 {
                         self.register %= d
                     }
-                },
-    
+                }
+
                 CoreOp::IsNonNegative => self.register = if self.register >= 0 { 1 } else { 0 },
                 CoreOp::Get => self.register = self.device.get()?,
-                CoreOp::Put => {
-                    self.device.put(self.register)?
-                },
+                CoreOp::Put => self.device.put(self.register)?,
             }
             self.i += 1
         } else {
