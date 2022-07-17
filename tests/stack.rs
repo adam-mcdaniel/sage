@@ -1,6 +1,6 @@
 use asm::{
     asm::*,
-    vm::{Interpreter, TestingDevice},
+    vm::{CoreInterpreter, TestingDevice},
 };
 
 #[test]
@@ -29,7 +29,7 @@ fn test_putint() {
     .unwrap();
     eprintln!("{:?}", program);
 
-    let i = Interpreter::new(TestingDevice::default());
+    let i = CoreInterpreter::new(TestingDevice::default());
 
     let device = i.run(&program).unwrap();
 

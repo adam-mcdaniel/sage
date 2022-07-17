@@ -1,102 +1,6 @@
-use crate::vm::{CoreOp, CoreProgram};
-use std::io::{stdin, stdout, Read, Write};
+use crate::vm::{CoreOp, CoreProgram, Device, StandardDevice};
 
-/// Create an input / output device for the virtual machine interpreter
-/// to operate on. The method `get` retrieves the device's input, and the
-/// function `put` writes to the devices output.
-pub trait Device {
-    fn get(&mut self) -> Result<isize, String>;
-    fn put(&mut self, val: isize) -> Result<(), String>;
-}
-
-/// A device used for testing the compiler. This simply keeps a buffer
-/// of sample input to supply to the virtual machine, and keeps an output
-/// buffer to keep track of the output of the virtual machine.
-///
-/// The tests interpret the program and populate the device with output.
-/// Then, we check the devices output against the correct output.
-pub struct TestingDevice {
-    pub input: Vec<isize>,
-    pub output: Vec<isize>,
-}
-
-impl TestingDevice {
-    /// Create a new testing device with some given sample input.
-    pub fn new(sample_input: impl ToString) -> Self {
-        Self {
-            input: sample_input
-                .to_string()
-                .chars()
-                .map(|ch| ch as isize)
-                .collect(),
-            output: vec![],
-        }
-    }
-
-    /// Get the output of the testing device as a string (ascii).
-    pub fn output_str(&self) -> String {
-        let mut result = String::new();
-        for ch in &self.output {
-            result.push(*ch as u8 as char)
-        }
-        result
-    }
-}
-
-/// Make the testing device work with the interpreter.
-impl Device for TestingDevice {
-    fn get(&mut self) -> Result<isize, String> {
-        if !self.input.is_empty() {
-            Ok(self.input.remove(0))
-        } else {
-            Err(String::from("ran out of input"))
-        }
-    }
-
-    fn put(&mut self, val: isize) -> Result<(), String> {
-        self.output.push(val);
-        Ok(())
-    }
-}
-
-impl Default for TestingDevice {
-    fn default() -> Self {
-        Self {
-            input: vec![],
-            output: vec![],
-        }
-    }
-}
-
-/// A device used for standard input and output.
-/// This simply retrieves a character from standard-in with `get`,
-/// and writes a character to standard-out with `put`.
-pub struct StandardDevice;
-
-impl Device for StandardDevice {
-    fn get(&mut self) -> Result<isize, String> {
-        // Buffer with exactly 1 character of space
-        let mut ch = [0];
-        // Flush stdout to write any prompts for the user
-        if stdout().flush().is_err() {
-            Err(String::from("could not flush output"))
-        } else if stdin().read(&mut ch).is_ok() {
-            // If the buffer was successfully read into, return the result.
-            Ok(ch[0] as isize)
-        } else {
-            // Otherwise, the buffer was not read into, and the input failed.
-            Err(String::from("could not read input"))
-        }
-    }
-
-    fn put(&mut self, val: isize) -> Result<(), String> {
-        // Print the character without a newline
-        print!("{}", val as u8 as char);
-        Ok(())
-    }
-}
-
-impl Default for Interpreter<StandardDevice> {
+impl Default for CoreInterpreter<StandardDevice> {
     fn default() -> Self {
         Self {
             device: StandardDevice,
@@ -111,9 +15,8 @@ impl Default for Interpreter<StandardDevice> {
         }
     }
 }
-
 /// The interpreter which runs the virtual machine program.
-pub struct Interpreter<T>
+pub struct CoreInterpreter<T>
 where
     T: Device,
 {
@@ -141,7 +44,7 @@ where
     done: bool,
 }
 
-impl<T> Interpreter<T>
+impl<T> CoreInterpreter<T>
 where
     T: Device,
 {

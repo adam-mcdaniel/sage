@@ -98,7 +98,7 @@ pub enum CoreOp {
     End,
 
     /// Copy a value from a source location to a destination location.
-    /// 
+    ///
     /// `dst = src`
     Move {
         src: Location,
@@ -106,10 +106,10 @@ pub enum CoreOp {
     },
     /// Copy a number of cells from a source referenced location to a destination
     /// referenced location.
-    /// 
+    ///
     /// This will dereference `src`, copy its contents, and store them at the location pointed
     /// to by `dst`.
-    /// 
+    ///
     /// `*dst = *src`
     Copy {
         src: Location,
@@ -423,7 +423,9 @@ impl CoreOp {
                     Ok((CoreOp::If(_), _)) | Ok((CoreOp::Else, _)) => {}
                     // If there was no matching instruction, or a non-block-creating
                     // instruction, then the syntax is invalid.
-                    Ok(_) | Err(_) => return Err(Error::Unmatched(CoreOp::End, current_instruction)),
+                    Ok(_) | Err(_) => {
+                        return Err(Error::Unmatched(CoreOp::End, current_instruction))
+                    }
                 }
                 // Terminate the block.
                 result.end();

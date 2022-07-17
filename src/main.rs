@@ -1,7 +1,7 @@
 use asm::{
     asm::*,
     targets,
-    vm::{Interpreter, TestingDevice},
+    vm::{CoreInterpreter, TestingDevice},
     CompilerTarget,
 };
 
@@ -174,7 +174,7 @@ fn main() {
     .unwrap();
     // eprintln!("{:?}", program);
     // let i = Interpreter::default();
-    let i = Interpreter::new(TestingDevice::new("testing\n"));
+    let i = CoreInterpreter::new(TestingDevice::new("testing\n"));
     let device = i.run(&program).unwrap();
     println!("{:?}", device.input);
     println!("{:?}", device.output_str());

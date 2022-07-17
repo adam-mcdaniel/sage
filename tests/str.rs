@@ -1,6 +1,6 @@
 use asm::{
     asm::*,
-    vm::{Interpreter, TestingDevice},
+    vm::{CoreInterpreter, TestingDevice},
 };
 
 #[test]
@@ -172,7 +172,7 @@ fn test_putint() {
     .assemble(16)
     .unwrap();
 
-    let i = Interpreter::new(TestingDevice::new("testing\n"));
+    let i = CoreInterpreter::new(TestingDevice::new("testing\n"));
 
     let device = i.run(&program).unwrap();
     assert_eq!(device.output_str(), "abcdefghijk?\nHello world!\nabcdefghijk?\nHello world!\nabcdefghijk?\nHello world!\nabcdefghijk?\nHello world!\n>> you entered: `gnitset`\nwhich is 7 characters long!\n")
