@@ -3,18 +3,19 @@
 //! Core instructions are instructions that **must** be implemented for
 //! every target. Write programs in the core variant to guarantee ports
 //! for ***every*** target.
-use super::{StandardOp, VirtualMachineProgram};
+use super::{Error, StandardOp, StandardProgram, VirtualMachineProgram};
 
 impl VirtualMachineProgram for CoreProgram {
-    fn append_core_op(&mut self, op: CoreOp) {
+    fn op(&mut self, op: CoreOp) {
         self.0.push(op);
     }
 
-    fn append_standard_op(&mut self, op: StandardOp) {
-        panic!(
-            "the core virtual machine does not support standard instructions: tried to run `{:?}`",
-            op
-        )
+    fn std_op(&mut self, op: StandardOp) -> Result<(), Error> {
+        Err(Error::UnsupportedInstruction(op))
+    }
+
+    fn code(&self) -> Result<CoreProgram, StandardProgram> {
+        Ok(self.clone())
     }
 }
 

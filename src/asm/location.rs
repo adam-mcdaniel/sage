@@ -61,8 +61,7 @@
 //!   ```rs
 //!   Indirect(Address(6)) // go the address pointed to by the value in the 6th cell of the tape
 //!   ```
-
-use crate::vm::{self, VirtualMachineProgram};
+use crate::vm::{self, Error, VirtualMachineProgram};
 
 /// The stack pointer register.
 pub const SP: Location = Location::Address(0);
@@ -245,7 +244,7 @@ impl Location {
     fn binop(&self, op: vm::CoreOp, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.restore_from(result);
         src.to(result);
-        result.append_core_op(op);
+        result.op(op);
         src.from(result);
         self.save_to(result);
     }
@@ -375,6 +374,55 @@ impl Location {
     pub fn set(&self, val: isize, result: &mut dyn VirtualMachineProgram) {
         result.set_register(val);
         self.save_to(result)
+    }
+
+    /// This cell = a constant floating point value. This requires
+    /// the standard  instruction.
+    pub fn set_float(&self, val: f64, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        result.std_op(vm::StandardOp::Set(val))?;
+        self.save_to(result);
+        Ok(())
+    }
+
+    fn std_op(
+        &self,
+        op: vm::StandardOp,
+        result: &mut dyn VirtualMachineProgram,
+    ) -> Result<(), Error> {
+        self.to(result);
+        result.restore();
+        result.std_op(op)?;
+        result.save();
+        self.from(result);
+        Ok(())
+    }
+
+    pub fn sin(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.std_op(vm::StandardOp::Sin, result)
+    }
+    pub fn cos(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.std_op(vm::StandardOp::Cos, result)
+    }
+    pub fn tan(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.std_op(vm::StandardOp::Tan, result)
+    }
+
+    pub fn asin(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.std_op(vm::StandardOp::ASin, result)
+    }
+    pub fn acos(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.std_op(vm::StandardOp::ACos, result)
+    }
+    pub fn atan(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.std_op(vm::StandardOp::ATan, result)
+    }
+
+    pub fn to_float(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.std_op(vm::StandardOp::ToFloat, result)
+    }
+
+    pub fn to_int(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.std_op(vm::StandardOp::ToInt, result)
     }
 
     /// Store the value of this cell into another cell.

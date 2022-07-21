@@ -5,27 +5,43 @@
 //! for targets like physical hardware, where the program is executed on the
 //! bare metal (a custom CPU or FPGA).
 
-use super::{CoreOp, VirtualMachineProgram};
+use super::{CoreOp, CoreProgram, Error, VirtualMachineProgram};
 
 impl VirtualMachineProgram for StandardProgram {
-    fn append_core_op(&mut self, op: CoreOp) {
+    fn op(&mut self, op: CoreOp) {
         self.0.push(StandardOp::CoreOp(op));
     }
 
-    fn append_standard_op(&mut self, op: StandardOp) {
+    fn std_op(&mut self, op: StandardOp) -> Result<(), Error> {
         self.0.push(op);
+        Ok(())
+    }
+
+    fn code(&self) -> Result<CoreProgram, StandardProgram> {
+        let mut result = vec![];
+        for op in self.0.clone() {
+            if let StandardOp::CoreOp(core_op) = op {
+                result.push(core_op)
+            } else {
+                return Err(self.clone());
+            }
+        }
+        Ok(CoreProgram(result))
     }
 }
 
 /// A program of core and standard virtual machine instructions.
-#[derive(Default, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Default, Clone, Debug, PartialEq, PartialOrd)]
 pub struct StandardProgram(pub Vec<StandardOp>);
 
 /// An individual standard virtual machine instruction.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum StandardOp {
     /// Execute a core instruction.
     CoreOp(CoreOp),
+
+    /// Set the register equal to a constant floating point value.
+    Set(f64),
 
     /// Take the value of the register, and allocate that number of cells in memory.
     /// Set the register to the lowest address of the allocated memory.

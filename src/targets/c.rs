@@ -151,8 +151,18 @@ int main() {
         let mut indent = 1;
         for op in ops {
             match op {
-                StandardOp::GetChar => result += "reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;",
-                StandardOp::PutChar => result += "putchar(reg.i);",
+                StandardOp::Set(v) => {
+                    result += &format!("{}reg.f = {:?};\n", tab.repeat(indent), v)
+                }
+                StandardOp::GetChar => {
+                    result += &format!(
+                        "{}reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;\n",
+                        tab.repeat(indent)
+                    )
+                }
+                StandardOp::PutChar => {
+                    result += &format!("{}putchar(reg.i);\n", tab.repeat(indent))
+                }
                 StandardOp::GetInt => {
                     result += &format!("{}scanf(\"%lld\", &reg.i);\n", tab.repeat(indent));
                 }

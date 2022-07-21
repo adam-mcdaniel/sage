@@ -26,7 +26,7 @@
 //! using `Put`, and assuming-standard out, to display the integer in decimal.
 use super::{
     location::{FP_STACK, TMP},
-    Env, Error, Location, F, FP, SP,
+    AssemblyProgram, Env, Error, Location, StandardProgram, F, FP, SP,
 };
 use crate::vm::{self, VirtualMachineProgram};
 
@@ -59,6 +59,20 @@ impl CoreProgram {
         }
 
         Ok(result)
+    }
+}
+
+impl AssemblyProgram for CoreProgram {
+    fn op(&mut self, op: CoreOp) {
+        self.0.push(op)
+    }
+
+    fn std_op(&mut self, op: super::StandardOp) -> Result<(), Error> {
+        Err(Error::UnsupportedInstruction(op))
+    }
+
+    fn code(&self) -> Result<CoreProgram, StandardProgram> {
+        Ok(self.clone())
     }
 }
 
@@ -124,6 +138,16 @@ pub enum CoreOp {
     Next(Location, Option<isize>),
     /// Make this pointer point to the previous cell (or the nth previous cell).
     Prev(Location, Option<isize>),
+
+    /// Get the address of a location indexed by an offset stored at another location.
+    /// Store the result in the destination register.
+    /// 
+    /// This is essentially the runtime equivalent of `dst = addr.offset(offset)`
+    Index {
+        src: Location,
+        offset: Location,
+        dst: Location,
+    },
 
     /// Increment the integer value of a location.
     Inc(Location),
@@ -345,6 +369,16 @@ impl CoreOp {
             CoreOp::GetAddress { addr, dst } => addr.copy_address_to(dst, result),
             CoreOp::Next(dst, count) => dst.next(count.unwrap_or(1), result),
             CoreOp::Prev(dst, count) => dst.prev(count.unwrap_or(1), result),
+            CoreOp::Index { src, offset, dst } => {
+                offset.copy_to(&TMP, result);
+                src.copy_to(&dst, result);
+                Self::Many(vec![
+                    Self::While(TMP),
+                    Self::Next(dst.clone(), None),
+                    Self::Dec(TMP),
+                    Self::End
+                ]).assemble(current_instruction, env, result)?
+            }
 
             CoreOp::Set(dst, value) => dst.set(*value, result),
             CoreOp::SetLabel(dst, name) => {
@@ -456,7 +490,7 @@ impl CoreOp {
             CoreOp::Neg(dst) => {
                 result.set_register(-1);
                 dst.to(result);
-                result.append_core_op(vm::CoreOp::Mul);
+                result.op(vm::CoreOp::Mul);
                 result.save();
                 dst.from(result)
             }

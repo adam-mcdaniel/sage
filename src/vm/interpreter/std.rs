@@ -301,69 +301,55 @@ where
                 StandardOp::ToInt => {
                     // self.register = f64::from_bits(self.register as u64) as isize
                     self.register = as_float(self.register) as isize;
-                },
+                }
                 StandardOp::ToFloat => {
                     // self.register = (self.register as f64).to_bits() as isize
                     self.register = as_int(self.register as f64);
-                },
+                }
                 StandardOp::Swap => {
                     let tmp = *self.get_cell();
                     *self.get_cell() = self.register;
                     self.register = tmp;
-                },
+                }
                 // let cell = f64::from_bits(*self.get_cell() as u64);
                 // self.register = (f64::from_bits(self.register as u64) + cell).to_bits() as isize;
                 StandardOp::Add => {
                     let a = as_float(self.register);
                     let b = as_float(*self.get_cell());
                     self.register = as_int(a + b)
-                },
+                }
                 StandardOp::Sub => {
                     let a = as_float(self.register);
                     let b = as_float(*self.get_cell());
                     self.register = as_int(a - b)
-                },
+                }
                 StandardOp::Mul => {
                     let a = as_float(self.register);
                     let b = as_float(*self.get_cell());
                     self.register = as_int(a * b)
-                },
+                }
                 StandardOp::Div => {
                     let a = as_float(self.register);
                     let b = as_float(*self.get_cell());
                     self.register = as_int(a / b)
-                },
+                }
                 StandardOp::Rem => {
                     let a = as_float(self.register);
                     let b = as_float(*self.get_cell());
                     self.register = as_int(a % b)
-                },
-                StandardOp::IsNonNegative => {
-                    self.register = if self.register >= 0 { 1 } else { 0 }
-                },
-                StandardOp::Sin => {
-                    self.register = as_int(as_float(self.register).sin())
-                },
-                StandardOp::Cos => {
-                    self.register = as_int(as_float(self.register).cos())
-                },
-                StandardOp::Tan => {
-                    self.register = as_int(as_float(self.register).tan())
-                },
-                StandardOp::ASin => {
-                    self.register = as_int(as_float(self.register).asin())
-                },
-                StandardOp::ACos => {
-                    self.register = as_int(as_float(self.register).acos())
-                },
-                StandardOp::ATan => {
-                    self.register = as_int(as_float(self.register).atan())
-                },
+                }
+                StandardOp::IsNonNegative => self.register = if self.register >= 0 { 1 } else { 0 },
+                StandardOp::Sin => self.register = as_int(as_float(self.register).sin()),
+                StandardOp::Cos => self.register = as_int(as_float(self.register).cos()),
+                StandardOp::Tan => self.register = as_int(as_float(self.register).tan()),
+                StandardOp::ASin => self.register = as_int(as_float(self.register).asin()),
+                StandardOp::ACos => self.register = as_int(as_float(self.register).acos()),
+                StandardOp::ATan => self.register = as_int(as_float(self.register).atan()),
                 StandardOp::Pow => {
                     self.register = as_int(as_float(self.register).powf(as_float(*self.get_cell())))
-                },
+                }
 
-                _ => unimplemented!()
+                _ => unimplemented!(),
             }
             self.i += 1
         } else {

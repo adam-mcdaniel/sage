@@ -4,7 +4,9 @@
 //! with the standard variant of the virtual machine. It is very
 //! portable, but probably not supported on older systems or
 //! hardware implementations.
-use super::{location::FP_STACK, CoreOp, Env, Error, Location, F, FP, SP};
+use super::{
+    location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP,
+};
 use crate::vm::{self, VirtualMachineProgram};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
@@ -32,6 +34,20 @@ impl StandardProgram {
         }
 
         Ok(result)
+    }
+}
+
+impl AssemblyProgram for StandardProgram {
+    fn op(&mut self, op: CoreOp) {
+        self.0.push(StandardOp::CoreOp(op))
+    }
+
+    fn std_op(&mut self, op: super::StandardOp) -> Result<(), Error> {
+        Err(Error::UnsupportedInstruction(op))
+    }
+
+    fn code(&self) -> Result<CoreProgram, StandardProgram> {
+        Err(self.clone())
     }
 }
 
@@ -105,6 +121,10 @@ pub enum StandardOp {
     GetFloat(Location),
 }
 
+fn unsupported(op: StandardOp) -> Result<(), Error> {
+    Err(Error::UnsupportedInstruction(op))
+}
+
 impl StandardOp {
     #[allow(unused_variables)]
     pub(super) fn assemble(
@@ -114,9 +134,46 @@ impl StandardOp {
         result: &mut dyn VirtualMachineProgram,
     ) -> Result<(), Error> {
         match self {
-            Self::CoreOp(op) => op.assemble(current_instruction, env, result),
+            Self::CoreOp(op) => op.assemble(current_instruction, env, result)?,
 
+            Self::Set(loc, val) => {
+                if loc.set_float(*val, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::Sin(loc) => {
+                if loc.sin(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+            Self::Cos(loc) => {
+                if loc.cos(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+            Self::Tan(loc) => {
+                if loc.tan(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+            Self::ASin(loc) => {
+                if loc.asin(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+            Self::ACos(loc) => {
+                if loc.acos(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+            Self::ATan(loc) => {
+                if loc.atan(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
             _ => todo!(),
         }
+        Ok(())
     }
 }

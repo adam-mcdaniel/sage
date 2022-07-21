@@ -18,6 +18,8 @@
 use ::std::collections::HashMap;
 
 pub mod core;
+use crate::vm;
+
 pub use self::core::{CoreOp, CoreProgram};
 
 pub mod std;
@@ -25,6 +27,22 @@ pub use self::std::{StandardOp, StandardProgram};
 
 pub mod location;
 pub use location::{var, Location, A, B, C, D, E, F, FP, SP};
+
+pub trait AssemblyProgram {
+    fn op(&mut self, op: CoreOp);
+    fn std_op(&mut self, op: StandardOp) -> Result<(), Error>;
+    fn code(&self) -> Result<CoreProgram, StandardProgram>;
+
+    fn assemble(
+        &self,
+        allowed_recursion_depth: usize,
+    ) -> Result<Result<vm::CoreProgram, vm::StandardProgram>, Error> {
+        match self.code() {
+            Ok(core_prog) => Ok(Ok(core_prog.assemble(allowed_recursion_depth)?)),
+            Err(std_prog) => Ok(Err(std_prog.assemble(allowed_recursion_depth)?)),
+        }
+    }
+}
 
 /// An environment used to assemble a program.
 /// This stores information about labels and their IDs in the virtual machine,
@@ -67,9 +85,17 @@ impl Env {
 }
 
 /// An error returned by the assembly language.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Error {
+    VirtualMachineError(vm::Error),
+    UnsupportedInstruction(StandardOp),
     UndefinedLabel(String, usize),
     Unmatched(CoreOp, usize),
     Unexpected(CoreOp, usize),
+}
+
+impl From<vm::Error> for Error {
+    fn from(e: vm::Error) -> Self {
+        Self::VirtualMachineError(e)
+    }
 }

@@ -63,91 +63,102 @@ pub use self::std::*;
 mod interpreter;
 pub use interpreter::*;
 
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub enum Error {
+    /// When an instruction is unsupported for a given implementation
+    /// of the virtual machine, this error is triggered.
+    UnsupportedInstruction(StandardOp),
+    /// When the virtual machine attempts to get the program as core,
+    /// but finds standard instructions, this error is triggered.
+    ExpectedCore(StandardOp),
+}
+
 /// An interface to conveniently create virtual machine programs,
 /// of either the core or standard variant.
 pub trait VirtualMachineProgram {
-    fn append_core_op(&mut self, op: CoreOp);
-    fn append_standard_op(&mut self, op: StandardOp);
+    fn op(&mut self, op: CoreOp);
+    fn std_op(&mut self, op: StandardOp) -> Result<(), Error>;
+    fn code(&self) -> Result<CoreProgram, StandardProgram>;
 
     fn comment(&mut self, comment: &str) {
-        self.append_core_op(CoreOp::Comment(comment.to_string()));
+        self.op(CoreOp::Comment(comment.to_string()));
     }
 
     fn restore(&mut self) {
-        self.append_core_op(CoreOp::Restore);
+        self.op(CoreOp::Restore);
     }
 
     fn save(&mut self) {
-        self.append_core_op(CoreOp::Save);
+        self.op(CoreOp::Save);
     }
 
     fn ret(&mut self) {
-        self.append_core_op(CoreOp::Return);
+        self.op(CoreOp::Return);
     }
 
     fn where_is_pointer(&mut self) {
-        self.append_core_op(CoreOp::Where);
+        self.op(CoreOp::Where);
     }
 
     fn deref(&mut self) {
-        self.append_core_op(CoreOp::Deref);
+        self.op(CoreOp::Deref);
     }
 
     fn refer(&mut self) {
-        self.append_core_op(CoreOp::Refer);
+        self.op(CoreOp::Refer);
     }
 
     fn move_pointer(&mut self, cells: isize) {
         if cells != 0 {
-            self.append_core_op(CoreOp::Move(cells));
+            self.op(CoreOp::Move(cells));
         }
     }
 
     fn set_register(&mut self, val: isize) {
-        self.append_core_op(CoreOp::Constant(val))
+        self.op(CoreOp::Constant(val))
     }
 
     fn begin_while(&mut self) {
-        self.append_core_op(CoreOp::While)
+        self.op(CoreOp::While)
     }
 
     fn begin_if(&mut self) {
-        self.append_core_op(CoreOp::If)
+        self.op(CoreOp::If)
     }
 
     fn begin_else(&mut self) {
-        self.append_core_op(CoreOp::Else)
+        self.op(CoreOp::Else)
     }
 
     fn begin_function(&mut self) {
-        self.append_core_op(CoreOp::Function)
+        self.op(CoreOp::Function)
     }
 
     fn end(&mut self) {
-        self.append_core_op(CoreOp::End)
+        self.op(CoreOp::End)
     }
 
     fn call(&mut self) {
-        self.append_core_op(CoreOp::Call)
+        self.op(CoreOp::Call)
     }
 
     fn inc(&mut self) {
-        self.append_core_op(CoreOp::Inc)
+        self.op(CoreOp::Inc)
     }
 
     fn dec(&mut self) {
-        self.append_core_op(CoreOp::Dec)
+        self.op(CoreOp::Dec)
     }
 
     fn get(&mut self) {
-        self.append_core_op(CoreOp::Get)
+        self.op(CoreOp::Get)
     }
 
     fn put(&mut self) {
-        self.append_core_op(CoreOp::Put)
+        self.op(CoreOp::Put)
     }
 
     fn is_non_negative(&mut self) {
-        self.append_core_op(CoreOp::IsNonNegative)
+        self.op(CoreOp::IsNonNegative)
     }
 }
