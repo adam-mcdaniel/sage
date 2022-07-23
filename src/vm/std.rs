@@ -4,8 +4,8 @@
 //! every target possible. Standard instructions should only not be implemented
 //! for targets like physical hardware, where the program is executed on the
 //! bare metal (a custom CPU or FPGA).
-
 use super::{CoreOp, CoreProgram, Error, VirtualMachineProgram};
+use core::fmt;
 
 impl VirtualMachineProgram for StandardProgram {
     fn op(&mut self, op: CoreOp) {
@@ -31,8 +31,39 @@ impl VirtualMachineProgram for StandardProgram {
 }
 
 /// A program of core and standard virtual machine instructions.
-#[derive(Default, Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Default, Clone, PartialEq, PartialOrd)]
 pub struct StandardProgram(pub Vec<StandardOp>);
+
+impl fmt::Debug for StandardProgram {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut indent = 0;
+        for (i, op) in self.0.iter().enumerate() {
+            writeln!(
+                f,
+                "{:04}: {}{:?}",
+                i,
+                match op {
+                    StandardOp::CoreOp(CoreOp::Function)
+                    | StandardOp::CoreOp(CoreOp::If)
+                    | StandardOp::CoreOp(CoreOp::While) => {
+                        indent += 1;
+                        "   ".repeat(indent - 1)
+                    }
+                    StandardOp::CoreOp(CoreOp::Else) => {
+                        "   ".repeat(indent - 1)
+                    }
+                    StandardOp::CoreOp(CoreOp::End) => {
+                        indent -= 1;
+                        "   ".repeat(indent)
+                    }
+                    _ => "   ".repeat(indent),
+                },
+                op
+            )?
+        }
+        Ok(())
+    }
+}
 
 /// An individual standard virtual machine instruction.
 #[derive(Clone, Debug, PartialEq, PartialOrd)]

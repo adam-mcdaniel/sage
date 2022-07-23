@@ -21,7 +21,10 @@ pub trait Simplify: Sized {
     fn simplify_checked(self, env: &Env, i: usize) -> Result<Self, Error>;
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum Error {
+    AssemblyError(crate::asm::Error),
+    VariantNotFound(Type, String),
     MemberNotFound(Expr, ConstExpr),
     RecursionDepthConst(ConstExpr),
     NonIntegralConst(ConstExpr),
@@ -31,7 +34,14 @@ pub enum Error {
     ApplyNonProc(Expr),
     NonSymbol(ConstExpr),
     InvalidIndex(Expr),
+    InvalidRefer(Expr),
 
     SymbolNotDefined(String),
     TypeNotDefined(String),
+}
+
+impl From<crate::asm::Error> for Error {
+    fn from(e: crate::asm::Error) -> Self {
+        Self::AssemblyError(e)
+    }
 }

@@ -8,8 +8,9 @@ use super::{
     location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP,
 };
 use crate::vm::{self, VirtualMachineProgram};
+use core::fmt;
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, PartialEq, PartialOrd)]
 pub struct StandardProgram(pub Vec<StandardOp>);
 
 impl StandardProgram {
@@ -29,11 +30,42 @@ impl StandardProgram {
             op.assemble(i, &mut env, &mut result)?
         }
 
-        if let Ok((unmatched, last_instruction)) = env.pop_matching(self.0.len() - 1) {
+        if let Ok((unmatched, last_instruction)) = env.pop_matching(self.0.len()) {
             return Err(Error::Unmatched(unmatched, last_instruction));
         }
 
         Ok(result)
+    }
+}
+
+impl fmt::Debug for StandardProgram {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut indent = 0;
+        for (i, op) in self.0.iter().enumerate() {
+            writeln!(
+                f,
+                "{:04}: {}{:?}",
+                i,
+                match op {
+                    StandardOp::CoreOp(CoreOp::Fn(_))
+                    | StandardOp::CoreOp(CoreOp::If(_))
+                    | StandardOp::CoreOp(CoreOp::While(_)) => {
+                        indent += 1;
+                        "   ".repeat(indent - 1)
+                    }
+                    StandardOp::CoreOp(CoreOp::Else) => {
+                        "   ".repeat(indent - 1)
+                    }
+                    StandardOp::CoreOp(CoreOp::End) => {
+                        indent -= 1;
+                        "   ".repeat(indent)
+                    }
+                    _ => "   ".repeat(indent),
+                },
+                op
+            )?
+        }
+        Ok(())
     }
 }
 

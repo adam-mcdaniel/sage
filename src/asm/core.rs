@@ -29,10 +29,11 @@ use super::{
     AssemblyProgram, Env, Error, Location, StandardProgram, F, FP, SP,
 };
 use crate::vm::{self, VirtualMachineProgram};
+use core::fmt;
 
 /// A program composed of core instructions, which can be assembled
 /// into the core virtual machine instructions.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct CoreProgram(pub Vec<CoreOp>);
 
 impl CoreProgram {
@@ -54,11 +55,40 @@ impl CoreProgram {
             op.assemble(i, &mut env, &mut result)?
         }
 
-        if let Ok((unmatched, last_instruction)) = env.pop_matching(self.0.len() - 1) {
+        if let Ok((unmatched, last_instruction)) = env.pop_matching(self.0.len()) {
             return Err(Error::Unmatched(unmatched, last_instruction));
         }
 
         Ok(result)
+    }
+}
+
+impl fmt::Debug for CoreProgram {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut indent = 0;
+        for (i, op) in self.0.iter().enumerate() {
+            writeln!(
+                f,
+                "{:04}: {}{:?}",
+                i,
+                match op {
+                    CoreOp::Fn(_) | CoreOp::If(_) | CoreOp::While(_) => {
+                        indent += 1;
+                        "   ".repeat(indent - 1)
+                    }
+                    CoreOp::Else => {
+                        "   ".repeat(indent - 1)
+                    }
+                    CoreOp::End => {
+                        indent -= 1;
+                        "   ".repeat(indent)
+                    }
+                    _ => "   ".repeat(indent),
+                },
+                op
+            )?
+        }
+        Ok(())
     }
 }
 
@@ -141,7 +171,7 @@ pub enum CoreOp {
 
     /// Get the address of a location indexed by an offset stored at another location.
     /// Store the result in the destination register.
-    /// 
+    ///
     /// This is essentially the runtime equivalent of `dst = addr.offset(offset)`
     Index {
         src: Location,
@@ -371,13 +401,14 @@ impl CoreOp {
             CoreOp::Prev(dst, count) => dst.prev(count.unwrap_or(1), result),
             CoreOp::Index { src, offset, dst } => {
                 offset.copy_to(&TMP, result);
-                src.copy_to(&dst, result);
+                src.copy_to(dst, result);
                 Self::Many(vec![
                     Self::While(TMP),
                     Self::Next(dst.clone(), None),
                     Self::Dec(TMP),
-                    Self::End
-                ]).assemble(current_instruction, env, result)?
+                    Self::End,
+                ])
+                .assemble(current_instruction, env, result)?
             }
 
             CoreOp::Set(dst, value) => dst.set(*value, result),
@@ -563,9 +594,8 @@ impl CoreOp {
 
             CoreOp::Copy { src, dst, size } => {
                 for i in 0..*size {
-                    src.deref()
-                        .offset(i as isize)
-                        .copy_to(&dst.deref().offset(i as isize), result);
+                    src.offset(i as isize)
+                        .copy_to(&dst.offset(i as isize), result);
                 }
             }
         }

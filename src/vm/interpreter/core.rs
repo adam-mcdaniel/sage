@@ -15,6 +15,7 @@ impl Default for CoreInterpreter<StandardDevice> {
         }
     }
 }
+
 /// The interpreter which runs the virtual machine program.
 pub struct CoreInterpreter<T>
 where
@@ -204,7 +205,6 @@ where
         while !self.done {
             self.step(code)?
         }
-        println!("{:?}", self.cells);
         Ok(self.device)
     }
 
@@ -213,7 +213,7 @@ where
         if let Some(op) = self.fetch(code) {
             match op {
                 CoreOp::Comment(_) => {}
-                CoreOp::Constant(n) => self.register = *n,
+                CoreOp::Set(n) => self.register = *n,
                 CoreOp::Function => {
                     if !self.functions.contains(&self.i) {
                         self.functions.push(self.i);

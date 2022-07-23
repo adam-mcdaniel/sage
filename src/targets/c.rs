@@ -1,14 +1,12 @@
 //! An implementation of the virtual machine for the C language.
 //!
 //! This allows the virtual machine to target C programs.
-use crate::{
-    vm::{CoreOp, CoreProgram, StandardOp, StandardProgram},
-    CompilerTarget,
-};
+use super::Target;
+use crate::vm::{CoreOp, CoreProgram, StandardOp, StandardProgram};
 
 pub struct C;
 
-impl CompilerTarget for C {
+impl Target for C {
     fn compile_core(&self, program: &CoreProgram) -> Result<String, String> {
         let CoreProgram(ops) = program;
         let mut result = String::from(
@@ -48,7 +46,7 @@ int main() {
                     }
                     comment.clone()
                 }
-                CoreOp::Constant(n) => format!("reg.i = {};", n),
+                CoreOp::Set(n) => format!("reg.i = {};", n),
                 CoreOp::Function => {
                     matching.push(op);
 
@@ -123,7 +121,7 @@ int main() {
         Ok(result + tab + "return 0;\n}")
     }
 
-    fn compile_standard(&self, program: &StandardProgram) -> Result<String, String> {
+    fn compile_std(&self, program: &StandardProgram) -> Result<String, String> {
         let StandardProgram(ops) = program;
         let mut result = String::from(
             r#"#include <stdio.h>
@@ -239,7 +237,7 @@ int main() {
                     result += &format!("{}reg.f = (double)reg.i;\n", tab.repeat(indent));
                 }
 
-                StandardOp::CoreOp(CoreOp::Constant(n)) => {
+                StandardOp::CoreOp(CoreOp::Set(n)) => {
                     result += &format!("{}reg.i = {};\n", tab.repeat(indent), n);
                 }
                 StandardOp::CoreOp(CoreOp::Comment(n)) => {

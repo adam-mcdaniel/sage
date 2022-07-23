@@ -4,7 +4,157 @@ use asm::{
 };
 
 #[test]
-fn test_putint() {
+fn test_add() {
+    use CoreOp::*;
+    let add = Many(vec![
+        Fn(String::from("add")),
+        Add {
+            src: SP.deref(),
+            dst: SP.deref().offset(-1),
+        },
+        Pop(None, 1),
+        End,
+    ]);
+
+    let program = CoreProgram(vec![
+        add.clone(),
+        Set(A, 32),
+        Push(A, 1),
+        Set(A, 1),
+        Push(A, 1),
+        CallLabel(String::from("add")),
+        Put(SP.deref()),
+    ])
+    .assemble(32)
+    .unwrap();
+    let i = CoreInterpreter::new(TestingDevice::default());
+
+    let device = i.run(&program).unwrap();
+
+    assert_eq!(device.output, vec![33]);
+}
+
+#[test]
+fn test_alphabet() {
+    use CoreOp::*;
+
+    let program = CoreProgram(vec![
+        Fn(String::from("print_alphabet")),
+        Move { src: FP, dst: A },
+        Prev(A, Some(25)),
+        Set(B, 26),
+        While(B),
+        Put(A.deref()),
+        Next(A, None),
+        Dec(B),
+        End,
+        End,
+        Set(A, 26),
+        Set(B, 'A' as isize),
+        While(A),
+        Push(B, 1),
+        Inc(B),
+        Dec(A),
+        End,
+        CallLabel(String::from("print_alphabet")),
+        Prev(SP, Some(26)),
+        Set(A, '\n' as isize),
+        Put(A),
+    ])
+    .assemble(32)
+    .unwrap();
+
+    let i = CoreInterpreter::new(TestingDevice::default());
+
+    let device = i.run(&program).unwrap();
+
+    assert_eq!(device.output_str(), "ABCDEFGHIJKLMNOPQRSTUVWXYZ\n");
+}
+
+#[test]
+fn test_cmp() {
+    use CoreOp::*;
+
+    let program = CoreProgram(vec![
+        Fn(String::from("cmp")),
+        Compare { dst: C, a: A, b: B },
+        Set(D, '=' as isize),
+        Add { dst: C, src: D },
+        Put(A),
+        Set(A, ' ' as isize),
+        Put(A),
+        Put(C),
+        Set(A, ' ' as isize),
+        Put(A),
+        Put(B),
+        Set(A, 10),
+        Put(A),
+        End,
+        Set(A, 'a' as isize),
+        Put(A),
+        Set(A, '=' as isize),
+        Put(A),
+        Get(A),
+        Get(C),
+        Set(B, 'b' as isize),
+        Put(B),
+        Set(B, '=' as isize),
+        Put(B),
+        Get(B),
+        Get(C),
+        CallLabel(String::from("cmp")),
+    ])
+    .assemble(32)
+    .unwrap();
+
+    let i = CoreInterpreter::new(TestingDevice::new("5\n6\n"));
+    let device = i.run(&program).unwrap();
+    assert_eq!(device.output_str(), "a=b=5 < 6\n");
+
+    let i = CoreInterpreter::new(TestingDevice::new("3\n3\n"));
+    let device = i.run(&program).unwrap();
+    assert_eq!(device.output_str(), "a=b=3 = 3\n");
+
+    let i = CoreInterpreter::new(TestingDevice::new("6\n5\n"));
+    let device = i.run(&program).unwrap();
+    assert_eq!(device.output_str(), "a=b=6 > 5\n");
+}
+
+#[test]
+fn test_stack() {
+    use CoreOp::*;
+
+    let program = CoreProgram(vec![
+        Set(A, 'a' as isize),
+        Push(A, 1),
+        Set(A, 'b' as isize),
+        Push(A, 1),
+        Set(A, 'c' as isize),
+        Push(A, 1),
+        Pop(Some(B), 1),
+        Put(B),
+        Set(A, 'd' as isize),
+        Push(A, 1),
+        Pop(Some(B), 1),
+        Put(B),
+        Pop(Some(B), 1),
+        Put(B),
+        Pop(Some(B), 1),
+        Put(B),
+    ])
+    .assemble(32)
+    .unwrap();
+    eprintln!("{:?}", program);
+
+    let i = CoreInterpreter::new(TestingDevice::default());
+
+    let device = i.run(&program).unwrap();
+
+    assert_eq!(device.output_str(), "cdba");
+}
+
+#[test]
+fn test_str() {
     use CoreOp::*;
 
     let putint = CoreOp::Many(vec![
@@ -94,7 +244,7 @@ fn test_putint() {
     let strrev = Many(vec![
         Fn(String::from("strrev")),
         Move {
-            src: var(0),
+            src: FP.deref(),
             dst: C,
         },
         Move { src: C, dst: D },
@@ -135,8 +285,8 @@ fn test_putint() {
         CoreOp::stack_alloc_string(B, "Dontshowme!!\n"),
         // Copy A to B
         Copy {
-            src: A,
-            dst: B,
+            src: A.deref(),
+            dst: B.deref(),
             size: 14,
         },
         // Overwrite A

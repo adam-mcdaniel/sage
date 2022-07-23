@@ -19,6 +19,7 @@ pub trait Device {
 ///
 /// The tests interpret the program and populate the device with output.
 /// Then, we check the devices output against the correct output.
+#[derive(Default)]
 pub struct TestingDevice {
     pub input: Vec<isize>,
     pub output: Vec<isize>,
@@ -60,15 +61,6 @@ impl Device for TestingDevice {
     fn put(&mut self, val: isize) -> Result<(), String> {
         self.output.push(val);
         Ok(())
-    }
-}
-
-impl Default for TestingDevice {
-    fn default() -> Self {
-        Self {
-            input: vec![],
-            output: vec![],
-        }
     }
 }
 

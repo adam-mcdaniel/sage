@@ -26,7 +26,7 @@ pub mod std;
 pub use self::std::{StandardOp, StandardProgram};
 
 pub mod location;
-pub use location::{var, Location, A, B, C, D, E, F, FP, SP};
+pub use location::{Location, A, B, C, D, E, F, FP, SP};
 
 pub trait AssemblyProgram {
     fn op(&mut self, op: CoreOp);

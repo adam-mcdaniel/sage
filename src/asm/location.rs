@@ -62,6 +62,7 @@
 //!   Indirect(Address(6)) // go the address pointed to by the value in the 6th cell of the tape
 //!   ```
 use crate::vm::{self, Error, VirtualMachineProgram};
+use core::fmt;
 
 /// The stack pointer register.
 pub const SP: Location = Location::Address(0);
@@ -88,7 +89,7 @@ pub const E: Location = Location::Address(8);
 pub const F: Location = Location::Address(9);
 
 /// A location in memory (on the tape of the virtual machine).
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Location {
     /// A fixed position in the tape (a constant address known at compile time).
     Address(usize),
@@ -100,8 +101,32 @@ pub enum Location {
     Offset(Box<Self>, isize),
 }
 
-pub fn var(offset: usize) -> Location {
-    FP.deref().offset(-(offset as isize))
+impl fmt::Debug for Location {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Location::Address(addr) => match addr {
+                0 => write!(f, "SP"),
+                1 => write!(f, "TMP"),
+                2 => write!(f, "FP"),
+                3 => write!(f, "FP_STACK"),
+                4 => write!(f, "A"),
+                5 => write!(f, "B"),
+                6 => write!(f, "C"),
+                7 => write!(f, "D"),
+                8 => write!(f, "E"),
+                9 => write!(f, "F"),
+                other => write!(f, "{}", other),
+            },
+            Location::Indirect(loc) => write!(f, "[{:?}]", loc),
+            Location::Offset(loc, offset) => {
+                if let Location::Indirect(ref addr) = **loc {
+                    write!(f, "[{:?}{:+}]", addr, offset)
+                } else {
+                    write!(f, "{:?}{:+}", loc, offset)
+                }
+            }
+        }
+    }
 }
 
 impl Location {
@@ -120,16 +145,6 @@ impl Location {
     /// Get the location of the value pointed to by this location.
     pub fn deref(&self) -> Self {
         Location::Indirect(Box::new(self.clone()))
-    }
-
-    /// Push the value of this location to the stack.
-    pub fn push(&self, result: &mut dyn VirtualMachineProgram) {
-        self.push_to(&SP, result)
-    }
-
-    /// Pop the top item off the stack and store it in this location.
-    pub fn pop(&self, result: &mut dyn VirtualMachineProgram) {
-        self.pop_from(&SP, result)
     }
 
     /// Push the value of this location to a given stack.

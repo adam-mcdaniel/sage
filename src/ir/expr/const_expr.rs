@@ -1,13 +1,14 @@
 use super::{
     super::{Simplify, Type},
-    Compile, CoreBuiltin, GetType, GetSize, Env, Error, Expr, GetType, Procedure, StandardBuiltin,
+    Compile, CoreBuiltin, Env, Error, Expr, GetSize, GetType, Procedure, StandardBuiltin,
 };
-use crate::asm::{AssemblyProgram, CoreOp, StandardOp, A, B, C, FP, SP};
+use crate::asm::{AssemblyProgram, CoreOp, StandardOp, A, FP, SP};
 use std::collections::BTreeMap;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ConstExpr {
     None,
+    Null,
     Symbol(String),
     Int(i32),
     Float(f64),
@@ -18,7 +19,7 @@ pub enum ConstExpr {
     Tuple(Vec<Self>),
     Array(Vec<Self>),
     Struct(BTreeMap<String, Self>),
-    Union(BTreeMap<String, Type>, String, Box<Self>),
+    Union(Type, String, Box<Self>),
 
     CoreBuiltin(CoreBuiltin),
     StandardBuiltin(StandardBuiltin),
@@ -26,6 +27,14 @@ pub enum ConstExpr {
 }
 
 impl ConstExpr {
+    pub fn proc(args: Vec<(String, Type)>, ret: Type, body: impl Into<Expr>) -> Self {
+        Self::Proc(Procedure::new(args, ret, body))
+    }
+
+    pub fn app(self, args: Vec<Expr>) -> Expr {
+        Expr::from(self).app(args)
+    }
+
     pub fn eval(self, env: &Env) -> Result<Self, Error> {
         self.eval_checked(env, 0)
     }
@@ -37,6 +46,7 @@ impl ConstExpr {
         } else {
             match self {
                 Self::None
+                | Self::Null
                 | Self::Int(_)
                 | Self::Float(_)
                 | Self::Char(_)
@@ -50,20 +60,18 @@ impl ConstExpr {
                     if let Some(c) = env.consts.get(&name) {
                         Ok(c.clone())
                     } else {
-                        Err(Error::ConstNotDefined(name))
+                        Ok(Self::Symbol(name))
                     }
                 }
 
                 Self::Tuple(items) => Ok(Self::Tuple(
                     items
-                        .clone()
                         .into_iter()
                         .map(|c| c.eval_checked(env, i))
                         .collect::<Result<Vec<Self>, Error>>()?,
                 )),
                 Self::Array(items) => Ok(Self::Array(
                     items
-                        .clone()
                         .into_iter()
                         .map(|c| c.eval_checked(env, i))
                         .collect::<Result<Vec<Self>, Error>>()?,
@@ -108,50 +116,94 @@ impl ConstExpr {
     }
 }
 
-
 impl Compile for ConstExpr {
     fn compile(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         match self.eval(env)? {
-            Self::None => {},
+            Self::None => {}
+            Self::Null => {
+                output.op(CoreOp::Set(A, 0));
+                output.op(CoreOp::Push(A, 1));
+            }
             Self::Char(ch) => {
+                output.op(CoreOp::Comment(format!("push char {ch:?}")));
                 output.op(CoreOp::Set(A, ch as usize as isize));
                 output.op(CoreOp::Push(A, 1));
             }
             Self::Bool(x) => {
+                output.op(CoreOp::Comment(format!("push bool {x}")));
                 output.op(CoreOp::Set(A, x as isize));
                 output.op(CoreOp::Push(A, 1));
             }
             Self::Int(n) => {
+                output.op(CoreOp::Comment(format!("push int {n}")));
                 output.op(CoreOp::Set(A, n as isize));
                 output.op(CoreOp::Push(A, 1));
             }
             Self::Float(f) => {
-                output.std_op(StandardOp::Set(A, f));
+                output.std_op(StandardOp::Set(A, f))?;
                 output.op(CoreOp::Push(A, 1));
             }
-            Self::Of(enum_type, variant) => {
-                if let Type::Enum(variants) = enum_type.simplify(env)? {
-
+            Self::Tuple(items) => {
+                for item in items {
+                    item.compile(env, output)?;
                 }
-                // output.op(StandardOp::Set(A, variant));
-                // output.op(CoreOp::Push(A, 1));
+            }
+            Self::Array(items) => {
+                for item in items {
+                    item.compile(env, output)?;
+                }
+            }
+            Self::Struct(items) => {
+                for (_, expr) in items {
+                    expr.compile(env, output)?;
+                }
+            }
+            Self::Union(types, variant, val) => {
+                let result_type = Self::Union(types, variant, val.clone()).get_type(env)?;
+                let result_size = result_type.get_size(env)?;
+                let val_size = val.get_size(env)?;
+
+                val.compile(env, output)?;
+                output.op(CoreOp::Next(
+                    SP,
+                    Some(result_size as isize - val_size as isize),
+                ));
+            }
+            Self::CoreBuiltin(builtin) => {
+                builtin.compile(env, output)?;
+            }
+            Self::StandardBuiltin(builtin) => {
+                builtin.compile(env, output)?;
+            }
+            Self::Proc(proc) => {
+                proc.compile(env, output)?;
+            }
+            Self::Of(enum_type, variant) => {
+                if let Type::Enum(mut variants) = enum_type.clone().simplify(env)? {
+                    variants.sort();
+                    if let Ok(index) = variants.binary_search(&variant) {
+                        output.op(CoreOp::Set(A, index as isize));
+                        output.op(CoreOp::Push(A, 1));
+                    } else {
+                        return Err(Error::VariantNotFound(enum_type, variant));
+                    }
+                } else {
+                    return Err(Error::VariantNotFound(enum_type, variant));
+                }
             }
 
-            Self::Symbol(name) => if let Some((t, offset)) = env.get_var(&name) {
-                output.op(CoreOp::Many(vec![
-                    CoreOp::Move { src: FP, dst: A },
-                    CoreOp::Set(B, *offset),
-                    CoreOp::Index { src: A, offset: B, dst: C },
-                    CoreOp::Push(C.deref(), t.get_size(env)?)
-                ]))
-            } else {
-                return Err(Error::SymbolNotDefined(name))
+            Self::Symbol(name) => {
+                if let Some((t, offset)) = env.get_var(&name) {
+                    output.op(CoreOp::Comment(format!("load var '{}'", name)));
+                    output.op(CoreOp::Push(FP.deref().offset(*offset), t.get_size(env)?))
+                } else {
+                    return Err(Error::SymbolNotDefined(name));
+                }
             }
         }
         Ok(())
     }
 }
-
 
 impl Simplify for ConstExpr {
     fn simplify_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
@@ -162,6 +214,7 @@ impl Simplify for ConstExpr {
 impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
         Ok(match self.clone().eval(env)? {
+            Self::Null => Type::Pointer(Box::new(Type::Any)),
             Self::None => Type::None,
             Self::Int(_) => Type::Int,
             Self::Float(_) => Type::Float,
@@ -170,7 +223,6 @@ impl GetType for ConstExpr {
             Self::Of(enum_type, _) => enum_type,
             Self::Tuple(items) => Type::Tuple(
                 items
-                    .clone()
                     .into_iter()
                     .map(|c| c.get_type_checked(env, i))
                     .collect::<Result<Vec<Type>, Error>>()?,
@@ -190,22 +242,19 @@ impl GetType for ConstExpr {
                     .collect::<Result<BTreeMap<String, Type>, Error>>()?,
             ),
 
-            Self::Union(types, variant, val) => {
-                if let Some(t) = types.get(&variant) {
-                    t.clone()
-                } else {
-                    return Err(Error::MemberNotFound(
-                        Expr::ConstExpr(self.clone()),
-                        ConstExpr::Symbol(variant),
-                    ));
-                }
-            }
+            Self::Union(t, _, _) => t,
 
             Self::Proc(proc) => proc.get_type_checked(env, i)?,
             Self::CoreBuiltin(builtin) => builtin.get_type_checked(env, i)?,
             Self::StandardBuiltin(builtin) => builtin.get_type_checked(env, i)?,
 
-            Self::Symbol(name) => return Err(Error::ConstNotDefined(name)),
+            Self::Symbol(name) => {
+                if let Some((t, _)) = env.get_var(&name) {
+                    t.clone()
+                } else {
+                    return Err(Error::ConstNotDefined(name));
+                }
+            }
         })
     }
 }

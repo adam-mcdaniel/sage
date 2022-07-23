@@ -4,6 +4,7 @@
 //! every target. Write programs in the core variant to guarantee ports
 //! for ***every*** target.
 use super::{Error, StandardOp, StandardProgram, VirtualMachineProgram};
+use core::fmt;
 
 impl VirtualMachineProgram for CoreProgram {
     fn op(&mut self, op: CoreOp) {
@@ -20,8 +21,37 @@ impl VirtualMachineProgram for CoreProgram {
 }
 
 /// A program of only core virtual machine instructions.
-#[derive(Default, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct CoreProgram(pub Vec<CoreOp>);
+
+impl fmt::Debug for CoreProgram {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut indent = 0;
+        for (i, op) in self.0.iter().enumerate() {
+            writeln!(
+                f,
+                "{:04}: {}{:?}",
+                i,
+                match op {
+                    CoreOp::Function | CoreOp::If | CoreOp::While => {
+                        indent += 1;
+                        "   ".repeat(indent - 1)
+                    }
+                    CoreOp::Else => {
+                        "   ".repeat(indent - 1)
+                    }
+                    CoreOp::End => {
+                        indent -= 1;
+                        "   ".repeat(indent)
+                    }
+                    _ => "   ".repeat(indent),
+                },
+                op
+            )?
+        }
+        Ok(())
+    }
+}
 
 /// An individual core virtual machine instruction.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -30,7 +60,7 @@ pub enum CoreOp {
     Comment(String),
 
     /// Set the register equal to a constant value.
-    Constant(isize),
+    Set(isize),
 
     /// Create a new function.
     Function,

@@ -115,7 +115,7 @@ pub trait VirtualMachineProgram {
     }
 
     fn set_register(&mut self, val: isize) {
-        self.op(CoreOp::Constant(val))
+        self.op(CoreOp::Set(val))
     }
 
     fn begin_while(&mut self) {

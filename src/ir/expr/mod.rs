@@ -1,8 +1,8 @@
 mod const_expr;
-mod expr;
+mod expression;
 
 pub use const_expr::*;
-pub use expr::*;
+pub use expression::*;
 
 mod procedure;
 pub use procedure::*;
@@ -30,6 +30,6 @@ where
     }
 }
 
-trait Compile {
+pub trait Compile {
     fn compile(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error>;
 }
