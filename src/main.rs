@@ -2,7 +2,7 @@ use asm::{
     asm::{CoreOp, StandardOp, SP},
     ir::*,
     targets::*,
-    vm::{as_int, CoreInterpreter, StandardInterpreter, TestingDevice},
+    vm::{CoreInterpreter, StandardInterpreter, TestingDevice},
 };
 
 fn main() {
