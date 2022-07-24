@@ -117,45 +117,45 @@ impl ConstExpr {
 }
 
 impl Compile for ConstExpr {
-    fn compile(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         match self.eval(env)? {
             Self::None => {}
             Self::Null => {
-                output.op(CoreOp::Set(A, 0));
-                output.op(CoreOp::Push(A, 1));
+                output.op(CoreOp::Next(SP, None));
+                output.op(CoreOp::Set(SP.deref(), 0));
             }
             Self::Char(ch) => {
                 output.op(CoreOp::Comment(format!("push char {ch:?}")));
-                output.op(CoreOp::Set(A, ch as usize as isize));
-                output.op(CoreOp::Push(A, 1));
+                output.op(CoreOp::Next(SP, None));
+                output.op(CoreOp::Set(SP.deref(), ch as usize as isize));
             }
             Self::Bool(x) => {
                 output.op(CoreOp::Comment(format!("push bool {x}")));
-                output.op(CoreOp::Set(A, x as isize));
-                output.op(CoreOp::Push(A, 1));
+                output.op(CoreOp::Next(SP, None));
+                output.op(CoreOp::Set(SP.deref(), x as isize));
             }
             Self::Int(n) => {
                 output.op(CoreOp::Comment(format!("push int {n}")));
-                output.op(CoreOp::Set(A, n as isize));
-                output.op(CoreOp::Push(A, 1));
+                output.op(CoreOp::Next(SP, None));
+                output.op(CoreOp::Set(SP.deref(), n as isize));
             }
             Self::Float(f) => {
-                output.std_op(StandardOp::Set(A, f))?;
-                output.op(CoreOp::Push(A, 1));
+                output.op(CoreOp::Next(SP, None));
+                output.std_op(StandardOp::Set(SP.deref(), f))?;
             }
             Self::Tuple(items) => {
                 for item in items {
-                    item.compile(env, output)?;
+                    item.compile_expr(env, output)?;
                 }
             }
             Self::Array(items) => {
                 for item in items {
-                    item.compile(env, output)?;
+                    item.compile_expr(env, output)?;
                 }
             }
             Self::Struct(items) => {
                 for (_, expr) in items {
-                    expr.compile(env, output)?;
+                    expr.compile_expr(env, output)?;
                 }
             }
             Self::Union(types, variant, val) => {
@@ -163,20 +163,20 @@ impl Compile for ConstExpr {
                 let result_size = result_type.get_size(env)?;
                 let val_size = val.get_size(env)?;
 
-                val.compile(env, output)?;
+                val.compile_expr(env, output)?;
                 output.op(CoreOp::Next(
                     SP,
                     Some(result_size as isize - val_size as isize),
                 ));
             }
             Self::CoreBuiltin(builtin) => {
-                builtin.compile(env, output)?;
+                builtin.compile_expr(env, output)?;
             }
             Self::StandardBuiltin(builtin) => {
-                builtin.compile(env, output)?;
+                builtin.compile_expr(env, output)?;
             }
             Self::Proc(proc) => {
-                proc.compile(env, output)?;
+                proc.compile_expr(env, output)?;
             }
             Self::Of(enum_type, variant) => {
                 if let Type::Enum(mut variants) = enum_type.clone().simplify(env)? {

@@ -7,7 +7,7 @@ use crate::vm::{CoreOp, CoreProgram, StandardOp, StandardProgram};
 pub struct C;
 
 impl Target for C {
-    fn compile_core(&self, program: &CoreProgram) -> Result<String, String> {
+    fn build_core(&self, program: &CoreProgram) -> Result<String, String> {
         let CoreProgram(ops) = program;
         let mut result = String::from(
             r#"#include <stdio.h>
@@ -121,16 +121,17 @@ int main() {
         Ok(result + tab + "return 0;\n}")
     }
 
-    fn compile_std(&self, program: &StandardProgram) -> Result<String, String> {
+    fn build_std(&self, program: &StandardProgram) -> Result<String, String> {
         let StandardProgram(ops) = program;
         let mut result = String::from(
             r#"#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-typedef union {
+typedef union int_or_float {
     long long int i;
     double f;
+    union int_or_float *p;
 } int_or_float;
 int_or_float tape[30000], *ref_stack[30000], *ptr = tape, reg, tmp;
 unsigned int ref_stack_ptr = 0;
@@ -168,10 +169,10 @@ int main() {
                     result += &format!("{}printf(\"%lld\", reg.i);\n", tab.repeat(indent));
                 }
                 StandardOp::GetFloat => {
-                    result += &format!("{}scanf(\"%f\", &reg.f);\n", tab.repeat(indent));
+                    result += &format!("{}scanf(\"%lf\", &reg.f);\n", tab.repeat(indent));
                 }
                 StandardOp::PutFloat => {
-                    result += &format!("{}printf(\"%f\", reg.f);\n", tab.repeat(indent));
+                    result += &format!("{}printf(\"%lg\", reg.f);\n", tab.repeat(indent));
                 }
 
                 StandardOp::Swap => {
@@ -315,15 +316,12 @@ int main() {
                 }
                 StandardOp::CoreOp(CoreOp::Deref) => {
                     result += &format!(
-                        "{}ref_stack[ref_stack_ptr++] = ptr; ptr = ptr->i;\n",
+                        "{}ref_stack[ref_stack_ptr++] = ptr; ptr = ptr->p;\n",
                         tab.repeat(indent)
                     );
                 }
                 StandardOp::CoreOp(CoreOp::Refer) => {
-                    result += &format!(
-                        "{}ptr = (int_or_float*)ref_stack[--ref_stack_ptr];\n",
-                        tab.repeat(indent)
-                    );
+                    result += &format!("{}ptr = ref_stack[--ref_stack_ptr];\n", tab.repeat(indent));
                 }
 
                 StandardOp::CoreOp(CoreOp::Inc) => {

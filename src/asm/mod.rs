@@ -31,17 +31,6 @@ pub use location::{Location, A, B, C, D, E, F, FP, SP};
 pub trait AssemblyProgram {
     fn op(&mut self, op: CoreOp);
     fn std_op(&mut self, op: StandardOp) -> Result<(), Error>;
-    fn code(&self) -> Result<CoreProgram, StandardProgram>;
-
-    fn assemble(
-        &self,
-        allowed_recursion_depth: usize,
-    ) -> Result<Result<vm::CoreProgram, vm::StandardProgram>, Error> {
-        match self.code() {
-            Ok(core_prog) => Ok(Ok(core_prog.assemble(allowed_recursion_depth)?)),
-            Err(std_prog) => Ok(Err(std_prog.assemble(allowed_recursion_depth)?)),
-        }
-    }
 }
 
 /// An environment used to assemble a program.

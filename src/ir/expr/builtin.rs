@@ -19,7 +19,7 @@ impl GetType for CoreBuiltin {
 }
 
 impl Compile for CoreBuiltin {
-    fn compile(self, _env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    fn compile_expr(self, _env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         self.body.into_iter().for_each(|op| output.op(op));
         Ok(())
     }
@@ -27,10 +27,10 @@ impl Compile for CoreBuiltin {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct StandardBuiltin {
-    name: String,
-    args: Vec<(String, Type)>,
-    ret: Type,
-    body: Vec<StandardOp>,
+    pub name: String,
+    pub args: Vec<(String, Type)>,
+    pub ret: Type,
+    pub body: Vec<StandardOp>,
 }
 
 impl GetType for StandardBuiltin {
@@ -43,7 +43,7 @@ impl GetType for StandardBuiltin {
 }
 
 impl Compile for StandardBuiltin {
-    fn compile(self, _env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    fn compile_expr(self, _env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         for op in self.body {
             output.std_op(op)?
         }

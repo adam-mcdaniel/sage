@@ -35,9 +35,12 @@ pub enum Error {
     NonSymbol(ConstExpr),
     InvalidIndex(Expr),
     InvalidRefer(Expr),
+    InvalidBinop(Expr),
 
     SymbolNotDefined(String),
     TypeNotDefined(String),
+
+    InvalidAs(Expr),
 }
 
 impl From<crate::asm::Error> for Error {

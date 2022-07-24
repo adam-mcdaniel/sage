@@ -38,7 +38,7 @@ impl GetType for Procedure {
 }
 
 impl Compile for Procedure {
-    fn compile(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         // Compile the contents of the procedure under a new environment
         let mut new_env = Env::default();
         // Declare the arguments and get their size
@@ -48,7 +48,7 @@ impl Compile for Procedure {
         // Declare the function body
         output.op(CoreOp::Fn(self.name.clone()));
         // Execute the body to leave the return value
-        self.body.compile(&mut new_env, output)?;
+        self.body.compile_expr(&mut new_env, output)?;
 
         // Overwrite the arguments with the return value
         output.op(CoreOp::Copy {

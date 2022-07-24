@@ -11,7 +11,7 @@ mod builtin;
 pub use builtin::*;
 
 use super::{Env, Error, GetSize, Type};
-use crate::asm::AssemblyProgram;
+use crate::asm::{AssemblyProgram, CoreProgram, StandardProgram};
 
 pub trait GetType {
     fn get_type(&self, env: &Env) -> Result<Type, Error> {
@@ -31,5 +31,22 @@ where
 }
 
 pub trait Compile {
-    fn compile(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error>;
+    fn compile(self) -> Result<Result<CoreProgram, StandardProgram>, Error>
+    where
+        Self: Sized + Clone,
+    {
+        let mut core_asm = CoreProgram(vec![]);
+        if self
+            .clone()
+            .compile_expr(&mut Env::default(), &mut core_asm)
+            .is_err()
+        {
+            let mut std_asm = StandardProgram(vec![]);
+            self.compile_expr(&mut Env::default(), &mut std_asm)?;
+            Ok(Err(std_asm))
+        } else {
+            Ok(Ok(core_asm))
+        }
+    }
+    fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error>;
 }

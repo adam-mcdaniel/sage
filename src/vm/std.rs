@@ -1,9 +1,40 @@
 //! The standard instructions of the virtual machine are defined here.
 //!
+//! ## Purpose of the Standard Instructions
+//!
 //! Standard instructions are instructions that *should* be implemented for
 //! every target possible. Standard instructions should only not be implemented
 //! for targets like physical hardware, where the program is executed on the
 //! bare metal (a custom CPU or FPGA).
+//!
+//! Additionally, an implementation may implement *some* of the standard
+//! instructions, but not all of them. This is to allow for the implementation
+//! of a target to be as flexible as possible. A target may, for example,
+//! not support a `GetFloat` instruction, but it may support other floating
+//! point operations.
+//!
+//! ## Additional I/O Instructions
+//!
+//! The standard instructions also introduce new I/O instructions:
+//! 1. `GetChar` and `PutChar`. These get a character of input
+//!    from the *user*.
+//! 2. `GetInt` and `PutInt`. These get an integer of input from
+//!    the *user*.
+//! 3. `GetFloat` and `PutFloat`. These get a floating point value
+//!    from the *user*.
+//!
+//! I emphasize the *user* here, because I want to clarify that these instructions
+//! are intended to talk directly with the user. `Get` and `Put`, in the core
+//! instructions, function as a universal bus of communication.
+//!
+//! If you `Get`, you're getting data from the world encoded in an ambiguous manner.
+//! If you `GetChar`, though, you're *guaranteed* to get a character of input from
+//! the user directly. These instructions guarantee standard programs the ability
+//! to request data from the user.
+//!
+//! This way, a developer can write a program in such a manner that user input
+//! cannot be confused with custom encoded instructions sent to and from the I/O device
+//! using `Put` and `Get`.
 use super::{CoreOp, CoreProgram, Error, VirtualMachineProgram};
 use core::fmt;
 
@@ -40,7 +71,7 @@ impl fmt::Debug for StandardProgram {
         for (i, op) in self.0.iter().enumerate() {
             writeln!(
                 f,
-                "{:04}: {}{:?}",
+                "{:04x?}: {}{:?}",
                 i,
                 match op {
                     StandardOp::CoreOp(CoreOp::Function)

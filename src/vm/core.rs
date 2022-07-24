@@ -30,7 +30,7 @@ impl fmt::Debug for CoreProgram {
         for (i, op) in self.0.iter().enumerate() {
             writeln!(
                 f,
-                "{:04}: {}{:?}",
+                "{:04x?}: {}{:?}",
                 i,
                 match op {
                     CoreOp::Function | CoreOp::If | CoreOp::While => {

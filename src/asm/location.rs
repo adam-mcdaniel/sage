@@ -264,6 +264,24 @@ impl Location {
         self.save_to(result);
     }
 
+    /// Perform a `StandardOp` as an abstract binary operation.
+    /// Essentially, if you pass an instruction such as `Add`, `Sub`, etc.,
+    /// then the corresponding operation will be performed such that:
+    /// `self` is the destination, and `src` is the source.
+    fn std_binop(
+        &self,
+        op: vm::StandardOp,
+        src: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) -> Result<(), Error> {
+        self.restore_from(result);
+        src.to(result);
+        result.std_op(op)?;
+        src.from(result);
+        self.save_to(result);
+        Ok(())
+    }
+
     /// If this cell is non-zero, then the value of this location is now 0.
     /// Otherwise, the value of this location is now 1.
     ///
@@ -385,6 +403,51 @@ impl Location {
         self.binop(vm::CoreOp::Rem, src, result);
     }
 
+    /// This cell += source cell.
+    pub fn add_float(
+        &self,
+        src: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) -> Result<(), Error> {
+        self.std_binop(vm::StandardOp::Add, src, result)
+    }
+
+    /// This cell -= source cell.
+    pub fn sub_float(
+        &self,
+        src: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) -> Result<(), Error> {
+        self.std_binop(vm::StandardOp::Sub, src, result)
+    }
+
+    /// This cell *= source cell.
+    pub fn mul_float(
+        &self,
+        src: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) -> Result<(), Error> {
+        self.std_binop(vm::StandardOp::Mul, src, result)
+    }
+
+    /// This cell /= source cell.
+    pub fn div_float(
+        &self,
+        src: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) -> Result<(), Error> {
+        self.std_binop(vm::StandardOp::Div, src, result)
+    }
+
+    /// This cell %= source cell.
+    pub fn rem_float(
+        &self,
+        src: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) -> Result<(), Error> {
+        self.std_binop(vm::StandardOp::Rem, src, result)
+    }
+
     /// This cell = a constant value.
     pub fn set(&self, val: isize, result: &mut dyn VirtualMachineProgram) {
         result.set_register(val);
@@ -438,6 +501,54 @@ impl Location {
 
     pub fn to_int(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.std_op(vm::StandardOp::ToInt, result)
+    }
+
+    pub fn get_float(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.to(result);
+        result.std_op(vm::StandardOp::GetFloat)?;
+        result.save();
+        self.from(result);
+        Ok(())
+    }
+
+    pub fn get_int(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.to(result);
+        result.std_op(vm::StandardOp::GetInt)?;
+        result.save();
+        self.from(result);
+        Ok(())
+    }
+
+    pub fn get_char(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.to(result);
+        result.std_op(vm::StandardOp::GetChar)?;
+        result.save();
+        self.from(result);
+        Ok(())
+    }
+
+    pub fn put_float(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.to(result);
+        result.restore();
+        result.std_op(vm::StandardOp::PutFloat)?;
+        self.from(result);
+        Ok(())
+    }
+
+    pub fn put_int(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.to(result);
+        result.restore();
+        result.std_op(vm::StandardOp::PutInt)?;
+        self.from(result);
+        Ok(())
+    }
+
+    pub fn put_char(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.to(result);
+        result.restore();
+        result.std_op(vm::StandardOp::PutChar)?;
+        self.from(result);
+        Ok(())
     }
 
     /// Store the value of this cell into another cell.

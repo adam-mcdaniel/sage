@@ -5,7 +5,7 @@
 //! portable, but probably not supported on older systems or
 //! hardware implementations.
 use super::{
-    location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP,
+    location::FP_STACK, AssemblyProgram, CoreOp, Env, Error, Location, F, FP, SP,
 };
 use crate::vm::{self, VirtualMachineProgram};
 use core::fmt;
@@ -44,7 +44,7 @@ impl fmt::Debug for StandardProgram {
         for (i, op) in self.0.iter().enumerate() {
             writeln!(
                 f,
-                "{:04}: {}{:?}",
+                "{:04x?}: {}{:?}",
                 i,
                 match op {
                     StandardOp::CoreOp(CoreOp::Fn(_))
@@ -75,11 +75,8 @@ impl AssemblyProgram for StandardProgram {
     }
 
     fn std_op(&mut self, op: super::StandardOp) -> Result<(), Error> {
-        Err(Error::UnsupportedInstruction(op))
-    }
-
-    fn code(&self) -> Result<CoreProgram, StandardProgram> {
-        Err(self.clone())
+        self.0.push(op);
+        Ok(())
     }
 }
 
@@ -94,6 +91,9 @@ pub enum StandardOp {
 
     Set(Location, f64),
     PushLiteral(f64),
+
+    ToFloat(Location),
+    ToInt(Location),
 
     Pow {
         src: Location,
@@ -204,7 +204,81 @@ impl StandardOp {
                     unsupported(self.clone())?
                 }
             }
-            _ => todo!(),
+
+            Self::ToFloat(loc) => {
+                if loc.to_float(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+            Self::ToInt(loc) => {
+                if loc.to_int(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::Add { src, dst } => {
+                if dst.add_float(src, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::Sub { src, dst } => {
+                if dst.sub_float(src, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::Mul { src, dst } => {
+                if dst.mul_float(src, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::Div { src, dst } => {
+                if dst.div_float(src, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::Rem { src, dst } => {
+                if dst.rem_float(src, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::PutChar(loc) => {
+                if loc.put_char(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+            Self::GetChar(loc) => {
+                if loc.get_char(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+            Self::PutInt(loc) => {
+                if loc.put_int(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+            Self::GetInt(loc) => {
+                if loc.get_int(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+            Self::PutFloat(loc) => {
+                if loc.put_float(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+            Self::GetFloat(loc) => {
+                if loc.get_float(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+            _ => {
+                panic!("unimplemented {:?}", self)
+            }
         }
         Ok(())
     }

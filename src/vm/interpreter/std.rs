@@ -1,13 +1,13 @@
 use crate::vm::{CoreOp, Device, StandardDevice, StandardOp, StandardProgram};
+use std::io::{stderr, stdin, Read, Write};
 
-fn as_float(n: isize) -> f64 {
+pub fn as_float(n: isize) -> f64 {
     f64::from_bits(n as u64)
 }
 
-fn as_int(n: f64) -> isize {
+pub fn as_int(n: f64) -> isize {
     n.to_bits() as isize
 }
-
 
 impl Default for StandardInterpreter<StandardDevice> {
     fn default() -> Self {
@@ -300,6 +300,7 @@ where
                     CoreOp::Put => self.device.put(self.register)?,
                 },
 
+                StandardOp::Set(n) => self.register = as_int(*n),
                 StandardOp::ToInt => {
                     // self.register = f64::from_bits(self.register as u64) as isize
                     self.register = as_float(self.register) as isize;
@@ -351,7 +352,53 @@ where
                     self.register = as_int(as_float(self.register).powf(as_float(*self.get_cell())))
                 }
 
-                _ => unimplemented!(),
+                StandardOp::GetFloat => {
+                    let mut buf = String::new();
+                    if stderr().flush().is_err() {
+                        return Err("Could not flush output".to_string());
+                    }
+                    if stdin().read_line(&mut buf).is_err() {
+                        return Err("Could not get user input".to_string());
+                    }
+                    self.register = as_int(match buf.trim().parse::<f64>() {
+                        Ok(n) => n,
+                        Err(_) => 0.0,
+                    })
+                }
+                StandardOp::GetInt => {
+                    let mut buf = String::new();
+                    if stderr().flush().is_err() {
+                        return Err("Could not flush output".to_string());
+                    }
+                    if stdin().read_line(&mut buf).is_err() {
+                        return Err("Could not get user input".to_string());
+                    }
+                    self.register = match buf.trim().parse::<isize>() {
+                        Ok(n) => n,
+                        Err(_) => 0,
+                    }
+                }
+                StandardOp::GetChar => {
+                    let mut buf = [0];
+                    if stderr().flush().is_err() {
+                        return Err("Could not flush output".to_string());
+                    }
+                    if stdin().read(&mut buf).is_err() {
+                        return Err("Could not get user input".to_string());
+                    }
+                    self.register = buf[0] as isize;
+                }
+                StandardOp::PutFloat => {
+                    eprint!("{:?}", as_float(self.register))
+                }
+                StandardOp::PutInt => {
+                    eprint!("{:?}", self.register)
+                }
+                StandardOp::PutChar => {
+                    eprint!("{}", self.register as u8 as char)
+                }
+
+                op => panic!("unimplemented op: {:?}", op),
             }
             self.i += 1
         } else {

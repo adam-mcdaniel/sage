@@ -1,5 +1,5 @@
-use super::{super::Type, Compile, ConstExpr, Env, Error, GetSize, GetType};
-use crate::asm::{AssemblyProgram, CoreOp, A, B, C, FP, SP};
+use crate::asm::{AssemblyProgram, CoreOp, StandardOp, A, B, C, FP, SP};
+use crate::ir::{Compile, ConstExpr, Env, Error, GetSize, GetType, Type};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -14,6 +14,22 @@ pub enum Expr {
     If(Box<Self>, Box<Self>, Box<Self>),
     When(ConstExpr, Box<Self>, Box<Self>),
 
+    Add(Box<Self>, Box<Self>),
+    Sub(Box<Self>, Box<Self>),
+    Mul(Box<Self>, Box<Self>),
+    Div(Box<Self>, Box<Self>),
+    Rem(Box<Self>, Box<Self>),
+
+    And(Box<Self>, Box<Self>),
+    Or(Box<Self>, Box<Self>),
+    Not(Box<Self>),
+
+    // Lt(Box<Self>, Box<Self>),
+    // Le(Box<Self>, Box<Self>),
+    // Gt(Box<Self>, Box<Self>),
+    // Ge(Box<Self>, Box<Self>),
+    // Eq(Box<Self>, Box<Self>),
+    // Neq(Box<Self>, Box<Self>),
     Refer(Box<Self>),
     Deref(Box<Self>),
     DerefMut(Box<Self>, Box<Self>),
@@ -26,6 +42,8 @@ pub enum Expr {
     Union(Type, String, Box<Self>),
     Struct(BTreeMap<String, Self>),
 
+    As(Box<Self>, Type),
+
     Member(Box<Self>, ConstExpr),
     Index(Box<Self>, Box<Self>),
 }
@@ -37,6 +55,42 @@ impl From<ConstExpr> for Expr {
 }
 
 impl Expr {
+    pub fn as_type(self, t: Type) -> Self {
+        Expr::As(Box::new(self), t)
+    }
+
+    pub fn not(self) -> Self {
+        Expr::Not(Box::new(self))
+    }
+
+    pub fn and(self, other: impl Into<Self>) -> Self {
+        Expr::And(Box::new(self), Box::new(other.into()))
+    }
+
+    pub fn or(self, other: impl Into<Self>) -> Self {
+        Expr::Or(Box::new(self), Box::new(other.into()))
+    }
+
+    pub fn add(self, other: impl Into<Self>) -> Self {
+        Expr::Add(Box::new(self), Box::new(other.into()))
+    }
+
+    pub fn sub(self, other: impl Into<Self>) -> Self {
+        Expr::Sub(Box::new(self), Box::new(other.into()))
+    }
+
+    pub fn mul(self, other: impl Into<Self>) -> Self {
+        Expr::Mul(Box::new(self), Box::new(other.into()))
+    }
+
+    pub fn div(self, other: impl Into<Self>) -> Self {
+        Expr::Div(Box::new(self), Box::new(other.into()))
+    }
+
+    pub fn rem(self, other: impl Into<Self>) -> Self {
+        Expr::Rem(Box::new(self), Box::new(other.into()))
+    }
+
     pub fn field(self, field: ConstExpr) -> Self {
         Expr::Member(Box::new(self), field)
     }
@@ -100,38 +154,132 @@ impl Expr {
 }
 
 impl Compile for Expr {
-    fn compile(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         match self {
-            Self::ConstExpr(expr) => expr.compile(env, output)?,
+            Self::ConstExpr(expr) => expr.compile_expr(env, output)?,
             Self::Many(exprs) => {
                 for expr in exprs {
-                    expr.compile(env, output)?;
+                    expr.compile_expr(env, output)?;
                 }
+            }
+
+            Self::As(ref expr, ref t) => {
+                expr.clone().compile_expr(env, output)?;
+                match (expr.get_type(env)?, t) {
+                    (Type::Int, Type::Float) => {
+                        output.std_op(StandardOp::ToFloat(SP.deref()))?;
+                    }
+                    (Type::Float, Type::Int) => {
+                        output.std_op(StandardOp::ToInt(SP.deref()))?;
+                    }
+                    (a, b) if a.get_size(env)? == b.get_size(env)? => {}
+                    _ => {
+                        return Err(Error::InvalidAs(self));
+                    }
+                }
+            }
+
+            Self::And(a, b) => {
+                a.compile_expr(env, output)?;
+                b.compile_expr(env, output)?;
+                output.op(CoreOp::And {
+                    src: SP.deref(),
+                    dst: SP.deref().offset(-1),
+                });
+                output.op(CoreOp::Pop(None, 1));
+            }
+            Self::Or(a, b) => {
+                a.compile_expr(env, output)?;
+                b.compile_expr(env, output)?;
+                output.op(CoreOp::Or {
+                    src: SP.deref(),
+                    dst: SP.deref().offset(-1),
+                });
+                output.op(CoreOp::Pop(None, 1));
+            }
+            Self::Not(x) => {
+                x.compile_expr(env, output)?;
+                output.op(CoreOp::Not(SP.deref()));
+            }
+
+            Self::Add(ref a, ref b)
+            | Self::Sub(ref a, ref b)
+            | Self::Mul(ref a, ref b)
+            | Self::Div(ref a, ref b)
+            | Self::Rem(ref a, ref b) => {
+                let src = SP.deref();
+                let dst = SP.deref().offset(-1);
+                let core_op = match self {
+                    Self::Add(_, _) => CoreOp::Add { src, dst },
+                    Self::Sub(_, _) => CoreOp::Sub { src, dst },
+                    Self::Mul(_, _) => CoreOp::Mul { src, dst },
+                    Self::Div(_, _) => CoreOp::Div { src, dst },
+                    Self::Rem(_, _) => CoreOp::Rem { src, dst },
+                    _ => unreachable!(),
+                };
+                let src = SP.deref();
+                let dst = SP.deref().offset(-1);
+                let std_op = match self {
+                    Self::Add(_, _) => StandardOp::Add { src, dst },
+                    Self::Sub(_, _) => StandardOp::Sub { src, dst },
+                    Self::Mul(_, _) => StandardOp::Mul { src, dst },
+                    Self::Div(_, _) => StandardOp::Div { src, dst },
+                    Self::Rem(_, _) => StandardOp::Rem { src, dst },
+                    _ => unreachable!(),
+                };
+                a.clone().compile_expr(env, output)?;
+                b.clone().compile_expr(env, output)?;
+                match (a.get_type(env)?, b.get_type(env)?) {
+                    (Type::Cell, Type::Float) | (Type::Float, Type::Cell) => {
+                        output.std_op(std_op)?;
+                    }
+
+                    (Type::Int, Type::Int)
+                    | (Type::Cell, Type::Cell)
+                    | (Type::Cell, Type::Int)
+                    | (Type::Int, Type::Cell) => {
+                        output.op(core_op);
+                    }
+                    (Type::Float, Type::Float) => {
+                        output.std_op(std_op)?;
+                    }
+
+                    (Type::Int, Type::Float) => {
+                        output.std_op(StandardOp::ToFloat(SP.deref().offset(-1)))?;
+                        output.std_op(std_op)?;
+                    }
+                    (Type::Float, Type::Int) => {
+                        output.std_op(StandardOp::ToFloat(SP.deref()))?;
+                        output.std_op(std_op)?;
+                    }
+                    _ => return Err(Error::InvalidBinop(self.clone())),
+                }
+                output.op(CoreOp::Pop(None, 1));
             }
 
             Self::Const(name, expr, body) => {
                 let mut new_env = env.clone();
                 new_env.consts.insert(name, expr);
-                body.compile(&mut new_env, output)?;
+                body.compile_expr(&mut new_env, output)?;
             }
             Self::Apply(f, args) => match *f {
                 Expr::ConstExpr(ConstExpr::CoreBuiltin(builtin)) => {
                     for arg in args {
-                        arg.compile(env, output)?;
+                        arg.compile_expr(env, output)?;
                     }
-                    builtin.compile(env, output)?;
+                    builtin.compile_expr(env, output)?;
                 }
                 Expr::ConstExpr(ConstExpr::StandardBuiltin(builtin)) => {
                     for arg in args {
-                        arg.compile(env, output)?;
+                        arg.compile_expr(env, output)?;
                     }
-                    builtin.compile(env, output)?;
+                    builtin.compile_expr(env, output)?;
                 }
                 proc => {
                     for arg in args {
-                        arg.compile(env, output)?;
+                        arg.compile_expr(env, output)?;
                     }
-                    proc.compile(env, output)?;
+                    proc.compile_expr(env, output)?;
                     output.op(CoreOp::Pop(Some(A), 1));
                     output.op(CoreOp::Call(A));
                 }
@@ -140,7 +288,7 @@ impl Compile for Expr {
                 let args_size = env.get_args_size();
                 let ret_size = e.get_size(env)?;
                 // Execute the body to leave the return value
-                e.compile(env, output)?;
+                e.compile_expr(env, output)?;
 
                 // Overwrite the arguments with the return value
                 output.op(CoreOp::Copy {
@@ -166,7 +314,7 @@ impl Compile for Expr {
                 };
                 output.op(CoreOp::Comment(format!("begin let '{name}' val")));
                 // Compile the expression to leave the value on the stack.
-                e.compile(env, output)?;
+                e.compile_expr(env, output)?;
                 output.op(CoreOp::Comment(format!("begin let '{name}' body")));
 
                 // Create a new scope
@@ -178,7 +326,7 @@ impl Compile for Expr {
                 let result_type = body.get_type(&new_env)?;
                 let result_size = result_type.get_size(&new_env)?;
                 // Compile the body under the new scope
-                body.compile(&mut new_env, output)?;
+                body.compile_expr(&mut new_env, output)?;
 
                 output.op(CoreOp::Comment(format!("destruct '{name}'")));
                 output.op(CoreOp::Copy {
@@ -193,39 +341,39 @@ impl Compile for Expr {
             }
             Self::While(cond, body) => {
                 // Eval the condition
-                cond.clone().compile(env, output)?;
+                cond.clone().compile_expr(env, output)?;
                 output.op(CoreOp::Pop(Some(A), 1));
                 // While the condition
                 output.op(CoreOp::While(A));
                 // Compile the body
-                body.compile(env, output)?;
+                body.compile_expr(env, output)?;
                 // Eval the condition again
-                cond.compile(env, output)?;
+                cond.compile_expr(env, output)?;
                 output.op(CoreOp::Pop(Some(A), 1));
                 // Label the end of the loop
                 output.op(CoreOp::End);
             }
             Self::If(c, t, e) => {
                 // Compile the condition
-                c.clone().compile(env, output)?;
+                c.clone().compile_expr(env, output)?;
                 output.op(CoreOp::Pop(Some(A), 1));
                 // If the condition is true
                 output.op(CoreOp::If(A));
                 // Compile the true branch
-                t.compile(env, output)?;
+                t.compile_expr(env, output)?;
                 // If the condition is false
                 output.op(CoreOp::Else);
                 // Compile the false branch
-                e.compile(env, output)?;
+                e.compile_expr(env, output)?;
                 // Label the end of the if statement
                 output.op(CoreOp::End);
             }
-            Self::When(c, t, e) => if c.as_bool(env)? { t } else { e }.compile(env, output)?,
+            Self::When(c, t, e) => if c.as_bool(env)? { t } else { e }.compile_expr(env, output)?,
 
             Self::Deref(ptr) => {
                 // Compile the pointer
                 let ptr_type = ptr.get_type(env)?;
-                ptr.clone().compile(env, output)?;
+                ptr.clone().compile_expr(env, output)?;
                 if let Type::Pointer(inner) = ptr_type {
                     output.op(CoreOp::Pop(Some(A), 1));
                     output.op(CoreOp::Push(A.deref(), inner.get_size(env)?));
@@ -236,10 +384,10 @@ impl Compile for Expr {
             Self::DerefMut(ptr, val) => {
                 // Push the value to the stack
                 let val_type = val.get_type(env)?;
-                val.compile(env, output)?;
+                val.compile_expr(env, output)?;
 
                 // Compile the pointer
-                ptr.compile(env, output)?;
+                ptr.compile_expr(env, output)?;
 
                 // Get the size of the value to store
                 let size = val_type.get_size(env)?;
@@ -258,21 +406,21 @@ impl Compile for Expr {
             Self::Array(elems) => {
                 // Compile the elements
                 for elem in elems {
-                    elem.compile(env, output)?;
+                    elem.compile_expr(env, output)?;
                 }
             }
 
             Self::Tuple(items) => {
                 // Compile the items
                 for item in items {
-                    item.compile(env, output)?;
+                    item.compile_expr(env, output)?;
                 }
             }
 
             Self::Struct(items) => {
                 // Compile the items
                 for (_, val) in items {
-                    val.compile(env, output)?;
+                    val.compile_expr(env, output)?;
                 }
             }
 
@@ -282,12 +430,13 @@ impl Compile for Expr {
                 let result_size = result_type.get_size(env)?;
                 let val_size = val.get_size(env)?;
 
-                val.compile(env, output)?;
+                val.compile_expr(env, output)?;
                 output.op(CoreOp::Next(
                     SP,
                     Some(result_size as isize - val_size as isize),
                 ));
             }
+            
             Self::Index(val, idx) => {
                 let t = Self::Index(val.clone(), idx.clone()).get_type(env)?;
                 let size = t.get_size(env)?;
@@ -296,8 +445,8 @@ impl Compile for Expr {
                 match val_type {
                     Type::Array(ref elem, _) => {
                         let elem_size = elem.get_size(env)?;
-                        val.compile(env, output)?;
-                        idx.compile(env, output)?;
+                        val.compile_expr(env, output)?;
+                        idx.compile_expr(env, output)?;
 
                         output.op(CoreOp::Pop(Some(B), 1));
                         output.op(CoreOp::Set(A, elem_size as isize));
@@ -321,8 +470,8 @@ impl Compile for Expr {
                         output.op(CoreOp::Pop(None, val_size - size));
                     }
                     Type::Pointer(elem) => {
-                        idx.compile(env, output)?;
-                        val.compile(env, output)?;
+                        idx.compile_expr(env, output)?;
+                        val.compile_expr(env, output)?;
 
                         let elem_size = elem.get_size(env)?;
                         output.op(CoreOp::Pop(Some(A), 1));
@@ -345,7 +494,7 @@ impl Compile for Expr {
                 let val_type = val.get_type(env)?;
                 let val_size = val_type.get_size(env)?;
                 let offset = val_type.get_member_offset(member, &self, env)?;
-                val.clone().compile(env, output)?;
+                val.clone().compile_expr(env, output)?;
                 output.op(CoreOp::Copy {
                     src: SP.deref().offset(1 - val_size as isize + offset as isize),
                     dst: SP.deref().offset(1 - val_size as isize),
@@ -372,11 +521,11 @@ impl Compile for Expr {
                     }
                 }
                 Expr::Deref(ptr) => {
-                    ptr.compile(env, output)?;
+                    ptr.compile_expr(env, output)?;
                 }
                 Expr::Member(val, name) => {
                     let val_type = val.get_type(env)?;
-                    Self::Refer(val.clone()).compile(env, output)?;
+                    Self::Refer(val.clone()).compile_expr(env, output)?;
                     let offset = val_type.get_member_offset(&name, &*val, env)?;
                     output.op(CoreOp::Pop(Some(A), 1));
                     output.op(CoreOp::Set(B, offset as isize));
@@ -392,8 +541,8 @@ impl Compile for Expr {
                     let val_type = val.get_type(env)?;
                     match val_type {
                         Type::Array(ref elem, _) => {
-                            Self::Refer(val.clone()).compile(env, output)?;
-                            idx.compile(env, output)?;
+                            Self::Refer(val.clone()).compile_expr(env, output)?;
+                            idx.compile_expr(env, output)?;
 
                             let elem_size = elem.get_size(env)?;
                             output.op(CoreOp::Pop(Some(B), 1));
@@ -409,8 +558,8 @@ impl Compile for Expr {
                             output.op(CoreOp::Push(C, 1));
                         }
                         Type::Pointer(elem) => {
-                            idx.compile(env, output)?;
-                            val.compile(env, output)?;
+                            idx.compile_expr(env, output)?;
+                            val.compile_expr(env, output)?;
 
                             let elem_size = elem.get_size(env)?;
                             output.op(CoreOp::Pop(Some(A), 1));
@@ -448,6 +597,25 @@ impl GetType for Expr {
                     Type::None
                 }
             }
+
+            Self::As(_, t) => t.clone(),
+
+            Self::Add(a, b)
+            | Self::Sub(a, b)
+            | Self::Mul(a, b)
+            | Self::Div(a, b)
+            | Self::Rem(a, b) => match (a.get_type(env)?, b.get_type(env)?) {
+                (Type::Float, Type::Float)
+                | (Type::Int, Type::Float)
+                | (Type::Float, Type::Int) => Type::Float,
+                (Type::Cell, Type::Int)
+                | (Type::Int, Type::Cell)
+                | (Type::Int, Type::Int) => Type::Int,
+                (Type::Cell, Type::Cell) => Type::Cell,
+                _ => return Err(Error::InvalidBinop(self.clone())),
+            },
+
+            Self::And(_, _) | Self::Or(_, _) | Self::Not(_) => Type::Bool,
 
             Self::Const(var, const_val, ret) => {
                 let mut new_env = env.clone();

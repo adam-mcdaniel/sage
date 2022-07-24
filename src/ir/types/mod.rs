@@ -8,6 +8,7 @@ pub enum Type {
     None,
     Int,
     Float,
+    Cell,
     Char,
     Bool,
     Enum(Vec<String>),
@@ -78,6 +79,7 @@ impl GetSize for Type {
             | Self::Float
             | Self::Char
             | Self::Bool
+            | Self::Cell
             | Self::Enum(_)
             | Self::Pointer(_)
             | Self::Proc(_, _) => 1,
@@ -118,6 +120,7 @@ impl Simplify for Type {
             | Self::Float
             | Self::Char
             | Self::Bool
+            | Self::Cell
             | Self::Enum(_) => self.clone(),
             Self::Pointer(inner) => Self::Pointer(Box::new(inner.simplify_checked(env, i)?)),
 

@@ -1,7 +1,7 @@
 use asm::{
-    asm::{CoreOp, CoreProgram, SP},
+    asm::{CoreOp, CoreProgram, StandardProgram, SP},
     ir::*,
-    vm::{CoreInterpreter, TestingDevice},
+    vm::{as_int, CoreInterpreter, StandardInterpreter, TestingDevice},
 };
 use maplit::btreemap;
 
@@ -57,7 +57,7 @@ fn test_struct() {
         })]),
     );
 
-    expr.compile(&mut env, &mut program).unwrap();
+    expr.compile_expr(&mut env, &mut program).unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new("testing\n"));
     let vm_code = program.assemble(16).unwrap();
@@ -118,7 +118,7 @@ fn test_scopes() {
         ])]),
     );
 
-    expr.compile(&mut env, &mut program).unwrap();
+    expr.compile_expr(&mut env, &mut program).unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new("testing\n"));
     let vm_code = program.assemble(16).unwrap();
@@ -184,7 +184,7 @@ fn test_tuples() {
             Expr::Tuple(vec![ConstExpr::Int(2).into(), ConstExpr::Int(3).into()]),
         ])])]),
     );
-    expr.compile(&mut env, &mut program).unwrap();
+    expr.compile_expr(&mut env, &mut program).unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new("testing\n"));
     let vm_code = program.assemble(16).unwrap();
@@ -245,7 +245,7 @@ fn test_array() {
         ])]),
     );
 
-    expr.compile(&mut env, &mut program).unwrap();
+    expr.compile_expr(&mut env, &mut program).unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new("testing\n"));
     let vm_code = program.assemble(16).unwrap();
@@ -317,7 +317,7 @@ fn test_nested_arrays() {
             ),
         ),
     );
-    expr.compile(&mut env, &mut program).unwrap();
+    expr.compile_expr(&mut env, &mut program).unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new("testing\n"));
     let vm_code = program.assemble(16).unwrap();
@@ -411,16 +411,13 @@ fn test_nested_structs() {
         ]),
     );
 
-    expr.compile(&mut env, &mut program).unwrap();
+    expr.compile_expr(&mut env, &mut program).unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new("testing\n"));
     let vm_code = program.assemble(16).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(
-        device.output,
-        vec![3, 8, 5, 1, 2, 3, 10, 3, 8, 5, 5, 4, 3]
-    );
+    assert_eq!(device.output, vec![3, 8, 5, 1, 2, 3, 10, 3, 8, 5, 5, 4, 3]);
 }
 
 #[test]
@@ -486,7 +483,7 @@ fn test_union() {
             ),
         ])])]),
     );
-    expr.compile(&mut env, &mut program).unwrap();
+    expr.compile_expr(&mut env, &mut program).unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new("testing\n"));
     let vm_code = program.assemble(16).unwrap();
@@ -595,7 +592,7 @@ fn test_struct2() {
         ),
     );
 
-    expr.compile(&mut env, &mut program).unwrap();
+    expr.compile_expr(&mut env, &mut program).unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new("testing\n"));
     let vm_code = program.assemble(16).unwrap();
@@ -641,7 +638,7 @@ fn test_mixed_types() {
     .field(ConstExpr::Int(2))
     .idx(ConstExpr::Int(0))]);
 
-    expr.compile(&mut env, &mut program).unwrap();
+    expr.compile_expr(&mut env, &mut program).unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new("testing\n"));
     let vm_code = program.assemble(16).unwrap();
@@ -649,8 +646,6 @@ fn test_mixed_types() {
 
     assert_eq!(device.output_str(), "c");
 }
-
-
 
 #[test]
 fn test_loop() {
@@ -686,20 +681,15 @@ fn test_loop() {
         "a",
         None,
         ConstExpr::Int(6),
-        Expr::var("a").while_loop(
-            Expr::Many(vec![
-                Expr::var("a").refer().deref_mut(
-                    sub.app(vec![
-                        Expr::var("a"),
-                        ConstExpr::Int(1).into(),
-                    ])
-                ),
-                put.app(vec![Expr::var("a")])
-            ])
-        ),
+        Expr::var("a").while_loop(Expr::Many(vec![
+            Expr::var("a")
+                .refer()
+                .deref_mut(sub.app(vec![Expr::var("a"), ConstExpr::Int(1).into()])),
+            put.app(vec![Expr::var("a")]),
+        ])),
     );
 
-    expr.compile(&mut env, &mut program).unwrap();
+    expr.compile_expr(&mut env, &mut program).unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new("testing\n"));
     let vm_code = program.assemble(16).unwrap();
@@ -728,21 +718,135 @@ fn test_if() {
         "a",
         None,
         ConstExpr::Int(6),
-        put.app(vec![
-            Expr::from(ConstExpr::Int(1))
-                .if_then(
-                    Expr::from(ConstExpr::Int(0))
-                        .if_then(ConstExpr::Char('a'), ConstExpr::Char('b')),
-                    ConstExpr::Char('c')
-                )
-        ])
+        put.app(vec![Expr::from(ConstExpr::Int(1)).if_then(
+            Expr::from(ConstExpr::Int(0)).if_then(ConstExpr::Char('a'), ConstExpr::Char('b')),
+            ConstExpr::Char('c'),
+        )]),
     );
 
-    expr.compile(&mut env, &mut program).unwrap();
+    expr.compile_expr(&mut env, &mut program).unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new("testing\n"));
     let vm_code = program.assemble(16).unwrap();
     let device = i.run(&vm_code).unwrap();
 
     assert_eq!(device.output_str(), "b");
+}
+
+#[test]
+fn test_int_arithmetic() {
+    let mut env = Env::default();
+    let mut program = CoreProgram(vec![]);
+
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Comment("Put an integer from the stack".to_string()),
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let get = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "get".to_string(),
+        args: vec![],
+        ret: Type::Cell,
+        body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref())],
+    });
+
+    // The program to compile
+    let expr = put.app(vec![Expr::from(ConstExpr::Int(16))
+        .add(ConstExpr::Int(1))
+        .div(ConstExpr::Int(2))
+        .mul(get.app(vec![]))
+        .rem(ConstExpr::Int(11))]);
+
+    expr.compile_expr(&mut env, &mut program).unwrap();
+
+    let i = CoreInterpreter::new(TestingDevice::new_raw(vec![5]));
+    let vm_code = program.assemble(16).unwrap();
+    let device = i.run(&vm_code).unwrap();
+
+    assert_eq!(device.output, vec![7]);
+}
+
+#[test]
+fn test_float_arithmetic() {
+    let mut env = Env::default();
+    let mut program = StandardProgram(vec![]);
+
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Comment("Put an integer from the stack".to_string()),
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let get = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "get".to_string(),
+        args: vec![],
+        ret: Type::Cell,
+        body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref())],
+    });
+
+    // The program to compile
+    let expr = put.app(vec![Expr::from(ConstExpr::Int(16))
+        .add(ConstExpr::Float(1.2))
+        .div(ConstExpr::Int(2))
+        .mul(get.app(vec![]).as_type(Type::Float))]);
+
+    expr.compile_expr(&mut env, &mut program).unwrap();
+
+    let i = StandardInterpreter::new(TestingDevice::new_raw(vec![as_int(2.2)]));
+    let vm_code = program.assemble(16).unwrap();
+    let device = i.run(&vm_code).unwrap();
+
+    assert_eq!(device.output, vec![as_int(18.92)]);
+}
+
+
+#[test]
+fn test_as() {
+    let mut env = Env::default();
+    let mut program = StandardProgram(vec![]);
+
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Comment("Put an integer from the stack".to_string()),
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let get = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "get".to_string(),
+        args: vec![],
+        ret: Type::Cell,
+        body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref())],
+    });
+
+    // The program to compile
+    let expr = put.app(vec![
+        get.clone().app(vec![]).as_type(Type::Int)
+            .add(get.clone().app(vec![]).as_type(Type::Float))
+            .mul(get.app(vec![]).as_type(Type::Float))
+            .as_type(Type::Int)
+    ]);
+
+    expr.compile_expr(&mut env, &mut program).unwrap();
+
+    let i = StandardInterpreter::new(TestingDevice::new_raw(vec![5, as_int(5.0), as_int(2.5)]));
+    let vm_code = program.assemble(16).unwrap();
+    let device = i.run(&vm_code).unwrap();
+
+    assert_eq!(device.output, vec![25]);
 }

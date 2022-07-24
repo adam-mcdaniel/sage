@@ -3,7 +3,7 @@ pub use self::core::*;
 mod std;
 pub use self::std::*;
 
-use ::std::io::{stdin, stdout, Read, Write};
+use ::std::{collections::VecDeque, io::{stdin, stdout, Read, Write}};
 
 /// Create an input / output device for the virtual machine interpreter
 /// to operate on. The method `get` retrieves the device's input, and the
@@ -19,10 +19,19 @@ pub trait Device {
 ///
 /// The tests interpret the program and populate the device with output.
 /// Then, we check the devices output against the correct output.
-#[derive(Default)]
+#[derive(Debug)]
 pub struct TestingDevice {
-    pub input: Vec<isize>,
+    pub input: VecDeque<isize>,
     pub output: Vec<isize>,
+}
+
+impl Default for TestingDevice {
+    fn default() -> Self {
+        TestingDevice {
+            input: VecDeque::new(),
+            output: Vec::new(),
+        }
+    }
 }
 
 impl TestingDevice {
@@ -34,6 +43,13 @@ impl TestingDevice {
                 .chars()
                 .map(|ch| ch as isize)
                 .collect(),
+            output: vec![],
+        }
+    }
+
+    pub fn new_raw(input: Vec<isize>) -> Self {
+        Self {
+            input: input.into(),
             output: vec![],
         }
     }
@@ -51,8 +67,8 @@ impl TestingDevice {
 /// Make the testing device work with the interpreter.
 impl Device for TestingDevice {
     fn get(&mut self) -> Result<isize, String> {
-        if !self.input.is_empty() {
-            Ok(self.input.remove(0))
+        if let Some(n) = self.input.pop_front() {
+            Ok(n)
         } else {
             Err(String::from("ran out of input"))
         }

@@ -26,7 +26,7 @@
 //! using `Put`, and assuming-standard out, to display the integer in decimal.
 use super::{
     location::{FP_STACK, TMP},
-    AssemblyProgram, Env, Error, Location, StandardProgram, F, FP, SP,
+    AssemblyProgram, Env, Error, Location, F, FP, SP,
 };
 use crate::vm::{self, VirtualMachineProgram};
 use core::fmt;
@@ -69,7 +69,7 @@ impl fmt::Debug for CoreProgram {
         for (i, op) in self.0.iter().enumerate() {
             writeln!(
                 f,
-                "{:04}: {}{:?}",
+                "{:04x?}: {}{:?}",
                 i,
                 match op {
                     CoreOp::Fn(_) | CoreOp::If(_) | CoreOp::While(_) => {
@@ -99,10 +99,6 @@ impl AssemblyProgram for CoreProgram {
 
     fn std_op(&mut self, op: super::StandardOp) -> Result<(), Error> {
         Err(Error::UnsupportedInstruction(op))
-    }
-
-    fn code(&self) -> Result<CoreProgram, StandardProgram> {
-        Ok(self.clone())
     }
 }
 
