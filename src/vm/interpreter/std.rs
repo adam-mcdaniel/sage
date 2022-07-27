@@ -309,11 +309,6 @@ where
                     // self.register = (self.register as f64).to_bits() as isize
                     self.register = as_int(self.register as f64);
                 }
-                StandardOp::Swap => {
-                    let tmp = *self.get_cell();
-                    *self.get_cell() = self.register;
-                    self.register = tmp;
-                }
                 // let cell = f64::from_bits(*self.get_cell() as u64);
                 // self.register = (f64::from_bits(self.register as u64) + cell).to_bits() as isize;
                 StandardOp::Add => {

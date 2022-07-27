@@ -175,11 +175,6 @@ int main() {
                     result += &format!("{}printf(\"%lg\", reg.f);\n", tab.repeat(indent));
                 }
 
-                StandardOp::Swap => {
-                    result +=
-                        &format!("{}tmp = reg; reg = *ptr; *ptr = tmp;\n", tab.repeat(indent));
-                }
-
                 StandardOp::Add => {
                     result += &format!("{}reg.f += ptr->f;\n", tab.repeat(indent));
                 }

@@ -117,9 +117,6 @@ pub enum StandardOp {
     /// Convert the register from an integer to a float.
     ToFloat,
 
-    /// Swap the register with the value pointed to on the tape.
-    Swap,
-
     /// Add the value pointed to on the tape to the register (as floats).
     Add,
     /// Subtract the value pointed to on the tape from the register (as floats).
