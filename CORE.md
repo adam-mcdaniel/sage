@@ -53,7 +53,17 @@ These are the operators used for any math relation functionality.
 
 Each of the arithmetic operators function identically. For addition: `register += *ptr`. For subtraction: `register -= *ptr`. Very straightforward. Division (and remainder) by zero should halt the machine.
 
-![Addition](assets/add.svg) ![Subtract](assets/subtract.svg) ![Multiply](assets/multiply.svg) ![Divide](assets/divide.svg) ![Remainder](assets/remainder.svg)
+##### Add and Subtract
+
+![Addition](assets/add.svg) ![Subtract](assets/subtract.svg)
+
+##### Multiply and Divide
+
+![Multiply](assets/multiply.svg) ![Divide](assets/divide.svg)
+
+##### Remainder
+
+![Remainder](assets/remainder.svg)
 
 ## Control
 
