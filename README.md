@@ -1,5 +1,6 @@
 # Unnamed Language
 
+[Here's an example of the compilation process.](assets/compiled.md#example-compiled-program)
 
 ## The Compiler Caveat
 
@@ -71,5 +72,3 @@ Every target should provide a chart of the standard instructions showing which a
 While the virtual machine itself is meant to be as small as possible, the stages of IR built on top of it are meant to be as high level as possible. The assembly language has many instructions: *there are seven different instructions for comparisons!!*
 
 The assembly language is also split into two halves as well: one built on the pure, Core variant, and the other built on the Standard variant. This way, programs can be compiled for maximum portability, but use standard instructions if necessary as a fallback.
-
-[Here's an example Core variant assembly program.](assets/asm.md)
