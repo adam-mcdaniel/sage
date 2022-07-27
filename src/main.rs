@@ -1,276 +1,135 @@
-use asm::{CompilerTarget, asm::*, targets};
-
+use asm::{
+    asm::{CoreOp, StandardOp, SP},
+    ir::*,
+    targets::*,
+    vm::{CoreInterpreter, StandardInterpreter, TestingDevice},
+};
 
 fn main() {
-    use CoreOp::*;
-    // let program = CoreProgram(vec![
-    //     Fn(String::from("cmp")),
-    //         Compare {
-    //             dst: C,
-    //             a: A,
-    //             b: B,
-    //         },
-    //         Set(D, '=' as isize),
-    //         Add { dst: C, src: D },
-    //         PutChar(A),
-    //         Set(A, ' ' as isize),
-    //         PutChar(A),
-    //         PutChar(C),
-    //         Set(A, ' ' as isize),
-    //         PutChar(A),
-    //         PutChar(B),
-    //         Set(A, 10),
-    //         PutChar(A),
-    //     End,
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Comment("Put an integer from the stack".to_string()),
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
 
-    //     Set(A, 'a' as isize),
-    //     PutChar(A),
-    //     Set(A, '=' as isize),
-    //     PutChar(A),
-    //     GetChar(A),
-    //     GetChar(TMP),
-    //     Set(B, 'b' as isize),
-    //     PutChar(B),
-    //     Set(B, '=' as isize),
-    //     PutChar(B),
-    //     GetChar(B),
-    //     GetChar(TMP),
-    //     CallLabel(String::from("cmp")),
-    // ]).assemble().unwrap();
+    let get = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "get".to_string(),
+        args: vec![],
+        ret: Type::Cell,
+        body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref())],
+    });
+    // let put_float = ConstExpr::StandardBuiltin(StandardBuiltin {
+    //     name: "put_float".to_string(),
+    //     args: vec![],
+    //     ret: Type::None,
+    //     body: vec![
+    //         StandardOp::PutFloat(SP.deref()),
+    //         StandardOp::CoreOp(CoreOp::Pop(None, 1)),
+    //     ],
+    // });
 
-    // let program = CoreProgram(vec![
-    //     Set(A, 'a' as isize), Push(A),
-    //     Set(A, 'b' as isize), Push(A),
-    //     Set(A, 'c' as isize), Push(A),
-    //     Pop(Some(B)), PutChar(B),
-    //     Set(A, 'd' as isize), Push(A),
-    //     Pop(Some(B)), PutChar(B),
-    //     Pop(Some(B)), PutChar(B),
-    //     Pop(Some(B)), PutChar(B),
-    //     Set(A, '\n' as isize), Push(A),
-    // ]).assemble().unwrap();
-    // eprintln!("{:?}", program);
+    // let put_int = ConstExpr::StandardBuiltin(StandardBuiltin {
+    //     name: "put_int".to_string(),
+    //     args: vec![],
+    //     ret: Type::None,
+    //     body: vec![
+    //         StandardOp::PutInt(SP.deref()),
+    //         StandardOp::CoreOp(CoreOp::Pop(None, 1)),
+    //     ],
+    // });
+    // let get_float = ConstExpr::StandardBuiltin(StandardBuiltin {
+    //     name: "get_float".to_string(),
+    //     args: vec![],
+    //     ret: Type::Float,
+    //     body: vec![
+    //         StandardOp::CoreOp(CoreOp::Next(SP, None)),
+    //         StandardOp::GetFloat(SP.deref()),
+    //     ],
+    // });
 
-    // let program = CoreProgram(vec![
-    //     Fn(String::from("print_alphabet")),
-    //         Move { src: FP, dst: A },
-    //         Prev(A, Some(26)),
-    //         Set(B, 26),
-    //         While(B),
-    //             PutChar(A.deref()),
-    //             Next(A, None),
-    //             Dec(B),
-    //         End,
-    //     End,
-    //     Set(A, 26),
-    //     Set(B, 'A' as isize),
-    //     While(A),
-    //         Push(B), Inc(B),
-    //         Dec(A),
-    //     End,
-    //     CallLabel(String::from("print_alphabet")),
-    //     Prev(SP, Some(26)),
-    //     Set(A, '\n' as isize), PutChar(A),
-    // ]).assemble().unwrap();
-    // eprintln!("{:?}", program);
-    
+    // use maplit::btreemap;
+    // let expr = put.app(vec![Expr::Tuple(vec![
+    //     ConstExpr::Char('a').into(),
+    //     Expr::Tuple(vec![
+    //         ConstExpr::Bool(false).into(),
+    //         ConstExpr::Int(2).into(),
+    //         Expr::Array(vec![
+    //             ConstExpr::Char('c').into(),
+    //             ConstExpr::Char('d').into(),
+    //             ConstExpr::Char('e').into(),
+    //         ]),
+    //     ]),
+    //     Expr::structure(btreemap! {
+    //         "x" => ConstExpr::Char('b').into(),
+    //         "y" => ConstExpr::Int(3).into(),
+    //         "z" => ConstExpr::Bool(true).into(),
+    //     }),
+    // ])
+    // .field(ConstExpr::Int(1))
+    // .field(ConstExpr::Int(2))
+    // .idx(ConstExpr::Int(0))]);
 
-    // let program = CoreProgram(vec![
-    //     Fn(String::from("putint")),
-    //         Move { src: FP.deref().offset(-1), dst: A },
+    // The program to compile
+    let expr = put.app(vec![Expr::from(ConstExpr::Int(16))
+        .add(ConstExpr::Float(1.2))
+        .div(ConstExpr::Int(2))
+        .mul(get.app(vec![]).as_type(Type::Int).as_type(Type::Float))
+        .as_type(Type::Int)]);
 
-    //         Set(B, 10),
-    //         DivRem { src: B, dst: A },
-    //         If(A),
-    //             Push(B),
-    //             Push(A),
-    //             CallLabel(String::from("putint")),
-    //             Pop(None),
-    //             Pop(Some(B)),
-    //         End,
-    //         Set(A, '0' as isize),
-    //         Add { src: A, dst: B},
-    //         PutChar(B),
-    //     End,
-        
-    //     PutLiteral(String::from("ladies and gentlemen, one million ints!\n")),
-    //     Set(F, 1000000),
-    //     While(F),
-    //         Push(F),
-    //         CallLabel(String::from("putint")),
-    //         Pop(None),
+    // use maplit::btreemap;
+    // let expr = put.app(vec![Expr::Tuple(vec![
+    //     ConstExpr::Char('a').into(),
+    //     Expr::Tuple(vec![
+    //         ConstExpr::Bool(false).into(),
+    //         ConstExpr::Int(2).into(),
+    //         Expr::Array(vec![
+    //             ConstExpr::Char('c').into(),
+    //             ConstExpr::Char('d').into(),
+    //             ConstExpr::Char('e').into(),
+    //         ]),
+    //     ]),
+    //     Expr::structure(btreemap! {
+    //         "x" => ConstExpr::Char('b').into(),
+    //         "y" => ConstExpr::Int(3).into(),
+    //         "z" => ConstExpr::Bool(true).into(),
+    //     }),
+    // ])
+    // .field(ConstExpr::Int(1))
+    // .field(ConstExpr::Int(2))
+    // .idx(ConstExpr::Int(0))]);
 
-    //         Set(E, '\n' as isize), PutChar(E),
-    //         Dec(F),
-    //     End,
-    // ]).assemble().unwrap();
-    // eprintln!("{:?}", program);
+    // Compile the program to assembly
+    let asm_code = expr.compile().unwrap();
 
+    let input = vec![10];
 
-    
+    let device = match asm_code {
+        Ok(asm_core) => {
+            eprintln!("{:?}", asm_core);
+            let vm_code = asm_core.assemble(16).unwrap();
+            eprintln!("{:?}", vm_code);
+            println!("{}", C.build_core(&vm_code).unwrap());
+            CoreInterpreter::new(TestingDevice::new_raw(input))
+                .run(&vm_code)
+                .unwrap()
+        }
+        Err(asm_std) => {
+            eprintln!("{:?}", asm_std);
+            let vm_code = asm_std.assemble(16).unwrap();
+            eprintln!("{:?}", vm_code);
+            println!("{}", C.build_std(&vm_code).unwrap());
+            StandardInterpreter::new(TestingDevice::new_raw(input))
+                .run(&vm_code)
+                .unwrap()
+        }
+    };
 
-    let program = CoreProgram(vec![
-        Fn(String::from("return-test")),
-            CoreOp::put_string("return test 1!\n"),
-            Return,
-            CoreOp::put_string("return test 2!\n"),
-        End,
-        
-        Fn(String::from("putint")),
-            Move { src: var(0), dst: A },
-
-            Set(B, 10),
-            DivRem { src: B, dst: A },
-            If(A),
-                Push(B),
-                Push(A),
-                CallLabel(String::from("putint")),
-                Pop(None),
-                Pop(Some(B)),
-            End,
-            Set(A, '0' as isize),
-            Add { src: A, dst: B},
-            PutChar(B),
-        End,
-        
-        Comment(String::from(r#"Hey jude!
-                                Hello world!
-                                Testing!
-                                This is a comment!"#)),
-
-        Fn(String::from("putstr")),
-            Move { src: var(0), dst: C },
-            While(C.deref()),
-                PutChar(C.deref()),
-                Next(C, None),
-            End,
-        End,
-
-        Fn(String::from("getstr")),
-            Move { src: var(0), dst: C },
-            Move { src: C, dst: B },
-            GetChar(C.deref()),
-            Set(D, '\n' as isize),
-            IsNotEqual { dst: E, a: C.deref(), b: D },
-            While(E),
-                PutChar(C.deref()),
-                Next(C, None),
-                GetChar(C.deref()),
-                
-                Set(D, '\n' as isize),
-                IsNotEqual { dst: E, a: C.deref(), b: D },
-            End,
-            Set(C.deref(), '\0' as isize),
-            
-            Move { src: B, dst: var(0) },
-        End,
-
-        Fn(String::from("strlen")),
-            Move { src: var(0), dst: C },
-            Set(D, 0),
-            While(C.deref()),
-                Next(C, None),
-                Inc(D),
-            End,
-            Move { src: D, dst: var(0) },
-        End,
-
-        Fn(String::from("strrev")),
-            Move { src: var(0), dst: C },
-            Move { src: C, dst: D },
-            While(D.deref()),
-                Next(D, None),
-            End,
-            Prev(D, None),
-
-            Move { src: C, dst: B },
-            IsLess { dst: B, a: C, b: D },
-            While(B),
-                Swap(C.deref(), D.deref()),
-                Next(C, None),
-                Prev(D, None),
-                Move { src: C, dst: B },
-                IsLess { dst: B, a: C, b: D },
-            End,
-        End,
-
-
-        CoreOp::stack_alloc_string(A, "Hello world!\n"),
-        CoreOp::stack_alloc_string(B, "Dontshowme!!\n"),
-
-        // Copy A to B
-        Copy { src: A, dst: B, size: 14 },
-        
-        // Overwrite A
-        CoreOp::push_string("abcdefghijk?\n"),
-        Store(A, 14),
-        
-        Set(D, 4),
-        While(D),
-            // Print A
-            Push(A),
-            CallLabel(String::from("putstr")),
-            Pop(None),
-
-            // Print B
-            Push(B),
-            CallLabel(String::from("putstr")),
-            Pop(None),
-
-            Dec(D),
-        End,
-
-        StackAllocateLiteral(C, vec![0].repeat(1024)),
-        
-        
-        CoreOp::put_string(">> "),
-        Push(C),
-        CallLabel(String::from("getstr")),
-        Pop(Some(F)),
-
-        CoreOp::put_string("you entered: `"),
-
-        Push(F),
-        CallLabel(String::from("strrev")),
-        CallLabel(String::from("putstr")),
-        CoreOp::put_string("`\nwhich is "),
-        CallLabel(String::from("strlen")),
-        CallLabel(String::from("putint")),
-        Pop(None),
-        
-        CoreOp::put_string(" characters long!\n"),
-    ]).assemble().unwrap();
-    eprintln!("{:?}", program);
-
-
-
-    // let program = StandardProgram(vec![
-    //     StandardOp::CoreOp(Fn),
-    //         StandardOp::CoreOp(Constant(33)),
-    //         StandardOp::CoreOp(PutChar),
-    //         StandardOp::CoreOp(Constant(10)),
-    //         StandardOp::CoreOp(PutChar),
-    //     StandardOp::CoreOp(End),
-
-    //     StandardOp::CoreOp(Fn),
-    //         StandardOp::CoreOp(Move(-2)),
-    //         StandardOp::CoreOp(Restore),
-    //         StandardOp::CoreOp(Move(1)),
-    //         StandardOp::CoreOp(Add),
-    //         StandardOp::PutInt,
-    //     StandardOp::CoreOp(End),
-
-    //     StandardOp::CoreOp(Constant('Z' as usize)),
-    //     StandardOp::CoreOp(Save),
-    //     StandardOp::CoreOp(Move(1)),
-
-    //     StandardOp::CoreOp(Constant(3)),
-    //     StandardOp::CoreOp(Save),
-    //     StandardOp::CoreOp(Move(1)),
-
-    //     StandardOp::CoreOp(Constant(1)),
-    //     StandardOp::CoreOp(Call),
-    // ]);
-
-    println!("{}", targets::C.compile_core(&program).unwrap());
+    // Run the machine and get its I/O history with the
+    // "world" (simulated through the testing device)
+    eprintln!("device: {:?}", device)
 }
