@@ -38,7 +38,7 @@ In order to solve some of these problems, [I've created another virtual machine]
 3. Each instruction must take *at most* one integer argument ***known at compile time***. This is to simplify the individual instructions themselves, which makes optimizations easier.
 4. The instruction set must be *agnostic to the concept of bit-width*. Casting between different data types in the virtual machine ***immediately*** increases the complexity of the instruction set: you need different instructions for different types. All data should be represented as a `Cell`, a place to store a single unit of data (typically the largest int size supported by the platform).
 5. The instruction set must be able to implement abstractions like functions, pointers, and compound data types.
-6. ***Interacting with the environment (the outside world) should not be side-effecting***. 
+6. ***Interacting with the environment (the outside world) should not change the state of anything but the register***. 
 
 Without further ado, here's the virtual machine instruction set.
 
