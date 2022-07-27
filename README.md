@@ -43,7 +43,7 @@ In order to solve some of these problems, [I've created another virtual machine]
 
 Without further ado, here's the virtual machine instruction set.
 
-### The Forty and Eight Instructions
+## The Forty and Eight Instructions
 
 The instruction set is composed of two halves of 24 instructions each: [the "Core", canonical instructions](CORE.md#the-core-instructions-in-depth), and the "Standard" instructions.
 
