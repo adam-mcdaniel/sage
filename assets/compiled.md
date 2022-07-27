@@ -45,7 +45,7 @@ let expr = put.app(vec![Expr::Tuple(vec![
 .idx(ConstExpr::Int(0))]); // Index with zero (get the 'c')
 ```
 
-Compiled output:
+Compiled assembly output from intermediate representation:
 
 ```rs
 0000: Comment("push char 'a'")
