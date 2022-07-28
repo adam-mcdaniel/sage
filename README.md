@@ -10,7 +10,10 @@ Compilers are one of the most useful tools ever made. They allow us to abstract 
 
 Here's where LLVM and similar projects come in. LLVM is a great tool for writing compilers because it ***drastically*** simplifies this problem. Instead of writing a compiler for each different system's hardware, you can just write it to compile to LLVM! LLVM will do the heavy lifting and handle dealing with the specific hardware you want to compile to.
 
-![LLVM](assets/llvm.png)
+<div align="center">
+<img alt="LLVM" align="center" src="assets/llvm.png" width="90%"/>
+</div>
+</br>
 
 This way, a compiler never has to understand the hardware it compiles to.
 
