@@ -44,6 +44,11 @@ In order to solve some of these problems, [I've created another virtual machine]
 5. The instruction set must be able to implement abstractions like functions, pointers, and compound data types.
 6. ***Interacting with the environment (the outside world) should not change the state of anything but the register***. 
 
+<div align="center">
+<img alt="Anatomy" align="center" src="assets/anatomy.svg" width="60%"/>
+</div>
+</br>
+
 Without further ado, here's the virtual machine instruction set.
 
 ## The Forty and Eight Instructions
@@ -70,11 +75,6 @@ The standard instructions are not guaranteed to be wholly implemented by every t
 | Worldly                | `GetChar`        | `PutChar` | `GetInt`        | `PutInt`   | `GetFloat`  | `PutFloat`   |
 
 Every target should provide a chart of the standard instructions showing which are implemented.
-
-<div align="center">
-<img alt="Anatomy" align="center" src="assets/anatomy.svg" width="60%"/>
-</div>
-</br>
 
 ## The Assembly Language
 
