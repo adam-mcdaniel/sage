@@ -78,7 +78,10 @@ The assembly language is also split into two halves as well: one built on the pu
 
 Here is the memory layout the assembly language uses on the turing tape.
 
-![Memory Layout](assets/memory_layout.svg)
+<div align="center">
+<img alt="Memory Layout" align="center" src="assets/memory_layout.svg" width="90%"/>
+</div>
+</br>
 
 The `FP_STACK` is a pointer to a separate stack than the `SP`: the `FP_STACK` begins directly after the `F` register (when there are no items on the `FP_STACK`, it points to `F`). The size of the `FP_STACK` is provided to the assembler at compile time. The size of the `FP_STACK` determines the number of recursive calls the program may make before the frame pointer stack overflows.
 
