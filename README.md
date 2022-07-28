@@ -101,7 +101,9 @@ Here is how some example instructions are assembled (with some abstract methods 
 </div>
 
 
+
 And here is an example function definition that puts the character values of an unsigned integer's digits to the output interface I/O device.
+
 
 <div align="center">
     <img alt="PutInt" align="center" src="assets/putint.png" width="90%"/>
