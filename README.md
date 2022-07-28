@@ -49,7 +49,7 @@ Without further ado, here's the virtual machine instruction set.
 ## The Forty and Eight Instructions
 
 <div align="center">
-<img alt="Anatomy" align="center" src="assets/anatomy.svg" width="50%"/>
+<img alt="Anatomy" align="center" src="assets/anatomy.svg" width="60%"/>
 </div>
 </br>
 
