@@ -1,5 +1,5 @@
-use super::{
-    super::{Simplify, Type},
+use crate::ir::{
+    Simplify, Type, TypeCheck,
     Compile, CoreBuiltin, Env, Error, Expr, GetSize, GetType, Procedure, StandardBuiltin,
 };
 use crate::asm::{AssemblyProgram, CoreOp, StandardOp, A, FP, SP};
@@ -41,7 +41,7 @@ impl ConstExpr {
 
     fn eval_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
         let i = i + 1;
-        if i > 1000 {
+        if i > 500 {
             Err(Error::RecursionDepthConst(self))
         } else {
             match self {
@@ -113,6 +113,12 @@ impl ConstExpr {
             Ok(other) => Err(Error::NonSymbol(other)),
             Err(err) => Err(err),
         }
+    }
+}
+
+impl TypeCheck for ConstExpr {
+    fn type_check(&self, _env: &Env) -> Result<(), Error> {
+        todo!()
     }
 }
 

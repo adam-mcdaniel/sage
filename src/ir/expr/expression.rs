@@ -229,6 +229,12 @@ impl Expr {
     }
 }
 
+impl TypeCheck for Expr {
+    fn type_check(&self, _env: &Env) -> Result<(), Error> {
+        todo!()
+    }
+}
+
 impl Compile for Expr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         match self {
@@ -717,13 +723,6 @@ impl Compile for Expr {
     }
 }
 
-// impl TypeCheck for Expr {
-//     fn type_check(&self, env: &Env) -> Result<(), Error> {
-//         match self {
-
-//         }
-//     }
-// }
 
 impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {

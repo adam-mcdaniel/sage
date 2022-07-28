@@ -1,5 +1,5 @@
 use asm::{
-    asm::{CoreOp, StandardOp, SP},
+    asm::{CoreOp, SP},
     ir::*,
     targets::*,
     vm::{CoreInterpreter, StandardInterpreter, TestingDevice},
