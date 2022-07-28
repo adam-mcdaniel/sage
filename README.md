@@ -48,6 +48,11 @@ Without further ado, here's the virtual machine instruction set.
 
 ## The Forty and Eight Instructions
 
+<div align="center">
+<img alt="Anatomy" align="center" src="assets/anatomy.svg" width="90%"/>
+</div>
+</br>
+
 The instruction set is composed of two halves of 24 instructions each: [the "Core", canonical instructions](CORE.md#the-core-instructions-in-depth), and the "Standard" instructions.
 
 The canonical instructions are required to be implemented by *every target*. These instructions are guaranteed to be supported by every target.
