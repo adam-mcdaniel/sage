@@ -72,3 +72,34 @@ Every target should provide a chart of the standard instructions showing which a
 While the virtual machine itself is meant to be as small as possible, the stages of IR built on top of it are meant to be as high level as possible. The assembly language has many instructions: *there are seven different instructions for comparisons!!*
 
 The assembly language is also split into two halves as well: one built on the pure, Core variant, and the other built on the Standard variant. This way, programs can be compiled for maximum portability, but use standard instructions if necessary as a fallback.
+
+
+### Conventions
+
+Here is the memory layout the assembly language uses on the turing tape.
+
+![Memory Layout](assets/memory_layout.svg)
+
+The `FP_STACK` is a pointer to a separate stack than the `SP`: the `FP_STACK` begins directly after the `F` register (when there are no items on the `FP_STACK`, it points to `F`). The size of the `FP_STACK` is provided to the assembler at compile time. The size of the `FP_STACK` determines the number of recursive calls the program may make before the frame pointer stack overflows.
+
+In the assembly language, there are a few arbitrary conventions.
+1. The stack pointer always points to the top item on the stack (if you push a tuple of `(1, 2, 3)`, the stack pointer will point to the `3`).
+2. The frame pointer is equal to the top of the stack when the current function was called. When the program first starts, and no function has been called, the frame pointer is equal to the stack pointer.
+3. Function calls push their frame pointers to a private stack *invisible* to the user. **You cannot use the `FP_STACK` register**, which manages this stack.
+4. You can push your arguments however you like. In the IR, the arguments are pushed in the order they're given to the function: `f(1, 2, 3)` pushes `1` first, `2` second, and `3` last.
+5. Functions return values by popping the function arguments off of the stack, and pushing the return value. There's no need to worry about overwriting the saved frame pointer, because they're stored in a separate stack.
+
+The assembly instructions always take arguments of: constant integers known at compile time, or values of type `Location`. A `Location` can either be a fixed address (registers), a dereferenced `Location`, or a `Location` offset by some cells. The `Location` `[SP + 4]`, for example, dereferences `SP` and moves four cells to the right (`SP.deref().offset(4)`).
+
+#### Examples
+
+Here is how some example instructions are assembled (with some abstract methods like `copy_to` to make things easier).
+
+
+<img alt="CopyTo" src="assets/copy_to.png" align="center"/>
+
+<img alt="PushTo" src="assets/push_to.png" align="center"/>
+
+And here is an example function definition that puts the character values of an unsigned integer's digits to the output interface I/O device.
+
+<img alt="PutInt" src="assets/putint.png" align="center"/>

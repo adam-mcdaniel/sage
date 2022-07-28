@@ -157,24 +157,24 @@ fn test_stack() {
 fn test_str() {
     use CoreOp::*;
 
-    let putint = CoreOp::Many(vec![
+    let putint = Many(vec![
         Fn(String::from("putint")),
-        Move {
-            src: FP.deref(),
-            dst: A,
-        },
-        Set(B, 10),
-        DivRem { src: B, dst: A },
-        If(A),
-        Push(B, 1),
-        Push(A, 1),
-        CallLabel(String::from("putint")),
-        Pop(None, 1),
-        Pop(Some(B), 1),
-        End,
-        Set(A, '0' as isize),
-        Add { src: A, dst: B },
-        Put(B),
+            Move {
+                src: FP.deref(),
+                dst: A,
+            },
+            Set(B, 10),
+            DivRem { src: B, dst: A },
+            If(A),
+                Push(B, 1),
+                Push(A, 1),
+                CallLabel(String::from("putint")),
+                Pop(None, 1),
+                Pop(Some(B), 1),
+            End,
+            Set(A, '0' as isize),
+            Add { src: A, dst: B },
+            Put(B),
         End,
     ]);
 
