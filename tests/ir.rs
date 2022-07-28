@@ -810,7 +810,6 @@ fn test_float_arithmetic() {
     assert_eq!(device.output, vec![as_int(18.92)]);
 }
 
-
 #[test]
 fn test_as() {
     let mut env = Env::default();
@@ -835,12 +834,13 @@ fn test_as() {
     });
 
     // The program to compile
-    let expr = put.app(vec![
-        get.clone().app(vec![]).as_type(Type::Int)
-            .add(get.clone().app(vec![]).as_type(Type::Float))
-            .mul(get.app(vec![]).as_type(Type::Float))
-            .as_type(Type::Int)
-    ]);
+    let expr = put.app(vec![get
+        .clone()
+        .app(vec![])
+        .as_type(Type::Int)
+        .add(get.clone().app(vec![]).as_type(Type::Float))
+        .mul(get.app(vec![]).as_type(Type::Float))
+        .as_type(Type::Int)]);
 
     expr.compile_expr(&mut env, &mut program).unwrap();
 

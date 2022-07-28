@@ -4,9 +4,7 @@
 //! with the standard variant of the virtual machine. It is very
 //! portable, but probably not supported on older systems or
 //! hardware implementations.
-use super::{
-    location::FP_STACK, AssemblyProgram, CoreOp, Env, Error, Location, F, FP, SP,
-};
+use super::{location::FP_STACK, AssemblyProgram, CoreOp, Env, Error, Location, F, FP, SP};
 use crate::vm::{self, VirtualMachineProgram};
 use core::fmt;
 

@@ -533,6 +533,7 @@ impl CoreOp {
                 }
                 sp.next(*size as isize, result);
             }
+
             CoreOp::PopFrom { sp, dst, size } => {
                 if let Some(dst) = dst {
                     for i in 1..=*size {

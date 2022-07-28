@@ -2,6 +2,10 @@ use std::collections::BTreeMap;
 
 use super::{ConstExpr, Env, Error, Expr, GetSize, Simplify};
 
+pub trait TypeCheck {
+    fn type_check(&self, env: &Env) -> Result<(), Error>;
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {
     Symbol(String),
@@ -23,6 +27,90 @@ pub enum Type {
 }
 
 impl Type {
+    pub fn equals(&self, other: &Self, env: &Env) -> Result<bool, Error> {
+        self.checked_equals(other, env, 0)
+    }
+
+    /// Are two types structurally equal?
+    /// This function will always terminate.
+    fn checked_equals(&self, other: &Self, env: &Env, i: usize) -> Result<bool, Error> {
+        let i = i + 1;
+        if i > 500 {
+            return Err(Error::RecursionDepthTypeEquality(
+                self.clone(),
+                other.clone(),
+            ));
+        }
+
+        Ok(match (self, other) {
+            (Self::Symbol(a), Self::Symbol(b)) => {
+                a == b || self.clone().simplify(env)?.equals(other, env)?
+            }
+            (Self::Symbol(x), y) | (y, Self::Symbol(x)) => {
+                Self::Symbol(x.clone()).simplify(env)?.equals(y, env)?
+            }
+            (Self::Any, _)
+            | (_, Self::Any)
+            | (Self::Never, _)
+            | (_, Self::Never)
+            | (Self::None, Self::None)
+            | (Self::Bool, Self::Bool)
+            | (Self::Char, Self::Char)
+            | (Self::Int, Self::Int)
+            | (Self::Float, Self::Float)
+            | (Self::Cell, Self::Cell) => true,
+
+            (Self::Enum(a), Self::Enum(b)) => {
+                let mut a = a.clone();
+                let mut b = b.clone();
+                a.sort();
+                b.sort();
+                a == b
+            }
+            (Self::Tuple(a), Self::Tuple(b)) => {
+                for (item1, item2) in a.iter().zip(b.iter()) {
+                    if !item1.equals(item2, env)? {
+                        return Ok(false);
+                    }
+                }
+                true
+            }
+            (Self::Array(t1, size1), Self::Array(t2, size2)) => {
+                t1.equals(t2, env)? && size1.clone().as_int(env)? == size2.clone().as_int(env)?
+            }
+            (Self::Struct(a), Self::Struct(b)) => {
+                for ((name1, item1), (name2, item2)) in a.iter().zip(b.iter()) {
+                    if name1 != name2 || !item1.equals(item2, env)? {
+                        return Ok(false);
+                    }
+                }
+                true
+            }
+
+            (Self::Union(a), Self::Union(b)) => {
+                for ((name1, item1), (name2, item2)) in a.iter().zip(b.iter()) {
+                    if name1 != name2 || !item1.equals(item2, env)? {
+                        return Ok(false);
+                    }
+                }
+                true
+            }
+
+            (Self::Proc(args1, ret1), Self::Proc(args2, ret2)) => {
+                for (arg1, arg2) in args1.iter().zip(args2.iter()) {
+                    if !arg1.equals(arg2, env)? {
+                        return Ok(false);
+                    }
+                }
+                ret1.equals(ret2, env)?
+            }
+
+            (Self::Pointer(t1), Self::Pointer(t2)) => t1.equals(t2, env)?,
+
+            _ => false,
+        })
+    }
+
     pub(super) fn get_member_offset(
         &self,
         member: &ConstExpr,

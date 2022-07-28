@@ -1,50 +1,94 @@
 use crate::asm::{AssemblyProgram, CoreOp, StandardOp, A, B, C, FP, SP};
-use crate::ir::{Compile, ConstExpr, Env, Error, GetSize, GetType, Type};
+use crate::ir::{Compile, ConstExpr, Env, Error, GetSize, GetType, Type, TypeCheck};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
+    /// A constant expression.
     ConstExpr(ConstExpr),
+    /// A block of expressions. The last expression in the block is the value of the block.
     Many(Vec<Self>),
 
+    /// A `const` binding expression.
+    /// Declare a constant under a new scope, and evaluate a subexpression in that scope.
     Const(String, ConstExpr, Box<Self>),
+    /// A `let` binding expression.
+    /// Declare a variable under a new scope, and evaluate a subexpression in that scope.
     Let(String, Option<Type>, Box<Self>, Box<Self>),
-    While(Box<Self>, Box<Self>),
 
+    /// Create a while loop: while the first expression evaluates to true, evaluate the second expression.
+    While(Box<Self>, Box<Self>),
+    /// An if-then-else expression.
+    ///
+    /// Evaluate a condition.
+    /// If the condition is true, evaluate the first expression.
+    /// Otherwise, evaluate the second expression.
     If(Box<Self>, Box<Self>, Box<Self>),
+    /// A constant, compile time if-then-else expression.
+    ///
+    /// Evaluate the condition as a constant expression.
+    /// If the condition is true, then this `when` expression is replaced with the first expression.
+    /// Otherwise, this `when` expression is replaced with the second expression.
     When(ConstExpr, Box<Self>, Box<Self>),
 
+    /// Add two expressions.
     Add(Box<Self>, Box<Self>),
+    /// Subtract an expression from another.
     Sub(Box<Self>, Box<Self>),
+    /// Multiply an expression by another.
     Mul(Box<Self>, Box<Self>),
+    /// Divide an expression by another.
     Div(Box<Self>, Box<Self>),
+    /// Get the remainder of this expression divided by another.
     Rem(Box<Self>, Box<Self>),
 
+    /// Take the logical and of two expressions.
     And(Box<Self>, Box<Self>),
+    /// Take the logical or of two expressions.
     Or(Box<Self>, Box<Self>),
+    /// Take the logical not of an expression.
     Not(Box<Self>),
 
+    /// TODO: implement comparison operators.
     // Lt(Box<Self>, Box<Self>),
     // Le(Box<Self>, Box<Self>),
     // Gt(Box<Self>, Box<Self>),
     // Ge(Box<Self>, Box<Self>),
     // Eq(Box<Self>, Box<Self>),
     // Neq(Box<Self>, Box<Self>),
+
+    /// Reference this expression (i.e. get a pointer to it).
     Refer(Box<Self>),
+    /// Dereference this expression (i.e. get the value it points to).
     Deref(Box<Self>),
+    /// Store an expression to an address (a pointer).
     DerefMut(Box<Self>, Box<Self>),
 
+    /// Apply a function with some arguments.
     Apply(Box<Self>, Vec<Self>),
+    /// Return a value from a function.
     Return(Box<Self>),
 
+    /// An array of expressions.
     Array(Vec<Self>),
+    /// A tuple of expressions.
     Tuple(Vec<Self>),
+    /// A union: a collection of named fields.
+    /// The `Type` value is the type of the union.
+    /// The `String` field is the field the union is being initialized with.
+    /// The `Box<Self>` field is the value of the field we want to initialize.
     Union(Type, String, Box<Self>),
+    /// A structure of fields to expressions.
     Struct(BTreeMap<String, Self>),
 
+    /// Cast an expression to another type.
     As(Box<Self>, Type),
 
+    /// Get a field or member from a structure, union, or tuple.
+    /// For tuples, use an `Int` constant expression to access the nth field (zero indexed).
+    /// For unions or structures, use a `Symbol` constant expression to access the field.
     Member(Box<Self>, ConstExpr),
+    /// Index an array or pointer with an expression that evaluates to an `Int` at runtime.
     Index(Box<Self>, Box<Self>),
 }
 
@@ -55,50 +99,72 @@ impl From<ConstExpr> for Expr {
 }
 
 impl Expr {
+    /// Cast an expression as another type.
     pub fn as_type(self, t: Type) -> Self {
         Expr::As(Box::new(self), t)
     }
 
+    /// Logical not this expression.
     pub fn not(self) -> Self {
         Expr::Not(Box::new(self))
     }
 
+    /// Logical and this expression with another.
     pub fn and(self, other: impl Into<Self>) -> Self {
         Expr::And(Box::new(self), Box::new(other.into()))
     }
 
+    /// Logical or this expression with another.
     pub fn or(self, other: impl Into<Self>) -> Self {
         Expr::Or(Box::new(self), Box::new(other.into()))
     }
 
+    /// Add this expression to another.
     pub fn add(self, other: impl Into<Self>) -> Self {
         Expr::Add(Box::new(self), Box::new(other.into()))
     }
 
+    /// Subtract an expression from this expression.
     pub fn sub(self, other: impl Into<Self>) -> Self {
         Expr::Sub(Box::new(self), Box::new(other.into()))
     }
 
+    /// Multiply this expression by another.
     pub fn mul(self, other: impl Into<Self>) -> Self {
         Expr::Mul(Box::new(self), Box::new(other.into()))
     }
 
+    /// Divide this expression by another.
     pub fn div(self, other: impl Into<Self>) -> Self {
         Expr::Div(Box::new(self), Box::new(other.into()))
     }
 
+    /// Get the remainder of this expression divided by another.
     pub fn rem(self, other: impl Into<Self>) -> Self {
         Expr::Rem(Box::new(self), Box::new(other.into()))
     }
 
+    /// Get a field from a structure, union, or tuple.
+    ///
+    /// For tuples, use an `Int` constant expression to access the nth field (zero indexed).
+    /// For unions or structures, use a `Symbol` constant expression to access the field.
     pub fn field(self, field: ConstExpr) -> Self {
         Expr::Member(Box::new(self), field)
     }
 
+    /// Index an array or pointer with an expression that evaluates to an `Int` at runtime.
     pub fn idx(self, idx: impl Into<Self>) -> Self {
         Expr::Index(Box::new(self), Box::new(idx.into()))
     }
 
+    /// Create a `let` binding for an expression.
+    ///
+    /// This will create a new scope with the variable `var` defined.
+    /// `var` will be declared with the type `t`, and the expression `e` will be assigned to it.
+    ///
+    /// The result of this expression is the `ret` value, which is evaluated under this new scope.
+    ///
+    /// When this expression is finished evaluating, `var` will be removed from the scope.
     pub fn let_var(
         var: impl ToString,
         t: Option<Type>,
@@ -108,6 +174,7 @@ impl Expr {
         Expr::Let(var.to_string(), t, Box::new(e.into()), Box::new(ret.into()))
     }
 
+    /// Create a `let` binding for an expression, and define multiple variables.
     pub fn let_vars(vars: BTreeMap<&str, (Option<Type>, Self)>, ret: impl Into<Self>) -> Self {
         let mut result = ret.into();
         for (var, (t, val)) in vars {
@@ -116,6 +183,7 @@ impl Expr {
         result
     }
 
+    /// Create a structure of fields to expressions.
     pub fn structure(vars: BTreeMap<&str, Self>) -> Self {
         let mut result = BTreeMap::new();
         for (var, val) in vars {
@@ -124,30 +192,38 @@ impl Expr {
         Self::Struct(result)
     }
 
+    /// Evaluate a variable in the current scope.
     pub fn var(var: impl ToString) -> Self {
         Expr::ConstExpr(ConstExpr::Symbol(var.to_string()))
     }
 
+    /// Apply this expression as a procedure to some arguments.
     pub fn app(self, args: Vec<Self>) -> Self {
         Expr::Apply(Box::new(self), args)
     }
 
+    /// Create an if-then-else statement with this expression as the condition.
     pub fn if_then(self, t: impl Into<Self>, e: impl Into<Self>) -> Self {
         Expr::If(Box::new(self), Box::new(t.into()), Box::new(e.into()))
     }
 
+    /// Create a while statement with this expression as the condition.
     pub fn while_loop(self, body: impl Into<Self>) -> Self {
         Expr::While(Box::new(self), Box::new(body.into()))
     }
 
+    /// Reference this expression (i.e. get a pointer to it).
     pub fn refer(self) -> Self {
         Expr::Refer(Box::new(self))
     }
 
+    /// Dereference this expression (i.e. get the value it points to).
     pub fn deref(self) -> Self {
         Expr::Deref(Box::new(self))
     }
 
+    /// Dereference this expression (i.e. get the value it points to),
+    /// and write another expression to its position in memory.
     pub fn deref_mut(self, e: impl Into<Self>) -> Self {
         Expr::DerefMut(Box::new(self), Box::new(e.into()))
     }
@@ -180,8 +256,10 @@ impl Compile for Expr {
             }
 
             Self::And(a, b) => {
+                // Push the two expressions on the stack.
                 a.compile_expr(env, output)?;
                 b.compile_expr(env, output)?;
+                // Perform logical and on them.
                 output.op(CoreOp::And {
                     src: SP.deref(),
                     dst: SP.deref().offset(-1),
@@ -189,8 +267,10 @@ impl Compile for Expr {
                 output.op(CoreOp::Pop(None, 1));
             }
             Self::Or(a, b) => {
+                // Push the two expressions on the stack.
                 a.compile_expr(env, output)?;
                 b.compile_expr(env, output)?;
+                // Perform logical or on them.
                 output.op(CoreOp::Or {
                     src: SP.deref(),
                     dst: SP.deref().offset(-1),
@@ -209,6 +289,7 @@ impl Compile for Expr {
             | Self::Rem(ref a, ref b) => {
                 let src = SP.deref();
                 let dst = SP.deref().offset(-1);
+                // Get the respective core operation for the current expression.
                 let core_op = match self {
                     Self::Add(_, _) => CoreOp::Add { src, dst },
                     Self::Sub(_, _) => CoreOp::Sub { src, dst },
@@ -219,6 +300,7 @@ impl Compile for Expr {
                 };
                 let src = SP.deref();
                 let dst = SP.deref().offset(-1);
+                // Get the respective standard operation for the current expression.
                 let std_op = match self {
                     Self::Add(_, _) => StandardOp::Add { src, dst },
                     Self::Sub(_, _) => StandardOp::Sub { src, dst },
@@ -227,23 +309,20 @@ impl Compile for Expr {
                     Self::Rem(_, _) => StandardOp::Rem { src, dst },
                     _ => unreachable!(),
                 };
+                // Evaluate the two expression on the stack.
                 a.clone().compile_expr(env, output)?;
                 b.clone().compile_expr(env, output)?;
+                // Now, perform the correct assembly expressions based on the types of the two expressions.
                 match (a.get_type(env)?, b.get_type(env)?) {
+                    // If a `Float` and a `Cell` are used, we just interpret the `Cell` as a `Float`.
                     (Type::Cell, Type::Float) | (Type::Float, Type::Cell) => {
                         output.std_op(std_op)?;
                     }
-
-                    (Type::Int, Type::Int)
-                    | (Type::Cell, Type::Cell)
-                    | (Type::Cell, Type::Int)
-                    | (Type::Int, Type::Cell) => {
-                        output.op(core_op);
-                    }
+                    // Two floats are used as floats.
                     (Type::Float, Type::Float) => {
                         output.std_op(std_op)?;
                     }
-
+                    // An integer used with a float is promoted, and returns a float.
                     (Type::Int, Type::Float) => {
                         output.std_op(StandardOp::ToFloat(SP.deref().offset(-1)))?;
                         output.std_op(std_op)?;
@@ -252,38 +331,58 @@ impl Compile for Expr {
                         output.std_op(StandardOp::ToFloat(SP.deref()))?;
                         output.std_op(std_op)?;
                     }
+
+                    // If cells and/or ints are used, we just use them as integers.
+                    (Type::Int, Type::Int)
+                    | (Type::Cell, Type::Cell)
+                    | (Type::Cell, Type::Int)
+                    | (Type::Int, Type::Cell) => {
+                        output.op(core_op);
+                    }
+
+                    // Cannot do arithmetic on other pairs of types.
                     _ => return Err(Error::InvalidBinop(self.clone())),
                 }
+                // Pop `b` off of the stack: we only needed it to evaluate
+                // the arithmetic and store the result to `a` on the stack.
                 output.op(CoreOp::Pop(None, 1));
             }
 
             Self::Const(name, expr, body) => {
+                // TODO: don't use a temporary variable for the new scope, just use the existing scope and remove
+                // the constant from the environment when we're done.
+
+                // Create a new scope to bind the constant under.
                 let mut new_env = env.clone();
+                // Bind the constant in the new scope.
                 new_env.consts.insert(name, expr);
+                // Compile the body under this new scope.
                 body.compile_expr(&mut new_env, output)?;
             }
-            Self::Apply(f, args) => match *f {
-                Expr::ConstExpr(ConstExpr::CoreBuiltin(builtin)) => {
-                    for arg in args {
-                        arg.compile_expr(env, output)?;
-                    }
-                    builtin.compile_expr(env, output)?;
+            Self::Apply(f, args) => {
+                // Push the arguments to the procedure on the stack.
+                for arg in args {
+                    arg.compile_expr(env, output)?;
                 }
-                Expr::ConstExpr(ConstExpr::StandardBuiltin(builtin)) => {
-                    for arg in args {
-                        arg.compile_expr(env, output)?;
+                match *f {
+                    Expr::ConstExpr(ConstExpr::CoreBuiltin(builtin)) => {
+                        // Apply the core builtin to the arguments on the stack.
+                        builtin.compile_expr(env, output)?;
                     }
-                    builtin.compile_expr(env, output)?;
-                }
-                proc => {
-                    for arg in args {
-                        arg.compile_expr(env, output)?;
+                    Expr::ConstExpr(ConstExpr::StandardBuiltin(builtin)) => {
+                        // Apply the standard builtin to the arguments on the stack.
+                        builtin.compile_expr(env, output)?;
                     }
-                    proc.compile_expr(env, output)?;
-                    output.op(CoreOp::Pop(Some(A), 1));
-                    output.op(CoreOp::Call(A));
+                    proc => {
+                        // Push the procedure on the stack.
+                        proc.compile_expr(env, output)?;
+                        // Pop the "function pointer" from the stack.
+                        output.op(CoreOp::Pop(Some(A), 1));
+                        // Call the procedure on the arguments.
+                        output.op(CoreOp::Call(A));
+                    }
                 }
-            },
+            }
             Self::Return(e) => {
                 let args_size = env.get_args_size();
                 let ret_size = e.get_size(env)?;
@@ -368,14 +467,18 @@ impl Compile for Expr {
                 // Label the end of the if statement
                 output.op(CoreOp::End);
             }
+
             Self::When(c, t, e) => if c.as_bool(env)? { t } else { e }.compile_expr(env, output)?,
 
             Self::Deref(ptr) => {
                 // Compile the pointer
                 let ptr_type = ptr.get_type(env)?;
                 ptr.clone().compile_expr(env, output)?;
+                // If the pointer is a pointer, dereference it.
                 if let Type::Pointer(inner) = ptr_type {
+                    // Pop the address into A
                     output.op(CoreOp::Pop(Some(A), 1));
+                    // Push all of the data at the address onto the stack.
                     output.op(CoreOp::Push(A.deref(), inner.get_size(env)?));
                 } else {
                     return Err(Error::DerefNonPointer(*ptr));
@@ -436,53 +539,83 @@ impl Compile for Expr {
                     Some(result_size as isize - val_size as isize),
                 ));
             }
-            
+
             Self::Index(val, idx) => {
+                // TODO: optimize this by using `Refer` when possible
+                // (not loading the entire array onto the stack to index it).
+
+                // Get the type of this expression.
                 let t = Self::Index(val.clone(), idx.clone()).get_type(env)?;
+                // Calculate the size of this expression.
                 let size = t.get_size(env)?;
+                // Get the type of the value being indexed
                 let val_type = val.get_type(env)?;
+                // Get the size of the value being indexed.
                 let val_size = val_type.get_size(env)?;
+                // Figure out what to do based on the value's type.
                 match val_type {
+                    // If the value being indexed is an array:
                     Type::Array(ref elem, _) => {
+                        // Get the size of the element we will return.
                         let elem_size = elem.get_size(env)?;
+                        // Push the array onto the stack.
                         val.compile_expr(env, output)?;
+                        // Push the index onto the stack.
                         idx.compile_expr(env, output)?;
 
+                        // Calculate the offset of the element we want to return
+                        // (the index times the size of the element), and store it in `B`.
                         output.op(CoreOp::Pop(Some(B), 1));
                         output.op(CoreOp::Set(A, elem_size as isize));
                         output.op(CoreOp::Mul { dst: B, src: A });
 
+                        // Get the address of the array's first element, and store it in `A`.
                         output.op(CoreOp::GetAddress {
                             addr: SP.deref().offset(1 - val_size as isize),
                             dst: A,
                         });
+                        // Index the address stored in `A` with the offset stored in `B`,
+                        // and store the address of that index in `C`.
                         output.op(CoreOp::Index {
                             src: A,
                             offset: B,
                             dst: C,
                         });
 
+                        // Copy the contents of the element at `C` overtop of the
+                        // array's first element on the stack.
                         output.op(CoreOp::Copy {
                             src: C.deref(),
                             dst: SP.deref().offset(1 - val_size as isize),
                             size,
                         });
+                        // Pop the remaining elements off the stack, so the element we indexed remains.
                         output.op(CoreOp::Pop(None, val_size - size));
                     }
                     Type::Pointer(elem) => {
+                        // Push the index onto the stack.
                         idx.compile_expr(env, output)?;
+                        // Push the pointer being indexed onto the stack.
                         val.compile_expr(env, output)?;
 
+                        // Get the size of the element we are indexing.
                         let elem_size = elem.get_size(env)?;
+                        // Store the pointer in `A`.
                         output.op(CoreOp::Pop(Some(A), 1));
+                        // Store the index in `B`.
                         output.op(CoreOp::Pop(Some(B), 1));
+                        // Store the size of the element in `C`.
                         output.op(CoreOp::Set(C, elem_size as isize));
+                        // Store the offset of the element from the pointer in `B`
+                        // (the index times the size of the element).
                         output.op(CoreOp::Mul { dst: B, src: C });
+                        // Get the address of the element and store it in `C`.
                         output.op(CoreOp::Index {
                             src: A.deref(),
                             offset: B,
                             dst: C,
                         });
+                        // Push the contents of the element onto the stack.
                         output.op(CoreOp::Push(C.deref(), elem_size));
                     }
                     _ => unreachable!(),
@@ -584,6 +717,14 @@ impl Compile for Expr {
     }
 }
 
+// impl TypeCheck for Expr {
+//     fn type_check(&self, env: &Env) -> Result<(), Error> {
+//         match self {
+
+//         }
+//     }
+// }
+
 impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
         let i = i + 1;
@@ -608,9 +749,9 @@ impl GetType for Expr {
                 (Type::Float, Type::Float)
                 | (Type::Int, Type::Float)
                 | (Type::Float, Type::Int) => Type::Float,
-                (Type::Cell, Type::Int)
-                | (Type::Int, Type::Cell)
-                | (Type::Int, Type::Int) => Type::Int,
+                (Type::Cell, Type::Int) | (Type::Int, Type::Cell) | (Type::Int, Type::Int) => {
+                    Type::Int
+                }
                 (Type::Cell, Type::Cell) => Type::Cell,
                 _ => return Err(Error::InvalidBinop(self.clone())),
             },

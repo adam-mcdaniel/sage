@@ -3,7 +3,10 @@ pub use self::core::*;
 mod std;
 pub use self::std::*;
 
-use ::std::{collections::VecDeque, io::{stdin, stdout, Read, Write}};
+use ::std::{
+    collections::VecDeque,
+    io::{stdin, stdout, Read, Write},
+};
 
 /// Create an input / output device for the virtual machine interpreter
 /// to operate on. The method `get` retrieves the device's input, and the
