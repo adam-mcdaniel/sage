@@ -96,10 +96,10 @@ The assembly instructions always take arguments of: constant integers known at c
 Here is how some example instructions are assembled (with some abstract methods like `copy_to` to make things easier).
 
 
-<img alt="CopyTo" src="assets/copy_to.png" align="center"/>
+<img alt="CopyTo" align="center" src="assets/copy_to.png"/>
 
-<img alt="PushTo" src="assets/push_to.png" align="center"/>
+<img alt="PushTo" align="center" src="assets/push_to.png"/>
 
 And here is an example function definition that puts the character values of an unsigned integer's digits to the output interface I/O device.
 
-<img alt="PutInt" src="assets/putint.png" align="center"/>
+<img alt="PutInt" align="center" src="assets/putint.png"/>
