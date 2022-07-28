@@ -95,11 +95,12 @@ The assembly instructions always take arguments of: constant integers known at c
 
 Here is how some example instructions are assembled (with some abstract methods like `copy_to` to make things easier).
 
-
-<img alt="CopyTo" align="center" src="assets/copy_to.png"/>
-
-<img alt="PushTo" align="center" src="assets/push_to.png"/>
+<div align="center">
+    <img alt="CopyTo" align="center" src="assets/copy_to.png"/>
+    <img alt="PushTo" align="center" src="assets/push_to.png"/>
+</div>
 
 And here is an example function definition that puts the character values of an unsigned integer's digits to the output interface I/O device.
-
-<img alt="PutInt" align="center" src="assets/putint.png"/>
+<div align="center">
+    <img alt="PutInt" align="center" src="assets/putint.png"/>
+</div>
