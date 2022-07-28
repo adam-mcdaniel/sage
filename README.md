@@ -48,10 +48,6 @@ Without further ado, here's the virtual machine instruction set.
 
 ## The Forty and Eight Instructions
 
-<div align="center">
-<img alt="Anatomy" align="center" src="assets/anatomy.svg" width="60%"/>
-</div>
-</br>
 
 The instruction set is composed of two halves of 24 instructions each: [the "Core", canonical instructions](CORE.md#the-core-instructions-in-depth), and the "Standard" instructions.
 
@@ -74,6 +70,11 @@ The standard instructions are not guaranteed to be wholly implemented by every t
 | Worldly                | `GetChar`        | `PutChar` | `GetInt`        | `PutInt`   | `GetFloat`  | `PutFloat`   |
 
 Every target should provide a chart of the standard instructions showing which are implemented.
+
+<div align="center">
+<img alt="Anatomy" align="center" src="assets/anatomy.svg" width="60%"/>
+</div>
+</br>
 
 ## The Assembly Language
 
