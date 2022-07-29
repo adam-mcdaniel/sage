@@ -833,7 +833,6 @@ fn test_as() {
         body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref())],
     });
 
-    // The program to compile
     let expr = put.app(vec![get
         .clone()
         .app(vec![])
@@ -849,4 +848,36 @@ fn test_as() {
     let device = i.run(&vm_code).unwrap();
 
     assert_eq!(device.output, vec![25]);
+}
+
+#[test]
+fn test_typecheck() {
+    let env = Env::default();
+
+    let expr = Expr::let_var(
+        "a",
+        None,
+        Expr::structure(btreemap! {
+            "x" => ConstExpr::Int(1).into(),
+            "y" => ConstExpr::Char('5').into(),
+        }),
+        Expr::from(ConstExpr::Int(5)).add(Expr::var("a").field(var("y"))),
+    );
+    assert_eq!(
+        expr.type_check(&env),
+        Err(Error::InvalidBinop(
+            Expr::from(ConstExpr::Int(5)).add(Expr::var("a").field(var("y")))
+        ))
+    );
+
+    let expr = Expr::let_var(
+        "a",
+        None,
+        Expr::structure(btreemap! {
+            "x" => ConstExpr::Int(1).into(),
+            "y" => ConstExpr::Char('5').into(),
+        }),
+        Expr::var("a").as_type(Type::Int),
+    );
+    assert_eq!(expr.type_check(&env), Err(Error::InvalidAs(Expr::var("a").as_type(Type::Int))));
 }

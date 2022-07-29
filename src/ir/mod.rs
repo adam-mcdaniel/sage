@@ -47,8 +47,6 @@ pub enum Error {
     RecursionDepthTypeEquality(Type, Type),
     /// Got another type when expecting an integer, bool, or char.
     NonIntegralConst(ConstExpr),
-    /// Tried to evaluate an undefined constant.
-    ConstNotDefined(String),
     /// Tried to instantiate a type that cannot be sized.
     /// This is a problem because we cannot manage the stack if we cannot know the size of the type.
     UnsizedType(Type),
@@ -64,6 +62,13 @@ pub enum Error {
     InvalidRefer(Expr),
     /// Invalid binary operation (add, subtract, and, or) expression (incorrect types).
     InvalidBinop(Expr),
+
+    /// Mismatched types
+    MismatchedTypes {
+        expected: Type,
+        found: Type,
+        expr: Expr,
+    },
 
     /// A symbol was used, but not defined.
     SymbolNotDefined(String),

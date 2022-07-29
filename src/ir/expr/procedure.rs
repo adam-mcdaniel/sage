@@ -1,5 +1,5 @@
-use super::{AssemblyProgram, Compile, Env, Error, Expr, GetSize, GetType, Type};
-use crate::asm::{CoreOp, A, FP, SP};
+use crate::asm::{AssemblyProgram, CoreOp, A, FP, SP};
+use crate::ir::{Compile, Env, Error, Expr, GetSize, GetType, Type, TypeCheck};
 use std::sync::Mutex;
 
 use lazy_static::lazy_static;
@@ -25,6 +25,16 @@ impl Procedure {
             ret,
             body: Box::new(body.into()),
         }
+    }
+}
+
+impl TypeCheck for Procedure {
+    fn type_check(&self, env: &Env) -> Result<(), Error> {
+        let mut new_env = Env::default();
+        new_env.def_args(self.args.clone())?;
+
+        self.body.get_type(&new_env)?.equals(&self.ret, env)?;
+        self.body.type_check(&new_env)
     }
 }
 

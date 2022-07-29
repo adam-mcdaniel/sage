@@ -10,7 +10,7 @@ pub use procedure::*;
 mod builtin;
 pub use builtin::*;
 
-use super::{Env, Error, GetSize, Type};
+use super::{Env, Error, GetSize, Type, TypeCheck};
 use crate::asm::{AssemblyProgram, CoreProgram, StandardProgram};
 
 pub trait GetType {
@@ -30,11 +30,12 @@ where
     }
 }
 
-pub trait Compile {
+pub trait Compile: TypeCheck {
     fn compile(self) -> Result<Result<CoreProgram, StandardProgram>, Error>
     where
         Self: Sized + Clone,
     {
+        self.type_check(&Env::default())?;
         let mut core_asm = CoreProgram(vec![]);
         if self
             .clone()

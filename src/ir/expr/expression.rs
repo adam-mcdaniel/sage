@@ -230,8 +230,279 @@ impl Expr {
 }
 
 impl TypeCheck for Expr {
-    fn type_check(&self, _env: &Env) -> Result<(), Error> {
-        todo!()
+    fn type_check(&self, env: &Env) -> Result<(), Error> {
+        match self {
+            Self::ConstExpr(c) => c.type_check(env),
+
+            Self::Many(exprs) => {
+                for expr in exprs {
+                    expr.type_check(env)?;
+                }
+                Ok(())
+            }
+
+            Self::Const(var, e, ret) => {
+                // Typecheck the expression we're assigning to the variable.
+                e.type_check(env)?;
+                let mut new_env = env.clone();
+                new_env.consts.insert(var.clone(), e.clone());
+                ret.type_check(&new_env)
+            }
+
+            Self::Let(var, t, e, ret) => {
+                // Typecheck the expression we're assigning to the variable.
+                e.type_check(env)?;
+                // Get the inferred type of the expression.
+                let inferred_t = e.get_type(env)?;
+                // If there's a type specification for the variable, check it.
+                if let Some(t) = t {
+                    // Check that the inferred type is compatible with the type specified.
+                    if !inferred_t.equals(t, env)? {
+                        return Err(Error::MismatchedTypes {
+                            expected: t.clone(),
+                            found: inferred_t,
+                            expr: self.clone(),
+                        });
+                    }
+                }
+                let mut new_env = env.clone();
+                new_env.def_var(var.clone(), inferred_t)?;
+                ret.type_check(&new_env)
+            }
+
+            Self::While(cond, body) => {
+                // Typecheck the subexpressions.
+                cond.type_check(env)?;
+                body.type_check(env)?;
+                Ok(())
+            }
+
+            Self::If(cond, t, e) => {
+                // Typecheck the subexpressions.
+                cond.type_check(env)?;
+                t.type_check(env)?;
+                e.type_check(env)?;
+
+                // Get the types of the then and else branches.
+                let t_type = t.get_type(env)?;
+                let e_type = e.get_type(env)?;
+                // Check that the types of the then and else branches are compatible.
+                if !t_type.equals(&e_type, env)? {
+                    // If they're not, return an error.
+                    return Err(Error::MismatchedTypes {
+                        expected: t_type,
+                        found: e_type,
+                        expr: self.clone(),
+                    });
+                }
+                Ok(())
+            }
+
+            Self::When(cond, t, e) => {
+                // Typecheck the subexpressions.
+                cond.type_check(env)?;
+                t.type_check(env)?;
+                e.type_check(env)
+                // Since `when` expressions are computed at compile time,
+                // we don't have to care about matching the types of the then and else branches.
+            }
+
+            Self::Add(a, b)
+            | Self::Sub(a, b)
+            | Self::Mul(a, b)
+            | Self::Div(a, b)
+            | Self::Rem(a, b) => {
+                a.type_check(env)?;
+                b.type_check(env)?;
+                let a_type = a.get_type(env)?;
+                let b_type = b.get_type(env)?;
+
+                // Now, perform the correct assembly expressions based on the types of the two expressions.
+                match (a_type, b_type) {
+                    // If a `Float` and a `Cell` are used, we just interpret the `Cell` as a `Float`.
+                    (Type::Cell, Type::Float) | (Type::Float, Type::Cell)
+                    // Two floats are used as floats.
+                    | (Type::Float, Type::Float)
+                    // An integer used with a float is promoted, and returns a float.
+                    | (Type::Int, Type::Float)
+                    | (Type::Float, Type::Int)
+
+                    // If cells and/or ints are used, we just use them as integers.
+                    | (Type::Int, Type::Int)
+                    | (Type::Cell, Type::Cell)
+                    | (Type::Cell, Type::Int)
+                    | (Type::Int, Type::Cell) => Ok(()),
+
+                    // Cannot do arithmetic on other pairs of types.
+                    _ => return Err(Error::InvalidBinop(self.clone())),
+                }
+            }
+
+            Self::And(a, b) | Self::Or(a, b) => {
+                a.type_check(env)?;
+                b.type_check(env)?;
+                let a_type = a.get_type(env)?;
+                let b_type = b.get_type(env)?;
+
+                if let (Type::Bool, Type::Bool) = (a_type, b_type) {
+                    Ok(())
+                } else {
+                    Err(Error::InvalidBinop(self.clone()))
+                }
+            }
+
+            Self::Not(x) => {
+                x.type_check(env)?;
+                match x.get_type(env)? {
+                    Type::Bool => Ok(()),
+                    other => Err(Error::MismatchedTypes {
+                        expected: Type::Bool,
+                        found: other,
+                        expr: self.clone(),
+                    }),
+                }
+            }
+
+            Self::Refer(e) => e.type_check(env),
+            Self::Deref(e) => {
+                e.type_check(env)?;
+                let t = e.get_type(env)?;
+                if let Type::Pointer(_) = t {
+                    Ok(())
+                } else {
+                    Err(Error::MismatchedTypes {
+                        expected: Type::Pointer(Box::new(Type::Any)),
+                        found: t,
+                        expr: self.clone(),
+                    })
+                }
+            }
+
+            Self::DerefMut(ptr, val) => {
+                ptr.type_check(env)?;
+                val.type_check(env)?;
+                let ptr_type = ptr.get_type(env)?;
+                let val_type = val.get_type(env)?;
+                if let Type::Pointer(t) = ptr_type {
+                    if t.equals(&val_type, env)? {
+                        Ok(())
+                    } else {
+                        Err(Error::MismatchedTypes {
+                            expected: val_type,
+                            found: *t,
+                            expr: self.clone(),
+                        })
+                    }
+                } else {
+                    Err(Error::MismatchedTypes {
+                        expected: Type::Pointer(Box::new(Type::Any)),
+                        found: ptr_type,
+                        expr: self.clone(),
+                    })
+                }
+            }
+
+            Self::Apply(f, args) => {
+                f.type_check(env)?;
+                for arg in args {
+                    arg.type_check(env)?;
+                }
+                let f_type = f.get_type(env)?;
+                let mut args_inferred = Vec::new();
+                for arg in args {
+                    args_inferred.push(arg.get_type(env)?);
+                }
+                if let Type::Proc(args_t, ret_t) = f_type {
+                    if args_t.len() != args_inferred.len() {
+                        return Err(Error::MismatchedTypes {
+                            expected: Type::Proc(args_t.clone(), ret_t.clone()),
+                            found: Type::Proc(args_inferred.clone(), ret_t.clone()),
+                            expr: self.clone(),
+                        });
+                    }
+                    for (arg_t, arg) in args_t.iter().zip(args_inferred.iter()) {
+                        if !arg_t.equals(arg, env)? {
+                            return Err(Error::MismatchedTypes {
+                                expected: arg_t.clone(),
+                                found: arg.clone(),
+                                expr: self.clone(),
+                            });
+                        }
+                    }
+                    Ok(())
+                } else {
+                    Err(Error::MismatchedTypes {
+                        expected: Type::Proc(args_inferred.clone(), Box::new(Type::Any)),
+                        found: f_type,
+                        expr: self.clone(),
+                    })
+                }
+            }
+
+            Self::Return(e) => e.type_check(env),
+
+            Self::Array(elems) | Self::Tuple(elems) => {
+                for elem in elems {
+                    elem.type_check(env)?;
+                }
+                Ok(())
+            }
+
+            Self::Struct(fields) => {
+                for (_, field_expr) in fields {
+                    field_expr.type_check(env)?;
+                }
+                Ok(())
+            }
+
+            Self::Union(t, variant, val) => {
+                if let Type::Union(fields) = t {
+                    if fields.get(variant).is_some() {
+                        val.type_check(env)?;
+                        Ok(())
+                    } else {
+                        Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                    }
+                } else {
+                    Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                }
+            }
+
+            Self::As(e, t) => {
+                e.type_check(env)?;
+                let original_t = e.get_type(env)?;
+
+                if original_t.can_cast_to(t, env)? {
+                    Ok(())
+                } else {
+                    Err(Error::InvalidAs(self.clone()))
+                }
+            }
+
+            Self::Member(e, field) => {
+                e.type_check(env)?;
+                let e_type = e.get_type(env)?;
+                e_type.get_member_offset(field, e, env)?;
+                Ok(())
+            }
+
+            Self::Index(val, idx) => {
+                val.type_check(env)?;
+                idx.type_check(env)?;
+                let val_type = val.get_type(env)?;
+                let idx_type = idx.get_type(env)?;
+                match val_type {
+                    Type::Array(_, _) | Type::Pointer(_) => {}
+                    _ => return Err(Error::InvalidIndex(self.clone())),
+                }
+
+                if let Type::Int = idx_type {
+                    Ok(())
+                } else {
+                    Err(Error::InvalidIndex(self.clone()))
+                }
+            }
+        }
     }
 }
 
@@ -434,6 +705,9 @@ impl Compile for Expr {
                 body.compile_expr(&mut new_env, output)?;
 
                 output.op(CoreOp::Comment(format!("destruct '{name}'")));
+                // Copy the return value over where the arguments were stored,
+                // so that when we pop the stack, it's as if we popped the variables
+                // and arguments, and pushed our return value.
                 output.op(CoreOp::Copy {
                     src: SP.deref().offset(1 - result_size as isize),
                     dst: SP
@@ -533,13 +807,15 @@ impl Compile for Expr {
                 }
             }
 
-            Self::Union(types, variant, val) => {
-                let result_type =
-                    Self::Union(types.clone(), variant.clone(), val.clone()).get_type(env)?;
-                let result_size = result_type.get_size(env)?;
+            Self::Union(t, _, val) => {
+                // Get the size of the union.
+                let result_size = t.get_size(env)?;
+                // Get the size of the value we are storing in the union.
                 let val_size = val.get_size(env)?;
 
+                // Evaluate the value and push it onto the stack
                 val.compile_expr(env, output)?;
+                // Increment the stack pointer to pad out the union.
                 output.op(CoreOp::Next(
                     SP,
                     Some(result_size as isize - val_size as isize),
@@ -629,87 +905,134 @@ impl Compile for Expr {
             }
 
             Self::Member(ref val, ref member) => {
+                // Get the size of the field we want to retrieve.
                 let size = self.get_size(env)?;
+                // Get the type of the value we want to get a field from.
                 let val_type = val.get_type(env)?;
+                // Get the size of the value we want to get a field from.
                 let val_size = val_type.get_size(env)?;
+                // Get the offset of the field from the address of the value.
                 let offset = val_type.get_member_offset(member, &self, env)?;
+                // Evaluate the value and push it onto the stack.
                 val.clone().compile_expr(env, output)?;
+                // Copy the contents of the field over top of the value on the stack.
                 output.op(CoreOp::Copy {
                     src: SP.deref().offset(1 - val_size as isize + offset as isize),
                     dst: SP.deref().offset(1 - val_size as isize),
                     size,
                 });
+                // Pop the remaining elements off the stack, so the field remains.
                 output.op(CoreOp::Pop(None, val_size - size));
             }
 
             Self::Refer(val) => match *val {
+                // Get the reference of a variable.
                 Expr::ConstExpr(ConstExpr::Symbol(name)) => {
+                    // Get the variable's offset from the frame pointer.
                     if let Some((_, offset)) = env.get_var(&name) {
+                        // Calulate the address of the variable from the offset
                         output.op(CoreOp::Many(vec![
                             CoreOp::Move { src: FP, dst: A },
                             CoreOp::Set(B, *offset),
+                            // Index the frame pointer with the offset of the variable.
+                            // This is the address of the variable.
                             CoreOp::Index {
                                 src: A,
                                 offset: B,
                                 dst: C,
                             },
+                            // Push the address of the variable onto the stack.
                             CoreOp::Push(C, 1),
                         ]))
                     } else {
+                        // Return an error if the symbol isn't defined.
                         return Err(Error::SymbolNotDefined(name.clone()));
                     }
                 }
                 Expr::Deref(ptr) => {
+                    // The address of a dereferenced value is just the inner, dereferenced value.
                     ptr.compile_expr(env, output)?;
                 }
                 Expr::Member(val, name) => {
+                    // Get the type of the value we want to get a field from.
                     let val_type = val.get_type(env)?;
+                    // Push the address of the struct, tuple, or union onto the stack.
                     Self::Refer(val.clone()).compile_expr(env, output)?;
+                    // Calculate the offset of the field from the address of the value.
                     let offset = val_type.get_member_offset(&name, &*val, env)?;
+
                     output.op(CoreOp::Pop(Some(A), 1));
                     output.op(CoreOp::Set(B, offset as isize));
+                    // Index the address of the struct, tuple, or union with the offset of the field.
+                    // This is the address of the field.
                     output.op(CoreOp::Index {
                         src: A,
                         offset: B,
                         dst: C,
                     });
+                    // Push this address to the stack.
                     output.op(CoreOp::Push(C, 1));
                 }
 
                 Expr::Index(val, idx) => {
+                    // Get the type of the value we want to index.
                     let val_type = val.get_type(env)?;
                     match val_type {
+                        // If the value is an array:
                         Type::Array(ref elem, _) => {
+                            // Push the address of the array onto the stack.
                             Self::Refer(val.clone()).compile_expr(env, output)?;
+                            // Push the index onto the stack.
                             idx.compile_expr(env, output)?;
 
+                            // Get the size of the element we are indexing.
                             let elem_size = elem.get_size(env)?;
+                            // Store the index in `B`.
                             output.op(CoreOp::Pop(Some(B), 1));
+                            // Store the address of the array in `A`.
                             output.op(CoreOp::Pop(Some(A), 1));
+                            // Store the size of the element in `C`.
                             output.op(CoreOp::Set(C, elem_size as isize));
+
+                            // Calculate the offset of the element from the address of the array.
+                            // (the index times the size of the element).
                             output.op(CoreOp::Mul { dst: B, src: C });
 
+                            // Index the address of the array with the offset of the element.
+                            // This is the address of the element.
                             output.op(CoreOp::Index {
                                 src: A,
                                 offset: B,
                                 dst: C,
                             });
+                            // Push the address of the element onto the stack.
                             output.op(CoreOp::Push(C, 1));
                         }
+                        // If the value is a pointer:
                         Type::Pointer(elem) => {
+                            // Push the index onto the stack.
                             idx.compile_expr(env, output)?;
+                            // Push the pointer onto the stack.
                             val.compile_expr(env, output)?;
 
+                            // Get the size the element we are indexing.
                             let elem_size = elem.get_size(env)?;
+                            // Store the pointer in `A`.
                             output.op(CoreOp::Pop(Some(A), 1));
+                            // Store the index in `B`.
                             output.op(CoreOp::Pop(Some(B), 1));
+                            // Store the size of the element in `C`.
                             output.op(CoreOp::Set(C, elem_size as isize));
+
+                            // Calculate the offset of the element from the pointer.
+                            // (the index times the size of the element).
                             output.op(CoreOp::Mul { dst: B, src: C });
                             output.op(CoreOp::Index {
                                 src: A.deref(),
                                 offset: B,
                                 dst: C,
                             });
+                            // Push the address of the element onto the stack.
                             output.op(CoreOp::Push(C, 1));
                         }
                         _ => return Err(Error::InvalidIndex(Expr::Index(val, idx))),
@@ -722,7 +1045,6 @@ impl Compile for Expr {
         Ok(())
     }
 }
-
 
 impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {

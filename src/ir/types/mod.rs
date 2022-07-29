@@ -27,13 +27,115 @@ pub enum Type {
 }
 
 impl Type {
+    pub fn can_cast_to(&self, other: &Self, env: &Env) -> Result<bool, Error> {
+        self.can_cast_to_checked(other, env, 0)
+    }
+
+    fn can_cast_to_checked(&self, other: &Self, env: &Env, i: usize) -> Result<bool, Error> {
+        if self == other {
+            return Ok(true);
+        }
+
+        let i = i + 1;
+        if i > 500 {
+            return Err(Error::RecursionDepthTypeEquality(
+                self.clone(),
+                other.clone(),
+            ));
+        }
+
+        match (self, other) {
+            (Self::Symbol(a), Self::Symbol(b)) if a == b => Ok(true),
+            (Self::Int, Self::Float)
+            | (Self::Float, Self::Int)
+            | (Self::Int, Self::Char)
+            | (Self::Char, Self::Int)
+            | (Self::Int, Self::Bool)
+            | (Self::Bool, Self::Int)
+            | (Self::Int, Self::Enum(_))
+            | (Self::Enum(_), Self::Int)
+            | (Self::Any, _)
+            | (_, Self::Any) => Ok(true),
+
+            (Self::Tuple(a), Self::Tuple(b)) => {
+                if a.len() != b.len() {
+                    return Ok(false);
+                }
+                for (a, b) in a.iter().zip(b.iter()) {
+                    if !a.can_cast_to_checked(b, env, i)? {
+                        return Ok(false);
+                    }
+                }
+                Ok(true)
+            }
+
+            (Self::Array(t1, size1), Self::Array(t2, size2)) => {
+                if !t1.can_cast_to_checked(t2, env, i)? {
+                    return Ok(false);
+                }
+                if size1.clone().eval(env)?.as_int(env)? != size2.clone().eval(env)?.as_int(env)? {
+                    return Ok(false);
+                }
+                Ok(true)
+            }
+
+            (Self::Struct(a), Self::Struct(b)) => {
+                if a.len() != b.len() {
+                    return Ok(false);
+                }
+                for (a, b) in a.iter().zip(b.iter()) {
+                    if !a.1.can_cast_to_checked(&b.1, env, i)? {
+                        return Ok(false);
+                    }
+                }
+                Ok(true)
+            }
+
+            (Self::Union(a), Self::Union(b)) => {
+                if a.len() != b.len() {
+                    return Ok(false);
+                }
+                for (a, b) in a.iter().zip(b.iter()) {
+                    if !a.1.can_cast_to_checked(&b.1, env, i)? {
+                        return Ok(false);
+                    }
+                }
+                Ok(true)
+            }
+
+            (Self::Proc(args1, ret1), Self::Proc(args2, ret2)) => {
+                if args1.len() != args2.len() {
+                    return Ok(false);
+                }
+                for (a, b) in args1.iter().zip(args2.iter()) {
+                    if !a.can_cast_to_checked(b, env, i)? {
+                        return Ok(false);
+                    }
+                }
+                ret1.can_cast_to_checked(ret2, env, i)
+            }
+
+            (a, b) => {
+                if a.equals(b, env)? {
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+        }
+    }
+
     pub fn equals(&self, other: &Self, env: &Env) -> Result<bool, Error> {
-        self.checked_equals(other, env, 0)
+        self.equals_checked(other, env, 0)
     }
 
     /// Are two types structurally equal?
     /// This function will always terminate.
-    fn checked_equals(&self, other: &Self, env: &Env, i: usize) -> Result<bool, Error> {
+    fn equals_checked(&self, other: &Self, env: &Env, i: usize) -> Result<bool, Error> {
+        if self == other {
+            return Ok(true);
+        }
+
         let i = i + 1;
         if i > 500 {
             return Err(Error::RecursionDepthTypeEquality(
@@ -44,11 +146,11 @@ impl Type {
 
         Ok(match (self, other) {
             (Self::Symbol(a), Self::Symbol(b)) => {
-                a == b || self.clone().simplify(env)?.equals(other, env)?
+                a == b || self.clone().simplify(env)?.equals_checked(other, env, i)?
             }
-            (Self::Symbol(x), y) | (y, Self::Symbol(x)) => {
-                Self::Symbol(x.clone()).simplify(env)?.equals(y, env)?
-            }
+            (Self::Symbol(x), y) | (y, Self::Symbol(x)) => Self::Symbol(x.clone())
+                .simplify(env)?
+                .equals_checked(y, env, i)?,
             (Self::Any, _)
             | (_, Self::Any)
             | (Self::Never, _)
@@ -69,18 +171,19 @@ impl Type {
             }
             (Self::Tuple(a), Self::Tuple(b)) => {
                 for (item1, item2) in a.iter().zip(b.iter()) {
-                    if !item1.equals(item2, env)? {
+                    if !item1.equals_checked(item2, env, i)? {
                         return Ok(false);
                     }
                 }
                 true
             }
             (Self::Array(t1, size1), Self::Array(t2, size2)) => {
-                t1.equals(t2, env)? && size1.clone().as_int(env)? == size2.clone().as_int(env)?
+                t1.equals_checked(t2, env, i)?
+                    && size1.clone().as_int(env)? == size2.clone().as_int(env)?
             }
             (Self::Struct(a), Self::Struct(b)) => {
                 for ((name1, item1), (name2, item2)) in a.iter().zip(b.iter()) {
-                    if name1 != name2 || !item1.equals(item2, env)? {
+                    if name1 != name2 || !item1.equals_checked(item2, env, i)? {
                         return Ok(false);
                     }
                 }
@@ -89,7 +192,7 @@ impl Type {
 
             (Self::Union(a), Self::Union(b)) => {
                 for ((name1, item1), (name2, item2)) in a.iter().zip(b.iter()) {
-                    if name1 != name2 || !item1.equals(item2, env)? {
+                    if name1 != name2 || !item1.equals_checked(item2, env, i)? {
                         return Ok(false);
                     }
                 }
@@ -98,14 +201,14 @@ impl Type {
 
             (Self::Proc(args1, ret1), Self::Proc(args2, ret2)) => {
                 for (arg1, arg2) in args1.iter().zip(args2.iter()) {
-                    if !arg1.equals(arg2, env)? {
+                    if !arg1.equals_checked(arg2, env, i)? {
                         return Ok(false);
                     }
                 }
-                ret1.equals(ret2, env)?
+                ret1.equals_checked(ret2, env, i)?
             }
 
-            (Self::Pointer(t1), Self::Pointer(t2)) => t1.equals(t2, env)?,
+            (Self::Pointer(t1), Self::Pointer(t2)) => t1.equals_checked(t2, env, i)?,
 
             _ => false,
         })
@@ -142,7 +245,7 @@ impl Type {
                 }
                 Err(Error::MemberNotFound(expr.clone(), member.clone()))
             }
-            Type::Union(_) => Ok(0),
+            Type::Union(types) if types.contains_key(&member.clone().as_symbol(env)?) => Ok(0),
             _ => Err(Error::MemberNotFound(expr.clone(), member.clone())),
         }
     }

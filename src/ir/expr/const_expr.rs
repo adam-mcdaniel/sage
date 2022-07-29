@@ -1,8 +1,8 @@
-use crate::ir::{
-    Simplify, Type, TypeCheck,
-    Compile, CoreBuiltin, Env, Error, Expr, GetSize, GetType, Procedure, StandardBuiltin,
-};
 use crate::asm::{AssemblyProgram, CoreOp, StandardOp, A, FP, SP};
+use crate::ir::{
+    Compile, CoreBuiltin, Env, Error, Expr, GetSize, GetType, Procedure, Simplify, StandardBuiltin,
+    Type, TypeCheck,
+};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -117,8 +117,75 @@ impl ConstExpr {
 }
 
 impl TypeCheck for ConstExpr {
-    fn type_check(&self, _env: &Env) -> Result<(), Error> {
-        todo!()
+    fn type_check(&self, env: &Env) -> Result<(), Error> {
+        match self {
+            Self::None
+            | Self::Null
+            | Self::Int(_)
+            | Self::Float(_)
+            | Self::Char(_)
+            | Self::Bool(_) => Ok(()),
+
+            Self::CoreBuiltin(builtin) => builtin.type_check(env),
+            Self::StandardBuiltin(builtin) => builtin.type_check(env),
+            Self::Proc(proc) => proc.type_check(env),
+
+            Self::Symbol(name) => {
+                if env.consts.get(name).is_some() {
+                    Ok(())
+                } else if env.get_var(name).is_some() {
+                    Ok(())
+                } else {
+                    Err(Error::SymbolNotDefined(name.clone()))
+                }
+            }
+
+            Self::Of(t, variant) => {
+                if let Type::Enum(variants) = t {
+                    if variants.contains(variant) {
+                        Ok(())
+                    } else {
+                        Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                    }
+                } else {
+                    Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                }
+            }
+
+            Self::Tuple(items) => {
+                for item in items {
+                    item.type_check(env)?;
+                }
+                Ok(())
+            }
+
+            Self::Array(items) => {
+                for item in items {
+                    item.type_check(env)?;
+                }
+                Ok(())
+            }
+
+            Self::Struct(fields) => {
+                for (_, item) in fields {
+                    item.type_check(env)?;
+                }
+                Ok(())
+            }
+
+            Self::Union(t, variant, val) => {
+                if let Type::Union(fields) = t {
+                    if fields.get(variant).is_some() {
+                        val.type_check(env)?;
+                        Ok(())
+                    } else {
+                        Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                    }
+                } else {
+                    Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                }
+            }
+        }
     }
 }
 
@@ -258,7 +325,7 @@ impl GetType for ConstExpr {
                 if let Some((t, _)) = env.get_var(&name) {
                     t.clone()
                 } else {
-                    return Err(Error::ConstNotDefined(name));
+                    return Err(Error::SymbolNotDefined(name));
                 }
             }
         })
