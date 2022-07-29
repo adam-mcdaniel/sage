@@ -334,7 +334,7 @@ impl TypeCheck for Expr {
                     | (Type::Int, Type::Cell) => Ok(()),
 
                     // Cannot do arithmetic on other pairs of types.
-                    _ => return Err(Error::InvalidBinop(self.clone())),
+                    _ => Err(Error::InvalidBinop(self.clone())),
                 }
             }
 
@@ -403,36 +403,45 @@ impl TypeCheck for Expr {
             }
 
             Self::Apply(f, args) => {
+                // Typecheck the expression we want to call as a procedure.
                 f.type_check(env)?;
+                // Typecheck the supplied arguments.
                 for arg in args {
                     arg.type_check(env)?;
                 }
+                // Get the type of the function.
                 let f_type = f.get_type(env)?;
-                let mut args_inferred = Vec::new();
+                // Infer the types of the supplied arguments.
+                let mut args_inferred = vec![];
                 for arg in args {
                     args_inferred.push(arg.get_type(env)?);
                 }
                 if let Type::Proc(args_t, ret_t) = f_type {
+                    // If the number of arguments is incorrect, then return an error.
                     if args_t.len() != args_inferred.len() {
                         return Err(Error::MismatchedTypes {
-                            expected: Type::Proc(args_t.clone(), ret_t.clone()),
-                            found: Type::Proc(args_inferred.clone(), ret_t.clone()),
+                            expected: Type::Proc(args_t, ret_t.clone()),
+                            found: Type::Proc(args_inferred, ret_t),
                             expr: self.clone(),
                         });
                     }
-                    for (arg_t, arg) in args_t.iter().zip(args_inferred.iter()) {
-                        if !arg_t.equals(arg, env)? {
+                    // If the function is a procedure, confirm that the type of each
+                    // argument matches the the type of the supplied value.
+                    for (arg_t, arg) in args_t.into_iter().zip(args_inferred.into_iter()) {
+                        // If the types don't match, return an error.
+                        if !arg_t.equals(&arg, env)? {
                             return Err(Error::MismatchedTypes {
-                                expected: arg_t.clone(),
-                                found: arg.clone(),
+                                expected: arg_t,
+                                found: arg,
                                 expr: self.clone(),
                             });
                         }
                     }
                     Ok(())
                 } else {
+                    // If the function is not a procedure, return an error.
                     Err(Error::MismatchedTypes {
-                        expected: Type::Proc(args_inferred.clone(), Box::new(Type::Any)),
+                        expected: Type::Proc(args_inferred, Box::new(Type::Any)),
                         found: f_type,
                         expr: self.clone(),
                     })
@@ -449,7 +458,7 @@ impl TypeCheck for Expr {
             }
 
             Self::Struct(fields) => {
-                for (_, field_expr) in fields {
+                for field_expr in fields.values() {
                     field_expr.type_check(env)?;
                 }
                 Ok(())
@@ -734,7 +743,7 @@ impl Compile for Expr {
             }
             Self::If(c, t, e) => {
                 // Compile the condition
-                c.clone().compile_expr(env, output)?;
+                c.compile_expr(env, output)?;
                 output.op(CoreOp::Pop(Some(A), 1));
                 // If the condition is true
                 output.op(CoreOp::If(A));
@@ -1085,7 +1094,7 @@ impl GetType for Expr {
                     .consts
                     .insert(var.clone(), const_val.clone().eval(env)?);
 
-                ret.get_type_checked(&mut new_env, i)?
+                ret.get_type_checked(&new_env, i)?
             }
 
             Self::Let(var, t, val, ret) => {
@@ -1098,7 +1107,7 @@ impl GetType for Expr {
                     },
                 )?;
 
-                ret.get_type_checked(&mut new_env, i)?
+                ret.get_type_checked(&new_env, i)?
             }
 
             Self::While(_, _) => Type::Never,

@@ -355,10 +355,7 @@ where
                     if stdin().read_line(&mut buf).is_err() {
                         return Err("Could not get user input".to_string());
                     }
-                    self.register = as_int(match buf.trim().parse::<f64>() {
-                        Ok(n) => n,
-                        Err(_) => 0.0,
-                    })
+                    self.register = as_int(buf.trim().parse::<f64>().unwrap_or(0.0))
                 }
                 StandardOp::GetInt => {
                     let mut buf = String::new();
@@ -368,10 +365,7 @@ where
                     if stdin().read_line(&mut buf).is_err() {
                         return Err("Could not get user input".to_string());
                     }
-                    self.register = match buf.trim().parse::<isize>() {
-                        Ok(n) => n,
-                        Err(_) => 0,
-                    }
+                    self.register = buf.trim().parse::<isize>().unwrap_or(0)
                 }
                 StandardOp::GetChar => {
                     let mut buf = [0];

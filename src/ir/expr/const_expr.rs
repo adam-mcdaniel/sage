@@ -131,9 +131,7 @@ impl TypeCheck for ConstExpr {
             Self::Proc(proc) => proc.type_check(env),
 
             Self::Symbol(name) => {
-                if env.consts.get(name).is_some() {
-                    Ok(())
-                } else if env.get_var(name).is_some() {
+                if env.consts.get(name).is_some() || env.get_var(name).is_some() {
                     Ok(())
                 } else {
                     Err(Error::SymbolNotDefined(name.clone()))
@@ -167,7 +165,7 @@ impl TypeCheck for ConstExpr {
             }
 
             Self::Struct(fields) => {
-                for (_, item) in fields {
+                for item in fields.values() {
                     item.type_check(env)?;
                 }
                 Ok(())

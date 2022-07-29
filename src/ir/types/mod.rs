@@ -46,62 +46,18 @@ impl Type {
 
         match (self, other) {
             (Self::Symbol(a), Self::Symbol(b)) if a == b => Ok(true),
-            (Self::Int, Self::Float)
-            | (Self::Float, Self::Int)
-            | (Self::Int, Self::Char)
-            | (Self::Char, Self::Int)
-            | (Self::Int, Self::Bool)
-            | (Self::Bool, Self::Int)
-            | (Self::Int, Self::Enum(_))
-            | (Self::Enum(_), Self::Int)
-            | (Self::Any, _)
-            | (_, Self::Any) => Ok(true),
 
-            (Self::Tuple(a), Self::Tuple(b)) => {
-                if a.len() != b.len() {
-                    return Ok(false);
-                }
-                for (a, b) in a.iter().zip(b.iter()) {
-                    if !a.can_cast_to_checked(b, env, i)? {
-                        return Ok(false);
-                    }
-                }
-                Ok(true)
-            }
+            (Self::Int, Self::Float) | (Self::Float, Self::Int) => Ok(true),
+            (Self::Int, Self::Char) | (Self::Char, Self::Int) => Ok(true),
+            (Self::Int, Self::Bool) | (Self::Bool, Self::Int) => Ok(true),
+            (Self::Int, Self::Enum(_)) | (Self::Enum(_), Self::Int) => Ok(true),
 
-            (Self::Array(t1, size1), Self::Array(t2, size2)) => {
-                if !t1.can_cast_to_checked(t2, env, i)? {
-                    return Ok(false);
-                }
-                if size1.clone().eval(env)?.as_int(env)? != size2.clone().eval(env)?.as_int(env)? {
-                    return Ok(false);
-                }
-                Ok(true)
-            }
+            (Self::Cell, Self::Int) | (Self::Int, Self::Cell) => Ok(true),
+            (Self::Cell, Self::Float) | (Self::Float, Self::Cell) => Ok(true),
+            (Self::Cell, Self::Char) | (Self::Char, Self::Cell) => Ok(true),
+            (Self::Cell, Self::Bool) | (Self::Bool, Self::Cell) => Ok(true),
 
-            (Self::Struct(a), Self::Struct(b)) => {
-                if a.len() != b.len() {
-                    return Ok(false);
-                }
-                for (a, b) in a.iter().zip(b.iter()) {
-                    if !a.1.can_cast_to_checked(&b.1, env, i)? {
-                        return Ok(false);
-                    }
-                }
-                Ok(true)
-            }
-
-            (Self::Union(a), Self::Union(b)) => {
-                if a.len() != b.len() {
-                    return Ok(false);
-                }
-                for (a, b) in a.iter().zip(b.iter()) {
-                    if !a.1.can_cast_to_checked(&b.1, env, i)? {
-                        return Ok(false);
-                    }
-                }
-                Ok(true)
-            }
+            (Self::Any, _) | (_, Self::Any) => Ok(true),
 
             (Self::Proc(args1, ret1), Self::Proc(args2, ret2)) => {
                 if args1.len() != args2.len() {
@@ -335,13 +291,13 @@ impl Simplify for Type {
             Self::Struct(fields) => Self::Struct(
                 fields
                     .into_iter()
-                    .map(|(k, t)| Ok((k.clone(), t.simplify_checked(env, i)?)))
+                    .map(|(k, t)| Ok((k, t.simplify_checked(env, i)?)))
                     .collect::<Result<BTreeMap<String, Type>, Error>>()?,
             ),
             Self::Union(types) => Self::Union(
                 types
                     .into_iter()
-                    .map(|(k, t)| Ok((k.clone(), t.simplify_checked(env, i)?)))
+                    .map(|(k, t)| Ok((k, t.simplify_checked(env, i)?)))
                     .collect::<Result<BTreeMap<String, Type>, Error>>()?,
             ),
         })

@@ -22,19 +22,10 @@ pub trait Device {
 ///
 /// The tests interpret the program and populate the device with output.
 /// Then, we check the devices output against the correct output.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TestingDevice {
     pub input: VecDeque<isize>,
     pub output: Vec<isize>,
-}
-
-impl Default for TestingDevice {
-    fn default() -> Self {
-        TestingDevice {
-            input: VecDeque::new(),
-            output: Vec::new(),
-        }
-    }
 }
 
 impl TestingDevice {

@@ -879,5 +879,8 @@ fn test_typecheck() {
         }),
         Expr::var("a").as_type(Type::Int),
     );
-    assert_eq!(expr.type_check(&env), Err(Error::InvalidAs(Expr::var("a").as_type(Type::Int))));
+    assert_eq!(
+        expr.type_check(&env),
+        Err(Error::InvalidAs(Expr::var("a").as_type(Type::Int)))
+    );
 }
