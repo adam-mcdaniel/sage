@@ -85,6 +85,7 @@ impl Type {
         }
     }
 
+    /// Are two types structurally equal?
     pub fn equals(&self, other: &Self, env: &Env) -> Result<bool, Error> {
         self.equals_checked(other, env, 0)
     }
