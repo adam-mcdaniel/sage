@@ -27,10 +27,13 @@ pub enum Type {
 }
 
 impl Type {
+    /// Can this type be cast to another type?
     pub fn can_cast_to(&self, other: &Self, env: &Env) -> Result<bool, Error> {
         self.can_cast_to_checked(other, env, 0)
     }
-
+    
+    /// Can this type be cast to another type?
+    /// This function will always terminate.
     fn can_cast_to_checked(&self, other: &Self, env: &Env, i: usize) -> Result<bool, Error> {
         if self == other {
             return Ok(true);
@@ -56,6 +59,7 @@ impl Type {
             (Self::Cell, Self::Float) | (Self::Float, Self::Cell) => Ok(true),
             (Self::Cell, Self::Char) | (Self::Char, Self::Cell) => Ok(true),
             (Self::Cell, Self::Bool) | (Self::Bool, Self::Cell) => Ok(true),
+            (Self::Cell, Self::Pointer(_)) | (Self::Pointer(_), Self::Cell) => Ok(true),
 
             (Self::Any, _) | (_, Self::Any) => Ok(true),
 
@@ -102,11 +106,25 @@ impl Type {
 
         Ok(match (self, other) {
             (Self::Symbol(a), Self::Symbol(b)) => {
-                a == b || self.clone().simplify(env)?.equals_checked(other, env, i)?
+                if a == b {
+                    true
+                } else {
+                    // To get as much specific information as possible about type errors,
+                    // we just say the types are unequal if we cannot simplify symbols further.
+                    match self.clone().simplify(env) {
+                        Ok(e) => e.equals_checked(other, env, i)?,
+                        Err(_) => false,
+                    }
+                }
             }
-            (Self::Symbol(x), y) | (y, Self::Symbol(x)) => Self::Symbol(x.clone())
-                .simplify(env)?
-                .equals_checked(y, env, i)?,
+            (Self::Symbol(x), y) | (y, Self::Symbol(x)) => {
+                // To get as much specific information as possible about type errors,
+                // we just say the types are unequal if we cannot simplify symbols further.
+                match Self::Symbol(x.clone()).simplify(env) {
+                    Ok(e) => e.equals_checked(y, env, i)?,
+                    Err(_) => false,
+                }
+            }
             (Self::Any, _)
             | (_, Self::Any)
             | (Self::Never, _)
@@ -126,6 +144,9 @@ impl Type {
                 a == b
             }
             (Self::Tuple(a), Self::Tuple(b)) => {
+                if a.len() != b.len() {
+                    return Ok(false);
+                }
                 for (item1, item2) in a.iter().zip(b.iter()) {
                     if !item1.equals_checked(item2, env, i)? {
                         return Ok(false);
@@ -138,6 +159,9 @@ impl Type {
                     && size1.clone().as_int(env)? == size2.clone().as_int(env)?
             }
             (Self::Struct(a), Self::Struct(b)) => {
+                if a.len() != b.len() {
+                    return Ok(false);
+                }
                 for ((name1, item1), (name2, item2)) in a.iter().zip(b.iter()) {
                     if name1 != name2 || !item1.equals_checked(item2, env, i)? {
                         return Ok(false);
@@ -147,6 +171,9 @@ impl Type {
             }
 
             (Self::Union(a), Self::Union(b)) => {
+                if a.len() != b.len() {
+                    return Ok(false);
+                }
                 for ((name1, item1), (name2, item2)) in a.iter().zip(b.iter()) {
                     if name1 != name2 || !item1.equals_checked(item2, env, i)? {
                         return Ok(false);
@@ -156,6 +183,9 @@ impl Type {
             }
 
             (Self::Proc(args1, ret1), Self::Proc(args2, ret2)) => {
+                if args1.len() != args2.len() {
+                    return Ok(false);
+                }
                 for (arg1, arg2) in args1.iter().zip(args2.iter()) {
                     if !arg1.equals_checked(arg2, env, i)? {
                         return Ok(false);
@@ -202,6 +232,10 @@ impl Type {
                 Err(Error::MemberNotFound(expr.clone(), member.clone()))
             }
             Type::Union(types) if types.contains_key(&member.clone().as_symbol(env)?) => Ok(0),
+            Type::Symbol(_) => self
+                .clone()
+                .simplify(env)?
+                .get_member_offset(member, expr, env),
             _ => Err(Error::MemberNotFound(expr.clone(), member.clone())),
         }
     }
@@ -252,14 +286,6 @@ impl Simplify for Type {
     fn simplify_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
         let i = i + 1;
         Ok(match self {
-            Self::Symbol(name) => {
-                if let Some(t) = env.types.get(&name) {
-                    t.clone().simplify_checked(env, i)?
-                } else {
-                    return Err(Error::TypeNotDefined(name.clone()));
-                }
-            }
-
             Self::None
             | Self::Never
             | Self::Any
@@ -270,6 +296,14 @@ impl Simplify for Type {
             | Self::Cell
             | Self::Enum(_) => self.clone(),
             Self::Pointer(inner) => Self::Pointer(Box::new(inner.simplify_checked(env, i)?)),
+
+            Self::Symbol(name) => {
+                if let Some(t) = env.types.get(&name) {
+                    t.clone()
+                } else {
+                    return Err(Error::TypeNotDefined(name.clone()));
+                }
+            }
 
             Self::Proc(args, ret) => Self::Proc(
                 args.into_iter()

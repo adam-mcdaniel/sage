@@ -387,7 +387,21 @@ where
                     eprint!("{}", self.register as u8 as char)
                 }
 
-                op => panic!("unimplemented op: {:?}", op),
+                StandardOp::Alloc => {
+                    // If the virtual machine doesn't have a thousand cells,
+                    // allocate some.
+                    if self.cells.len() < 1000 {
+                        self.cells.extend(vec![0; 1000]);
+                    }
+                    // Save the address of where the new cells will start.
+                    let result = self.cells.len() - 1;
+                    // Allocate new space at the end of the type.
+                    self.cells.extend(vec![0; self.register as usize]);
+                    // Store the address of the new space in the register.
+                    self.register = result as isize;
+                }
+                StandardOp::Free => {
+                }
             }
             self.i += 1
         } else {

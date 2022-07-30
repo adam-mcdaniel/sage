@@ -218,12 +218,12 @@ int main() {
 
                 StandardOp::Alloc => {
                     result += &format!(
-                        "{}reg.i = malloc(reg.i * sizeof(int_or_float));\n",
+                        "{}reg.p = malloc(reg.i * sizeof(int_or_float));\n",
                         tab.repeat(indent)
                     );
                 }
                 StandardOp::Free => {
-                    result += &format!("{}free(reg.i)\n", tab.repeat(indent));
+                    result += &format!("{}free(reg.p);\n", tab.repeat(indent));
                 }
 
                 StandardOp::ToInt => {

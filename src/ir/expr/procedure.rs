@@ -13,9 +13,12 @@ pub struct Procedure {
     args: Vec<(String, Type)>,
     ret: Type,
     body: Box<Expr>,
+    /// Has this procedure been compiled yet?
+    pub compiled: bool,
 }
 
 impl Procedure {
+    /// Construct a new procedure.
     pub fn new(args: Vec<(String, Type)>, ret: Type, body: impl Into<Expr>) -> Self {
         let mut lambda_count = LAMBDA_COUNT.lock().unwrap();
         *lambda_count += 1;
@@ -24,13 +27,29 @@ impl Procedure {
             args,
             ret,
             body: Box::new(body.into()),
+            compiled: false,
         }
+    }
+
+    /// Get the mangled name of the procedure.
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    /// Push this procedure's label to the stack
+    pub fn push_label(&self, output: &mut dyn AssemblyProgram) {
+        // Push the procedure label address onto the stack
+        output.op(CoreOp::SetLabel(A, self.name.clone()));
+        output.op(CoreOp::Push(A, 1));
     }
 }
 
 impl TypeCheck for Procedure {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
         let mut new_env = Env::default();
+        new_env.consts = env.consts.clone();
+        new_env.procs = env.procs.clone();
+        new_env.types = env.types.clone();
         new_env.def_args(self.args.clone())?;
 
         self.body.get_type(&new_env)?.equals(&self.ret, env)?;
@@ -51,6 +70,10 @@ impl Compile for Procedure {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         // Compile the contents of the procedure under a new environment
         let mut new_env = Env::default();
+        new_env.consts = env.consts.clone();
+        new_env.procs = env.procs.clone();
+        new_env.types = env.types.clone();
+
         // Declare the arguments and get their size
         let args_size = new_env.def_args(self.args)?;
         // Get the size of the return value to leave on the stack

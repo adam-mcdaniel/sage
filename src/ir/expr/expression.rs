@@ -1,7 +1,14 @@
 use crate::asm::{AssemblyProgram, CoreOp, StandardOp, A, B, C, FP, SP};
-use crate::ir::{Compile, ConstExpr, Env, Error, GetSize, GetType, Type, TypeCheck};
+use crate::ir::{Compile, ConstExpr, Env, Error, GetSize, GetType, Simplify, Type, TypeCheck};
 use std::collections::BTreeMap;
 
+use super::Procedure;
+
+/// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
+///       This way, we don't overflow the stack with several clones of the environment.
+
+
+/// A runtime expression.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
     /// A constant expression.
@@ -11,10 +18,16 @@ pub enum Expr {
 
     /// A `const` binding expression.
     /// Declare a constant under a new scope, and evaluate a subexpression in that scope.
-    Const(String, ConstExpr, Box<Self>),
+    LetConst(String, ConstExpr, Box<Self>),
+    /// A `proc` binding expression.
+    /// Declare a procedure under a new scope, and evaluate a subexpression in that scope.
+    LetProc(String, Procedure, Box<Self>),
+    /// A `type` binding expression.
+    /// Declare a type under a new scope, and evaluate a subexpression in that scope.
+    LetType(String, Type, Box<Self>),
     /// A `let` binding expression.
     /// Declare a variable under a new scope, and evaluate a subexpression in that scope.
-    Let(String, Option<Type>, Box<Self>, Box<Self>),
+    LetVar(String, Option<Type>, Box<Self>, Box<Self>),
 
     /// Create a while loop: while the first expression evaluates to true, evaluate the second expression.
     While(Box<Self>, Box<Self>),
@@ -99,6 +112,11 @@ impl From<ConstExpr> for Expr {
 }
 
 impl Expr {
+    /// Get the size of an expression.
+    pub fn size_of(self) -> Self {
+        Self::ConstExpr(ConstExpr::SizeOfExpr(Box::new(self)))
+    }
+
     /// Cast an expression as another type.
     pub fn as_type(self, t: Type) -> Self {
         Expr::As(Box::new(self), t)
@@ -171,14 +189,67 @@ impl Expr {
         e: impl Into<Self>,
         ret: impl Into<Self>,
     ) -> Self {
-        Expr::Let(var.to_string(), t, Box::new(e.into()), Box::new(ret.into()))
+        Expr::LetVar(var.to_string(), t, Box::new(e.into()), Box::new(ret.into()))
     }
 
     /// Create a `let` binding for an expression, and define multiple variables.
     pub fn let_vars(vars: BTreeMap<&str, (Option<Type>, Self)>, ret: impl Into<Self>) -> Self {
         let mut result = ret.into();
         for (var, (t, val)) in vars {
-            result = Expr::Let(var.to_string(), t, Box::new(val), Box::new(result));
+            result = Expr::LetVar(var.to_string(), t, Box::new(val), Box::new(result));
+        }
+        result
+    }
+
+    /// Create a `let` binding for an type.
+    ///
+    /// This will create a new scope with the type `typename` defined.
+    /// `typename` will be declared with the type `t`, and the expression
+    /// `ret` will be evaluated under this new scope.
+    ///
+    /// When this expression is finished evaluating, `typename` will be removed from the scope.
+    pub fn let_type(typename: impl ToString, t: Type, ret: impl Into<Self>) -> Self {
+        Expr::LetType(typename.to_string(), t, Box::new(ret.into()))
+    }
+
+    /// Create a `let` binding for a constant expression.
+    ///
+    /// This will create a new scope with the constant `constname` defined.
+    /// `ret` will be evaluated under this new scope.
+    ///
+    /// When this expression is finished evaluating, `constname` will be removed from the scope.
+    pub fn let_const(constname: impl ToString, e: ConstExpr, ret: impl Into<Self>) -> Self {
+        Expr::LetConst(constname.to_string(), e, Box::new(ret.into()))
+    }
+
+    /// Create several `const` bindings at onces.
+    pub fn let_consts(procs: BTreeMap<&str, ConstExpr>, ret: impl Into<Self>) -> Self {
+        let mut result = ret.into();
+        for (var, val) in procs {
+            result = Expr::LetConst(var.to_string(), val, Box::new(result));
+        }
+        result
+    }
+
+    /// Create a `proc` binding for a procedure.
+    /// 
+    /// This will create a new scope with the procedure `proc` defined.
+    /// `ret` will be evaluated under this new scope.
+    /// 
+    /// When this expression is finished evaluating, `proc` will be removed from the scope.
+    pub fn let_proc(
+        procname: impl ToString,
+        proc: Procedure,
+        ret: impl Into<Self>,
+    ) -> Self {
+        Expr::LetProc(procname.to_string(), proc, Box::new(ret.into()))
+    }
+
+    /// Create several `proc` bindings at onces.
+    pub fn let_procs(procs: BTreeMap<&str, Procedure>, ret: impl Into<Self>) -> Self {
+        let mut result = ret.into();
+        for (var, val) in procs {
+            result = Expr::LetProc(var.to_string(), val, Box::new(result));
         }
         result
     }
@@ -241,15 +312,30 @@ impl TypeCheck for Expr {
                 Ok(())
             }
 
-            Self::Const(var, e, ret) => {
-                // Typecheck the expression we're assigning to the variable.
-                e.type_check(env)?;
+            Self::LetConst(var, e, ret) => {
+                // Typecheck the constant expression we're assigning to the variable.
                 let mut new_env = env.clone();
                 new_env.consts.insert(var.clone(), e.clone());
+                e.type_check(&new_env)?;
                 ret.type_check(&new_env)
             }
 
-            Self::Let(var, t, e, ret) => {
+            Self::LetProc(var, proc, ret) => {
+                // Typecheck the procedure and the result.
+                let mut new_env = env.clone();
+                new_env.procs.insert(var.to_string(), proc.clone());
+                proc.type_check(&new_env)?;
+                ret.type_check(&new_env)
+            }
+
+            Self::LetType(name, t, ret) => {
+                // Typecheck the result expression under the new scope.
+                let mut new_env = env.clone();
+                new_env.types.insert(name.clone(), t.clone());
+                ret.type_check(&new_env)
+            }
+
+            Self::LetVar(var, t, e, ret) => {
                 // Typecheck the expression we're assigning to the variable.
                 e.type_check(env)?;
                 // Get the inferred type of the expression.
@@ -265,6 +351,7 @@ impl TypeCheck for Expr {
                         });
                     }
                 }
+
                 let mut new_env = env.clone();
                 new_env.def_var(var.clone(), inferred_t)?;
                 ret.type_check(&new_env)
@@ -634,17 +721,51 @@ impl Compile for Expr {
                 output.op(CoreOp::Pop(None, 1));
             }
 
-            Self::Const(name, expr, body) => {
-                // TODO: don't use a temporary variable for the new scope, just use the existing scope and remove
-                // the constant from the environment when we're done.
-
-                // Create a new scope to bind the constant under.
-                let mut new_env = env.clone();
-                // Bind the constant in the new scope.
-                new_env.consts.insert(name, expr);
-                // Compile the body under this new scope.
-                body.compile_expr(&mut new_env, output)?;
+            Self::LetConst(name, expr, body) => {
+                // Add the new constant to the scope, and save the old
+                // constant it might have clobbered.
+                let old_expr = env.consts.insert(name.clone(), expr);
+                // Compile under the new scope.
+                body.compile_expr(env, output)?;
+                if let Some(e) = old_expr {
+                    // If the constant was clobbered, restore the old type.
+                    env.consts.insert(name, e);
+                } else {
+                    // If the constant was not clobbered, remove it from the scope.
+                    env.consts.remove(&name);
+                }
             }
+
+            Self::LetProc(name, proc, body) => {
+                // Add the new procedure to the scope, and save the old
+                // procedure it might have clobbered.
+                let old_proc = env.procs.insert(name.clone(), proc);
+                // Compile under the new scope.
+                body.compile_expr(env, output)?;
+                if let Some(proc) = old_proc {
+                    // If the procedure was clobbered, restore the old procedure.
+                    env.procs.insert(name, proc);
+                } else {
+                    // If the procedure was not clobbered, remove it from the scope.
+                    env.procs.remove(&name);
+                }
+            }
+
+            Self::LetType(name, t, body) => {
+                // Add the new type to the scope, and save the old
+                // type it might have clobbered.
+                let old_type = env.types.insert(name.clone(), t);
+                // Compile under the new scope.
+                body.compile_expr(env, output)?;
+                if let Some(t) = old_type {
+                    // If the type was clobbered, restore the old type.
+                    env.types.insert(name, t);
+                } else {
+                    // If the type was not clobbered, remove it from the scope.
+                    env.types.remove(&name);
+                }
+            }
+
             Self::Apply(f, args) => {
                 // Push the arguments to the procedure on the stack.
                 for arg in args {
@@ -689,7 +810,7 @@ impl Compile for Expr {
                 ));
                 output.op(CoreOp::Return);
             }
-            Self::Let(name, specifier, e, body) => {
+            Self::LetVar(name, specifier, e, body) => {
                 // Get the type of the variable using its specifier,
                 // or by deducing the type ourselves.
                 let t = if let Some(t) = specifier {
@@ -1088,7 +1209,7 @@ impl GetType for Expr {
 
             Self::And(_, _) | Self::Or(_, _) | Self::Not(_) => Type::Bool,
 
-            Self::Const(var, const_val, ret) => {
+            Self::LetConst(var, const_val, ret) => {
                 let mut new_env = env.clone();
                 new_env
                     .consts
@@ -1097,7 +1218,21 @@ impl GetType for Expr {
                 ret.get_type_checked(&new_env, i)?
             }
 
-            Self::Let(var, t, val, ret) => {
+            Self::LetProc(var, proc, ret) => {
+                let mut new_env = env.clone();
+                new_env.procs.insert(var.clone(), proc.clone());
+
+                ret.get_type_checked(&new_env, i)?
+            }
+
+            Self::LetType(var, t, ret) => {
+                let mut new_env = env.clone();
+                new_env.types.insert(var.clone(), t.clone());
+
+                ret.get_type_checked(&new_env, i)?
+            }
+
+            Self::LetVar(var, t, val, ret) => {
                 let mut new_env = env.clone();
                 new_env.def_var(
                     var.clone(),
@@ -1164,7 +1299,7 @@ impl GetType for Expr {
             Self::Member(val, field) => {
                 let as_symbol = field.clone().as_symbol(env);
                 let as_int = field.clone().as_int(env);
-                match val.get_type_checked(env, i)? {
+                match val.get_type_checked(env, i)?.simplify(env)? {
                     Type::Tuple(items) => {
                         let n = as_int? as usize;
                         if n < items.len() {

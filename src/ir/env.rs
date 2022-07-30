@@ -1,4 +1,6 @@
-use super::{ConstExpr, Error, GetSize, Type};
+use crate::asm::AssemblyProgram;
+
+use super::{ConstExpr, Error, GetSize, Compile, Procedure, Type};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
@@ -7,6 +9,8 @@ pub struct Env {
     pub types: HashMap<String, Type>,
     /// The constants defined under the environment.
     pub consts: HashMap<String, ConstExpr>,
+    /// The procedures defined under the environment.
+    pub procs: HashMap<String, Procedure>,
     /// The variables defined under the environment.
     vars: HashMap<String, (Type, isize)>,
     /// The current offset of the frame pointer to assign to the next variable.
@@ -23,6 +27,7 @@ impl Default for Env {
         Self {
             types: HashMap::new(),
             consts: HashMap::new(),
+            procs: HashMap::new(),
             vars: HashMap::new(),
             // The last argument is stored at `[FP]`, so our first variable must be at `[FP + 1]`.
             fp_offset: 1,
@@ -32,6 +37,26 @@ impl Default for Env {
 }
 
 impl Env {
+    /// Push a procedure defined in the environment onto the stack.
+    pub fn push_proc(&mut self, name: &str, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        // Check if the procedure is defined.
+        if let Some(proc) = self.procs.get_mut(name) {
+            // Has the procedure been compiled yet?
+            if proc.compiled {
+                // If so, push the procedure label address onto the stack.
+                proc.push_label(output);
+            } else {
+                // If not, compile the procedure.
+                proc.compiled = true;
+                proc.clone().compile_expr(self, output)?;
+            }
+            Ok(())
+        } else {
+            // If not, the symbol isn't defined.
+            return Err(Error::SymbolNotDefined(name.to_string()));
+        }
+    }
+
     /// Get a variable's size, in cells.
     pub fn get_args_size(&self) -> usize {
         self.args_size

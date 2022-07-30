@@ -3,42 +3,75 @@ use crate::ir::{
     Compile, CoreBuiltin, Env, Error, Expr, GetSize, GetType, Procedure, Simplify, StandardBuiltin,
     Type, TypeCheck,
 };
+use crate::NULL;
 use std::collections::BTreeMap;
 
+/// A compiletime expression.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConstExpr {
+    /// The unit, or "void" instance.
     None,
+    /// The null pointer constant.
     Null,
+    /// A named constant.
     Symbol(String),
+    /// A constant integer value.
     Int(i32),
+    /// A constant floating point value.
+    ///
+    /// These can be used at compile time even when compiling to core,
+    /// but are not allowed at runtime in the core variant.
     Float(f64),
+    /// A constant chararacter.
     Char(char),
+    /// A constant boolean value.
     Bool(bool),
+    /// A constant enum variant.
     Of(Type, String),
 
+    /// Get the size of a type (in cells) as a constant int.
+    SizeOfType(Type),
+    /// Get the size of an expression's type (in cells) as a constant int.
+    /// This will not evaluate the inner expression.
+    SizeOfExpr(Box<Expr>),
+
+    /// A tuple of constant values.
     Tuple(Vec<Self>),
+    /// An array of constant values.
     Array(Vec<Self>),
+    /// A structure of constant values.
     Struct(BTreeMap<String, Self>),
+    /// A union of constant values.
     Union(Type, String, Box<Self>),
 
+    /// A builtin implemented in handwritten core assembly.
     CoreBuiltin(CoreBuiltin),
+    /// A builtin implemented in handwritten standard assembly.
     StandardBuiltin(StandardBuiltin),
+    /// A procedure.
     Proc(Procedure),
 }
 
 impl ConstExpr {
+    /// Construct a procedure.
     pub fn proc(args: Vec<(String, Type)>, ret: Type, body: impl Into<Expr>) -> Self {
         Self::Proc(Procedure::new(args, ret, body))
     }
 
+    /// Apply this procedure or builtin to a list of expressions *at runtime*.
     pub fn app(self, args: Vec<Expr>) -> Expr {
         Expr::from(self).app(args)
     }
 
+    /// Evaluate this constant expression at compile time,
+    /// and get the result.
     pub fn eval(self, env: &Env) -> Result<Self, Error> {
         self.eval_checked(env, 0)
     }
 
+    /// Evaluate this constant with stack overflow prevention.
+    ///
+    /// The `i` is a counter for the number of recursions caused by an `eval` call.
     fn eval_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
         let i = i + 1;
         if i > 500 {
@@ -55,6 +88,9 @@ impl ConstExpr {
                 | Self::CoreBuiltin(_)
                 | Self::StandardBuiltin(_)
                 | Self::Proc(_) => Ok(self),
+
+                Self::SizeOfType(t) => Ok(Self::Int(t.get_size(env)? as i32)),
+                Self::SizeOfExpr(e) => Ok(Self::Int(e.get_size(env)? as i32)),
 
                 Self::Symbol(name) => {
                     if let Some(c) = env.consts.get(&name) {
@@ -91,6 +127,7 @@ impl ConstExpr {
         }
     }
 
+    /// Try to get this constant expression as an integer.
     pub fn as_int(self, env: &Env) -> Result<i32, Error> {
         match self.eval_checked(env, 0) {
             Ok(Self::Int(n)) => Ok(n),
@@ -99,6 +136,7 @@ impl ConstExpr {
         }
     }
 
+    /// Try to get this constant expression as a boolean value.
     pub fn as_bool(self, env: &Env) -> Result<bool, Error> {
         match self.eval_checked(env, 0) {
             Ok(Self::Bool(b)) => Ok(b),
@@ -107,11 +145,16 @@ impl ConstExpr {
         }
     }
 
+    /// Try to get this constant expression as a symbol (like in LISP).
     pub fn as_symbol(self, env: &Env) -> Result<String, Error> {
-        match self.eval_checked(env, 0) {
-            Ok(Self::Symbol(name)) => Ok(name),
-            Ok(other) => Err(Error::NonSymbol(other)),
-            Err(err) => Err(err),
+        match self {
+            // Check to see if the constexpr is already a symbol.
+            Self::Symbol(name) => Ok(name),
+            // If not, evaluate it and see if it's a symbol.
+            other => match other.eval_checked(env, 0)? {
+                Self::Symbol(name) => Ok(name),
+                other => Err(Error::NonSymbol(other)),
+            },
         }
     }
 }
@@ -124,14 +167,20 @@ impl TypeCheck for ConstExpr {
             | Self::Int(_)
             | Self::Float(_)
             | Self::Char(_)
-            | Self::Bool(_) => Ok(()),
+            | Self::Bool(_)
+            | Self::SizeOfType(_) => Ok(()),
+
+            Self::SizeOfExpr(e) => e.type_check(env),
 
             Self::CoreBuiltin(builtin) => builtin.type_check(env),
             Self::StandardBuiltin(builtin) => builtin.type_check(env),
             Self::Proc(proc) => proc.type_check(env),
 
             Self::Symbol(name) => {
-                if env.consts.get(name).is_some() || env.get_var(name).is_some() {
+                if env.consts.get(name).is_some()
+                    || env.procs.get(name).is_some()
+                    || env.get_var(name).is_some()
+                {
                     Ok(())
                 } else {
                     Err(Error::SymbolNotDefined(name.clone()))
@@ -189,11 +238,11 @@ impl TypeCheck for ConstExpr {
 
 impl Compile for ConstExpr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        match self.eval(env)? {
+        match self {
             Self::None => {}
             Self::Null => {
                 output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), 0));
+                output.op(CoreOp::Set(SP.deref(), NULL));
             }
             Self::Char(ch) => {
                 output.op(CoreOp::Comment(format!("push char {ch:?}")));
@@ -213,6 +262,15 @@ impl Compile for ConstExpr {
             Self::Float(f) => {
                 output.op(CoreOp::Next(SP, None));
                 output.std_op(StandardOp::Set(SP.deref(), f))?;
+            }
+            Self::SizeOfType(t) => {
+                output.op(CoreOp::Comment(format!("size of {:?}", t)));
+                output.op(CoreOp::Next(SP, None));
+                output.op(CoreOp::Set(SP.deref(), t.get_size(env)? as isize));
+            }
+            Self::SizeOfExpr(e) => {
+                output.op(CoreOp::Next(SP, None));
+                output.op(CoreOp::Set(SP.deref(), e.get_size(env)? as isize));
             }
             Self::Tuple(items) => {
                 for item in items {
@@ -247,7 +305,15 @@ impl Compile for ConstExpr {
                 builtin.compile_expr(env, output)?;
             }
             Self::Proc(proc) => {
-                proc.compile_expr(env, output)?;
+                // Get the mangled name of the proc.
+                let name = proc.get_name().to_string();
+                // If the proc is already defined, use it.
+                if !env.procs.contains_key(&name) {
+                    // Otherwise, define it.
+                    env.procs.insert(name.clone(), proc);
+                }
+                // Push the procedure onto the stack.
+                env.push_proc(&name, output)?;
             }
             Self::Of(enum_type, variant) => {
                 if let Type::Enum(mut variants) = enum_type.clone().simplify(env)? {
@@ -264,11 +330,20 @@ impl Compile for ConstExpr {
             }
 
             Self::Symbol(name) => {
+                // Compile a symbol.
                 if let Some((t, offset)) = env.get_var(&name) {
+                    // If the symbol is a variable, push it onto the stack.
                     output.op(CoreOp::Comment(format!("load var '{}'", name)));
                     output.op(CoreOp::Push(FP.deref().offset(*offset), t.get_size(env)?))
                 } else {
-                    return Err(Error::SymbolNotDefined(name));
+                    // If the symbol is not a variable, evaluate it like a constant.
+                    match Self::Symbol(name).eval(env)? {
+                        // If the symbol isn't a constant, try to get the procedure
+                        // with the same name.
+                        Self::Symbol(name) => env.push_proc(&name, output)?,
+                        // If the symbol is a constant, push it onto the stack.
+                        x => x.compile_expr(env, output)?,
+                    }
                 }
             }
         }
@@ -284,10 +359,10 @@ impl Simplify for ConstExpr {
 
 impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        Ok(match self.clone().eval(env)? {
+        Ok(match self.clone() {
             Self::Null => Type::Pointer(Box::new(Type::Any)),
             Self::None => Type::None,
-            Self::Int(_) => Type::Int,
+            Self::SizeOfType(_) | Self::SizeOfExpr(_) | Self::Int(_) => Type::Int,
             Self::Float(_) => Type::Float,
             Self::Char(_) => Type::Char,
             Self::Bool(_) => Type::Bool,
@@ -321,9 +396,25 @@ impl GetType for ConstExpr {
 
             Self::Symbol(name) => {
                 if let Some((t, _)) = env.get_var(&name) {
+                    // If the symbol is a variable, get the variables type.
                     t.clone()
                 } else {
-                    return Err(Error::SymbolNotDefined(name));
+                    // Otherwise, evaluate the symbol as a constant.
+                    match Self::Symbol(name).eval(env)? {
+                        Self::Symbol(name) => {
+                            // If the symbol isn't a constant, try to get the procedure
+                            // with the same name.
+                            if let Some(proc) = env.procs.get(&name) {
+                                // Then, return the type of the procedure.
+                                proc.get_type_checked(env, i)?
+                            } else {
+                                // If the procedure isn't defined, then this symbol isn't defined.
+                                return Err(Error::SymbolNotDefined(name));
+                            }
+                        }
+                        // Get the type of the constant.
+                        x => x.get_type_checked(env, i)?,
+                    }
                 }
             }
         })

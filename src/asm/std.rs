@@ -274,6 +274,17 @@ impl StandardOp {
                     unsupported(self.clone())?
                 }
             }
+            Self::Alloc(loc) => {
+                if loc.alloc(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+            Self::Free(loc) => {
+                if loc.free(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
             _ => {
                 panic!("unimplemented {:?}", self)
             }
