@@ -1,5 +1,5 @@
 use crate::asm::{AssemblyProgram, CoreOp, StandardOp, A, FP, SP};
-use crate::ir::{
+use crate::lir::{
     Compile, CoreBuiltin, Env, Error, Expr, GetSize, GetType, Procedure, Simplify, StandardBuiltin,
     Type, TypeCheck,
 };

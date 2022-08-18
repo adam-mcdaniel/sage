@@ -1,5 +1,5 @@
 use crate::asm::{AssemblyProgram, CoreOp, StandardOp, A, B, C, FP, SP};
-use crate::ir::{Compile, ConstExpr, Env, Error, GetSize, GetType, Simplify, Type, TypeCheck};
+use crate::lir::{Compile, ConstExpr, Env, Error, GetSize, GetType, Simplify, Type, TypeCheck};
 use std::collections::BTreeMap;
 
 use super::Procedure;

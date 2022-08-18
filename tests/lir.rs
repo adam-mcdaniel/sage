@@ -1,6 +1,6 @@
 use asm::{
     asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, SP},
-    ir::*,
+    lir::*,
     vm::{as_int, CoreInterpreter, StandardInterpreter, TestingDevice},
 };
 use maplit::btreemap;

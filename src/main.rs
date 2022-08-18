@@ -1,6 +1,6 @@
 use asm::{
     asm::{CoreOp, StandardOp, SP},
-    ir::*,
+    lir::*,
     targets::*,
     vm::{CoreInterpreter, StandardInterpreter, TestingDevice},
 };

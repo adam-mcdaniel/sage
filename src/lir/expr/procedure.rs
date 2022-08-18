@@ -1,5 +1,5 @@
 use crate::asm::{AssemblyProgram, CoreOp, A, FP, SP};
-use crate::ir::{Compile, Env, Error, Expr, GetSize, GetType, Type, TypeCheck};
+use crate::lir::{Compile, Env, Error, Expr, GetSize, GetType, Type, TypeCheck};
 use std::sync::Mutex;
 
 use lazy_static::lazy_static;
