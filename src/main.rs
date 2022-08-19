@@ -101,16 +101,137 @@ fn main() {
     //     )
     // )]);
 
+    // use maplit::btreemap;
+    // let expr = put_int.clone().app(vec![Expr::let_type(
+    //     "Node",
+    //     Type::Struct(btreemap! {
+    //         "data".to_string() => Type::Int,
+    //         "next".to_string() => Type::Pointer(Box::new(Type::Symbol("Node".to_string()))),
+    //     }),
+    //     Expr::let_consts(
+    //         btreemap! {
+    //             "new" => ConstExpr::proc(
+    //                 vec![(
+    //                     "val".to_string(),
+    //                     Type::Int
+    //                 )],
+    //                 Type::Symbol("Node".to_string()),
+    //                 Expr::structure(btreemap! {
+    //                     "data" => Expr::var("val"),
+    //                     "next" => ConstExpr::Null.into(),
+    //                 }),
+    //             ),
+    //             "free" => ConstExpr::proc(
+    //                 vec![(
+    //                     "node".to_string(),
+    //                     Type::Symbol("Node".to_string()),
+    //                 )],
+    //                 Type::None,
+    //                 Expr::Many(vec![
+    //                     put_int.app(vec![Expr::var("node").field(var("data"))]),
+    //                     Expr::var("node").field(var("next"))
+    //                         .as_type(Type::Cell)
+    //                         .add(ConstExpr::Int(1000))
+    //                         .if_then(
+    //                             Expr::Many(vec![
+    //                                 Expr::var("free").app(vec![Expr::var("node").field(var("next")).deref()]),
+    //                                 free.app(vec![Expr::var("node").field(var("next"))]),
+    //                             ]),
+    //                             ConstExpr::None,
+    //                         )
+    //                 ])
+    //             ),
+    //             "next" => ConstExpr::proc(
+    //                 vec![(
+    //                     "node".to_string(),
+    //                     Type::Symbol("Node".to_string()),
+    //                 )],
+    //                 Type::Symbol("Node".to_string()),
+    //                 Expr::var("node").field(var("next")).deref(),
+    //             ),
+    //             "cons" => ConstExpr::proc(
+    //                 vec![
+    //                     (
+    //                         "head".to_string(),
+    //                         Type::Symbol("Node".to_string()),
+    //                     ),
+    //                     (
+    //                         "tail".to_string(),
+    //                         Type::Symbol("Node".to_string()),
+    //                     ),
+    //                 ],
+    //                 Type::Symbol("Node".to_string()),
+    //                 Expr::let_var(
+    //                     "ptr",
+    //                     None,
+    //                     alloc.app(vec![
+    //                         Expr::var("tail").size_of()
+    //                     ]),
+    //                     Expr::Many(vec![
+    //                         Expr::var("ptr").deref_mut(Expr::var("tail")),
+    //                         Expr::structure(btreemap! {
+    //                             "data" => Expr::var("head").field(var("data")),
+    //                             "next" => Expr::var("ptr"),
+    //                         })
+    //                     ])
+    //                 )
+    //             ),
+    //         },
+    //         Expr::Many(vec![
+    //             Expr::var("free")
+    //                 .app(vec![Expr::var("cons").app(
+    //                             vec![
+    //                                 Expr::var("new").app(vec![ConstExpr::Int(3).into()]),
+    //                                 Expr::var("cons").app(vec![
+    //                                     Expr::var("new").app(vec![ConstExpr::Int(5).into()]),
+    //                                     Expr::var("new").app(vec![ConstExpr::Int(7).into()]),
+    //                                 ]),
+    //                             ],
+    //                     )
+    //                 ]),
+    //             ConstExpr::Int(0).into()
+    //         ])
+    //     ),
+    // )]);
+
     use maplit::btreemap;
-    let expr = put_int.clone().app(vec![Expr::let_type(
+    let alloc = ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: "alloc".to_string(),
+        args: vec![("size".to_string(), Type::Int)],
+        ret: Type::Pointer(Box::new(Type::Any)),
+        body: vec![StandardOp::Alloc(SP.deref())],
+    });
+
+    let free = ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: "free".to_string(),
+        args: vec![("ptr".to_string(), Type::Pointer(Box::new(Type::Any)))],
+        ret: Type::None,
+        body: vec![
+            StandardOp::Free(SP.deref()),
+            StandardOp::CoreOp(CoreOp::Pop(None, 1)),
+        ],
+    });
+
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Comment("Put an integer from the stack".to_string()),
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let expr = put.clone().app(vec![Expr::let_type(
         "Node",
         Type::Struct(btreemap! {
             "data".to_string() => Type::Int,
             "next".to_string() => Type::Pointer(Box::new(Type::Symbol("Node".to_string()))),
         }),
-        Expr::let_consts(
+        Expr::let_procs(
             btreemap! {
-                "new" => ConstExpr::proc(
+                "new" => Procedure::new(
                     vec![(
                         "val".to_string(),
                         Type::Int
@@ -121,14 +242,14 @@ fn main() {
                         "next" => ConstExpr::Null.into(),
                     }),
                 ),
-                "free" => ConstExpr::proc(
+                "free" => Procedure::new(
                     vec![(
                         "node".to_string(),
                         Type::Symbol("Node".to_string()),
                     )],
                     Type::None,
                     Expr::Many(vec![
-                        put_int.app(vec![Expr::var("node").field(var("data"))]),
+                        put.app(vec![Expr::var("node").field(var("data"))]),
                         Expr::var("node").field(var("next"))
                             .as_type(Type::Cell)
                             .add(ConstExpr::Int(1000))
@@ -141,15 +262,7 @@ fn main() {
                             )
                     ])
                 ),
-                "next" => ConstExpr::proc(
-                    vec![(
-                        "node".to_string(),
-                        Type::Symbol("Node".to_string()),
-                    )],
-                    Type::Symbol("Node".to_string()),
-                    Expr::var("node").field(var("next")).deref(),
-                ),
-                "cons" => ConstExpr::proc(
+                "cons" => Procedure::new(
                     vec![
                         (
                             "head".to_string(),
@@ -193,6 +306,13 @@ fn main() {
             ])
         ),
     )]);
+    let program = expr.clone().compile().unwrap().unwrap_err();
+
+    let i = StandardInterpreter::new(TestingDevice::new_raw(vec![]));
+    let vm_code = program.assemble(256).unwrap();
+    let device = i.run(&vm_code).unwrap();
+
+    assert_eq!(device.output, vec![3, 5, 7, 0]);
     
     // let expr = put_int.app(vec![Expr::let_proc(
     //     "factorial",

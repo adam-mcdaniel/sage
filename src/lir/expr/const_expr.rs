@@ -93,7 +93,7 @@ impl ConstExpr {
                 Self::SizeOfExpr(e) => Ok(Self::Int(e.get_size(env)? as i32)),
 
                 Self::Symbol(name) => {
-                    if let Some(c) = env.consts.get(&name) {
+                    if let Some(c) = env.get_const(&name) {
                         Ok(c.clone())
                     } else {
                         Ok(Self::Symbol(name))
@@ -177,8 +177,8 @@ impl TypeCheck for ConstExpr {
             Self::Proc(proc) => proc.type_check(env),
 
             Self::Symbol(name) => {
-                if env.consts.get(name).is_some()
-                    || env.procs.get(name).is_some()
+                if env.get_const(name).is_some()
+                    || env.get_proc(name).is_some()
                     || env.get_var(name).is_some()
                 {
                     Ok(())
@@ -305,13 +305,14 @@ impl Compile for ConstExpr {
                 builtin.compile_expr(env, output)?;
             }
             Self::Proc(proc) => {
-                // Get the mangled name of the proc.
+                // Get the mangled name of the procedure.
                 let name = proc.get_name().to_string();
-                // If the proc is already defined, use it.
-                if !env.procs.contains_key(&name) {
-                    // Otherwise, define it.
-                    env.procs.insert(name.clone(), proc);
+
+                if !env.has_proc(&name) {
+                    // If the procedure is not yet defined, define it.
+                    env.define_proc(&name, proc);
                 }
+
                 // Push the procedure onto the stack.
                 env.push_proc(&name, output)?;
             }
@@ -404,7 +405,7 @@ impl GetType for ConstExpr {
                         Self::Symbol(name) => {
                             // If the symbol isn't a constant, try to get the procedure
                             // with the same name.
-                            if let Some(proc) = env.procs.get(&name) {
+                            if let Some(proc) = env.get_proc(&name) {
                                 // Then, return the type of the procedure.
                                 proc.get_type_checked(env, i)?
                             } else {

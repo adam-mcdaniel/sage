@@ -315,7 +315,7 @@ impl TypeCheck for Expr {
             Self::LetConst(var, e, ret) => {
                 // Typecheck the constant expression we're assigning to the variable.
                 let mut new_env = env.clone();
-                new_env.consts.insert(var.clone(), e.clone());
+                new_env.define_const(var.clone(), e.clone());
                 e.type_check(&new_env)?;
                 ret.type_check(&new_env)
             }
@@ -323,7 +323,7 @@ impl TypeCheck for Expr {
             Self::LetProc(var, proc, ret) => {
                 // Typecheck the procedure and the result.
                 let mut new_env = env.clone();
-                new_env.procs.insert(var.to_string(), proc.clone());
+                new_env.define_proc(var.clone(), proc.clone());
                 proc.type_check(&new_env)?;
                 ret.type_check(&new_env)
             }
@@ -331,7 +331,7 @@ impl TypeCheck for Expr {
             Self::LetType(name, t, ret) => {
                 // Typecheck the result expression under the new scope.
                 let mut new_env = env.clone();
-                new_env.types.insert(name.clone(), t.clone());
+                new_env.define_type(name.clone(), t.clone());
                 ret.type_check(&new_env)
             }
 
@@ -353,7 +353,7 @@ impl TypeCheck for Expr {
                 }
 
                 let mut new_env = env.clone();
-                new_env.def_var(var.clone(), inferred_t)?;
+                new_env.define_var(var, inferred_t)?;
                 ret.type_check(&new_env)
             }
 
@@ -722,48 +722,24 @@ impl Compile for Expr {
             }
 
             Self::LetConst(name, expr, body) => {
-                // Add the new constant to the scope, and save the old
-                // constant it might have clobbered.
-                let old_expr = env.consts.insert(name.clone(), expr);
+                let mut new_env = env.clone();
+                new_env.define_const(name, expr);
                 // Compile under the new scope.
-                body.compile_expr(env, output)?;
-                if let Some(e) = old_expr {
-                    // If the constant was clobbered, restore the old type.
-                    env.consts.insert(name, e);
-                } else {
-                    // If the constant was not clobbered, remove it from the scope.
-                    env.consts.remove(&name);
-                }
+                body.compile_expr(&mut new_env, output)?;
             }
 
             Self::LetProc(name, proc, body) => {
-                // Add the new procedure to the scope, and save the old
-                // procedure it might have clobbered.
-                let old_proc = env.procs.insert(name.clone(), proc);
+                let mut new_env = env.clone();
+                new_env.define_proc(name, proc);
                 // Compile under the new scope.
-                body.compile_expr(env, output)?;
-                if let Some(proc) = old_proc {
-                    // If the procedure was clobbered, restore the old procedure.
-                    env.procs.insert(name, proc);
-                } else {
-                    // If the procedure was not clobbered, remove it from the scope.
-                    env.procs.remove(&name);
-                }
+                body.compile_expr(&mut new_env, output)?;
             }
 
             Self::LetType(name, t, body) => {
-                // Add the new type to the scope, and save the old
-                // type it might have clobbered.
-                let old_type = env.types.insert(name.clone(), t);
+                let mut new_env = env.clone();
+                new_env.define_type(name, t);
                 // Compile under the new scope.
-                body.compile_expr(env, output)?;
-                if let Some(t) = old_type {
-                    // If the type was clobbered, restore the old type.
-                    env.types.insert(name, t);
-                } else {
-                    // If the type was not clobbered, remove it from the scope.
-                    env.types.remove(&name);
-                }
+                body.compile_expr(&mut new_env, output)?;
             }
 
             Self::Apply(f, args) => {
@@ -827,7 +803,7 @@ impl Compile for Expr {
                 let mut new_env = env.clone();
                 // Get the size of the variable we are writing to.
                 let var_size = t.get_size(env)?;
-                new_env.def_var(name.clone(), t)?;
+                new_env.define_var(&name, t)?;
 
                 let result_type = body.get_type(&new_env)?;
                 let result_size = result_type.get_size(&new_env)?;
@@ -1209,33 +1185,28 @@ impl GetType for Expr {
 
             Self::And(_, _) | Self::Or(_, _) | Self::Not(_) => Type::Bool,
 
-            Self::LetConst(var, const_val, ret) => {
+            Self::LetConst(name, expr, ret) => {
                 let mut new_env = env.clone();
-                new_env
-                    .consts
-                    .insert(var.clone(), const_val.clone().eval(env)?);
-
+                new_env.define_const(name, expr.clone());
                 ret.get_type_checked(&new_env, i)?
             }
 
-            Self::LetProc(var, proc, ret) => {
+            Self::LetProc(name, proc, ret) => {
                 let mut new_env = env.clone();
-                new_env.procs.insert(var.clone(), proc.clone());
-
+                new_env.define_proc(name, proc.clone());
                 ret.get_type_checked(&new_env, i)?
             }
 
-            Self::LetType(var, t, ret) => {
+            Self::LetType(name, t, ret) => {
                 let mut new_env = env.clone();
-                new_env.types.insert(var.clone(), t.clone());
-
+                new_env.define_type(name, t.clone());
                 ret.get_type_checked(&new_env, i)?
             }
 
             Self::LetVar(var, t, val, ret) => {
                 let mut new_env = env.clone();
-                new_env.def_var(
-                    var.clone(),
+                new_env.define_var(
+                    var,
                     match t {
                         Some(t) => t.clone(),
                         None => val.get_type_checked(env, i)?,
@@ -1245,7 +1216,7 @@ impl GetType for Expr {
                 ret.get_type_checked(&new_env, i)?
             }
 
-            Self::While(_, _) => Type::Never,
+            Self::While(_, _) => Type::None,
 
             Self::If(_, t, _) => t.get_type_checked(env, i)?,
             Self::When(c, t, e) => {

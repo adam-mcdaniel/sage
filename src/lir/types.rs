@@ -2,27 +2,53 @@ use std::collections::BTreeMap;
 
 use super::{ConstExpr, Env, Error, Expr, GetSize, Simplify};
 
+/// A value that can be typechecked.
 pub trait TypeCheck {
+    /// Type check the expression.
     fn type_check(&self, env: &Env) -> Result<(), Error>;
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {
+    /// Bind a type to a name in a temporary scope.
+    Let(String, Box<Self>, Box<Self>),
+    /// A named type.
     Symbol(String),
+    /// The type of void expressions.
     None,
+    /// The integer type.
     Int,
+    /// The floating-point number type.
     Float,
+    /// The type of the most basic unit of memory.
     Cell,
+    /// The type of a character.
     Char,
+    /// The type of a boolean value.
     Bool,
+    /// An enumeration of a list of possible named values.
+    /// A boolean could be considered an enumeration of True and False.
     Enum(Vec<String>),
+    /// A collection of types.
     Tuple(Vec<Self>),
+    /// An array of a given type, with a constant size.
     Array(Box<Self>, Box<ConstExpr>),
+    /// A tuple with named members.
     Struct(BTreeMap<String, Self>),
+    /// A union of a list of possible types mapped to named members.
+    /// A union's value is reinterpreted as a single type, depending on the member accessed.
+    /// Unions' values are stored starting at the beginning of the union's address in memory,
+    /// and are padded at the end with zeroes.
     Union(BTreeMap<String, Self>),
+    /// A procedure with a list of parameters and a return type.
     Proc(Vec<Type>, Box<Type>),
+    /// A pointer to another type.
     Pointer(Box<Self>),
+    /// A type reserved by the compiler.
+    /// This type is equal to any other type.
+    /// The NULL pointer, for example, is of type `Pointer(Any)`.
     Any,
+    /// The type of an expression that will never return, or doesn't resolve to a value.
     Never,
 }
 
@@ -48,6 +74,13 @@ impl Type {
         }
 
         match (self, other) {
+            (Self::Let(name, t, ret), other)
+            | (other, Self::Let(name, t, ret)) => {
+                let mut new_env = env.clone();
+                new_env.define_type(name, *t.clone());
+                ret.can_cast_to_checked(other, &new_env, i)
+            }
+
             (Self::Symbol(a), Self::Symbol(b)) if a == b => Ok(true),
 
             (Self::Int, Self::Float) | (Self::Float, Self::Int) => Ok(true),
@@ -92,6 +125,8 @@ impl Type {
 
     /// Are two types structurally equal?
     /// This function will always terminate.
+    /// 
+    /// NOTE: Although this function takes a mutable scope, IT WILL NOT BE MODIFIED BY THIS FUNCTION.
     fn equals_checked(&self, other: &Self, env: &Env, i: usize) -> Result<bool, Error> {
         if self == other {
             return Ok(true);
@@ -106,6 +141,12 @@ impl Type {
         }
 
         Ok(match (self, other) {
+            (Self::Let(name, t, ret), other)
+            | (other, Self::Let(name, t, ret)) => {
+                let mut new_env = env.clone();
+                new_env.define_type(name, *t.clone());
+                ret.equals_checked(other, &new_env, i)?
+            }
             (Self::Symbol(a), Self::Symbol(b)) => {
                 if a == b {
                     true
@@ -233,10 +274,12 @@ impl Type {
                 Err(Error::MemberNotFound(expr.clone(), member.clone()))
             }
             Type::Union(types) if types.contains_key(&member.clone().as_symbol(env)?) => Ok(0),
-            Type::Symbol(_) => self
+            
+            Type::Symbol(_) | Type::Let(_, _, _) => self
                 .clone()
                 .simplify(env)?
                 .get_member_offset(member, expr, env),
+
             _ => Err(Error::MemberNotFound(expr.clone(), member.clone())),
         }
     }
@@ -249,8 +292,12 @@ impl GetSize for Type {
             Self::None | Self::Never => 0,
             Self::Any => return Err(Error::UnsizedType(self.clone())),
 
+            Self::Let(_, _, _) => {
+                self.clone().simplify(env)?.get_size_checked(env, i)?
+            }
+
             Self::Symbol(name) => {
-                if let Some(t) = env.types.get(name) {
+                if let Some(t) = env.get_type(name) {
                     t.get_size_checked(env, i)?
                 } else {
                     return Err(Error::TypeNotDefined(name.clone()));
@@ -298,11 +345,17 @@ impl Simplify for Type {
             | Self::Enum(_) => self.clone(),
             Self::Pointer(inner) => Self::Pointer(Box::new(inner.simplify_checked(env, i)?)),
 
-            Self::Symbol(name) => {
-                if let Some(t) = env.types.get(&name) {
+            Self::Let(name, t, ret) => {
+                let mut new_env = env.clone();
+                new_env.define_type(name, t.simplify_checked(env, i)?);
+                ret.simplify_checked(&new_env, i)?
+            }
+
+            Self::Symbol(ref name) => {
+                if let Some(t) = env.get_type(name) {
                     t.clone()
                 } else {
-                    return Err(Error::TypeNotDefined(name.clone()));
+                    self.clone()
                 }
             }
 

@@ -10,12 +10,12 @@ pub use procedure::*;
 mod builtin;
 pub use builtin::*;
 
-use super::{Env, Error, GetSize, Type, TypeCheck};
+use super::{Env, Simplify, Error, GetSize, Type, TypeCheck};
 use crate::asm::{AssemblyProgram, CoreProgram, StandardProgram};
 
 pub trait GetType {
     fn get_type(&self, env: &Env) -> Result<Type, Error> {
-        self.get_type_checked(env, 0)
+        self.get_type_checked(env, 0)?.simplify(env)
     }
 
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error>;
@@ -31,6 +31,12 @@ where
 }
 
 pub trait Compile: TypeCheck {
+    /// Compile the expression into an assembly program.
+    /// 
+    /// On success, this will return an Ok value containing either a successfully
+    /// compiled core assembly program, or a fallback standard assembly program.
+    /// 
+    /// On an error, this will return an Err value containing the error.
     fn compile(self) -> Result<Result<CoreProgram, StandardProgram>, Error>
     where
         Self: Sized + Clone,
