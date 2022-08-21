@@ -3,6 +3,9 @@ use crate::asm::AssemblyProgram;
 use super::{Compile, ConstExpr, Error, GetSize, Procedure, Type};
 use std::{collections::HashMap, rc::Rc};
 
+
+/// An environment under which expressions and types are compiled and typechecked.
+/// This is essentially the scope of an expression.
 #[derive(Clone, Debug)]
 pub struct Env {
     /// The types defined under the environment.
@@ -25,6 +28,8 @@ pub struct Env {
 impl Default for Env {
     fn default() -> Self {
         Self {
+            // It is important that we use reference counting for the tables because the environment
+            // will be copied many times during the compilation process to create new scopes.
             types: Rc::new(HashMap::new()),
             consts: Rc::new(HashMap::new()),
             procs: Rc::new(HashMap::new()),
@@ -40,10 +45,12 @@ impl Env {
     /// Create a copy of the current environment but without any variables or arguments defined.
     pub fn new_scope(&self) -> Self {
         Self {
+            // Only keep the types, constants, and procedures defined.
             types: self.types.clone(),
             consts: self.consts.clone(),
             procs: self.procs.clone(),
 
+            // The rest are the same as a new environment.
             ..Env::default()
         }
     }
@@ -118,24 +125,40 @@ impl Env {
         self.fp_offset = 1;
         self.args_size = 0;
 
+        // For each argument in reverse order (starting from the last argument)
         for (name, t) in args.into_iter().rev() {
+            // Get the size of the argument we're defining.
             let size = t.get_size(self)?;
+            // Add the size of the argument to the total number of cells taken up by the arguments.
             self.args_size += size;
+            // Decrement the frame pointer offset by the size of the argument
+            // so that the FP + the offset is the address of the argument.
             self.fp_offset -= size as isize;
+            // Store the argument's type and offset in the environment.
             Rc::make_mut(&mut self.vars).insert(name, (t, self.fp_offset));
         }
+        // Set the frame pointer offset to `1` so that the first variable defined under the scope is at `[FP + 1]`.
         self.fp_offset = 1;
 
+        // Return the size of the arguments for the procedure in cells,
+        // so that the compiler can deallocate the arguments after compiling the procedure.
         Ok(self.args_size)
     }
 
     /// Define a variable in the current scope.
     /// This will increment the scope's frame pointer offset by the size of the variable.
+    /// This method returns the offset of the variable from the frame pointer under this scope.
     pub fn define_var(&mut self, var: impl ToString, t: Type) -> Result<isize, Error> {
+        // Get the size of the variable we're defining.
         let size = t.get_size(self)? as isize;
+        // Remember the offset of the variable under the current scope.
         let offset = self.fp_offset;
+        // Increment the frame pointer offset by the size of the variable
+        // so that the next variable is allocated directly after this variable.
         self.fp_offset += size;
+        // Store the variable's type and offset in the environment.
         Rc::make_mut(&mut self.vars).insert(var.to_string(), (t, offset));
+        // Return the offset of the variable from the frame pointer.
         Ok(offset)
     }
 }

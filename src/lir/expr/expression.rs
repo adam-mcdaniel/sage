@@ -1,12 +1,10 @@
 use crate::asm::{AssemblyProgram, CoreOp, StandardOp, A, B, C, FP, SP};
-use crate::lir::{Compile, ConstExpr, Env, Error, GetSize, GetType, Simplify, Type, TypeCheck};
+use crate::lir::{Compile, ConstExpr, Env, Error, GetSize, GetType, Simplify, Type, TypeCheck, Procedure};
 use std::collections::BTreeMap;
 
-use super::Procedure;
 
 /// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
 ///       This way, we don't overflow the stack with several clones of the environment.
-
 /// A runtime expression.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {

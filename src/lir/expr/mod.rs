@@ -1,13 +1,12 @@
 mod const_expr;
 mod expression;
+mod procedure;
+mod builtin;
+
 
 pub use const_expr::*;
 pub use expression::*;
-
-mod procedure;
 pub use procedure::*;
-
-mod builtin;
 pub use builtin::*;
 
 use super::{Env, Error, GetSize, Simplify, Type, TypeCheck};

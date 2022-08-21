@@ -46,7 +46,7 @@ impl TypeCheck for Type {
                 Ok(())
             }
             Self::Struct(fields) | Self::Union(fields) => {
-                for (_, t) in fields {
+                for t in fields.values() {
                     t.type_check(&env)?;
                 }
                 Ok(())

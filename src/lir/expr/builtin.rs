@@ -1,11 +1,22 @@
 use super::{AssemblyProgram, Compile, Env, Error, GetType, Type, TypeCheck};
 use crate::asm::{CoreOp, StandardOp};
 
+/// A builtin pseudo-procedure implemented in the core assembly variant.
+/// 
+/// This is not actually executed like a legitimate procedure, but 
+/// instead the assembly code is directly pasted where the procedure is called.
+/// 
+/// The arguments of the procedure are pushed to the stack in the order they are given.
+/// The builtin must pop its arguments. The return value is left on the stack in their place by the builtin.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CoreBuiltin {
+    /// The name of the builtin. This isn't used in compilation, just for debugging.
     pub name: String,
+    /// The arguments of the builtin. These will be typechecked when the builtin is called.
     pub args: Vec<(String, Type)>,
+    /// The return value the builtin will leave on the stack after popping its arguments.
     pub ret: Type,
+    /// The list of assembly instructions to be pasted into the assembly code.
     pub body: Vec<CoreOp>,
 }
 
@@ -31,11 +42,24 @@ impl Compile for CoreBuiltin {
     }
 }
 
+/// A builtin pseudo-procedure implemented in the standard assembly variant.
+/// 
+/// This is not actually executed like a legitimate procedure, but 
+/// instead the assembly code is directly pasted where the procedure is called.
+/// 
+/// The arguments of the procedure are pushed to the stack in the order they are given.
+/// The builtin must pop its arguments. The return value is left on the stack in their place by the builtin.
+/// 
+/// This should be used to implement important standard library functions, like `alloc` and `free`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct StandardBuiltin {
+    /// The name of the builtin. This isn't used in compilation, just for debugging.
     pub name: String,
+    /// The arguments of the builtin. These will be typechecked when the builtin is called.
     pub args: Vec<(String, Type)>,
+    /// The return value the builtin will leave on the stack after popping its arguments.
     pub ret: Type,
+    /// The list of assembly instructions to be pasted into the assembly code.
     pub body: Vec<StandardOp>,
 }
 

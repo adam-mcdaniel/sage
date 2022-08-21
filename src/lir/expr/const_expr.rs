@@ -221,8 +221,11 @@ impl TypeCheck for ConstExpr {
             }
 
             Self::Union(t, variant, val) => {
+                // Confirm the type supplied is a union.
                 if let Type::Union(fields) = t {
+                    // Confirm that the variant is contained within the union.
                     if fields.get(variant).is_some() {
+                        // Typecheck the value being assigned to the variant.
                         val.type_check(env)?;
                         Ok(())
                     } else {

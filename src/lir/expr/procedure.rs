@@ -2,6 +2,7 @@ use crate::asm::{AssemblyProgram, CoreOp, A, FP, SP};
 use crate::lir::{Compile, Env, Error, Expr, GetSize, GetType, Type, TypeCheck};
 use std::sync::Mutex;
 
+// TODO: Do this without lazy_static.
 use lazy_static::lazy_static;
 lazy_static! {
     static ref LAMBDA_COUNT: Mutex<usize> = Mutex::new(0);
@@ -9,9 +10,13 @@ lazy_static! {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Procedure {
+    /// The generated name of the procedure created by the compiler to be unique.
     mangled_name: String,
+    /// The arguments of the procedure, and their types.
     args: Vec<(String, Type)>,
+    /// The return type of the procedure
     ret: Type,
+    /// The procedure's body expression
     body: Box<Expr>,
     /// Has this procedure been compiled yet?
     pub compiled: bool,
@@ -40,23 +45,28 @@ impl Procedure {
 
     /// Push this procedure's label to the stack.
     pub fn push_label(&self, output: &mut dyn AssemblyProgram) {
-        // Push the procedure label address onto the stack
+        // Set a register to the address of the procedure's label.
         output.op(CoreOp::SetLabel(A, self.mangled_name.clone()));
+        // Push the register to the stack.
         output.op(CoreOp::Push(A, 1));
     }
 }
 
 impl TypeCheck for Procedure {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
+        // Typecheck the types of the arguments and return value
         for (_, t) in &self.args {
             t.type_check(env)?;
         }
         self.ret.type_check(env)?;
 
+        // Create a new scope for the procedure's body, and define the arguments for the scope.
         let mut new_env = env.new_scope();
         new_env.define_args(self.args.clone())?;
 
+        // Get the type of the procedure's body, and confirm that it matches the return type.
         self.body.get_type(&new_env)?.equals(&self.ret, env)?;
+        // Typecheck the procedure's body.
         self.body.type_check(&new_env)
     }
 }
