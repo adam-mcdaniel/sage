@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use super::{ConstExpr, Env, Error, Expr, GetSize, Simplify};
 
@@ -6,6 +6,62 @@ use super::{ConstExpr, Env, Error, Expr, GetSize, Simplify};
 pub trait TypeCheck {
     /// Type check the expression.
     fn type_check(&self, env: &Env) -> Result<(), Error>;
+}
+
+impl TypeCheck for Type {
+    fn type_check(&self, env: &Env) -> Result<(), Error> {
+        // TODO: Also add checks for infinitely sized types.
+        match self {
+            Self::Any
+            | Self::Never
+            | Self::None
+            | Self::Cell
+            | Self::Int
+            | Self::Float
+            | Self::Bool
+            | Self::Char
+            | Self::Enum(_) => Ok(()),
+
+            Self::Symbol(name) => {
+                if env.get_type(name).is_some() {
+                    Ok(())
+                } else {
+                    Err(Error::TypeNotDefined(name.clone()))
+                }
+            }
+            Self::Let(name, t, ret) => {
+                let mut new_env = env.clone();
+                new_env.define_type(name, *t.clone());
+                t.type_check(&new_env)?;
+                ret.type_check(&new_env)
+            }
+            Self::Array(t, e) => {
+                t.type_check(env)?;
+                e.type_check(env)
+            }
+            Self::Tuple(ts) => {
+                for t in ts {
+                    t.type_check(env)?;
+                }
+                Ok(())
+            }
+            Self::Struct(fields) | Self::Union(fields) => {
+                for (_, t) in fields {
+                    t.type_check(&env)?;
+                }
+                Ok(())
+            }
+
+            Self::Proc(args, ret) => {
+                for t in args {
+                    t.type_check(env)?;
+                }
+                ret.type_check(env)
+            }
+
+            Self::Pointer(t) => t.type_check(env),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -57,9 +113,99 @@ impl Type {
     pub fn can_cast_to(&self, other: &Self, env: &Env) -> Result<bool, Error> {
         self.can_cast_to_checked(other, env, 0)
     }
-    
+
+    /// Does this type contain a symbol with the given name?
+    /// This will not count overshadowded versions of the symbol (overwritten by let-bindings).
+    pub fn contains_symbol(&self, name: &str) -> bool {
+        match self {
+            Self::Let(typename, t, ret) => {
+                // We always check the type being bound to a variable.
+                // We only check the body of the let if the variable isn't overshadowed, however.
+                t.contains_symbol(name) || (typename != name && ret.contains_symbol(name))
+            }
+            Self::Symbol(typename) => typename == name,
+            Self::None
+            | Self::Never
+            | Self::Any
+            | Self::Int
+            | Self::Float
+            | Self::Cell
+            | Self::Char
+            | Self::Bool
+            | Self::Enum(_) => false,
+
+            Self::Tuple(items) => items.iter().any(|t| t.contains_symbol(name)),
+            Self::Array(t, _) => t.contains_symbol(name),
+            Self::Struct(fields) => fields.values().any(|t| t.contains_symbol(name)),
+            Self::Union(fields) => fields.values().any(|t| t.contains_symbol(name)),
+            Self::Proc(params, ret) => {
+                params.iter().any(|t| t.contains_symbol(name)) || ret.contains_symbol(name)
+            }
+            Self::Pointer(t) => t.contains_symbol(name),
+        }
+    }
+
+    /// Substitute all occurences of a symbol with another type.
+    /// This will not traverse into let-bindings where the symbol is overshadowed.
+    pub fn substitute(&self, name: &str, t: &Self) -> Self {
+        match self {
+            Self::Let(typename, binding, ret) => Self::Let(
+                typename.clone(),
+                Box::new(binding.substitute(name, t)),
+                if typename == name {
+                    // If the variable is overshadowed, then don't substitute in the body of the let.
+                    ret.clone()
+                } else {
+                    // If the variable is not overshadowed, then we're free to substitute in the body of the let.
+                    ret.substitute(name, t).into()
+                },
+            ),
+            Self::Symbol(typename) => {
+                if typename == name {
+                    return t.clone();
+                }
+                Self::Symbol(typename.clone())
+            }
+            Self::None
+            | Self::Never
+            | Self::Any
+            | Self::Int
+            | Self::Float
+            | Self::Cell
+            | Self::Char
+            | Self::Bool
+            | Self::Enum(_) => self.clone(),
+            Self::Tuple(items) => Self::Tuple(
+                items
+                    .iter()
+                    .map(|field_t| field_t.substitute(name, t))
+                    .collect(),
+            ),
+            Self::Array(item_t, size) => {
+                Self::Array(Box::new(item_t.substitute(name, t)), size.clone())
+            }
+            Self::Struct(fields) => Self::Struct(
+                fields
+                    .iter()
+                    .map(|(field_name, field_t)| (field_name.clone(), field_t.substitute(name, t)))
+                    .collect(),
+            ),
+            Self::Union(fields) => Self::Union(
+                fields
+                    .iter()
+                    .map(|(field_name, field_t)| (field_name.clone(), field_t.substitute(name, t)))
+                    .collect(),
+            ),
+            Self::Proc(args, ret) => Self::Proc(
+                args.iter().map(|arg| arg.substitute(name, t)).collect(),
+                Box::new(ret.substitute(name, t)),
+            ),
+            Self::Pointer(ptr) => Self::Pointer(Box::new(ptr.substitute(name, t))),
+        }
+    }
+
     /// Can this type be cast to another type?
-    /// This function will always terminate.
+    /// This function should always halt (type casting *MUST* be decidable).
     fn can_cast_to_checked(&self, other: &Self, env: &Env, i: usize) -> Result<bool, Error> {
         if self == other {
             return Ok(true);
@@ -74,8 +220,7 @@ impl Type {
         }
 
         match (self, other) {
-            (Self::Let(name, t, ret), other)
-            | (other, Self::Let(name, t, ret)) => {
+            (Self::Let(name, t, ret), other) | (other, Self::Let(name, t, ret)) => {
                 let mut new_env = env.clone();
                 new_env.define_type(name, *t.clone());
                 ret.can_cast_to_checked(other, &new_env, i)
@@ -120,53 +265,112 @@ impl Type {
 
     /// Are two types structurally equal?
     pub fn equals(&self, other: &Self, env: &Env) -> Result<bool, Error> {
-        self.equals_checked(other, env, 0)
+        self.equals_checked(other, &mut HashSet::new(), env, 0)
     }
 
     /// Are two types structurally equal?
-    /// This function will always terminate.
-    /// 
-    /// NOTE: Although this function takes a mutable scope, IT WILL NOT BE MODIFIED BY THIS FUNCTION.
-    fn equals_checked(&self, other: &Self, env: &Env, i: usize) -> Result<bool, Error> {
+    /// This function should always halt (type equality *MUST* be decidable).
+    fn equals_checked(
+        &self,
+        other: &Self,
+        compared_symbols: &mut HashSet<(String, String)>,
+        env: &Env,
+        i: usize,
+    ) -> Result<bool, Error> {
         if self == other {
             return Ok(true);
         }
 
-        let i = i + 1;
-        if i > 500 {
-            return Err(Error::RecursionDepthTypeEquality(
-                self.clone(),
-                other.clone(),
-            ));
+        if i > 50 {
+            return Ok(false);
         }
 
         Ok(match (self, other) {
-            (Self::Let(name, t, ret), other)
-            | (other, Self::Let(name, t, ret)) => {
-                let mut new_env = env.clone();
-                new_env.define_type(name, *t.clone());
-                ret.equals_checked(other, &new_env, i)?
-            }
             (Self::Symbol(a), Self::Symbol(b)) => {
                 if a == b {
+                    // If the two types have the same name, they must equal the same type
+                    // under the same environment.
                     true
+                } else if i > 10 && compared_symbols.contains(&(a.clone(), b.clone())) {
+                    // If we've seen this comparison of these two symbols before, and we've done
+                    // lots of symbol replacements (indicated by `i`), then we're probably trying
+                    // to compare two distinct types which are asymptotically unequal.
+                    false
                 } else {
                     // To get as much specific information as possible about type errors,
                     // we just say the types are unequal if we cannot simplify symbols further.
-                    match self.clone().simplify(env) {
-                        Ok(e) => e.equals_checked(other, env, i)?,
-                        Err(_) => false,
+                    compared_symbols.insert((a.clone(), b.clone()));
+                    match (env.get_type(a), env.get_type(b)) {
+                        (Some(a), Some(b)) => a.equals_checked(b, compared_symbols, env, i + 1)?,
+                        _ => false,
                     }
                 }
             }
             (Self::Symbol(x), y) | (y, Self::Symbol(x)) => {
                 // To get as much specific information as possible about type errors,
                 // we just say the types are unequal if we cannot simplify symbols further.
-                match Self::Symbol(x.clone()).simplify(env) {
-                    Ok(e) => e.equals_checked(y, env, i)?,
-                    Err(_) => false,
+                match env.get_type(x) {
+                    Some(t) => t.equals_checked(y, compared_symbols, env, i + 1)?,
+                    None => false,
                 }
             }
+
+            (Self::Let(name1, t1, ret1), Self::Let(name2, t2, ret2)) => {
+                if !t1.contains_symbol(name1) {
+                    // If the type we're binding doesn't contain itself, then we can
+                    // just substitute it in the body and compare it to the other type.
+                    ret1.substitute(name1, t1)
+                        .equals_checked(other, compared_symbols, env, i)?
+                } else if !t2.contains_symbol(name2) {
+                    // If the type we're binding doesn't contain itself, then we can
+                    // just substitute it in the body and compare it to the other type.
+                    self.equals_checked(&ret2.substitute(name2, t2), compared_symbols, env, i)?
+                } else {
+                    // Otherwise, we are comparing recursive types.
+
+                    // Check if the bound types are equal when substituting in the name of the other let's bound variable.
+                    // Then, confirm that the results of the let bodies are equal under the substitution.
+                    t2.equals_checked(
+                        &t1.substitute(name1, &Self::Symbol(name2.clone())),
+                        compared_symbols,
+                        env,
+                        i,
+                    )? && ret2.equals_checked(
+                        &ret1.substitute(name1, &Self::Symbol(name2.clone())),
+                        compared_symbols,
+                        env,
+                        i,
+                    )?
+                }
+            }
+            (Self::Let(name, t, ret), x) | (x, Self::Let(name, t, ret)) => {
+                if !t.contains_symbol(name) {
+                    // If the type we're binding doesn't contain itself, then we can
+                    // just substitute it in the body and compare it to the other type.
+                    ret.substitute(name, t)
+                        .equals_checked(x, compared_symbols, env, i)?
+                } else {
+                    // If the type does contain itself, we'll have to do some more legwork.
+                    // Create a new environment with the type binding.
+                    let mut new_env = env.clone();
+                    new_env.define_type(
+                        name,
+                        if **ret == Self::Symbol(name.clone()) {
+                            // If the name we're binding to is the result of the let-binding, then we can
+                            // substitute the name under the bound type with the original entire let-binding.
+                            t.substitute(name, &Self::Let(name.clone(), t.clone(), ret.clone()))
+                        } else {
+                            // Otherwise, we can't reason much about the type and so we just bind
+                            // it to the name unmodified.
+                            *t.clone()
+                        },
+                    );
+
+                    // Check if the two types are equal under the new environment.
+                    ret.equals_checked(x, compared_symbols, &new_env, i)?
+                }
+            }
+
             (Self::Any, _)
             | (_, Self::Any)
             | (Self::Never, _)
@@ -190,14 +394,14 @@ impl Type {
                     return Ok(false);
                 }
                 for (item1, item2) in a.iter().zip(b.iter()) {
-                    if !item1.equals_checked(item2, env, i)? {
+                    if !item1.equals_checked(item2, compared_symbols, env, i)? {
                         return Ok(false);
                     }
                 }
                 true
             }
             (Self::Array(t1, size1), Self::Array(t2, size2)) => {
-                t1.equals_checked(t2, env, i)?
+                t1.equals_checked(t2, compared_symbols, env, i)?
                     && size1.clone().as_int(env)? == size2.clone().as_int(env)?
             }
             (Self::Struct(a), Self::Struct(b)) => {
@@ -205,7 +409,7 @@ impl Type {
                     return Ok(false);
                 }
                 for ((name1, item1), (name2, item2)) in a.iter().zip(b.iter()) {
-                    if name1 != name2 || !item1.equals_checked(item2, env, i)? {
+                    if name1 != name2 || !item1.equals_checked(item2, compared_symbols, env, i)? {
                         return Ok(false);
                     }
                 }
@@ -217,7 +421,7 @@ impl Type {
                     return Ok(false);
                 }
                 for ((name1, item1), (name2, item2)) in a.iter().zip(b.iter()) {
-                    if name1 != name2 || !item1.equals_checked(item2, env, i)? {
+                    if name1 != name2 || !item1.equals_checked(item2, compared_symbols, env, i)? {
                         return Ok(false);
                     }
                 }
@@ -229,14 +433,16 @@ impl Type {
                     return Ok(false);
                 }
                 for (arg1, arg2) in args1.iter().zip(args2.iter()) {
-                    if !arg1.equals_checked(arg2, env, i)? {
+                    if !arg1.equals_checked(arg2, compared_symbols, env, i)? {
                         return Ok(false);
                     }
                 }
-                ret1.equals_checked(ret2, env, i)?
+                ret1.equals_checked(ret2, compared_symbols, env, i)?
             }
 
-            (Self::Pointer(t1), Self::Pointer(t2)) => t1.equals_checked(t2, env, i)?,
+            (Self::Pointer(t1), Self::Pointer(t2)) => {
+                t1.equals_checked(t2, compared_symbols, env, i)?
+            }
 
             _ => false,
         })
@@ -274,8 +480,14 @@ impl Type {
                 Err(Error::MemberNotFound(expr.clone(), member.clone()))
             }
             Type::Union(types) if types.contains_key(&member.clone().as_symbol(env)?) => Ok(0),
-            
-            Type::Symbol(_) | Type::Let(_, _, _) => self
+
+            Type::Let(name, t, ret) => {
+                let mut new_env = env.clone();
+                new_env.define_type(name, *t.clone());
+                ret.get_member_offset(member, expr, &new_env)
+            }
+
+            Type::Symbol(_) => self
                 .clone()
                 .simplify(env)?
                 .get_member_offset(member, expr, env),
@@ -292,8 +504,10 @@ impl GetSize for Type {
             Self::None | Self::Never => 0,
             Self::Any => return Err(Error::UnsizedType(self.clone())),
 
-            Self::Let(_, _, _) => {
-                self.clone().simplify(env)?.get_size_checked(env, i)?
+            Self::Let(name, t, ret) => {
+                let mut new_env = env.clone();
+                new_env.define_type(name, *t.clone());
+                ret.get_size_checked(&new_env, i)?
             }
 
             Self::Symbol(name) => {
@@ -333,6 +547,7 @@ impl GetSize for Type {
 impl Simplify for Type {
     fn simplify_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
         let i = i + 1;
+
         Ok(match self {
             Self::None
             | Self::Never
@@ -346,9 +561,26 @@ impl Simplify for Type {
             Self::Pointer(inner) => Self::Pointer(Box::new(inner.simplify_checked(env, i)?)),
 
             Self::Let(name, t, ret) => {
-                let mut new_env = env.clone();
-                new_env.define_type(name, t.simplify_checked(env, i)?);
-                ret.simplify_checked(&new_env, i)?
+                // Is the bound type recursive?
+                if t.contains_symbol(&name) {
+                    // If so, create a new environment with the new type bound.
+                    let mut new_env = env.clone();
+                    new_env.define_type(&name, *t.clone());
+                    // Simplify the result of the let body under the new environment.
+                    let result = ret.clone().simplify_checked(&new_env, i)?;
+                    if *ret == Self::Symbol(name.clone()) {
+                        // If the let body is the bound type, then we can subsitute the bound type
+                        // for a copy of the whole let-binding.
+                        result.substitute(&name, &Self::Let(name.clone(), t.clone(), ret.clone()))
+                    } else {
+                        // Otherwise, we can't reason much about the result, so return what
+                        // we have.
+                        result
+                    }
+                } else {
+                    // If the type isn't recursive, we can just substitute the variable for the type binding!
+                    ret.substitute(&name, &t).simplify_checked(env, i)?
+                }
             }
 
             Self::Symbol(ref name) => {

@@ -85,6 +85,10 @@ where
     fn deref(&mut self) {
         // Add the old pointer to the dereference stack.
         self.refs.push(self.pointer);
+        let cell = *self.get_cell();
+        if cell < 0 {
+            panic!("Dereferencing negative cell with value {cell:?}");
+        }
         // Set the pointer to the address on the tape.
         self.pointer = *self.get_cell() as usize;
     }
@@ -400,8 +404,7 @@ where
                     // Store the address of the new space in the register.
                     self.register = result as isize;
                 }
-                StandardOp::Free => {
-                }
+                StandardOp::Free => {}
             }
             self.i += 1
         } else {

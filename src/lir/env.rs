@@ -1,7 +1,7 @@
 use crate::asm::AssemblyProgram;
 
-use super::{ConstExpr, Error, GetSize, Compile, Procedure, Type};
-use std::{rc::Rc, collections::HashMap};
+use super::{Compile, ConstExpr, Error, GetSize, Procedure, Type};
+use std::{collections::HashMap, rc::Rc};
 
 #[derive(Clone, Debug)]
 pub struct Env {
@@ -44,7 +44,7 @@ impl Env {
             consts: self.consts.clone(),
             procs: self.procs.clone(),
 
-            .. Env::default()
+            ..Env::default()
         }
     }
 
@@ -52,12 +52,12 @@ impl Env {
     pub fn define_type(&mut self, name: impl ToString, ty: Type) {
         Rc::make_mut(&mut self.types).insert(name.to_string(), ty);
     }
-    
+
     /// Get a type definition from this environment.
     pub fn get_type(&self, name: &str) -> Option<&Type> {
         self.types.get(name)
     }
-    
+
     /// Define a constant with a given name under this environment.
     pub fn define_const(&mut self, name: impl ToString, e: ConstExpr) {
         Rc::make_mut(&mut self.consts).insert(name.to_string(), e);
@@ -67,7 +67,7 @@ impl Env {
     pub fn get_const(&self, name: &str) -> Option<&ConstExpr> {
         self.consts.get(name)
     }
-    
+
     /// Define a procedure with a given name under this environment.
     pub fn define_proc(&mut self, name: impl ToString, proc: Procedure) {
         Rc::make_mut(&mut self.procs).insert(name.to_string(), proc);

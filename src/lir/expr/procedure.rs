@@ -48,6 +48,11 @@ impl Procedure {
 
 impl TypeCheck for Procedure {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
+        for (_, t) in &self.args {
+            t.type_check(env)?;
+        }
+        self.ret.type_check(env)?;
+
         let mut new_env = env.new_scope();
         new_env.define_args(self.args.clone())?;
 

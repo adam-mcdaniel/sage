@@ -7,7 +7,6 @@ use super::Procedure;
 /// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
 ///       This way, we don't overflow the stack with several clones of the environment.
 
-
 /// A runtime expression.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
@@ -232,16 +231,12 @@ impl Expr {
     }
 
     /// Create a `proc` binding for a procedure.
-    /// 
+    ///
     /// This will create a new scope with the procedure `proc` defined.
     /// `ret` will be evaluated under this new scope.
-    /// 
+    ///
     /// When this expression is finished evaluating, `proc` will be removed from the scope.
-    pub fn let_proc(
-        procname: impl ToString,
-        proc: Procedure,
-        ret: impl Into<Self>,
-    ) -> Self {
+    pub fn let_proc(procname: impl ToString, proc: Procedure, ret: impl Into<Self>) -> Self {
         Expr::LetProc(procname.to_string(), proc, Box::new(ret.into()))
     }
 
@@ -332,6 +327,12 @@ impl TypeCheck for Expr {
                 // Typecheck the result expression under the new scope.
                 let mut new_env = env.clone();
                 new_env.define_type(name.clone(), t.clone());
+                // TODO: Typecheck the type. For now, we just assume it's valid.
+                //       Right now, it's impossible to typecheck the type, because
+                //       mutually recursive types would automatically throw an error.
+                //       To fix this, we need to add an expression `LetTypes` which
+                //       can bind multiple types at once, so the mutually recursive types
+                //       can be added to the scope and typechecked properly.
                 ret.type_check(&new_env)
             }
 
@@ -342,6 +343,9 @@ impl TypeCheck for Expr {
                 let inferred_t = e.get_type(env)?;
                 // If there's a type specification for the variable, check it.
                 if let Some(t) = t {
+                    // Typecheck the type.
+                    t.type_check(env)?;
+
                     // Check that the inferred type is compatible with the type specified.
                     if !inferred_t.equals(t, env)? {
                         return Err(Error::MismatchedTypes {
@@ -353,7 +357,7 @@ impl TypeCheck for Expr {
                 }
 
                 let mut new_env = env.clone();
-                new_env.define_var(var, inferred_t)?;
+                new_env.define_var(var, t.clone().unwrap_or(inferred_t))?;
                 ret.type_check(&new_env)
             }
 
@@ -552,8 +556,12 @@ impl TypeCheck for Expr {
             }
 
             Self::Union(t, variant, val) => {
+                // Typecheck the type.
+                t.type_check(env)?;
                 if let Type::Union(fields) = t {
+                    // Confirm that the variant is a valid variant.
                     if fields.get(variant).is_some() {
+                        // Typecheck the value assigned to the variant.
                         val.type_check(env)?;
                         Ok(())
                     } else {
@@ -1154,8 +1162,6 @@ impl Compile for Expr {
 
 impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        let i = i + 1;
-
         Ok(match self {
             Self::ConstExpr(c) => c.get_type_checked(env, i)?,
             Self::Many(exprs) => {
@@ -1205,13 +1211,7 @@ impl GetType for Expr {
 
             Self::LetVar(var, t, val, ret) => {
                 let mut new_env = env.clone();
-                new_env.define_var(
-                    var,
-                    match t {
-                        Some(t) => t.clone(),
-                        None => val.get_type_checked(env, i)?,
-                    },
-                )?;
+                new_env.define_var(var, t.clone().unwrap_or(val.get_type_checked(env, i)?))?;
 
                 ret.get_type_checked(&new_env, i)?
             }
@@ -1225,7 +1225,10 @@ impl GetType for Expr {
 
             Self::Refer(expr) => Type::Pointer(Box::new(expr.get_type_checked(env, i)?)),
             Self::Deref(expr) => {
-                if let Type::Pointer(inner) = expr.get_type_checked(env, i)? {
+                let t = expr.get_type_checked(env, i)?;
+                if let Type::Pointer(inner) = t {
+                    *inner
+                } else if let Type::Pointer(inner) = t.simplify(env)? {
                     *inner
                 } else {
                     return Err(Error::DerefNonPointer(self.clone()));
@@ -1293,12 +1296,17 @@ impl GetType for Expr {
                             return Err(Error::MemberNotFound(*val.clone(), field.clone()));
                         }
                     }
+                    Type::Let(name, t, _) => {
+                        let mut new_env = env.clone();
+                        new_env.define_type(name, *t);
+                        Self::Member(val.clone(), field.clone()).get_type_checked(&new_env, i)?
+                    }
 
                     _ => return Err(Error::MemberNotFound(*val.clone(), field.clone())),
                 }
             }
 
-            Self::Index(val, _) => match val.get_type_checked(env, i)? {
+            Self::Index(val, _) => match val.get_type_checked(env, i)?.simplify(env)? {
                 Type::Array(item, _) => *item,
                 Type::Pointer(item) => *item,
 

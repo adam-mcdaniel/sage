@@ -10,7 +10,7 @@ pub use procedure::*;
 mod builtin;
 pub use builtin::*;
 
-use super::{Env, Simplify, Error, GetSize, Type, TypeCheck};
+use super::{Env, Error, GetSize, Simplify, Type, TypeCheck};
 use crate::asm::{AssemblyProgram, CoreProgram, StandardProgram};
 
 pub trait GetType {
@@ -32,10 +32,10 @@ where
 
 pub trait Compile: TypeCheck {
     /// Compile the expression into an assembly program.
-    /// 
+    ///
     /// On success, this will return an Ok value containing either a successfully
     /// compiled core assembly program, or a fallback standard assembly program.
-    /// 
+    ///
     /// On an error, this will return an Err value containing the error.
     fn compile(self) -> Result<Result<CoreProgram, StandardProgram>, Error>
     where
