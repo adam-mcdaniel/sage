@@ -13,11 +13,15 @@ pub use builtin::*;
 use super::{Env, Error, GetSize, Simplify, Type, TypeCheck};
 use crate::asm::{AssemblyProgram, CoreProgram, StandardProgram};
 
+/// Get the type associated with a value under a given environment.
 pub trait GetType {
+    /// Get the type associated with a value under a given environment.
     fn get_type(&self, env: &Env) -> Result<Type, Error> {
         self.get_type_checked(env, 0)?.simplify(env)
     }
 
+    /// Get the type of a value under a given environment and check
+    /// recursion depth to prevent a possible stack overflow.
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error>;
 }
 
