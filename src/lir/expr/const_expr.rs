@@ -94,7 +94,7 @@ impl ConstExpr {
 
                 Self::Symbol(name) => {
                     if let Some(c) = env.get_const(&name) {
-                        Ok(c.clone())
+                        c.clone().eval_checked(env, i)
                     } else {
                         Ok(Self::Symbol(name))
                     }
@@ -188,7 +188,7 @@ impl TypeCheck for ConstExpr {
             }
 
             Self::Of(t, variant) => {
-                if let Type::Enum(variants) = t {
+                if let Type::Enum(variants) = t.clone().simplify(env)? {
                     if variants.contains(variant) {
                         Ok(())
                     } else {
@@ -222,7 +222,7 @@ impl TypeCheck for ConstExpr {
 
             Self::Union(t, variant, val) => {
                 // Confirm the type supplied is a union.
-                if let Type::Union(fields) = t {
+                if let Type::Union(fields) = t.clone().simplify(env)? {
                     // Confirm that the variant is contained within the union.
                     if fields.get(variant).is_some() {
                         // Typecheck the value being assigned to the variant.

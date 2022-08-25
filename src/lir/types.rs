@@ -109,11 +109,6 @@ pub enum Type {
 }
 
 impl Type {
-    /// Can this type be cast to another type?
-    pub fn can_cast_to(&self, other: &Self, env: &Env) -> Result<bool, Error> {
-        self.can_cast_to_checked(other, env, 0)
-    }
-
     /// Does this type contain a symbol with the given name?
     /// This will not count overshadowded versions of the symbol (overwritten by let-bindings).
     pub fn contains_symbol(&self, name: &str) -> bool {
@@ -205,6 +200,11 @@ impl Type {
     }
 
     /// Can this type be cast to another type?
+    pub fn can_cast_to(&self, other: &Self, env: &Env) -> Result<bool, Error> {
+        self.can_cast_to_checked(other, env, 0)
+    }
+    
+    /// Can this type be cast to another type?
     /// This function should always halt (type casting *MUST* be decidable).
     fn can_cast_to_checked(&self, other: &Self, env: &Env, i: usize) -> Result<bool, Error> {
         if self == other {
@@ -238,6 +238,7 @@ impl Type {
             (Self::Cell, Self::Char) | (Self::Char, Self::Cell) => Ok(true),
             (Self::Cell, Self::Bool) | (Self::Bool, Self::Cell) => Ok(true),
             (Self::Cell, Self::Pointer(_)) | (Self::Pointer(_), Self::Cell) => Ok(true),
+            (Self::Pointer(_), Self::Pointer(_)) => Ok(true),
 
             (Self::Any, _) | (_, Self::Any) => Ok(true),
 
@@ -453,13 +454,13 @@ impl Type {
         member: &ConstExpr,
         expr: &Expr,
         env: &Env,
-    ) -> Result<usize, Error> {
+    ) -> Result<(Type, usize), Error> {
         match self {
             Type::Struct(members) => {
                 let mut offset = 0;
                 for (k, t) in members.clone() {
                     if &ConstExpr::Symbol(k) == member {
-                        return Ok(offset);
+                        return Ok((t.simplify(env)?, offset));
                     }
 
                     let size = t.get_size(env)?;
@@ -471,7 +472,7 @@ impl Type {
                 let mut offset = 0;
                 for (i, t) in items.iter().enumerate() {
                     if &ConstExpr::Int(i as i32) == member {
-                        return Ok(offset);
+                        return Ok((t.clone().simplify(env)?, offset));
                     }
 
                     let size = t.get_size(env)?;
@@ -479,7 +480,10 @@ impl Type {
                 }
                 Err(Error::MemberNotFound(expr.clone(), member.clone()))
             }
-            Type::Union(types) if types.contains_key(&member.clone().as_symbol(env)?) => Ok(0),
+            Type::Union(types) => match types.get(&member.clone().as_symbol(env)?) {
+                Some(t) => Ok((t.clone().simplify(env)?, 0)),
+                None => Err(Error::MemberNotFound(expr.clone(), member.clone()))
+            },
 
             Type::Let(name, t, ret) => {
                 let mut new_env = env.clone();
@@ -487,10 +491,11 @@ impl Type {
                 ret.get_member_offset(member, expr, &new_env)
             }
 
-            Type::Symbol(_) => self
-                .clone()
-                .simplify(env)?
-                .get_member_offset(member, expr, env),
+            Type::Symbol(name) => if let Some(t) = env.get_type(name) {
+                t.get_member_offset(member, expr, env)
+            } else {
+                Err(Error::TypeNotDefined(name.clone()))
+            },
 
             _ => Err(Error::MemberNotFound(expr.clone(), member.clone())),
         }

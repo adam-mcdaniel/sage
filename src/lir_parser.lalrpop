@@ -1,0 +1,165 @@
+use std::{str::FromStr, collections::BTreeMap};
+use crate::lir::*;
+
+grammar;
+
+// pub Term: i32 = {
+//     <n:Num> => n,
+//     "(" <t:Term> ")" => t,
+// };
+
+
+pub Type: Type = {
+    "let" <var: Symbol> "=" <t: Type> "in" <ret: Type> => Type::Let(var, Box::new(t), Box::new(ret)),
+    "proc" <args: List<"(", Type, ",", ")">> "->" <ret: Type> => Type::Proc(args, Box::new(ret)),
+    TypeTerm => <>,
+}
+
+TypeTerm: Type = {
+    Symbol => Type::Symbol(<>),
+    "(" <Type> ")" => <>,
+    Tuple<Type> => Type::Tuple(<>),
+    "&" <Type> => Type::Pointer(Box::new(<>)),
+    "[" <t: Type> "*" <size: ConstExpr> "]" => Type::Array(Box::new(t), Box::new(size)),
+    "Int" => Type::Int,
+    "Float" => Type::Float,
+    "Char" => Type::Char,
+    "Bool" => Type::Bool,
+    "Cell" => Type::Cell,
+    "None" => Type::None,
+    "enum" <List<"{", Symbol, ",", "}">> => Type::Enum(<>.into_iter().collect()),
+    "union" <Dict<Symbol, Type>> => Type::Union(<>.into_iter().collect()),
+    "struct" <Dict<Symbol, Type>> => Type::Struct(<>.into_iter().collect()),
+}
+
+pub ConstExpr: ConstExpr = {
+    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <body: Block> => ConstExpr::Proc(Procedure::new(args, ret, body)),
+    <variant: Symbol> "of" <t: TypeTerm> => ConstExpr::Of(t, variant).into(),
+    Symbol => ConstExpr::Symbol(<>),
+    IntLit => ConstExpr::Int(<> as i32),
+    FloatLit => ConstExpr::Float(<>),
+    CharLit => ConstExpr::Char(<>),
+    "true" => ConstExpr::Bool(true),
+    "false" => ConstExpr::Bool(false),
+    "Null" => ConstExpr::Null,
+    "None" => ConstExpr::None,
+    "sizeof" "(" <Type> ")" => ConstExpr::SizeOfType(<>),
+    "sizeofexpr" "(" <Expr> ")" => ConstExpr::SizeOfExpr(Box::new(<>)),
+    "(" ")" => ConstExpr::None,
+}
+
+pub Expr: Expr = {
+    <defs: List<"let", (<Symbol> <(":" <Type>)?> "=" <Math>), ",", "in">> <e: Expr> => {
+        Expr::LetVars(defs, Box::new(e))
+    },
+    <defs: List<"type", (<Symbol> "=" <Type>), ",", "in">> <e: Expr> => {
+        Expr::LetTypes(defs, Box::new(e))
+    },
+    <defs: List<"const", (<Symbol> "=" <ConstExpr>), ",", "in">> <e: Expr> => {
+        Expr::LetConsts(defs.into_iter().collect(), Box::new(e))
+    },
+    "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <body: Block> "in" <e: Expr> => {
+        Expr::LetProc(name, Procedure::new(args, ret, body), Box::new(e))
+    },
+    "while" <cond: Expr> <body: Block> => Expr::While(Box::new(cond), Box::new(body)),
+    <x: Factor> "=" <val: Expr> => x.refer().deref_mut(val),
+    "&" <Expr> => <>.refer(),
+    "*" <Expr> => <>.deref(),
+    "return" <Expr> => Expr::Return(Box::new(<>)),
+    Math => <>
+}
+
+
+Math: Expr = {
+    <a: Math> "+" <b: Factor> => a.add(b),
+    <a: Math> "-" <b: Factor> => a.sub(b),
+    Factor => <>,
+}
+
+Factor: Expr = {
+    <a: Factor> "*" <b: Term> => a.mul(b),
+    <a: Factor> "/" <b: Term> => a.div(b),
+    <a: Factor> "%" <b: Term> => a.rem(b),
+    Term => <>,
+}
+
+Term: Expr = {
+    <x: Term> "." <field: Symbol> => x.field(ConstExpr::Symbol(field)),
+    <x: Term> "." <field: IntLit> => x.field(ConstExpr::Int(field as i32)),
+    <x: Term> "->" <field: Symbol> => x.deref().field(ConstExpr::Symbol(field)),
+    <x: Term> "->" <field: IntLit> => x.deref().field(ConstExpr::Int(field as i32)),
+    <x: Term> "[" <idx: Expr> "]" => x.idx(idx),
+    <x: Term> "as" <t: Type> => x.as_type(t),
+    <f: Term> <args: List<"(", Expr, ",", ")">> => f.app(args),
+    "if" <cond: Atom> <t: Atom> <e: ("else" <Atom>)?> => {
+        Expr::If(Box::new(cond), Box::new(t), Box::new(e.unwrap_or(ConstExpr::None.into())))
+    },
+    Atom => <>,
+}
+
+Atom: Expr = {
+    Block => <>,
+    "(" <Expr> ")" => <>,
+    ConstExpr => Expr::ConstExpr(<>),
+    Tuple<Expr> => Expr::Tuple(<>),
+    Array<Expr> => Expr::Array(<>),
+    "struct" "{" <mut list:(<Symbol> "=" <Expr> ",")*> <last: (<Symbol> "=" <Expr>)> "}" => {
+        list.push(last);
+        Expr::Struct(list.into_iter().collect())
+    },
+    "union" "{" <mut list:(<Symbol> ":" <Type> ",")*> <last: (<Symbol> ":" <Type> "=" <Expr>)> "}" => {
+        list.push((last.0.clone(), last.1));
+        let t = Type::Union(list.into_iter().collect());
+        Expr::Union(t, last.0, Box::new(last.2))
+    },
+    "union" "{" <name: Symbol> "=" <e: Expr> "," <t: Type> ".." "}" => {
+        Expr::Union(t, name, Box::new(e))
+    },
+}
+
+Block: Expr = {
+    "{" <mut list: (<Expr> ";")*> <end:Expr?> "}" => {
+        list.push(match end {
+            Some(val) => val,
+            None => ConstExpr::None.into()
+        });
+        Expr::Many(list)
+    }
+}
+
+StringLit: String = <s:r#""(\\.|[^"])*""#> => String::from(&s[1..s.len()-1]).replace("\\\"", "\"").replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t").replace("\\0", "\0");
+CharLit: char = <s:r#"'(\\.|[^'])'"#> => s.replace("\\'", "'").replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t").replace("\\0", "\0").chars().nth(1).unwrap() as char;
+IntLit: isize = <s:r"-?[0-9]\d*"> => isize::from_str(s).unwrap();
+FloatLit: f64 = {
+    r"-?([1-9][0-9]*|[0])[.]([0-9]+)?" => <>.to_string().parse::<f64>().unwrap(),
+}
+Symbol: String = r"[a-zA-Z_][a-zA-Z0-9_]*" => <>.to_string();
+
+
+Tuple<T>: Vec<T> = {
+    "(" <mut list: (<T> ",")+> <end:T?> ")" => {
+        match end {
+            None => list,
+            Some(val) => {
+                list.push(val);
+                list
+            }
+        }
+    }
+}
+
+Array<T>: Vec<T> = List<"[", T, ",", "]"> => <>;
+Dict<K, V>: Vec<(K, V)> = List<"{", (<K> ":" <V>), ",", "}"> => <>;
+
+List<Begin, T, Sep, End>: Vec<T> = {
+    <first:Begin> <list: (<T> <Sep>)*> <end:T?> <last:End> => {
+        match end {
+            None => list.iter().map(|(v, s)| v.clone()).collect(),
+            Some(val) => {
+                let mut list: Vec<_> = list.iter().map(|(v, s)| v.clone()).collect();
+                list.push(val);
+                list
+            }
+        }
+    }
+}

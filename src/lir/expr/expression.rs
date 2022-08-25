@@ -16,15 +16,27 @@ pub enum Expr {
     /// A `const` binding expression.
     /// Declare a constant under a new scope, and evaluate a subexpression in that scope.
     LetConst(String, ConstExpr, Box<Self>),
+    /// A `const` binding expression.
+    /// Declare multiple constants under a new scope, and evaluate a subexpression in that scope.
+    LetConsts(BTreeMap<String, ConstExpr>, Box<Self>),
     /// A `proc` binding expression.
     /// Declare a procedure under a new scope, and evaluate a subexpression in that scope.
     LetProc(String, Procedure, Box<Self>),
+    /// A `proc` binding expression.
+    /// Declare multiple procedures under a new scope, and evaluate a subexpression in that scope.
+    LetProcs(Vec<(String, Procedure)>, Box<Self>),
     /// A `type` binding expression.
     /// Declare a type under a new scope, and evaluate a subexpression in that scope.
     LetType(String, Type, Box<Self>),
+    /// A `type` binding expression.
+    /// Declare multiple types under a new scope, and evaluate a subexpression in that scope.
+    LetTypes(Vec<(String, Type)>, Box<Self>),
     /// A `let` binding expression.
     /// Declare a variable under a new scope, and evaluate a subexpression in that scope.
     LetVar(String, Option<Type>, Box<Self>, Box<Self>),
+    /// A `let` binding expression.
+    /// Declare multiple variables under a new scope, and evaluate a subexpression in that scope.
+    LetVars(Vec<(String, Option<Type>, Self)>, Box<Self>),
 
     /// Create a while loop: while the first expression evaluates to true, evaluate the second expression.
     While(Box<Self>, Box<Self>),
@@ -190,12 +202,8 @@ impl Expr {
     }
 
     /// Create a `let` binding for an expression, and define multiple variables.
-    pub fn let_vars(vars: BTreeMap<&str, (Option<Type>, Self)>, ret: impl Into<Self>) -> Self {
-        let mut result = ret.into();
-        for (var, (t, val)) in vars {
-            result = Expr::LetVar(var.to_string(), t, Box::new(val), Box::new(result));
-        }
-        result
+    pub fn let_vars(vars: Vec<(&str, Option<Type>, Self)>, ret: impl Into<Self>) -> Self {
+        Self::LetVars(vars.into_iter().map(|(name, t, e)| (name.to_string(), t, e)).collect(), Box::new(ret.into()))
     }
 
     /// Create a `let` binding for an type.
@@ -208,7 +216,11 @@ impl Expr {
     pub fn let_type(typename: impl ToString, t: Type, ret: impl Into<Self>) -> Self {
         Expr::LetType(typename.to_string(), t, Box::new(ret.into()))
     }
-
+    /// Create several `type` bindings at onces.
+    pub fn let_types(vars: Vec<(&str, Type)>, ret: impl Into<Self>) -> Self {
+        Self::LetTypes(vars.into_iter().map(|(k, v)| (k.to_string(), v)).collect(), Box::new(ret.into()))
+    }
+    
     /// Create a `let` binding for a constant expression.
     ///
     /// This will create a new scope with the constant `constname` defined.
@@ -220,12 +232,8 @@ impl Expr {
     }
 
     /// Create several `const` bindings at onces.
-    pub fn let_consts(procs: BTreeMap<&str, ConstExpr>, ret: impl Into<Self>) -> Self {
-        let mut result = ret.into();
-        for (var, val) in procs {
-            result = Expr::LetConst(var.to_string(), val, Box::new(result));
-        }
-        result
+    pub fn let_consts(constants: Vec<(&str, ConstExpr)>, ret: impl Into<Self>) -> Self {
+        Self::LetConsts(constants.into_iter().map(|(k, v)| (k.to_string(), v)).collect(), Box::new(ret.into()))
     }
 
     /// Create a `proc` binding for a procedure.
@@ -240,11 +248,7 @@ impl Expr {
 
     /// Create several `proc` bindings at onces.
     pub fn let_procs(procs: BTreeMap<&str, Procedure>, ret: impl Into<Self>) -> Self {
-        let mut result = ret.into();
-        for (var, val) in procs {
-            result = Expr::LetProc(var.to_string(), val, Box::new(result));
-        }
-        result
+        Self::LetProcs(procs.into_iter().map(|(k, v)| (k.to_string(), v)).collect(), Box::new(ret.into()))
     }
 
     /// Create a structure of fields to expressions.
@@ -305,11 +309,24 @@ impl TypeCheck for Expr {
                 Ok(())
             }
 
-            Self::LetConst(var, e, ret) => {
+            Self::LetConst(name, e, ret) => {
                 // Typecheck the constant expression we're assigning to the variable.
                 let mut new_env = env.clone();
-                new_env.define_const(var.clone(), e.clone());
+                new_env.define_const(name.clone(), e.clone());
                 e.type_check(&new_env)?;
+                ret.type_check(&new_env)
+            }
+
+            Self::LetConsts(constants, ret) => {
+                // Add all the constants to the scope.
+                let mut new_env = env.clone();
+                for (name, c) in constants {
+                    new_env.define_const(name, c.clone());
+                }
+                // Typecheck the constant expression we're assigning to each name.
+                for c in constants.values() {
+                    c.type_check(&new_env)?;
+                }
                 ret.type_check(&new_env)
             }
 
@@ -321,16 +338,37 @@ impl TypeCheck for Expr {
                 ret.type_check(&new_env)
             }
 
+            Self::LetProcs(procs, ret) => {
+                // Add the procedures to the scope.
+                let mut new_env = env.clone();
+                for (name, proc) in procs {
+                    new_env.define_proc(name, proc.clone());
+                }
+                // Typecheck the procedures we're defining.
+                for (_, proc) in procs {
+                    proc.type_check(&new_env)?;
+                }
+                ret.type_check(&new_env)
+            }
+
             Self::LetType(name, t, ret) => {
                 // Typecheck the result expression under the new scope.
                 let mut new_env = env.clone();
                 new_env.define_type(name.clone(), t.clone());
-                // TODO: Typecheck the type. For now, we just assume it's valid.
-                //       Right now, it's impossible to typecheck the type, because
-                //       mutually recursive types would automatically throw an error.
-                //       To fix this, we need to add an expression `LetTypes` which
-                //       can bind multiple types at once, so the mutually recursive types
-                //       can be added to the scope and typechecked properly.
+                t.type_check(&new_env)?;
+                ret.type_check(&new_env)
+            }
+
+            Self::LetTypes(types, ret) => {
+                // Add the types to the scope.
+                let mut new_env = env.clone();
+                for (name, ty) in types {
+                    new_env.define_type(name, ty.clone());
+                }
+                // Typecheck the types we're defining.
+                for (_, t) in types {
+                    t.type_check(&new_env)?;
+                }
                 ret.type_check(&new_env)
             }
 
@@ -356,6 +394,32 @@ impl TypeCheck for Expr {
 
                 let mut new_env = env.clone();
                 new_env.define_var(var, t.clone().unwrap_or(inferred_t))?;
+                ret.type_check(&new_env)
+            }
+
+            Self::LetVars(vars, ret) => {
+                let mut new_env = env.clone();
+                for (var, t, e) in vars {
+                    // Typecheck the expression we're assigning to the variable.
+                    e.type_check(&new_env)?;
+                    // Get the inferred type of the expression.
+                    let inferred_t = e.get_type(&new_env)?;
+                    // If there's a type specification for the variable, check it.
+                    if let Some(t) = t {
+                        // Typecheck the type.
+                        t.type_check(env)?;
+    
+                        // Check that the inferred type is compatible with the type specified.
+                        if !inferred_t.equals(t, env)? {
+                            return Err(Error::MismatchedTypes {
+                                expected: t.clone(),
+                                found: inferred_t,
+                                expr: self.clone(),
+                            });
+                        }
+                    }
+                    new_env.define_var(var, t.clone().unwrap_or(inferred_t))?;
+                }
                 ret.type_check(&new_env)
             }
 
@@ -556,7 +620,7 @@ impl TypeCheck for Expr {
             Self::Union(t, variant, val) => {
                 // Typecheck the type.
                 t.type_check(env)?;
-                if let Type::Union(fields) = t {
+                if let Type::Union(fields) = t.clone().simplify(env)? {
                     // Confirm that the variant is a valid variant.
                     if fields.get(variant).is_some() {
                         // Typecheck the value assigned to the variant.
@@ -577,7 +641,7 @@ impl TypeCheck for Expr {
                 if original_t.can_cast_to(t, env)? {
                     Ok(())
                 } else {
-                    Err(Error::InvalidAs(self.clone()))
+                    Err(Error::InvalidAs(self.clone(), original_t, t.clone()))
                 }
             }
 
@@ -620,7 +684,7 @@ impl Compile for Expr {
 
             Self::As(ref expr, ref t) => {
                 expr.clone().compile_expr(env, output)?;
-                match (expr.get_type(env)?, t) {
+                match (expr.get_type(env)?, t.clone()) {
                     (Type::Int, Type::Float) => {
                         output.std_op(StandardOp::ToFloat(SP.deref()))?;
                     }
@@ -628,8 +692,8 @@ impl Compile for Expr {
                         output.std_op(StandardOp::ToInt(SP.deref()))?;
                     }
                     (a, b) if a.get_size(env)? == b.get_size(env)? => {}
-                    _ => {
-                        return Err(Error::InvalidAs(self));
+                    (a, b) => {
+                        return Err(Error::InvalidAs(self, a, b));
                     }
                 }
             }
@@ -734,9 +798,26 @@ impl Compile for Expr {
                 body.compile_expr(&mut new_env, output)?;
             }
 
+            Self::LetConsts(constants, body) => {
+                let mut new_env = env.clone();
+                for (name, c) in constants {
+                    new_env.define_const(name, c);
+                }
+                // Compile under the new scope.
+                body.compile_expr(&mut new_env, output)?;
+            }
+
             Self::LetProc(name, proc, body) => {
                 let mut new_env = env.clone();
                 new_env.define_proc(name, proc);
+                // Compile under the new scope.
+                body.compile_expr(&mut new_env, output)?;
+            }
+            Self::LetProcs(procs, body) => {
+                let mut new_env = env.clone();
+                for (name, proc) in procs {
+                    new_env.define_proc(name, proc);
+                }
                 // Compile under the new scope.
                 body.compile_expr(&mut new_env, output)?;
             }
@@ -744,6 +825,14 @@ impl Compile for Expr {
             Self::LetType(name, t, body) => {
                 let mut new_env = env.clone();
                 new_env.define_type(name, t);
+                // Compile under the new scope.
+                body.compile_expr(&mut new_env, output)?;
+            }
+            Self::LetTypes(types, body) => {
+                let mut new_env = env.clone();
+                for (name, ty) in types {
+                    new_env.define_type(name, ty);
+                }
                 // Compile under the new scope.
                 body.compile_expr(&mut new_env, output)?;
             }
@@ -761,6 +850,18 @@ impl Compile for Expr {
                     Expr::ConstExpr(ConstExpr::StandardBuiltin(builtin)) => {
                         // Apply the standard builtin to the arguments on the stack.
                         builtin.compile_expr(env, output)?;
+                    }
+                    Expr::ConstExpr(ConstExpr::Symbol(name)) => {
+                        if let Some(c) = env.get_const(&name) {
+                            c.clone().compile_expr(env, output)?;
+                        } else {
+                            // Push the procedure on the stack.
+                            ConstExpr::Symbol(name).compile_expr(env, output)?;
+                            // Pop the "function pointer" from the stack.
+                            output.op(CoreOp::Pop(Some(A), 1));
+                            // Call the procedure on the arguments.
+                            output.op(CoreOp::Call(A));
+                        }
                     }
                     proc => {
                         // Push the procedure on the stack.
@@ -830,6 +931,16 @@ impl Compile for Expr {
                 output.op(CoreOp::Pop(None, var_size));
                 output.op(CoreOp::Comment(format!("end let '{name}'")));
             }
+            
+            Self::LetVars(vars, body) => {
+                let mut result = *body;
+                for (name, t, e) in vars.into_iter().rev() {
+                    result = Self::LetVar(name, t, Box::new(e), Box::new(result))
+                }
+                result.compile_expr(env, output)?
+            }
+
+
             Self::While(cond, body) => {
                 // Eval the condition
                 cond.clone().compile_expr(env, output)?;
@@ -1005,7 +1116,7 @@ impl Compile for Expr {
                         output.op(CoreOp::Mul { dst: B, src: C });
                         // Get the address of the element and store it in `C`.
                         output.op(CoreOp::Index {
-                            src: A.deref(),
+                            src: A,
                             offset: B,
                             dst: C,
                         });
@@ -1024,7 +1135,7 @@ impl Compile for Expr {
                 // Get the size of the value we want to get a field from.
                 let val_size = val_type.get_size(env)?;
                 // Get the offset of the field from the address of the value.
-                let offset = val_type.get_member_offset(member, &self, env)?;
+                let (_, offset) = val_type.get_member_offset(member, &self, env)?;
                 // Evaluate the value and push it onto the stack.
                 val.clone().compile_expr(env, output)?;
                 // Copy the contents of the field over top of the value on the stack.
@@ -1071,7 +1182,7 @@ impl Compile for Expr {
                     // Push the address of the struct, tuple, or union onto the stack.
                     Self::Refer(val.clone()).compile_expr(env, output)?;
                     // Calculate the offset of the field from the address of the value.
-                    let offset = val_type.get_member_offset(&name, &*val, env)?;
+                    let (_, offset) = val_type.get_member_offset(&name, &*val, env)?;
 
                     output.op(CoreOp::Pop(Some(A), 1));
                     output.op(CoreOp::Set(B, offset as isize));
@@ -1140,7 +1251,7 @@ impl Compile for Expr {
                             // (the index times the size of the element).
                             output.op(CoreOp::Mul { dst: B, src: C });
                             output.op(CoreOp::Index {
-                                src: A.deref(),
+                                src: A,
                                 offset: B,
                                 dst: C,
                             });
@@ -1195,22 +1306,53 @@ impl GetType for Expr {
                 ret.get_type_checked(&new_env, i)?
             }
 
+            Self::LetConsts(constants, ret) => {
+                let mut new_env = env.clone();
+                for (name, c) in constants {
+                    new_env.define_const(name, c.clone());
+                }
+                ret.get_type_checked(&new_env, i)?
+            }
+
             Self::LetProc(name, proc, ret) => {
                 let mut new_env = env.clone();
                 new_env.define_proc(name, proc.clone());
                 ret.get_type_checked(&new_env, i)?
             }
+            Self::LetProcs(procs, ret) => {
+                let mut new_env = env.clone();
+                for (name, proc) in procs {
+                    new_env.define_proc(name, proc.clone());
+                }
+                ret.get_type_checked(&new_env, i)?
+            }
+
 
             Self::LetType(name, t, ret) => {
                 let mut new_env = env.clone();
                 new_env.define_type(name, t.clone());
                 ret.get_type_checked(&new_env, i)?
             }
+            Self::LetTypes(types, ret) => {
+                let mut new_env = env.clone();
+                for (name, ty) in types {
+                    new_env.define_type(name, ty.clone());
+                }
+                ret.get_type_checked(&new_env, i)?
+            }
+
 
             Self::LetVar(var, t, val, ret) => {
                 let mut new_env = env.clone();
                 new_env.define_var(var, t.clone().unwrap_or(val.get_type_checked(env, i)?))?;
 
+                ret.get_type_checked(&new_env, i)?
+            }
+            Self::LetVars(vars, ret) => {
+                let mut new_env = env.clone();
+                for (var, t, val) in vars {
+                    new_env.define_var(var, t.clone().unwrap_or(val.get_type_checked(&new_env, i)?))?;
+                }
                 ret.get_type_checked(&new_env, i)?
             }
 
@@ -1294,10 +1436,10 @@ impl GetType for Expr {
                             return Err(Error::MemberNotFound(*val.clone(), field.clone()));
                         }
                     }
-                    Type::Let(name, t, _) => {
+                    Type::Let(name, t, ret) => {
                         let mut new_env = env.clone();
                         new_env.define_type(name, *t);
-                        Self::Member(val.clone(), field.clone()).get_type_checked(&new_env, i)?
+                        ret.get_member_offset(field, val, &new_env)?.0
                     }
 
                     _ => return Err(Error::MemberNotFound(*val.clone(), field.clone())),

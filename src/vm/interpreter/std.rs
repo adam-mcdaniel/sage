@@ -215,7 +215,7 @@ where
     /// Get the current cell pointed to on the turing tape.
     fn get_cell(&mut self) -> &mut isize {
         while self.pointer >= self.cells.len() {
-            self.cells.push(0)
+            self.cells.extend(vec![0; 30000]);
         }
 
         &mut self.cells[self.pointer]
@@ -382,20 +382,29 @@ where
                     self.register = buf[0] as isize;
                 }
                 StandardOp::PutFloat => {
-                    eprint!("{:?}", as_float(self.register))
+                    eprint!("{:?}", as_float(self.register));
+                    if stderr().flush().is_err() {
+                        return Err("Could not flush output".to_string());
+                    }
                 }
                 StandardOp::PutInt => {
-                    eprint!("{:?}", self.register)
+                    eprint!("{:?}", self.register);
+                    if stderr().flush().is_err() {
+                        return Err("Could not flush output".to_string());
+                    }
                 }
                 StandardOp::PutChar => {
-                    eprint!("{}", self.register as u8 as char)
+                    eprint!("{}", self.register as u8 as char);
+                    if stderr().flush().is_err() {
+                        return Err("Could not flush output".to_string());
+                    }
                 }
 
                 StandardOp::Alloc => {
                     // If the virtual machine doesn't have a thousand cells,
                     // allocate some.
-                    if self.cells.len() < 1000 {
-                        self.cells.extend(vec![0; 1000]);
+                    if self.cells.len() < 30000 {
+                        self.cells.extend(vec![0; 30000]);
                     }
                     // Save the address of where the new cells will start.
                     let result = self.cells.len() - 1;

@@ -110,6 +110,10 @@ impl Device for StandardDevice {
     fn put(&mut self, val: isize) -> Result<(), String> {
         // Print the character without a newline
         print!("{}", val as u8 as char);
-        Ok(())
+        if stdout().flush().is_err() {
+            Err(String::from("could not flush output"))
+        } else {
+            Ok(())
+        }
     }
 }

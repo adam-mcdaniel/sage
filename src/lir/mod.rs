@@ -59,11 +59,15 @@
 //! **The LIR compiler will only use a standard instruction if it has to.**
 
 mod expr;
-pub use expr::*;
 mod types;
-pub use types::*;
 mod env;
+mod parse;
+
+pub use expr::*;
+pub use types::*;
 pub use env::*;
+pub use parse::*;
+
 
 /// Get the size of something in memory (number of cells).
 pub trait GetSize {
@@ -136,7 +140,7 @@ pub enum Error {
     TypeNotDefined(String),
 
     /// Invalid type casting expression.
-    InvalidAs(Expr),
+    InvalidAs(Expr, Type, Type),
 }
 
 /// Create an IR error from an assembly error.

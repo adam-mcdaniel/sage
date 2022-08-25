@@ -26,15 +26,15 @@ fn test_struct() {
     });
 
     let expr = Expr::let_vars(
-        btreemap! {
-            "x" => (None, ConstExpr::Char('x').into()),
-            "y" => (None, Expr::structure(btreemap! {
+        vec![
+            ("x", None, ConstExpr::Char('x').into()),
+            ("y", None, Expr::structure(btreemap! {
                 "a" => ConstExpr::Char('a').into(),
                 "b" => ConstExpr::Char('b').into(),
                 "c" => ConstExpr::Char('c').into(),
             })),
-            "z" => (None, ConstExpr::Char('z').into()),
-            "put" => (None, ConstExpr::proc(
+            ("z", None, ConstExpr::Char('z').into()),
+            ("put", None, ConstExpr::proc(
                 vec![
                     ("x".to_string(), Type::Struct(btreemap! {
                         "a".to_string() => Type::Char,
@@ -49,7 +49,7 @@ fn test_struct() {
                     put.clone().app(vec![Expr::var("x").field(var("c"))]),
                 ])
             ).into()),
-        },
+        ],
         var("put").app(vec![Expr::structure(btreemap! {
             "a" => var("x").into(),
             "b" => Expr::var("y").field(var("b")),
@@ -879,10 +879,7 @@ fn test_typecheck() {
         }),
         Expr::var("a").as_type(Type::Int),
     );
-    assert_eq!(
-        expr.type_check(&env),
-        Err(Error::InvalidAs(Expr::var("a").as_type(Type::Int)))
-    );
+    expr.type_check(&env).unwrap_err();
 }
 
 #[test]
@@ -912,8 +909,8 @@ fn test_recursive_types() {
             "next".to_string() => Type::Pointer(Box::new(Type::Symbol("Node".to_string()))),
         }),
         Expr::let_vars(
-            btreemap! {
-                "node" => (None, ConstExpr::proc(
+            vec![
+                ("node", None, ConstExpr::proc(
                     vec![(
                         "val".to_string(),
                         Type::Int
@@ -924,7 +921,7 @@ fn test_recursive_types() {
                         "next" => ConstExpr::Null.into(),
                     }),
                 ).into()),
-                "next" => (None, ConstExpr::proc(
+                ("next", None, ConstExpr::proc(
                     vec![(
                         "node".to_string(),
                         Type::Symbol("Node".to_string()),
@@ -932,7 +929,7 @@ fn test_recursive_types() {
                     Type::Symbol("Node".to_string()),
                     Expr::var("node").field(var("next")).deref(),
                 ).into()),
-                "cons" => (None, ConstExpr::proc(
+                ("cons", None, ConstExpr::proc(
                     vec![
                         (
                             "head".to_string(),
@@ -959,7 +956,7 @@ fn test_recursive_types() {
                         ])
                     )
                 ).into()),
-            },
+            ],
             Expr::var("next")
                 .app(vec![Expr::var("next").app(vec![Expr::var("cons").app(
                     vec![
@@ -1327,17 +1324,7 @@ fn test_pseudotemplates() {
 
     let expr = Expr::let_var(
         "first",
-        Some(Type::Let(
-            "List<Int>".to_string(),
-            Box::new(Type::Tuple(vec![
-                Type::Int,
-                Type::Union(btreemap! {
-                    "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("List<Int>".to_string()))),
-                    "None".to_string() => Type::None,
-                }),
-            ])),
-            Box::new(Type::Symbol("List<Int>".to_string())),
-        )),
+        None,
         Expr::Tuple(vec![ConstExpr::Int(3).into(), ConstExpr::Union(
             Type::Union(btreemap! {
                 "Some".to_string() => Type::Pointer(Box::new(Type::Let(
@@ -1439,26 +1426,20 @@ fn test_mutually_recursive_types() {
         ],
     });
 
-    let expr = put.clone().app(vec![Expr::let_type(
-        "A",
-        Type::Pointer(Box::new(Type::Symbol("B".to_string()))),
-        Expr::let_type(
-            "B",
-            Type::Pointer(Box::new(Type::Symbol("A".to_string()))),
-            Expr::let_var(
-                "a",
-                Some(Type::Symbol("A".to_string())),
-                ConstExpr::Null,
-                Expr::let_var(
-                    "b",
-                    Some(Type::Symbol("B".to_string())),
-                    Expr::var("a").refer(),
-                    Expr::var("b")
-                        .deref()
-                        .as_type(Type::Cell)
-                        .as_type(Type::Int),
-                ),
-            ),
+    let expr = put.clone().app(vec![Expr::let_types(
+        vec![
+            ("A", Type::Pointer(Box::new(Type::Symbol("B".to_string())))),
+            ("B", Type::Pointer(Box::new(Type::Symbol("A".to_string())))),
+        ],
+        Expr::let_vars(
+            vec![
+                ("a", Some(Type::Symbol("A".to_string())), ConstExpr::Null.into()),
+                ("b", Some(Type::Symbol("B".to_string())), Expr::var("a").refer(),)
+            ],
+            Expr::var("b")
+                .deref()
+                .as_type(Type::Cell)
+                .as_type(Type::Int),
         ),
     )]);
 
@@ -1469,7 +1450,31 @@ fn test_mutually_recursive_types() {
     let device = i.run(&vm_code).unwrap();
 
     assert_eq!(device.output, vec![asm::NULL]);
+    
+    let expr = put.clone().app(vec![Expr::let_types(
+        vec![
+            ("A", Type::Pointer(Box::new(Type::Symbol("B".to_string())))),
+            ("B", Type::Pointer(Box::new(Type::Symbol("A".to_string())))),
+            ("C", Type::Pointer(Box::new(Type::Symbol("C".to_string())))),
+        ],
+        Expr::let_vars(
+            vec![
+                ("a", Some(Type::Symbol("A".to_string())), ConstExpr::Null.into()),
+                ("b", Some(Type::Symbol("B".to_string())), Expr::var("a").refer()),
+                ("c", Some(Type::Symbol("C".to_string())), Expr::var("b"))
+            ],
+            Expr::var("c")
+                .deref()
+                .as_type(Type::Cell)
+                .as_type(Type::Int),
+        ),
+    )]);
 
+    expr.clone().compile().unwrap_err();
+}
+
+#[test]
+fn test_let_multiple_vars() {
     let put = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put".to_string(),
         args: vec![("x".to_string(), Type::Int)],
@@ -1481,36 +1486,30 @@ fn test_mutually_recursive_types() {
         ],
     });
 
-    let expr = put.clone().app(vec![Expr::let_type(
-        "A",
-        Type::Pointer(Box::new(Type::Symbol("B".to_string()))),
-        Expr::let_type(
-            "B",
-            Type::Pointer(Box::new(Type::Symbol("A".to_string()))),
-            Expr::let_type(
-                "C",
-                Type::Pointer(Box::new(Type::Symbol("C".to_string()))),
-                Expr::let_var(
-                    "a",
-                    Some(Type::Symbol("A".to_string())),
-                    ConstExpr::Null,
-                    Expr::let_var(
-                        "b",
-                        Some(Type::Symbol("B".to_string())),
-                        Expr::var("a").refer(),
-                        Expr::let_var(
-                            "c",
-                            Some(Type::Symbol("C".to_string())),
-                            Expr::var("b"),
-                            Expr::var("c")
-                                .deref()
-                                .as_type(Type::Cell)
-                                .as_type(Type::Int),
-                        ),
-                    ),
-                ),
-            ),
-        ),
+    let expr = put.clone().app(vec![Expr::let_vars(
+        vec![
+            ("x", None, ConstExpr::Int(5).into()),
+            ("y", None, Expr::var("x").add(ConstExpr::Int(5))),
+            ("z", None, Expr::var("y").mul(ConstExpr::Int(5))),
+        ],
+        Expr::var("z")
+    )]);
+
+    let program = expr.clone().compile().unwrap().unwrap();
+
+    let i = CoreInterpreter::new(TestingDevice::new_raw(vec![]));
+    let vm_code = program.assemble(10).unwrap();
+    let device = i.run(&vm_code).unwrap();
+
+    assert_eq!(device.output, vec![50]);
+
+    let expr = put.clone().app(vec![Expr::let_vars(
+        vec![
+            ("y", None, Expr::var("x").add(ConstExpr::Int(5))),
+            ("x", None, ConstExpr::Int(5).into()),
+            ("z", None, Expr::var("y").mul(ConstExpr::Int(5))),
+        ],
+        Expr::var("z")
     )]);
 
     expr.clone().compile().unwrap_err();

@@ -9,3 +9,11 @@ edition = "2021"
 lazy_static = "1.4.0"
 maplit = "1.0.2"
 toml = "0.5"
+lalrpop-util = "0.19.8"
+lalrpop = "0.19.8"
+regex = "1"
+asciicolor = "0.1"
+
+# Add a build-time dependency on the lalrpop library:
+[build-dependencies]
+lalrpop = "0.19.8"

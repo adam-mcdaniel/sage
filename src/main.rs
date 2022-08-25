@@ -1,14 +1,300 @@
 use asm::{
-    asm::{CoreOp, StandardOp, SP},
+    asm::{CoreOp, StandardOp, SP, A, B, C},
     lir::*,
-    targets::*,
-    vm::{CoreInterpreter, StandardInterpreter, TestingDevice},
+    targets, targets::Target,
+    vm::{CoreInterpreter, StandardInterpreter, TestingDevice, StandardDevice},
 };
 
-fn var(name: impl ToString) -> ConstExpr {
-    ConstExpr::Symbol(name.to_string())
+
+fn main() {
+    let alloc = ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: "alloc".to_string(),
+        args: vec![("size".to_string(), Type::Int)],
+        ret: Type::Pointer(Box::new(Type::Any)),
+        body: vec![StandardOp::Alloc(SP.deref())],
+    });
+    let free = ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: "free".to_string(),
+        args: vec![("ptr".to_string(), Type::Pointer(Box::new(Type::Any)))],
+        ret: Type::None,
+        body: vec![
+            StandardOp::Free(SP.deref()),
+            StandardOp::CoreOp(CoreOp::Pop(None, 1)),
+        ],
+    });
+    let put_float = ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: "put_float".to_string(),
+        args: vec![("x".to_string(), Type::Float)],
+        ret: Type::None,
+        body: vec![
+            StandardOp::PutFloat(SP.deref()),
+            StandardOp::CoreOp(CoreOp::Pop(None, 1)),
+        ],
+    });
+    
+    let get_char = ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: "get_char".to_string(),
+        args: vec![],
+        ret: Type::Char,
+        body: vec![
+            StandardOp::GetChar(A),
+            StandardOp::CoreOp(CoreOp::Push(A, 1)),
+        ],
+    });
+    let put_char = ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: "put_char".to_string(),
+        args: vec![("x".to_string(), Type::Char)],
+        ret: Type::None,
+        body: vec![
+            StandardOp::PutChar(SP.deref()),
+            StandardOp::CoreOp(CoreOp::Pop(None, 1)),
+        ],
+    });
+
+    let get_int = ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: "get_int".to_string(),
+        args: vec![],
+        ret: Type::Int,
+        body: vec![
+            StandardOp::GetInt(A),
+            StandardOp::CoreOp(CoreOp::Push(A, 1)),
+        ],
+    });
+
+    let get_float = ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: "get_float".to_string(),
+        args: vec![],
+        ret: Type::Float,
+        body: vec![
+            StandardOp::GetFloat(A),
+            StandardOp::CoreOp(CoreOp::Push(A, 1)),
+        ],
+    });
+
+    let put_int = ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: "put_int".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            StandardOp::PutInt(SP.deref()),
+            StandardOp::CoreOp(CoreOp::Pop(None, 1)),
+        ],
+    });
+
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Comment("Put an integer from the stack".to_string()),
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let min = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "min".to_string(),
+        args: vec![("x".to_string(), Type::Int), ("y".to_string(), Type::Int)],
+        ret: Type::Int,
+        body: vec![
+            CoreOp::IsGreater { dst: A, a: SP.deref().offset(-1), b: SP.deref() },
+            CoreOp::If(A),
+            CoreOp::Pop(Some(SP.deref().offset(-1)), 1),
+            CoreOp::Else,
+            CoreOp::Pop(None, 1),
+            CoreOp::End,
+        ],
+    });
+    let max = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "max".to_string(),
+        args: vec![("x".to_string(), Type::Int), ("y".to_string(), Type::Int)],
+        ret: Type::Int,
+        body: vec![
+            CoreOp::IsGreater { dst: A, a: SP.deref().offset(-1), b: SP.deref() },
+            CoreOp::If(A),
+            CoreOp::Pop(None, 1),
+            CoreOp::Else,
+            CoreOp::Pop(Some(SP.deref().offset(-1)), 1),
+            CoreOp::End,
+        ],
+    });
+
+
+    let testing = r#"
+    proc sum(x: &Int, n: Int) -> Int = {
+        let result = 0 in {
+            while n {
+                n = n - 1;
+                putint(x[n]); putchar('\n');
+                x[n] = 1000;
+                result = result + x[n];
+            };
+            result
+        }
+    } in
+    let i = 3, x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9], result = sum((&x) as &Int, sizeofexpr(x)) in {
+        sum((&x) as &Int, sizeofexpr(x));
+        result
+    }
+    "#;
+
+    let union_buster = r#"
+type Point = struct { x: Int, y: Int } in
+type Test = union { scalar: Int, point: Point } in
+const HMM = 500 in
+
+let x = union {
+    point = struct { x=3, y=7 },
+    Test..
+}, z = 6 in {
+    x.point.x = z;
+    if true {
+        z = x.point.x + x.point.y;
+    };
+    const TEST = HMM in z + TEST
+}
+"#;
+
+    let type_stuff = r#"
+type List = let T = Int in struct { data: T, next: &List } in
+
+let x = struct { data=5, next=Null },
+    y = struct { data=6, next=&x },
+    y: List = struct { data=7, next=&y },
+    in y.next->next->data
+"#;
+
+    let option = r#"
+type Option = let T = Point in struct {
+    tag: enum {Some, Nothing},
+    data: union { some: T, none: None }
+}, Point = struct { x: Int, y: Int } in
+
+proc some(p: Point) -> let T = Point in struct {
+    tag: enum {Some, Nothing},
+    data: union { some: T, none: None }
+} = {struct { tag = Some of enum {Some, Nothing}, data = union {none: None, some: Point = p} }} in
+
+some(struct{ x = 5, y = 6}).data.some.y as Int
+"#;
+
+    let square = "let x = getfloat() in x * x";
+    let factorial = "proc fact(n: Float) -> Float = { if (n as Int) (n * fact(n - 1)) else 1.0 } in fact(1000.0)";
+    let fn_ptr = "proc test(order: proc(Int, Int) -> Int, x: Int, y: Int) -> Int = { order(x, y) } in test(proc(x: Int, y: Int) -> Int = {x}, 5, 6)";
+
+
+    let list = r#"
+type List = struct { data: Int, next: &List } in
+
+proc sort(node: &List) -> None = {
+    if (node->next as Cell as Int + 128) {
+        sort(node->next);
+        let a = min(node->data, node->next->data),
+            b = max(node->data, node->next->data)
+            in {
+            if (b - node->data) {
+                sort(node->next);
+            };
+            node->data = a;
+            node->next->data = b;
+        };
+    }
+} in
+
+proc new(data: Int) -> List = {
+    struct { data = data, next = Null }
+} in
+
+proc print(l: &List) -> None = {
+    putint(l->data);
+    putchar(',');
+    if (l->next as Cell as Int + 128) {
+        print(l->next)
+    }
+} in
+
+proc append(l: &List, n: Int) -> None = {
+    if (l->next as Cell as Int + 128) {
+        append(l->next, n);
+    } else {
+        l->next = alloc(sizeof(List));
+        (*l->next) = new(n)
+    }
+} in let n = 1000, list = new(0) in {
+    while n {
+        append(&list, if (n % 2) { n - 1 } else { 100 - n });
+        n = n - 1;
+    };
+    print(&list);
+    27
+}
+"#;
+
+
+    let while_loop = r#"
+    let n = 9999, ret = 0 in {
+        while n {
+            ret = ret + n;
+            n = n - 1;
+        };
+        ret
+    }
+    "#;
+
+    let collatz = r#"
+    proc step(n: Int) -> Int = {if (n % 2) (3 * n + 1) else n / 2} in
+    proc collatz(n: Int) -> Int = {
+        let i = 0 in
+            while n - 1 {
+                i = i + 1;
+                putint(i); putchar(':'); putchar(' '); putint(n); putchar('\n');
+                n = step(n);
+            };
+        return n
+    } in { putchar('>'); collatz(129) }
+    "#;
+
+    match parse(fn_ptr) {
+        Ok(expr) => {
+            eprintln!("{expr:?}");
+            
+            let expr = put_int.clone().app(vec![Expr::let_consts(vec![("free", free.clone()), ("alloc", alloc.clone()), ("max", max.clone()), ("min", min.clone()), ("putchar", put_char.clone()), ("getchar", get_char.clone()), ("putint", put_int.clone()), ("getint", get_int), ("getfloat", get_float), ("put", put.clone())], expr.as_type(Type::Cell).as_type(Type::Int))]);
+            // let expr = put_float.clone().app(vec![Expr::let_consts(vec![("putint", put_int.clone()), ("getint", get_int), ("putfloat", put_float), ("getfloat", get_float)], expr.as_type(Type::Cell).as_type(Type::Float))]);
+            // Compile the program to assembly
+            let asm_code = expr.clone().compile().unwrap();
+        
+            let device = match asm_code {
+                Ok(asm_core) => {
+                    eprintln!("{:?}", asm_core);
+                    let vm_code = asm_core.assemble(5000).unwrap();
+                    // eprintln!("{:?}", vm_code);
+                    println!("{}", targets::C.build_core(&vm_code).unwrap());
+                    // eprintln!("{:?}", expr);
+                    CoreInterpreter::new(StandardDevice)
+                        .run(&vm_code)
+                        .unwrap()
+                }
+                Err(asm_std) => {
+                    eprintln!("{:?}", asm_std);
+                    let vm_code = asm_std.assemble(5000).unwrap();
+                    // eprintln!("{:?}", vm_code);
+                    println!("{}", targets::C.build_std(&vm_code).unwrap());
+                    // eprintln!("{:?}", expr);
+                    StandardInterpreter::new(StandardDevice)
+                        .run(&vm_code)
+                        .unwrap()
+                }
+            };
+        
+            // Run the machine and get its I/O history with the
+            // "world" (simulated through the testing device)
+            // eprintln!("device: {:?}", device)
+        }
+        Err(e) => panic!("{e}")
+    }
 }
 
+/*
 fn main() {
     let alloc = ConstExpr::StandardBuiltin(StandardBuiltin {
         name: "alloc".to_string(),
@@ -564,3 +850,4 @@ fn main() {
     // "world" (simulated through the testing device)
     eprintln!("device: {:?}", device)
 }
+*/
