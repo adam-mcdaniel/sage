@@ -811,6 +811,7 @@ impl Compile for Expr {
             Self::LetProc(name, proc, body) => {
                 let mut new_env = env.clone();
                 new_env.define_proc(name, proc);
+
                 // Compile under the new scope.
                 body.compile_expr(&mut new_env, output)?;
             }
@@ -819,6 +820,7 @@ impl Compile for Expr {
                 for (name, proc) in procs {
                     new_env.define_proc(name, proc);
                 }
+
                 // Compile under the new scope.
                 body.compile_expr(&mut new_env, output)?;
             }
@@ -853,15 +855,21 @@ impl Compile for Expr {
                         builtin.compile_expr(env, output)?;
                     }
                     Expr::ConstExpr(ConstExpr::Symbol(name)) => {
-                        if let Some(c) = env.get_const(&name) {
-                            c.clone().compile_expr(env, output)?;
-                        } else {
-                            // Push the procedure on the stack.
-                            ConstExpr::Symbol(name).compile_expr(env, output)?;
-                            // Pop the "function pointer" from the stack.
-                            output.op(CoreOp::Pop(Some(A), 1));
-                            // Call the procedure on the arguments.
-                            output.op(CoreOp::Call(A));
+                        match env.get_const(&name) {
+                            Some(ConstExpr::CoreBuiltin(builtin)) => {
+                                builtin.clone().compile_expr(env, output)?;
+                            }
+                            Some(ConstExpr::StandardBuiltin(builtin)) => {
+                                builtin.clone().compile_expr(env, output)?;
+                            }
+                            _ => {
+                                // Push the procedure on the stack.
+                                ConstExpr::Symbol(name).compile_expr(env, output)?;
+                                // Pop the "function pointer" from the stack.
+                                output.op(CoreOp::Pop(Some(A), 1));
+                                // Call the procedure on the arguments.
+                                output.op(CoreOp::Call(A));
+                            }
                         }
                     }
                     proc => {

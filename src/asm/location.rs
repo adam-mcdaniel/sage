@@ -238,8 +238,8 @@ impl Location {
     /// Increment the value of this location.
     pub fn inc(&self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
-        result.restore();
-        result.inc();
+        result.set_register(1);
+        result.op(vm::CoreOp::Add);
         result.save();
         self.from(result);
     }
@@ -247,8 +247,8 @@ impl Location {
     /// Decrement the value of this location.
     pub fn dec(&self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
-        result.restore();
-        result.dec();
+        result.set_register(-1);
+        result.op(vm::CoreOp::Add);
         result.save();
         self.from(result);
     }

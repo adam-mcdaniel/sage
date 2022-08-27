@@ -414,53 +414,16 @@ impl CoreOp {
             CoreOp::Next(dst, count) => dst.next(count.unwrap_or(1), result),
             CoreOp::Prev(dst, count) => dst.prev(count.unwrap_or(1), result),
             CoreOp::Index { src, offset, dst } => {
-                Self::Many(vec![
-                    Self::GetAddress { addr: src.deref().offset(1), dst: dst.clone() },
-                    Self::Sub { src: src.clone(), dst: dst.clone() },
-                    Self::Mul {
-                        src: offset.clone(),
-                        dst: dst.clone(),
-                    },
-                    Self::Add {
-                        src: src.clone(),
-                        dst: dst.clone(),
-                    }
-                ])
-                .assemble(current_instruction, env, result)?;
-                
-
-
-                // // SAFE INDEXING
-                // offset.to(result);
-                // result.restore();
-                // result.is_non_negative();
-                // result.begin_if();
-                // result.restore();
-                // offset.from(result);
-                // src.to(result);
-                // result.deref();
-                // result.begin_while();
-                // result.move_pointer(1);
-                // result.dec();
-                // result.end();
-                // result.where_is_pointer();
-                // result.refer();
-                // src.from(result);
-                // result.begin_else();
-                // result.restore();
-                // offset.from(result);
-                // src.to(result);
-                // result.deref();
-                // result.begin_while();
-                // result.move_pointer(-1);
-                // result.inc();
-                // result.end();
-                // result.where_is_pointer();
-                // result.refer();
-                // result.end();
-                // dst.to(result);
-                // result.save();
-                // dst.from(result);
+                // Store the address to index in the register
+                src.restore_from(result);
+                // Goto the offset
+                offset.to(result);
+                // Index the address in the register with the offset
+                result.index();
+                // Go back to the default position
+                offset.from(result);
+                // Save the index'd address in the register to the destination
+                dst.save_to(result);
             }
 
             CoreOp::Set(dst, value) => dst.set(*value, result),
@@ -551,9 +514,19 @@ impl CoreOp {
             CoreOp::Move { src, dst } => src.copy_to(dst, result),
 
             CoreOp::Swap(a, b) => {
-                a.copy_to(&TMP, result);
-                b.copy_to(a, result);
-                TMP.copy_to(b, result);
+                // Get the value in `a`
+                a.restore_from(result);
+                // Go to `b`
+                b.to(result);
+                // Swap the value in `b` with `a`
+                result.swap();
+                // Go back to `a`
+                b.from(result);
+                a.to(result);
+                // Swap the value from `b` back into `a`
+                result.swap();
+                // Return to the default position.
+                a.from(result);
             }
 
             CoreOp::Inc(dst) => dst.inc(result),

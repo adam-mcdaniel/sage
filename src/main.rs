@@ -96,8 +96,8 @@ fn main() {
     let swap = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "swap".to_string(),
         args: vec![
-            ("x".to_string(), Type::Pointer(Box::new(Type::Cell))),
-            ("y".to_string(), Type::Pointer(Box::new(Type::Cell))),
+            ("x".to_string(), Type::Pointer(Box::new(Type::Int))),
+            ("y".to_string(), Type::Pointer(Box::new(Type::Int))),
         ],
         ret: Type::None,
         body: vec![
@@ -275,10 +275,12 @@ proc index(node: &List, n: Int) -> &List = {
 } in
 
 proc swapi(a: &Int, b: &Int) -> None = {
-    swap(a as &Cell, b as &Cell)
+    let tmp = (*a) in {
+        (*a) = *b;
+        (*b) = tmp;
+    }
 } in
 
-const SIZE = 500 in
 proc partition_arr(arr: &Int, low: Int, high: Int) -> Int = {
     let pivot = arr[high],
         i = low - 1,
@@ -304,87 +306,21 @@ proc quicksort_arr(arr: &Int, low: Int, high: Int) -> None = {
     }
 } in
 
-proc partition(list: &List, low: Int, high: Int) -> Int = {
-    let pivot = index(list, high)->data,
-        i = low - 1,
-        j = low in {
-        while lt(j, high) {
-            if (lte(index(list, j)->data, pivot)) {
-                inc(&i);
-                swapi(&index(list, j)->data, &index(list, i)->data);
-            };
-            inc(&j);
-        };
-        swapi(&index(list, i + 1)->data, &index(list, high)->data);
-        i + 1
-    }
-} in
-
-proc quicksort(list: &List, low: Int, high: Int) -> None = {
-    if (lt(low, high)) {
-        let pi = partition(list, low, high) in {
-            quicksort(list, low, pi - 1);
-            quicksort(list, pi + 1, high);
-        }
-    }
-} in
-
-proc bubble_sort(node: &List) -> None = {
-    let i = 0, j = 0, size = len(node) in {
-        while lt(i, size) {
-            while lt(j, size) {
-                let a = index(node, i),
-                    b = index(node, j),
-                    tmp = 0 in {
-                    if (lt(a->data, b->data)) {
-                        tmp = a->data;
-                        a->data = b->data;
-                        b->data = tmp;
-                    }
-                };
-                inc(&j);
-            };
-            j = 0;
-            inc(&i);
-        }
-    }
-} in
-
-proc new(data: Int) -> List = {
-    struct { data = data, next = Null }
-} in
-
-proc print(l: &List) -> None = {
-    putint(l->data);
-    putchar(',');
-    if (l->next as Cell as Int + 128) {
-        print(l->next)
-    }
-} in
-
-proc append(l: &List, n: Int) -> None = {
-    if (l->next as Cell as Int + 128) {
-        append(l->next, n);
-    } else {
-        l->next = alloc(sizeof(List));
-        (*l->next) = new(n)
-    }
-} in
-
-let size = 500, n = size, list = new(0) in {
-    let arr: &Int = alloc(SIZE * 2), i = 0 in {
-        while lt(i, SIZE) {
-            arr[i] = if (i % 2) (i / 2) else (SIZE - i);
-            putint(arr[i]); putchar(';');
-            inc(&i);
-        };
-        quicksort_arr(arr, 0, SIZE);
-        i = 0;
-        while lt(i, SIZE) {
-            putint(arr[i]); putchar(';');
-            inc(&i);
-        }
+const SIZE = 1000 in
+let arr: &Int = alloc(SIZE), i = 0, a = 5, b = 6 in {
+    swapi(&a, &b);
+    while lt(i, SIZE) {
+        arr[i] = SIZE - i;
+        putint(arr[i]); putchar(';');
+        inc(&i);
     };
+    quicksort_arr(arr, 0, SIZE - 1);
+    putchar('\n');
+    i = 0;
+    while lt(i, SIZE) {
+        putint(arr[i]); putchar(';');
+        inc(&i);
+    }
 }
 "#;
 
@@ -516,7 +452,7 @@ let size = 500, n = size, list = new(0) in {
 
     match parse_lir(list) {
         Ok(expr) => {
-            eprintln!("{expr:?}");
+            // eprintln!("{expr:?}");
             
             let expr = Expr::let_consts(vec![("inc", inc.clone()), ("dec", dec.clone()), ("lte", lte.clone()), ("lt", lt.clone()), ("swap", swap.clone()), ("free", free.clone()), ("alloc", alloc.clone()), ("max", max.clone()), ("min", min.clone()), ("putchar", put_char.clone()), ("getchar", get_char.clone()), ("putint", put_int.clone()), ("getint", get_int), ("putfloat", put_float), ("getfloat", get_float), ("put", put.clone())], expr);
             // let expr = put_float.clone().app(vec![Expr::let_consts(vec![("putint", put_int.clone()), ("getint", get_int), ("putfloat", put_float), ("getfloat", get_float)], expr.as_type(Type::Cell).as_type(Type::Float))]);

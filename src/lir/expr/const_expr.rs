@@ -241,6 +241,7 @@ impl TypeCheck for ConstExpr {
 
 impl Compile for ConstExpr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        output.comment(format!("compiling {self:?}"));
         match self {
             Self::None => {}
             Self::Null => {
@@ -351,6 +352,7 @@ impl Compile for ConstExpr {
                 }
             }
         }
+        output.comment("done".to_string());
         Ok(())
     }
 }

@@ -106,9 +106,11 @@ impl Compile for Procedure {
         // End the function body
         output.op(CoreOp::End);
 
+        output.comment(format!("push {} onto the stack", self.mangled_name));
         // Push the procedure label address onto the stack
         output.op(CoreOp::SetLabel(A, self.mangled_name));
         output.op(CoreOp::Push(A, 1));
+        output.comment(format!("done"));
         Ok(())
     }
 }

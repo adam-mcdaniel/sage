@@ -106,10 +106,13 @@ pub enum CoreOp {
     /// The last "deref" operation is undone; the pointer is made equal to the value it was before the last "deref" operation.
     Refer,
 
-    /// Increment the register by one.
-    Inc,
-    /// Decrement the register by one.
-    Dec,
+    /// Interpret the register's value as a pointer to a cell.
+    /// Index that pointer by the value on the tape. Store the address
+    /// of the index into the register.
+    Index,
+    /// Swap the register and the value pointed to on the tape.
+    Swap,
+
     /// Add the value pointed to on the tape to the register.
     Add,
     /// Subtract the value pointed to on the tape from the register.

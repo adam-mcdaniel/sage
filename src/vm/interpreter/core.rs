@@ -98,16 +98,43 @@ where
     }
 
     /// Call the Nth function defined in the program, where N is the value of the register.
-    fn call(&mut self) -> Result<(), String> {
+    fn call(&mut self, code: &CoreProgram) -> Result<(), String> {
         // If the function has been defined
-        if self.functions.len() >= self.register as usize {
+        if self.functions.len() > self.register as usize {
             // Push the current instruction pointer to the call stack
             self.calls.push(self.i);
             self.i = self.functions[self.register as usize];
             Ok(())
         } else {
-            // Throw an error if not defined
-            Err(format!("function {} not defined", self.register))
+            // If the function hasn't been defined yet, we'll have to find it.
+
+            // Push the return address onto the call stack.
+            self.calls.push(self.i);
+            // Scan all the function definitions from the start of the program until we find it.
+            self.i = 0;
+            let mut count = -1;
+            while count < self.register {
+                // Every time we find a function, it will increment `count`.
+                match self.fetch(code) {
+                    Some(CoreOp::Function) => {
+                        count += 1;
+                    }
+                    Some(_) => {}
+                    None => return Err(format!("function {} not defined", self.register))
+                }
+                // If `count` hasn't reached the function we want,
+                // keep going.
+                if count < self.register {
+                    self.i += 1;
+                }
+            }
+
+            // If we've reached the function we want, add it to the definitions.
+            if !self.functions.contains(&self.i) {
+                self.functions.push(self.i);
+                self.functions.sort()
+            }
+            Ok(())
         }
     }
 
@@ -225,7 +252,7 @@ where
                     }
                     self.jmp_to_end(code)
                 }
-                CoreOp::Call => self.call()?,
+                CoreOp::Call => self.call(code)?,
                 CoreOp::Return => self.ret(),
                 CoreOp::While => {
                     if self.register == 0 {
@@ -261,8 +288,12 @@ where
                 CoreOp::Deref => self.deref(),
                 CoreOp::Refer => self.refer()?,
 
-                CoreOp::Inc => self.register += 1,
-                CoreOp::Dec => self.register -= 1,
+                CoreOp::Index => self.register += *self.get_cell(),
+                CoreOp::Swap => {
+                    let tmp = self.register;
+                    self.register = *self.get_cell();
+                    *self.get_cell() = tmp;
+                },
                 CoreOp::Add => self.register += *self.get_cell(),
                 CoreOp::Sub => self.register -= *self.get_cell(),
                 CoreOp::Mul => self.register *= *self.get_cell(),
