@@ -674,6 +674,7 @@ impl TypeCheck for Expr {
 
 impl Compile for Expr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        output.comment(format!("compiling {self:?}"));
         match self {
             Self::ConstExpr(expr) => expr.compile_expr(env, output)?,
             Self::Many(exprs) => {
@@ -1265,6 +1266,7 @@ impl Compile for Expr {
                 other => return Err(Error::InvalidRefer(other)),
             },
         }
+        output.comment("done".to_string());
         Ok(())
     }
 }

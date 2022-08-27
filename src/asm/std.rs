@@ -40,6 +40,17 @@ impl fmt::Debug for StandardProgram {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut indent = 0;
         for (i, op) in self.0.iter().enumerate() {
+            if let StandardOp::CoreOp(CoreOp::Comment(comment)) = op {
+                writeln!(
+                    f,
+                    "{:04x?}: {}// {}",
+                    i,
+                    "   ".repeat(indent),
+                    comment,
+                )?;
+                continue;
+            }
+
             writeln!(
                 f,
                 "{:04x?}: {}{:?}",
@@ -88,7 +99,6 @@ pub enum StandardOp {
     CoreOp(CoreOp),
 
     Set(Location, f64),
-    PushLiteral(f64),
 
     ToFloat(Location),
     ToInt(Location),
@@ -98,7 +108,6 @@ pub enum StandardOp {
         dst: Location,
     },
     Sqrt(Location),
-    Abs(Location),
 
     Add {
         src: Location,
@@ -122,8 +131,6 @@ pub enum StandardOp {
     },
     Neg(Location),
 
-    IsNonNegative(Location),
-
     Sin(Location),
     Cos(Location),
     Tan(Location),
@@ -131,12 +138,16 @@ pub enum StandardOp {
     ACos(Location),
     ATan(Location),
 
-    IsLess {
-        src: Location,
+    /// Perform dst = a > b.
+    IsGreater {
+        a: Location,
+        b: Location,
         dst: Location,
     },
-    IsGreater {
-        src: Location,
+    /// Perform dst = a < b.
+    IsLess {
+        a: Location,
+        b: Location,
         dst: Location,
     },
 

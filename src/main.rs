@@ -2,6 +2,7 @@ use asm::{
     asm::{CoreOp, StandardOp, SP, A, B, C},
     lir::*,
     targets, targets::Target,
+    parse::*,
     vm::{CoreInterpreter, StandardInterpreter, TestingDevice, StandardDevice},
 };
 
@@ -92,6 +93,19 @@ fn main() {
         ],
     });
 
+    let swap = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "swap".to_string(),
+        args: vec![
+            ("x".to_string(), Type::Pointer(Box::new(Type::Cell))),
+            ("y".to_string(), Type::Pointer(Box::new(Type::Cell))),
+        ],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Swap(SP.deref().deref(), SP.deref().offset(-1).deref()),
+            CoreOp::Pop(None, 2),
+        ],
+    });
+
     let min = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "min".to_string(),
         args: vec![("x".to_string(), Type::Int), ("y".to_string(), Type::Int)],
@@ -116,6 +130,44 @@ fn main() {
             CoreOp::Else,
             CoreOp::Pop(Some(SP.deref().offset(-1)), 1),
             CoreOp::End,
+        ],
+    });
+    let lt = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "lt".to_string(),
+        args: vec![("x".to_string(), Type::Int), ("y".to_string(), Type::Int)],
+        ret: Type::Bool,
+        body: vec![
+            CoreOp::IsLess { a: SP.deref().offset(-1), b: SP.deref(), dst: A },
+            CoreOp::Pop(None, 1),
+            CoreOp::Move { src: A, dst: SP.deref() }
+        ],
+    });
+    let lte = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "lte".to_string(),
+        args: vec![("x".to_string(), Type::Int), ("y".to_string(), Type::Int)],
+        ret: Type::Bool,
+        body: vec![
+            CoreOp::IsLessEqual { a: SP.deref().offset(-1), b: SP.deref(), dst: A },
+            CoreOp::Pop(None, 1),
+            CoreOp::Move { src: A, dst: SP.deref() }
+        ],
+    });
+    let inc = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "inc".to_string(),
+        args: vec![("x".to_string(), Type::Pointer(Box::new(Type::Int)))],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Inc(SP.deref().deref()),
+            CoreOp::Pop(None, 1)
+        ],
+    });
+    let dec = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "dec".to_string(),
+        args: vec![("x".to_string(), Type::Pointer(Box::new(Type::Int)))],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Dec(SP.deref().deref()),
+            CoreOp::Pop(None, 1)
         ],
     });
 
@@ -151,6 +203,7 @@ let x = union {
     if true {
         z = x.point.x + x.point.y;
     };
+    putchar('\n');
     const TEST = HMM in z + TEST
 }
 "#;
@@ -179,7 +232,7 @@ some(struct{ x = 5, y = 6}).data.some.y as Int
 "#;
 
     let square = "let x = getfloat() in x * x";
-    let factorial = "proc fact(n: Float) -> Float = { if (n as Int) (n * fact(n - 1)) else 1.0 } in fact(1000.0)";
+    let factorial = "proc fact(n: Float) -> Float = { if (n as Int) (n * fact(n - 1)) else 1.0 } in { putfloat(fact(50.0)); putchar('\n'); 0 }";
     let fn_ptr = "proc test(order: proc(Int, Int) -> Int, x: Int, y: Int) -> Int = { order(x, y) } in test(proc(x: Int, y: Int) -> Int = {x}, 5, 6)";
 
 
@@ -198,6 +251,102 @@ proc sort(node: &List) -> None = {
             node->data = a;
             node->next->data = b;
         };
+    }
+} in
+
+proc len(node: &List) -> Int = {
+    if (node as Cell as Int + 128) {
+        len(node->next) + 1
+    } else {
+        0
+    }
+} in
+
+proc neq(a: Int, b: Int) -> Bool = {
+    if ((a - b) as Bool) 1 else 0
+} in
+
+proc index(node: &List, n: Int) -> &List = {
+    while n {
+        node = node->next;
+        n = n - 1;
+    };
+    node
+} in
+
+proc swapi(a: &Int, b: &Int) -> None = {
+    swap(a as &Cell, b as &Cell)
+} in
+
+const SIZE = 500 in
+proc partition_arr(arr: &Int, low: Int, high: Int) -> Int = {
+    let pivot = arr[high],
+        i = low - 1,
+        j = low in {
+        while lt(j, high) {
+            if (lte(arr[j], pivot)) {
+                inc(&i);
+                swapi(&arr[j], &arr[i]);
+            };
+            inc(&j);
+        };
+        swapi(&arr[i + 1], &arr[high]);
+        i + 1
+    }
+} in
+
+proc quicksort_arr(arr: &Int, low: Int, high: Int) -> None = {
+    if (lt(low, high)) {
+        let pi = partition_arr(arr, low, high) in {
+            quicksort_arr(arr, low, pi - 1);
+            quicksort_arr(arr, pi + 1, high);
+        }
+    }
+} in
+
+proc partition(list: &List, low: Int, high: Int) -> Int = {
+    let pivot = index(list, high)->data,
+        i = low - 1,
+        j = low in {
+        while lt(j, high) {
+            if (lte(index(list, j)->data, pivot)) {
+                inc(&i);
+                swapi(&index(list, j)->data, &index(list, i)->data);
+            };
+            inc(&j);
+        };
+        swapi(&index(list, i + 1)->data, &index(list, high)->data);
+        i + 1
+    }
+} in
+
+proc quicksort(list: &List, low: Int, high: Int) -> None = {
+    if (lt(low, high)) {
+        let pi = partition(list, low, high) in {
+            quicksort(list, low, pi - 1);
+            quicksort(list, pi + 1, high);
+        }
+    }
+} in
+
+proc bubble_sort(node: &List) -> None = {
+    let i = 0, j = 0, size = len(node) in {
+        while lt(i, size) {
+            while lt(j, size) {
+                let a = index(node, i),
+                    b = index(node, j),
+                    tmp = 0 in {
+                    if (lt(a->data, b->data)) {
+                        tmp = a->data;
+                        a->data = b->data;
+                        b->data = tmp;
+                    }
+                };
+                inc(&j);
+            };
+            j = 0;
+            inc(&i);
+        }
     }
 } in
 
@@ -220,13 +369,22 @@ proc append(l: &List, n: Int) -> None = {
         l->next = alloc(sizeof(List));
         (*l->next) = new(n)
     }
-} in let n = 1000, list = new(0) in {
-    while n {
-        append(&list, if (n % 2) { n - 1 } else { 100 - n });
-        n = n - 1;
+} in
+
+let size = 500, n = size, list = new(0) in {
+    let arr: &Int = alloc(SIZE * 2), i = 0 in {
+        while lt(i, SIZE) {
+            arr[i] = if (i % 2) (i / 2) else (SIZE - i);
+            putint(arr[i]); putchar(';');
+            inc(&i);
+        };
+        quicksort_arr(arr, 0, SIZE);
+        i = 0;
+        while lt(i, SIZE) {
+            putint(arr[i]); putchar(';');
+            inc(&i);
+        }
     };
-    print(&list);
-    27
 }
 "#;
 
@@ -254,11 +412,113 @@ proc append(l: &List, n: Int) -> None = {
     } in { putchar('>'); collatz(129) }
     "#;
 
-    match parse(fn_ptr) {
+    let test_asm = r#"
+    fun test
+        set-f A, 32.058
+        put-float A
+        set B, 10 put-char B
+        to-int A
+        put-int A
+        set B, 10 put-char B
+        to-float A
+        set-f B, 10.5 add-f B, A
+        put-float A
+        set B, 10 put-char B
+    end
+
+    call test
+    call test
+    "#;
+
+    let fact_asm = r#"
+    fun fact
+        if [FP]
+            mov [FP], A
+            dec A
+            push A
+            call fact
+            mul [FP + 1], [FP]
+            pop
+        else
+            set [FP], 1
+        end
+    end
+
+    set A, 5 push A
+    call fact
+    pop A
+    put-int A
+    "#;
+
+    let string_asm = r#"
+    set A, 100
+    alloc A
+    array [A], "Hello world!", B
+    array [B], "How are you?", C
+    array [C], "I am good!", D
+
+    fun putstr
+        mov [FP], F
+        while [F]
+            put-char [F]
+            next F
+        end
+    end
+
+    fun putstrln
+        call putstr
+        set F, 10 put-char F
+    end
+
+    push A
+    put-int [SP]
+    call putstrln
+    push B
+    put-int [SP]
+    call putstrln
+    push C
+    put-int [SP]
+    call putstrln
+
+    free A
+    "#;
+
+    // match parse_asm(string_asm) {
+    //     Ok(asm_code) => {
+    //         let device = match asm_code {
+    //             Ok(asm_core) => {
+    //                 eprintln!("{:?}", asm_core);
+    //                 let vm_code = asm_core.assemble(5000).unwrap();
+    //                 eprintln!("{:?}", vm_code);
+    //                 println!("{}", targets::C.build_core(&vm_code).unwrap());
+    //                 eprintln!("{:?}", vm_code.0.len());
+    //                 CoreInterpreter::new(StandardDevice)
+    //                     .run(&vm_code)
+    //                     .unwrap()
+    //             }
+    //             Err(asm_std) => {
+    //                 eprintln!("{:?}", asm_std);
+    //                 let vm_code = asm_std.assemble(5000).unwrap();
+    //                 eprintln!("{:?}", vm_code);
+    //                 println!("{}", targets::C.build_std(&vm_code).unwrap());
+    //                 eprintln!("{:?}", vm_code.0.len());
+    //                 StandardInterpreter::new(StandardDevice)
+    //                     .run(&vm_code)
+    //                     .unwrap()
+    //             }
+    //         };
+    //     }
+    //     Err(e) => {
+    //         eprintln!("{e}");
+    //     }
+    // }
+    // return;
+
+    match parse_lir(list) {
         Ok(expr) => {
             eprintln!("{expr:?}");
             
-            let expr = put_int.clone().app(vec![Expr::let_consts(vec![("free", free.clone()), ("alloc", alloc.clone()), ("max", max.clone()), ("min", min.clone()), ("putchar", put_char.clone()), ("getchar", get_char.clone()), ("putint", put_int.clone()), ("getint", get_int), ("getfloat", get_float), ("put", put.clone())], expr.as_type(Type::Cell).as_type(Type::Int))]);
+            let expr = Expr::let_consts(vec![("inc", inc.clone()), ("dec", dec.clone()), ("lte", lte.clone()), ("lt", lt.clone()), ("swap", swap.clone()), ("free", free.clone()), ("alloc", alloc.clone()), ("max", max.clone()), ("min", min.clone()), ("putchar", put_char.clone()), ("getchar", get_char.clone()), ("putint", put_int.clone()), ("getint", get_int), ("putfloat", put_float), ("getfloat", get_float), ("put", put.clone())], expr);
             // let expr = put_float.clone().app(vec![Expr::let_consts(vec![("putint", put_int.clone()), ("getint", get_int), ("putfloat", put_float), ("getfloat", get_float)], expr.as_type(Type::Cell).as_type(Type::Float))]);
             // Compile the program to assembly
             let asm_code = expr.clone().compile().unwrap();
@@ -267,7 +527,7 @@ proc append(l: &List, n: Int) -> None = {
                 Ok(asm_core) => {
                     eprintln!("{:?}", asm_core);
                     let vm_code = asm_core.assemble(5000).unwrap();
-                    // eprintln!("{:?}", vm_code);
+                    // println!("{:?}", vm_code);
                     println!("{}", targets::C.build_core(&vm_code).unwrap());
                     // eprintln!("{:?}", expr);
                     CoreInterpreter::new(StandardDevice)
@@ -277,7 +537,7 @@ proc append(l: &List, n: Int) -> None = {
                 Err(asm_std) => {
                     eprintln!("{:?}", asm_std);
                     let vm_code = asm_std.assemble(5000).unwrap();
-                    // eprintln!("{:?}", vm_code);
+                    // println!("{:?}", vm_code);
                     println!("{}", targets::C.build_std(&vm_code).unwrap());
                     // eprintln!("{:?}", expr);
                     StandardInterpreter::new(StandardDevice)

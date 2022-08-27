@@ -67,6 +67,17 @@ impl fmt::Debug for CoreProgram {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut indent = 0;
         for (i, op) in self.0.iter().enumerate() {
+            if let CoreOp::Comment(comment) = op {
+                writeln!(
+                    f,
+                    "{:04x?}: {}// {}",
+                    i,
+                    "   ".repeat(indent),
+                    comment,
+                )?;
+                continue;
+            }
+
             writeln!(
                 f,
                 "{:04x?}: {}{:?}",
@@ -250,45 +261,45 @@ pub enum CoreOp {
     /// If "a" is less than "b", store -1. If "a" is greater than "b", store 1.
     /// If "a" is equal to "b", store 0.
     Compare {
-        dst: Location,
         a: Location,
         b: Location,
+        dst: Location,
     },
     /// Perform dst = a > b.
     IsGreater {
-        dst: Location,
         a: Location,
         b: Location,
+        dst: Location,
     },
     /// Perform dst = a >= b.
     IsGreaterEqual {
-        dst: Location,
         a: Location,
         b: Location,
+        dst: Location,
     },
     /// Perform dst = a < b.
     IsLess {
-        dst: Location,
         a: Location,
         b: Location,
+        dst: Location,
     },
     /// Perform dst = a <= b.
     IsLessEqual {
-        dst: Location,
         a: Location,
         b: Location,
+        dst: Location,
     },
     /// Perform dst = a == b.
     IsEqual {
-        dst: Location,
         a: Location,
         b: Location,
+        dst: Location,
     },
     /// Perform dst = a != b.
     IsNotEqual {
-        dst: Location,
         a: Location,
         b: Location,
+        dst: Location,
     },
 
     /// Get a value from the input device / interface and store it in a destination register.
@@ -321,11 +332,14 @@ impl CoreOp {
     pub fn push_string(msg: impl ToString) -> Self {
         let mut vals: Vec<isize> = msg.to_string().chars().map(|c| c as isize).collect();
         vals.push(0);
-        Self::Array {
-            src: SP.deref(),
-            vals,
-            dst: SP,
-        }
+        Self::Many(vec![
+            Self::Array {
+                src: SP.deref().offset(1),
+                vals,
+                dst: SP,
+            },
+            Self::Prev(SP, None)
+        ])
     }
 
     pub fn stack_alloc_cells(dst: Location, vals: Vec<isize>) -> Self {
@@ -335,10 +349,11 @@ impl CoreOp {
                 dst,
             },
             Self::Array {
-                src: SP.deref(),
+                src: SP.deref().offset(1),
                 vals,
                 dst: SP,
             },
+            Self::Prev(SP, None)
         ])
     }
 
@@ -351,10 +366,11 @@ impl CoreOp {
                 dst,
             },
             Self::Array {
-                src: SP.deref(),
+                src: SP.deref().offset(1),
                 vals,
                 dst: SP,
             },
+            Self::Prev(SP, None)
         ])
     }
 
@@ -377,16 +393,18 @@ impl CoreOp {
                 // Go to the top of the stack, and push the ASCII value of the character
                 src.to(result);
                 for val in vals {
-                    result.move_pointer(1);
-                    // Goto the pushed character's address above the top of the stack
                     // Set the register to the ASCII value
                     result.set_register(*val);
                     // Save the register to the memory location
                     result.save();
+                    // Move to the next cell
+                    result.move_pointer(1);
                 }
-                // Move the pointer back where we came from
+                // Save where we ended up
                 result.where_is_pointer();
+                // Move the pointer back where we came from
                 src.offset(vals.len() as isize).from(result);
+                // Save where we ended up to the destination
                 dst.to(result);
                 result.save();
                 dst.from(result);
@@ -396,15 +414,53 @@ impl CoreOp {
             CoreOp::Next(dst, count) => dst.next(count.unwrap_or(1), result),
             CoreOp::Prev(dst, count) => dst.prev(count.unwrap_or(1), result),
             CoreOp::Index { src, offset, dst } => {
-                offset.copy_to(&TMP, result);
-                src.copy_to(dst, result);
                 Self::Many(vec![
-                    Self::While(TMP),
-                    Self::Next(dst.clone(), None),
-                    Self::Dec(TMP),
-                    Self::End,
+                    Self::GetAddress { addr: src.deref().offset(1), dst: dst.clone() },
+                    Self::Sub { src: src.clone(), dst: dst.clone() },
+                    Self::Mul {
+                        src: offset.clone(),
+                        dst: dst.clone(),
+                    },
+                    Self::Add {
+                        src: src.clone(),
+                        dst: dst.clone(),
+                    }
                 ])
-                .assemble(current_instruction, env, result)?
+                .assemble(current_instruction, env, result)?;
+                
+
+
+                // // SAFE INDEXING
+                // offset.to(result);
+                // result.restore();
+                // result.is_non_negative();
+                // result.begin_if();
+                // result.restore();
+                // offset.from(result);
+                // src.to(result);
+                // result.deref();
+                // result.begin_while();
+                // result.move_pointer(1);
+                // result.dec();
+                // result.end();
+                // result.where_is_pointer();
+                // result.refer();
+                // src.from(result);
+                // result.begin_else();
+                // result.restore();
+                // offset.from(result);
+                // src.to(result);
+                // result.deref();
+                // result.begin_while();
+                // result.move_pointer(-1);
+                // result.inc();
+                // result.end();
+                // result.where_is_pointer();
+                // result.refer();
+                // result.end();
+                // dst.to(result);
+                // result.save();
+                // dst.from(result);
             }
 
             CoreOp::Set(dst, value) => dst.set(*value, result),

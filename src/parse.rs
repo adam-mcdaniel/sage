@@ -1,13 +1,25 @@
-use super::Expr;
+use super::lir::Expr;
+use super::asm::{CoreProgram, StandardProgram};
 use asciicolor::Colorize;
 use lalrpop_util::lalrpop_mod;
 lalrpop_mod!(lir_parser);
-use lir_parser::*;
+lalrpop_mod!(asm_parser);
 
 
-pub fn parse(input: impl ToString) -> Result<Expr, String> {
+pub fn parse_asm(input: impl ToString) -> Result<Result<CoreProgram, StandardProgram>, String> {
     let code = input.to_string();
-    match ExprParser::new().parse(&input.to_string()) {
+    match asm_parser::CoreProgramParser::new().parse(&input.to_string()) {
+        Ok(parsed) => Ok(Ok(parsed)),
+        Err(_) => match asm_parser::StandardProgramParser::new().parse(&input.to_string()) {
+            Ok(parsed) => Ok(Err(parsed)),
+            Err(e) => Err(format_error(&code, e))
+        }
+    }
+}
+
+pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
+    let code = input.to_string();
+    match lir_parser::ExprParser::new().parse(&input.to_string()) {
         Ok(parsed) => Ok(parsed),
         Err(e) => Err(format_error(&code, e))
     }

@@ -61,12 +61,10 @@
 mod expr;
 mod types;
 mod env;
-mod parse;
 
 pub use expr::*;
 pub use types::*;
 pub use env::*;
-pub use parse::*;
 
 
 /// Get the size of something in memory (number of cells).

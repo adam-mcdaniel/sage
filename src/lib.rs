@@ -1,7 +1,8 @@
+pub mod vm;
 pub mod asm;
 pub mod lir;
 pub mod targets;
-pub mod vm;
+pub mod parse;
 
 /// The value of the NULL pointer constant.
 /// 

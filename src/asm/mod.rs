@@ -17,20 +17,20 @@
 //! instructions for float operations, memory allocation, and I/O.
 use ::std::collections::HashMap;
 
-pub mod core;
-use crate::vm;
-
-pub use self::core::{CoreOp, CoreProgram};
-
 pub mod std;
-pub use self::std::{StandardOp, StandardProgram};
-
+pub mod core;
 pub mod location;
+
+pub use self::std::{StandardOp, StandardProgram};
+pub use self::core::{CoreOp, CoreProgram};
 pub use location::{Location, A, B, C, D, E, F, FP, SP};
 
 pub trait AssemblyProgram {
     fn op(&mut self, op: CoreOp);
     fn std_op(&mut self, op: StandardOp) -> Result<(), Error>;
+    fn comment(&mut self, comment: String) {
+        self.op(CoreOp::Comment(comment))
+    }
 }
 
 /// An environment used to assemble a program.
@@ -76,15 +76,15 @@ impl Env {
 /// An error returned by the assembly language.
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Error {
-    VirtualMachineError(vm::Error),
+    VirtualMachineError(crate::vm::Error),
     UnsupportedInstruction(StandardOp),
     UndefinedLabel(String, usize),
     Unmatched(CoreOp, usize),
     Unexpected(CoreOp, usize),
 }
 
-impl From<vm::Error> for Error {
-    fn from(e: vm::Error) -> Self {
+impl From<crate::vm::Error> for Error {
+    fn from(e: crate::vm::Error) -> Self {
         Self::VirtualMachineError(e)
     }
 }
