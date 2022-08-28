@@ -103,8 +103,9 @@ int main() {
                 CoreOp::Deref => "ref_stack[ref_stack_ptr++] = ptr; ptr = ptr->p;".to_string(),
                 CoreOp::Refer => "ptr = ref_stack[--ref_stack_ptr];".to_string(),
 
-                CoreOp::Inc => "reg.i++;".to_string(),
-                CoreOp::Dec => "reg.i--;".to_string(),
+                CoreOp::Index => "reg.p += ptr->i;".to_string(),
+                CoreOp::Swap => "{ int_or_float tmp = reg; reg = *ptr; *ptr = tmp; }".to_string(),
+
                 CoreOp::Add => "reg.i += ptr->i;".to_string(),
                 CoreOp::Sub => "reg.i -= ptr->i;".to_string(),
                 CoreOp::Mul => "reg.i *= ptr->i;".to_string(),
@@ -218,12 +219,12 @@ int main() {
 
                 StandardOp::Alloc => {
                     result += &format!(
-                        "{}reg.i = malloc(reg.i * sizeof(int_or_float));\n",
+                        "{}reg.p = malloc(reg.i * sizeof(int_or_float));\n",
                         tab.repeat(indent)
                     );
                 }
                 StandardOp::Free => {
-                    result += &format!("{}free(reg.i)\n", tab.repeat(indent));
+                    result += &format!("{}free(reg.p);\n", tab.repeat(indent));
                 }
 
                 StandardOp::ToInt => {
@@ -319,12 +320,13 @@ int main() {
                     result += &format!("{}ptr = ref_stack[--ref_stack_ptr];\n", tab.repeat(indent));
                 }
 
-                StandardOp::CoreOp(CoreOp::Inc) => {
-                    result += &format!("{}reg.i++;\n", tab.repeat(indent));
+                StandardOp::CoreOp(CoreOp::Index) => {
+                    result += &format!("{}reg.p += ptr->i;\n", tab.repeat(indent));
                 }
-                StandardOp::CoreOp(CoreOp::Dec) => {
-                    result += &format!("{}reg.i--;\n", tab.repeat(indent));
+                StandardOp::CoreOp(CoreOp::Swap) => {
+                    result += &format!("{}{{ int_or_float tmp = reg; reg = *ptr; *ptr = tmp; }}\n", tab.repeat(indent));
                 }
+
                 StandardOp::CoreOp(CoreOp::Add) => {
                     result += &format!("{}reg.i += ptr->i;\n", tab.repeat(indent));
                 }

@@ -142,12 +142,12 @@ pub trait VirtualMachineProgram {
         self.op(CoreOp::Call)
     }
 
-    fn inc(&mut self) {
-        self.op(CoreOp::Inc)
+    fn index(&mut self) {
+        self.op(CoreOp::Index)
     }
 
-    fn dec(&mut self) {
-        self.op(CoreOp::Dec)
+    fn swap(&mut self) {
+        self.op(CoreOp::Swap)
     }
 
     fn get(&mut self) {

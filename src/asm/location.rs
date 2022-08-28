@@ -62,6 +62,7 @@
 //!   Indirect(Address(6)) // go the address pointed to by the value in the 6th cell of the tape
 //!   ```
 use crate::vm::{self, Error, VirtualMachineProgram};
+use crate::NULL;
 use core::fmt;
 
 /// The stack pointer register.
@@ -237,8 +238,8 @@ impl Location {
     /// Increment the value of this location.
     pub fn inc(&self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
-        result.restore();
-        result.inc();
+        result.set_register(1);
+        result.op(vm::CoreOp::Add);
         result.save();
         self.from(result);
     }
@@ -246,8 +247,8 @@ impl Location {
     /// Decrement the value of this location.
     pub fn dec(&self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
-        result.restore();
-        result.dec();
+        result.set_register(-1);
+        result.op(vm::CoreOp::Add);
         result.save();
         self.from(result);
     }
@@ -470,6 +471,24 @@ impl Location {
         self.to(result);
         result.restore();
         result.std_op(op)?;
+        result.save();
+        self.from(result);
+        Ok(())
+    }
+
+    /// Read the value of this cell, allocate that number of cells, store the address
+    /// of the first cell in this cell.
+    pub fn alloc(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.std_op(vm::StandardOp::Alloc, result)
+    }
+
+    /// Free the pointer stored in this cell, and set the value to -1000 (to prevent)
+    /// accidental use of the freed memory.
+    pub fn free(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.to(result);
+        result.restore();
+        result.std_op(vm::StandardOp::Free)?;
+        result.set_register(NULL);
         result.save();
         self.from(result);
         Ok(())

@@ -1,6 +1,6 @@
 use asm::{
-    asm::{CoreOp, CoreProgram, StandardProgram, SP},
-    ir::*,
+    asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, SP},
+    lir::*,
     vm::{as_int, CoreInterpreter, StandardInterpreter, TestingDevice},
 };
 use maplit::btreemap;
@@ -26,15 +26,15 @@ fn test_struct() {
     });
 
     let expr = Expr::let_vars(
-        btreemap! {
-            "x" => (None, ConstExpr::Char('x').into()),
-            "y" => (None, Expr::structure(btreemap! {
+        vec![
+            ("x", None, ConstExpr::Char('x').into()),
+            ("y", None, Expr::structure(btreemap! {
                 "a" => ConstExpr::Char('a').into(),
                 "b" => ConstExpr::Char('b').into(),
                 "c" => ConstExpr::Char('c').into(),
             })),
-            "z" => (None, ConstExpr::Char('z').into()),
-            "put" => (None, ConstExpr::proc(
+            ("z", None, ConstExpr::Char('z').into()),
+            ("put", None, ConstExpr::proc(
                 vec![
                     ("x".to_string(), Type::Struct(btreemap! {
                         "a".to_string() => Type::Char,
@@ -49,7 +49,7 @@ fn test_struct() {
                     put.clone().app(vec![Expr::var("x").field(var("c"))]),
                 ])
             ).into()),
-        },
+        ],
         var("put").app(vec![Expr::structure(btreemap! {
             "a" => var("x").into(),
             "b" => Expr::var("y").field(var("b")),
@@ -833,7 +833,6 @@ fn test_as() {
         body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref())],
     });
 
-    // The program to compile
     let expr = put.app(vec![get
         .clone()
         .app(vec![])
@@ -849,4 +848,669 @@ fn test_as() {
     let device = i.run(&vm_code).unwrap();
 
     assert_eq!(device.output, vec![25]);
+}
+
+#[test]
+fn test_typecheck() {
+    let env = Env::default();
+
+    let expr = Expr::let_var(
+        "a",
+        None,
+        Expr::structure(btreemap! {
+            "x" => ConstExpr::Int(1).into(),
+            "y" => ConstExpr::Char('5').into(),
+        }),
+        Expr::from(ConstExpr::Int(5)).add(Expr::var("a").field(var("y"))),
+    );
+    assert_eq!(
+        expr.type_check(&env),
+        Err(Error::InvalidBinop(
+            Expr::from(ConstExpr::Int(5)).add(Expr::var("a").field(var("y")))
+        ))
+    );
+
+    let expr = Expr::let_var(
+        "a",
+        None,
+        Expr::structure(btreemap! {
+            "x" => ConstExpr::Int(1).into(),
+            "y" => ConstExpr::Char('5').into(),
+        }),
+        Expr::var("a").as_type(Type::Int),
+    );
+    expr.type_check(&env).unwrap_err();
+}
+
+#[test]
+fn test_recursive_types() {
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Comment("Put an integer from the stack".to_string()),
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let alloc = ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: "alloc".to_string(),
+        args: vec![("size".to_string(), Type::Int)],
+        ret: Type::Pointer(Box::new(Type::Any)),
+        body: vec![StandardOp::Alloc(SP.deref())],
+    });
+
+    let expr = put.app(vec![Expr::let_type(
+        "Node",
+        Type::Struct(btreemap! {
+            "data".to_string() => Type::Int,
+            "next".to_string() => Type::Pointer(Box::new(Type::Symbol("Node".to_string()))),
+        }),
+        Expr::let_vars(
+            vec![
+                ("node", None, ConstExpr::proc(
+                    vec![(
+                        "val".to_string(),
+                        Type::Int
+                    )],
+                    Type::Symbol("Node".to_string()),
+                    Expr::structure(btreemap! {
+                        "data" => Expr::var("val"),
+                        "next" => ConstExpr::Null.into(),
+                    }),
+                ).into()),
+                ("next", None, ConstExpr::proc(
+                    vec![(
+                        "node".to_string(),
+                        Type::Symbol("Node".to_string()),
+                    )],
+                    Type::Symbol("Node".to_string()),
+                    Expr::var("node").field(var("next")).deref(),
+                ).into()),
+                ("cons", None, ConstExpr::proc(
+                    vec![
+                        (
+                            "head".to_string(),
+                            Type::Symbol("Node".to_string()),
+                        ),
+                        (
+                            "tail".to_string(),
+                            Type::Symbol("Node".to_string()),
+                        ),
+                    ],
+                    Type::Symbol("Node".to_string()),
+                    Expr::let_var(
+                        "ptr",
+                        None,
+                        alloc.app(vec![
+                            Expr::var("tail").size_of()
+                        ]),
+                        Expr::Many(vec![
+                            Expr::var("ptr").deref_mut(Expr::var("tail")),
+                            Expr::structure(btreemap! {
+                                "data" => Expr::var("head").field(var("data")),
+                                "next" => Expr::var("ptr"),
+                            })
+                        ])
+                    )
+                ).into()),
+            ],
+            Expr::var("next")
+                .app(vec![Expr::var("next").app(vec![Expr::var("cons").app(
+                    vec![
+                        Expr::var("node").app(vec![ConstExpr::Int(3).into()]),
+                        Expr::var("cons").app(vec![
+                            Expr::var("node").app(vec![ConstExpr::Int(5).into()]),
+                            Expr::var("node").app(vec![ConstExpr::Int(7).into()]),
+                        ]),
+                    ],
+                )])])
+                .field(var("data")),
+        ),
+    )]);
+
+    let program = expr.compile().unwrap().unwrap_err();
+
+    let i = StandardInterpreter::new(TestingDevice::new_raw(vec![]));
+    let vm_code = program.assemble(16).unwrap();
+    let device = i.run(&vm_code).unwrap();
+
+    assert_eq!(device.output, vec![7]);
+}
+
+#[test]
+fn test_alloc_and_free() {
+    let alloc = ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: "alloc".to_string(),
+        args: vec![("size".to_string(), Type::Int)],
+        ret: Type::Pointer(Box::new(Type::Any)),
+        body: vec![StandardOp::Alloc(SP.deref())],
+    });
+
+    let free = ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: "free".to_string(),
+        args: vec![("ptr".to_string(), Type::Pointer(Box::new(Type::Any)))],
+        ret: Type::None,
+        body: vec![
+            StandardOp::Free(SP.deref()),
+            StandardOp::CoreOp(CoreOp::Pop(None, 1)),
+        ],
+    });
+
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Comment("Put an integer from the stack".to_string()),
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let expr = put.clone().app(vec![Expr::let_type(
+        "Node",
+        Type::Struct(btreemap! {
+            "data".to_string() => Type::Int,
+            "next".to_string() => Type::Pointer(Box::new(Type::Symbol("Node".to_string()))),
+        }),
+        Expr::let_procs(
+            btreemap! {
+                "new" => Procedure::new(
+                    vec![(
+                        "val".to_string(),
+                        Type::Int
+                    )],
+                    Type::Symbol("Node".to_string()),
+                    Expr::structure(btreemap! {
+                        "data" => Expr::var("val"),
+                        "next" => ConstExpr::Null.into(),
+                    }),
+                ),
+                "free" => Procedure::new(
+                    vec![(
+                        "node".to_string(),
+                        Type::Symbol("Node".to_string()),
+                    )],
+                    Type::None,
+                    Expr::Many(vec![
+                        put.app(vec![Expr::var("node").field(var("data"))]),
+                        Expr::var("node").field(var("next"))
+                            .as_type(Type::Cell)
+                            .sub(Expr::from(ConstExpr::Null).as_type(Type::Cell).as_type(Type::Int))
+                            .if_then(
+                                Expr::Many(vec![
+                                    Expr::var("free").app(vec![Expr::var("node").field(var("next")).deref()]),
+                                    free.app(vec![Expr::var("node").field(var("next"))]),
+                                ]),
+                                ConstExpr::None,
+                            )
+                    ])
+                ),
+                "cons" => Procedure::new(
+                    vec![
+                        (
+                            "head".to_string(),
+                            Type::Symbol("Node".to_string()),
+                        ),
+                        (
+                            "tail".to_string(),
+                            Type::Symbol("Node".to_string()),
+                        ),
+                    ],
+                    Type::Symbol("Node".to_string()),
+                    Expr::let_var(
+                        "ptr",
+                        None,
+                        alloc.app(vec![
+                            Expr::var("tail").size_of()
+                        ]),
+                        Expr::Many(vec![
+                            Expr::var("ptr").deref_mut(Expr::var("tail")),
+                            Expr::structure(btreemap! {
+                                "data" => Expr::var("head").field(var("data")),
+                                "next" => Expr::var("ptr"),
+                            })
+                        ])
+                    )
+                ),
+            },
+            Expr::Many(vec![
+                Expr::var("free")
+                    .app(vec![Expr::var("cons").app(
+                            vec![
+                                Expr::var("new").app(vec![ConstExpr::Int(3).into()]),
+                                Expr::var("cons").app(vec![
+                                    Expr::var("new").app(vec![ConstExpr::Int(5).into()]),
+                                    Expr::var("new").app(vec![ConstExpr::Int(7).into()]),
+                                ]),
+                            ],
+                        )
+                    ]),
+                ConstExpr::Int(0).into()
+            ])
+        ),
+    )]);
+    let program = expr.compile().unwrap().unwrap_err();
+
+    let i = StandardInterpreter::new(TestingDevice::new_raw(vec![]));
+    let vm_code = program.assemble(256).unwrap();
+
+    let device = i.run(&vm_code).unwrap();
+    assert_eq!(device.output, vec![3, 5, 7, 0]);
+}
+
+#[test]
+fn test_recursion() {
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Comment("Put an integer from the stack".to_string()),
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let expr = put.app(vec![Expr::let_proc(
+        "factorial",
+        Procedure::new(
+            vec![("n".to_string(), Type::Int)],
+            Type::Int,
+            Expr::var("n").if_then(
+                Expr::var("factorial")
+                    .app(vec![Expr::var("n").sub(ConstExpr::Int(1))])
+                    .mul(var("n")),
+                ConstExpr::Int(1),
+            ),
+        ),
+        Expr::var("factorial").app(vec![ConstExpr::Int(5).into()]),
+    )]);
+
+    let program = expr.compile().unwrap().unwrap();
+
+    let i = CoreInterpreter::new(TestingDevice::new_raw(vec![]));
+    let vm_code = program.assemble(256).unwrap();
+    let device = i.run(&vm_code).unwrap();
+
+    assert_eq!(device.output, vec![120]);
+}
+
+#[test]
+fn test_inline_let_type() {
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Comment("Put an integer from the stack".to_string()),
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let expr = put.app(vec![Expr::let_proc(
+        "factorial",
+        Procedure::new(
+            vec![("n".to_string(), Type::Int)],
+            Type::Let(
+                "a".to_string(),
+                Box::new(Type::Let(
+                    "b".to_string(),
+                    Box::new(Type::Let(
+                        "c".to_string(),
+                        Box::new(Type::Int),
+                        Box::new(Type::Symbol("c".to_string())),
+                    )),
+                    Box::new(Type::Symbol("b".to_string())),
+                )),
+                Box::new(Type::Symbol("a".to_string())),
+            ),
+            Expr::var("n").if_then(
+                Expr::var("factorial")
+                    .app(vec![Expr::var("n").sub(ConstExpr::Int(1))])
+                    .mul(var("n")),
+                ConstExpr::Int(1),
+            ),
+        ),
+        Expr::var("factorial").app(vec![ConstExpr::Int(5).into()]),
+    )]);
+
+    let program = expr.compile().unwrap().unwrap();
+
+    let i = CoreInterpreter::new(TestingDevice::new_raw(vec![]));
+    let vm_code = program.assemble(256).unwrap();
+    let device = i.run(&vm_code).unwrap();
+
+    assert_eq!(device.output, vec![120]);
+}
+
+#[test]
+fn test_inline_let_recursive_type() {
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Comment("Put an integer from the stack".to_string()),
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let expr = put.clone().app(vec![Expr::let_type(
+        "hmm",
+        Type::Let(
+            "data".to_string(),
+            Box::new(Type::Int),
+            Box::new(Type::Let(
+                "Node".to_string(),
+                Box::new(Type::Struct(btreemap! {
+                    "data".to_string() => Type::Symbol("data".to_string()),
+                    "next".to_string() => Type::Pointer(Box::new(Type::Symbol("Node".to_string()))),
+                })),
+                Box::new(Type::Symbol("Node".to_string())),
+            )),
+        ),
+        Expr::let_var(
+            "test",
+            Some(Type::Symbol("hmm".to_string())),
+            Expr::structure(btreemap! {
+                "data" => ConstExpr::Int(3).into(),
+                "next" => ConstExpr::Null.into(),
+            }),
+            ConstExpr::Int(5),
+        ),
+    )]);
+
+    expr.compile().unwrap().unwrap();
+
+    let expr = put.app(vec![Expr::let_type(
+        "List<Int>",
+        Type::Let(
+            "List<Int>".to_string(),
+            Box::new(Type::Tuple(vec![
+                Type::Int,
+                Type::Pointer(Box::new(Type::Symbol("List<Int>".to_string()))),
+            ])),
+            Box::new(Type::Symbol("List<Int>".to_string())),
+        ),
+        Expr::let_var(
+            "first",
+            Some(Type::Symbol("List<Int>".to_string())),
+            Expr::Tuple(vec![ConstExpr::Int(3).into(), ConstExpr::Null.into()]),
+            ConstExpr::Int(5),
+        ),
+    )]);
+
+    expr.compile().unwrap().unwrap();
+}
+
+#[test]
+fn test_inline_let_type_equality() {
+    let env = Env::default();
+    assert!(Type::Let(
+        "A".to_string(),
+        Box::new(Type::Tuple(vec![
+            Type::Int,
+            Type::Union(btreemap! {
+                "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("A".to_string()))),
+                "None".to_string() => Type::None,
+            }),
+        ])),
+        Box::new(Type::Symbol("A".to_string())),
+    ).equals(&Type::Let(
+        "T".to_string(),
+        Box::new(Type::Int),
+        Box::new(Type::Let(
+            "C".to_string(),
+            Box::new(Type::Tuple(vec![
+                Type::Symbol("T".to_string()),
+                Type::Union(btreemap! {
+                    "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("C".to_string()))),
+                    "None".to_string() => Type::None,
+                }),
+            ])),
+            Box::new(Type::Symbol("C".to_string()
+        )),
+    ))), &env).unwrap());
+
+    assert!(!Type::Let(
+        "A".to_string(),
+        Box::new(Type::Tuple(vec![
+            Type::Int,
+            Type::Union(btreemap! {
+                "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("A".to_string()))),
+                "None".to_string() => Type::None,
+            }),
+        ])),
+        Box::new(Type::Symbol("A".to_string())),
+    ).equals(&Type::Let(
+        "T".to_string(),
+        Box::new(Type::Int),
+        Box::new(Type::Let(
+            "D".to_string(),
+            Box::new(Type::None),
+            Box::new(Type::Let(
+                "C".to_string(),
+                Box::new(Type::Tuple(vec![
+                    Type::Symbol("T".to_string()),
+                    Type::Union(btreemap! {
+                        "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("C".to_string()))),
+                        "None".to_string() => Type::None,
+                    }),
+                ])),
+                Box::new(Type::Symbol("D".to_string()
+            )),
+        )),
+    ))), &env).unwrap());
+}
+
+#[test]
+fn test_pseudotemplates() {
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Comment("Put an integer from the stack".to_string()),
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let expr = Expr::let_var(
+        "first",
+        None,
+        Expr::Tuple(vec![ConstExpr::Int(3).into(), ConstExpr::Union(
+            Type::Union(btreemap! {
+                "Some".to_string() => Type::Pointer(Box::new(Type::Let(
+                    "A".to_string(),
+                    Box::new(Type::Tuple(vec![
+                        Type::Int,
+                        Type::Union(btreemap! {
+                            "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("A".to_string()))),
+                            "None".to_string() => Type::None,
+                        }),
+                    ])),
+                    Box::new(Type::Symbol("A".to_string())),
+                ))),
+                "None".to_string() => Type::None,
+            }),
+            "None".to_string(),
+            Box::new(ConstExpr::None),
+        ).into()]),
+        Expr::let_var(
+            "second",
+            Some(Type::Let(
+                "T".to_string(),
+                Box::new(Type::Int),
+                Box::new(Type::Let(
+                    "List<Int>".to_string(),
+                    Box::new(Type::Tuple(vec![
+                        Type::Symbol("T".to_string()),
+                        Type::Union(btreemap! {
+                            "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("List<Int>".to_string()))),
+                            "None".to_string() => Type::None,
+                        }),
+                    ])),
+                    Box::new(Type::Symbol("List<Int>".to_string())),
+                ))
+            )),
+            Expr::Tuple(vec![ConstExpr::Int(5).into(), Expr::Union(
+                Type::Union(btreemap! {
+                    "Some".to_string() => Type::Pointer(Box::new(Type::Let(
+                        "List<Int>".to_string(),
+                        Box::new(Type::Tuple(vec![
+                            Type::Int,
+                            Type::Union(btreemap! {
+                                "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("List<Int>".to_string()))),
+                                "None".to_string() => Type::None,
+                            }),
+                        ])),
+                        Box::new(Type::Symbol("List<Int>".to_string())),
+                    ))),
+                    "None".to_string() => Type::None,
+                }),
+                "Some".to_string(),
+                Box::new(Expr::var("first").refer()),
+            ).into()]),
+            Expr::Many(vec![
+                put.clone().app(vec![Expr::var("second")
+                    .field(ConstExpr::Int(1))
+                    .field(ConstExpr::Symbol("Some".to_string()))
+                    .deref()
+                    .field(ConstExpr::Int(0))]),
+                Expr::var("second")
+                    .field(ConstExpr::Int(1))
+                    .field(ConstExpr::Symbol("Some".to_string()))
+                    .refer()
+                    .deref_mut(Expr::var("second").refer()),
+                put.clone().app(vec![Expr::var("second")
+                    .field(ConstExpr::Int(1))
+                    .field(ConstExpr::Symbol("Some".to_string()))
+                    .deref()
+                    .field(ConstExpr::Int(1))
+                    .field(ConstExpr::Symbol("Some".to_string()))
+                    .deref()
+                    .field(ConstExpr::Int(0))
+                ]),
+            ])
+        )
+    );
+
+    let program = expr.clone().compile().unwrap().unwrap();
+
+    let i = CoreInterpreter::new(TestingDevice::new_raw(vec![]));
+    let vm_code = program.assemble(10).unwrap();
+    let device = i.run(&vm_code).unwrap();
+
+    assert_eq!(device.output, vec![3, 5]);
+
+    expr.compile().unwrap().unwrap();
+}
+
+#[test]
+fn test_mutually_recursive_types() {
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Comment("Put an integer from the stack".to_string()),
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let expr = put.clone().app(vec![Expr::let_types(
+        vec![
+            ("A", Type::Pointer(Box::new(Type::Symbol("B".to_string())))),
+            ("B", Type::Pointer(Box::new(Type::Symbol("A".to_string())))),
+        ],
+        Expr::let_vars(
+            vec![
+                ("a", Some(Type::Symbol("A".to_string())), ConstExpr::Null.into()),
+                ("b", Some(Type::Symbol("B".to_string())), Expr::var("a").refer(),)
+            ],
+            Expr::var("b")
+                .deref()
+                .as_type(Type::Cell)
+                .as_type(Type::Int),
+        ),
+    )]);
+
+    let program = expr.clone().compile().unwrap().unwrap();
+
+    let i = CoreInterpreter::new(TestingDevice::new_raw(vec![]));
+    let vm_code = program.assemble(10).unwrap();
+    let device = i.run(&vm_code).unwrap();
+
+    assert_eq!(device.output, vec![asm::NULL]);
+    
+    let expr = put.clone().app(vec![Expr::let_types(
+        vec![
+            ("A", Type::Pointer(Box::new(Type::Symbol("B".to_string())))),
+            ("B", Type::Pointer(Box::new(Type::Symbol("A".to_string())))),
+            ("C", Type::Pointer(Box::new(Type::Symbol("C".to_string())))),
+        ],
+        Expr::let_vars(
+            vec![
+                ("a", Some(Type::Symbol("A".to_string())), ConstExpr::Null.into()),
+                ("b", Some(Type::Symbol("B".to_string())), Expr::var("a").refer()),
+                ("c", Some(Type::Symbol("C".to_string())), Expr::var("b"))
+            ],
+            Expr::var("c")
+                .deref()
+                .as_type(Type::Cell)
+                .as_type(Type::Int),
+        ),
+    )]);
+
+    expr.clone().compile().unwrap_err();
+}
+
+#[test]
+fn test_let_multiple_vars() {
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Comment("Put an integer from the stack".to_string()),
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let expr = put.clone().app(vec![Expr::let_vars(
+        vec![
+            ("x", None, ConstExpr::Int(5).into()),
+            ("y", None, Expr::var("x").add(ConstExpr::Int(5))),
+            ("z", None, Expr::var("y").mul(ConstExpr::Int(5))),
+        ],
+        Expr::var("z")
+    )]);
+
+    let program = expr.clone().compile().unwrap().unwrap();
+
+    let i = CoreInterpreter::new(TestingDevice::new_raw(vec![]));
+    let vm_code = program.assemble(10).unwrap();
+    let device = i.run(&vm_code).unwrap();
+
+    assert_eq!(device.output, vec![50]);
+
+    let expr = put.clone().app(vec![Expr::let_vars(
+        vec![
+            ("y", None, Expr::var("x").add(ConstExpr::Int(5))),
+            ("x", None, ConstExpr::Int(5).into()),
+            ("z", None, Expr::var("y").mul(ConstExpr::Int(5))),
+        ],
+        Expr::var("z")
+    )]);
+
+    expr.clone().compile().unwrap_err();
 }

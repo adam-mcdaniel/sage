@@ -1,3 +1,12 @@
+//! # The Interpreter Module
+//! 
+//! This module implements two interpreters for the virtual machine: one for each variant.
+//! Both virtual machines are supplied with a `Device` object, which acts as a generic frontend
+//! of the machine to interact with the world. The `Device` object is responsible for
+//! supplying the input and handling the output of the program. For testing the compiler,
+//! assembler, and virtual machine, we use a `TestingDevice` object to supply sample input
+//! and capture the output to test against the predicted output.
+
 mod core;
 pub use self::core::*;
 mod std;
@@ -11,6 +20,9 @@ use ::std::{
 /// Create an input / output device for the virtual machine interpreter
 /// to operate on. The method `get` retrieves the device's input, and the
 /// function `put` writes to the devices output.
+/// 
+/// TODO: Make a trait for a device with the standard variant, which requires
+/// `get_char`, `put_char`, `get_int`, `put_int`, `get_float`, and `put_float` methods.
 pub trait Device {
     fn get(&mut self) -> Result<isize, String>;
     fn put(&mut self, val: isize) -> Result<(), String>;
@@ -22,19 +34,10 @@ pub trait Device {
 ///
 /// The tests interpret the program and populate the device with output.
 /// Then, we check the devices output against the correct output.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TestingDevice {
     pub input: VecDeque<isize>,
     pub output: Vec<isize>,
-}
-
-impl Default for TestingDevice {
-    fn default() -> Self {
-        TestingDevice {
-            input: VecDeque::new(),
-            output: Vec::new(),
-        }
-    }
 }
 
 impl TestingDevice {
@@ -107,6 +110,10 @@ impl Device for StandardDevice {
     fn put(&mut self, val: isize) -> Result<(), String> {
         // Print the character without a newline
         print!("{}", val as u8 as char);
-        Ok(())
+        if stdout().flush().is_err() {
+            Err(String::from("could not flush output"))
+        } else {
+            Ok(())
+        }
     }
 }
