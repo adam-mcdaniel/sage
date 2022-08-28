@@ -59,7 +59,7 @@ impl CoreProgram {
             return Err(Error::Unmatched(unmatched, last_instruction));
         }
 
-        Ok(result)
+        Ok(result.flatten())
     }
 }
 

@@ -11,6 +11,7 @@ use core::fmt;
 #[derive(Clone, PartialEq, PartialOrd)]
 pub struct StandardProgram(pub Vec<StandardOp>);
 
+
 impl StandardProgram {
     pub fn assemble(&self, allowed_recursion_depth: usize) -> Result<vm::StandardProgram, Error> {
         let mut result = vm::StandardProgram(vec![]);
@@ -32,7 +33,7 @@ impl StandardProgram {
             return Err(Error::Unmatched(unmatched, last_instruction));
         }
 
-        Ok(result)
+        Ok(result.flatten())
     }
 }
 
