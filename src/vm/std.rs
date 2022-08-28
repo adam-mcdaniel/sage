@@ -140,7 +140,7 @@ fn flatten(code: Vec<StandardOp>) -> Vec<StandardOp> {
     let mut result = vec![];
 
     // For every function, insert its body into the resulting output code.
-    for i in 0..functions.len() as i32 {
+    for i in 0..=functions.len() as i32 {
         if let Some(body) = functions.remove(&i) {
             result.extend(body);
         }

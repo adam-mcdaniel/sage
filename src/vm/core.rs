@@ -62,7 +62,7 @@ fn flatten(code: Vec<CoreOp>) -> Vec<CoreOp> {
                 // Start defining the next function.
                 fun += 1;
                 // If that function is already defined,
-                // just go to the last possible element in the tree.
+                // just go past the last function defined.
                 if functions.contains_key(&fun) {
                     fun = functions.len() as i32
                 }
@@ -96,7 +96,7 @@ fn flatten(code: Vec<CoreOp>) -> Vec<CoreOp> {
     // The final output code.
     let mut result = vec![];
     // For every function, insert its body into the resulting output code.
-    for i in 0..functions.len() as i32 {
+    for i in 0..=functions.len() as i32 {
         if let Some(body) = functions.remove(&i) {
             result.extend(body);
         }
