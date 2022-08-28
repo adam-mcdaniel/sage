@@ -37,6 +37,7 @@
 //! using `Put` and `Get`.
 use super::{CoreOp, CoreProgram, Error, VirtualMachineProgram};
 use core::fmt;
+use std::collections::HashMap;
 
 impl VirtualMachineProgram for StandardProgram {
     fn op(&mut self, op: CoreOp) {
@@ -64,6 +65,95 @@ impl VirtualMachineProgram for StandardProgram {
 /// A program of core and standard virtual machine instructions.
 #[derive(Default, Clone, PartialEq, PartialOrd)]
 pub struct StandardProgram(pub Vec<StandardOp>);
+
+impl StandardProgram {
+    /// Flatten a standard program so that all of its functions
+    /// are defined sequentially at the beginning.
+    pub fn flatten(self) -> Self {
+        Self(flatten(self.0))
+    }
+}
+
+/// Take all of the functions defined in a list of StandardOps,
+/// and flatten their definitions. This will take nested functions
+/// and un-nest them while preserving the order in which functions are defined.
+/// 
+/// All the function definitions will be placed at the top of the returned list.
+fn flatten(code: Vec<StandardOp>) -> Vec<StandardOp> {
+    let mut functions = HashMap::new();
+
+    // The current function body we are in.
+    let mut fun = -1;
+    // Keep track of when we end the current function,
+    // instead of just an if-else-conditional or a while loop.
+    // This is essentially the number of end statements remaining before
+    // we can end the scope.
+    let mut matching_end = 0;
+    // Keep track of each `matching_end`, and the scope we were previously in, for each nested scope.
+    let mut scope_stack = vec![];
+    for std_op in code {
+        if let StandardOp::CoreOp(op) = &std_op {
+            match op {
+                CoreOp::Function => {
+                    // If we are declaring a new function,
+                    // push the info about the current scope onto the scope
+                    // stack to resume later.
+                    scope_stack.push((fun, matching_end));
+                    // Reset the matching-end counter for the new scope.
+                    matching_end = 0;
+                    // Start defining the next function.
+                    fun += 1;
+                    // If that function is already defined,
+                    // just go past the last function defined.
+                    if functions.contains_key(&fun) {
+                        fun = functions.len() as i32
+                    }
+                }
+                CoreOp::If | CoreOp::While => {
+                    // Increment the number of matching `End`
+                    // instructions to end the scope.
+                    matching_end += 1
+                }
+                CoreOp::End => {
+                    // If the scope has ended
+                    if matching_end == 0 {
+                        // Get the function body we're defining.
+                        functions.entry(fun).or_insert(vec![]).push(std_op);
+                        // Resume flattening the previous scope.
+                        (fun, matching_end) = scope_stack.pop().unwrap();
+                        continue;
+                    } else {
+                        // Otherwise, the scope is still going.
+                        // Decrement the counter and continue.
+                        matching_end -= 1;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Insert the current instruction to the right function's definition.
+        functions.entry(fun).or_insert(vec![]).push(std_op);
+    }
+
+    // The final output code.
+    let mut result = vec![];
+
+    // For every function, insert its body into the resulting output code.
+    for i in 0..=functions.len() as i32 {
+        if let Some(body) = functions.remove(&i) {
+            result.extend(body);
+        }
+    }
+
+    // Insert the remaining code into the output code.
+    if let Some(body) = functions.remove(&-1) {
+        result.extend(body);
+    }
+    
+    // Return the output code
+    result
+}
 
 impl fmt::Debug for StandardProgram {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

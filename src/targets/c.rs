@@ -19,7 +19,7 @@ typedef union int_or_float {
     double f;
     union int_or_float *p;
 } int_or_float;
-int_or_float tape[30000], *ref_stack[30000], *ptr = tape, reg, tmp;
+int_or_float tape[200000], *ref_stack[1024], *ptr = tape, reg, tmp;
 unsigned int ref_stack_ptr = 0;
 void (*funs[10000])(void);
 int main() {
@@ -134,7 +134,7 @@ typedef union int_or_float {
     double f;
     union int_or_float *p;
 } int_or_float;
-int_or_float tape[30000], *ref_stack[30000], *ptr = tape, reg, tmp;
+int_or_float tape[200000], *ref_stack[1024], *ptr = tape, reg, tmp;
 unsigned int ref_stack_ptr = 0;
 void (*funs[10000])(void);
 int main() {

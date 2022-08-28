@@ -241,7 +241,7 @@ impl TypeCheck for ConstExpr {
 
 impl Compile for ConstExpr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        output.comment(format!("compiling {self:?}"));
+        // output.comment(format!("compiling {self:?}"));
         match self {
             Self::None => {}
             Self::Null => {

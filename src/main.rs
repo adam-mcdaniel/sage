@@ -306,11 +306,10 @@ proc quicksort_arr(arr: &Int, low: Int, high: Int) -> None = {
     }
 } in
 
-const SIZE = 1000 in
-let arr: &Int = alloc(SIZE), i = 0, a = 5, b = 6 in {
-    swapi(&a, &b);
+const SIZE = 2000 in
+let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
     while lt(i, SIZE) {
-        arr[i] = SIZE - i;
+        arr[i] = if (i % 2) i else (SIZE - i);
         putint(arr[i]); putchar(';');
         inc(&i);
     };
@@ -419,6 +418,16 @@ let arr: &Int = alloc(SIZE), i = 0, a = 5, b = 6 in {
     free A
     "#;
 
+    let simple_fun_test = r#"
+    proc C() -> None = { putint(6) } in
+    proc B() -> None = { putint(5) } in
+    proc A() -> None = { if false { B(); C() }; C(); B() } in
+    proc D() -> None = { if false { B(); C() }; A(); } in {
+        A();
+        D();
+    }
+    "#;
+
     // match parse_asm(string_asm) {
     //     Ok(asm_code) => {
     //         let device = match asm_code {
@@ -450,7 +459,7 @@ let arr: &Int = alloc(SIZE), i = 0, a = 5, b = 6 in {
     // }
     // return;
 
-    match parse_lir(list) {
+    match parse_lir(simple_fun_test) {
         Ok(expr) => {
             // eprintln!("{expr:?}");
             
@@ -462,7 +471,7 @@ let arr: &Int = alloc(SIZE), i = 0, a = 5, b = 6 in {
             let device = match asm_code {
                 Ok(asm_core) => {
                     eprintln!("{:?}", asm_core);
-                    let vm_code = asm_core.assemble(5000).unwrap();
+                    let vm_code = asm_core.assemble(100000).unwrap();
                     // println!("{:?}", vm_code);
                     println!("{}", targets::C.build_core(&vm_code).unwrap());
                     // eprintln!("{:?}", expr);
@@ -472,8 +481,9 @@ let arr: &Int = alloc(SIZE), i = 0, a = 5, b = 6 in {
                 }
                 Err(asm_std) => {
                     eprintln!("{:?}", asm_std);
-                    let vm_code = asm_std.assemble(5000).unwrap();
-                    // println!("{:?}", vm_code);
+                    let vm_code = asm_std.assemble(100000).unwrap();
+                    let vm_code = vm_code.flatten();
+                    // eprintln!("AFTER:\n{:?}", vm_code);
                     println!("{}", targets::C.build_std(&vm_code).unwrap());
                     // eprintln!("{:?}", expr);
                     StandardInterpreter::new(StandardDevice)
