@@ -1,5 +1,5 @@
 use crate::asm::{AssemblyProgram, CoreOp, A, FP, SP};
-use crate::lir::{Compile, Env, Error, Expr, GetSize, GetType, Type, TypeCheck};
+use crate::lir::{Compile, Env, Error, Expr, ConstExpr, GetSize, GetType, Type, TypeCheck};
 use std::sync::Mutex;
 
 // TODO: Do this without lazy_static.
@@ -65,9 +65,13 @@ impl TypeCheck for Procedure {
         new_env.define_args(self.args.clone())?;
 
         // Get the type of the procedure's body, and confirm that it matches the return type.
-        self.body.get_type(&new_env)?.equals(&self.ret, env)?;
-        // Typecheck the procedure's body.
-        self.body.type_check(&new_env)
+        let body_type = self.body.get_type(&new_env)?;
+        if !body_type.equals(&self.ret, env)? {
+            Err(Error::MismatchedTypes { expected: self.ret.clone(), found: body_type, expr: ConstExpr::Proc(self.clone()).into() })
+        } else {
+            // Typecheck the procedure's body.
+            self.body.type_check(&new_env)
+        }
     }
 }
 

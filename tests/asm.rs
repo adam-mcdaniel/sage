@@ -1,5 +1,6 @@
 use asm::{
     asm::*,
+    parse::parse_asm,
     vm::{CoreInterpreter, TestingDevice},
 };
 
@@ -326,4 +327,38 @@ fn test_str() {
 
     let device = i.run(&program).unwrap();
     assert_eq!(device.output_str(), "abcdefghijk?\nHello world!\nabcdefghijk?\nHello world!\nabcdefghijk?\nHello world!\nabcdefghijk?\nHello world!\n>> you entered: `gnitset`\nwhich is 7 characters long!\n")
+}
+
+
+#[test]
+fn test_factorial() {
+
+    let factorial = r#"
+    fun fact
+        if [FP]
+            mov [FP], A
+            dec A
+            push A
+            call fact
+            mul [FP + 1], [FP]
+            pop
+        else
+            set [FP], 1
+        end
+    end
+
+    set A, 10 push A
+    call fact
+    pop A
+    put A
+    "#;
+
+    let asm_core = parse_asm(factorial).unwrap().unwrap();
+    let vm_code = asm_core.assemble(5000).unwrap();
+
+    let device = CoreInterpreter::new(TestingDevice::new(""))
+        .run(&vm_code)
+        .unwrap();
+
+    assert_eq!(device.output, vec![3628800])
 }

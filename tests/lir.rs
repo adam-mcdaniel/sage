@@ -1,5 +1,6 @@
 use asm::{
-    asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, SP},
+    asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, SP, FP, A},
+    parse::*,
     lir::*,
     vm::{as_int, CoreInterpreter, StandardInterpreter, TestingDevice},
 };
@@ -1513,4 +1514,184 @@ fn test_let_multiple_vars() {
     )]);
 
     expr.clone().compile().unwrap_err();
+}
+
+
+#[test]
+fn test_quicksort() {
+    // Compiling quicksort overflows the tiny stack for tests.
+    // So, we spawn a new thread with a larger stack size.
+    let child = std::thread::Builder::new()
+        .stack_size(4 * 1024 * 1024)
+        .spawn(test_quicksort_helper)
+        .unwrap();
+
+    // Wait for the thread to finish.
+    child.join().unwrap();
+}
+
+fn test_quicksort_helper() {
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let swap = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "swap".to_string(),
+        args: vec![
+            ("x".to_string(), Type::Pointer(Box::new(Type::Int))),
+            ("y".to_string(), Type::Pointer(Box::new(Type::Int))),
+        ],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Swap(SP.deref().deref(), SP.deref().offset(-1).deref()),
+            CoreOp::Pop(None, 2),
+        ],
+    });
+    
+    let lt = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "lt".to_string(),
+        args: vec![("x".to_string(), Type::Int), ("y".to_string(), Type::Int)],
+        ret: Type::Bool,
+        body: vec![
+            CoreOp::IsLess { a: SP.deref().offset(-1), b: SP.deref(), dst: A },
+            CoreOp::Pop(None, 1),
+            CoreOp::Move { src: A, dst: SP.deref() }
+        ],
+    });
+    let lte = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "lte".to_string(),
+        args: vec![("x".to_string(), Type::Int), ("y".to_string(), Type::Int)],
+        ret: Type::Bool,
+        body: vec![
+            CoreOp::IsLessEqual { a: SP.deref().offset(-1), b: SP.deref(), dst: A },
+            CoreOp::Pop(None, 1),
+            CoreOp::Move { src: A, dst: SP.deref() }
+        ],
+    });
+    let inc = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "inc".to_string(),
+        args: vec![("x".to_string(), Type::Pointer(Box::new(Type::Int)))],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Inc(SP.deref().deref()),
+            CoreOp::Pop(None, 1)
+        ],
+    });
+
+    let alloc = ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: "alloc".to_string(),
+        args: vec![("size".to_string(), Type::Int)],
+        ret: Type::Pointer(Box::new(Type::Any)),
+        body: vec![StandardOp::Alloc(SP.deref())],
+    });
+
+    let list = r#"
+    proc partition_arr(arr: &Int, low: Int, high: Int) -> Int = {
+        let pivot = arr[high],
+            i = low - 1,
+            j = low in {
+            while lt(j, high) {
+                if (lte(arr[j], pivot)) {
+                    inc(&i);
+                    swap(&arr[j], &arr[i]);
+                };
+                inc(&j);
+            };
+            swap(&arr[i + 1], &arr[high]);
+            i + 1
+        }
+    } in
+    
+    proc quicksort_arr(arr: &Int, low: Int, high: Int) -> None = {
+        if (lt(low, high)) {
+            let pi = partition_arr(arr, low, high) in {
+                quicksort_arr(arr, low, pi - 1);
+                quicksort_arr(arr, pi + 1, high);
+            }
+        }
+    } in
+    
+    const SIZE = 50 in
+    let ptr: &Int = alloc(SIZE), i = 0 in {
+        while lt(i, SIZE) {
+            ptr[i] = SIZE - i;
+            inc(&i);
+        };
+        i = 0;
+        quicksort_arr(ptr, 0, SIZE - 1);
+        while lt(i, SIZE) {
+            put(ptr[i]);
+            inc(&i);
+        }
+    }
+    "#;
+
+    let expr = parse_lir(list).unwrap();
+    let expr = Expr::let_consts(vec![("alloc", alloc.clone()), ("inc", inc.clone()), ("lte", lte.clone()), ("lt", lt.clone()), ("swap", swap.clone()), ("put", put.clone())], expr);
+    let asm_std = expr.clone().compile().unwrap().unwrap_err();
+    let vm_code = asm_std.assemble(100).unwrap();
+    let device = StandardInterpreter::new(TestingDevice::new_raw(vec![]))
+        .run(&vm_code)
+        .unwrap();
+
+    assert_eq!(device.output, (1..=50).into_iter().collect::<Vec<_>>());
+}
+
+#[test]
+fn test_collatz() {
+    // Compiling quicksort overflows the tiny stack for tests.
+    // So, we spawn a new thread with a larger stack size.
+    let child = std::thread::Builder::new()
+        .stack_size(4 * 1024 * 1024)
+        .spawn(test_collatz_helper)
+        .unwrap();
+
+    // Wait for the thread to finish.
+    child.join().unwrap();
+}
+
+fn test_collatz_helper() {
+    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put".to_string(),
+        args: vec![("x".to_string(), Type::Int)],
+        ret: Type::None,
+        body: vec![
+            CoreOp::Put(SP.deref()),
+            CoreOp::Pop(None, 1),
+        ],
+    });
+
+    let collatz = r#"
+    proc step(n: Int) -> Int = {
+        if (n % 2) {
+            3 * n + 1
+        } else {
+            n / 2
+        }
+    } in
+    
+    proc collatz(n: Int) -> None = {
+        put(n);
+        while n - 1 {
+            n = step(n);
+            put(n);
+        };
+    } in { collatz(19) }
+    "#;
+
+    let expr = parse_lir(collatz).unwrap();
+    let expr = Expr::let_const("put", put.clone(), expr);
+    let asm_std = expr.clone().compile().unwrap().unwrap();
+    let vm_code = asm_std.assemble(16).unwrap();
+    let device = CoreInterpreter::new(TestingDevice::new_raw(vec![]))
+        .run(&vm_code)
+        .unwrap();
+
+    assert_eq!(device.output, vec![19, 58, 29, 88, 44, 22, 11, 34, 17, 52, 26, 13, 40, 20, 10, 5, 16, 8, 4, 2, 1]);
 }
