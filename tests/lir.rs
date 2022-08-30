@@ -1,4 +1,4 @@
-use asm::{
+use acid::{
     asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, SP, FP, A},
     parse::*,
     lir::*,
@@ -1450,7 +1450,7 @@ fn test_mutually_recursive_types() {
     let vm_code = program.assemble(10).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(device.output, vec![asm::NULL]);
+    assert_eq!(device.output, vec![acid::NULL]);
     
     let expr = put.clone().app(vec![Expr::let_types(
         vec![
@@ -1682,14 +1682,14 @@ fn test_collatz_helper() {
             n = step(n);
             put(n);
         };
-    } in { collatz(19) }
+    } in collatz(19)
     "#;
 
     let expr = parse_lir(collatz).unwrap();
     let expr = Expr::let_const("put", put.clone(), expr);
     let asm_std = expr.clone().compile().unwrap().unwrap();
     let vm_code = asm_std.assemble(16).unwrap();
-    let device = CoreInterpreter::new(TestingDevice::new_raw(vec![]))
+    let device = CoreInterpreter::new(TestingDevice::new(""))
         .run(&vm_code)
         .unwrap();
 

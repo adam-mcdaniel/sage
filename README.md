@@ -1,4 +1,6 @@
-# Unnamed Language
+# acid
+
+*A compiled language👅 with a trippy🌈 type system🔮*
 
 [Here's an example of the compilation process.](assets/compiled.md#example-compiled-program)
 

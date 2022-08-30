@@ -287,6 +287,17 @@ impl Type {
         }
 
         Ok(match (self, other) {
+            (Self::Any, _)
+            | (_, Self::Any)
+            | (Self::Never, _)
+            | (_, Self::Never)
+            | (Self::None, Self::None)
+            | (Self::Bool, Self::Bool)
+            | (Self::Char, Self::Char)
+            | (Self::Int, Self::Int)
+            | (Self::Float, Self::Float)
+            | (Self::Cell, Self::Cell) => true,
+
             (Self::Symbol(a), Self::Symbol(b)) => {
                 if a == b {
                     // If the two types have the same name, they must equal the same type
@@ -371,17 +382,6 @@ impl Type {
                     ret.equals_checked(x, compared_symbols, &new_env, i)?
                 }
             }
-
-            (Self::Any, _)
-            | (_, Self::Any)
-            | (Self::Never, _)
-            | (_, Self::Never)
-            | (Self::None, Self::None)
-            | (Self::Bool, Self::Bool)
-            | (Self::Char, Self::Char)
-            | (Self::Int, Self::Int)
-            | (Self::Float, Self::Float)
-            | (Self::Cell, Self::Cell) => true,
 
             (Self::Enum(a), Self::Enum(b)) => {
                 let mut a = a.clone();

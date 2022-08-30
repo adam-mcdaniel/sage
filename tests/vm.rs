@@ -1,4 +1,4 @@
-use asm::vm::*;
+use acid::vm::*;
 
 #[test]
 fn test_add() {
