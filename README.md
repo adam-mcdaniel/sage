@@ -58,12 +58,12 @@ The instruction set is composed of two halves of 24 instructions each: [the "Cor
 
 The canonical instructions are required to be implemented by *every target*. These instructions are guaranteed to be supported by every target.
 
-|              | The              | Twenty | and        | Four       | Canonical | Instructions |
-|--------------|------------------|--------|------------|------------|-----------|--------------|
-| Memory       | `Move(n: int)`   | `Save` | `Restore`  | `Where?`   | `Deref`   | `Refer`      |
-| Control Flow | `While`          | `If`   | `Else`     | `Function` | `Call`    | `Return`     |
-| Arithmetic   | `IsNonNegative?` | `Add`  | `Subtract` | `Multiply` | `Divide`  | `Remainder`  |
-| Fundamental  | `Set(n: int)`    | `Inc`  | `Dec`      | `Get`      | `Put`     | `End`        |
+|              | The              | Twenty  | and        | Four       | Canonical | Instructions |
+|--------------|------------------|---------|------------|------------|-----------|--------------|
+| Memory       | `Move(n: int)`   | `Index` | `Swap`     | `Where?`   | `Deref`   | `Refer`      |
+| Control Flow | `While`          | `If`    | `Else`     | `Function` | `Call`    | `Return`     |
+| Arithmetic   | `IsNonNegative?` | `Add`   | `Subtract` | `Multiply` | `Divide`  | `Remainder`  |
+| Fundamental  | `Set(n: int)`    | `Save`  | `Restore`  | `Get`      | `Put`     | `End`        |
 
 The standard instructions are not guaranteed to be wholly implemented by every target, or at all. A target for Linux on x86 will certainly implement all the standard instructions, but a thermostat might implement only a few or none.
 

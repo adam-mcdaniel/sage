@@ -18,11 +18,19 @@ The `Move` instruction takes a constant integer as an argument: the number of ce
 
 ![Move](assets/move.svg)
 
-#### Save and Restore
+#### Index
 
-The `Save` instruction writes the value of the register to the cell at the pointer: `*ptr = register`. The `Restore` instruction is the inverse: `register = *ptr`.
+The `Index` instruction moves the register's value as a pointer by the value pointed to on the tape. For any N stored on the tape under the pointer, the address stored in the register will move by N cells. If N is negative, it will move the pointer in the register N cells to the left. If N is positive, the pointer will move to the right.
 
-![Save](assets/save.svg) ![Restore](assets/restore.svg)
+This is to account for the fact that the virtual machine is abstracted over pointers. Pointers, under the hood, are varying distances apart for different implementations. For implementations using an indexed array as a tape, the "address" of each cell is the previous address plus one. For implementations using **real pointers**, this difference can be 2, 4, 8 or who knows what: it depends on the implementation. So, to write code that uses pointers *without understanding how they work*, we need the `Index` instruction along with `Where?`, `Deref`, and `Refer`.
+
+![Index](assets/index.svg)
+
+#### Swap
+
+`Swap` swaps the value in the register with the value pointed to on the tape. The tape will be assigned the register's value, and the register will be assigned the tape's value.
+
+![Swap](assets/swap.svg)
 
 #### Where?
 
@@ -93,11 +101,11 @@ The `Set` instruction takes a constant integer argument, and sets the register t
 
 ![Set](assets/set.svg)
 
-#### Inc and Dec
+#### Save and Restore
 
-The `Inc` and `Dec` instructions are very simple. They just increment and decrement the register respectively.
+The `Save` instruction writes the value of the register to the cell at the pointer: `*ptr = register`. The `Restore` instruction is the inverse: `register = *ptr`.
 
-![Inc](assets/inc.svg) ![Dec](assets/dec.svg)
+![Save](assets/save.svg) ![Restore](assets/restore.svg)
 
 #### Get and Put
 
