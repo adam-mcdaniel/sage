@@ -28,7 +28,7 @@ register        deref stack
 
 register        deref stack
 .------.        .-
-|{r}  9|        |     
+|{r} #9|        |     
 '------'        '-
 
 
