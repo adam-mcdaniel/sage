@@ -1,4 +1,4 @@
-use asm::{
+use acid::{
     asm::{CoreOp, StandardOp, SP, A, B, C},
     lir::*,
     targets, targets::Target,
@@ -459,7 +459,25 @@ let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
     // }
     // return;
 
-    match parse_lir(simple_fun_test) {
+    let type_test = r#"
+    type List = let B = let T = Int in (T, &B) in B in
+
+    proc hmm() -> List = {
+        ('~' as Int, Null)
+    } in
+
+    proc hmm2() -> List = {
+        let ptr: &List = alloc(sizeof(List)) in {
+            (*ptr) = hmm();
+            ('?' as Int, ptr)
+        }
+    } in
+
+    let x: let A = (Int, &A) in A
+        = hmm2()
+        in putchar(x.1->0 as Char)
+    "#;
+    match parse_lir(type_test) {
         Ok(expr) => {
             // eprintln!("{expr:?}");
             
