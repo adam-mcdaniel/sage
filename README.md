@@ -1,6 +1,6 @@
 # acid
 
-*A compiled language👅 with a trippy🌈 type system🔮*
+*A tiny compiled language👅 with a trippy🌈 type system🔮*
 
 [Here's an example of the compilation process.](assets/compiled.md#example-compiled-program)
 
@@ -116,10 +116,25 @@ Here is how some example instructions are assembled (with some abstract methods 
 </div>
 
 </br>
-And here is an example function definition that puts the character values of an unsigned integer's digits to the output interface I/O device.
+And here is an example assembly program to calculate the factorial of 10, and write the result to the output device.
 </br>
 </br>
 
-<div align="center">
-    <img alt="PutInt" align="center" src="assets/putint.png" width="90%"/>
-</div>
+```f#
+fun fact
+    if [FP]
+        mov [FP], A
+        dec A
+        push A
+        call fact
+        mul [FP + 1], [FP]
+        pop
+    else
+        set [FP], 1
+    end
+end
+
+set A, 10 push A
+call fact
+put [SP]
+```
