@@ -263,7 +263,7 @@ proc len(node: &List) -> Int = {
 } in
 
 proc neq(a: Int, b: Int) -> Bool = {
-    if ((a - b) as Bool) 1 else 0
+    (if ((a - b) as Bool) 1 else 0) as Bool
 } in
 
 proc index(node: &List, n: Int) -> &List = {
@@ -306,7 +306,7 @@ proc quicksort_arr(arr: &Int, low: Int, high: Int) -> None = {
     }
 } in
 
-const SIZE = 2000 in
+const SIZE = 200 in
 let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
     while lt(i, SIZE) {
         arr[i] = if (i % 2) i else (SIZE - i);
@@ -428,36 +428,122 @@ let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
     }
     "#;
 
-    // match parse_asm(string_asm) {
-    //     Ok(asm_code) => {
-    //         let device = match asm_code {
-    //             Ok(asm_core) => {
-    //                 eprintln!("{:?}", asm_core);
-    //                 let vm_code = asm_core.assemble(5000).unwrap();
-    //                 eprintln!("{:?}", vm_code);
-    //                 println!("{}", targets::C.build_core(&vm_code).unwrap());
-    //                 eprintln!("{:?}", vm_code.0.len());
-    //                 CoreInterpreter::new(StandardDevice)
-    //                     .run(&vm_code)
-    //                     .unwrap()
-    //             }
-    //             Err(asm_std) => {
-    //                 eprintln!("{:?}", asm_std);
-    //                 let vm_code = asm_std.assemble(5000).unwrap();
-    //                 eprintln!("{:?}", vm_code);
-    //                 println!("{}", targets::C.build_std(&vm_code).unwrap());
-    //                 eprintln!("{:?}", vm_code.0.len());
-    //                 StandardInterpreter::new(StandardDevice)
-    //                     .run(&vm_code)
-    //                     .unwrap()
-    //             }
-    //         };
-    //     }
-    //     Err(e) => {
-    //         eprintln!("{e}");
-    //     }
-    // }
-    // return;
+    let bitwise_test = r#"
+    set A, 10
+    set B, 7
+
+    mov A, C
+    bitwise-and B, C
+    put-int C
+
+    set D, 10 put-char D
+
+    set B, 100
+    bitwise-not B
+    inc B
+    put-int B
+
+    set D, 10 put-char D
+
+    set A, 100
+    set B, 7
+
+    bitwise-xor B, A
+
+    fun put_bits
+        set A, 128 bitwise-and [SP], A
+        if A
+            set A, 49
+        else
+            set A, 48
+        end
+        put-char A
+        set A, 64 bitwise-and [SP], A
+        if A
+            set A, 49
+        else
+            set A, 48
+        end
+        put-char A
+        set A, 32 bitwise-and [SP], A
+        if A
+            set A, 49
+        else
+            set A, 48
+        end
+        put-char A
+        set A, 16 bitwise-and [SP], A
+        if A
+            set A, 49
+        else
+            set A, 48
+        end
+        put-char A
+        set A, 8 bitwise-and [SP], A
+        if A
+            set A, 49
+        else
+            set A, 48
+        end
+        put-char A
+        set A, 4 bitwise-and [SP], A
+        if A
+            set A, 49
+        else
+            set A, 48
+        end
+        put-char A
+        set A, 2 bitwise-and [SP], A
+        if A
+            set A, 49
+        else
+            set A, 48
+        end
+        put-char A
+        set A, 1 bitwise-and [SP], A
+        if A
+            set A, 49
+        else
+            set A, 48
+        end
+        put-char A
+        pop
+    end
+
+    push A
+    call put_bits
+    "#;
+
+    match parse_asm(bitwise_test) {
+        Ok(asm_code) => {
+            let device = match asm_code {
+                Ok(asm_core) => {
+                    // eprintln!("{:?}", asm_core);
+                    let vm_code = asm_core.assemble(5000).unwrap();
+                    // eprintln!("{:?}", vm_code);
+                    println!("{}", targets::C.build_core(&vm_code).unwrap());
+                    // eprintln!("{:?}", vm_code.0.len());
+                    CoreInterpreter::new(StandardDevice)
+                        .run(&vm_code)
+                        .unwrap()
+                }
+                Err(asm_std) => {
+                    // eprintln!("{:?}", asm_std);
+                    let vm_code = asm_std.assemble(5000).unwrap();
+                    // eprintln!("{:?}", vm_code);
+                    println!("{}", targets::C.build_std(&vm_code).unwrap());
+                    // eprintln!("{:?}", vm_code.0.len());
+                    StandardInterpreter::new(StandardDevice)
+                        .run(&vm_code)
+                        .unwrap()
+                }
+            };
+        }
+        Err(e) => {
+            eprintln!("{e}");
+        }
+    }
+    return;
 
     let type_test = r#"
     type List = let B = let T = Int in (T, &B) in B in
@@ -477,7 +563,7 @@ let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
         = hmm2()
         in putchar(x.1->0 as Char)
     "#;
-    match parse_lir(type_test) {
+    match parse_lir(list) {
         Ok(expr) => {
             // eprintln!("{expr:?}");
             
@@ -488,7 +574,7 @@ let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
         
             let device = match asm_code {
                 Ok(asm_core) => {
-                    eprintln!("{:?}", asm_core);
+                    eprintln!("{:#?}", asm_core);
                     let vm_code = asm_core.assemble(100000).unwrap();
                     // println!("{:?}", vm_code);
                     println!("{}", targets::C.build_core(&vm_code).unwrap());
@@ -498,7 +584,7 @@ let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
                         .unwrap()
                 }
                 Err(asm_std) => {
-                    eprintln!("{:?}", asm_std);
+                    eprintln!("{:#?}", asm_std);
                     let vm_code = asm_std.assemble(100000).unwrap();
                     let vm_code = vm_code.flatten();
                     // eprintln!("AFTER:\n{:?}", vm_code);

@@ -197,8 +197,10 @@ pub enum CoreOp {
     /// Index that pointer by the value on the tape. Store the address
     /// of the index into the register.
     Index,
-    /// Swap the register and the value pointed to on the tape.
-    Swap,
+
+    /// Perform bitwise nand on the cell and the value pointed to on the tape,
+    /// and store the result in the register.
+    BitwiseNand,
 
     /// Add the value pointed to on the tape to the register.
     Add,

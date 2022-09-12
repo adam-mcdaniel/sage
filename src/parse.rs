@@ -1,6 +1,5 @@
 use super::lir::Expr;
 use super::asm::{CoreProgram, StandardProgram};
-use asciicolor::Colorize;
 use lalrpop_util::lalrpop_mod;
 lalrpop_mod!(lir_parser);
 lalrpop_mod!(asm_parser);
@@ -47,9 +46,9 @@ fn make_error(line: &str, unexpected: &str, line_number: usize, column_number: u
 {WS} = unexpected `{unexpected}`",
         WS = " ".repeat(line_number.to_string().len()),
         line_number = line_number,
-        line = line.bright_yellow().underline(),
+        line = line,
         underline = underline,
-        unexpected = unexpected.bright_yellow().underline()
+        unexpected = unexpected
     )
 }
 

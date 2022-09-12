@@ -27,7 +27,11 @@ CoreOp: CoreOp = {
     "mov" <src: Location> "," <dst: Location> => CoreOp::Move { src, dst },
     "copy" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::Copy { src, dst, size: size as usize },
     
-    "swap" <Location> "," <Location> => CoreOp::Swap(<>),
+    "bitwise-nand" <src: Location> "," <dst: Location> => CoreOp::BitwiseNand { src, dst },
+    "bitwise-and" <src: Location> "," <dst: Location> => CoreOp::BitwiseAnd { src, dst },
+    "bitwise-xor" <src: Location> "," <dst: Location> => CoreOp::BitwiseXor { src, dst },
+    "bitwise-or" <src: Location> "," <dst: Location> => CoreOp::BitwiseOr { src, dst },
+    "bitwise-not" <Location> => CoreOp::BitwiseNot(<>),
 
     "next" <Location> <("," <IntLit>)?> => CoreOp::Next(<>),
     "prev" <Location> <("," <IntLit>)?> => CoreOp::Prev(<>),
@@ -53,7 +57,7 @@ CoreOp: CoreOp = {
     "pop" => CoreOp::Pop(None, 1),
 
     "push-to" <src: Location> "," <sp: Location> "," <size: IntLit> => CoreOp::PushTo { src, sp, size: size as usize },
-    "pop-from" <sp: Location> "," <dst: ("," <Location>)?> "," <size: IntLit> => CoreOp::PopFrom { sp, dst, size: size as usize },
+    "pop-from" <sp: Location> <dst: ("," <Location>)?> "," <size: IntLit> => CoreOp::PopFrom { sp, dst, size: size as usize },
 
     "cmp" <a: Location> "," <b: Location> "," <dst: Location> => CoreOp::Compare { a, b, dst },
     "gt" <a: Location> "," <b: Location> "," <dst: Location> => CoreOp::IsGreater { a, b, dst },

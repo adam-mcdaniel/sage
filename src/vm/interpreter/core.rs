@@ -289,10 +289,8 @@ where
                 CoreOp::Refer => self.refer()?,
 
                 CoreOp::Index => self.register += *self.get_cell(),
-                CoreOp::Swap => {
-                    let tmp = self.register;
-                    self.register = *self.get_cell();
-                    *self.get_cell() = tmp;
+                CoreOp::BitwiseNand => {
+                    self.register = !(self.register & *self.get_cell());
                 },
                 CoreOp::Add => self.register += *self.get_cell(),
                 CoreOp::Sub => self.register -= *self.get_cell(),

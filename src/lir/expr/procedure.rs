@@ -1,6 +1,7 @@
 use crate::asm::{AssemblyProgram, CoreOp, A, FP, SP};
 use crate::lir::{Compile, Env, Error, Expr, ConstExpr, GetSize, GetType, Type, TypeCheck};
 use std::sync::Mutex;
+use core::fmt;
 
 // TODO: Do this without lazy_static.
 use lazy_static::lazy_static;
@@ -8,7 +9,7 @@ lazy_static! {
     static ref LAMBDA_COUNT: Mutex<usize> = Mutex::new(0);
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Procedure {
     /// The generated name of the procedure created by the compiler to be unique.
     mangled_name: String,
@@ -116,5 +117,18 @@ impl Compile for Procedure {
         output.op(CoreOp::Push(A, 1));
         output.comment(format!("done"));
         Ok(())
+    }
+}
+
+impl fmt::Debug for Procedure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "proc(")?;
+        for (i, (name, ty)) in self.args.iter().enumerate() {
+            write!(f, "{name:?}: {ty:?}")?;
+            if i < self.args.len() - 1{
+                write!(f, ", ")?
+            }
+        }
+        write!(f, ") -> {:?} = {:?}", self.ret, self.body)
     }
 }

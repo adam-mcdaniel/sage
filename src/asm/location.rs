@@ -283,6 +283,11 @@ impl Location {
         Ok(())
     }
 
+    /// Perform bitwise-nand on this cell and a source cell.
+    pub fn bitwise_nand(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.binop(vm::CoreOp::BitwiseNand, src, result);
+    }
+
     /// If this cell is non-zero, then the value of this location is now 0.
     /// Otherwise, the value of this location is now 1.
     ///

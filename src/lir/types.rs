@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, HashSet};
-
+use core::fmt;
 use super::{ConstExpr, Env, Error, Expr, GetSize, Simplify};
 
 /// A value that can be typechecked.
@@ -64,7 +64,7 @@ impl TypeCheck for Type {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Type {
     /// Bind a type to a name in a temporary scope.
     Let(String, Box<Self>, Box<Self>),
@@ -626,5 +626,77 @@ impl Simplify for Type {
                     .collect::<Result<BTreeMap<String, Type>, Error>>()?,
             ),
         })
+    }
+}
+
+
+impl fmt::Debug for Type {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Any => write!(f, "*"),
+            Self::Never => write!(f, "Never"),
+            Self::Pointer(ty) => write!(f, "&{ty:?}"),
+            Self::Bool => write!(f, "Bool"),
+            Self::Char => write!(f, "Char"),
+            Self::Cell => write!(f, "Cell"),
+            Self::Int => write!(f, "Int"),
+            Self::Float => write!(f, "Float"),
+            Self::None => write!(f, "None"),
+            Self::Array(ty, len) => write!(f, "[{ty:?} * {len:?}]"),
+            Self::Enum(variants) => {
+                write!(f, "enum {{")?;
+                for (i, variant) in variants.iter().enumerate() {
+                    write!(f, "{variant:?}")?;
+                    if i < variants.len() - 1{
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, "}}")
+            }
+            Self::Tuple(items) => {
+                write!(f, "(")?;
+                for (i, item) in items.iter().enumerate() {
+                    write!(f, "{item:?}")?;
+                    if i < items.len() - 1{
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, ")")
+            }
+            Self::Struct(fields) => {
+                write!(f, "struct {{")?;
+                for (i, (name, ty)) in fields.iter().enumerate() {
+                    write!(f, "{name:?}: {ty:?}")?;
+                    if i < fields.len() - 1{
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, "}}")
+            }
+            Self::Union(fields) => {
+                write!(f, "union {{")?;
+                for (i, (name, ty)) in fields.iter().enumerate() {
+                    write!(f, "{name:?}: {ty:?}")?;
+                    if i < fields.len() - 1{
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, "}}")
+            }
+            Self::Proc(args, ret) => {
+                write!(f, "proc(")?;
+                for (i, ty) in args.iter().enumerate() {
+                    write!(f, "{ty:?}")?;
+                    if i < args.len() - 1{
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, ") -> {ret:?}")
+            },
+            
+            Self::Symbol(name) => write!(f, "{name}"),
+            Self::Let(name, ty, ret) => write!(f, "let {name} = {ty:?} in {ret:?}"),
+
+        }
     }
 }

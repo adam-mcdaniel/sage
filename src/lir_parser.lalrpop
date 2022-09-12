@@ -3,13 +3,8 @@ use crate::lir::*;
 
 grammar;
 
-// pub Term: i32 = {
-//     <n:Num> => n,
-//     "(" <t:Term> ")" => t,
-// };
 
-
-pub Type: Type = {
+Type: Type = {
     "let" <var: Symbol> "=" <t: Type> "in" <ret: Type> => Type::Let(var, Box::new(t), Box::new(ret)),
     "proc" <args: List<"(", Type, ",", ")">> "->" <ret: Type> => Type::Proc(args, Box::new(ret)),
     TypeTerm => <>,

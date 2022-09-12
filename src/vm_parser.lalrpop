@@ -27,7 +27,7 @@ CoreOp: CoreOp = {
     "ref" => CoreOp::Refer,
 
     "index" => CoreOp::Index,
-    "swap" => CoreOp::Swap,
+    "bitwise-nand" => CoreOp::BitwiseNand,
     "add" => CoreOp::Add,
     "sub" => CoreOp::Sub,
     "mul" => CoreOp::Mul,

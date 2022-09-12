@@ -104,7 +104,7 @@ int main() {
                 CoreOp::Refer => "ptr = ref_stack[--ref_stack_ptr];".to_string(),
 
                 CoreOp::Index => "reg.p += ptr->i;".to_string(),
-                CoreOp::Swap => "{ int_or_float tmp = reg; reg = *ptr; *ptr = tmp; }".to_string(),
+                CoreOp::BitwiseNand => "reg.i = ~(reg.i & ptr->i);".to_string(),
 
                 CoreOp::Add => "reg.i += ptr->i;".to_string(),
                 CoreOp::Sub => "reg.i -= ptr->i;".to_string(),
@@ -323,8 +323,8 @@ int main() {
                 StandardOp::CoreOp(CoreOp::Index) => {
                     result += &format!("{}reg.p += ptr->i;\n", tab.repeat(indent));
                 }
-                StandardOp::CoreOp(CoreOp::Swap) => {
-                    result += &format!("{}{{ int_or_float tmp = reg; reg = *ptr; *ptr = tmp; }}\n", tab.repeat(indent));
+                StandardOp::CoreOp(CoreOp::BitwiseNand) => {
+                    result += &format!("{}reg.i = ~(reg.i & ptr->i);\n", tab.repeat(indent));
                 }
 
                 StandardOp::CoreOp(CoreOp::Add) => {
