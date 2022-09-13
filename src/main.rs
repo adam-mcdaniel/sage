@@ -445,7 +445,7 @@ let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
 
     set D, 10 put-char D
 
-    set A, 100
+    set A, 10
     set B, 7
 
     bitwise-xor B, A
@@ -514,36 +514,36 @@ let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
     call put_bits
     "#;
 
-    match parse_asm(bitwise_test) {
-        Ok(asm_code) => {
-            let device = match asm_code {
-                Ok(asm_core) => {
-                    // eprintln!("{:?}", asm_core);
-                    let vm_code = asm_core.assemble(5000).unwrap();
-                    // eprintln!("{:?}", vm_code);
-                    println!("{}", targets::C.build_core(&vm_code).unwrap());
-                    // eprintln!("{:?}", vm_code.0.len());
-                    CoreInterpreter::new(StandardDevice)
-                        .run(&vm_code)
-                        .unwrap()
-                }
-                Err(asm_std) => {
-                    // eprintln!("{:?}", asm_std);
-                    let vm_code = asm_std.assemble(5000).unwrap();
-                    // eprintln!("{:?}", vm_code);
-                    println!("{}", targets::C.build_std(&vm_code).unwrap());
-                    // eprintln!("{:?}", vm_code.0.len());
-                    StandardInterpreter::new(StandardDevice)
-                        .run(&vm_code)
-                        .unwrap()
-                }
-            };
-        }
-        Err(e) => {
-            eprintln!("{e}");
-        }
-    }
-    return;
+    // match parse_asm(bitwise_test) {
+    //     Ok(asm_code) => {
+    //         let device = match asm_code {
+    //             Ok(asm_core) => {
+    //                 // eprintln!("{:?}", asm_core);
+    //                 let vm_code = asm_core.assemble(5000).unwrap();
+    //                 // eprintln!("{:?}", vm_code);
+    //                 println!("{}", targets::C.build_core(&vm_code).unwrap());
+    //                 // eprintln!("{:?}", vm_code.0.len());
+    //                 CoreInterpreter::new(StandardDevice)
+    //                     .run(&vm_code)
+    //                     .unwrap()
+    //             }
+    //             Err(asm_std) => {
+    //                 // eprintln!("{:?}", asm_std);
+    //                 let vm_code = asm_std.assemble(5000).unwrap();
+    //                 // eprintln!("{:?}", vm_code);
+    //                 println!("{}", targets::C.build_std(&vm_code).unwrap());
+    //                 // eprintln!("{:?}", vm_code.0.len());
+    //                 StandardInterpreter::new(StandardDevice)
+    //                     .run(&vm_code)
+    //                     .unwrap()
+    //             }
+    //         };
+    //     }
+    //     Err(e) => {
+    //         eprintln!("{e}");
+    //     }
+    // }
+    // return;
 
     let type_test = r#"
     type List = let B = let T = Int in (T, &B) in B in
@@ -563,7 +563,38 @@ let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
         = hmm2()
         in putchar(x.1->0 as Char)
     "#;
-    match parse_lir(list) {
+
+    let bitops_test: &str = r#"
+const bitxor = core(a: Int, b: Int) -> Int = {
+    bitwise-xor [SP], [SP - 1] pop
+}, bitor = core(a: Int, b: Int) -> Int = {
+    bitwise-or [SP], [SP - 1] pop
+}, bitnand = core(a: Int, b: Int) -> Int = {
+    bitwise-nand [SP], [SP - 1] pop
+}, bitand = core(a: Int, b: Int) -> Int = {
+    bitwise-and [SP], [SP - 1] pop
+}, bitnot = core(x: Int) -> Int = {
+    bitwise-not [SP]
+} in let a = getint(),
+         b = getint() in {
+    putint(a); putchar(' '); putint(b); putchar(10 as Char);
+    putint(bitnand(a, b)); putchar(10 as Char);
+    putint(bitand(a, b)); putchar(10 as Char);
+    putint(bitor(a, b)); putchar(10 as Char);
+    putint(bitxor(a, b)); putchar(10 as Char);
+}
+
+    "#;
+    // , or = core(a: Int, b: Int) -> Int = {
+    //     bitwise-or [SP], [SP - 1] pop
+    // }, nand = core(a: Int, b: Int) -> Int = {
+    //     bitwise-nand [SP], [SP - 1] pop
+    // }, and = core(a: Int, b: Int) -> Int = {
+    //     bitwise-and [SP], [SP - 1] pop
+    // }, not = core(x: Int) -> Int = {
+    //     bitwise-not [SP]
+    // }
+    match parse_lir(bitops_test) {
         Ok(expr) => {
             // eprintln!("{expr:?}");
             

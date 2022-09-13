@@ -91,12 +91,14 @@ impl Compile for StandardBuiltin {
 
 impl fmt::Debug for CoreBuiltin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "core {{")?;
         for (i, op) in self.body.iter().enumerate() {
             op.fmt(f)?;
             if i < self.body.len() - 1 {
                 write!(f, " ")?
             }
         }
+        write!(f, "}}")?;
         Ok(())
     }
 }

@@ -1,5 +1,6 @@
-use std::{str::FromStr, collections::BTreeMap};
+use ::std::{str::FromStr, collections::BTreeMap};
 use crate::lir::*;
+use crate::asm::{Location, CoreOp, StandardOp, SP, FP, A, B, C, D, E, F};
 
 grammar;
 
@@ -29,6 +30,22 @@ TypeTerm: Type = {
 
 pub ConstExpr: ConstExpr = {
     "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <body: Block> => ConstExpr::Proc(Procedure::new(args, ret, body)),
+    "core" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" "{" <body: CoreOp*> "}" => ConstExpr::CoreBuiltin(
+        CoreBuiltin {
+            name: String::new(),
+            args,
+            ret,
+            body,
+        }
+    ),
+    "std" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" "{" <body: StandardOp*> "}" => ConstExpr::StandardBuiltin(
+        StandardBuiltin {
+            name: String::new(),
+            args,
+            ret,
+            body,
+        }
+    ),
     <variant: Symbol> "of" <t: TypeTerm> => ConstExpr::Of(t, variant).into(),
     Symbol => ConstExpr::Symbol(<>),
     IntLit => ConstExpr::Int(<> as i32),
@@ -44,6 +61,18 @@ pub ConstExpr: ConstExpr = {
 }
 
 pub Expr: Expr = {
+    "core" "{" <body: CoreOp*> "}" => ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: format!("block"),
+        args: vec![],
+        ret: Type::Any,
+        body,
+    }).app(vec![]),
+    "std" "{" <body: StandardOp*> "}" => ConstExpr::StandardBuiltin(StandardBuiltin {
+        name: format!("block"),
+        args: vec![],
+        ret: Type::Any,
+        body,
+    }).app(vec![]),
     <defs: List<"let", (<Symbol> <(":" <Type>)?> "=" <Math>), ",", "in">> <e: Expr> => {
         Expr::LetVars(defs, Box::new(e))
     },
@@ -157,4 +186,129 @@ List<Begin, T, Sep, End>: Vec<T> = {
             }
         }
     }
+}
+
+
+CoreOp: CoreOp = {
+    "set" <Location> "," <IntLit> => CoreOp::Set(<>),
+    "set" <Location> "," <Symbol> => CoreOp::SetLabel(<>),
+
+    "lea" <addr: Location> "," <dst: Location> => CoreOp::GetAddress { addr, dst },
+
+    "call" <Location> => CoreOp::Call(<>),
+    "call" <Symbol> => CoreOp::CallLabel(<>),
+
+    "ret" => CoreOp::Return,
+
+    "fun" <Symbol> => CoreOp::Fn(<>),
+    "while" <Location> => CoreOp::While(<>),
+    "if" <Location> => CoreOp::If(<>),
+    "else" => CoreOp::Else,
+    "end" => CoreOp::End,
+    
+    "mov" <src: Location> "," <dst: Location> => CoreOp::Move { src, dst },
+    "copy" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::Copy { src, dst, size: size as usize },
+    
+    "bitwise-nand" <src: Location> "," <dst: Location> => CoreOp::BitwiseNand { src, dst },
+    "bitwise-and" <src: Location> "," <dst: Location> => CoreOp::BitwiseAnd { src, dst },
+    "bitwise-xor" <src: Location> "," <dst: Location> => CoreOp::BitwiseXor { src, dst },
+    "bitwise-or" <src: Location> "," <dst: Location> => CoreOp::BitwiseOr { src, dst },
+    "bitwise-not" <Location> => CoreOp::BitwiseNot(<>),
+
+    "next" <Location> <("," <IntLit>)?> => CoreOp::Next(<>),
+    "prev" <Location> <("," <IntLit>)?> => CoreOp::Prev(<>),
+
+    "index" <src: Location> "," <offset: Location> "," <dst: Location> => CoreOp::Index { src, offset, dst },
+    "inc" <Location> => CoreOp::Inc(<>),
+    "dec" <Location> => CoreOp::Dec(<>),
+    "add" <src: Location> "," <dst: Location> => CoreOp::Add { src, dst },
+    "sub" <src: Location> "," <dst: Location> => CoreOp::Sub { src, dst },
+    "mul" <src: Location> "," <dst: Location> => CoreOp::Mul { src, dst },
+    "div" <src: Location> "," <dst: Location> => CoreOp::Div { src, dst },
+    "rem" <src: Location> "," <dst: Location> => CoreOp::Rem { src, dst },
+    "div-rem" <src: Location> "," <dst: Location> => CoreOp::DivRem { src, dst },
+    "neg" <Location> => CoreOp::Neg(<>),
+    "not" <Location> => CoreOp::Not(<>),
+    "and" <src: Location> "," <dst: Location> => CoreOp::And { src, dst },
+    "or" <src: Location> "," <dst: Location> => CoreOp::Or { src, dst },
+
+    "push" <src: Location> <size: ("," <IntLit>)?> => CoreOp::Push(src, size.unwrap_or(1) as usize),
+    "pop" <dst: Location> "," <size: IntLit> => CoreOp::Pop(Some(dst), size as usize),
+    "pop" <dst: Location> => CoreOp::Pop(Some(dst), 1),
+    "pop" <size: IntLit> => CoreOp::Pop(None, size as usize),
+    "pop" => CoreOp::Pop(None, 1),
+
+    "push-to" <src: Location> "," <sp: Location> "," <size: IntLit> => CoreOp::PushTo { src, sp, size: size as usize },
+    "pop-from" <sp: Location> <dst: ("," <Location>)?> "," <size: IntLit> => CoreOp::PopFrom { sp, dst, size: size as usize },
+
+    "cmp" <a: Location> "," <b: Location> "," <dst: Location> => CoreOp::Compare { a, b, dst },
+    "gt" <a: Location> "," <b: Location> "," <dst: Location> => CoreOp::IsGreater { a, b, dst },
+    "gte" <a: Location> "," <b: Location> "," <dst: Location> => CoreOp::IsGreaterEqual { a, b, dst },
+    "lt" <a: Location> "," <b: Location> "," <dst: Location> => CoreOp::IsLess { a, b, dst },
+    "lte" <a: Location> "," <b: Location> "," <dst: Location> => CoreOp::IsLessEqual { a, b, dst },
+    "eq" <a: Location> "," <b: Location> "," <dst: Location> => CoreOp::IsEqual { a, b, dst },
+    "neq" <a: Location> "," <b: Location> "," <dst: Location> => CoreOp::IsNotEqual { a, b, dst },
+
+    "put" <Location> => CoreOp::Put(<>),
+    "get" <Location> => CoreOp::Get(<>),
+
+    "array" <src: Location> "," <vals: List<"[", IntLit, ",", "]">> "," <dst: Location> => CoreOp::Array {
+        src, dst, vals
+    },
+    "array" <src: Location> "," <vals: StringLit> "," <dst: Location> => {
+        let mut vals: Vec<isize> = vals.chars().map(|c| c as isize).collect();
+        vals.push(0);
+        CoreOp::Array { src, dst, vals }
+    }
+}
+
+StandardOp: StandardOp = {
+    CoreOp => StandardOp::CoreOp(<>),
+    "set-f" <Location> "," <FloatLit> => StandardOp::Set(<>),
+    "to-float" <Location> => StandardOp::ToFloat(<>),
+    "to-int" <Location> => StandardOp::ToInt(<>),
+    
+    "pow" <src: Location> "," <dst: Location> => StandardOp::Pow { src, dst },
+    "sqrt" <Location> => StandardOp::Sqrt(<>),
+    "add-f" <src: Location> "," <dst: Location> => StandardOp::Add { src, dst },
+    "sub-f" <src: Location> "," <dst: Location> => StandardOp::Sub { src, dst },
+    "mul-f" <src: Location> "," <dst: Location> => StandardOp::Mul { src, dst },
+    "div-f" <src: Location> "," <dst: Location> => StandardOp::Div { src, dst },
+    "rem-f" <src: Location> "," <dst: Location> => StandardOp::Rem { src, dst },
+    "neg-f" <Location> => StandardOp::Neg(<>),
+
+    "sin" <Location> => StandardOp::Sin(<>),
+    "cos" <Location> => StandardOp::Cos(<>),
+    "tan" <Location> => StandardOp::Tan(<>),
+    "asin" <Location> => StandardOp::ASin(<>),
+    "acos" <Location> => StandardOp::ACos(<>),
+    "atan" <Location> => StandardOp::ATan(<>),
+
+    "gt-f" <a: Location> "," <b: Location> "," <dst: Location> => StandardOp::IsGreater { a, b, dst },
+    "lt-f" <a: Location> "," <b: Location> "," <dst: Location> => StandardOp::IsLess { a, b, dst },
+
+    "alloc" <Location> => StandardOp::Alloc(<>),
+    "free" <Location> => StandardOp::Free(<>),
+
+    "put-char" <Location> => StandardOp::PutChar(<>),
+    "get-char" <Location> => StandardOp::GetChar(<>),
+    "put-int" <Location> => StandardOp::PutInt(<>),
+    "get-int" <Location> => StandardOp::GetInt(<>),
+    "put-float" <Location> => StandardOp::PutFloat(<>),
+    "get-float" <Location> => StandardOp::GetFloat(<>),
+}
+
+Location: Location = {
+    "[" <deref: Location> "+" <offset: IntLit> "]" => deref.deref().offset(offset),
+    "[" <deref: Location> "-" <offset: IntLit> "]" => deref.deref().offset(-offset),
+    "[" <Location> "]" => <>.deref(),
+
+    "A" => A,
+    "B" => B,
+    "C" => C,
+    "D" => D,
+    "E" => E,
+    "F" => F,
+    "SP" => SP,
+    "FP" => FP,
 }

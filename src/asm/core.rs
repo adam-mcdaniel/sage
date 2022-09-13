@@ -695,7 +695,7 @@ impl fmt::Debug for CoreOp {
         match self {
             Self::Many(ops) => {
                 for op in ops {
-                    write!(f, "{:?}; ", op)?;
+                    write!(f, "{:?} ", op)?;
                 }
                 Ok(())
             }

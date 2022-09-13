@@ -382,14 +382,25 @@ where
                     self.register = as_int(buf.trim().parse::<f64>().unwrap_or(0.0))
                 }
                 StandardOp::GetInt => {
-                    let mut buf = String::new();
+                    let mut buf = [0];
                     if stderr().flush().is_err() {
                         return Err("Could not flush output".to_string());
                     }
-                    if stdin().read_line(&mut buf).is_err() {
-                        return Err("Could not get user input".to_string());
+
+                    while stdin().read(&mut buf).is_ok() && (buf[0] as char).is_whitespace() {}
+                    
+                    self.register = if buf[0].is_ascii_digit() {
+                        (buf[0] - b'0') as isize
+                    } else { 0 };
+
+                    while stdin().read(&mut buf).is_ok() {
+                        if buf[0].is_ascii_digit() {
+                            self.register *= 10;
+                            self.register += (buf[0] - b'0') as isize
+                        } else {
+                            break
+                        }
                     }
-                    self.register = buf.trim().parse::<isize>().unwrap_or(0)
                 }
                 StandardOp::GetChar => {
                     let mut buf = [0];
