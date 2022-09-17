@@ -1,4 +1,3 @@
-
 const bitxor = proc(a: Int, b: Int) -> Int = core {
     bitwise-xor [SP], [SP - 1] pop
 }, bitor = proc(a: Int, b: Int) -> Int = core {
@@ -403,10 +402,13 @@ proc round_key(word0: Int, word1: Int, word2: Int, word3: Int) -> State = {
 } in
 
 const alloc = proc(size: Int) -> &Int = core {
-    pop B
-    set A, 10000 push A
-    add B, [[SP]]
-    mov [[SP]], [SP]
+    set A, 10000
+    index SP, A, C
+    push C
+    add [SP - 1], [[SP]]
+    lea [[SP]], [SP - 1]
+    add [[SP]], [SP - 1]
+    pop
 } in
 
 const free = proc(ptr: &Int) -> None = {} in

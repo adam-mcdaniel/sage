@@ -116,17 +116,19 @@ impl fmt::Display for CoreProgram {
         let mut comment_count = 0;
         let mut indent = 0;
         for (i, op) in self.0.iter().enumerate() {
-            if let CoreOp::Comment(comment) = op {
-                if f.alternate() {
-                    write!(f, "{:8}  ", "")?;
-                }
-                comment_count += 1;
-                writeln!(f, "{}// {}", "   ".repeat(indent), comment,)?;
-                continue;
-            }
-
             if f.alternate() {
+                if let CoreOp::Comment(comment) = op {
+                    if f.alternate() {
+                        write!(f, "{:8}  ", "")?;
+                    }
+                    comment_count += 1;
+                    writeln!(f, "{}// {}", "   ".repeat(indent), comment,)?;
+                    continue;
+                }
+
                 write!(f, "{:08x?}: ", i - comment_count)?;
+            } else if let CoreOp::Comment(_) = op {
+                continue;
             }
 
             writeln!(

@@ -21,8 +21,10 @@ enum SourceType {
     StdVM,
 }
 
+
+
 #[derive(Parser, Debug)]
-#[clap(author, version, about = LOGO_WITH_COLOR, long_about = Some(LOGO_WITH_COLOR))]
+#[clap(author, version, before_help = "⚠️ 🧪WARNING: Highly corrosive!⚗️ ⚠️", about = Some(LOGO_WITH_COLOR), long_about = Some(LOGO_WITH_COLOR), max_term_width=70)]
 struct Args {
     /// The input file to compiler.
     #[clap(value_parser)]
@@ -170,7 +172,7 @@ fn compile(src: String, src_type: SourceType, target: TargetType, output: String
         TargetType::CoreVM => {
             match compile_source_to_vm(src, src_type, rec_depth)? {
                 Ok(vm_code) => {
-                    write_file(format!("{output}.vm"), vm_code.flatten().to_string())?
+                    write_file(format!("{output}.vm.lsd"), vm_code.flatten().to_string())?
                 }
                 Err(_) => {
                     return Err(Error::InvalidSource("expected core VM program, got standard VM program".to_string()));
@@ -180,10 +182,10 @@ fn compile(src: String, src_type: SourceType, target: TargetType, output: String
         TargetType::StdVM => {
             match compile_source_to_vm(src, src_type, rec_depth)? {
                 Ok(vm_code) => {
-                    write_file(format!("{output}.vm"), vm_code.flatten().to_string())?
+                    write_file(format!("{output}.vm.lsd"), vm_code.flatten().to_string())?
                 }
                 Err(vm_code) => {
-                    write_file(format!("{output}.vm"), vm_code.flatten().to_string())?
+                    write_file(format!("{output}.vm.lsd"), vm_code.flatten().to_string())?
                 }
             }
         }
