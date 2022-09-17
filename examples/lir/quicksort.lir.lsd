@@ -80,7 +80,7 @@ proc putbyte(n: Int, lower: Bool) -> None = {
     puthex(n % 16, lower)
 } in
 
-const putint = proc(n: Int) -> None = { putbyte(n, false) } in
+const putint = putdec in
 
 const putchar = proc(ch: Char) -> None = {
     put(ch as Int)
