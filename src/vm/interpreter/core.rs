@@ -225,7 +225,7 @@ where
     /// Get the current cell pointed to on the turing tape.
     fn get_cell(&mut self) -> &mut isize {
         while self.pointer >= self.cells.len() {
-            self.cells.push(0)
+            self.cells.extend(vec![0; 1000]);
         }
 
         &mut self.cells[self.pointer]

@@ -167,7 +167,7 @@ proc quicksort_arr(arr: &Int, low: Int, high: Int) -> None = {
     }
 } in
 
-const SIZE = 1000 in
+const SIZE = 100 in
 let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
     putchar('u');
     putchar('n');

@@ -26,6 +26,14 @@ use ::std::{
 pub trait Device {
     fn get(&mut self) -> Result<isize, String>;
     fn put(&mut self, val: isize) -> Result<(), String>;
+
+    fn get_char(&mut self) -> Result<char, String>;
+    fn put_char(&mut self, val: char) -> Result<(), String>;
+
+    fn get_int(&mut self) -> Result<isize, String>;
+    fn put_int(&mut self, val: isize) -> Result<(), String>;
+    fn get_float(&mut self) -> Result<f64, String>;
+    fn put_float(&mut self, val: f64) -> Result<(), String>;
 }
 
 /// A device used for testing the compiler. This simply keeps a buffer
@@ -84,6 +92,65 @@ impl Device for TestingDevice {
         self.output.push(val);
         Ok(())
     }
+
+    fn put_char(&mut self, ch: char) -> Result<(), String> {
+        self.output.push(ch as usize as isize);
+        Ok(())
+    }
+
+    fn put_int(&mut self, val: isize) -> Result<(), String> {
+        for ch in val.to_string().chars() {
+            self.put_char(ch)?
+        }
+        Ok(())
+    }
+
+    fn put_float(&mut self, val: f64) -> Result<(), String> {
+        for ch in format!("{val:?}").chars() {
+            self.put_char(ch)?
+        }
+        Ok(())
+    }
+
+    fn get_char(&mut self) -> Result<char, String> {
+        self.get().map(|n| n as u8 as char)
+    }
+
+    fn get_int(&mut self) -> Result<isize, String> {
+        let mut result: isize = 0;
+        loop {
+            let ch= self.get_char()?;
+            if !ch.is_whitespace() {
+                if ch.is_ascii_digit() {
+                    result = (ch as u8 - b'0') as isize;
+                }
+                break;
+            }
+        }
+
+        loop {
+            let ch= self.get_char()?;
+            if ch.is_ascii_digit() {
+                result *= 10;
+                result += (ch as u8 - b'0') as isize
+            } else {
+                break;
+            }
+        }
+
+        Ok(result)
+    }
+
+    fn get_float(&mut self) -> Result<f64, String> {
+        let whole_part = self.get_int()?;
+        
+        Ok(whole_part as f64 + if self.get_char()? == '.' {
+            let fractional_part = self.get_int()? as f64;
+            fractional_part / 10.0_f64.powi(fractional_part.log10() as i32 + 1)
+        } else {
+            0.0
+        })
+    }
 }
 
 /// A device used for standard input and output.
@@ -115,5 +182,76 @@ impl Device for StandardDevice {
         } else {
             Ok(())
         }
+    }
+
+    fn get_char(&mut self) -> Result<char, String> {
+        let mut buf = [0];
+        if stdout().flush().is_err() {
+            return Err("Could not flush output".to_string());
+        }
+        if stdin().read(&mut buf).is_err() {
+            return Err("Could not get user input".to_string());
+        }
+        Ok(buf[0] as char)
+    }
+    fn put_char(&mut self, ch: char) -> Result<(), String> {
+        print!("{}", ch);
+        if stdout().flush().is_err() {
+            return Err("Could not flush output".to_string());
+        }
+        Ok(())
+    }
+
+    fn get_int(&mut self) -> Result<isize, String> {
+        let mut buf = [0];
+        if stdout().flush().is_err() {
+            return Err("Could not flush output".to_string());
+        }
+
+        while stdin().read(&mut buf).is_ok() && (buf[0] as char).is_whitespace() {}
+
+        let mut result = if buf[0].is_ascii_digit() {
+            (buf[0] - b'0') as isize
+        } else {
+            0
+        };
+
+        while stdin().read(&mut buf).is_ok() {
+            if buf[0].is_ascii_digit() {
+                result *= 10;
+                result += (buf[0] - b'0') as isize
+            } else {
+                break;
+            }
+        }
+
+        Ok(result)
+    }
+
+    fn put_int(&mut self, val: isize) -> Result<(), String> {
+        print!("{:?}", val);
+        if stdout().flush().is_err() {
+            return Err("Could not flush output".to_string());
+        }
+        Ok(())
+    }
+
+    fn get_float(&mut self) -> Result<f64, String> {
+        let mut buf = String::new();
+        if stdout().flush().is_err() {
+            return Err("Could not flush output".to_string());
+        }
+        if stdin().read_line(&mut buf).is_err() {
+            return Err("Could not get user input".to_string());
+        }
+        Ok(buf.trim().parse::<f64>().unwrap_or(0.0))
+    }
+
+    fn put_float(&mut self, val: f64) -> Result<(), String> {
+        print!("{:?}", val);
+        if stdout().flush().is_err() {
+            return Err("Could not flush output".to_string());
+        }
+        Ok(())
     }
 }

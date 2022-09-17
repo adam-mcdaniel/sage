@@ -20,4 +20,4 @@ proc collatz(n: Int) -> Int = {
             n = step(n);
         };
     return n
-} in { putchar('>'); collatz(129) }
+} in { putchar('>'); collatz(5) }
