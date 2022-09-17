@@ -64,6 +64,11 @@ const putchar = proc(ch: Char) -> None = {
     put(ch as Int)
 } in
 
+const getchar = proc() -> Char = core {
+    next SP
+    get [SP]
+} in
+
 proc ln() -> None = {
     putchar('\n')
 } in
@@ -525,11 +530,40 @@ proc inverse_cipher(self: State, key: Key) -> State = {
     }
 } in
 
+proc between(lower: Int, n: Int, upper: Int) -> Bool = {
+    if (lt(n, lower)) {
+        return false
+    };
+
+    if (gt(n, upper)) {
+        return false
+    };
+
+    true
+} in
+
+proc gethexdigit() -> Int = {
+    let digit = getchar() as Int in
+        if (between(48, digit, 57)) {
+            digit - 48
+        } else (if (between(65, digit, 70)) {
+            digit - 55
+        } else (if (between(97, digit, 102)) {
+            digit - 87
+        } else {
+            0
+        }))
+} in
+
+proc getbyte() -> Int = {
+    gethexdigit() * 16 + gethexdigit()
+} in
+
 let state = row_major(
-    0, 1, 2, 3,
-    4, 5, 6, 7,
-    8, 9, 10, 11,
-    12, 13, 14, 15
+    getbyte(), getbyte(), getbyte(), getbyte(),
+    getbyte(), getbyte(), getbyte(), getbyte(),
+    getbyte(), getbyte(), getbyte(), getbyte(),
+    getbyte(), getbyte(), getbyte(), getbyte(),
 ) in {
     let key = aes_128_key([
         0, 1, 2, 3, 4, 5, 6, 7,
