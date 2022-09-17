@@ -145,7 +145,6 @@ fn test_stack() {
     ])
     .assemble(32)
     .unwrap();
-    eprintln!("{:?}", program);
 
     let i = CoreInterpreter::new(TestingDevice::default());
 

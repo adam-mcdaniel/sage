@@ -4,13 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "lsd"
+path = "src/cli.rs"
 
 [dependencies]
 maplit = "1.0.2"
 lazy_static = "1.4.0"
 lalrpop-util = "0.19.8"
 lalrpop = "0.19.8"
-clap = "3.2.22"
+clap = { version ="3.2.22", features = ["derive"] }
 
 # Add a build-time dependency on the lalrpop library:
 [build-dependencies]

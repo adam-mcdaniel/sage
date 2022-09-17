@@ -1,0 +1,13 @@
+const put = proc(n: Int) -> None = core {
+    put [SP] pop
+} in
+
+proc test(
+    order: proc(Int, Int) -> Int,
+    x: Int,
+    y: Int) -> Int = {
+    order(x, y)
+} in 
+    put(test(proc(x: Int, y: Int) -> Int = {x},
+            'a' as Int,
+            'b' as Int))

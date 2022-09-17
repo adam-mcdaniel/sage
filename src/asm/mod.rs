@@ -36,7 +36,7 @@ pub trait AssemblyProgram {
 /// An environment used to assemble a program.
 /// This stores information about labels and their IDs in the virtual machine,
 /// as well as information about matching instructions to their `End` statements.
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone)]
 struct Env {
     labels: HashMap<String, usize>,
     label: usize,

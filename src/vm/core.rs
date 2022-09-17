@@ -111,7 +111,7 @@ fn flatten(code: Vec<CoreOp>) -> Vec<CoreOp> {
     result
 }
 
-impl fmt::Debug for CoreProgram {
+impl fmt::Display for CoreProgram {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut comment_count = 0;
         let mut indent = 0;
@@ -131,7 +131,7 @@ impl fmt::Debug for CoreProgram {
 
             writeln!(
                 f,
-                "{}{:?}",
+                "{}{}",
                 match op {
                     CoreOp::Function | CoreOp::If | CoreOp::While => {
                         indent += 1;
@@ -154,7 +154,7 @@ impl fmt::Debug for CoreProgram {
 }
 
 /// An individual core virtual machine instruction.
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum CoreOp {
     /// A comment in the machine code (not in the compiled output).
     Comment(String),
@@ -243,7 +243,7 @@ pub enum CoreOp {
     Put,
 }
 
-impl fmt::Debug for CoreOp {
+impl fmt::Display for CoreOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CoreOp::Comment(s) => write!(f, "// {}", s),

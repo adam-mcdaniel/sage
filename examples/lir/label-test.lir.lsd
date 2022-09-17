@@ -1,0 +1,16 @@
+const putint = proc(n: Int) -> None = std {
+    put-int [SP]
+    pop
+} in
+const putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+} in
+
+proc C() -> None = { putint(6) } in
+proc B() -> None = { putint(5) } in
+proc A() -> None = { if false { B(); C() }; C(); B() } in
+proc D() -> None = { if false { B(); C() }; A(); } in {
+    A();
+    D();
+}

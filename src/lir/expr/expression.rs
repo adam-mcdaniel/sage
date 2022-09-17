@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 /// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
 ///       This way, we don't overflow the stack with several clones of the environment.
 /// A runtime expression.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
     /// A constant expression.
     ConstExpr(ConstExpr),
@@ -702,7 +702,7 @@ impl TypeCheck for Expr {
 impl Compile for Expr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         if !matches!(self, Self::ConstExpr(_)) {
-            let mut comment = format!("{self:?}");
+            let mut comment = format!("{self}");
             comment.truncate(70);
             output.comment(format!("compiling `{comment}`"));
         }
@@ -1492,14 +1492,14 @@ impl GetType for Expr {
     }
 }
 
-impl fmt::Debug for Expr {
+impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::ConstExpr(expr) => write!(f, "{expr:?}"),
+            Self::ConstExpr(expr) => write!(f, "{expr}"),
             Self::Many(exprs) => {
                 write!(f, "{{ ")?;
                 for (i, item) in exprs.iter().enumerate() {
-                    write!(f, "{item:?}")?;
+                    write!(f, "{item}")?;
                     if i < exprs.len() - 1 {
                         write!(f, "; ")?
                     }
@@ -1509,7 +1509,7 @@ impl fmt::Debug for Expr {
             Self::Array(exprs) => {
                 write!(f, "[")?;
                 for (i, item) in exprs.iter().enumerate() {
-                    write!(f, "{item:?}")?;
+                    write!(f, "{item}")?;
                     if i < exprs.len() - 1 {
                         write!(f, ", ")?
                     }
@@ -1519,7 +1519,7 @@ impl fmt::Debug for Expr {
             Self::Tuple(exprs) => {
                 write!(f, "(")?;
                 for (i, item) in exprs.iter().enumerate() {
-                    write!(f, "{item:?}")?;
+                    write!(f, "{item}")?;
                     if i < exprs.len() - 1 {
                         write!(f, ", ")?
                     }
@@ -1529,79 +1529,79 @@ impl fmt::Debug for Expr {
             Self::LetVar(name, ty, val, ret) => {
                 write!(f, "let {name}")?;
                 if let Some(ty) = ty {
-                    write!(f, ": {ty:?}")?
+                    write!(f, ": {ty}")?
                 }
-                write!(f, " = {val:?} in {ret:?}")
+                write!(f, " = {val} in {ret}")
             }
             Self::LetVars(vars, ret) => {
                 write!(f, "let ")?;
                 for (i, (name, ty, val)) in vars.iter().enumerate() {
                     write!(f, "{name}")?;
                     if let Some(ty) = ty {
-                        write!(f, ": {ty:?}")?
+                        write!(f, ": {ty}")?
                     }
-                    write!(f, " = {val:?}")?;
+                    write!(f, " = {val}")?;
                     if i < vars.len() - 1 {
                         write!(f, ", ")?
                     }
                 }
-                write!(f, " in {ret:?}")
+                write!(f, " in {ret}")
             }
             Self::LetConst(name, val, ret) => {
-                write!(f, "const {name:?} = {val:?} in {ret:?}")
+                write!(f, "const {name} = {val} in {ret}")
             }
             Self::LetConsts(consts, ret) => {
                 write!(f, "const ")?;
                 for (i, (name, val)) in consts.iter().enumerate() {
-                    write!(f, "{name} = {val:?}")?;
+                    write!(f, "{name} = {val}")?;
                     if i < consts.len() - 1 {
                         write!(f, ", ")?
                     }
                 }
-                write!(f, " in {ret:?}")
+                write!(f, " in {ret}")
             }
             Self::LetProc(name, val, ret) => {
-                write!(f, "const {name:?} = {val:?} in {ret:?}")
+                write!(f, "const {name} = {val} in {ret}")
             }
             Self::LetProcs(consts, ret) => {
                 write!(f, "const ")?;
                 for (i, (name, val)) in consts.iter().enumerate() {
-                    write!(f, "{name} = {val:?}")?;
+                    write!(f, "{name} = {val}")?;
                     if i < consts.len() - 1 {
                         write!(f, ", ")?
                     }
                 }
-                write!(f, " in {ret:?}")
+                write!(f, " in {ret}")
             }
             Self::LetType(name, ty, ret) => {
-                write!(f, "type {name:?} = {ty:?} in {ret:?}")
+                write!(f, "type {name} = {ty} in {ret}")
             }
             Self::LetTypes(types, ret) => {
                 write!(f, "type ")?;
                 for (i, (name, ty)) in types.iter().enumerate() {
-                    write!(f, "{name} = {ty:?}")?;
+                    write!(f, "{name} = {ty}")?;
                     if i < types.len() - 1 {
                         write!(f, ", ")?
                     }
                 }
-                write!(f, " in {ret:?}")
+                write!(f, " in {ret}")
             }
 
             Self::While(cond, body) => {
-                write!(f, "while ({cond:?}) {body:?}")
+                write!(f, "while ({cond}) {body}")
             }
             Self::If(cond, t, e) => {
-                write!(f, "if ({cond:?}) {t:?} else {e:?}")
+                write!(f, "if ({cond}) {t} else {e}")
             }
             Self::When(cond, t, e) => {
-                write!(f, "when ({cond:?}) {t:?} else {e:?}")
+                write!(f, "when ({cond}) {t} else {e}")
             }
-            Self::As(val, ty) => write!(f, "{val:?} as {ty:?}"),
+            Self::As(val, ty) => write!(f, "{val} as {ty}"),
 
             Self::Struct(items) => {
                 write!(f, "struct {{")?;
                 for (i, (name, val)) in items.iter().enumerate() {
-                    write!(f, "{name} = {val:?}")?;
+                    write!(f, "{name} = {val}")?;
                     if i < items.len() - 1 {
                         write!(f, ", ")?
                     }
@@ -1609,29 +1609,29 @@ impl fmt::Debug for Expr {
                 write!(f, "}}")
             }
             Self::Union(ty, variant, val) => {
-                write!(f, "union {{ {variant} = {val:?}, {ty:?}.. }}")
+                write!(f, "union {{ {variant} = {val}, {ty}.. }}")
             }
 
-            Self::Add(a, b) => write!(f, "{a:?} + {b:?}"),
-            Self::Sub(a, b) => write!(f, "{a:?} - {b:?}"),
-            Self::Mul(a, b) => write!(f, "{a:?} * {b:?}"),
-            Self::Div(a, b) => write!(f, "{a:?} / {b:?}"),
-            Self::Rem(a, b) => write!(f, "{a:?} % {b:?}"),
-            Self::And(a, b) => write!(f, "{a:?} and {b:?}"),
-            Self::Or(a, b) => write!(f, "{a:?} or {b:?}"),
-            Self::Not(x) => write!(f, "not {x:?}"),
+            Self::Add(a, b) => write!(f, "{a} + {b}"),
+            Self::Sub(a, b) => write!(f, "{a} - {b}"),
+            Self::Mul(a, b) => write!(f, "{a} * {b}"),
+            Self::Div(a, b) => write!(f, "{a} / {b}"),
+            Self::Rem(a, b) => write!(f, "{a} % {b}"),
+            Self::And(a, b) => write!(f, "{a} and {b}"),
+            Self::Or(a, b) => write!(f, "{a} or {b}"),
+            Self::Not(x) => write!(f, "not {x}"),
 
-            Self::Member(val, field) => write!(f, "{val:?}.{field:?}"),
-            Self::Index(val, idx) => write!(f, "{val:?}[{idx:?}]"),
+            Self::Member(val, field) => write!(f, "{val}.{field}"),
+            Self::Index(val, idx) => write!(f, "{val}[{idx}]"),
 
-            Self::Return(val) => write!(f, "return {val:?}"),
-            Self::Refer(val) => write!(f, "&{val:?}"),
-            Self::Deref(ptr) => write!(f, "*{ptr:?}"),
-            Self::DerefMut(ptr, val) => write!(f, "(*{ptr:?}) = {val:?}"),
+            Self::Return(val) => write!(f, "return {val}"),
+            Self::Refer(val) => write!(f, "&{val}"),
+            Self::Deref(ptr) => write!(f, "*{ptr}"),
+            Self::DerefMut(ptr, val) => write!(f, "(*{ptr}) = {val}"),
             Self::Apply(fun, args) => {
-                write!(f, "{fun:?}(")?;
+                write!(f, "{fun}(")?;
                 for (i, arg) in args.iter().enumerate() {
-                    write!(f, "{arg:?}")?;
+                    write!(f, "{arg}")?;
                     if i < args.len() - 1 {
                         write!(f, ", ")?
                     }

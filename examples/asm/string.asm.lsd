@@ -1,0 +1,30 @@
+set A, 100
+alloc A
+array [A], "Hello world!", B
+array [B], "How are you?", C
+array [C], "I am good!", D
+
+fun putstr
+    mov [FP], F
+    while [F]
+        put-char [F]
+        next F
+    end
+end
+
+fun putstrln
+    call putstr
+    set F, 10 put-char F
+end
+
+push A
+put-int [SP]
+call putstrln
+push B
+put-int [SP]
+call putstrln
+push C
+put-int [SP]
+call putstrln
+
+free A

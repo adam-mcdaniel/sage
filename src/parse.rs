@@ -1,9 +1,22 @@
 use super::asm::{CoreProgram, StandardProgram};
 use super::lir::Expr;
+use super::vm;
 use lalrpop_util::lalrpop_mod;
 lalrpop_mod!(lir_parser);
 lalrpop_mod!(asm_parser);
+lalrpop_mod!(vm_parser);
 pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
+
+pub fn parse_vm(input: impl ToString) -> Result<Result<vm::CoreProgram, vm::StandardProgram>, String> {
+    let code = input.to_string();
+    match vm_parser::CoreProgramParser::new().parse(&input.to_string()) {
+        Ok(parsed) => Ok(Ok(parsed)),
+        Err(_) => match vm_parser::StandardProgramParser::new().parse(&input.to_string()) {
+            Ok(parsed) => Ok(Err(parsed)),
+            Err(e) => Err(format_error(&code, e)),
+        },
+    }
+}
 
 pub fn parse_asm(input: impl ToString) -> Result<Result<CoreProgram, StandardProgram>, String> {
     let code = input.to_string();
@@ -53,6 +66,10 @@ fn make_error(line: &str, unexpected: &str, line_number: usize, column_number: u
 
 // Gets the line number, the line, and the column number of the error
 pub fn get_line(script: &str, location: usize) -> (usize, String, usize) {
+    if script.is_empty() {
+        return (1, "".to_string(), 0);
+    }
+
     // Get the line number from the character location
     let line_number = script[..location + 1].lines().count();
     // Get the line from the line number

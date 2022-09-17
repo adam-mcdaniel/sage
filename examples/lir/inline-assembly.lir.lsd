@@ -1,0 +1,31 @@
+const putint = proc(n: Int) -> None = std {
+    put-int [SP]
+    pop
+} in
+const putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+} in
+
+const asm_init = proc() -> None = core {
+    fun FACT
+        set A, 0
+        gt [SP], A, B
+        if B
+            push [SP]
+            dec [SP]
+            call FACT
+            mul [SP], [SP - 1]
+            pop
+        else
+            set [SP], 1
+        end
+    end
+}, fact = proc(n: Int) -> Int = core {
+    call FACT
+} in {
+    asm_init();
+
+    putint(fact(5)); putchar('\n');
+    putint(fact(10)); putchar('\n');
+}

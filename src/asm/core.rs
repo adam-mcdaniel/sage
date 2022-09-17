@@ -33,7 +33,7 @@ use core::fmt;
 
 /// A program composed of core instructions, which can be assembled
 /// into the core virtual machine instructions.
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct CoreProgram(pub Vec<CoreOp>);
 
 impl CoreProgram {
@@ -63,27 +63,28 @@ impl CoreProgram {
     }
 }
 
-impl fmt::Debug for CoreProgram {
+impl fmt::Display for CoreProgram {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut indent = 0;
         let mut comment_count = 0;
         for (i, op) in self.0.iter().enumerate() {
-            if let CoreOp::Comment(comment) = op {
-                if f.alternate() {
-                    write!(f, "{:8}  ", "")?;
-                }
-                comment_count += 1;
-                writeln!(f, "{}// {}", "   ".repeat(indent), comment,)?;
-                continue;
-            }
-
             if f.alternate() {
+                if let CoreOp::Comment(comment) = op {
+                    if f.alternate() {
+                        write!(f, "{:8}  ", "")?;
+                    }
+                    comment_count += 1;
+                    writeln!(f, "{}// {}", "   ".repeat(indent), comment,)?;
+                    continue;
+                }
                 write!(f, "{:04x?}: ", i - comment_count)?;
+            } else if let CoreOp::Comment(_) = op {
+                continue;
             }
 
             writeln!(
                 f,
-                "{}{:?}",
+                "{}{}",
                 match op {
                     CoreOp::Fn(_) | CoreOp::If(_) | CoreOp::While(_) => {
                         indent += 1;
@@ -117,7 +118,7 @@ impl AssemblyProgram for CoreProgram {
 
 /// A core instruction of the assembly language. These are instructions
 /// guaranteed to be implemented for every target possible.
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum CoreOp {
     Comment(String),
     Many(Vec<CoreOp>),
@@ -683,116 +684,116 @@ impl CoreOp {
     }
 }
 
-impl fmt::Debug for CoreOp {
+impl fmt::Display for CoreOp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Many(ops) => {
                 for op in ops {
-                    write!(f, "{:?} ", op)?;
+                    write!(f, "{} ", op)?;
                 }
                 Ok(())
             }
-            Self::Comment(comment) => write!(f, "// {comment:?}"),
+            Self::Comment(comment) => write!(f, "// {comment}"),
 
             Self::PushTo { src, sp, size } => {
-                write!(f, "push-to {src:?}, {sp:?}, {size:?}")
+                write!(f, "push-to {src}, {sp}, {size}")
             }
             Self::PopFrom { sp, dst, size } => {
-                write!(f, "pop {sp:?}")?;
+                write!(f, "pop {sp}")?;
                 if let Some(dst) = dst {
-                    write!(f, ", {dst:?}")?
+                    write!(f, ", {dst}")?
                 }
-                write!(f, ", {size:?}")
+                write!(f, ", {size}")
             }
 
             Self::Push(loc, size) => {
-                write!(f, "push {loc:?}")?;
+                write!(f, "push {loc}")?;
                 if *size != 1 {
-                    write!(f, ", {size:?}")?
+                    write!(f, ", {size}")?
                 }
                 Ok(())
             }
             Self::Pop(loc, size) => {
                 write!(f, "pop")?;
                 if let Some(dst) = loc {
-                    write!(f, " {dst:?}")?;
+                    write!(f, " {dst}")?;
                     if *size != 1 {
-                        write!(f, ", {size:?}")?
+                        write!(f, ", {size}")?
                     }
                 } else if *size != 1 {
-                    write!(f, " {size:?}")?
+                    write!(f, " {size}")?
                 }
                 Ok(())
             }
 
-            Self::Call(loc) => write!(f, "call {loc:?}"),
+            Self::Call(loc) => write!(f, "call {loc}"),
             Self::CallLabel(label) => write!(f, "call {label}"),
 
-            Self::GetAddress { addr, dst } => write!(f, "lea {addr:?}, {dst:?}"),
+            Self::GetAddress { addr, dst } => write!(f, "lea {addr}, {dst}"),
             Self::Return => write!(f, "ret"),
 
             Self::Fn(label) => write!(f, "fun {label}"),
-            Self::While(cond) => write!(f, "while {cond:?}"),
-            Self::If(cond) => write!(f, "if {cond:?}"),
+            Self::While(cond) => write!(f, "while {cond}"),
+            Self::If(cond) => write!(f, "if {cond}"),
             Self::Else => write!(f, "else"),
             Self::End => write!(f, "end"),
 
-            Self::Move { src, dst } => write!(f, "mov {src:?}, {dst:?}"),
-            Self::Copy { src, dst, size } => write!(f, "copy {src:?}, {dst:?}, {size:?}"),
-            Self::Swap(a, b) => write!(f, "swap {a:?}, {b:?}"),
+            Self::Move { src, dst } => write!(f, "mov {src}, {dst}"),
+            Self::Copy { src, dst, size } => write!(f, "copy {src}, {dst}, {size}"),
+            Self::Swap(a, b) => write!(f, "swap {a}, {b}"),
             Self::Next(loc, size) => {
-                write!(f, "next {loc:?}")?;
+                write!(f, "next {loc}")?;
                 if let Some(n) = size {
-                    write!(f, ", {n:?}")?
+                    write!(f, ", {n}")?
                 }
                 Ok(())
             }
             Self::Prev(loc, size) => {
-                write!(f, "prev {loc:?}")?;
+                write!(f, "prev {loc}")?;
                 if let Some(n) = size {
-                    write!(f, ", {n:?}")?
+                    write!(f, ", {n}")?
                 }
                 Ok(())
             }
             Self::Index { src, offset, dst } => {
-                write!(f, "index {src:?}, {offset:?}, {dst:?}")
+                write!(f, "index {src}, {offset}, {dst}")
             }
-            Self::Inc(loc) => write!(f, "inc {loc:?}"),
-            Self::Dec(loc) => write!(f, "dec {loc:?}"),
+            Self::Inc(loc) => write!(f, "inc {loc}"),
+            Self::Dec(loc) => write!(f, "dec {loc}"),
 
-            Self::Set(loc, n) => write!(f, "set {loc:?}, {n:?}"),
-            Self::SetLabel(loc, label) => write!(f, "set {loc:?}, {label}"),
+            Self::Set(loc, n) => write!(f, "set {loc}, {n}"),
+            Self::SetLabel(loc, label) => write!(f, "set {loc}, {label}"),
 
-            Self::BitwiseNand { src, dst } => write!(f, "bitwise-nand {src:?}, {dst:?}"),
-            Self::BitwiseAnd { src, dst } => write!(f, "bitwise-and {src:?}, {dst:?}"),
-            Self::BitwiseXor { src, dst } => write!(f, "bitwise-xor {src:?}, {dst:?}"),
-            Self::BitwiseOr { src, dst } => write!(f, "bitwise-or {src:?}, {dst:?}"),
-            Self::BitwiseNot(loc) => write!(f, "bitwise-not {loc:?}"),
+            Self::BitwiseNand { src, dst } => write!(f, "bitwise-nand {src}, {dst}"),
+            Self::BitwiseAnd { src, dst } => write!(f, "bitwise-and {src}, {dst}"),
+            Self::BitwiseXor { src, dst } => write!(f, "bitwise-xor {src}, {dst}"),
+            Self::BitwiseOr { src, dst } => write!(f, "bitwise-or {src}, {dst}"),
+            Self::BitwiseNot(loc) => write!(f, "bitwise-not {loc}"),
 
-            Self::And { src, dst } => write!(f, "and {src:?}, {dst:?}"),
-            Self::Or { src, dst } => write!(f, "or {src:?}, {dst:?}"),
-            Self::Not(loc) => write!(f, "not {loc:?}"),
+            Self::And { src, dst } => write!(f, "and {src}, {dst}"),
+            Self::Or { src, dst } => write!(f, "or {src}, {dst}"),
+            Self::Not(loc) => write!(f, "not {loc}"),
 
-            Self::Add { src, dst } => write!(f, "add {src:?}, {dst:?}"),
-            Self::Sub { src, dst } => write!(f, "sub {src:?}, {dst:?}"),
-            Self::Mul { src, dst } => write!(f, "mul {src:?}, {dst:?}"),
-            Self::Div { src, dst } => write!(f, "div {src:?}, {dst:?}"),
-            Self::Rem { src, dst } => write!(f, "rem {src:?}, {dst:?}"),
-            Self::DivRem { src, dst } => write!(f, "div-rem {src:?}, {dst:?}"),
-            Self::Neg(loc) => write!(f, "neg {loc:?}"),
+            Self::Add { src, dst } => write!(f, "add {src}, {dst}"),
+            Self::Sub { src, dst } => write!(f, "sub {src}, {dst}"),
+            Self::Mul { src, dst } => write!(f, "mul {src}, {dst}"),
+            Self::Div { src, dst } => write!(f, "div {src}, {dst}"),
+            Self::Rem { src, dst } => write!(f, "rem {src}, {dst}"),
+            Self::DivRem { src, dst } => write!(f, "div-rem {src}, {dst}"),
+            Self::Neg(loc) => write!(f, "neg {loc}"),
 
-            Self::Array { src, vals, dst } => write!(f, "array {src:?}, {vals:?}, {dst:?}"),
+            Self::Array { src, vals, dst } => write!(f, "array {src}, {vals:?}, {dst}"),
 
-            Self::Compare { a, b, dst } => write!(f, "cmp {a:?}, {b:?}, {dst:?}"),
-            Self::IsGreater { a, b, dst } => write!(f, "gt {a:?}, {b:?}, {dst:?}"),
-            Self::IsGreaterEqual { a, b, dst } => write!(f, "gte {a:?}, {b:?}, {dst:?}"),
-            Self::IsLess { a, b, dst } => write!(f, "lt {a:?}, {b:?}, {dst:?}"),
-            Self::IsLessEqual { a, b, dst } => write!(f, "lte {a:?}, {b:?}, {dst:?}"),
-            Self::IsEqual { a, b, dst } => write!(f, "eq {a:?}, {b:?}, {dst:?}"),
-            Self::IsNotEqual { a, b, dst } => write!(f, "neq {a:?}, {b:?}, {dst:?}"),
+            Self::Compare { a, b, dst } => write!(f, "cmp {a}, {b}, {dst}"),
+            Self::IsGreater { a, b, dst } => write!(f, "gt {a}, {b}, {dst}"),
+            Self::IsGreaterEqual { a, b, dst } => write!(f, "gte {a}, {b}, {dst}"),
+            Self::IsLess { a, b, dst } => write!(f, "lt {a}, {b}, {dst}"),
+            Self::IsLessEqual { a, b, dst } => write!(f, "lte {a}, {b}, {dst}"),
+            Self::IsEqual { a, b, dst } => write!(f, "eq {a}, {b}, {dst}"),
+            Self::IsNotEqual { a, b, dst } => write!(f, "neq {a}, {b}, {dst}"),
 
-            Self::Put(loc) => write!(f, "put {loc:?}"),
-            Self::Get(loc) => write!(f, "get {loc:?}"),
+            Self::Put(loc) => write!(f, "put {loc}"),
+            Self::Get(loc) => write!(f, "get {loc}"),
         }
     }
 }

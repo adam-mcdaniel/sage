@@ -1,0 +1,24 @@
+const putint = proc(n: Int) -> None = std {
+    put-int [SP]
+    pop
+} in
+
+type A = Int,
+    B = (Int, Int),
+    C = ((Int, Int), Int),
+    Test = proc(A, proc(A) -> B, proc(B) -> C) -> C
+    in const
+        a = 5,
+        b = proc(x: Int) -> (Int, Int) = { (x, 6) },
+        c = proc(x: (Int, Int)) -> ((Int, Int), Int) = { (x, 7) },
+        test = proc(a: A, b: proc(A) -> B, c: proc(B) -> C) -> C = {
+            c(b(a))
+        }, hmm = proc(f: Test, x: Int) -> ((Int, Int), Int) = {
+            f(x, b, c)
+        } in {
+            let result = hmm(test, a) in {
+                putint((result.0).0);
+                putint((result.0).1);
+                putint(result.1);
+            }
+        }

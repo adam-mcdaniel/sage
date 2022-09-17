@@ -1,0 +1,35 @@
+const putint = proc(n: Int) -> None = std {
+    put-int [SP]
+    pop
+} in
+const getint = proc() -> Int = std {
+    get-int A
+    push A
+} in
+const putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+} in
+
+proc ln() -> None = { putchar('\n') } in
+
+const bitxor = proc(a: Int, b: Int) -> Int = core {
+    bitwise-xor [SP], [SP - 1] pop
+}, bitor = proc(a: Int, b: Int) -> Int = core {
+    bitwise-or [SP], [SP - 1] pop
+}, bitnand = proc(a: Int, b: Int) -> Int = core {
+    bitwise-nand [SP], [SP - 1] pop
+}, bitand = proc(a: Int, b: Int) -> Int = core {
+    bitwise-and [SP], [SP - 1] pop
+}, bitnot = proc(x: Int) -> Int = core {
+    bitwise-not [SP]
+} in let a = getint(),
+         b = getint() in {
+    putchar('a'); putchar(':'); putchar(' '); putint(a); ln();
+    putchar('b'); putchar(':'); putchar(' '); putint(b); ln();
+
+    putchar('~'); putchar('&'); putchar(' '); putint(bitnand(a, b)); ln();
+    putchar('&'); putchar(' '); putchar(' '); putint(bitand(a, b)); ln();
+    putchar('|'); putchar(' '); putchar(' '); putint(bitor(a, b)); ln();
+    putchar('^'); putchar(' '); putchar(' '); putint(bitxor(a, b)); ln();
+}

@@ -1,0 +1,18 @@
+const putint = proc(n: Int) -> None = std {
+    put-int [SP] pop
+} in
+
+type Point = struct { x: Int, y: Int } in
+type Test = union { scalar: Int, point: Point } in
+const HMM = 500 in
+
+let x = union {
+    point = struct { x=3, y=7 },
+    Test..
+}, z = 6 in {
+    x.point.x = z;
+    if true {
+        z = x.point.x + x.point.y;
+    };
+    putint(const TEST = HMM in z + TEST);
+}
