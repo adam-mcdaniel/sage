@@ -1,5 +1,5 @@
 use acid::{
-    asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, A, FP, SP},
+    asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, A, SP},
     lir::*,
     parse::*,
     vm::{as_int, CoreInterpreter, StandardInterpreter, TestingDevice},

@@ -65,7 +65,7 @@ struct Args {
 
     /// The number of cells allocated for the call stack.
     #[clap(short, long, value_parser, default_value = "8192")]
-    allocated_recursion_depth: usize,
+    call_stack_size: usize,
 }
 
 /// The types of errors returned by the CLI.
@@ -104,7 +104,7 @@ impl fmt::Debug for Error {
 fn compile_source_to_vm(
     src: String,
     src_type: SourceType,
-    rec_depth: usize,
+    call_stack_size: usize,
 ) -> Result<Result<acid::vm::CoreProgram, acid::vm::StandardProgram>, Error> {
     match src_type {
         SourceType::StdVM => {
@@ -127,15 +127,21 @@ fn compile_source_to_vm(
             // Then, assembly the program with the given recursion depth,
             // and return the virtual machine output.
             match parse_asm(src).map_err(Error::Parse)? {
-                Ok(prog) => Ok(Ok(prog.assemble(rec_depth).map_err(Error::AsmError)?)),
-                Err(prog) => Ok(Err(prog.assemble(rec_depth).map_err(Error::AsmError)?)),
+                Ok(prog) => Ok(Ok(prog
+                    .assemble(call_stack_size)
+                    .map_err(Error::AsmError)?)),
+                Err(prog) => Ok(Err(prog
+                    .assemble(call_stack_size)
+                    .map_err(Error::AsmError)?)),
             }
         }
         SourceType::CoreASM => {
             // Parse the assembly code.
             match parse_asm(src).map_err(Error::Parse)? {
                 // If we got back a core program, assembly it and return the virtual machine code.
-                Ok(prog) => Ok(Ok(prog.assemble(rec_depth).map_err(Error::AsmError)?)),
+                Ok(prog) => Ok(Ok(prog
+                    .assemble(call_stack_size)
+                    .map_err(Error::AsmError)?)),
                 // Otherwise, our core program was actually a standard program. Throw an error.
                 Err(_) => Err(Error::InvalidSource(
                     "expected core assembly program, got standard assembly program".to_string(),
@@ -150,9 +156,11 @@ fn compile_source_to_vm(
                 .map_err(Error::LirError)?
             {
                 // If we got back a valid program, assemble it and return the result.
-                Ok(asm_code) => Ok(Ok(asm_code.assemble(rec_depth).map_err(Error::AsmError)?)),
+                Ok(asm_code) => Ok(Ok(asm_code
+                    .assemble(call_stack_size)
+                    .map_err(Error::AsmError)?)),
                 Err(asm_code) => Ok(Err(asm_code
-                    .assemble(rec_depth)
+                    .assemble(call_stack_size)
                     .map_err(Error::AsmError)?)),
             }
         }
@@ -194,11 +202,11 @@ fn compile(
     src_type: SourceType,
     target: TargetType,
     output: String,
-    rec_depth: usize,
+    call_stack_size: usize,
 ) -> Result<(), Error> {
     match target {
         // If the target is `Run`, then compile the code and execute it with the interpreter.
-        TargetType::Run => match compile_source_to_vm(src, src_type, rec_depth)? {
+        TargetType::Run => match compile_source_to_vm(src, src_type, call_stack_size)? {
             // If the code is core variant virtual machine code
             Ok(vm_code) => {
                 CoreInterpreter::new(StandardDevice)
@@ -216,7 +224,7 @@ fn compile(
         // and then use the C target implementation to build the output source code.
         TargetType::C => write_file(
             format!("{output}.c"),
-            match compile_source_to_vm(src, src_type, rec_depth)? {
+            match compile_source_to_vm(src, src_type, call_stack_size)? {
                 Ok(vm_code) => targets::C.build_core(&vm_code.flatten()),
                 Err(vm_code) => targets::C.build_std(&vm_code.flatten()),
             }
@@ -224,7 +232,7 @@ fn compile(
         )?,
         // If the target is core virtual machine code, then try to compile the source to the core variant.
         // If not possible, throw an error.
-        TargetType::CoreVM => match compile_source_to_vm(src, src_type, rec_depth)? {
+        TargetType::CoreVM => match compile_source_to_vm(src, src_type, call_stack_size)? {
             Ok(vm_code) => write_file(format!("{output}.vm.lsd"), vm_code.flatten().to_string()),
             Err(_) => Err(Error::InvalidSource(
                 "expected core VM program, got standard VM program".to_string(),
@@ -234,7 +242,7 @@ fn compile(
         // If the result is core variant, we don't care. Just return the generated code.
         TargetType::StdVM => write_file(
             format!("{output}.vm.lsd"),
-            match compile_source_to_vm(src, src_type, rec_depth)? {
+            match compile_source_to_vm(src, src_type, call_stack_size)? {
                 Ok(vm_code) => vm_code.flatten().to_string(),
                 Err(vm_code) => vm_code.flatten().to_string(),
             },
@@ -280,6 +288,6 @@ fn main() -> Result<(), Error> {
         args.source_type,
         args.target_type,
         args.output,
-        args.allocated_recursion_depth,
+        args.call_stack_size,
     )
 }
