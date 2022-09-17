@@ -11,7 +11,6 @@ use core::fmt;
 #[derive(Clone, PartialEq, PartialOrd)]
 pub struct StandardProgram(pub Vec<StandardOp>);
 
-
 impl StandardProgram {
     pub fn assemble(&self, allowed_recursion_depth: usize) -> Result<vm::StandardProgram, Error> {
         let mut result = vm::StandardProgram(vec![]);
@@ -40,22 +39,24 @@ impl StandardProgram {
 impl fmt::Debug for StandardProgram {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut indent = 0;
+        let mut comment_count = 0;
         for (i, op) in self.0.iter().enumerate() {
             if let StandardOp::CoreOp(CoreOp::Comment(comment)) = op {
-                writeln!(
-                    f,
-                    "{:04x?}: {}// {}",
-                    i,
-                    "   ".repeat(indent),
-                    comment,
-                )?;
+                if f.alternate() {
+                    write!(f, "{:4}  ", "")?;
+                }
+                comment_count += 1;
+                writeln!(f, "{}// {}", "   ".repeat(indent), comment,)?;
                 continue;
+            }
+
+            if f.alternate() {
+                write!(f, "{:04x?}: ", i - comment_count)?;
             }
 
             writeln!(
                 f,
-                "{:04x?}: {}{:?}",
-                i,
+                "{}{:?}",
                 match op {
                     StandardOp::CoreOp(CoreOp::Fn(_))
                     | StandardOp::CoreOp(CoreOp::If(_))
@@ -94,7 +95,7 @@ impl AssemblyProgram for StandardProgram {
 /// that should be implemented for every target possible. Standard instructions
 /// should only not be implemented for targets like physical hardware, where the
 /// program is executed on the bare metal (a custom CPU or FPGA).
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, PartialEq, PartialOrd)]
 pub enum StandardOp {
     /// Execute a core instruction.
     CoreOp(CoreOp),
@@ -302,5 +303,48 @@ impl StandardOp {
             }
         }
         Ok(())
+    }
+}
+
+impl fmt::Debug for StandardOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::CoreOp(op) => write!(f, "{op:?}"),
+
+            Self::Set(loc, n) => write!(f, "set-f {loc:?}, {n:?}"),
+
+            Self::ToFloat(loc) => write!(f, "to-float {loc:?}"),
+            Self::ToInt(loc) => write!(f, "to-int {loc:?}"),
+
+            Self::Pow { src, dst } => write!(f, "pow {src:?}, {dst:?}"),
+            Self::Sqrt(loc) => write!(f, "sqrt {loc:?}"),
+
+            Self::Add { src, dst } => write!(f, "add-f {src:?}, {dst:?}"),
+            Self::Sub { src, dst } => write!(f, "sub-f {src:?}, {dst:?}"),
+            Self::Mul { src, dst } => write!(f, "mul-f {src:?}, {dst:?}"),
+            Self::Div { src, dst } => write!(f, "div-f {src:?}, {dst:?}"),
+            Self::Rem { src, dst } => write!(f, "rem-f {src:?}, {dst:?}"),
+            Self::Neg(loc) => write!(f, "neg-f {loc:?}"),
+
+            Self::Sin(loc) => write!(f, "sin {loc:?}"),
+            Self::Cos(loc) => write!(f, "cos {loc:?}"),
+            Self::Tan(loc) => write!(f, "tan {loc:?}"),
+            Self::ASin(loc) => write!(f, "asin {loc:?}"),
+            Self::ACos(loc) => write!(f, "acos {loc:?}"),
+            Self::ATan(loc) => write!(f, "atan {loc:?}"),
+
+            Self::IsGreater { a, b, dst } => write!(f, "gt-f {a:?}, {b:?}, {dst:?}"),
+            Self::IsLess { a, b, dst } => write!(f, "lt-f {a:?}, {b:?}, {dst:?}"),
+
+            Self::Alloc(loc) => write!(f, "alloc {loc:?}"),
+            Self::Free(loc) => write!(f, "free {loc:?}"),
+
+            Self::PutChar(loc) => write!(f, "put-char {loc:?}"),
+            Self::GetChar(loc) => write!(f, "get-char {loc:?}"),
+            Self::PutInt(loc) => write!(f, "put-int {loc:?}"),
+            Self::GetInt(loc) => write!(f, "get-int {loc:?}"),
+            Self::PutFloat(loc) => write!(f, "put-float {loc:?}"),
+            Self::GetFloat(loc) => write!(f, "get-float {loc:?}"),
+        }
     }
 }

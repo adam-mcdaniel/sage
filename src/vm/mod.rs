@@ -146,8 +146,8 @@ pub trait VirtualMachineProgram {
         self.op(CoreOp::Index)
     }
 
-    fn swap(&mut self) {
-        self.op(CoreOp::Swap)
+    fn bitwise_nand(&mut self) {
+        self.op(CoreOp::BitwiseNand)
     }
 
     fn get(&mut self) {

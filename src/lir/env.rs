@@ -3,7 +3,6 @@ use crate::asm::AssemblyProgram;
 use super::{Compile, ConstExpr, Error, GetSize, Procedure, Type};
 use std::{collections::HashMap, rc::Rc};
 
-
 /// An environment under which expressions and types are compiled and typechecked.
 /// This is essentially the scope of an expression.
 #[derive(Clone, Debug)]

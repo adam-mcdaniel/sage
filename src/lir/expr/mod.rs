@@ -1,13 +1,12 @@
+mod builtin;
 mod const_expr;
 mod expression;
 mod procedure;
-mod builtin;
 
-
+pub use builtin::*;
 pub use const_expr::*;
 pub use expression::*;
 pub use procedure::*;
-pub use builtin::*;
 
 use super::{Env, Error, GetSize, Simplify, Type, TypeCheck};
 use crate::asm::{AssemblyProgram, CoreProgram, StandardProgram};

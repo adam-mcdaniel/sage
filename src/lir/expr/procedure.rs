@@ -1,5 +1,6 @@
 use crate::asm::{AssemblyProgram, CoreOp, A, FP, SP};
-use crate::lir::{Compile, Env, Error, Expr, ConstExpr, GetSize, GetType, Type, TypeCheck};
+use crate::lir::{Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Type, TypeCheck};
+use core::fmt;
 use std::sync::Mutex;
 
 // TODO: Do this without lazy_static.
@@ -8,7 +9,7 @@ lazy_static! {
     static ref LAMBDA_COUNT: Mutex<usize> = Mutex::new(0);
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Procedure {
     /// The generated name of the procedure created by the compiler to be unique.
     mangled_name: String,
@@ -67,7 +68,11 @@ impl TypeCheck for Procedure {
         // Get the type of the procedure's body, and confirm that it matches the return type.
         let body_type = self.body.get_type(&new_env)?;
         if !body_type.equals(&self.ret, env)? {
-            Err(Error::MismatchedTypes { expected: self.ret.clone(), found: body_type, expr: ConstExpr::Proc(self.clone()).into() })
+            Err(Error::MismatchedTypes {
+                expected: self.ret.clone(),
+                found: body_type,
+                expr: ConstExpr::Proc(self.clone()).into(),
+            })
         } else {
             // Typecheck the procedure's body.
             self.body.type_check(&new_env)
@@ -116,5 +121,18 @@ impl Compile for Procedure {
         output.op(CoreOp::Push(A, 1));
         output.comment(format!("done"));
         Ok(())
+    }
+}
+
+impl fmt::Debug for Procedure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "proc(")?;
+        for (i, (name, ty)) in self.args.iter().enumerate() {
+            write!(f, "{name:?}: {ty:?}")?;
+            if i < self.args.len() - 1 {
+                write!(f, ", ")?
+            }
+        }
+        write!(f, ") -> {:?} = {:?}", self.ret, self.body)
     }
 }

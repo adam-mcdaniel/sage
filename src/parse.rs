@@ -1,10 +1,9 @@
-use super::lir::Expr;
 use super::asm::{CoreProgram, StandardProgram};
-use asciicolor::Colorize;
+use super::lir::Expr;
 use lalrpop_util::lalrpop_mod;
 lalrpop_mod!(lir_parser);
 lalrpop_mod!(asm_parser);
-
+pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
 
 pub fn parse_asm(input: impl ToString) -> Result<Result<CoreProgram, StandardProgram>, String> {
     let code = input.to_string();
@@ -12,8 +11,8 @@ pub fn parse_asm(input: impl ToString) -> Result<Result<CoreProgram, StandardPro
         Ok(parsed) => Ok(Ok(parsed)),
         Err(_) => match asm_parser::StandardProgramParser::new().parse(&input.to_string()) {
             Ok(parsed) => Ok(Err(parsed)),
-            Err(e) => Err(format_error(&code, e))
-        }
+            Err(e) => Err(format_error(&code, e)),
+        },
     }
 }
 
@@ -21,10 +20,9 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
     let code = input.to_string();
     match lir_parser::ExprParser::new().parse(&input.to_string()) {
         Ok(parsed) => Ok(parsed),
-        Err(e) => Err(format_error(&code, e))
+        Err(e) => Err(format_error(&code, e)),
     }
 }
-
 
 type SyntaxError<'a, T> = lalrpop_util::ParseError<usize, T, &'a str>;
 
@@ -47,9 +45,9 @@ fn make_error(line: &str, unexpected: &str, line_number: usize, column_number: u
 {WS} = unexpected `{unexpected}`",
         WS = " ".repeat(line_number.to_string().len()),
         line_number = line_number,
-        line = line.bright_yellow().underline(),
+        line = line,
         underline = underline,
-        unexpected = unexpected.bright_yellow().underline()
+        unexpected = unexpected
     )
 }
 

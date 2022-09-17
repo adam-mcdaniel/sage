@@ -36,7 +36,7 @@ impl CoreProgram {
 /// Take all of the functions defined in a list of CoreOps,
 /// and flatten their definitions. This will take nested functions
 /// and un-nest them while preserving the order in which functions are defined.
-/// 
+///
 /// All the function definitions will be placed at the top of the returned list.
 fn flatten(code: Vec<CoreOp>) -> Vec<CoreOp> {
     let mut functions = HashMap::new();
@@ -106,19 +106,32 @@ fn flatten(code: Vec<CoreOp>) -> Vec<CoreOp> {
     if let Some(body) = functions.remove(&-1) {
         result.extend(body);
     }
-    
+
     // Return the output code
     result
 }
 
 impl fmt::Debug for CoreProgram {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut comment_count = 0;
         let mut indent = 0;
         for (i, op) in self.0.iter().enumerate() {
+            if let CoreOp::Comment(comment) = op {
+                if f.alternate() {
+                    write!(f, "{:8}  ", "")?;
+                }
+                comment_count += 1;
+                writeln!(f, "{}// {}", "   ".repeat(indent), comment,)?;
+                continue;
+            }
+
+            if f.alternate() {
+                write!(f, "{:08x?}: ", i - comment_count)?;
+            }
+
             writeln!(
                 f,
-                "{:04x?}: {}{:?}",
-                i,
+                "{}{:?}",
                 match op {
                     CoreOp::Function | CoreOp::If | CoreOp::While => {
                         indent += 1;
@@ -141,7 +154,7 @@ impl fmt::Debug for CoreProgram {
 }
 
 /// An individual core virtual machine instruction.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum CoreOp {
     /// A comment in the machine code (not in the compiled output).
     Comment(String),
@@ -197,8 +210,10 @@ pub enum CoreOp {
     /// Index that pointer by the value on the tape. Store the address
     /// of the index into the register.
     Index,
-    /// Swap the register and the value pointed to on the tape.
-    Swap,
+
+    /// Perform bitwise nand on the cell and the value pointed to on the tape,
+    /// and store the result in the register.
+    BitwiseNand,
 
     /// Add the value pointed to on the tape to the register.
     Add,
@@ -226,4 +241,36 @@ pub enum CoreOp {
     ///
     /// The specific behavior of this instruction is purposefully not defined.
     Put,
+}
+
+impl fmt::Debug for CoreOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CoreOp::Comment(s) => write!(f, "// {}", s),
+            CoreOp::Set(n) => write!(f, "set {}", n),
+            CoreOp::Function => write!(f, "fun"),
+            CoreOp::Call => write!(f, "call"),
+            CoreOp::Return => write!(f, "ret"),
+            CoreOp::While => write!(f, "while"),
+            CoreOp::If => write!(f, "if"),
+            CoreOp::Else => write!(f, "else"),
+            CoreOp::End => write!(f, "end"),
+            CoreOp::Save => write!(f, "sav"),
+            CoreOp::Restore => write!(f, "res"),
+            CoreOp::Move(n) => write!(f, "mov {}", n),
+            CoreOp::Where => write!(f, "where"),
+            CoreOp::Deref => write!(f, "deref"),
+            CoreOp::Refer => write!(f, "ref"),
+            CoreOp::Index => write!(f, "index"),
+            CoreOp::BitwiseNand => write!(f, "bitwise-nand"),
+            CoreOp::Add => write!(f, "add"),
+            CoreOp::Sub => write!(f, "sub"),
+            CoreOp::Mul => write!(f, "mul"),
+            CoreOp::Div => write!(f, "div"),
+            CoreOp::Rem => write!(f, "rem"),
+            CoreOp::IsNonNegative => write!(f, "gez"),
+            CoreOp::Get => write!(f, "get"),
+            CoreOp::Put => write!(f, "put"),
+        }
+    }
 }

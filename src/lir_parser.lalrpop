@@ -1,15 +1,12 @@
-use std::{str::FromStr, collections::BTreeMap};
+use ::std::{str::FromStr, collections::BTreeMap};
 use crate::lir::*;
+use crate::asm::{Location, CoreOp, StandardOp, SP, FP, A, B, C, D, E, F};
+use crate::parse::{CoreProgramParser, StandardProgramParser};
 
 grammar;
 
-// pub Term: i32 = {
-//     <n:Num> => n,
-//     "(" <t:Term> ")" => t,
-// };
 
-
-pub Type: Type = {
+Type: Type = {
     "let" <var: Symbol> "=" <t: Type> "in" <ret: Type> => Type::Let(var, Box::new(t), Box::new(ret)),
     "proc" <args: List<"(", Type, ",", ")">> "->" <ret: Type> => Type::Proc(args, Box::new(ret)),
     TypeTerm => <>,
@@ -46,6 +43,16 @@ pub ConstExpr: ConstExpr = {
     "sizeof" "(" <Type> ")" => ConstExpr::SizeOfType(<>),
     "sizeofexpr" "(" <Expr> ")" => ConstExpr::SizeOfExpr(Box::new(<>)),
     "(" ")" => ConstExpr::None,
+    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <mut body: CoreAsm> => {
+        body.args = args;
+        body.ret = ret;
+        ConstExpr::CoreBuiltin(body)
+    },
+    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <mut body: StandardAsm> => {
+        body.args = args;
+        body.ret = ret;
+        ConstExpr::StandardBuiltin(body)
+    },
 }
 
 pub Expr: Expr = {
@@ -162,4 +169,29 @@ List<Begin, T, Sep, End>: Vec<T> = {
             }
         }
     }
+}
+
+
+CoreAsm: CoreBuiltin = {
+    <body: r"core\s?[{][^}]*[}]"> =>? match CoreProgramParser::new().parse(&body[body.find("{").unwrap()+1..body.len() - 1]) {
+        Ok(prog) => Ok(CoreBuiltin {
+            name: String::new(),
+            args: vec![],
+            ret: Type::None,
+            body: prog.0,
+        }),
+        Err(e) => Err(e),
+    },
+}
+
+StandardAsm: StandardBuiltin = {
+    <body: r"std\s[{][^}]*[}]"> =>? match StandardProgramParser::new().parse(&body[body.find("{").unwrap()+1..body.len() - 1]) {
+        Ok(prog) => Ok(StandardBuiltin {
+            name: String::new(),
+            args: vec![],
+            ret: Type::None,
+            body: prog.0,
+        }),
+        Err(e) => Err(e),
+    },
 }

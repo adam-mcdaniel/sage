@@ -1,7 +1,7 @@
 use acid::{
-    asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, SP, FP, A},
-    parse::*,
+    asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, A, FP, SP},
     lir::*,
+    parse::*,
     vm::{as_int, CoreInterpreter, StandardInterpreter, TestingDevice},
 };
 use maplit::btreemap;
@@ -29,27 +29,37 @@ fn test_struct() {
     let expr = Expr::let_vars(
         vec![
             ("x", None, ConstExpr::Char('x').into()),
-            ("y", None, Expr::structure(btreemap! {
-                "a" => ConstExpr::Char('a').into(),
-                "b" => ConstExpr::Char('b').into(),
-                "c" => ConstExpr::Char('c').into(),
-            })),
+            (
+                "y",
+                None,
+                Expr::structure(btreemap! {
+                    "a" => ConstExpr::Char('a').into(),
+                    "b" => ConstExpr::Char('b').into(),
+                    "c" => ConstExpr::Char('c').into(),
+                }),
+            ),
             ("z", None, ConstExpr::Char('z').into()),
-            ("put", None, ConstExpr::proc(
-                vec![
-                    ("x".to_string(), Type::Struct(btreemap! {
-                        "a".to_string() => Type::Char,
-                        "b".to_string() => Type::Char,
-                        "c".to_string() => Type::Char,
-                    })),
-                ],
-                Type::None,
-                Expr::Many(vec![
-                    put.clone().app(vec![Expr::var("x").field(var("a"))]),
-                    put.clone().app(vec![Expr::var("x").field(var("b"))]),
-                    put.clone().app(vec![Expr::var("x").field(var("c"))]),
-                ])
-            ).into()),
+            (
+                "put",
+                None,
+                ConstExpr::proc(
+                    vec![(
+                        "x".to_string(),
+                        Type::Struct(btreemap! {
+                            "a".to_string() => Type::Char,
+                            "b".to_string() => Type::Char,
+                            "c".to_string() => Type::Char,
+                        }),
+                    )],
+                    Type::None,
+                    Expr::Many(vec![
+                        put.clone().app(vec![Expr::var("x").field(var("a"))]),
+                        put.clone().app(vec![Expr::var("x").field(var("b"))]),
+                        put.clone().app(vec![Expr::var("x").field(var("c"))]),
+                    ]),
+                )
+                .into(),
+            ),
         ],
         var("put").app(vec![Expr::structure(btreemap! {
             "a" => var("x").into(),
@@ -911,52 +921,53 @@ fn test_recursive_types() {
         }),
         Expr::let_vars(
             vec![
-                ("node", None, ConstExpr::proc(
-                    vec![(
-                        "val".to_string(),
-                        Type::Int
-                    )],
-                    Type::Symbol("Node".to_string()),
-                    Expr::structure(btreemap! {
-                        "data" => Expr::var("val"),
-                        "next" => ConstExpr::Null.into(),
-                    }),
-                ).into()),
-                ("next", None, ConstExpr::proc(
-                    vec![(
-                        "node".to_string(),
+                (
+                    "node",
+                    None,
+                    ConstExpr::proc(
+                        vec![("val".to_string(), Type::Int)],
                         Type::Symbol("Node".to_string()),
-                    )],
-                    Type::Symbol("Node".to_string()),
-                    Expr::var("node").field(var("next")).deref(),
-                ).into()),
-                ("cons", None, ConstExpr::proc(
-                    vec![
-                        (
-                            "head".to_string(),
-                            Type::Symbol("Node".to_string()),
-                        ),
-                        (
-                            "tail".to_string(),
-                            Type::Symbol("Node".to_string()),
-                        ),
-                    ],
-                    Type::Symbol("Node".to_string()),
-                    Expr::let_var(
-                        "ptr",
-                        None,
-                        alloc.app(vec![
-                            Expr::var("tail").size_of()
-                        ]),
-                        Expr::Many(vec![
-                            Expr::var("ptr").deref_mut(Expr::var("tail")),
-                            Expr::structure(btreemap! {
-                                "data" => Expr::var("head").field(var("data")),
-                                "next" => Expr::var("ptr"),
-                            })
-                        ])
+                        Expr::structure(btreemap! {
+                            "data" => Expr::var("val"),
+                            "next" => ConstExpr::Null.into(),
+                        }),
                     )
-                ).into()),
+                    .into(),
+                ),
+                (
+                    "next",
+                    None,
+                    ConstExpr::proc(
+                        vec![("node".to_string(), Type::Symbol("Node".to_string()))],
+                        Type::Symbol("Node".to_string()),
+                        Expr::var("node").field(var("next")).deref(),
+                    )
+                    .into(),
+                ),
+                (
+                    "cons",
+                    None,
+                    ConstExpr::proc(
+                        vec![
+                            ("head".to_string(), Type::Symbol("Node".to_string())),
+                            ("tail".to_string(), Type::Symbol("Node".to_string())),
+                        ],
+                        Type::Symbol("Node".to_string()),
+                        Expr::let_var(
+                            "ptr",
+                            None,
+                            alloc.app(vec![Expr::var("tail").size_of()]),
+                            Expr::Many(vec![
+                                Expr::var("ptr").deref_mut(Expr::var("tail")),
+                                Expr::structure(btreemap! {
+                                    "data" => Expr::var("head").field(var("data")),
+                                    "next" => Expr::var("ptr"),
+                                }),
+                            ]),
+                        ),
+                    )
+                    .into(),
+                ),
             ],
             Expr::var("next")
                 .app(vec![Expr::var("next").app(vec![Expr::var("cons").app(
@@ -1434,8 +1445,16 @@ fn test_mutually_recursive_types() {
         ],
         Expr::let_vars(
             vec![
-                ("a", Some(Type::Symbol("A".to_string())), ConstExpr::Null.into()),
-                ("b", Some(Type::Symbol("B".to_string())), Expr::var("a").refer(),)
+                (
+                    "a",
+                    Some(Type::Symbol("A".to_string())),
+                    ConstExpr::Null.into(),
+                ),
+                (
+                    "b",
+                    Some(Type::Symbol("B".to_string())),
+                    Expr::var("a").refer(),
+                ),
             ],
             Expr::var("b")
                 .deref()
@@ -1451,7 +1470,7 @@ fn test_mutually_recursive_types() {
     let device = i.run(&vm_code).unwrap();
 
     assert_eq!(device.output, vec![acid::NULL]);
-    
+
     let expr = put.clone().app(vec![Expr::let_types(
         vec![
             ("A", Type::Pointer(Box::new(Type::Symbol("B".to_string())))),
@@ -1460,9 +1479,17 @@ fn test_mutually_recursive_types() {
         ],
         Expr::let_vars(
             vec![
-                ("a", Some(Type::Symbol("A".to_string())), ConstExpr::Null.into()),
-                ("b", Some(Type::Symbol("B".to_string())), Expr::var("a").refer()),
-                ("c", Some(Type::Symbol("C".to_string())), Expr::var("b"))
+                (
+                    "a",
+                    Some(Type::Symbol("A".to_string())),
+                    ConstExpr::Null.into(),
+                ),
+                (
+                    "b",
+                    Some(Type::Symbol("B".to_string())),
+                    Expr::var("a").refer(),
+                ),
+                ("c", Some(Type::Symbol("C".to_string())), Expr::var("b")),
             ],
             Expr::var("c")
                 .deref()
@@ -1493,7 +1520,7 @@ fn test_let_multiple_vars() {
             ("y", None, Expr::var("x").add(ConstExpr::Int(5))),
             ("z", None, Expr::var("y").mul(ConstExpr::Int(5))),
         ],
-        Expr::var("z")
+        Expr::var("z"),
     )]);
 
     let program = expr.clone().compile().unwrap().unwrap();
@@ -1510,12 +1537,11 @@ fn test_let_multiple_vars() {
             ("x", None, ConstExpr::Int(5).into()),
             ("z", None, Expr::var("y").mul(ConstExpr::Int(5))),
         ],
-        Expr::var("z")
+        Expr::var("z"),
     )]);
 
     expr.clone().compile().unwrap_err();
 }
-
 
 #[test]
 fn test_quicksort() {
@@ -1535,10 +1561,7 @@ fn test_quicksort_helper() {
         name: "put".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
-        body: vec![
-            CoreOp::Put(SP.deref()),
-            CoreOp::Pop(None, 1),
-        ],
+        body: vec![CoreOp::Put(SP.deref()), CoreOp::Pop(None, 1)],
     });
 
     let swap = ConstExpr::CoreBuiltin(CoreBuiltin {
@@ -1553,15 +1576,22 @@ fn test_quicksort_helper() {
             CoreOp::Pop(None, 2),
         ],
     });
-    
+
     let lt = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "lt".to_string(),
         args: vec![("x".to_string(), Type::Int), ("y".to_string(), Type::Int)],
         ret: Type::Bool,
         body: vec![
-            CoreOp::IsLess { a: SP.deref().offset(-1), b: SP.deref(), dst: A },
+            CoreOp::IsLess {
+                a: SP.deref().offset(-1),
+                b: SP.deref(),
+                dst: A,
+            },
             CoreOp::Pop(None, 1),
-            CoreOp::Move { src: A, dst: SP.deref() }
+            CoreOp::Move {
+                src: A,
+                dst: SP.deref(),
+            },
         ],
     });
     let lte = ConstExpr::CoreBuiltin(CoreBuiltin {
@@ -1569,19 +1599,23 @@ fn test_quicksort_helper() {
         args: vec![("x".to_string(), Type::Int), ("y".to_string(), Type::Int)],
         ret: Type::Bool,
         body: vec![
-            CoreOp::IsLessEqual { a: SP.deref().offset(-1), b: SP.deref(), dst: A },
+            CoreOp::IsLessEqual {
+                a: SP.deref().offset(-1),
+                b: SP.deref(),
+                dst: A,
+            },
             CoreOp::Pop(None, 1),
-            CoreOp::Move { src: A, dst: SP.deref() }
+            CoreOp::Move {
+                src: A,
+                dst: SP.deref(),
+            },
         ],
     });
     let inc = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "inc".to_string(),
         args: vec![("x".to_string(), Type::Pointer(Box::new(Type::Int)))],
         ret: Type::None,
-        body: vec![
-            CoreOp::Inc(SP.deref().deref()),
-            CoreOp::Pop(None, 1)
-        ],
+        body: vec![CoreOp::Inc(SP.deref().deref()), CoreOp::Pop(None, 1)],
     });
 
     let alloc = ConstExpr::StandardBuiltin(StandardBuiltin {
@@ -1633,7 +1667,17 @@ fn test_quicksort_helper() {
     "#;
 
     let expr = parse_lir(list).unwrap();
-    let expr = Expr::let_consts(vec![("alloc", alloc.clone()), ("inc", inc.clone()), ("lte", lte.clone()), ("lt", lt.clone()), ("swap", swap.clone()), ("put", put.clone())], expr);
+    let expr = Expr::let_consts(
+        vec![
+            ("alloc", alloc.clone()),
+            ("inc", inc.clone()),
+            ("lte", lte.clone()),
+            ("lt", lt.clone()),
+            ("swap", swap.clone()),
+            ("put", put.clone()),
+        ],
+        expr,
+    );
     let asm_std = expr.clone().compile().unwrap().unwrap_err();
     let vm_code = asm_std.assemble(100).unwrap();
     let device = StandardInterpreter::new(TestingDevice::new_raw(vec![]))
@@ -1661,10 +1705,7 @@ fn test_collatz_helper() {
         name: "put".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
-        body: vec![
-            CoreOp::Put(SP.deref()),
-            CoreOp::Pop(None, 1),
-        ],
+        body: vec![CoreOp::Put(SP.deref()), CoreOp::Pop(None, 1)],
     });
 
     let collatz = r#"
@@ -1693,5 +1734,8 @@ fn test_collatz_helper() {
         .run(&vm_code)
         .unwrap();
 
-    assert_eq!(device.output, vec![19, 58, 29, 88, 44, 22, 11, 34, 17, 52, 26, 13, 40, 20, 10, 5, 16, 8, 4, 2, 1]);
+    assert_eq!(
+        device.output,
+        vec![19, 58, 29, 88, 44, 22, 11, 34, 17, 52, 26, 13, 40, 20, 10, 5, 16, 8, 4, 2, 1]
+    );
 }

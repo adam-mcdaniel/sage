@@ -329,10 +329,8 @@ fn test_str() {
     assert_eq!(device.output_str(), "abcdefghijk?\nHello world!\nabcdefghijk?\nHello world!\nabcdefghijk?\nHello world!\nabcdefghijk?\nHello world!\n>> you entered: `gnitset`\nwhich is 7 characters long!\n")
 }
 
-
 #[test]
 fn test_factorial() {
-
     let factorial = r#"
     fun fact
         if [FP]

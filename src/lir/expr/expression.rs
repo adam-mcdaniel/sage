@@ -1,12 +1,14 @@
 use crate::asm::{AssemblyProgram, CoreOp, StandardOp, A, B, C, FP, SP};
-use crate::lir::{Compile, ConstExpr, Env, Error, GetSize, GetType, Simplify, Type, TypeCheck, Procedure};
+use crate::lir::{
+    Compile, ConstExpr, Env, Error, GetSize, GetType, Procedure, Simplify, Type, TypeCheck,
+};
+use core::fmt;
 use std::collections::BTreeMap;
-
 
 /// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
 ///       This way, we don't overflow the stack with several clones of the environment.
 /// A runtime expression.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Expr {
     /// A constant expression.
     ConstExpr(ConstExpr),
@@ -203,7 +205,12 @@ impl Expr {
 
     /// Create a `let` binding for an expression, and define multiple variables.
     pub fn let_vars(vars: Vec<(&str, Option<Type>, Self)>, ret: impl Into<Self>) -> Self {
-        Self::LetVars(vars.into_iter().map(|(name, t, e)| (name.to_string(), t, e)).collect(), Box::new(ret.into()))
+        Self::LetVars(
+            vars.into_iter()
+                .map(|(name, t, e)| (name.to_string(), t, e))
+                .collect(),
+            Box::new(ret.into()),
+        )
     }
 
     /// Create a `let` binding for an type.
@@ -218,9 +225,12 @@ impl Expr {
     }
     /// Create several `type` bindings at onces.
     pub fn let_types(vars: Vec<(&str, Type)>, ret: impl Into<Self>) -> Self {
-        Self::LetTypes(vars.into_iter().map(|(k, v)| (k.to_string(), v)).collect(), Box::new(ret.into()))
+        Self::LetTypes(
+            vars.into_iter().map(|(k, v)| (k.to_string(), v)).collect(),
+            Box::new(ret.into()),
+        )
     }
-    
+
     /// Create a `let` binding for a constant expression.
     ///
     /// This will create a new scope with the constant `constname` defined.
@@ -233,7 +243,13 @@ impl Expr {
 
     /// Create several `const` bindings at onces.
     pub fn let_consts(constants: Vec<(&str, ConstExpr)>, ret: impl Into<Self>) -> Self {
-        Self::LetConsts(constants.into_iter().map(|(k, v)| (k.to_string(), v)).collect(), Box::new(ret.into()))
+        Self::LetConsts(
+            constants
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v))
+                .collect(),
+            Box::new(ret.into()),
+        )
     }
 
     /// Create a `proc` binding for a procedure.
@@ -248,7 +264,10 @@ impl Expr {
 
     /// Create several `proc` bindings at onces.
     pub fn let_procs(procs: BTreeMap<&str, Procedure>, ret: impl Into<Self>) -> Self {
-        Self::LetProcs(procs.into_iter().map(|(k, v)| (k.to_string(), v)).collect(), Box::new(ret.into()))
+        Self::LetProcs(
+            procs.into_iter().map(|(k, v)| (k.to_string(), v)).collect(),
+            Box::new(ret.into()),
+        )
     }
 
     /// Create a structure of fields to expressions.
@@ -408,7 +427,7 @@ impl TypeCheck for Expr {
                     if let Some(t) = t {
                         // Typecheck the type.
                         t.type_check(env)?;
-    
+
                         // Check that the inferred type is compatible with the type specified.
                         if !inferred_t.equals(t, env)? {
                             return Err(Error::MismatchedTypes {
@@ -622,9 +641,17 @@ impl TypeCheck for Expr {
                 t.type_check(env)?;
                 if let Type::Union(fields) = t.clone().simplify(env)? {
                     // Confirm that the variant is a valid variant.
-                    if fields.get(variant).is_some() {
+                    if let Some(ty) = fields.get(variant) {
                         // Typecheck the value assigned to the variant.
                         val.type_check(env)?;
+                        let found = val.get_type(env)?;
+                        if !ty.equals(&found, env)? {
+                            return Err(Error::MismatchedTypes {
+                                expected: ty.clone(),
+                                found,
+                                expr: self.clone(),
+                            });
+                        }
                         Ok(())
                     } else {
                         Err(Error::VariantNotFound(t.clone(), variant.clone()))
@@ -674,7 +701,12 @@ impl TypeCheck for Expr {
 
 impl Compile for Expr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        // output.comment(format!("compiling {self:?}"));
+        if !matches!(self, Self::ConstExpr(_)) {
+            let mut comment = format!("{self:?}");
+            comment.truncate(70);
+            output.comment(format!("compiling `{comment}`"));
+        }
+
         match self {
             Self::ConstExpr(expr) => expr.compile_expr(env, output)?,
             Self::Many(exprs) => {
@@ -910,10 +942,8 @@ impl Compile for Expr {
                 } else {
                     e.get_type(env)?
                 };
-                output.op(CoreOp::Comment(format!("begin let '{name}' val")));
                 // Compile the expression to leave the value on the stack.
                 e.compile_expr(env, output)?;
-                output.op(CoreOp::Comment(format!("begin let '{name}' body")));
 
                 // Create a new scope
                 let mut new_env = env.clone();
@@ -926,7 +956,6 @@ impl Compile for Expr {
                 // Compile the body under the new scope
                 body.compile_expr(&mut new_env, output)?;
 
-                output.op(CoreOp::Comment(format!("destruct '{name}'")));
                 // Copy the return value over where the arguments were stored,
                 // so that when we pop the stack, it's as if we popped the variables
                 // and arguments, and pushed our return value.
@@ -938,9 +967,8 @@ impl Compile for Expr {
                     size: result_size,
                 });
                 output.op(CoreOp::Pop(None, var_size));
-                output.op(CoreOp::Comment(format!("end let '{name}'")));
             }
-            
+
             Self::LetVars(vars, body) => {
                 let mut result = *body;
                 for (name, t, e) in vars.into_iter().rev() {
@@ -948,7 +976,6 @@ impl Compile for Expr {
                 }
                 result.compile_expr(env, output)?
             }
-
 
             Self::While(cond, body) => {
                 // Eval the condition
@@ -1337,7 +1364,6 @@ impl GetType for Expr {
                 ret.get_type_checked(&new_env, i)?
             }
 
-
             Self::LetType(name, t, ret) => {
                 let mut new_env = env.clone();
                 new_env.define_type(name, t.clone());
@@ -1351,7 +1377,6 @@ impl GetType for Expr {
                 ret.get_type_checked(&new_env, i)?
             }
 
-
             Self::LetVar(var, t, val, ret) => {
                 let mut new_env = env.clone();
                 new_env.define_var(var, t.clone().unwrap_or(val.get_type_checked(env, i)?))?;
@@ -1361,7 +1386,8 @@ impl GetType for Expr {
             Self::LetVars(vars, ret) => {
                 let mut new_env = env.clone();
                 for (var, t, val) in vars {
-                    new_env.define_var(var, t.clone().unwrap_or(val.get_type_checked(&new_env, i)?))?;
+                    new_env
+                        .define_var(var, t.clone().unwrap_or(val.get_type_checked(&new_env, i)?))?;
                 }
                 ret.get_type_checked(&new_env, i)?
             }
@@ -1388,7 +1414,7 @@ impl GetType for Expr {
 
             Self::Return(_) => Type::Never,
             Self::Apply(func, _) => {
-                if let Type::Proc(_, ret) = func.get_type_checked(env, i)? {
+                if let Type::Proc(_, ret) = func.get_type_checked(env, i)?.simplify(env)? {
                     *ret
                 } else {
                     return Err(Error::ApplyNonProc(self.clone()));
@@ -1463,5 +1489,155 @@ impl GetType for Expr {
                 _ => return Err(Error::InvalidIndex(self.clone())),
             },
         })
+    }
+}
+
+impl fmt::Debug for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::ConstExpr(expr) => write!(f, "{expr:?}"),
+            Self::Many(exprs) => {
+                write!(f, "{{ ")?;
+                for (i, item) in exprs.iter().enumerate() {
+                    write!(f, "{item:?}")?;
+                    if i < exprs.len() - 1 {
+                        write!(f, "; ")?
+                    }
+                }
+                write!(f, " }}")
+            }
+            Self::Array(exprs) => {
+                write!(f, "[")?;
+                for (i, item) in exprs.iter().enumerate() {
+                    write!(f, "{item:?}")?;
+                    if i < exprs.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, "]")
+            }
+            Self::Tuple(exprs) => {
+                write!(f, "(")?;
+                for (i, item) in exprs.iter().enumerate() {
+                    write!(f, "{item:?}")?;
+                    if i < exprs.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, ")")
+            }
+            Self::LetVar(name, ty, val, ret) => {
+                write!(f, "let {name}")?;
+                if let Some(ty) = ty {
+                    write!(f, ": {ty:?}")?
+                }
+                write!(f, " = {val:?} in {ret:?}")
+            }
+            Self::LetVars(vars, ret) => {
+                write!(f, "let ")?;
+                for (i, (name, ty, val)) in vars.iter().enumerate() {
+                    write!(f, "{name}")?;
+                    if let Some(ty) = ty {
+                        write!(f, ": {ty:?}")?
+                    }
+                    write!(f, " = {val:?}")?;
+                    if i < vars.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, " in {ret:?}")
+            }
+            Self::LetConst(name, val, ret) => {
+                write!(f, "const {name:?} = {val:?} in {ret:?}")
+            }
+            Self::LetConsts(consts, ret) => {
+                write!(f, "const ")?;
+                for (i, (name, val)) in consts.iter().enumerate() {
+                    write!(f, "{name} = {val:?}")?;
+                    if i < consts.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, " in {ret:?}")
+            }
+            Self::LetProc(name, val, ret) => {
+                write!(f, "const {name:?} = {val:?} in {ret:?}")
+            }
+            Self::LetProcs(consts, ret) => {
+                write!(f, "const ")?;
+                for (i, (name, val)) in consts.iter().enumerate() {
+                    write!(f, "{name} = {val:?}")?;
+                    if i < consts.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, " in {ret:?}")
+            }
+            Self::LetType(name, ty, ret) => {
+                write!(f, "type {name:?} = {ty:?} in {ret:?}")
+            }
+            Self::LetTypes(types, ret) => {
+                write!(f, "type ")?;
+                for (i, (name, ty)) in types.iter().enumerate() {
+                    write!(f, "{name} = {ty:?}")?;
+                    if i < types.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, " in {ret:?}")
+            }
+
+            Self::While(cond, body) => {
+                write!(f, "while ({cond:?}) {body:?}")
+            }
+            Self::If(cond, t, e) => {
+                write!(f, "if ({cond:?}) {t:?} else {e:?}")
+            }
+            Self::When(cond, t, e) => {
+                write!(f, "when ({cond:?}) {t:?} else {e:?}")
+            }
+            Self::As(val, ty) => write!(f, "{val:?} as {ty:?}"),
+
+            Self::Struct(items) => {
+                write!(f, "struct {{")?;
+                for (i, (name, val)) in items.iter().enumerate() {
+                    write!(f, "{name} = {val:?}")?;
+                    if i < items.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, "}}")
+            }
+            Self::Union(ty, variant, val) => {
+                write!(f, "union {{ {variant} = {val:?}, {ty:?}.. }}")
+            }
+
+            Self::Add(a, b) => write!(f, "{a:?} + {b:?}"),
+            Self::Sub(a, b) => write!(f, "{a:?} - {b:?}"),
+            Self::Mul(a, b) => write!(f, "{a:?} * {b:?}"),
+            Self::Div(a, b) => write!(f, "{a:?} / {b:?}"),
+            Self::Rem(a, b) => write!(f, "{a:?} % {b:?}"),
+            Self::And(a, b) => write!(f, "{a:?} and {b:?}"),
+            Self::Or(a, b) => write!(f, "{a:?} or {b:?}"),
+            Self::Not(x) => write!(f, "not {x:?}"),
+
+            Self::Member(val, field) => write!(f, "{val:?}.{field:?}"),
+            Self::Index(val, idx) => write!(f, "{val:?}[{idx:?}]"),
+
+            Self::Return(val) => write!(f, "return {val:?}"),
+            Self::Refer(val) => write!(f, "&{val:?}"),
+            Self::Deref(ptr) => write!(f, "*{ptr:?}"),
+            Self::DerefMut(ptr, val) => write!(f, "(*{ptr:?}) = {val:?}"),
+            Self::Apply(fun, args) => {
+                write!(f, "{fun:?}(")?;
+                for (i, arg) in args.iter().enumerate() {
+                    write!(f, "{arg:?}")?;
+                    if i < args.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, ")")
+            }
+        }
     }
 }

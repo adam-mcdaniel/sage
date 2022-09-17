@@ -4,10 +4,11 @@ use crate::lir::{
     Type, TypeCheck,
 };
 use crate::NULL;
+use core::fmt;
 use std::collections::BTreeMap;
 
 /// A compiletime expression.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum ConstExpr {
     /// The unit, or "void" instance.
     None,
@@ -224,9 +225,17 @@ impl TypeCheck for ConstExpr {
                 // Confirm the type supplied is a union.
                 if let Type::Union(fields) = t.clone().simplify(env)? {
                     // Confirm that the variant is contained within the union.
-                    if fields.get(variant).is_some() {
-                        // Typecheck the value being assigned to the variant.
+                    if let Some(ty) = fields.get(variant) {
+                        // Typecheck the value assigned to the variant.
                         val.type_check(env)?;
+                        let found = val.get_type(env)?;
+                        if !ty.equals(&found, env)? {
+                            return Err(Error::MismatchedTypes {
+                                expected: ty.clone(),
+                                found,
+                                expr: Expr::ConstExpr(self.clone()),
+                            });
+                        }
                         Ok(())
                     } else {
                         Err(Error::VariantNotFound(t.clone(), variant.clone()))
@@ -241,7 +250,10 @@ impl TypeCheck for ConstExpr {
 
 impl Compile for ConstExpr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        // output.comment(format!("compiling {self:?}"));
+        let mut comment = format!("{self:?}");
+        comment.truncate(70);
+        output.comment(format!("compiling constant `{comment}`"));
+
         match self {
             Self::None => {}
             Self::Null => {
@@ -249,17 +261,14 @@ impl Compile for ConstExpr {
                 output.op(CoreOp::Set(SP.deref(), NULL));
             }
             Self::Char(ch) => {
-                output.op(CoreOp::Comment(format!("push char {ch:?}")));
                 output.op(CoreOp::Next(SP, None));
                 output.op(CoreOp::Set(SP.deref(), ch as usize as isize));
             }
             Self::Bool(x) => {
-                output.op(CoreOp::Comment(format!("push bool {x}")));
                 output.op(CoreOp::Next(SP, None));
                 output.op(CoreOp::Set(SP.deref(), x as isize));
             }
             Self::Int(n) => {
-                output.op(CoreOp::Comment(format!("push int {n}")));
                 output.op(CoreOp::Next(SP, None));
                 output.op(CoreOp::Set(SP.deref(), n as isize));
             }
@@ -268,7 +277,6 @@ impl Compile for ConstExpr {
                 output.std_op(StandardOp::Set(SP.deref(), f))?;
             }
             Self::SizeOfType(t) => {
-                output.op(CoreOp::Comment(format!("size of {:?}", t)));
                 output.op(CoreOp::Next(SP, None));
                 output.op(CoreOp::Set(SP.deref(), t.get_size(env)? as isize));
             }
@@ -338,7 +346,6 @@ impl Compile for ConstExpr {
                 // Compile a symbol.
                 if let Some((t, offset)) = env.get_var(&name) {
                     // If the symbol is a variable, push it onto the stack.
-                    output.op(CoreOp::Comment(format!("load var '{}'", name)));
                     output.op(CoreOp::Push(FP.deref().offset(*offset), t.get_size(env)?))
                 } else {
                     // If the symbol is not a variable, evaluate it like a constant.
@@ -424,5 +431,56 @@ impl GetType for ConstExpr {
                 }
             }
         })
+    }
+}
+
+impl fmt::Debug for ConstExpr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::CoreBuiltin(builtin) => {
+                write!(f, "{builtin:?}")
+            }
+            Self::StandardBuiltin(builtin) => {
+                write!(f, "{builtin:?}")
+            }
+            Self::Proc(proc) => {
+                write!(f, "{proc:?}")
+            }
+            Self::Tuple(items) => {
+                write!(f, "(")?;
+                for (i, item) in items.iter().enumerate() {
+                    write!(f, "{item:?}")?;
+                    if i < items.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, ")")
+            }
+            Self::Struct(fields) => {
+                write!(f, "struct {{")?;
+                for (i, (field, val)) in fields.iter().enumerate() {
+                    write!(f, "{field} = {val:?}")?;
+                    if i < fields.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, "}}")
+            }
+            Self::Union(ty, variant, val) => {
+                write!(f, "union {{ {variant} = {val:?}, {ty:?}.. }}")
+            }
+            Self::Array(items) => write!(f, "{items:?}"),
+            Self::Bool(x) => write!(f, "{}", if *x { "true" } else { "false" }),
+            Self::Char(ch) => write!(f, "{ch:?}"),
+            Self::Int(n) => write!(f, "{n:?}"),
+            Self::Float(n) => write!(f, "{n:?}"),
+            Self::None => write!(f, "None"),
+            Self::Null => write!(f, "Null"),
+
+            Self::Symbol(name) => write!(f, "{name}"),
+            Self::Of(t, name) => write!(f, "{name} of {t:?}"),
+            Self::SizeOfExpr(expr) => write!(f, "sizeofexpr({expr:?}"),
+            Self::SizeOfType(ty) => write!(f, "sizeof({ty:?}"),
+        }
     }
 }
