@@ -169,16 +169,45 @@ proc quicksort_arr(arr: &Int, low: Int, high: Int) -> None = {
 
 const SIZE = 1000 in
 let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
+    putchar('u');
+    putchar('n');
+    putchar('s');
+    putchar('o');
+    putchar('r');
+    putchar('t');
+    putchar('e');
+    putchar('d');
+    putchar(':');
+    putchar(' ');
+    putchar('[');
     while lt(i, SIZE) {
-        arr[i] = if (i % 2) i else (SIZE - i);
-        putint(arr[i]); putchar(';');
+        arr[i] = SIZE - i;
+        putint(arr[i]);
+        if (lt(i, SIZE - 1)) {
+            putchar(','); putchar(' ');
+        };
         inc(&i);
     };
+    putchar(']');
     quicksort_arr(arr, 0, SIZE - 1);
     putchar('\n');
+    putchar('s');
+    putchar('o');
+    putchar('r');
+    putchar('t');
+    putchar('e');
+    putchar('d');
+    putchar(':');
+    putchar(' ');
+    putchar('[');
     i = 0;
     while lt(i, SIZE) {
-        putint(arr[i]); putchar(';');
+        putint(arr[i]);
+        if (lt(i, SIZE - 1)) {
+            putchar(','); putchar(' ');
+        };
         inc(&i);
-    }
+    };
+    putchar(']');
+    putchar('\n');
 }

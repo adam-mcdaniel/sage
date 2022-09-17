@@ -122,9 +122,21 @@ impl fmt::Display for Location {
             Location::Offset(loc, offset) => {
                 let offset = *offset;
                 if let Location::Indirect(ref addr) = **loc {
-                    write!(f, "[{} {} {}]", addr, if offset < 0 { "-" } else { "+" }, if offset < 0 {-offset} else {offset})
+                    write!(
+                        f,
+                        "[{} {} {}]",
+                        addr,
+                        if offset < 0 { "-" } else { "+" },
+                        if offset < 0 { -offset } else { offset }
+                    )
                 } else {
-                    write!(f, "{} {} {}", loc, if offset < 0 { "-" } else { "+" }, if offset < 0 {-offset} else {offset})
+                    write!(
+                        f,
+                        "{} {} {}",
+                        loc,
+                        if offset < 0 { "-" } else { "+" },
+                        if offset < 0 { -offset } else { offset }
+                    )
                 }
             }
         }

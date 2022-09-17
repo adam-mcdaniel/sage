@@ -926,6 +926,15 @@ impl Compile for Expr {
                     src: SP.deref().offset(1 - ret_size as isize),
                     size: ret_size,
                 });
+
+                // Because we could be terminating the function at an
+                // arbitrary point on the stack, we have to make the stack
+                // pointer point to the beginning of the stack frame.
+                output.op(CoreOp::GetAddress {
+                    addr: FP.deref(),
+                    dst: SP,
+                });
+
                 // Decrement the stack pointer by the difference between the size of the
                 // arguments and return value, to leave the return value on the stack.
                 output.op(CoreOp::Prev(

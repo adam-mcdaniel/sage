@@ -7,7 +7,9 @@ lalrpop_mod!(asm_parser);
 lalrpop_mod!(vm_parser);
 pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
 
-pub fn parse_vm(input: impl ToString) -> Result<Result<vm::CoreProgram, vm::StandardProgram>, String> {
+pub fn parse_vm(
+    input: impl ToString,
+) -> Result<Result<vm::CoreProgram, vm::StandardProgram>, String> {
     let code = input.to_string();
     match vm_parser::CoreProgramParser::new().parse(&input.to_string()) {
         Ok(parsed) => Ok(Ok(parsed)),

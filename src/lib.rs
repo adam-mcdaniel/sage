@@ -11,7 +11,6 @@ pub mod vm;
 /// The value of this constant might change in the future though.
 pub const NULL: isize = i8::MIN as isize;
 
-
 /// The UNICODE character art for the logo of the language.
 pub const LOGO: &str = "\n ▄▄▄       ▄████▄   ██▓▓████▄ 
 ▒████▄    ▒██▀ ▀█  ▓██▒▒██▀ █▌
