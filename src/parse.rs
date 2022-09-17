@@ -1,9 +1,9 @@
-use super::lir::Expr;
 use super::asm::{CoreProgram, StandardProgram};
+use super::lir::Expr;
 use lalrpop_util::lalrpop_mod;
 lalrpop_mod!(lir_parser);
 lalrpop_mod!(asm_parser);
-
+pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
 
 pub fn parse_asm(input: impl ToString) -> Result<Result<CoreProgram, StandardProgram>, String> {
     let code = input.to_string();
@@ -11,8 +11,8 @@ pub fn parse_asm(input: impl ToString) -> Result<Result<CoreProgram, StandardPro
         Ok(parsed) => Ok(Ok(parsed)),
         Err(_) => match asm_parser::StandardProgramParser::new().parse(&input.to_string()) {
             Ok(parsed) => Ok(Err(parsed)),
-            Err(e) => Err(format_error(&code, e))
-        }
+            Err(e) => Err(format_error(&code, e)),
+        },
     }
 }
 
@@ -20,10 +20,9 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
     let code = input.to_string();
     match lir_parser::ExprParser::new().parse(&input.to_string()) {
         Ok(parsed) => Ok(parsed),
-        Err(e) => Err(format_error(&code, e))
+        Err(e) => Err(format_error(&code, e)),
     }
 }
-
 
 type SyntaxError<'a, T> = lalrpop_util::ParseError<usize, T, &'a str>;
 

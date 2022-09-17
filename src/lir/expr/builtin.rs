@@ -3,10 +3,10 @@ use crate::asm::{CoreOp, StandardOp};
 use core::fmt;
 
 /// A builtin pseudo-procedure implemented in the core assembly variant.
-/// 
-/// This is not actually executed like a legitimate procedure, but 
+///
+/// This is not actually executed like a legitimate procedure, but
 /// instead the assembly code is directly pasted where the procedure is called.
-/// 
+///
 /// The arguments of the procedure are pushed to the stack in the order they are given.
 /// The builtin must pop its arguments. The return value is left on the stack in their place by the builtin.
 #[derive(Clone, PartialEq)]
@@ -44,13 +44,13 @@ impl Compile for CoreBuiltin {
 }
 
 /// A builtin pseudo-procedure implemented in the standard assembly variant.
-/// 
-/// This is not actually executed like a legitimate procedure, but 
+///
+/// This is not actually executed like a legitimate procedure, but
 /// instead the assembly code is directly pasted where the procedure is called.
-/// 
+///
 /// The arguments of the procedure are pushed to the stack in the order they are given.
 /// The builtin must pop its arguments. The return value is left on the stack in their place by the builtin.
-/// 
+///
 /// This should be used to implement important standard library functions, like `alloc` and `free`.
 #[derive(Clone, PartialEq)]
 pub struct StandardBuiltin {
@@ -88,10 +88,16 @@ impl Compile for StandardBuiltin {
     }
 }
 
-
 impl fmt::Debug for CoreBuiltin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "core {{")?;
+        write!(f, "proc(")?;
+        for (i, op) in self.args.iter().enumerate() {
+            write!(f, "{}: {:?}", op.0, op.1)?;
+            if i < self.body.len() - 1 {
+                write!(f, ", ")?
+            }
+        }
+        write!(f, ") -> {:?} = core {{", self.ret)?;
         for (i, op) in self.body.iter().enumerate() {
             op.fmt(f)?;
             if i < self.body.len() - 1 {
@@ -103,15 +109,23 @@ impl fmt::Debug for CoreBuiltin {
     }
 }
 
-
 impl fmt::Debug for StandardBuiltin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "proc(")?;
+        for (i, op) in self.args.iter().enumerate() {
+            write!(f, "{}: {:?}", op.0, op.1)?;
+            if i < self.body.len() - 1 {
+                write!(f, ", ")?
+            }
+        }
+        write!(f, ") -> {:?} = std {{", self.ret)?;
         for (i, op) in self.body.iter().enumerate() {
             op.fmt(f)?;
             if i < self.body.len() - 1 {
                 write!(f, " ")?
             }
         }
+        write!(f, "}}")?;
         Ok(())
     }
 }

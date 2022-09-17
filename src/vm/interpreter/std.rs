@@ -119,7 +119,7 @@ where
                         count += 1;
                     }
                     Some(_) => {}
-                    None => return Err(format!("function {} not defined", self.register))
+                    None => return Err(format!("function {} not defined", self.register)),
                 }
                 // If `count` hasn't reached the function we want,
                 // keep going.
@@ -302,7 +302,7 @@ where
                     CoreOp::Index => self.register += *self.get_cell(),
                     CoreOp::BitwiseNand => {
                         self.register = !(self.register & *self.get_cell());
-                    },
+                    }
                     CoreOp::Add => self.register += *self.get_cell(),
                     CoreOp::Sub => self.register -= *self.get_cell(),
                     CoreOp::Mul => self.register *= *self.get_cell(),
@@ -388,17 +388,19 @@ where
                     }
 
                     while stdin().read(&mut buf).is_ok() && (buf[0] as char).is_whitespace() {}
-                    
+
                     self.register = if buf[0].is_ascii_digit() {
                         (buf[0] - b'0') as isize
-                    } else { 0 };
+                    } else {
+                        0
+                    };
 
                     while stdin().read(&mut buf).is_ok() {
                         if buf[0].is_ascii_digit() {
                             self.register *= 10;
                             self.register += (buf[0] - b'0') as isize
                         } else {
-                            break
+                            break;
                         }
                     }
                 }

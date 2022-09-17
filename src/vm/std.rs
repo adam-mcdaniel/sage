@@ -77,7 +77,7 @@ impl StandardProgram {
 /// Take all of the functions defined in a list of StandardOps,
 /// and flatten their definitions. This will take nested functions
 /// and un-nest them while preserving the order in which functions are defined.
-/// 
+///
 /// All the function definitions will be placed at the top of the returned list.
 fn flatten(code: Vec<StandardOp>) -> Vec<StandardOp> {
     let mut functions = HashMap::new();
@@ -150,23 +150,34 @@ fn flatten(code: Vec<StandardOp>) -> Vec<StandardOp> {
     if let Some(body) = functions.remove(&-1) {
         result.extend(body);
     }
-    
+
     // Return the output code
     result
 }
 
 impl fmt::Debug for StandardProgram {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut comment_count = 0;
         let mut indent = 0;
         for (i, op) in self.0.iter().enumerate() {
+            if let StandardOp::CoreOp(CoreOp::Comment(comment)) = op {
+                if f.alternate() {
+                    write!(f, "{:8}  ", "")?;
+                }
+                comment_count += 1;
+                writeln!(f, "{}// {}", "   ".repeat(indent), comment,)?;
+                continue;
+            }
+
+            if f.alternate() {
+                write!(f, "{:08x?}: ", i - comment_count)?;
+            }
+
             writeln!(
                 f,
-                "{:04x?}: {}{:?}",
-                i,
+                "{}{:?}",
                 match op {
-                    StandardOp::CoreOp(CoreOp::Function)
-                    | StandardOp::CoreOp(CoreOp::If)
-                    | StandardOp::CoreOp(CoreOp::While) => {
+                    StandardOp::CoreOp(CoreOp::Function | CoreOp::If | CoreOp::While) => {
                         indent += 1;
                         "   ".repeat(indent - 1)
                     }
@@ -187,7 +198,7 @@ impl fmt::Debug for StandardProgram {
 }
 
 /// An individual standard virtual machine instruction.
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, PartialEq, PartialOrd)]
 pub enum StandardOp {
     /// Execute a core instruction.
     CoreOp(CoreOp),
@@ -250,4 +261,36 @@ pub enum StandardOp {
     GetFloat,
     /// Print the register as a float to the output stream (like `printf("%f", reg)`).
     PutFloat,
+}
+
+impl fmt::Debug for StandardOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            StandardOp::CoreOp(op) => write!(f, "{:?}", op),
+            StandardOp::Set(val) => write!(f, "set {}", val),
+            StandardOp::Alloc => write!(f, "alloc"),
+            StandardOp::Free => write!(f, "free"),
+            StandardOp::ToInt => write!(f, "to-int"),
+            StandardOp::ToFloat => write!(f, "to-float"),
+            StandardOp::Add => write!(f, "add-f"),
+            StandardOp::Sub => write!(f, "sub-f"),
+            StandardOp::Mul => write!(f, "mul-f"),
+            StandardOp::Div => write!(f, "div-f"),
+            StandardOp::Rem => write!(f, "rem-f"),
+            StandardOp::IsNonNegative => write!(f, "gez-f"),
+            StandardOp::Sin => write!(f, "sin"),
+            StandardOp::Cos => write!(f, "cos"),
+            StandardOp::Tan => write!(f, "tan"),
+            StandardOp::ASin => write!(f, "asin"),
+            StandardOp::ACos => write!(f, "acos"),
+            StandardOp::ATan => write!(f, "atan"),
+            StandardOp::Pow => write!(f, "pow"),
+            StandardOp::GetChar => write!(f, "get-char"),
+            StandardOp::PutChar => write!(f, "put-char"),
+            StandardOp::GetInt => write!(f, "get-int"),
+            StandardOp::PutInt => write!(f, "put-int"),
+            StandardOp::GetFloat => write!(f, "get-float"),
+            StandardOp::PutFloat => write!(f, "put-float"),
+        }
+    }
 }

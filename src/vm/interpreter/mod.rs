@@ -1,5 +1,5 @@
 //! # The Interpreter Module
-//! 
+//!
 //! This module implements two interpreters for the virtual machine: one for each variant.
 //! Both virtual machines are supplied with a `Device` object, which acts as a generic frontend
 //! of the machine to interact with the world. The `Device` object is responsible for
@@ -20,7 +20,7 @@ use ::std::{
 /// Create an input / output device for the virtual machine interpreter
 /// to operate on. The method `get` retrieves the device's input, and the
 /// function `put` writes to the devices output.
-/// 
+///
 /// TODO: Make a trait for a device with the standard variant, which requires
 /// `get_char`, `put_char`, `get_int`, `put_int`, `get_float`, and `put_float` methods.
 pub trait Device {

@@ -120,7 +120,7 @@ where
                         count += 1;
                     }
                     Some(_) => {}
-                    None => return Err(format!("function {} not defined", self.register))
+                    None => return Err(format!("function {} not defined", self.register)),
                 }
                 // If `count` hasn't reached the function we want,
                 // keep going.
@@ -291,7 +291,7 @@ where
                 CoreOp::Index => self.register += *self.get_cell(),
                 CoreOp::BitwiseNand => {
                     self.register = !(self.register & *self.get_cell());
-                },
+                }
                 CoreOp::Add => self.register += *self.get_cell(),
                 CoreOp::Sub => self.register -= *self.get_cell(),
                 CoreOp::Mul => self.register *= *self.get_cell(),

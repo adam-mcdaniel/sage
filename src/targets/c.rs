@@ -11,16 +11,12 @@ impl Target for C {
         let CoreProgram(ops) = program;
         let mut result = String::from(
             r#"#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <math.h>
-typedef union int_or_float {
+union int_or_float {
     long long int i;
     double f;
     union int_or_float *p;
-} int_or_float;
-int_or_float tape[200000], *ref_stack[1024], *ptr = tape, reg, tmp;
-unsigned int ref_stack_ptr = 0;
+} tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg;
+unsigned int ref_ptr = 0;
 void (*funs[10000])(void);
 int main() {
 "#,
@@ -37,6 +33,9 @@ int main() {
         let mut comment = String::new();
         let mut indent = 1;
         for op in ops {
+            if let CoreOp::Comment(_) = op {
+                continue;
+            }
             result += &tab.repeat(indent);
             result += &match op {
                 CoreOp::Comment(n) => {
@@ -100,8 +99,8 @@ int main() {
 
                 CoreOp::Move(n) => format!("ptr += {};", n),
                 CoreOp::Where => "reg.p = ptr;".to_string(),
-                CoreOp::Deref => "ref_stack[ref_stack_ptr++] = ptr; ptr = ptr->p;".to_string(),
-                CoreOp::Refer => "ptr = ref_stack[--ref_stack_ptr];".to_string(),
+                CoreOp::Deref => "*ref++ = ptr; ptr = ptr->p;".to_string(),
+                CoreOp::Refer => "ptr = *--ref;".to_string(),
 
                 CoreOp::Index => "reg.p += ptr->i;".to_string(),
                 CoreOp::BitwiseNand => "reg.i = ~(reg.i & ptr->i);".to_string(),
@@ -129,13 +128,11 @@ int main() {
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-typedef union int_or_float {
+union int_or_float {
     long long int i;
     double f;
     union int_or_float *p;
-} int_or_float;
-int_or_float tape[200000], *ref_stack[1024], *ptr = tape, reg, tmp;
-unsigned int ref_stack_ptr = 0;
+} tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg;
 void (*funs[10000])(void);
 int main() {
 "#,
@@ -150,6 +147,10 @@ int main() {
 
         let mut indent = 1;
         for op in ops {
+            if let StandardOp::CoreOp(CoreOp::Comment(_)) = op {
+                continue;
+            }
+
             match op {
                 StandardOp::Set(v) => {
                     result += &format!("{}reg.f = {:?};\n", tab.repeat(indent), v)
@@ -219,7 +220,7 @@ int main() {
 
                 StandardOp::Alloc => {
                     result += &format!(
-                        "{}reg.p = malloc(reg.i * sizeof(int_or_float));\n",
+                        "{}reg.p = malloc(reg.i * sizeof(*ptr));\n",
                         tab.repeat(indent)
                     );
                 }
@@ -228,7 +229,7 @@ int main() {
                 }
 
                 StandardOp::ToInt => {
-                    result += &format!("{}reg.i = (int)reg.f;\n", tab.repeat(indent));
+                    result += &format!("{}reg.i = (long long int)reg.f;\n", tab.repeat(indent));
                 }
                 StandardOp::ToFloat => {
                     result += &format!("{}reg.f = (double)reg.i;\n", tab.repeat(indent));
@@ -308,16 +309,13 @@ int main() {
                     }
                 }
                 StandardOp::CoreOp(CoreOp::Where) => {
-                    result += &format!("{}reg.i = (long long int)ptr;\n", tab.repeat(indent));
+                    result += &format!("{}reg.p = ptr;\n", tab.repeat(indent));
                 }
                 StandardOp::CoreOp(CoreOp::Deref) => {
-                    result += &format!(
-                        "{}ref_stack[ref_stack_ptr++] = ptr; ptr = ptr->p;\n",
-                        tab.repeat(indent)
-                    );
+                    result += &format!("{}*ref++ = ptr; ptr = ptr->p;\n", tab.repeat(indent));
                 }
                 StandardOp::CoreOp(CoreOp::Refer) => {
-                    result += &format!("{}ptr = ref_stack[--ref_stack_ptr];\n", tab.repeat(indent));
+                    result += &format!("{}ptr = *--ref;\n", tab.repeat(indent));
                 }
 
                 StandardOp::CoreOp(CoreOp::Index) => {

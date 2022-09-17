@@ -17,12 +17,12 @@
 //! instructions for float operations, memory allocation, and I/O.
 use ::std::collections::HashMap;
 
-pub mod std;
 pub mod core;
 pub mod location;
+pub mod std;
 
-pub use self::std::{StandardOp, StandardProgram};
 pub use self::core::{CoreOp, CoreProgram};
+pub use self::std::{StandardOp, StandardProgram};
 pub use location::{Location, A, B, C, D, E, F, FP, SP};
 
 pub trait AssemblyProgram {

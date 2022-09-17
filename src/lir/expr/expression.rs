@@ -1,7 +1,9 @@
 use crate::asm::{AssemblyProgram, CoreOp, StandardOp, A, B, C, FP, SP};
-use crate::lir::{Compile, ConstExpr, Env, Error, GetSize, GetType, Simplify, Type, TypeCheck, Procedure};
-use std::collections::BTreeMap;
+use crate::lir::{
+    Compile, ConstExpr, Env, Error, GetSize, GetType, Procedure, Simplify, Type, TypeCheck,
+};
 use core::fmt;
+use std::collections::BTreeMap;
 
 /// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
 ///       This way, we don't overflow the stack with several clones of the environment.
@@ -203,7 +205,12 @@ impl Expr {
 
     /// Create a `let` binding for an expression, and define multiple variables.
     pub fn let_vars(vars: Vec<(&str, Option<Type>, Self)>, ret: impl Into<Self>) -> Self {
-        Self::LetVars(vars.into_iter().map(|(name, t, e)| (name.to_string(), t, e)).collect(), Box::new(ret.into()))
+        Self::LetVars(
+            vars.into_iter()
+                .map(|(name, t, e)| (name.to_string(), t, e))
+                .collect(),
+            Box::new(ret.into()),
+        )
     }
 
     /// Create a `let` binding for an type.
@@ -218,9 +225,12 @@ impl Expr {
     }
     /// Create several `type` bindings at onces.
     pub fn let_types(vars: Vec<(&str, Type)>, ret: impl Into<Self>) -> Self {
-        Self::LetTypes(vars.into_iter().map(|(k, v)| (k.to_string(), v)).collect(), Box::new(ret.into()))
+        Self::LetTypes(
+            vars.into_iter().map(|(k, v)| (k.to_string(), v)).collect(),
+            Box::new(ret.into()),
+        )
     }
-    
+
     /// Create a `let` binding for a constant expression.
     ///
     /// This will create a new scope with the constant `constname` defined.
@@ -233,7 +243,13 @@ impl Expr {
 
     /// Create several `const` bindings at onces.
     pub fn let_consts(constants: Vec<(&str, ConstExpr)>, ret: impl Into<Self>) -> Self {
-        Self::LetConsts(constants.into_iter().map(|(k, v)| (k.to_string(), v)).collect(), Box::new(ret.into()))
+        Self::LetConsts(
+            constants
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v))
+                .collect(),
+            Box::new(ret.into()),
+        )
     }
 
     /// Create a `proc` binding for a procedure.
@@ -248,7 +264,10 @@ impl Expr {
 
     /// Create several `proc` bindings at onces.
     pub fn let_procs(procs: BTreeMap<&str, Procedure>, ret: impl Into<Self>) -> Self {
-        Self::LetProcs(procs.into_iter().map(|(k, v)| (k.to_string(), v)).collect(), Box::new(ret.into()))
+        Self::LetProcs(
+            procs.into_iter().map(|(k, v)| (k.to_string(), v)).collect(),
+            Box::new(ret.into()),
+        )
     }
 
     /// Create a structure of fields to expressions.
@@ -408,7 +427,7 @@ impl TypeCheck for Expr {
                     if let Some(t) = t {
                         // Typecheck the type.
                         t.type_check(env)?;
-    
+
                         // Check that the inferred type is compatible with the type specified.
                         if !inferred_t.equals(t, env)? {
                             return Err(Error::MismatchedTypes {
@@ -622,9 +641,17 @@ impl TypeCheck for Expr {
                 t.type_check(env)?;
                 if let Type::Union(fields) = t.clone().simplify(env)? {
                     // Confirm that the variant is a valid variant.
-                    if fields.get(variant).is_some() {
+                    if let Some(ty) = fields.get(variant) {
                         // Typecheck the value assigned to the variant.
                         val.type_check(env)?;
+                        let found = val.get_type(env)?;
+                        if !ty.equals(&found, env)? {
+                            return Err(Error::MismatchedTypes {
+                                expected: ty.clone(),
+                                found,
+                                expr: self.clone(),
+                            });
+                        }
                         Ok(())
                     } else {
                         Err(Error::VariantNotFound(t.clone(), variant.clone()))
@@ -672,7 +699,6 @@ impl TypeCheck for Expr {
     }
 }
 
-
 impl Compile for Expr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         if !matches!(self, Self::ConstExpr(_)) {
@@ -680,7 +706,7 @@ impl Compile for Expr {
             comment.truncate(70);
             output.comment(format!("compiling `{comment}`"));
         }
-        
+
         match self {
             Self::ConstExpr(expr) => expr.compile_expr(env, output)?,
             Self::Many(exprs) => {
@@ -942,7 +968,7 @@ impl Compile for Expr {
                 });
                 output.op(CoreOp::Pop(None, var_size));
             }
-            
+
             Self::LetVars(vars, body) => {
                 let mut result = *body;
                 for (name, t, e) in vars.into_iter().rev() {
@@ -950,7 +976,6 @@ impl Compile for Expr {
                 }
                 result.compile_expr(env, output)?
             }
-
 
             Self::While(cond, body) => {
                 // Eval the condition
@@ -1339,7 +1364,6 @@ impl GetType for Expr {
                 ret.get_type_checked(&new_env, i)?
             }
 
-
             Self::LetType(name, t, ret) => {
                 let mut new_env = env.clone();
                 new_env.define_type(name, t.clone());
@@ -1353,7 +1377,6 @@ impl GetType for Expr {
                 ret.get_type_checked(&new_env, i)?
             }
 
-
             Self::LetVar(var, t, val, ret) => {
                 let mut new_env = env.clone();
                 new_env.define_var(var, t.clone().unwrap_or(val.get_type_checked(env, i)?))?;
@@ -1363,7 +1386,8 @@ impl GetType for Expr {
             Self::LetVars(vars, ret) => {
                 let mut new_env = env.clone();
                 for (var, t, val) in vars {
-                    new_env.define_var(var, t.clone().unwrap_or(val.get_type_checked(&new_env, i)?))?;
+                    new_env
+                        .define_var(var, t.clone().unwrap_or(val.get_type_checked(&new_env, i)?))?;
                 }
                 ret.get_type_checked(&new_env, i)?
             }
@@ -1390,7 +1414,7 @@ impl GetType for Expr {
 
             Self::Return(_) => Type::Never,
             Self::Apply(func, _) => {
-                if let Type::Proc(_, ret) = func.get_type_checked(env, i)? {
+                if let Type::Proc(_, ret) = func.get_type_checked(env, i)?.simplify(env)? {
                     *ret
                 } else {
                     return Err(Error::ApplyNonProc(self.clone()));
@@ -1468,7 +1492,6 @@ impl GetType for Expr {
     }
 }
 
-
 impl fmt::Debug for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -1477,7 +1500,7 @@ impl fmt::Debug for Expr {
                 write!(f, "{{ ")?;
                 for (i, item) in exprs.iter().enumerate() {
                     write!(f, "{item:?}")?;
-                    if i < exprs.len() - 1{
+                    if i < exprs.len() - 1 {
                         write!(f, "; ")?
                     }
                 }
@@ -1487,7 +1510,7 @@ impl fmt::Debug for Expr {
                 write!(f, "[")?;
                 for (i, item) in exprs.iter().enumerate() {
                     write!(f, "{item:?}")?;
-                    if i < exprs.len() - 1{
+                    if i < exprs.len() - 1 {
                         write!(f, ", ")?
                     }
                 }
@@ -1497,7 +1520,7 @@ impl fmt::Debug for Expr {
                 write!(f, "(")?;
                 for (i, item) in exprs.iter().enumerate() {
                     write!(f, "{item:?}")?;
-                    if i < exprs.len() - 1{
+                    if i < exprs.len() - 1 {
                         write!(f, ", ")?
                     }
                 }
@@ -1518,10 +1541,9 @@ impl fmt::Debug for Expr {
                         write!(f, ": {ty:?}")?
                     }
                     write!(f, " = {val:?}")?;
-                    if i < vars.len() - 1{
+                    if i < vars.len() - 1 {
                         write!(f, ", ")?
                     }
-
                 }
                 write!(f, " in {ret:?}")
             }
@@ -1532,10 +1554,9 @@ impl fmt::Debug for Expr {
                 write!(f, "const ")?;
                 for (i, (name, val)) in consts.iter().enumerate() {
                     write!(f, "{name} = {val:?}")?;
-                    if i < consts.len() - 1{
+                    if i < consts.len() - 1 {
                         write!(f, ", ")?
                     }
-
                 }
                 write!(f, " in {ret:?}")
             }
@@ -1546,10 +1567,9 @@ impl fmt::Debug for Expr {
                 write!(f, "const ")?;
                 for (i, (name, val)) in consts.iter().enumerate() {
                     write!(f, "{name} = {val:?}")?;
-                    if i < consts.len() - 1{
+                    if i < consts.len() - 1 {
                         write!(f, ", ")?
                     }
-
                 }
                 write!(f, " in {ret:?}")
             }
@@ -1560,10 +1580,9 @@ impl fmt::Debug for Expr {
                 write!(f, "type ")?;
                 for (i, (name, ty)) in types.iter().enumerate() {
                     write!(f, "{name} = {ty:?}")?;
-                    if i < types.len() - 1{
+                    if i < types.len() - 1 {
                         write!(f, ", ")?
                     }
-
                 }
                 write!(f, " in {ret:?}")
             }
@@ -1583,12 +1602,12 @@ impl fmt::Debug for Expr {
                 write!(f, "struct {{")?;
                 for (i, (name, val)) in items.iter().enumerate() {
                     write!(f, "{name} = {val:?}")?;
-                    if i < items.len() - 1{
+                    if i < items.len() - 1 {
                         write!(f, ", ")?
                     }
                 }
                 write!(f, "}}")
-            },
+            }
             Self::Union(ty, variant, val) => {
                 write!(f, "union {{ {variant} = {val:?}, {ty:?}.. }}")
             }
@@ -1613,12 +1632,12 @@ impl fmt::Debug for Expr {
                 write!(f, "{fun:?}(")?;
                 for (i, arg) in args.iter().enumerate() {
                     write!(f, "{arg:?}")?;
-                    if i < args.len() - 1{
+                    if i < args.len() - 1 {
                         write!(f, ", ")?
                     }
                 }
                 write!(f, ")")
-            },
+            }
         }
     }
 }

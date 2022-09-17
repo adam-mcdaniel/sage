@@ -225,9 +225,17 @@ impl TypeCheck for ConstExpr {
                 // Confirm the type supplied is a union.
                 if let Type::Union(fields) = t.clone().simplify(env)? {
                     // Confirm that the variant is contained within the union.
-                    if fields.get(variant).is_some() {
-                        // Typecheck the value being assigned to the variant.
+                    if let Some(ty) = fields.get(variant) {
+                        // Typecheck the value assigned to the variant.
                         val.type_check(env)?;
+                        let found = val.get_type(env)?;
+                        if !ty.equals(&found, env)? {
+                            return Err(Error::MismatchedTypes {
+                                expected: ty.clone(),
+                                found,
+                                expr: Expr::ConstExpr(self.clone()),
+                            });
+                        }
                         Ok(())
                     } else {
                         Err(Error::VariantNotFound(t.clone(), variant.clone()))
@@ -245,7 +253,7 @@ impl Compile for ConstExpr {
         let mut comment = format!("{self:?}");
         comment.truncate(70);
         output.comment(format!("compiling constant `{comment}`"));
-        
+
         match self {
             Self::None => {}
             Self::Null => {
@@ -426,42 +434,41 @@ impl GetType for ConstExpr {
     }
 }
 
-
 impl fmt::Debug for ConstExpr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::CoreBuiltin(builtin) => {
                 write!(f, "{builtin:?}")
-            },
+            }
             Self::StandardBuiltin(builtin) => {
                 write!(f, "{builtin:?}")
-            },
+            }
             Self::Proc(proc) => {
                 write!(f, "{proc:?}")
-            },
+            }
             Self::Tuple(items) => {
                 write!(f, "(")?;
                 for (i, item) in items.iter().enumerate() {
                     write!(f, "{item:?}")?;
-                    if i < items.len() - 1{
+                    if i < items.len() - 1 {
                         write!(f, ", ")?
                     }
                 }
                 write!(f, ")")
-            },
+            }
             Self::Struct(fields) => {
                 write!(f, "struct {{")?;
                 for (i, (field, val)) in fields.iter().enumerate() {
                     write!(f, "{field} = {val:?}")?;
-                    if i < fields.len() - 1{
+                    if i < fields.len() - 1 {
                         write!(f, ", ")?
                     }
                 }
                 write!(f, "}}")
-            },
+            }
             Self::Union(ty, variant, val) => {
                 write!(f, "union {{ {variant} = {val:?}, {ty:?}.. }}")
-            },
+            }
             Self::Array(items) => write!(f, "{items:?}"),
             Self::Bool(x) => write!(f, "{}", if *x { "true" } else { "false" }),
             Self::Char(ch) => write!(f, "{ch:?}"),
@@ -469,7 +476,7 @@ impl fmt::Debug for ConstExpr {
             Self::Float(n) => write!(f, "{n:?}"),
             Self::None => write!(f, "None"),
             Self::Null => write!(f, "Null"),
-            
+
             Self::Symbol(name) => write!(f, "{name}"),
             Self::Of(t, name) => write!(f, "{name} of {t:?}"),
             Self::SizeOfExpr(expr) => write!(f, "sizeofexpr({expr:?}"),
