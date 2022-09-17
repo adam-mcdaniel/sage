@@ -6,3 +6,4 @@ gmon.out
 a.out
 redirect.html
 build-docs.sh
+out.*

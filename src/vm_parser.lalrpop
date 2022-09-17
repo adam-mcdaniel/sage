@@ -1,4 +1,4 @@
-use ::std::{str::FromStr, collections::BTreeMap};
+use ::std::str::FromStr;
 use crate::vm::*;
 
 grammar;

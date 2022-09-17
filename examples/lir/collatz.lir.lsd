@@ -1,0 +1,23 @@
+const putint = proc(n: Int) -> None = std {
+    put-int [SP]
+    pop
+} in
+const putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+} in
+
+proc step(n: Int) -> Int = {if (n % 2) (3 * n + 1) else n / 2} in
+proc collatz(n: Int) -> Int = {
+    let i = 0 in
+        while n - 1 {
+            i = i + 1;
+            putint(i);
+            putchar(':');
+            putchar(' ');
+            putint(n);
+            putchar('\n');
+            n = step(n);
+        };
+    return n
+} in { putchar('>'); collatz(129) }

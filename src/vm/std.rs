@@ -155,27 +155,29 @@ fn flatten(code: Vec<StandardOp>) -> Vec<StandardOp> {
     result
 }
 
-impl fmt::Debug for StandardProgram {
+impl fmt::Display for StandardProgram {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut comment_count = 0;
         let mut indent = 0;
         for (i, op) in self.0.iter().enumerate() {
-            if let StandardOp::CoreOp(CoreOp::Comment(comment)) = op {
-                if f.alternate() {
-                    write!(f, "{:8}  ", "")?;
-                }
-                comment_count += 1;
-                writeln!(f, "{}// {}", "   ".repeat(indent), comment,)?;
-                continue;
-            }
-
             if f.alternate() {
+                if let StandardOp::CoreOp(CoreOp::Comment(comment)) = op {
+                    if f.alternate() {
+                        write!(f, "{:8}  ", "")?;
+                    }
+                    comment_count += 1;
+                    writeln!(f, "{}// {}", "   ".repeat(indent), comment,)?;
+                    continue;
+                }
+
                 write!(f, "{:08x?}: ", i - comment_count)?;
+            } else if let StandardOp::CoreOp(CoreOp::Comment(_)) = op {
+                continue;
             }
 
             writeln!(
                 f,
-                "{}{:?}",
+                "{}{}",
                 match op {
                     StandardOp::CoreOp(CoreOp::Function | CoreOp::If | CoreOp::While) => {
                         indent += 1;
@@ -198,7 +200,7 @@ impl fmt::Debug for StandardProgram {
 }
 
 /// An individual standard virtual machine instruction.
-#[derive(Clone, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum StandardOp {
     /// Execute a core instruction.
     CoreOp(CoreOp),
@@ -263,10 +265,10 @@ pub enum StandardOp {
     PutFloat,
 }
 
-impl fmt::Debug for StandardOp {
+impl fmt::Display for StandardOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            StandardOp::CoreOp(op) => write!(f, "{:?}", op),
+            StandardOp::CoreOp(op) => write!(f, "{}", op),
             StandardOp::Set(val) => write!(f, "set {}", val),
             StandardOp::Alloc => write!(f, "alloc"),
             StandardOp::Free => write!(f, "free"),

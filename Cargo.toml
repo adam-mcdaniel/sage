@@ -1,15 +1,23 @@
 [package]
 name = "acid"
+authors = ["Adam McDaniel <adam.mcdaniel17@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
+license = "GPL-2.0-or-later"
+description = "A portable programming language with a compact backend"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "lsd"
+path = "src/cli.rs"
 
 [dependencies]
 maplit = "1.0.2"
 lazy_static = "1.4.0"
 lalrpop-util = "0.19.8"
 lalrpop = "0.19.8"
+clap = { version ="3.2.22", features = ["derive", "cargo"] }
 
 # Add a build-time dependency on the lalrpop library:
 [build-dependencies]

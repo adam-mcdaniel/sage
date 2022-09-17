@@ -1,0 +1,17 @@
+fun fact
+    if [FP]
+        mov [FP], A
+        dec A
+        push A
+        call fact
+        mul [FP + 1], [FP]
+        pop
+    else
+        set [FP], 1
+    end
+end
+
+set A, 5 push A
+call fact
+pop A
+put-int A

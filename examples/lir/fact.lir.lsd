@@ -1,0 +1,19 @@
+const putfloat = proc(n: Float) -> None = std {
+    put-float [SP]
+    pop
+} in
+const putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+} in
+
+proc fact(n: Float) -> Float = {
+    if (n as Int)
+        (n * fact(n - 1))
+        else 1.0
+} in {
+    putfloat(fact(10.0));
+    putchar('\n');
+    putfloat(fact(50.0));
+    putchar('\n')
+}

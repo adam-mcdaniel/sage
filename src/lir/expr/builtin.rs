@@ -9,7 +9,7 @@ use core::fmt;
 ///
 /// The arguments of the procedure are pushed to the stack in the order they are given.
 /// The builtin must pop its arguments. The return value is left on the stack in their place by the builtin.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CoreBuiltin {
     /// The name of the builtin. This isn't used in compilation, just for debugging.
     pub name: String,
@@ -52,7 +52,7 @@ impl Compile for CoreBuiltin {
 /// The builtin must pop its arguments. The return value is left on the stack in their place by the builtin.
 ///
 /// This should be used to implement important standard library functions, like `alloc` and `free`.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct StandardBuiltin {
     /// The name of the builtin. This isn't used in compilation, just for debugging.
     pub name: String,
@@ -88,7 +88,7 @@ impl Compile for StandardBuiltin {
     }
 }
 
-impl fmt::Debug for CoreBuiltin {
+impl fmt::Display for CoreBuiltin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "proc(")?;
         for (i, op) in self.args.iter().enumerate() {
@@ -109,7 +109,7 @@ impl fmt::Debug for CoreBuiltin {
     }
 }
 
-impl fmt::Debug for StandardBuiltin {
+impl fmt::Display for StandardBuiltin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "proc(")?;
         for (i, op) in self.args.iter().enumerate() {

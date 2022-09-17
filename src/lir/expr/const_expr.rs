@@ -8,7 +8,7 @@ use core::fmt;
 use std::collections::BTreeMap;
 
 /// A compiletime expression.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ConstExpr {
     /// The unit, or "void" instance.
     None,
@@ -250,7 +250,7 @@ impl TypeCheck for ConstExpr {
 
 impl Compile for ConstExpr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        let mut comment = format!("{self:?}");
+        let mut comment = format!("{self}");
         comment.truncate(70);
         output.comment(format!("compiling constant `{comment}`"));
 
@@ -434,22 +434,22 @@ impl GetType for ConstExpr {
     }
 }
 
-impl fmt::Debug for ConstExpr {
+impl fmt::Display for ConstExpr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::CoreBuiltin(builtin) => {
-                write!(f, "{builtin:?}")
+                write!(f, "{builtin}")
             }
             Self::StandardBuiltin(builtin) => {
-                write!(f, "{builtin:?}")
+                write!(f, "{builtin}")
             }
             Self::Proc(proc) => {
-                write!(f, "{proc:?}")
+                write!(f, "{proc}")
             }
             Self::Tuple(items) => {
                 write!(f, "(")?;
                 for (i, item) in items.iter().enumerate() {
-                    write!(f, "{item:?}")?;
+                    write!(f, "{item}")?;
                     if i < items.len() - 1 {
                         write!(f, ", ")?
                     }
@@ -459,7 +459,7 @@ impl fmt::Debug for ConstExpr {
             Self::Struct(fields) => {
                 write!(f, "struct {{")?;
                 for (i, (field, val)) in fields.iter().enumerate() {
-                    write!(f, "{field} = {val:?}")?;
+                    write!(f, "{field} = {val}")?;
                     if i < fields.len() - 1 {
                         write!(f, ", ")?
                     }
@@ -467,20 +467,29 @@ impl fmt::Debug for ConstExpr {
                 write!(f, "}}")
             }
             Self::Union(ty, variant, val) => {
-                write!(f, "union {{ {variant} = {val:?}, {ty:?}.. }}")
+                write!(f, "union {{ {variant} = {val}, {ty}.. }}")
             }
-            Self::Array(items) => write!(f, "{items:?}"),
+            Self::Array(items) => {
+                write!(f, "[")?;
+                for (i, val) in items.iter().enumerate() {
+                    write!(f, "{val}")?;
+                    if i < items.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, "]")
+            }
             Self::Bool(x) => write!(f, "{}", if *x { "true" } else { "false" }),
-            Self::Char(ch) => write!(f, "{ch:?}"),
-            Self::Int(n) => write!(f, "{n:?}"),
-            Self::Float(n) => write!(f, "{n:?}"),
+            Self::Char(ch) => write!(f, "{ch}"),
+            Self::Int(n) => write!(f, "{n}"),
+            Self::Float(n) => write!(f, "{n}"),
             Self::None => write!(f, "None"),
             Self::Null => write!(f, "Null"),
 
             Self::Symbol(name) => write!(f, "{name}"),
-            Self::Of(t, name) => write!(f, "{name} of {t:?}"),
-            Self::SizeOfExpr(expr) => write!(f, "sizeofexpr({expr:?}"),
-            Self::SizeOfType(ty) => write!(f, "sizeof({ty:?}"),
+            Self::Of(t, name) => write!(f, "{name} of {t}"),
+            Self::SizeOfExpr(expr) => write!(f, "sizeofexpr({expr}"),
+            Self::SizeOfType(ty) => write!(f, "sizeof({ty}"),
         }
     }
 }

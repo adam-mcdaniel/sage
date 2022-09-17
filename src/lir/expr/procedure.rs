@@ -9,7 +9,7 @@ lazy_static! {
     static ref LAMBDA_COUNT: Mutex<usize> = Mutex::new(0);
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Procedure {
     /// The generated name of the procedure created by the compiler to be unique.
     mangled_name: String,
@@ -124,7 +124,7 @@ impl Compile for Procedure {
     }
 }
 
-impl fmt::Debug for Procedure {
+impl fmt::Display for Procedure {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "proc(")?;
         for (i, (name, ty)) in self.args.iter().enumerate() {

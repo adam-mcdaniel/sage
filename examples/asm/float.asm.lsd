@@ -1,0 +1,14 @@
+fun test
+    set-f A, 32.058
+    put-float A
+    set B, 10 put-char B
+    to-int A
+    put-int A
+    set B, 10 put-char B
+    to-float A
+    set-f B, 10.5 add-f B, A
+    put-float A
+    set B, 10 put-char B
+end
+
+call test
