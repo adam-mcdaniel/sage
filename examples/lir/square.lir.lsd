@@ -1,0 +1,7 @@
+const getfloat = proc() -> Float = std {
+    next SP
+    get-float [SP]
+}, putfloat = proc(n: Float) -> None = std {
+    put-float [SP]
+    pop
+} in let x = getfloat() in putfloat(x * x)

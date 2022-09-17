@@ -1,5 +1,4 @@
 use crate::vm::{CoreOp, Device, StandardDevice, StandardOp, StandardProgram};
-use std::io::{stderr, stdin, Read, Write};
 
 pub fn as_float(n: isize) -> f64 {
     f64::from_bits(n as u64)
@@ -232,7 +231,7 @@ where
     /// Get the current cell pointed to on the turing tape.
     fn get_cell(&mut self) -> &mut isize {
         while self.pointer >= self.cells.len() {
-            self.cells.extend(vec![0; 30000]);
+            self.cells.extend(vec![0; 1000]);
         }
 
         &mut self.cells[self.pointer]
@@ -372,65 +371,22 @@ where
                 }
 
                 StandardOp::GetFloat => {
-                    let mut buf = String::new();
-                    if stderr().flush().is_err() {
-                        return Err("Could not flush output".to_string());
-                    }
-                    if stdin().read_line(&mut buf).is_err() {
-                        return Err("Could not get user input".to_string());
-                    }
-                    self.register = as_int(buf.trim().parse::<f64>().unwrap_or(0.0))
+                    self.register = as_int(self.device.get_float()?);
                 }
                 StandardOp::GetInt => {
-                    let mut buf = [0];
-                    if stderr().flush().is_err() {
-                        return Err("Could not flush output".to_string());
-                    }
-
-                    while stdin().read(&mut buf).is_ok() && (buf[0] as char).is_whitespace() {}
-
-                    self.register = if buf[0].is_ascii_digit() {
-                        (buf[0] - b'0') as isize
-                    } else {
-                        0
-                    };
-
-                    while stdin().read(&mut buf).is_ok() {
-                        if buf[0].is_ascii_digit() {
-                            self.register *= 10;
-                            self.register += (buf[0] - b'0') as isize
-                        } else {
-                            break;
-                        }
-                    }
+                    self.register = self.device.get_int()?;
                 }
                 StandardOp::GetChar => {
-                    let mut buf = [0];
-                    if stderr().flush().is_err() {
-                        return Err("Could not flush output".to_string());
-                    }
-                    if stdin().read(&mut buf).is_err() {
-                        return Err("Could not get user input".to_string());
-                    }
-                    self.register = buf[0] as isize;
+                    self.register = self.device.get_char()? as u8 as isize;
                 }
                 StandardOp::PutFloat => {
-                    eprint!("{:?}", as_float(self.register));
-                    if stderr().flush().is_err() {
-                        return Err("Could not flush output".to_string());
-                    }
+                    self.device.put_float(as_float(self.register))?;
                 }
                 StandardOp::PutInt => {
-                    eprint!("{:?}", self.register);
-                    if stderr().flush().is_err() {
-                        return Err("Could not flush output".to_string());
-                    }
+                    self.device.put_int(self.register)?;
                 }
                 StandardOp::PutChar => {
-                    eprint!("{}", self.register as u8 as char);
-                    if stderr().flush().is_err() {
-                        return Err("Could not flush output".to_string());
-                    }
+                    self.device.put_char(self.register as u8 as char)?;
                 }
 
                 StandardOp::Alloc => {
