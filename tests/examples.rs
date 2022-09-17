@@ -1,7 +1,6 @@
 use acid::{lir::Compile, parse::*, vm::*};
 use std::{
     fs::{read_dir, read_to_string},
-    os::unix::prelude::OsStrExt,
     path::PathBuf,
 };
 
@@ -25,7 +24,7 @@ fn test_lir_examples_helper() {
     for entry in read_dir("examples/lir/").unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
-        if path.is_file() && matches!(path.extension().map(|p| p.as_bytes()), Some(b"lsd") | None) {
+        if path.is_file() && matches!(path.extension().map(|p| p.to_str().expect("Couldn't get file extension of example code").as_bytes()), Some(b"lsd") | None) {
             let file_name = path
                 .file_name()
                 .expect(&format!("Could not get file name of path `{path:?}`"))
@@ -37,6 +36,7 @@ fn test_lir_examples_helper() {
                 .with_extension("txt");
             let correct_output = match read_to_string(&correct_output_path) {
                 Ok(contents) => contents
+                    .replace("\r\n", "\n")
                     .as_bytes()
                     .into_iter()
                     .map(|byte| *byte as isize)
