@@ -934,7 +934,7 @@ impl Compile for Expr {
                     addr: FP.deref(),
                     dst: SP,
                 });
-                
+
                 // Decrement the stack pointer by the difference between the size of the
                 // arguments and return value, to leave the return value on the stack.
                 output.op(CoreOp::Prev(

@@ -358,10 +358,9 @@ proc putkey(key: Key) -> None = {
         putchar('2');
         putchar('8');
     });
-
+    putchar(' ');
     let i = 0, size = get_key_size(key), data = get_key_data(&key) in 
         while lt(i, size) {
-            putchar(' ');
             putint(data[i]);
             i = i + 1;
         }

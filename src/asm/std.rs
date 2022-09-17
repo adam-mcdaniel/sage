@@ -8,7 +8,7 @@ use super::{location::FP_STACK, AssemblyProgram, CoreOp, Env, Error, Location, F
 use crate::vm::{self, VirtualMachineProgram};
 use core::fmt;
 
-#[derive(Clone, Debug,PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct StandardProgram(pub Vec<StandardOp>);
 
 impl StandardProgram {
