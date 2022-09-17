@@ -119,7 +119,7 @@ impl Device for TestingDevice {
     fn get_int(&mut self) -> Result<isize, String> {
         let mut result: isize = 0;
         loop {
-            let ch= self.get_char()?;
+            let ch = self.get_char()?;
             if !ch.is_whitespace() {
                 if ch.is_ascii_digit() {
                     result = (ch as u8 - b'0') as isize;
@@ -129,7 +129,7 @@ impl Device for TestingDevice {
         }
 
         loop {
-            let ch= self.get_char()?;
+            let ch = self.get_char()?;
             if ch.is_ascii_digit() {
                 result *= 10;
                 result += (ch as u8 - b'0') as isize
@@ -143,13 +143,14 @@ impl Device for TestingDevice {
 
     fn get_float(&mut self) -> Result<f64, String> {
         let whole_part = self.get_int()?;
-        
-        Ok(whole_part as f64 + if self.get_char()? == '.' {
-            let fractional_part = self.get_int()? as f64;
-            fractional_part / 10.0_f64.powi(fractional_part.log10() as i32 + 1)
-        } else {
-            0.0
-        })
+
+        Ok(whole_part as f64
+            + if self.get_char()? == '.' {
+                let fractional_part = self.get_int()? as f64;
+                fractional_part / 10.0_f64.powi(fractional_part.log10() as i32 + 1)
+            } else {
+                0.0
+            })
     }
 }
 

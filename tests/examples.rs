@@ -1,8 +1,4 @@
-use acid::{
-    lir::Compile,
-    parse::*,
-    vm::*,
-};
+use acid::{lir::Compile, parse::*, vm::*};
 use std::{
     fs::{read_dir, read_to_string},
     os::unix::prelude::OsStrExt,
@@ -11,7 +7,6 @@ use std::{
 
 const INPUT: &str = "2 4 8 16 32 64 128 256 512 1024 2048 4096";
 const CALL_STACK_SIZE: usize = 1024;
-
 
 #[test]
 fn test_lir_examples() {
@@ -38,24 +33,23 @@ fn test_lir_examples_helper() {
                 .expect(&format!("Could not get file name of path `{path:?}`"))
                 .to_string();
             let correct_output_path = PathBuf::from("examples/output")
-                    .join(file_name)
-                    .with_extension("txt");
+                .join(file_name)
+                .with_extension("txt");
             let correct_output = match read_to_string(&correct_output_path) {
-                Ok(contents) => 
-                contents.as_bytes()
-                .into_iter()
-                .map(|byte| *byte as isize)
-                .collect::<Vec<_>>(),
+                Ok(contents) => contents
+                    .as_bytes()
+                    .into_iter()
+                    .map(|byte| *byte as isize)
+                    .collect::<Vec<_>>(),
                 Err(_) => {
                     eprintln!("WARNING: Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
-                    continue
+                    continue;
                 }
             };
 
-            let lir_src =
-                read_to_string(&path).expect(&format!("Could not read contents of file `{path:?}`"));
-            let lir_code = parse_lir(&lir_src)
-                .expect(&format!("Could not parse `{path:?}`"));
+            let lir_src = read_to_string(&path)
+                .expect(&format!("Could not read contents of file `{path:?}`"));
+            let lir_code = parse_lir(&lir_src).expect(&format!("Could not parse `{path:?}`"));
             drop(lir_src);
             let asm_code = lir_code
                 .compile()
