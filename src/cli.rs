@@ -3,7 +3,7 @@ use acid::{
     parse::*,
     targets::{self, Target},
     vm::*,
-    LOGO_WITH_COLOR, *,
+    LOGO_WITH_COLOR, TAGLINE, *,
 };
 use clap::*;
 use std::{
@@ -45,7 +45,7 @@ enum SourceType {
 
 /// The argument parser for the CLI.
 #[derive(Parser, Debug)]
-#[clap(author, version, before_help = "⚠️ 🧪WARNING: Highly corrosive!⚗️ ⚠️", about = Some(LOGO_WITH_COLOR), long_about = Some(LOGO_WITH_COLOR), max_term_width=70)]
+#[clap(author, version, before_help = TAGLINE, about = Some(LOGO_WITH_COLOR), long_about = Some(LOGO_WITH_COLOR), max_term_width=70)]
 struct Args {
     /// The input file to compiler.
     #[clap(value_parser)]

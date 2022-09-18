@@ -1,3 +1,30 @@
+//! # Parsing Module
+//! 
+//! This module contains all the related functions for parsing
+//! any given source language supported by the compiler.
+//! 
+//! Right now, this module supports parsing:
+//! - LIR source
+//! - Core Assembly source
+//! - Standard Assembly source
+//! - Core Virtual Machine code source
+//! - Standard Virtual Machine code source
+//! 
+//! ## Stability
+//! 
+//! This module will likely be unstable for a long while,
+//! because none of the language syntaxes are stablized.
+//! 
+//! I also hope to replace the parsers with libraries using
+//! fewer dependencies. LALRPOP requires a ridiculous number of
+//! packages to function. Nom seems to be an ideal candidate.
+//! 
+//! #### Error Types
+//! 
+//! The error types in this module are just strings for now,
+//! but I intend to replace these with a set of full blown syntax
+//! error enums in the future.
+
 use super::asm::{CoreProgram, StandardProgram};
 use super::lir::Expr;
 use super::vm;
@@ -7,6 +34,8 @@ lalrpop_mod!(asm_parser);
 lalrpop_mod!(vm_parser);
 pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
 
+/// Parse Core and Standard variants of virtual machine source code.
+/// This will return core code by default, but will fallback on standard.
 pub fn parse_vm(
     input: impl ToString,
 ) -> Result<Result<vm::CoreProgram, vm::StandardProgram>, String> {
@@ -20,6 +49,8 @@ pub fn parse_vm(
     }
 }
 
+/// Parse Core and Standard variants of assembly source code.
+/// This will return core code by default, but will fallback on standard.
 pub fn parse_asm(input: impl ToString) -> Result<Result<CoreProgram, StandardProgram>, String> {
     let code = input.to_string();
     match asm_parser::CoreProgramParser::new().parse(&input.to_string()) {
@@ -31,6 +62,7 @@ pub fn parse_asm(input: impl ToString) -> Result<Result<CoreProgram, StandardPro
     }
 }
 
+/// Parse LIR code as an LIR expression.d
 pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
     let code = input.to_string();
     match lir_parser::ExprParser::new().parse(&input.to_string()) {
@@ -67,7 +99,7 @@ fn make_error(line: &str, unexpected: &str, line_number: usize, column_number: u
 }
 
 // Gets the line number, the line, and the column number of the error
-pub fn get_line(script: &str, location: usize) -> (usize, String, usize) {
+fn get_line(script: &str, location: usize) -> (usize, String, usize) {
     if script.is_empty() {
         return (1, "".to_string(), 0);
     }
