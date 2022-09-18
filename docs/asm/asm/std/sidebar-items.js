@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["StandardOp","A core instruction of the assembly language. These are instructions guaranteed to be implemented for every target possible."]],"struct":[["StandardProgram",""]]});

@@ -37,6 +37,24 @@
 //! This makes Acid uniquely equipped to compile to very limited arcitectures:
 //! **the Core instruction set for the virtual machine is *almost guaranteed*
 //! to be a subset of most CPU architectures.**
+//! 
+//! The Core instructions are required to be implemented by *every target*. These instructions are guaranteed to be supported by every target.
+//! 
+//! |              | The              | Twenty  | and        | Four       | Canonical | Instructions  |
+//! |--------------|------------------|---------|------------|------------|-----------|---------------|
+//! | Memory       | `Move(n: int)`   | `Index` | `Where?`   | `Deref`    | `Refer`   | `BitwiseNand` | 
+//! | Control Flow | `While`          | `If`    | `Else`     | `Function` | `Call`    | `Return`      |
+//! | Arithmetic   | `IsNonNegative?` | `Add`   | `Subtract` | `Multiply` | `Divide`  | `Remainder`   |
+//! | Fundamental  | `Set(n: int)`    | `Save`  | `Restore`  | `Get`      | `Put`     | `End`         |
+//! 
+//! The standard instructions are not guaranteed to be wholly implemented by every target, or at all. A target for Linux on x86 will certainly implement all the standard instructions, but a thermostat might implement only a few or none.
+//! 
+//! |                        | The              | Twenty    | and             | Four       | Standard    | Instructions |
+//! |------------------------|------------------|-----------|-----------------|------------|-------------|--------------|
+//! | Memory and Fundamental | `Allocate`       | `Free`    | `Set(n: float)` | `ToInt`    | `ToFloat`   | `Power`      |
+//! | Trigonometry           | `Sine`           | `Cosine`  | `Tangent`       | `ArcSine`  | `ArcCosine` | `ArcTangent` |
+//! | Arithmetic             | `IsNonNegative?` | `Add`     | `Subtract`      | `Multiply` | `Divide`    | `Remainder`  |
+//! | Worldly                | `GetChar`        | `PutChar` | `GetInt`        | `PutInt`   | `GetFloat`  | `PutFloat`   |
 
 
 pub mod asm;

@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["c","C Target"]],"trait":[["Target","Implement a compiler for the given target."]]});

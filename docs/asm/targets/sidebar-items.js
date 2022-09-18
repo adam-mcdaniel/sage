@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["c","An implementation of the virtual machine for the C language."]]});
