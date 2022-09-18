@@ -16,7 +16,7 @@
 //! ```
 //! 
 //! This crate implements a compiler for the Acid programming language
-//! and it's low level virtual machine.
+//! and its low level virtual machine.
 //! 
 //! ## Stages of IR
 //! 
