@@ -1,9 +1,16 @@
+//! # Standard Interpreter Module
+//! 
+//! This module implements an interpreter for the Standard virtual machine
+//! variant.
+
 use crate::vm::{CoreOp, Device, StandardDevice, StandardOp, StandardProgram};
 
+/// A function to reinterpret the bits of an integer as a float.
 pub fn as_float(n: isize) -> f64 {
     f64::from_bits(n as u64)
 }
 
+/// A function to reinterpret the bits of a float as an integer.
 pub fn as_int(n: f64) -> isize {
     n.to_bits() as isize
 }
