@@ -296,7 +296,17 @@
 <span id="291">291</span>
 <span id="292">292</span>
 <span id="293">293</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">acid</span>::{
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # LSD - The Acid Compiler</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! This program implements the CLI frontend to the Acid programming</span>
+<span class="doccomment">//! language. LSD can compile Acid&#39;s various source languages to</span>
+<span class="doccomment">//! the supported targets provided by the compiler.</span>
+<span class="kw">use</span> <span class="ident">acid</span>::{
     <span class="ident">lir</span>::<span class="kw-2">*</span>,
     <span class="ident">parse</span>::<span class="kw-2">*</span>,
     <span class="ident">targets</span>::{<span class="self">self</span>, <span class="ident">Target</span>},
