@@ -9,6 +9,7 @@ lazy_static! {
     static ref LAMBDA_COUNT: Mutex<usize> = Mutex::new(0);
 }
 
+/// A procedure of LIR code which can be applied to a list of arguments.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Procedure {
     /// The generated name of the procedure created by the compiler to be unique.

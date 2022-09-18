@@ -32,6 +32,8 @@ where
     }
 }
 
+/// A trait which allows an LIR expression to be compiled to one of the
+/// two variants of the assembly language.
 pub trait Compile: TypeCheck {
     /// Compile the expression into an assembly program.
     ///

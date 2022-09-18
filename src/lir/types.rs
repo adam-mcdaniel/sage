@@ -1,3 +1,8 @@
+//! # Types Module
+//! 
+//! This module contains a collection of types and traits
+//! used to implement and confirm the soundness of the LIR
+//! typesystem.
 use super::{ConstExpr, Env, Error, Expr, GetSize, Simplify};
 use core::fmt;
 use std::collections::{BTreeMap, HashSet};
@@ -64,6 +69,7 @@ impl TypeCheck for Type {
     }
 }
 
+/// The representation of a type in the LIR type system.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {
     /// Bind a type to a name in a temporary scope.
@@ -83,18 +89,20 @@ pub enum Type {
     /// The type of a boolean value.
     Bool,
     /// An enumeration of a list of possible named values.
-    /// A boolean could be considered an enumeration of True and False.
+    /// A boolean could be considered an enumeration of `true` and `false`.
     Enum(Vec<String>),
-    /// A collection of types.
+    /// A heterogenous collection of types. This is a product type.
     Tuple(Vec<Self>),
     /// An array of a given type, with a constant size.
     Array(Box<Self>, Box<ConstExpr>),
-    /// A tuple with named members.
+    /// A tuple with named members. This is a product type.
     Struct(BTreeMap<String, Self>),
     /// A union of a list of possible types mapped to named members.
     /// A union's value is reinterpreted as a single type, depending on the member accessed.
     /// Unions' values are stored starting at the beginning of the union's address in memory,
     /// and are padded at the end with zeroes.
+    /// 
+    /// This is a sum type.
     Union(BTreeMap<String, Self>),
     /// A procedure with a list of parameters and a return type.
     Proc(Vec<Type>, Box<Type>),
