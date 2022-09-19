@@ -119,20 +119,23 @@ impl Device for TestingDevice {
     fn get_int(&mut self) -> Result<isize, String> {
         let mut result: isize = 0;
         loop {
-            let ch = self.get_char()?;
-            if !ch.is_whitespace() {
-                if ch.is_ascii_digit() {
-                    result = (ch as u8 - b'0') as isize;
-                }
-                break;
+            if self.input.is_empty() { break }
+            let ch = self.input[0] as u8 as char;
+            if ch.is_ascii_whitespace() {
+                self.get_char()?;
+            } else {
+                break
             }
         }
 
         loop {
-            let ch = self.get_char()?;
+            if self.input.is_empty() { break }
+            let n = self.input[0] as u8;
+            let ch = n as char;
             if ch.is_ascii_digit() {
                 result *= 10;
-                result += (ch as u8 - b'0') as isize
+                result += (n - b'0') as isize;
+                self.input.pop_front();
             } else {
                 break;
             }
@@ -142,15 +145,25 @@ impl Device for TestingDevice {
     }
 
     fn get_float(&mut self) -> Result<f64, String> {
-        let whole_part = self.get_int()?;
+        let whole_part = self.get_int()? as f64;
 
-        Ok(whole_part as f64
-            + if self.get_char()? == '.' {
-                let fractional_part = self.get_int()? as f64;
-                fractional_part / 10.0_f64.powi(fractional_part.log10() as i32 + 1)
+        if self.input.is_empty() { return Ok(whole_part) }
+        
+        let n = self.input[0] as u8;
+        let ch = n as char;
+        if ch == '.' {
+            self.get_char()?;
+            let fractional_part = self.get_int()? as f64;
+            let digits = fractional_part.log10() as i32 + 1;
+            Ok(whole_part + if digits > 1 {
+                fractional_part / 10.0_f64.powi(digits)
             } else {
                 0.0
             })
+
+        } else {
+            Ok(whole_part)
+        }
     }
 }
 

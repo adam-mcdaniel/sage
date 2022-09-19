@@ -1,0 +1,40 @@
+const putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+} in
+
+const getchar = proc() -> Char = std {
+    next SP
+    get-char [SP]
+} in
+
+const alloc = proc(n: Int) -> &Int = std {
+    alloc [SP]
+} in
+
+
+
+
+type List = let B = let T = Int in (T, &B) in B in
+
+proc hmm() -> List = {
+    ('~' as Int, Null)
+} in
+
+proc hmm2() -> List = {
+    let ptr = alloc(sizeof(List)) as &List in {
+        (*ptr) = hmm();
+        ('?' as Int, ptr)
+    }
+} in
+
+proc hmm3() -> List = {
+    let ptr = alloc(sizeof(List)) as &List in {
+        (*ptr) = hmm2();
+        ('!' as Int, ptr)
+    }
+} in
+
+let x: let A = (Int, &A) in A
+    = hmm3()
+    in putchar(x.1->0 as Char)

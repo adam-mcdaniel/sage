@@ -15,6 +15,8 @@
 //!           ░             ░      
 //! ```
 //! 
+//! <embed type="text/html" src="web-impl/index.html" title="Compiler" width="100%" height="725em"></embed>
+//! 
 //! This crate implements a compiler for the Acid programming language
 //! and its low level virtual machine.
 //! 
