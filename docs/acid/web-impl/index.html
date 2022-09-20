@@ -7,6 +7,7 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css" integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
         <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/mode/simple.min.js" integrity="sha512-CGM6DWPHs250F/m90YZ9NEiEUhd9a4+u8wAzeKC6uHzZbYyt9/e2dLC5BGGB6Y0HtEdZQdSDYjDsoTyNGdMrMA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/rust/rust.min.js" integrity="sha512-g3Nhw36S0p4ZJQcky87D5M+vZbFvLrgsHWYltUy5IW0zKbvi8GlPRjJSo2CyUyQiU01Ier7u+rBABDs3BawKyQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/clike/clike.min.js" integrity="sha512-l8ZIWnQ3XHPRG3MQ8+hT1OffRSTrFwrph1j1oc1Fzc9UKVGef5XN9fdO0vm3nW0PRgQ9LJgck6ciG59m69rvfg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/ayu-dark.min.css" integrity="sha512-mV3RUXi1gt22jDb4UyRBFhZVFgAIiOfRE6ul+2l1Hcj6glyg6x4xlnjPH+neGm/t6XrFmsMRu4++McQu0asjqg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
         <style>
             .CodeMirror {
@@ -17,23 +18,39 @@
     </head>
     <body style="height: 100%">
         <script type="module">
-            var editor = CodeMirror.fromTextArea(document.getElementById("source"), {
+            var source = CodeMirror.fromTextArea(document.getElementById("source"), {
                 mode: "rust",
                 lineNumbers: true,
                 indentUnit: 4,
                 theme: 'ayu-dark',
                 autoRefresh: true,
             });
+            source.setSize("100%", "40em");
             setInterval(function () {
-                document.getElementById("source").value = editor.getValue();
-                editor.refresh()
-            }, 50)
+                document.getElementById("source").value = source.getValue();
+                source.refresh()
+            }, 50);
+            var output = CodeMirror.fromTextArea(document.getElementById("output"), {
+                mode: "text/x-csrc",
+                lineNumbers: true,
+                indentUnit: 4,
+                theme: 'ayu-dark',
+                autoRefresh: true,
+            });
+            output.setSize("100%", "100%");
+            setInterval(function () {
+                if (output.getValue() != document.getElementById("output").value) {
+                    output.setValue(document.getElementById("output").value);
+                    output.refresh()
+                }
+            }, 50);
+
             import init, {compile_and_run} from './acid_web.js';
             init();
             document.getElementById("run").addEventListener("click", compile_and_run, false);
         </script>
-        <div style="overflow: hidden; height: 40em; display: flex;">
-            <div style="flex-direction: column; flex: 1; resize: none; width: 49%; height: 100%; float: left;"><textarea id="source" rows="40">const bitxor = proc(a: Int, b: Int) -> Int = core {
+        <div class="row">
+            <div class="col"><textarea id="source">const bitxor = proc(a: Int, b: Int) -> Int = core {
     bitwise-xor [SP], [SP - 1] pop
 }, bitor = proc(a: Int, b: Int) -> Int = core {
     bitwise-or [SP], [SP - 1] pop
@@ -647,9 +664,19 @@ let state = row_major(
         putstate(state);
     };
 }</textarea></div>
-            <pre style="flex-direction: column; flex: 1; float: right; width: 50%; height: 100%; overflow: auto; background-color: black; color: white;" id="output"></pre>
+            <div class="col" style="height: 20em;">
+                <textarea style="overflow: auto; background-color: black; color: white;" id="output"></textarea>
+            </div>
         </div>
-        <textarea id="input" style="resize: none;">5.0</textarea>
-        <button id="run" style="height: 2em; position:fixed;">Compile and run</button>
+        <div>
+            <textarea id="input" style="resize: none; float: left;" cols="10">5.0</textarea>
+            <select id="target" style="height: 3em; float: left;">
+                <option value="run">Execution Output</option>
+                <option value="asm">Assembly</option>
+                <option value="vm">Virtual Machine Code</option>
+                <option value="c">C Source</option>
+            </select>
+            <button id="run" style="height: 3em; float: left;">Compile</button>
+        </div>
     </body>
 </html>

@@ -5,7 +5,7 @@ mod device;
 use interpreter::WasmInterpreter;
 use device::WasmDevice;
 use wasm_bindgen::prelude::*;
-use acid::{lir::Compile, vm::*};
+use acid::{lir::Compile, targets::{self, C, Target}, vm::*};
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -55,38 +55,67 @@ pub fn compile_and_run() -> Result<(), JsValue> {
     let input = document.get_element_by_id("input").unwrap().dyn_into::<web_sys::HtmlTextAreaElement>().unwrap().value();
     console_log!("input `{input:?}` + code `{source_code:?}`");
     // Manufacture the element we're gonna append
-    let output = document.get_element_by_id("output").unwrap();
-    output.set_text_content(Some(""));
+    let output = document.get_element_by_id("output").unwrap().dyn_into::<web_sys::HtmlTextAreaElement>().unwrap();
+    output.set_value("");
     let device = WasmDevice::new(input);
     console_log!("input device `{device:?}`...");
-    
-    // Parse the lower intermediate representation code.
-    let device = match acid::parse::parse_lir(source_code)
+
+    let target = document.get_element_by_id("target").unwrap().dyn_into::<web_sys::HtmlSelectElement>().unwrap().value();
+    let asm_code = acid::parse::parse_lir(source_code)
         .unwrap()
         .compile()
-        .unwrap()
-    {
-        // If we got back a valid program, assemble it and return the result.
-        Ok(asm_code) => 
-            CoreInterpreter::new(device)
-                .run(&asm_code
-                    .assemble(8192)
-                    .unwrap())
-                .unwrap(),
-        Err(asm_code) => WasmInterpreter::new(device)
-            .run(&asm_code
-                .assemble(8192)
-                .unwrap())
-            .unwrap(),
+        .unwrap();
+
+    let contents = match target.as_str() {
+        "run" => {
+            let device = match asm_code {
+                // If we got back a valid program, assemble it and return the result.
+                Ok(asm_code) => 
+                    CoreInterpreter::new(device)
+                        .run(&asm_code
+                            .assemble(8192)
+                            .unwrap())
+                        .unwrap(),
+                Err(asm_code) => WasmInterpreter::new(device)
+                    .run(&asm_code
+                        .assemble(8192)
+                        .unwrap())
+                    .unwrap(),
+            };
+            String::from_utf8(device.output
+                .into_iter()
+                .map(|n| n as u8)
+                .collect()).unwrap()
+        },
+        "asm" => {
+            match asm_code {
+                // If we got back a valid program, assemble it and return the result.
+                Ok(asm_code) => asm_code.to_string(),
+                Err(asm_code) => asm_code.to_string(),
+            }
+        }
+        "vm" => {
+            match asm_code {
+                // If we got back a valid program, assemble it and return the result.
+                Ok(asm_code) => asm_code.assemble(8192).unwrap().to_string(),
+                Err(asm_code) => asm_code.assemble(8192).unwrap().to_string(),
+            }
+        }
+        "c" => {
+            match asm_code {
+                // If we got back a valid program, assemble it and return the result.
+                Ok(asm_code) => targets::C.build_core(&asm_code.assemble(8192).unwrap()).unwrap(),
+                Err(asm_code) => targets::C.build_std(&asm_code.assemble(8192).unwrap()).unwrap(),
+            }
+        }
+        otherwise => {
+            console_log!("unknown target `{otherwise:?}`");
+            unreachable!()
+            // panic!("Unknown target `{otherwise:?}`");
+        },
     };
-
-    console_log!("output device `{device:?}`...");
-    let contents = String::from_utf8(device.output
-        .into_iter()
-        .map(|n| n as u8)
-        .collect()).unwrap();
-
-    output.set_text_content(Some(&contents));
+    console_log!("output `{contents:?}`");
+    output.set_value(&contents);
 
     Ok(())
 }

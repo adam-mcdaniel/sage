@@ -498,7 +498,7 @@ int main() {
 
                 <span class="ident">CoreOp::Move</span>(<span class="ident">n</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;ptr += {};&quot;</span>, <span class="ident">n</span>),
                 <span class="ident">CoreOp::Where</span> =&gt; <span class="string">&quot;reg.p = ptr;&quot;</span>.<span class="ident">to_string</span>(),
-                <span class="ident">CoreOp::Deref</span> =&gt; <span class="string">&quot;*ref++ = ptr; ptr = ptr-&gt;p;&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">CoreOp::Deref</span> =&gt; <span class="macro">format!</span>(<span class="string">&quot;*ref++ = ptr;\n{}ptr = ptr-&gt;p;&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>)),
                 <span class="ident">CoreOp::Refer</span> =&gt; <span class="string">&quot;ptr = *--ref;&quot;</span>.<span class="ident">to_string</span>(),
 
                 <span class="ident">CoreOp::Index</span> =&gt; <span class="string">&quot;reg.p += ptr-&gt;i;&quot;</span>.<span class="ident">to_string</span>(),
@@ -711,7 +711,7 @@ int main() {
                     <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}reg.p = ptr;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
                 }
                 <span class="ident">StandardOp::CoreOp</span>(<span class="ident">CoreOp::Deref</span>) =&gt; {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}*ref++ = ptr; ptr = ptr-&gt;p;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
+                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{indent}*ref++ = ptr;\n{indent}ptr = ptr-&gt;p;\n&quot;</span>, <span class="ident">indent</span><span class="op">=</span><span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
                 }
                 <span class="ident">StandardOp::CoreOp</span>(<span class="ident">CoreOp::Refer</span>) =&gt; {
                     <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}ptr = *--ref;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
