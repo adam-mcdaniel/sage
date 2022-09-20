@@ -1,11 +1,11 @@
 //! # C Target
-//! 
+//!
 //! An implementation of the virtual machine for the C language.
 //!
 //! This allows the virtual machine to target C programs.
-//! 
+//!
 //! ## Portability
-//! 
+//!
 //! Right now, this target only supports GCC due to a quirk
 //! with the way this implementation compiles functions.
 //! For some reason, Clang doesn't like nested functions,
@@ -328,7 +328,10 @@ int main() {
                     result += &format!("{}reg.p = ptr;\n", tab.repeat(indent));
                 }
                 StandardOp::CoreOp(CoreOp::Deref) => {
-                    result += &format!("{indent}*ref++ = ptr;\n{indent}ptr = ptr->p;\n", indent=tab.repeat(indent));
+                    result += &format!(
+                        "{indent}*ref++ = ptr;\n{indent}ptr = ptr->p;\n",
+                        indent = tab.repeat(indent)
+                    );
                 }
                 StandardOp::CoreOp(CoreOp::Refer) => {
                     result += &format!("{}ptr = *--ref;\n", tab.repeat(indent));

@@ -381,14 +381,17 @@
 <span id="376">376</span>
 <span id="377">377</span>
 <span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # C Target</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! An implementation of the virtual machine for the C language.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This allows the virtual machine to target C programs.</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! ## Portability</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! Right now, this target only supports GCC due to a quirk</span>
 <span class="doccomment">//! with the way this implementation compiles functions.</span>
 <span class="doccomment">//! For some reason, Clang doesn&#39;t like nested functions,</span>
@@ -711,7 +714,10 @@ int main() {
                     <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}reg.p = ptr;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
                 }
                 <span class="ident">StandardOp::CoreOp</span>(<span class="ident">CoreOp::Deref</span>) =&gt; {
-                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{indent}*ref++ = ptr;\n{indent}ptr = ptr-&gt;p;\n&quot;</span>, <span class="ident">indent</span><span class="op">=</span><span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));
+                    <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(
+                        <span class="string">&quot;{indent}*ref++ = ptr;\n{indent}ptr = ptr-&gt;p;\n&quot;</span>,
+                        <span class="ident">indent</span> <span class="op">=</span> <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>)
+                    );
                 }
                 <span class="ident">StandardOp::CoreOp</span>(<span class="ident">CoreOp::Refer</span>) =&gt; {
                     <span class="ident">result</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}ptr = *--ref;\n&quot;</span>, <span class="ident">tab</span>.<span class="ident">repeat</span>(<span class="ident">indent</span>));

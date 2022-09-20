@@ -68,20 +68,13 @@ pub fn compile_and_run() -> Result<(), JsValue> {
 
     let contents = match target.as_str() {
         "run" => {
-            let device = match asm_code {
-                // If we got back a valid program, assemble it and return the result.
-                Ok(asm_code) => 
-                    CoreInterpreter::new(device)
-                        .run(&asm_code
-                            .assemble(8192)
-                            .unwrap())
-                        .unwrap(),
-                Err(asm_code) => WasmInterpreter::new(device)
-                    .run(&asm_code
-                        .assemble(8192)
-                        .unwrap())
-                    .unwrap(),
-            };
+            let device = WasmInterpreter::new(device)
+            .run(&match asm_code {
+                Ok(core) => core.into(),
+                Err(std) => std }
+                .assemble(8192)
+                .unwrap())
+            .unwrap();
             String::from_utf8(device.output
                 .into_iter()
                 .map(|n| n as u8)

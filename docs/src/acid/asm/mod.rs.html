@@ -128,7 +128,7 @@
 <span class="doccomment">/// A frontend to both the `CoreProgram` and `StandardProgram` types.</span>
 <span class="doccomment">/// This allows the compiler to append `CoreOp`s to both programs</span>
 <span class="doccomment">/// with guaranteed success, but optionally allows the compiler to</span>
-<span class="doccomment">/// *attempt* to compile a `StandardOp`, which *may* fail depending </span>
+<span class="doccomment">/// *attempt* to compile a `StandardOp`, which *may* fail depending</span>
 <span class="doccomment">/// on the target&#39;s support for the instruction.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">AssemblyProgram</span> {
     <span class="kw">fn</span> <span class="ident">op</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">op</span>: <span class="ident">CoreOp</span>);

@@ -1,65 +1,64 @@
 //! # The Acid Programming Language
-//! 
+//!
 //! 🚧 This language is under construction! 🚧
-//! 
+//!
 //! ⚠️ 🧪WARNING: Highly corrosive!⚗️ ⚠️
-//! 
+//!
 //! ```text
-//!  ▄▄▄       ▄████▄   ██▓▓████▄ 
+//!  ▄▄▄       ▄████▄   ██▓▓████▄
 //! ▒████▄    ▒██▀ ▀█  ▓██▒▒██▀ █▌
 //! ▒██  ▀█▄  ▒▓█    ▄ ▒██▒░██   █▌
 //! ░██▄▄▄▄██ ▒▓▓▄ ▄██▒░██░░▓█▄   █
-//!  ▓█   ▓██▒▒ ▓███▀ ░░██░░▒████▓ 
-//!  ▒▒   ▓▒█░░ ░▒ ▒  ░░▓   ▒▒▓  ▒ 
-//!   ▒   ▒▒ ░  ░  ▒    ▒ ░ ░ ▒  ▒ 
-//!   ░   ▒   ░         ▒ ░ ░ ░  ░ 
+//!  ▓█   ▓██▒▒ ▓███▀ ░░██░░▒████▓
+//!  ▒▒   ▓▒█░░ ░▒ ▒  ░░▓   ▒▒▓  ▒
+//!   ▒   ▒▒ ░  ░  ▒    ▒ ░ ░ ▒  ▒
+//!   ░   ▒   ░         ▒ ░ ░ ░  ░
 //!       ░  ░░ ░       ░     ░    
 //!           ░             ░      
 //! ```
-//! 
-//! <embed type="text/html" src="web-impl/index.html" title="Compiler" width="100%" height="900em"></embed>
-//! 
+//!
+//! <embed type="text/html" src="web-impl/index.html" title="Compiler" width="100%" height="930em"></embed>
+//!
 //! This crate implements a compiler for the Acid programming language
 //! and its low level virtual machine.
-//! 
+//!
 //! ## Stages of IR
-//! 
+//!
 //! Here are the current stages of IR:
-//! 
+//!
 //! 1. LIR (Lower Intermediate Representation)
 //! 2. Core / Standard Assembly (an assembly language for the VM)
 //! 3. Core / Standard Virtual Machine Code (which is built for a given target)
-//! 
+//!
 //! ## Backend
-//! 
+//!
 //! This compiler is unique in the way that it handles portability.
 //! The language's backend is split in two: the Core variant, and the
 //! Standard variant. The Core variant is guaranteed to compile to all
 //! targets, and the Standard variant is akin to a standard library of
 //! instructions (which are implemented for most targets).
-//! 
+//!
 //! This makes Acid uniquely equipped to compile to very limited arcitectures:
 //! **the Core instruction set for the virtual machine is *almost guaranteed*
 //! to be a subset of most CPU architectures.**
-//! 
+//!
 //! The Core instructions are required to be implemented by *every target*. These instructions are guaranteed to be supported by every target.
-//! 
+//!
 //! |              | The              | Twenty  | and        | Four       | Canonical | Instructions  |
 //! |--------------|------------------|---------|------------|------------|-----------|---------------|
-//! | Memory       | `Move(n: int)`   | `Index` | `Where?`   | `Deref`    | `Refer`   | `BitwiseNand` | 
+//! | Memory       | `Move(n: int)`   | `Index` | `Where?`   | `Deref`    | `Refer`   | `BitwiseNand` |
 //! | Control Flow | `While`          | `If`    | `Else`     | `Function` | `Call`    | `Return`      |
 //! | Arithmetic   | `IsNonNegative?` | `Add`   | `Subtract` | `Multiply` | `Divide`  | `Remainder`   |
 //! | Fundamental  | `Set(n: int)`    | `Save`  | `Restore`  | `Get`      | `Put`     | `End`         |
-//! 
+//!
 //! The standard instructions are not guaranteed to be wholly implemented by every target, or at all. A target for Linux on x86 will certainly implement all the standard instructions, but a thermostat might implement only a few or none.
-//! 
+//!
 //! |                        | The              | Twenty    | and             | Four       | Standard    | Instructions |
 //! |------------------------|------------------|-----------|-----------------|------------|-------------|--------------|
 //! | Memory and Fundamental | `Allocate`       | `Free`    | `Set(n: float)` | `ToInt`    | `ToFloat`   | `Power`      |
 //! | Trigonometry           | `Sine`           | `Cosine`  | `Tangent`       | `ArcSine`  | `ArcCosine` | `ArcTangent` |
 //! | Arithmetic             | `IsNonNegative?` | `Add`     | `Subtract`      | `Multiply` | `Divide`    | `Remainder`  |
 //! | Worldly                | `GetChar`        | `PutChar` | `GetInt`        | `PutInt`   | `GetFloat`  | `PutFloat`   |
-
 
 pub mod asm;
 pub mod lir;

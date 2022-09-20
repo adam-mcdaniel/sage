@@ -1,5 +1,5 @@
 //! # LSD - The Acid Compiler
-//! 
+//!
 //! This program implements the CLI frontend to the Acid programming
 //! language. LSD can compile Acid's various source languages to
 //! the supported targets provided by the compiler.

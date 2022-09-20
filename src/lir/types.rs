@@ -1,5 +1,5 @@
 //! # Types Module
-//! 
+//!
 //! This module contains a collection of types and traits
 //! used to implement and confirm the soundness of the LIR
 //! typesystem.
@@ -101,7 +101,7 @@ pub enum Type {
     /// A union's value is reinterpreted as a single type, depending on the member accessed.
     /// Unions' values are stored starting at the beginning of the union's address in memory,
     /// and are padded at the end with zeroes.
-    /// 
+    ///
     /// This is a sum type.
     Union(BTreeMap<String, Self>),
     /// A procedure with a list of parameters and a return type.

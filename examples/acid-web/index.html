@@ -44,13 +44,11 @@
                     output.refresh()
                 }
             }, 50);
-
-            import init, {compile_and_run} from './acid_web.js';
-            init();
-            document.getElementById("run").addEventListener("click", compile_and_run, false);
-        </script>
-        <div class="row">
-            <div class="col"><textarea id="source">const bitxor = proc(a: Int, b: Int) -> Int = core {
+            function setExampleProgram() {
+                console.log(document.getElementById("example").value);
+                switch (document.getElementById("example").value) {
+                case "aes":
+                    source.setValue(`const bitxor = proc(a: Int, b: Int) -> Int = core {
     bitwise-xor [SP], [SP - 1] pop
 }, bitor = proc(a: Int, b: Int) -> Int = core {
     bitwise-or [SP], [SP - 1] pop
@@ -122,7 +120,7 @@ const getchar = proc() -> Char = core {
 } in
 
 proc ln() -> None = {
-    putchar('\n')
+    putchar('\\n')
 } in
 
 proc lsh(a: Int, b: Int) -> Int = {
@@ -240,7 +238,7 @@ proc putstate(self: State) -> None = {
             while lt(j, 4) {
                 putint(get(&self, j, i)); putchar(' ');
                 j = j + 1;
-            }; putchar('\n');
+            }; putchar('\\n');
             j = 0;
             i = i + 1;
         }
@@ -627,9 +625,9 @@ let state = row_major(
         putchar('y');
         putchar(':');
         putchar(' ');
-        putchar('\n');
+        putchar('\\n');
         putkey(key);
-        putchar('\n');
+        putchar('\\n');
 
         putchar('i');
         putchar('n');
@@ -637,7 +635,7 @@ let state = row_major(
         putchar('u');
         putchar('t');
         putchar(':');
-        putchar('\n');
+        putchar('\\n');
         putstate(state);
 
         state = cipher(state, key);
@@ -648,7 +646,7 @@ let state = row_major(
         putchar('u');
         putchar('t');
         putchar(':');
-        putchar('\n');
+        putchar('\\n');
         putstate(state);
         state = inverse_cipher(state, key);
 
@@ -660,16 +658,417 @@ let state = row_major(
         putchar('s');
         putchar('e');
         putchar(':');
-        putchar('\n');
+        putchar('\\n');
         putstate(state);
     };
-}</textarea></div>
+}`);
+                    break;
+                case "quicksort":
+                    source.setValue(`const bitxor = proc(a: Int, b: Int) -> Int = core {
+    bitwise-xor [SP], [SP - 1] pop
+}, bitor = proc(a: Int, b: Int) -> Int = core {
+    bitwise-or [SP], [SP - 1] pop
+}, bitnand = proc(a: Int, b: Int) -> Int = core {
+    bitwise-nand [SP], [SP - 1] pop
+}, bitand = proc(a: Int, b: Int) -> Int = core {
+    bitwise-and [SP], [SP - 1] pop
+}, bitnot = proc(x: Int) -> Int = core {
+    bitwise-not [SP]
+}, inc = proc(x: &Int) -> None = core {
+    inc [[SP]]
+    pop
+}, dec = proc(x: &Int) -> None = core {
+    dec [[SP]]
+    pop
+}, lt = proc(a: Int, b: Int) -> Bool = core {
+    lt [SP - 1], [SP], A pop
+    mov A, [SP]
+}, lte = proc(a: Int, b: Int) -> Bool = core {
+    lte [SP - 1], [SP], A pop
+    mov A, [SP]
+}, gt = proc(a: Int, b: Int) -> Bool = core {
+    gt [SP - 1], [SP], A pop
+    mov A, [SP]
+}, gte = proc(a: Int, b: Int) -> Bool = core {
+    gte [SP - 1], [SP], A pop
+    mov A, [SP]
+}, eq = proc(a: Int, b: Int) -> Bool = core {
+    eq [SP - 1], [SP], A pop
+    mov A, [SP]
+}, neq = proc(a: Int, b: Int) -> Bool = core {
+    neq [SP - 1], [SP], A pop
+    mov A, [SP]
+}, and = proc(a: Bool, b: Bool) -> Bool = core {
+    and [SP], [SP - 1] pop
+}, put = proc(n: Int) -> None = core {
+    put [SP]
+    pop
+} in
+const alloc = proc(size: Int) -> &Int = core {
+    set A, 10000
+    index SP, A, C
+    push C
+    add [SP - 1], [[SP]]
+    lea [[SP]], [SP - 1]
+    add [[SP]], [SP - 1]
+    pop
+} in
+
+const free = proc(ptr: &Int) -> None = {} in
+proc putdec(n: Int) -> None = {
+    if (lt(n, 10)) {
+        put(n + 48)
+    } else {
+        putdec(n / 10);
+        put(n % 10 + 48)
+    }
+} in
+
+proc puthex(n: Int, lower: Bool) -> None = {
+    if (lt(n, 16)) {
+        put(n + if (lt(n, 10)) {
+            48
+        } else {
+            if lower {
+                87
+            } else {
+                55
+            }
+        })
+    } else {
+        puthex(n / 16, lower);
+        puthex(n % 16, lower)
+    }
+} in
+
+proc putbyte(n: Int, lower: Bool) -> None = {
+    puthex(n / 16, lower);
+    puthex(n % 16, lower)
+} in
+
+const putint = putdec in
+
+const putchar = proc(ch: Char) -> None = {
+    put(ch as Int)
+} in
+
+proc ln() -> None = {
+    putchar('\\n')
+} in
+
+proc min(x: Int, y: Int) -> Int = {
+    if (lt(x, y)) x else y
+} in
+proc max(x: Int, y: Int) -> Int = {
+    if (gt(x, y)) x else y
+} in
+
+
+type List = struct { data: Int, next: &List } in
+
+proc sort(node: &List) -> None = {
+    if (node->next as Cell as Int + 128) {
+        sort(node->next);
+        let a = min(node->data, node->next->data),
+            b = max(node->data, node->next->data)
+            in {
+            if (b - node->data) {
+                sort(node->next);
+            };
+            node->data = a;
+            node->next->data = b;
+        };
+    }
+} in
+
+proc len(node: &List) -> Int = {
+    if (node as Cell as Int + 128) {
+        len(node->next) + 1
+    } else {
+        0
+    }
+} in
+
+proc neq(a: Int, b: Int) -> Bool = {
+    (if ((a - b) as Bool) 1 else 0) as Bool
+} in
+
+proc index(node: &List, n: Int) -> &List = {
+    while n {
+        node = node->next;
+        n = n - 1;
+    };
+    node
+} in
+
+proc swapi(a: &Int, b: &Int) -> None = {
+    let tmp = (*a) in {
+        (*a) = *b;
+        (*b) = tmp;
+    }
+} in
+
+proc partition_arr(arr: &Int, low: Int, high: Int) -> Int = {
+    let pivot = arr[high],
+        i = low - 1,
+        j = low in {
+        while lt(j, high) {
+            if (lte(arr[j], pivot)) {
+                inc(&i);
+                swapi(&arr[j], &arr[i]);
+            };
+            inc(&j);
+        };
+        swapi(&arr[i + 1], &arr[high]);
+        i + 1
+    }
+} in
+
+proc quicksort_arr(arr: &Int, low: Int, high: Int) -> None = {
+    if (lt(low, high)) {
+        let pi = partition_arr(arr, low, high) in {
+            quicksort_arr(arr, low, pi - 1);
+            quicksort_arr(arr, pi + 1, high);
+        }
+    }
+} in
+
+const SIZE = 100 in
+let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
+    putchar('u');
+    putchar('n');
+    putchar('s');
+    putchar('o');
+    putchar('r');
+    putchar('t');
+    putchar('e');
+    putchar('d');
+    putchar(':');
+    putchar(' ');
+    putchar('[');
+    while lt(i, SIZE) {
+        arr[i] = SIZE - i;
+        putint(arr[i]);
+        if (lt(i, SIZE - 1)) {
+            putchar(','); putchar(' ');
+        };
+        inc(&i);
+    };
+    putchar(']');
+    quicksort_arr(arr, 0, SIZE - 1);
+    putchar('\\n');
+    putchar('s');
+    putchar('o');
+    putchar('r');
+    putchar('t');
+    putchar('e');
+    putchar('d');
+    putchar(':');
+    putchar(' ');
+    putchar('[');
+    i = 0;
+    while lt(i, SIZE) {
+        putint(arr[i]);
+        if (lt(i, SIZE - 1)) {
+            putchar(','); putchar(' ');
+        };
+        inc(&i);
+    };
+    putchar(']');
+    putchar('\\n');
+}`);
+                    break;
+                case "cat":
+                    source.setValue(`const putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+}, getchar = proc() -> Char = std {
+    next SP
+    get-char [SP]
+} in let ch = getchar() in while ch {
+    putchar(ch);
+    ch = getchar();   
+}`);
+                    document.getElementById("input").value = "this is a cat program!";
+                    break;
+                case "factorial":
+                    source.setValue(`const putint = proc(n: Int) -> None = std {
+    put-int [SP]
+    pop
+}, getint = proc() -> Int = std {
+    next SP
+    get-int [SP]
+} in
+
+proc fact(n: Int) -> Int = {
+    if n
+        (n * fact(n - 1))
+        else 1
+} in putint(fact(getint()))`);
+                    document.getElementById("input").value = "5";
+                    break;
+                case "collatz":
+                    source.setValue(`const getint = proc() -> Int = std {
+    next SP
+    get-int [SP]
+}, putint = proc(n: Int) -> None = std {
+    put-int [SP]
+    pop
+}, putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+} in
+
+proc step(n: Int) -> Int = {if (n % 2) (3 * n + 1) else n / 2} in
+proc collatz(n: Int) -> Int = {
+    let i = 0 in
+        while n - 1 {
+            i = i + 1;
+            putint(i);
+            putchar(':');
+            putchar(' ');
+            putint(n);
+            putchar('\\n');
+            n = step(n);
+        };
+    return n
+} in collatz(getint())`);
+                    document.getElementById("input").value = "129";
+                    break;
+                case "inline-asm":
+                    source.setValue(`const putint = proc(n: Int) -> None = std {
+    put-int [SP]
+    pop
+} in
+const putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+} in
+
+const asm_init = proc() -> None = core {
+    fun FACT
+        set A, 0
+        gt [SP], A, B
+        if B
+            push [SP]
+            dec [SP]
+            call FACT
+            mul [SP], [SP - 1]
+            pop
+        else
+            set [SP], 1
+        end
+    end
+}, fact = proc(n: Int) -> Int = core {
+    call FACT
+} in {
+    asm_init();
+
+    putint(fact(5)); putchar('\\n');
+    putint(fact(10)); putchar('\\n');
+}`);
+                    break;
+                case "type-demo-1":
+                    source.setValue(`const putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+} in
+
+const getchar = proc() -> Char = std {
+    next SP
+    get-char [SP]
+} in
+
+const alloc = proc(n: Int) -> &Int = std {
+    alloc [SP]
+} in
+
+
+
+
+type List = let B = let T = Int in (T, &B) in B in
+
+proc hmm() -> List = {
+    ('~' as Int, Null)
+} in
+
+proc hmm2() -> List = {
+    let ptr = alloc(sizeof(List)) as &List in {
+        (*ptr) = hmm();
+        (':' as Int, ptr)
+    }
+} in
+
+proc hmm3() -> List = {
+    let ptr = alloc(sizeof(List)) as &List in {
+        (*ptr) = hmm2();
+        ('!' as Int, ptr)
+    }
+} in
+
+let x: let A = (Int, &A) in A
+    = hmm3()
+    in {
+    putchar(x.1->0 as Char);
+    putchar(')')
+}`);
+                    break;
+                case "type-demo-2":
+                    source.setValue(`const putint = proc(n: Int) -> None = std {
+    put-int [SP]
+    pop
+} in
+
+type A = Int,
+    B = (Int, Int),
+    C = ((Int, Int), Int),
+    Test = proc(A, proc(A) -> B, proc(B) -> C) -> C
+    in const
+        a = 5,
+        b = proc(x: Int) -> (Int, Int) = { (x, 6) },
+        c = proc(x: (Int, Int)) -> ((Int, Int), Int) = { (x, 7) },
+        test = proc(a: A, b: proc(A) -> B, c: proc(B) -> C) -> C = {
+            c(b(a))
+        }, hmm = proc(f: Test, x: Int) -> ((Int, Int), Int) = {
+            f(x, b, c)
+        } in {
+            let result = hmm(test, a) in {
+                putint((result.0).0);
+                putint((result.0).1);
+                putint(result.1);
+            }
+        }`);
+                    break;
+                default:
+                    console.log("Unknown example: " + example);
+                    break;
+                }
+            }
+            setExampleProgram();
+            document.getElementById("example").addEventListener("change", setExampleProgram);
+
+            import init, {compile_and_run} from './acid_web.js';
+            init();
+            document.getElementById("run").addEventListener("click", compile_and_run, false);
+        </script>
+        <select id="example" style="height: 3em; float: left;">
+            <option value="aes">AES</option>
+            <option value="quicksort">Quicksort</option>
+            <option value="cat">Cat</option>
+            <option value="factorial">Factorial</option>
+            <option value="collatz">Collatz</option>
+            <option value="inline-asm">Inline Assembly Demo</option>
+            <option value="type-demo-1">Type System Demo 1</option>
+            <option value="type-demo-2">Type System Demo 2</option>
+        </select>
+        <div class="row">
+            <div class="col"><textarea id="source"></textarea></div>
             <div class="col" style="height: 20em;">
                 <textarea style="overflow: auto; background-color: black; color: white;" id="output"></textarea>
             </div>
         </div>
         <div>
-            <textarea id="input" style="resize: none; float: left;" cols="10">5.0</textarea>
+            <textarea id="input" style="resize: none; float: left;" cols="10">Input Text</textarea>
             <select id="target" style="height: 3em; float: left;">
                 <option value="run">Execution Output</option>
                 <option value="asm">Assembly</option>
