@@ -62,7 +62,7 @@ pub fn parse_asm(input: impl ToString) -> Result<Result<CoreProgram, StandardPro
     }
 }
 
-/// Parse LIR code as an LIR expression.d
+/// Parse LIR code as an LIR expression.
 pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
     let code = input.to_string();
     match lir_parser::ExprParser::new().parse(&input.to_string()) {
