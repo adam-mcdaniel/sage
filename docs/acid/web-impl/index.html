@@ -18,6 +18,9 @@
     </head>
     <body style="height: 100%">
         <script type="module">
+            import init, {compile_and_run} from './acid_web.js';
+            init();
+            
             var source = CodeMirror.fromTextArea(document.getElementById("source"), {
                 mode: "rust",
                 lineNumbers: true,
@@ -1045,10 +1048,12 @@ type A = Int,
                 }
             }
             setExampleProgram();
-            document.getElementById("example").addEventListener("change", setExampleProgram);
-
-            import init, {compile_and_run} from './acid_web.js';
-            init();
+            document.getElementById("example").addEventListener("change", () => {
+                setExampleProgram();
+                document.getElementById("source").value = source.getValue();
+                source.refresh();
+                compile_and_run();
+            });
             document.getElementById("run").addEventListener("click", compile_and_run, false);
         </script>
         <select id="example" style="height: 3em; float: left;">
