@@ -1,6 +1,4 @@
-# acid
-
-*A tiny compiled language👅 with a trippy🌈 type system🔮*
+# sage
 
 [Here's an example of the compilation process.](assets/compiled.md#example-compiled-program)
 

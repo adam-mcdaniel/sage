@@ -1,4 +1,4 @@
-use acid::{
+use sage::{
     asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, A, SP},
     lir::*,
     parse::*,
@@ -1469,7 +1469,7 @@ fn test_mutually_recursive_types() {
     let vm_code = program.assemble(10).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(device.output, vec![acid::NULL]);
+    assert_eq!(device.output, vec![sage::NULL]);
 
     let expr = put.clone().app(vec![Expr::let_types(
         vec![

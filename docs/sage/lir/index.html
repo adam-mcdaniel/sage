@@ -1,0 +1,83 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="LIR (Low Intermediate Representation) Module"><meta name="keywords" content="rust, rustlang, rust-lang, lir"><title>sage::lir - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../sage/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../../sage/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"><a href="#">Module lir</a></h2><div class="sidebar-elems"><section><div class="block"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></div></section><div id="sidebar-vars" data-name="lir" data-ty="mod" data-relpath="./"></div><script defer src="./sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../sage/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+    <h1 class="fqn"><span class="in-band">Module <a href="../index.html">sage</a>::<wbr><a class="mod" href="#">lir</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../../src/sage/lir/mod.rs.html#1-149">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="lir-low-intermediate-representation-module"><a href="#lir-low-intermediate-representation-module">LIR (Low Intermediate Representation) Module</a></h2>
+<p>This module contains a decently sized typechecked intermediate representation for the virtual machine.
+The LIR, unlike the VM and the assembly language, is <em>not</em> split into two variants: there is only one variant.
+The LIR compiler will generate core assembly code <em>by default</em> for the LIR, but will revert to the standard
+variant if unsupported instructions or types are encountered (such as floating point operations or float types).</p>
+<h3 id="purpose"><a href="#purpose">Purpose</a></h3>
+<p>The purpose of the LIR is to provide a powerful backend for the next stage of IR. Most of the heavy lifting
+of the actual compilation process is done by this stage of the compiler: typechecking, constant folding,
+compiling to assembly, dealing with the two variants of the virtual machine, and so on. The stages of IR
+above this simply implement features like macros and tagged-unions: very simple things which map 1:1 with
+generated LIR code.</p>
+<h3 id="features"><a href="#features">Features</a></h3>
+<ol>
+<li>The Type System</li>
+</ol>
+<p>LIR’s type system is very good for compiling directly to assembly. LIR supports the following types:</p>
+<ul>
+<li>None (the void type)</li>
+<li>Never (the type of an expression which never returns a value: such as a <code>return</code> expression)</li>
+<li>Int (a signed integer)</li>
+<li>Float (a floating point number)</li>
+<li>Bool (a boolean value)</li>
+<li>Char (a single character)</li>
+<li>Cell (the most basic unit of memory)</li>
+<li>Pointer (a pointer to another given type)</li>
+<li>Array (an array with elements, with a constant size expression)</li>
+<li>Proc (a procedure with a list of arguments and a return type)</li>
+<li>Tuple (a tuple with a list of distinct types. this is the product type)</li>
+<li>Struct (a tuple with named fields)</li>
+<li>Union (a union of types. this is the sum type when combined with a tag)</li>
+<li>Enum (an enumeration with a list of variants. this is like a C enum, not a Rust enum)</li>
+<li>Let (a type which allows the user to bind a type under a given name in another type expression)</li>
+</ul>
+<p>The Let type is extremely powerful, allowing users to create recursive types <em>inline</em>: without
+binding them to a name under a LetType expression. Additionally, Let types are checked for equality
+<em>structurally</em>, and this also works for comparing recursive types. There are many examples of this in <code>tests/lir.rs</code>.</p>
+<ol start="2">
+<li>The Constant Folding</li>
+</ol>
+<p>LIR also provides constant expressions to allow the user to do as much as possible during compile time.
+This also makes it simpler to do compile-time optimizations.</p>
+<ol start="3">
+<li>Expressions</li>
+</ol>
+<p>The expressions that LIR uses to represent the program are very simple, and very powerful.
+Arrays are kept distinct from Pointers (unlike in C), and so expressions can return stack allocated arrays without a problem.
+Arrays can also be indexed without a pointer to the array, and so on. LIR supports getting members of tuples, structs,
+and unions, and also getting their references as well.</p>
+<ol start="4">
+<li>Compilation Process</li>
+</ol>
+<p>LIR is designed to be able to compile <em>as much as possible</em> to the core variant of the assembly language. As long as you don’t
+use floating point operations or standard builtins (<code>alloc</code> and <code>free</code>), you can compile to the core variant. Recursive types,
+<em>inlined</em> recursive types, mutually recursive types, recursive functions, and core builtins are all supported without a problem.
+<strong>The LIR compiler will only use a standard instruction if it has to.</strong></p>
+</div></details><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.CoreBuiltin.html" title="sage::lir::CoreBuiltin struct">CoreBuiltin</a></div><div class="item-right docblock-short"><p>A builtin pseudo-procedure implemented in the core assembly variant.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Env.html" title="sage::lir::Env struct">Env</a></div><div class="item-right docblock-short"><p>An environment under which expressions and types are compiled and typechecked.
+This is essentially the scope of an expression.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Procedure.html" title="sage::lir::Procedure struct">Procedure</a></div><div class="item-right docblock-short"><p>A procedure of LIR code which can be applied to a list of arguments.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.StandardBuiltin.html" title="sage::lir::StandardBuiltin struct">StandardBuiltin</a></div><div class="item-right docblock-short"><p>A builtin pseudo-procedure implemented in the standard assembly variant.</p>
+</div></div></div><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.ConstExpr.html" title="sage::lir::ConstExpr enum">ConstExpr</a></div><div class="item-right docblock-short"><p>A compiletime expression.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.Error.html" title="sage::lir::Error enum">Error</a></div><div class="item-right docblock-short"><p>An LIR compilation error.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.Expr.html" title="sage::lir::Expr enum">Expr</a></div><div class="item-right docblock-short"><p>TODO: Add variants for <code>LetProc</code>, <code>LetVar</code>, etc. to support multiple definitions.
+This way, we don’t overflow the stack with several clones of the environment.
+A runtime expression.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.Type.html" title="sage::lir::Type enum">Type</a></div><div class="item-right docblock-short"><p>The representation of a type in the LIR type system.</p>
+</div></div></div><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.Compile.html" title="sage::lir::Compile trait">Compile</a></div><div class="item-right docblock-short"><p>A trait which allows an LIR expression to be compiled to one of the
+two variants of the assembly language.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.GetSize.html" title="sage::lir::GetSize trait">GetSize</a></div><div class="item-right docblock-short"><p>Get the size of something in memory (number of cells).</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.GetType.html" title="sage::lir::GetType trait">GetType</a></div><div class="item-right docblock-short"><p>Get the type associated with a value under a given environment.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.Simplify.html" title="sage::lir::Simplify trait">Simplify</a></div><div class="item-right docblock-short"><p>Simplify an expression while maintaining structural equality.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.TypeCheck.html" title="sage::lir::TypeCheck trait">TypeCheck</a></div><div class="item-right docblock-short"><p>A value that can be typechecked.</p>
+</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sage" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0 (a8314ef7d 2022-06-27)" ></div>
+</body></html>

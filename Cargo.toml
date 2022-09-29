@@ -1,5 +1,5 @@
 [package]
-name = "acid"
+name = "sage"
 authors = ["Adam McDaniel <adam.mcdaniel17@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
@@ -9,7 +9,7 @@ readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [[bin]]
-name = "lsd"
+name = "sage"
 path = "src/cli.rs"
 
 [dependencies]

@@ -1,1 +1,1 @@
-window.ALL_CRATES = ["acid","lsd"];
+window.ALL_CRATES = ["sage"];
