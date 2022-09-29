@@ -7,12 +7,6 @@ use device::WasmDevice;
 use wasm_bindgen::prelude::*;
 use sage::{lir::Compile, targets::{self, C, Target}, vm::*};
 
-// When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
-// allocator.
-#[cfg(feature = "wee_alloc")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
 // Called by our JS entry point to run the example
 #[wasm_bindgen(start)]
 pub fn main_js() -> Result<(), JsValue> {
