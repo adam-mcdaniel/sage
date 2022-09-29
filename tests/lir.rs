@@ -1,4 +1,4 @@
-use acid::{
+use kiwi::{
     asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, A, SP},
     lir::*,
     parse::*,

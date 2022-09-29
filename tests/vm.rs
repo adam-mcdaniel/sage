@@ -1,4 +1,4 @@
-use acid::vm::*;
+use kiwi::vm::*;
 
 #[test]
 fn test_add() {

@@ -1,9 +1,9 @@
-//! # LSD - The Acid Compiler
+//! # LSD - The kiwi Compiler
 //! 
-//! This program implements the CLI frontend to the Acid programming
-//! language. LSD can compile Acid's various source languages to
+//! This program implements the CLI frontend to the kiwi programming
+//! language. LSD can compile kiwi's various source languages to
 //! the supported targets provided by the compiler.
-use acid::{
+use kiwi::{
     lir::*,
     parse::*,
     targets::{self, Target},
@@ -31,6 +31,8 @@ enum TargetType {
     StdVM,
     /// Compile to C source code (GCC only).
     C,
+    /// Compile to x86 assembly.
+    X86,
 }
 
 /// The source language options to compile.
@@ -110,7 +112,7 @@ fn compile_source_to_vm(
     src: String,
     src_type: SourceType,
     call_stack_size: usize,
-) -> Result<Result<acid::vm::CoreProgram, acid::vm::StandardProgram>, Error> {
+) -> Result<Result<kiwi::vm::CoreProgram, kiwi::vm::StandardProgram>, Error> {
     match src_type {
         SourceType::StdVM => {
             // Simply parse the virtual machine code
@@ -176,7 +178,7 @@ fn compile_source_to_vm(
 fn compile_source_to_asm(
     src: String,
     src_type: SourceType,
-) -> Result<Result<acid::asm::CoreProgram, acid::asm::StandardProgram>, Error> {
+) -> Result<Result<kiwi::asm::CoreProgram, kiwi::asm::StandardProgram>, Error> {
     match src_type {
         // If the source language is standard assembly, then parse it and return it.
         SourceType::StdASM => parse_asm(src).map_err(Error::Parse),
@@ -232,6 +234,16 @@ fn compile(
             match compile_source_to_vm(src, src_type, call_stack_size)? {
                 Ok(vm_code) => targets::C.build_core(&vm_code.flatten()),
                 Err(vm_code) => targets::C.build_std(&vm_code.flatten()),
+            }
+            .map_err(Error::BuildError)?,
+        )?,
+        // If the target is C source code, then compile the code to virtual machine code,
+        // and then use the C target implementation to build the output source code.
+        TargetType::X86 => write_file(
+            format!("{output}.S"),
+            match compile_source_to_vm(src, src_type, call_stack_size)? {
+                Ok(vm_code) => targets::X86.build_core(&vm_code.flatten()),
+                Err(vm_code) => targets::X86.build_std(&vm_code.flatten()),
             }
             .map_err(Error::BuildError)?,
         )?,

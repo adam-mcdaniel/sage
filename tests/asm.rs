@@ -1,4 +1,4 @@
-use acid::{
+use kiwi::{
     asm::*,
     parse::parse_asm,
     vm::{CoreInterpreter, TestingDevice},

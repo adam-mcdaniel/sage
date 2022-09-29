@@ -1,5 +1,5 @@
 [package]
-name = "acid"
+name = "kiwi"
 authors = ["Adam McDaniel <adam.mcdaniel17@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
