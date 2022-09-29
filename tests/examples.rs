@@ -30,7 +30,7 @@ fn test_lir_examples_helper() {
                     .to_str()
                     .expect("Couldn't get file extension of example code")
                     .as_bytes()),
-                Some(b"lsd") | None
+                Some(b"sg") | None
             )
         {
             let file_name = path
@@ -111,7 +111,7 @@ fn test_asm_examples_helper() {
                     .to_str()
                     .expect("Couldn't get file extension of example code")
                     .as_bytes()),
-                Some(b"lsd") | None
+                Some(b"sg") | None
             )
         {
             let file_name = path

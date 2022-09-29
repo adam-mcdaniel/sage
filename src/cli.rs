@@ -1,7 +1,7 @@
 //! # The Sage Compiler
 //! 
 //! This program implements the CLI frontend to the sage programming
-//! language. LSD can compile sage's various source languages to
+//! language. This can compile sage's various source languages to
 //! the supported targets provided by the compiler.
 use sage::{
     lir::*,
@@ -238,7 +238,7 @@ fn compile(
         // If the target is core virtual machine code, then try to compile the source to the core variant.
         // If not possible, throw an error.
         TargetType::CoreVM => match compile_source_to_vm(src, src_type, call_stack_size)? {
-            Ok(vm_code) => write_file(format!("{output}.vm.lsd"), vm_code.flatten().to_string()),
+            Ok(vm_code) => write_file(format!("{output}.vm.sg"), vm_code.flatten().to_string()),
             Err(_) => Err(Error::InvalidSource(
                 "expected core VM program, got standard VM program".to_string(),
             )),
@@ -246,7 +246,7 @@ fn compile(
         // If the target is standard virtual machine code, the compile it to virtual machine code.
         // If the result is core variant, we don't care. Just return the generated code.
         TargetType::StdVM => write_file(
-            format!("{output}.vm.lsd"),
+            format!("{output}.vm.sg"),
             match compile_source_to_vm(src, src_type, call_stack_size)? {
                 Ok(vm_code) => vm_code.flatten().to_string(),
                 Err(vm_code) => vm_code.flatten().to_string(),
@@ -255,7 +255,7 @@ fn compile(
         // If the target is core assembly code, then try to compile the source to the core variant.
         // If not possible, throw an error.
         TargetType::CoreASM => match compile_source_to_asm(src, src_type)? {
-            Ok(asm_code) => write_file(format!("{output}.asm.lsd"), asm_code.to_string()),
+            Ok(asm_code) => write_file(format!("{output}.asm.sg"), asm_code.to_string()),
             Err(_) => Err(Error::InvalidSource(
                 "expected core assembly program, got standard assembly program".to_string(),
             )),
@@ -263,7 +263,7 @@ fn compile(
         // If the target is standard assembly code, then try to compile the source to the standard variant.
         // If the result is core variant, we don't care. Just return the generated code.
         TargetType::StdASM => write_file(
-            format!("{output}.asm.lsd"),
+            format!("{output}.asm.sg"),
             match compile_source_to_asm(src, src_type)? {
                 Ok(asm_code) => asm_code.to_string(),
                 Err(asm_code) => asm_code.to_string(),
