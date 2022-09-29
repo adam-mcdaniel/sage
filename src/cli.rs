@@ -8,7 +8,7 @@ use sage::{
     parse::*,
     targets::{self, Target},
     vm::*,
-    LOGO_WITH_COLOR, TAGLINE, *,
+    LOGO_WITH_COLOR, *,
 };
 use clap::*;
 use std::{
