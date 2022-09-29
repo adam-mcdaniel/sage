@@ -1,4 +1,4 @@
-use kiwi::{lir::Compile, parse::*, vm::*};
+use sage::{lir::Compile, parse::*, vm::*};
 use std::{
     fs::{read_dir, read_to_string},
     path::PathBuf,

@@ -1,9 +1,9 @@
-//! # LSD - The kiwi Compiler
+//! # The Sage Compiler
 //! 
-//! This program implements the CLI frontend to the kiwi programming
-//! language. LSD can compile kiwi's various source languages to
+//! This program implements the CLI frontend to the sage programming
+//! language. LSD can compile sage's various source languages to
 //! the supported targets provided by the compiler.
-use kiwi::{
+use sage::{
     lir::*,
     parse::*,
     targets::{self, Target},
@@ -50,7 +50,7 @@ enum SourceType {
 
 /// The argument parser for the CLI.
 #[derive(Parser, Debug)]
-#[clap(author, version, before_help = TAGLINE, about = Some(LOGO_WITH_COLOR), long_about = Some(LOGO_WITH_COLOR), max_term_width=70)]
+#[clap(author, version, before_help = TAGLINE, about = Some(LOGO_WITH_COLOR), long_about = Some(LOGO_WITH_COLOR), max_term_width=90)]
 struct Args {
     /// The input file to compiler.
     #[clap(value_parser)]
@@ -110,7 +110,7 @@ fn compile_source_to_vm(
     src: String,
     src_type: SourceType,
     call_stack_size: usize,
-) -> Result<Result<kiwi::vm::CoreProgram, kiwi::vm::StandardProgram>, Error> {
+) -> Result<Result<sage::vm::CoreProgram, sage::vm::StandardProgram>, Error> {
     match src_type {
         SourceType::StdVM => {
             // Simply parse the virtual machine code
@@ -176,7 +176,7 @@ fn compile_source_to_vm(
 fn compile_source_to_asm(
     src: String,
     src_type: SourceType,
-) -> Result<Result<kiwi::asm::CoreProgram, kiwi::asm::StandardProgram>, Error> {
+) -> Result<Result<sage::asm::CoreProgram, sage::asm::StandardProgram>, Error> {
     match src_type {
         // If the source language is standard assembly, then parse it and return it.
         SourceType::StdASM => parse_asm(src).map_err(Error::Parse),

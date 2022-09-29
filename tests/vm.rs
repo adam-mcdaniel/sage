@@ -1,4 +1,4 @@
-use kiwi::vm::*;
+use sage::vm::*;
 
 #[test]
 fn test_add() {

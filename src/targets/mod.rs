@@ -24,7 +24,7 @@
 //! 
 //! Other backends might not implement `fork` though, and so "catch all"
 //! code can be implemented to *allow a backend to compile **as if** `fork`
-//! is provided*. This might work by providing some Acid code which takes
+//! is provided*. This might work by providing some frontend code which takes
 //! two functions and runs them serially instead of in parallel, but still
 //! accomplishing a simulated `fork`'s state.
 //! 

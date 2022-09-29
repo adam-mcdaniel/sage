@@ -1,0 +1,61 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="The sage Programming Language"><meta name="keywords" content="rust, rustlang, rust-lang, sage"><title>sage - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../dark.css" disabled><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../storage.js"></script><script src="../crates.js"></script><script defer src="../main.js"></script>
+    <noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../sage/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../sage/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"><a href="#">Crate sage</a></h2><div class="sidebar-elems"><div class="block"><ul><li class="version">Version 0.1.0</li><li><a id="all-types" href="all.html">All Items</a></li></div></ul><section><div class="block"><ul><li><a href="#modules">Modules</a></li><li><a href="#constants">Constants</a></li></ul></div></section><div id="sidebar-vars" data-name="sage" data-ty="mod" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../sage/index.html"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+    <h1 class="fqn"><span class="in-band">Crate <a class="mod" href="#">sage</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../src/sage/lib.rs.html#1-95">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="the-sage-programming-language"><a href="#the-sage-programming-language">The sage Programming Language</a></h2><div class="example-wrap"><pre class="language-text"><code>  █████   ██████    ███████  ██████  `-.        _.-&#39;
+ ███░░   ░░░░░███  ███░░███ ███░░███  \ `,    .&#39;/.&#39;
+░░█████   ███████ ░███ ░███░███████    \`.`. :.-&#39;.-= .-&#39;/
+ ░░░░███ ███░░███ ░███ ░███░███░░░      `-.:/o  .&#39;-&#39;/ .&#39;
+ ██████ ░░████████░░███████░░██████        o\o / ._/.&#39;
+░░░░░░   ░░░░░░░░  ░░░░░███ ░░░░░░           \| /o|\`.
+                   ███ ░███                   |&#39;o `.`.&#39;.
+                  ░░██████                          `--&#39;
+                   ░░░░░░            </code></pre></div>
+<p>This crate implements a compiler for the sage programming language
+and its low level virtual machine.</p>
+<h3 id="stages-of-ir"><a href="#stages-of-ir">Stages of IR</a></h3>
+<p>Here are the current stages of IR:</p>
+<ol>
+<li>LIR (Lower Intermediate Representation)</li>
+<li>Core / Standard Assembly (an assembly language for the VM)</li>
+<li>Core / Standard Virtual Machine Code (which is built for a given target)</li>
+</ol>
+<h3 id="backend"><a href="#backend">Backend</a></h3>
+<p>This compiler is unique in the way that it handles portability.
+The language’s backend is split in two: the Core variant, and the
+Standard variant. The Core variant is guaranteed to compile to all
+targets, and the Standard variant is akin to a standard library of
+instructions (which are implemented for most targets).</p>
+<p>This makes sage uniquely equipped to compile to very limited arcitectures:
+<strong>the Core instruction set for the virtual machine is <em>almost guaranteed</em>
+to be a subset of most CPU architectures.</strong></p>
+<p>The Core instructions are required to be implemented by <em>every target</em>. These instructions are guaranteed to be supported by every target.</p>
+<div><table><thead><tr><th></th><th>The</th><th>Twenty</th><th>and</th><th>Four</th><th>Canonical</th><th>Instructions</th></tr></thead><tbody>
+<tr><td>Memory</td><td><code>Move(n: int)</code></td><td><code>Index</code></td><td><code>Where?</code></td><td><code>Deref</code></td><td><code>Refer</code></td><td><code>BitwiseNand</code></td></tr>
+<tr><td>Control Flow</td><td><code>While</code></td><td><code>If</code></td><td><code>Else</code></td><td><code>Function</code></td><td><code>Call</code></td><td><code>Return</code></td></tr>
+<tr><td>Arithmetic</td><td><code>IsNonNegative?</code></td><td><code>Add</code></td><td><code>Subtract</code></td><td><code>Multiply</code></td><td><code>Divide</code></td><td><code>Remainder</code></td></tr>
+<tr><td>Fundamental</td><td><code>Set(n: int)</code></td><td><code>Save</code></td><td><code>Restore</code></td><td><code>Get</code></td><td><code>Put</code></td><td><code>End</code></td></tr>
+</tbody></table>
+</div>
+<p>The standard instructions are not guaranteed to be wholly implemented by every target, or at all. A target for Linux on x86 will certainly implement all the standard instructions, but a thermostat might implement only a few or none.</p>
+<div><table><thead><tr><th></th><th>The</th><th>Twenty</th><th>and</th><th>Four</th><th>Standard</th><th>Instructions</th></tr></thead><tbody>
+<tr><td>Memory and Fundamental</td><td><code>Allocate</code></td><td><code>Free</code></td><td><code>Set(n: float)</code></td><td><code>ToInt</code></td><td><code>ToFloat</code></td><td><code>Power</code></td></tr>
+<tr><td>Trigonometry</td><td><code>Sine</code></td><td><code>Cosine</code></td><td><code>Tangent</code></td><td><code>ArcSine</code></td><td><code>ArcCosine</code></td><td><code>ArcTangent</code></td></tr>
+<tr><td>Arithmetic</td><td><code>IsNonNegative?</code></td><td><code>Add</code></td><td><code>Subtract</code></td><td><code>Multiply</code></td><td><code>Divide</code></td><td><code>Remainder</code></td></tr>
+<tr><td>Worldly</td><td><code>GetChar</code></td><td><code>PutChar</code></td><td><code>GetInt</code></td><td><code>PutInt</code></td><td><code>GetFloat</code></td><td><code>PutFloat</code></td></tr>
+</tbody></table>
+</div></div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="mod" href="asm/index.html" title="sage::asm mod">asm</a></div><div class="item-right docblock-short"><p>Assembly Module</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="lir/index.html" title="sage::lir mod">lir</a></div><div class="item-right docblock-short"><p>LIR (Low Intermediate Representation) Module</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="parse/index.html" title="sage::parse mod">parse</a></div><div class="item-right docblock-short"><p>Parsing Module</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="targets/index.html" title="sage::targets mod">targets</a></div><div class="item-right docblock-short"><p>Targets Module</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="vm/index.html" title="sage::vm mod">vm</a></div><div class="item-right docblock-short"><p>Virtual Machine Module</p>
+</div></div></div><h2 id="constants" class="small-section-header"><a href="#constants">Constants</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="constant" href="constant.LOGO.html" title="sage::LOGO constant">LOGO</a></div><div class="item-right docblock-short"><p>The UNICODE character art for the logo of the language.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="constant" href="constant.LOGO_WITH_COLOR.html" title="sage::LOGO_WITH_COLOR constant">LOGO_WITH_COLOR</a></div><div class="item-right docblock-short"><p>The UNICODE character art for the logo of the language, using ANSI escape codes for color.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="constant" href="constant.NULL.html" title="sage::NULL constant">NULL</a></div><div class="item-right docblock-short"><p>The value of the NULL pointer constant.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="constant" href="constant.TAGLINE.html" title="sage::TAGLINE constant">TAGLINE</a></div><div class="item-right docblock-short"><p>The tagline for the language.</p>
+</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="sage" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0 (a8314ef7d 2022-06-27)" ></div>
+</body></html>
