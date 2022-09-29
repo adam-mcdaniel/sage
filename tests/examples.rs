@@ -24,7 +24,15 @@ fn test_lir_examples_helper() {
     for entry in read_dir("examples/lir/").unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
-        if path.is_file() && matches!(path.extension().map(|p| p.to_str().expect("Couldn't get file extension of example code").as_bytes()), Some(b"lsd") | None) {
+        if path.is_file()
+            && matches!(
+                path.extension().map(|p| p
+                    .to_str()
+                    .expect("Couldn't get file extension of example code")
+                    .as_bytes()),
+                Some(b"lsd") | None
+            )
+        {
             let file_name = path
                 .file_name()
                 .expect(&format!("Could not get file name of path `{path:?}`"))
@@ -80,7 +88,6 @@ fn test_lir_examples_helper() {
     }
 }
 
-
 #[test]
 fn test_asm_examples() {
     // Compiling most examples overflows the tiny stack for tests.
@@ -98,7 +105,15 @@ fn test_asm_examples_helper() {
     for entry in read_dir("examples/asm/").unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
-        if path.is_file() && matches!(path.extension().map(|p| p.to_str().expect("Couldn't get file extension of example code").as_bytes()), Some(b"lsd") | None) {
+        if path.is_file()
+            && matches!(
+                path.extension().map(|p| p
+                    .to_str()
+                    .expect("Couldn't get file extension of example code")
+                    .as_bytes()),
+                Some(b"lsd") | None
+            )
+        {
             let file_name = path
                 .file_name()
                 .expect(&format!("Could not get file name of path `{path:?}`"))
@@ -150,4 +165,3 @@ fn test_asm_examples_helper() {
         }
     }
 }
-

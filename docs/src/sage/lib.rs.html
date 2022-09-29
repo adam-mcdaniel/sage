@@ -98,33 +98,37 @@
 <span id="93">93</span>
 <span id="94">94</span>
 <span id="95">95</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # The sage Programming Language</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # The Sage Programming Language</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! 🚧 🏗️ ⚠️ This language is under construction! ⚠️ 🏗️ 🚧</span>
 <span class="doccomment">//! </span>
 <span class="doccomment">//! ```text</span>
-<span class="doccomment">//!   █████   ██████    ███████  ██████  `-.        _.-&#39;</span>
-<span class="doccomment">//!  ███░░   ░░░░░███  ███░░███ ███░░███  \ `,    .&#39;/.&#39;</span>
-<span class="doccomment">//! ░░█████   ███████ ░███ ░███░███████    \`.`. :.-&#39;.-= .-&#39;/</span>
-<span class="doccomment">//!  ░░░░███ ███░░███ ░███ ░███░███░░░      `-.:/o  .&#39;-&#39;/ .&#39;</span>
-<span class="doccomment">//!  ██████ ░░████████░░███████░░██████        o\o / ._/.&#39;</span>
-<span class="doccomment">//! ░░░░░░   ░░░░░░░░  ░░░░░███ ░░░░░░           \| /o|\`.</span>
-<span class="doccomment">//!                    ███ ░███                   |&#39;o `.`.&#39;.</span>
-<span class="doccomment">//!                   ░░██████                          `--&#39;</span>
+<span class="doccomment">//!   █████   ██████    ███████  ██████   `-.        _.-&#39;</span>
+<span class="doccomment">//!  ███░░   ░░░░░███  ███░░███ ███░░███   \ `,    .&#39;/.&#39;</span>
+<span class="doccomment">//! ░░█████   ███████ ░███ ░███░███████     \`.`. :.-&#39;.-= .-&#39;/</span>
+<span class="doccomment">//!  ░░░░███ ███░░███ ░███ ░███░███░░░       `-.:/o  .&#39;-&#39;/ .&#39;</span>
+<span class="doccomment">//!  ██████ ░░████████░░███████░░██████         o\o / ._/.&#39;</span>
+<span class="doccomment">//! ░░░░░░   ░░░░░░░░  ░░░░░███ ░░░░░░            \| /o|\`.</span>
+<span class="doccomment">//!                    ███ ░███                    |&#39;o `.`.&#39;.</span>
+<span class="doccomment">//!                   ░░██████                           `--&#39;</span>
 <span class="doccomment">//!                    ░░░░░░            </span>
 <span class="doccomment">//! ```</span>
 <span class="doccomment">//! </span>
+<span class="doccomment">//! &lt;embed type=&quot;text/html&quot; src=&quot;web/index.html&quot; title=&quot;Compiler&quot; width=&quot;100%&quot; height=&quot;940em&quot;&gt;&lt;/embed&gt;</span>
+<span class="doccomment">//! </span>
 <span class="doccomment">//! This crate implements a compiler for the sage programming language</span>
 <span class="doccomment">//! and its low level virtual machine.</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! ## Stages of IR</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! Here are the current stages of IR:</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! 1. LIR (Lower Intermediate Representation)</span>
 <span class="doccomment">//! 2. Core / Standard Assembly (an assembly language for the VM)</span>
 <span class="doccomment">//! 3. Core / Standard Virtual Machine Code (which is built for a given target)</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! ## Backend</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! This compiler is unique in the way that it handles portability.</span>
 <span class="doccomment">//! The language&#39;s backend is split in two: the Core variant, and the</span>
 <span class="doccomment">//! Standard variant. The Core variant is guaranteed to compile to all</span>
@@ -134,25 +138,24 @@
 <span class="doccomment">//! This makes sage uniquely equipped to compile to very limited arcitectures:</span>
 <span class="doccomment">//! **the Core instruction set for the virtual machine is *almost guaranteed*</span>
 <span class="doccomment">//! to be a subset of most CPU architectures.**</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! The Core instructions are required to be implemented by *every target*. These instructions are guaranteed to be supported by every target.</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! |              | The              | Twenty  | and        | Four       | Canonical | Instructions  |</span>
 <span class="doccomment">//! |--------------|------------------|---------|------------|------------|-----------|---------------|</span>
-<span class="doccomment">//! | Memory       | `Move(n: int)`   | `Index` | `Where?`   | `Deref`    | `Refer`   | `BitwiseNand` | </span>
+<span class="doccomment">//! | Memory       | `Move(n: int)`   | `Index` | `Where?`   | `Deref`    | `Refer`   | `BitwiseNand` |</span>
 <span class="doccomment">//! | Control Flow | `While`          | `If`    | `Else`     | `Function` | `Call`    | `Return`      |</span>
 <span class="doccomment">//! | Arithmetic   | `IsNonNegative?` | `Add`   | `Subtract` | `Multiply` | `Divide`  | `Remainder`   |</span>
 <span class="doccomment">//! | Fundamental  | `Set(n: int)`    | `Save`  | `Restore`  | `Get`      | `Put`     | `End`         |</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! The standard instructions are not guaranteed to be wholly implemented by every target, or at all. A target for Linux on x86 will certainly implement all the standard instructions, but a thermostat might implement only a few or none.</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! |                        | The              | Twenty    | and             | Four       | Standard    | Instructions |</span>
 <span class="doccomment">//! |------------------------|------------------|-----------|-----------------|------------|-------------|--------------|</span>
 <span class="doccomment">//! | Memory and Fundamental | `Allocate`       | `Free`    | `Set(n: float)` | `ToInt`    | `ToFloat`   | `Power`      |</span>
 <span class="doccomment">//! | Trigonometry           | `Sine`           | `Cosine`  | `Tangent`       | `ArcSine`  | `ArcCosine` | `ArcTangent` |</span>
 <span class="doccomment">//! | Arithmetic             | `IsNonNegative?` | `Add`     | `Subtract`      | `Multiply` | `Divide`    | `Remainder`  |</span>
 <span class="doccomment">//! | Worldly                | `GetChar`        | `PutChar` | `GetInt`        | `PutInt`   | `GetFloat`  | `PutFloat`   |</span>
-
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">asm</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">lir</span>;
@@ -167,32 +170,29 @@
 <span class="doccomment">/// The value of this constant might change in the future though.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">NULL</span>: <span class="ident">isize</span> <span class="op">=</span> <span class="ident">i8::MIN</span> <span class="kw">as</span> <span class="ident">isize</span>;
 
-<span class="doccomment">/// The tagline for the language.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">TAGLINE</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;⚠️ 🧪WARNING: Highly corrosive!⚗️ ⚠️&quot;</span>;
-
 <span class="doccomment">/// The UNICODE character art for the logo of the language.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LOGO</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;
-   █████   ██████    ███████  ██████  `-.        _.-&#39;
-  ███░░   ░░░░░███  ███░░███ ███░░███  \ `,    .&#39;/.&#39;
- ░░█████   ███████ ░███ ░███░███████    \`.`. :.-&#39;.-= .-&#39;/
-  ░░░░███ ███░░███ ░███ ░███░███░░░      `-.:/o  .&#39;-&#39;/ .&#39;
-  ██████ ░░████████░░███████░░██████        o\o / ._/.&#39;
- ░░░░░░   ░░░░░░░░  ░░░░░███ ░░░░░░           \| /o|\`.
-                    ███ ░███                   |&#39;o `.`.&#39;.
-                   ░░██████                          `--&#39;
+   █████   ██████    ███████  ██████   `-.        _.-&#39;
+  ███░░   ░░░░░███  ███░░███ ███░░███   \ `,    .&#39;/.&#39;
+ ░░█████   ███████ ░███ ░███░███████     \`.`. :.-&#39;.-= .-&#39;/
+  ░░░░███ ███░░███ ░███ ░███░███░░░       `-.:/o  .&#39;-&#39;/ .&#39;
+  ██████ ░░████████░░███████░░██████         o\o / ._/.&#39;
+ ░░░░░░   ░░░░░░░░  ░░░░░███ ░░░░░░            \| /o|\`.
+                    ███ ░███                    |&#39;o `.`.&#39;.
+                   ░░██████                           `--&#39;
                     ░░░░░░            &quot;#</span>;
 
 <span class="doccomment">/// The UNICODE character art for the logo of the language, using ANSI escape codes for color.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LOGO_WITH_COLOR</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;\x1b[32m
-   █████   ██████    ███████  ██████  `-.        _.-&#39;
-  ███░░   ░░░░░███  ███░░███ ███░░███  \\ `,    .&#39;/.&#39;
- ░░█████   ███████ ░███ ░███░███████    \\`.`. :.-&#39;.-= .-&#39;/
-  ░░░░███ ███░░███ ░███ ░███░███░░░      `-.:/o  .&#39;-&#39;/ .&#39;
-  ██████ ░░████████░░███████░░██████        o\\o / ._/.&#39;
- ░░░░░░   ░░░░░░░░  ░░░░░███ ░░░░░░           \\| /o|\\`.
-                    ███ ░███                   |&#39;o `.`.&#39;.
-                   ░░██████                          `--&#39;
-                    ░░░░░░            &quot;</span>;
+   █████   ██████    ███████  ██████   `-.        _.-&#39;
+  ███░░   ░░░░░███  ███░░███ ███░░███   \\ `,    .&#39;/.&#39;
+ ░░█████   ███████ ░███ ░███░███████     \\`.`. :.-&#39;.-= .-&#39;/
+  ░░░░███ ███░░███ ░███ ░███░███░░░       `-.:/o  .&#39;-&#39;/ .&#39;
+  ██████ ░░████████░░███████░░██████         o\\o / ._/.&#39;
+ ░░░░░░   ░░░░░░░░  ░░░░░███ ░░░░░░            \\| /o|\\`.
+                    ███ ░███                    |&#39;o `.`.&#39;.
+                   ░░██████                           `--&#39;
+                    ░░░░░░            \x1b[0m&quot;</span>;
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="sage" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0 (a8314ef7d 2022-06-27)" ></div>
 </body></html>

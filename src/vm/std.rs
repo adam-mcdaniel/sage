@@ -296,3 +296,9 @@ impl fmt::Display for StandardOp {
         }
     }
 }
+
+impl From<CoreProgram> for StandardProgram {
+    fn from(core: CoreProgram) -> Self {
+        Self(core.0.into_iter().map(StandardOp::CoreOp).collect())
+    }
+}

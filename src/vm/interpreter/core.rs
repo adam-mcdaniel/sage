@@ -1,5 +1,5 @@
 //! # Core Interpreter Module
-//! 
+//!
 //! This module implements an interpreter for the Core virtual machine
 //! variant.
 use crate::vm::{CoreOp, CoreProgram, Device, StandardDevice};

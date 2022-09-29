@@ -1,26 +1,26 @@
 //! # Parsing Module
-//! 
+//!
 //! This module contains all the related functions for parsing
 //! any given source language supported by the compiler.
-//! 
+//!
 //! Right now, this module supports parsing:
 //! - LIR source
 //! - Core Assembly source
 //! - Standard Assembly source
 //! - Core Virtual Machine code source
 //! - Standard Virtual Machine code source
-//! 
+//!
 //! ## Stability
-//! 
+//!
 //! This module will likely be unstable for a long while,
 //! because none of the language syntaxes are stablized.
-//! 
+//!
 //! I also hope to replace the parsers with libraries using
 //! fewer dependencies. LALRPOP requires a ridiculous number of
 //! packages to function. Nom seems to be an ideal candidate.
-//! 
+//!
 //! #### Error Types
-//! 
+//!
 //! The error types in this module are just strings for now,
 //! but I intend to replace these with a set of full blown syntax
 //! error enums in the future.
@@ -62,7 +62,7 @@ pub fn parse_asm(input: impl ToString) -> Result<Result<CoreProgram, StandardPro
     }
 }
 
-/// Parse LIR code as an LIR expression.d
+/// Parse LIR code as an LIR expression.
 pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
     let code = input.to_string();
     match lir_parser::ExprParser::new().parse(&input.to_string()) {

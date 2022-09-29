@@ -1,11 +1,11 @@
 //! # C Target
-//! 
+//!
 //! An implementation of the virtual machine for the C language.
 //!
 //! This allows the virtual machine to target C programs.
-//! 
+//!
 //! ## Portability
-//! 
+//!
 //! Right now, this target only supports GCC due to a quirk
 //! with the way this implementation compiles functions.
 //! For some reason, Clang doesn't like nested functions,
@@ -115,7 +115,7 @@ int main() {
 
                 CoreOp::Move(n) => format!("ptr += {};", n),
                 CoreOp::Where => "reg.p = ptr;".to_string(),
-                CoreOp::Deref => "*ref++ = ptr; ptr = ptr->p;".to_string(),
+                CoreOp::Deref => format!("*ref++ = ptr;\n{}ptr = ptr->p;", tab.repeat(indent)),
                 CoreOp::Refer => "ptr = *--ref;".to_string(),
 
                 CoreOp::Index => "reg.p += ptr->i;".to_string(),
@@ -328,7 +328,10 @@ int main() {
                     result += &format!("{}reg.p = ptr;\n", tab.repeat(indent));
                 }
                 StandardOp::CoreOp(CoreOp::Deref) => {
-                    result += &format!("{}*ref++ = ptr; ptr = ptr->p;\n", tab.repeat(indent));
+                    result += &format!(
+                        "{indent}*ref++ = ptr;\n{indent}ptr = ptr->p;\n",
+                        indent = tab.repeat(indent)
+                    );
                 }
                 StandardOp::CoreOp(CoreOp::Refer) => {
                     result += &format!("{}ptr = *--ref;\n", tab.repeat(indent));

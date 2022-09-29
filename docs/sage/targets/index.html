@@ -23,7 +23,7 @@ implement a <code>fork</code> frontend for this virtual machine by executing
 <code>fork</code> when a correct series of <code>Put</code> values are given to the I/O device.</p>
 <p>Other backends might not implement <code>fork</code> though, and so “catch all”
 code can be implemented to <em>allow a backend to compile <strong>as if</strong> <code>fork</code>
-is provided</em>. This might work by providing some sage code which takes
+is provided</em>. This might work by providing some frontend code which takes
 two functions and runs them serially instead of in parallel, but still
 accomplishing a simulated <code>fork</code>’s state.</p>
 <p>Other hardware specific instructions can be implemented this way very

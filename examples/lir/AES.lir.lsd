@@ -82,9 +82,17 @@ proc lsh(a: Int, b: Int) -> Int = {
 } in
 
 proc rsh(a: Int, b: Int) -> Int = {
-    while b {
-        a = a / 2;
-        b = b - 1;
+    let added = -2147483648, i = 0, negative = lt(a, 0) in {
+        while (lt(i, b - 1)) {
+            added = added / 2;
+            i = i + 1;
+        };
+        if negative { a = bitnot(a) };
+        while b {
+            a = a / 2;
+            b = b - 1;
+        };
+        if negative { a = bitxor(bitnot(a), added) };
     };
     a
 } in
@@ -405,17 +413,11 @@ proc round_key(word0: Int, word1: Int, word2: Int, word3: Int) -> State = {
             bytes0[3], bytes1[3], bytes2[3], bytes3[3])
 } in
 
-const alloc = proc(size: Int) -> &Int = core {
-    set A, 10000
-    index SP, A, C
-    push C
-    add [SP - 1], [[SP]]
-    lea [[SP]], [SP - 1]
-    add [[SP]], [SP - 1]
-    pop
+const alloc = proc(size: Int) -> &Int = std {
+    alloc [SP]
 } in
 
-const free = proc(ptr: &Int) -> None = {} in
+const free = proc(ptr: &Int) -> None = std { free[SP] pop } in
 
 proc key_expansion(key: Key, nr: Int, nk: Int) -> &Int = {
     let key_data = get_key_data(&key),

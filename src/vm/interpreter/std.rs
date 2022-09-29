@@ -1,5 +1,5 @@
 //! # Standard Interpreter Module
-//! 
+//!
 //! This module implements an interpreter for the Standard virtual machine
 //! variant.
 

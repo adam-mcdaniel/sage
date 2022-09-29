@@ -4,7 +4,9 @@
 //! with the standard variant of the virtual machine. It is very
 //! portable, but probably not supported on older systems or
 //! hardware implementations.
-use super::{location::FP_STACK, AssemblyProgram, CoreOp, Env, Error, Location, F, FP, SP};
+use super::{
+    location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP,
+};
 use crate::vm::{self, VirtualMachineProgram};
 use core::fmt;
 
@@ -348,5 +350,11 @@ impl fmt::Display for StandardOp {
             Self::PutFloat(loc) => write!(f, "put-float {loc}"),
             Self::GetFloat(loc) => write!(f, "get-float {loc}"),
         }
+    }
+}
+
+impl From<CoreProgram> for StandardProgram {
+    fn from(core: CoreProgram) -> Self {
+        Self(core.0.into_iter().map(StandardOp::CoreOp).collect())
     }
 }

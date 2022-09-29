@@ -28,7 +28,7 @@ pub use location::{Location, A, B, C, D, E, F, FP, SP};
 /// A frontend to both the `CoreProgram` and `StandardProgram` types.
 /// This allows the compiler to append `CoreOp`s to both programs
 /// with guaranteed success, but optionally allows the compiler to
-/// *attempt* to compile a `StandardOp`, which *may* fail depending 
+/// *attempt* to compile a `StandardOp`, which *may* fail depending
 /// on the target's support for the instruction.
 pub trait AssemblyProgram {
     fn op(&mut self, op: CoreOp);

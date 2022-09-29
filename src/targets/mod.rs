@@ -1,33 +1,33 @@
 //! # Targets Module
-//! 
+//!
 //! This module contains the code dealing with building the virtual
 //! machine code to various targets, such as C source code.
-//! 
+//!
 //! ## Current Structure
-//! 
+//!
 //! Right now, this module is a bit empty, only implementing C (GCC only)
 //! as a compiler target. This is due to the fact that it has been much
 //! simpler to build the language on top of the virtual machine when there
 //! are fewer implementations to change.
-//! 
+//!
 //! ## Future Structure
-//! 
+//!
 //! In the future, this module will be *much* more featured.
 //! The frontend will use `Put` and `Get` to interact with the
 //! virtual machine's I/O device, and this module will provide hooks
 //! to add "system calls" to implement actual hardware-specific behaviors
 //! using these instructions, **but with portability in mind**.
-//! 
+//!
 //! Consider the `fork` system call on Unix systems. A backend might
 //! implement a `fork` frontend for this virtual machine by executing
 //! `fork` when a correct series of `Put` values are given to the I/O device.
-//! 
+//!
 //! Other backends might not implement `fork` though, and so "catch all"
 //! code can be implemented to *allow a backend to compile **as if** `fork`
 //! is provided*. This might work by providing some frontend code which takes
 //! two functions and runs them serially instead of in parallel, but still
 //! accomplishing a simulated `fork`'s state.
-//! 
+//!
 //! Other hardware specific instructions can be implemented this way very
 //! nicely. Consider a VGA device which displays a screen. A hardware
 //! specific implementation can be written for each supported target,
