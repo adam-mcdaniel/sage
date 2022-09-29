@@ -15,3 +15,4 @@ rm -Rf OUT_DIR;
 mkdir -p OUT_DIR;
 cp index.html OUT_DIR;
 wasm-pack build --target web --out-dir OUT_DIR;
+rm OUT_DIR + "/.gitignore"
