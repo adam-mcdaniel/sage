@@ -67,9 +67,6 @@ pub mod vm;
 /// The value of this constant might change in the future though.
 pub const NULL: isize = i8::MIN as isize;
 
-/// The tagline for the language.
-pub const TAGLINE: &str = "⚠️ 🧪WARNING: Highly corrosive!⚗️ ⚠️";
-
 /// The UNICODE character art for the logo of the language.
 pub const LOGO: &str = r#"
    █████   ██████    ███████  ██████  `-.        _.-'
