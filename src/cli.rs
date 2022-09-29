@@ -50,7 +50,7 @@ enum SourceType {
 
 /// The argument parser for the CLI.
 #[derive(Parser, Debug)]
-#[clap(author, version, before_help = TAGLINE, about = Some(LOGO_WITH_COLOR), long_about = Some(LOGO_WITH_COLOR), max_term_width=90)]
+#[clap(author, version, about = Some(LOGO_WITH_COLOR), long_about = Some(LOGO_WITH_COLOR), max_term_width=90)]
 struct Args {
     /// The input file to compiler.
     #[clap(value_parser)]
