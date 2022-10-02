@@ -1,6 +1,6 @@
 # sage
 
-[Here's an example of the compilation process.](assets/compiled.md#example-compiled-program)
+[Here's an example of the compilation process.](https://adam-mcdaniel.net/sage)
 
 ## The Compiler Caveat
 
