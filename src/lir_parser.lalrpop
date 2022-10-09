@@ -55,7 +55,7 @@ ConstExpr: ConstExpr = {
 }
 
 pub Expr: Expr = {
-    <defs: List<"let", (<Symbol> <(":" <Type>)?> "=" <Math>), ",", "in">> <e: Expr> => {
+    <defs: List<"let", (<Symbol> <(":" <Type>)?> "=" <Comparison>), ",", "in">> <e: Expr> => {
         Expr::LetVars(defs, Box::new(e))
     },
     <defs: List<"type", (<Symbol> "=" <Type>), ",", "in">> <e: Expr> => {
@@ -72,9 +72,29 @@ pub Expr: Expr = {
     "&" <Expr> => <>.refer(),
     "*" <Expr> => <>.deref(),
     "return" <Expr> => Expr::Return(Box::new(<>)),
-    Math => <>
+    Logic => <>
 }
 
+
+Logic: Expr = {
+    <a: Logic> "or" <b: LogicFactor> => a.or(b),
+    LogicFactor => <>,
+}
+LogicFactor: Expr = {
+    <a: LogicFactor> "and" <b: Comparison> => a.and(b),
+    "not" <a: Comparison> => a.not(),
+    Comparison => <>,
+}
+
+Comparison: Expr = {
+    <a: Math> "<" <b: Math> => a.lt(b),
+    <a: Math> "<=" <b: Math> => a.le(b),
+    <a: Math> ">" <b: Math> => a.gt(b),
+    <a: Math> ">=" <b: Math> => a.ge(b),
+    <a: Math> "==" <b: Math> => a.eq(b),
+    <a: Math> "!=" <b: Math> => a.neq(b),
+    Math => <>,
+}
 
 Math: Expr = {
     <a: Math> "+" <b: Factor> => a.add(b),

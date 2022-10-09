@@ -639,12 +639,30 @@ impl CoreOp {
             }
             .assemble(current_instruction, env, result)?,
 
-            CoreOp::IsGreater { dst, a, b } => a.is_greater_than(b, dst, result),
-            CoreOp::IsGreaterEqual { dst, a, b } => a.is_greater_or_equal_to(b, dst, result),
-            CoreOp::IsLess { dst, a, b } => a.is_less_than(b, dst, result),
-            CoreOp::IsLessEqual { dst, a, b } => a.is_less_or_equal_to(b, dst, result),
-            CoreOp::IsNotEqual { dst, a, b } => a.is_not_equal(b, dst, result),
-            CoreOp::IsEqual { dst, a, b } => a.is_equal(b, dst, result),
+            CoreOp::IsGreater { dst, a, b } => {
+                b.copy_to(&TMP, result);
+                a.is_greater_than(&TMP, dst, result)
+            },
+            CoreOp::IsGreaterEqual { dst, a, b } => {
+                b.copy_to(&TMP, result);
+                a.is_greater_or_equal_to(&TMP, dst, result)
+            },
+            CoreOp::IsLess { dst, a, b } => {
+                b.copy_to(&TMP, result);
+                a.is_less_than(&TMP, dst, result)
+            },
+            CoreOp::IsLessEqual { dst, a, b } => {
+                b.copy_to(&TMP, result);
+                a.is_less_or_equal_to(&TMP, dst, result)
+            },
+            CoreOp::IsEqual { dst, a, b } => {
+                b.copy_to(&TMP, result);
+                a.is_equal(&TMP, dst, result)
+            },
+            CoreOp::IsNotEqual { dst, a, b } => {
+                b.copy_to(&TMP, result);
+                a.is_not_equal(&TMP, dst, result)
+            },
 
             CoreOp::Compare { dst, a, b } => {
                 a.copy_to(dst, result);

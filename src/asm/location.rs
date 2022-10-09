@@ -349,10 +349,17 @@ impl Location {
 
     /// dst = this cell > source cell.
     pub fn is_greater_than(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.copy_to(dst, result);
-        dst.sub(src, result);
+        src.copy_to(dst, result);
+        dst.sub(self, result);
         dst.dec(result);
         dst.whole_int(result);
+    }
+
+    /// dst = this cell < source cell.
+    pub fn is_greater_than_float(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        src.copy_to(dst, result);
+        dst.sub_float(self, result)?;
+        dst.std_op(vm::StandardOp::IsNonNegative, result)
     }
 
     /// dst = this cell >= source cell.
@@ -362,8 +369,8 @@ impl Location {
         dst: &Self,
         result: &mut dyn VirtualMachineProgram,
     ) {
-        self.copy_to(dst, result);
-        dst.sub(src, result);
+        src.copy_to(dst, result);
+        dst.sub(self, result);
         dst.whole_int(result);
     }
 
@@ -371,10 +378,18 @@ impl Location {
     pub fn is_less_than(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
         src.copy_to(dst, result);
         dst.sub(self, result);
-        dst.dec(result);
         dst.whole_int(result);
+        dst.not(result);
     }
 
+    /// dst = this cell < source cell.
+    pub fn is_less_than_float(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        src.copy_to(dst, result);
+        dst.sub_float(self, result)?;
+        src.set_float(-1.0, result)?;
+        dst.mul_float(src, result)?;
+        dst.std_op(vm::StandardOp::IsNonNegative, result)
+    }
     /// dst = this cell <= source cell.
     pub fn is_less_or_equal_to(
         &self,
@@ -384,7 +399,9 @@ impl Location {
     ) {
         src.copy_to(dst, result);
         dst.sub(self, result);
+        dst.dec(result);
         dst.whole_int(result);
+        dst.not(result);
     }
 
     pub fn is_not_equal(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {

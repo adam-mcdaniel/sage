@@ -5,7 +5,7 @@
 //! portable, but probably not supported on older systems or
 //! hardware implementations.
 use super::{
-    location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP,
+    location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP, TMP, 
 };
 use crate::vm::{self, VirtualMachineProgram};
 use core::fmt;
@@ -257,6 +257,20 @@ impl StandardOp {
 
             Self::Rem { src, dst } => {
                 if dst.rem_float(src, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::IsLess { a, b, dst } => {
+                b.copy_to(&TMP, result);
+                if a.is_less_than_float(&TMP, dst, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::IsGreater { a, b, dst } => {
+                b.copy_to(&TMP, result);
+                if a.is_greater_than_float(&TMP, dst, result).is_err() {
                     unsupported(self.clone())?
                 }
             }

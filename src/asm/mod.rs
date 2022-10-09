@@ -24,6 +24,7 @@ pub mod std;
 pub use self::core::{CoreOp, CoreProgram};
 pub use self::std::{StandardOp, StandardProgram};
 pub use location::{Location, A, B, C, D, E, F, FP, SP};
+pub(self) use location::TMP;
 
 /// A frontend to both the `CoreProgram` and `StandardProgram` types.
 /// This allows the compiler to append `CoreOp`s to both programs
