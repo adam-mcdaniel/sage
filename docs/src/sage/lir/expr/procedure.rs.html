@@ -264,7 +264,7 @@
         <span class="comment">// Push the procedure label address onto the stack</span>
         <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::SetLabel</span>(<span class="ident">A</span>, <span class="self">self</span>.<span class="ident">mangled_name</span>));
         <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Push</span>(<span class="ident">A</span>, <span class="number">1</span>));
-        <span class="ident">output</span>.<span class="ident">comment</span>(<span class="macro">format!</span>(<span class="string">&quot;done&quot;</span>));
+        <span class="ident">output</span>.<span class="ident">comment</span>(<span class="string">&quot;done&quot;</span>.<span class="ident">to_string</span>());
         <span class="prelude-val">Ok</span>(())
     }
 }

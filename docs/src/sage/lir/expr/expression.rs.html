@@ -1655,6 +1655,94 @@
 <span id="1650">1650</span>
 <span id="1651">1651</span>
 <span id="1652">1652</span>
+<span id="1653">1653</span>
+<span id="1654">1654</span>
+<span id="1655">1655</span>
+<span id="1656">1656</span>
+<span id="1657">1657</span>
+<span id="1658">1658</span>
+<span id="1659">1659</span>
+<span id="1660">1660</span>
+<span id="1661">1661</span>
+<span id="1662">1662</span>
+<span id="1663">1663</span>
+<span id="1664">1664</span>
+<span id="1665">1665</span>
+<span id="1666">1666</span>
+<span id="1667">1667</span>
+<span id="1668">1668</span>
+<span id="1669">1669</span>
+<span id="1670">1670</span>
+<span id="1671">1671</span>
+<span id="1672">1672</span>
+<span id="1673">1673</span>
+<span id="1674">1674</span>
+<span id="1675">1675</span>
+<span id="1676">1676</span>
+<span id="1677">1677</span>
+<span id="1678">1678</span>
+<span id="1679">1679</span>
+<span id="1680">1680</span>
+<span id="1681">1681</span>
+<span id="1682">1682</span>
+<span id="1683">1683</span>
+<span id="1684">1684</span>
+<span id="1685">1685</span>
+<span id="1686">1686</span>
+<span id="1687">1687</span>
+<span id="1688">1688</span>
+<span id="1689">1689</span>
+<span id="1690">1690</span>
+<span id="1691">1691</span>
+<span id="1692">1692</span>
+<span id="1693">1693</span>
+<span id="1694">1694</span>
+<span id="1695">1695</span>
+<span id="1696">1696</span>
+<span id="1697">1697</span>
+<span id="1698">1698</span>
+<span id="1699">1699</span>
+<span id="1700">1700</span>
+<span id="1701">1701</span>
+<span id="1702">1702</span>
+<span id="1703">1703</span>
+<span id="1704">1704</span>
+<span id="1705">1705</span>
+<span id="1706">1706</span>
+<span id="1707">1707</span>
+<span id="1708">1708</span>
+<span id="1709">1709</span>
+<span id="1710">1710</span>
+<span id="1711">1711</span>
+<span id="1712">1712</span>
+<span id="1713">1713</span>
+<span id="1714">1714</span>
+<span id="1715">1715</span>
+<span id="1716">1716</span>
+<span id="1717">1717</span>
+<span id="1718">1718</span>
+<span id="1719">1719</span>
+<span id="1720">1720</span>
+<span id="1721">1721</span>
+<span id="1722">1722</span>
+<span id="1723">1723</span>
+<span id="1724">1724</span>
+<span id="1725">1725</span>
+<span id="1726">1726</span>
+<span id="1727">1727</span>
+<span id="1728">1728</span>
+<span id="1729">1729</span>
+<span id="1730">1730</span>
+<span id="1731">1731</span>
+<span id="1732">1732</span>
+<span id="1733">1733</span>
+<span id="1734">1734</span>
+<span id="1735">1735</span>
+<span id="1736">1736</span>
+<span id="1737">1737</span>
+<span id="1738">1738</span>
+<span id="1739">1739</span>
+<span id="1740">1740</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::asm</span>::{<span class="ident">AssemblyProgram</span>, <span class="ident">CoreOp</span>, <span class="ident">StandardOp</span>, <span class="ident">A</span>, <span class="ident">B</span>, <span class="ident">C</span>, <span class="ident">FP</span>, <span class="ident">SP</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::lir</span>::{
     <span class="ident">Compile</span>, <span class="ident">ConstExpr</span>, <span class="ident">Env</span>, <span class="ident">Error</span>, <span class="ident">GetSize</span>, <span class="ident">GetType</span>, <span class="ident">Procedure</span>, <span class="ident">Simplify</span>, <span class="ident">Type</span>, <span class="ident">TypeCheck</span>,
@@ -1730,13 +1818,18 @@
     <span class="doccomment">/// Take the logical not of an expression.</span>
     <span class="ident">Not</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
 
-    <span class="doccomment">/// TODO: implement comparison operators.</span>
-    <span class="comment">// Lt(Box&lt;Self&gt;, Box&lt;Self&gt;),</span>
-    <span class="comment">// Le(Box&lt;Self&gt;, Box&lt;Self&gt;),</span>
-    <span class="comment">// Gt(Box&lt;Self&gt;, Box&lt;Self&gt;),</span>
-    <span class="comment">// Ge(Box&lt;Self&gt;, Box&lt;Self&gt;),</span>
-    <span class="comment">// Eq(Box&lt;Self&gt;, Box&lt;Self&gt;),</span>
-    <span class="comment">// Neq(Box&lt;Self&gt;, Box&lt;Self&gt;),</span>
+    <span class="doccomment">/// Is the lefthand expression less than the righthand expression?</span>
+    <span class="ident">Lt</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// Is the lefthand expression less than or equal to the righthand expression?</span>
+    <span class="ident">Le</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// Is the lefthand expression greater than the righthand expression?</span>
+    <span class="ident">Gt</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// Is the lefthand expression greater than or equal to the righthand expression?</span>
+    <span class="ident">Ge</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// Is the lefthand expression equal to the righthand expression?</span>
+    <span class="ident">Eq</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// Is the lefthand expression unequal to the righthand expression?</span>
+    <span class="ident">Neq</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
 
     <span class="doccomment">/// Reference this expression (i.e. get a pointer to it).</span>
     <span class="ident">Refer</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
@@ -1791,8 +1884,39 @@
     }
 
     <span class="doccomment">/// Logical not this expression.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::should_implement_trait</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">not</span>(<span class="self">self</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">Expr::Not</span>(<span class="ident">Box::new</span>(<span class="self">self</span>))
+    }
+
+    <span class="doccomment">/// Is this expression less than another?</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lt</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">Expr::Lt</span>(<span class="ident">Box::new</span>(<span class="self">self</span>), <span class="ident">Box::new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
+    }
+
+    <span class="doccomment">/// Is this expression less than or equal to another?</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">le</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">Expr::Le</span>(<span class="ident">Box::new</span>(<span class="self">self</span>), <span class="ident">Box::new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
+    }
+
+    <span class="doccomment">/// Is this expression greater than another?</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gt</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">Expr::Gt</span>(<span class="ident">Box::new</span>(<span class="self">self</span>), <span class="ident">Box::new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
+    }
+
+    <span class="doccomment">/// Is this expression greater than or equal to another?</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ge</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">Expr::Ge</span>(<span class="ident">Box::new</span>(<span class="self">self</span>), <span class="ident">Box::new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
+    }
+
+    <span class="doccomment">/// Is this expression greater than another?</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">eq</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">Expr::Eq</span>(<span class="ident">Box::new</span>(<span class="self">self</span>), <span class="ident">Box::new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
+    }
+
+    <span class="doccomment">/// Is this expression greater than or equal to another?</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">neq</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">Expr::Neq</span>(<span class="ident">Box::new</span>(<span class="self">self</span>), <span class="ident">Box::new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
     }
 
     <span class="doccomment">/// Logical and this expression with another.</span>
@@ -1806,26 +1930,31 @@
     }
 
     <span class="doccomment">/// Add this expression to another.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::should_implement_trait</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">Expr::Add</span>(<span class="ident">Box::new</span>(<span class="self">self</span>), <span class="ident">Box::new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
     }
 
     <span class="doccomment">/// Subtract an expression from this expression.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::should_implement_trait</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sub</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">Expr::Sub</span>(<span class="ident">Box::new</span>(<span class="self">self</span>), <span class="ident">Box::new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
     }
 
     <span class="doccomment">/// Multiply this expression by another.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::should_implement_trait</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mul</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">Expr::Mul</span>(<span class="ident">Box::new</span>(<span class="self">self</span>), <span class="ident">Box::new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
     }
 
     <span class="doccomment">/// Divide this expression by another.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::should_implement_trait</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">div</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">Expr::Div</span>(<span class="ident">Box::new</span>(<span class="self">self</span>), <span class="ident">Box::new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
     }
 
     <span class="doccomment">/// Get the remainder of this expression divided by another.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::should_implement_trait</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">rem</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">Expr::Rem</span>(<span class="ident">Box::new</span>(<span class="self">self</span>), <span class="ident">Box::new</span>(<span class="ident">other</span>.<span class="ident">into</span>()))
     }
@@ -2140,7 +2269,13 @@
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Sub</span>(<span class="ident">a</span>, <span class="ident">b</span>)
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Mul</span>(<span class="ident">a</span>, <span class="ident">b</span>)
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Div</span>(<span class="ident">a</span>, <span class="ident">b</span>)
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Rem</span>(<span class="ident">a</span>, <span class="ident">b</span>) =&gt; {
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Rem</span>(<span class="ident">a</span>, <span class="ident">b</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Lt</span>(<span class="ident">a</span>, <span class="ident">b</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Le</span>(<span class="ident">a</span>, <span class="ident">b</span>) 
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Gt</span>(<span class="ident">a</span>, <span class="ident">b</span>) 
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Ge</span>(<span class="ident">a</span>, <span class="ident">b</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Eq</span>(<span class="ident">a</span>, <span class="ident">b</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Neq</span>(<span class="ident">a</span>, <span class="ident">b</span>) =&gt; {
                 <span class="ident">a</span>.<span class="ident">type_check</span>(<span class="ident">env</span>)<span class="question-mark">?</span>;
                 <span class="ident">b</span>.<span class="ident">type_check</span>(<span class="ident">env</span>)<span class="question-mark">?</span>;
                 <span class="kw">let</span> <span class="ident">a_type</span> <span class="op">=</span> <span class="ident">a</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>;
@@ -2419,9 +2554,16 @@
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Sub</span>(<span class="kw-2">ref</span> <span class="ident">a</span>, <span class="kw-2">ref</span> <span class="ident">b</span>)
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Mul</span>(<span class="kw-2">ref</span> <span class="ident">a</span>, <span class="kw-2">ref</span> <span class="ident">b</span>)
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Div</span>(<span class="kw-2">ref</span> <span class="ident">a</span>, <span class="kw-2">ref</span> <span class="ident">b</span>)
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Rem</span>(<span class="kw-2">ref</span> <span class="ident">a</span>, <span class="kw-2">ref</span> <span class="ident">b</span>) =&gt; {
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Rem</span>(<span class="kw-2">ref</span> <span class="ident">a</span>, <span class="kw-2">ref</span> <span class="ident">b</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Lt</span>(<span class="kw-2">ref</span> <span class="ident">a</span>, <span class="kw-2">ref</span> <span class="ident">b</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Le</span>(<span class="kw-2">ref</span> <span class="ident">a</span>, <span class="kw-2">ref</span> <span class="ident">b</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Gt</span>(<span class="kw-2">ref</span> <span class="ident">a</span>, <span class="kw-2">ref</span> <span class="ident">b</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Ge</span>(<span class="kw-2">ref</span> <span class="ident">a</span>, <span class="kw-2">ref</span> <span class="ident">b</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Eq</span>(<span class="kw-2">ref</span> <span class="ident">a</span>, <span class="kw-2">ref</span> <span class="ident">b</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Neq</span>(<span class="kw-2">ref</span> <span class="ident">a</span>, <span class="kw-2">ref</span> <span class="ident">b</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">src</span> <span class="op">=</span> <span class="ident">SP</span>.<span class="ident">deref</span>();
                 <span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="op">-</span><span class="number">1</span>);
+                <span class="kw">let</span> <span class="ident">tmp</span> <span class="op">=</span> <span class="ident">FP</span>.<span class="ident">offset</span>(<span class="op">-</span><span class="number">1</span>);
                 <span class="comment">// Get the respective core operation for the current expression.</span>
                 <span class="kw">let</span> <span class="ident">core_op</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span> {
                     <span class="ident"><span class="self">Self</span>::Add</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::Add</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
@@ -2429,10 +2571,17 @@
                     <span class="ident"><span class="self">Self</span>::Mul</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::Mul</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
                     <span class="ident"><span class="self">Self</span>::Div</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::Div</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
                     <span class="ident"><span class="self">Self</span>::Rem</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::Rem</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
+                    <span class="ident"><span class="self">Self</span>::Lt</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsLess</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
+                    <span class="ident"><span class="self">Self</span>::Le</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsLessEqual</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
+                    <span class="ident"><span class="self">Self</span>::Gt</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsGreater</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
+                    <span class="ident"><span class="self">Self</span>::Ge</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsGreaterEqual</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
+                    <span class="ident"><span class="self">Self</span>::Eq</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsEqual</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
+                    <span class="ident"><span class="self">Self</span>::Neq</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsNotEqual</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
                     <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
                 };
                 <span class="kw">let</span> <span class="ident">src</span> <span class="op">=</span> <span class="ident">SP</span>.<span class="ident">deref</span>();
                 <span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="op">-</span><span class="number">1</span>);
+                <span class="kw">let</span> <span class="ident">tmp</span> <span class="op">=</span> <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span>);
                 <span class="comment">// Get the respective standard operation for the current expression.</span>
                 <span class="kw">let</span> <span class="ident">std_op</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span> {
                     <span class="ident"><span class="self">Self</span>::Add</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::Add</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
@@ -2440,11 +2589,24 @@
                     <span class="ident"><span class="self">Self</span>::Mul</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::Mul</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
                     <span class="ident"><span class="self">Self</span>::Div</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::Div</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
                     <span class="ident"><span class="self">Self</span>::Rem</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::Rem</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
+                    <span class="ident"><span class="self">Self</span>::Lt</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::IsLess</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
+                    <span class="ident"><span class="self">Self</span>::Gt</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::IsGreater</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
+                    <span class="comment">// Here we don&#39;t include the `Le` and `Ge` operations, because it could</span>
+                    <span class="comment">// be that the arguments are integers, and that this operation won&#39;t be</span>
+                    <span class="comment">// executed. These operations **are still not supported by the standard library**,</span>
+                    <span class="comment">// though.</span>
+                    <span class="ident"><span class="self">Self</span>::Le</span>(<span class="kw">_</span>, <span class="kw">_</span>)
+                    <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Ge</span>(<span class="kw">_</span>, <span class="kw">_</span>)
+                    <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Eq</span>(<span class="kw">_</span>, <span class="kw">_</span>)
+                    <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Neq</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::CoreOp</span>(<span class="ident">CoreOp::Many</span>(<span class="macro">vec!</span>[])),
                     <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
                 };
                 <span class="comment">// Evaluate the two expression on the stack.</span>
                 <span class="ident">a</span>.<span class="ident">clone</span>().<span class="ident">compile_expr</span>(<span class="ident">env</span>, <span class="ident">output</span>)<span class="question-mark">?</span>;
                 <span class="ident">b</span>.<span class="ident">clone</span>().<span class="ident">compile_expr</span>(<span class="ident">env</span>, <span class="ident">output</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="op">-</span><span class="number">1</span>);
+                <span class="kw">let</span> <span class="ident">tmp</span> <span class="op">=</span> <span class="ident">FP</span>.<span class="ident">offset</span>(<span class="op">-</span><span class="number">1</span>);
+                <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Move</span> { <span class="ident">src</span>: <span class="ident">dst</span>, <span class="ident">dst</span>: <span class="ident">tmp</span> });
                 <span class="comment">// Now, perform the correct assembly expressions based on the types of the two expressions.</span>
                 <span class="kw">match</span> (<span class="ident">a</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">b</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>) {
                     <span class="comment">// If a `Float` and a `Cell` are used, we just interpret the `Cell` as a `Float`.</span>
@@ -2884,7 +3046,7 @@
                     <span class="comment">// Push the address of the struct, tuple, or union onto the stack.</span>
                     <span class="ident"><span class="self">Self</span>::Refer</span>(<span class="ident">val</span>.<span class="ident">clone</span>()).<span class="ident">compile_expr</span>(<span class="ident">env</span>, <span class="ident">output</span>)<span class="question-mark">?</span>;
                     <span class="comment">// Calculate the offset of the field from the address of the value.</span>
-                    <span class="kw">let</span> (<span class="kw">_</span>, <span class="ident">offset</span>) <span class="op">=</span> <span class="ident">val_type</span>.<span class="ident">get_member_offset</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">val</span>, <span class="ident">env</span>)<span class="question-mark">?</span>;
+                    <span class="kw">let</span> (<span class="kw">_</span>, <span class="ident">offset</span>) <span class="op">=</span> <span class="ident">val_type</span>.<span class="ident">get_member_offset</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">val</span>, <span class="ident">env</span>)<span class="question-mark">?</span>;
 
                     <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Pop</span>(<span class="prelude-val">Some</span>(<span class="ident">A</span>), <span class="number">1</span>));
                     <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">B</span>, <span class="ident">offset</span> <span class="kw">as</span> <span class="ident">isize</span>));
@@ -3000,6 +3162,13 @@
                 (<span class="ident">Type::Cell</span>, <span class="ident">Type::Cell</span>) =&gt; <span class="ident">Type::Cell</span>,
                 <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::InvalidBinop</span>(<span class="self">self</span>.<span class="ident">clone</span>())),
             },
+
+            <span class="ident"><span class="self">Self</span>::Lt</span>(<span class="kw">_</span>, <span class="kw">_</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Le</span>(<span class="kw">_</span>, <span class="kw">_</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Gt</span>(<span class="kw">_</span>, <span class="kw">_</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Ge</span>(<span class="kw">_</span>, <span class="kw">_</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Eq</span>(<span class="kw">_</span>, <span class="kw">_</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Neq</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">Type::Bool</span>,
 
             <span class="ident"><span class="self">Self</span>::And</span>(<span class="kw">_</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Or</span>(<span class="kw">_</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Not</span>(<span class="kw">_</span>) =&gt; <span class="ident">Type::Bool</span>,
 
@@ -3277,6 +3446,13 @@
             <span class="ident"><span class="self">Self</span>::Union</span>(<span class="ident">ty</span>, <span class="ident">variant</span>, <span class="ident">val</span>) =&gt; {
                 <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;union {{ {variant} = {val}, {ty}.. }}&quot;</span>)
             }
+
+            <span class="ident"><span class="self">Self</span>::Lt</span>(<span class="ident">a</span>, <span class="ident">b</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{a} &lt; {b}&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::Le</span>(<span class="ident">a</span>, <span class="ident">b</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{a} &lt;= {b}&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::Gt</span>(<span class="ident">a</span>, <span class="ident">b</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{a} &gt; {b}&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::Ge</span>(<span class="ident">a</span>, <span class="ident">b</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{a} &gt;= {b}&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::Eq</span>(<span class="ident">a</span>, <span class="ident">b</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{a} == {b}&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::Neq</span>(<span class="ident">a</span>, <span class="ident">b</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{a} != {b}&quot;</span>),
 
             <span class="ident"><span class="self">Self</span>::Add</span>(<span class="ident">a</span>, <span class="ident">b</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{a} + {b}&quot;</span>),
             <span class="ident"><span class="self">Self</span>::Sub</span>(<span class="ident">a</span>, <span class="ident">b</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{a} - {b}&quot;</span>),

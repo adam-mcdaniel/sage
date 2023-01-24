@@ -222,9 +222,9 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::lir::Expr</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::vm</span>;
 <span class="kw">use</span> <span class="ident">lalrpop_util::lalrpop_mod</span>;
-<span class="macro">lalrpop_mod!</span>(<span class="ident">lir_parser</span>);
-<span class="macro">lalrpop_mod!</span>(<span class="ident">asm_parser</span>);
-<span class="macro">lalrpop_mod!</span>(<span class="ident">vm_parser</span>);
+<span class="macro">lalrpop_mod!</span>(<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::all</span>)]</span> <span class="ident">lir_parser</span>);
+<span class="macro">lalrpop_mod!</span>(<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::all</span>)]</span> <span class="ident">asm_parser</span>);
+<span class="macro">lalrpop_mod!</span>(<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::all</span>)]</span> <span class="ident">vm_parser</span>);
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">asm_parser</span>::{<span class="ident">CoreProgramParser</span>, <span class="ident">StandardProgramParser</span>};
 
 <span class="doccomment">/// Parse Core and Standard variants of virtual machine source code.</span>
@@ -298,7 +298,7 @@
     }
 
     <span class="comment">// Get the line number from the character location</span>
-    <span class="kw">let</span> <span class="ident">line_number</span> <span class="op">=</span> <span class="ident">script</span>[..<span class="ident">location</span> <span class="op">+</span> <span class="number">1</span>].<span class="ident">lines</span>().<span class="ident">count</span>();
+    <span class="kw">let</span> <span class="ident">line_number</span> <span class="op">=</span> <span class="ident">script</span>[..(<span class="ident">location</span> <span class="op">+</span> <span class="number">1</span>).<span class="ident">min</span>(<span class="ident">script</span>.<span class="ident">len</span>())].<span class="ident">lines</span>().<span class="ident">count</span>();
     <span class="comment">// Get the line from the line number</span>
     <span class="kw">let</span> <span class="ident">line</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">script</span>.<span class="ident">lines</span>().<span class="ident">nth</span>(<span class="ident">line_number</span> <span class="op">-</span> <span class="number">1</span>) {
         <span class="prelude-val">Some</span>(<span class="ident">line</span>) =&gt; <span class="ident">line</span>,
@@ -310,7 +310,7 @@
             }
         }
     }
-    .<span class="ident">replace</span>(<span class="string">&quot;\t&quot;</span>, <span class="string">&quot;    &quot;</span>);
+    .<span class="ident">replace</span>(<span class="string">&#39;\t&#39;</span>, <span class="string">&quot;    &quot;</span>);
 
     <span class="comment">// Get the column number from the location</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">column</span> <span class="op">=</span> {
@@ -373,9 +373,9 @@
             <span class="ident">make_error</span>(<span class="kw-2">&amp;</span><span class="ident">line</span>, <span class="ident">unexpected</span>, <span class="ident">line_number</span>, <span class="ident">column</span>)
         }
         <span class="ident">SyntaxError::User</span> { <span class="ident">error</span> } =&gt; <span class="macro">format!</span>(
-            <span class="string">&quot;  |\n? | {}\n  | {}\n  |\n  = unexpected compiling error&quot;</span>,
+            <span class="string">&quot;  |\n? | {}\n  | ^{}\n  |\n  = unexpected compiling error&quot;</span>,
             <span class="ident">error</span>,
-            <span class="macro">format!</span>(<span class="string">&quot;^{}&quot;</span>, <span class="string">&quot;-&quot;</span>.<span class="ident">repeat</span>(<span class="ident">error</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>))
+            <span class="string">&quot;-&quot;</span>.<span class="ident">repeat</span>(<span class="ident">error</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>)
         ),
     }
 }

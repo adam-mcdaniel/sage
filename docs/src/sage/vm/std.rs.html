@@ -389,7 +389,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// All the function definitions will be placed at the top of the returned list.</span>
 <span class="kw">fn</span> <span class="ident">flatten</span>(<span class="ident">code</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">StandardOp</span><span class="op">&gt;</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">StandardOp</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">functions</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">functions</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">i32</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">StandardOp</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
     <span class="comment">// The current function body we are in.</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fun</span> <span class="op">=</span> <span class="op">-</span><span class="number">1</span>;
@@ -427,7 +427,7 @@
                     <span class="comment">// If the scope has ended</span>
                     <span class="kw">if</span> <span class="ident">matching_end</span> <span class="op">==</span> <span class="number">0</span> {
                         <span class="comment">// Get the function body we&#39;re defining.</span>
-                        <span class="ident">functions</span>.<span class="ident">entry</span>(<span class="ident">fun</span>).<span class="ident">or_insert</span>(<span class="macro">vec!</span>[]).<span class="ident">push</span>(<span class="ident">std_op</span>);
+                        <span class="ident">functions</span>.<span class="ident">entry</span>(<span class="ident">fun</span>).<span class="ident">or_default</span>().<span class="ident">push</span>(<span class="ident">std_op</span>);
                         <span class="comment">// Resume flattening the previous scope.</span>
                         (<span class="ident">fun</span>, <span class="ident">matching_end</span>) <span class="op">=</span> <span class="ident">scope_stack</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>();
                         <span class="kw">continue</span>;
@@ -442,7 +442,7 @@
         }
 
         <span class="comment">// Insert the current instruction to the right function&#39;s definition.</span>
-        <span class="ident">functions</span>.<span class="ident">entry</span>(<span class="ident">fun</span>).<span class="ident">or_insert</span>(<span class="macro">vec!</span>[]).<span class="ident">push</span>(<span class="ident">std_op</span>);
+        <span class="ident">functions</span>.<span class="ident">entry</span>(<span class="ident">fun</span>).<span class="ident">or_default</span>().<span class="ident">push</span>(<span class="ident">std_op</span>);
     }
 
     <span class="comment">// The final output code.</span>
