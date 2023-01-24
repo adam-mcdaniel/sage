@@ -73,8 +73,6 @@
 }, neq = proc(a: Int, b: Int) -> Bool = core {
     neq [SP - 1], [SP], A pop
     mov A, [SP]
-}, and = proc(a: Bool, b: Bool) -> Bool = core {
-    and [SP], [SP - 1] pop
 }, put = proc(n: Int) -> None = core {
     put [SP]
     pop
@@ -123,7 +121,7 @@ const getchar = proc() -> Char = core {
 } in
 
 proc ln() -> None = {
-    putchar('\\n')
+    putchar('\n')
 } in
 
 proc lsh(a: Int, b: Int) -> Int = {
@@ -241,7 +239,7 @@ proc putstate(self: State) -> None = {
             while lt(j, 4) {
                 putint(get(&self, j, i)); putchar(' ');
                 j = j + 1;
-            }; putchar('\\n');
+            }; putchar('\n');
             j = 0;
             i = i + 1;
         }
@@ -493,7 +491,7 @@ proc key_expansion(key: Key, nr: Int, nk: Int) -> &Int = {
                     if (eq(i % nk, 0)) {
                         tmp = bitxor(sub_word(rot_word(tmp)), word(rcon[i / nk - 1], 0, 0, 0));
                     } else {
-                        if (and(eq(nk, 8), eq(i % nk, 4))) {
+                        if (eq(nk, 8) and eq(i % nk, 4)) {
                             tmp = sub_word(tmp);
                         }
                     };
@@ -628,9 +626,9 @@ let state = row_major(
         putchar('y');
         putchar(':');
         putchar(' ');
-        putchar('\\n');
+        putchar('\n');
         putkey(key);
-        putchar('\\n');
+        putchar('\n');
 
         putchar('i');
         putchar('n');
@@ -638,7 +636,7 @@ let state = row_major(
         putchar('u');
         putchar('t');
         putchar(':');
-        putchar('\\n');
+        putchar('\n');
         putstate(state);
 
         state = cipher(state, key);
@@ -649,7 +647,7 @@ let state = row_major(
         putchar('u');
         putchar('t');
         putchar(':');
-        putchar('\\n');
+        putchar('\n');
         putstate(state);
         state = inverse_cipher(state, key);
 
@@ -661,7 +659,7 @@ let state = row_major(
         putchar('s');
         putchar('e');
         putchar(':');
-        putchar('\\n');
+        putchar('\n');
         putstate(state);
     };
 }`);
@@ -701,8 +699,6 @@ let state = row_major(
 }, neq = proc(a: Int, b: Int) -> Bool = core {
     neq [SP - 1], [SP], A pop
     mov A, [SP]
-}, and = proc(a: Bool, b: Bool) -> Bool = core {
-    and [SP], [SP - 1] pop
 }, put = proc(n: Int) -> None = core {
     put [SP]
     pop
@@ -756,7 +752,7 @@ const putchar = proc(ch: Char) -> None = {
 } in
 
 proc ln() -> None = {
-    putchar('\\n')
+    putchar('\n')
 } in
 
 proc min(x: Int, y: Int) -> Int = {
@@ -859,7 +855,7 @@ let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
     };
     putchar(']');
     quicksort_arr(arr, 0, SIZE - 1);
-    putchar('\\n');
+    putchar('\n');
     putchar('s');
     putchar('o');
     putchar('r');
@@ -878,7 +874,95 @@ let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
         inc(&i);
     };
     putchar(']');
-    putchar('\\n');
+    putchar('\n');
+}`);
+                    break;
+                case "lambda-sim":
+                    source.setValue(`const putint = proc(n: Int) -> None = std {
+    put-int [SP]
+    pop
+} in
+const putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+} in
+const lt = proc(a: Int, b: Int) -> Bool = core {
+    lt [SP - 1], [SP], A pop
+    mov A, [SP]
+} in
+const put = proc(n: Int) -> None = core {
+    put [SP]
+    pop
+} in
+
+type Op = struct {
+    apply: proc(struct {x: Int}, Int) -> Int,
+    state: struct {x: Int}
+} in
+
+proc mul(n: Int) -> Op = {
+    struct {
+        apply = proc(state: struct{x: Int}, y: Int) -> Int = {
+            state.x * y
+        },
+        state = struct {x=n}
+    }
+} in
+
+proc add(n: Int) -> Op = {
+    struct {
+        apply = proc(state: struct{x: Int}, y: Int) -> Int = {
+            state.x + y
+        },
+        state = struct {x=n}
+    }
+} in
+
+proc app(op: Op, y: Int) -> Int = {
+    op.apply(op.state, y)
+} in
+
+proc putdec(n: Int) -> None = {
+    if (lt(n, 10)) {
+        put(n + 48)
+    } else {
+        putdec(n / 10);
+        put(n % 10 + 48)
+    }
+} in
+
+proc puthex(n: Int, lower: Bool) -> None = {
+    if (lt(n, 16)) {
+        put(n + if (lt(n, 10)) {
+            48
+        } else {
+            if lower {
+                87
+            } else {
+                55
+            }
+        })
+    } else {
+        puthex(n / 16, lower);
+        puthex(n % 16, lower)
+    }
+} in
+
+proc putbyte(n: Int, lower: Bool) -> None = {
+    puthex(n / 16, lower);
+    puthex(n % 16, lower)
+} in
+
+proc ln() -> None = {
+    put(10)
+} in
+
+let double = mul(2),
+    triple = mul(3) in {
+    putdec(
+        app(add(10), app(triple, app(double, 5)))
+    );
+    ln();
 }`);
                     break;
                 case "cat":
@@ -1065,6 +1149,7 @@ type A = Int,
             <option value="aes">AES</option>
             <option value="quicksort">Quicksort</option>
             <option value="cat">Cat</option>
+            <option value="lambda-sim">Simulate Lambda Functions</option>
             <option value="factorial">Factorial</option>
             <option value="collatz">Collatz</option>
             <option value="inline-asm">Inline Assembly Demo</option>

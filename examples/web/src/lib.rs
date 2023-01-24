@@ -5,7 +5,7 @@ mod device;
 use interpreter::WasmInterpreter;
 use device::WasmDevice;
 use wasm_bindgen::prelude::*;
-use sage::{lir::Compile, targets::{self, C, Target}, vm::*};
+use sage::{lir::Compile, targets::{self, Target}};
 
 // Called by our JS entry point to run the example
 #[wasm_bindgen(start)]
@@ -43,7 +43,6 @@ pub fn compile_and_run() -> Result<(), JsValue> {
     // window object.
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
-    let body = document.body().expect("document should have a body");
 
     let source_code = document.get_element_by_id("source").unwrap().dyn_into::<web_sys::HtmlTextAreaElement>().unwrap().value();
     let input = document.get_element_by_id("input").unwrap().dyn_into::<web_sys::HtmlTextAreaElement>().unwrap().value();

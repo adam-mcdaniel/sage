@@ -83,7 +83,7 @@ where
         self.refs.push(self.pointer);
         let cell = *self.get_cell();
         if cell < 0 {
-            panic!("Dereferencing negative cell with value {cell:?}");
+            panic!("Dereferencing negative cell with value {:?}", cell);
         }
         // Set the pointer to the address on the tape.
         self.pointer = *self.get_cell() as usize;
