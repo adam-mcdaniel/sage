@@ -9,6 +9,7 @@ pub StandardProgram: StandardProgram = StandardOp* => StandardProgram(<>);
 
 CoreOp: CoreOp = {
     "set" <Location> "," <IntLit> => CoreOp::Set(<>),
+    "set" <loc: Location> "," <ch: CharLit> => CoreOp::Set(loc, ch as isize),
     "set" <Location> "," <Symbol> => CoreOp::SetLabel(<>),
 
     "lea" <addr: Location> "," <dst: Location> => CoreOp::GetAddress { addr, dst },
@@ -107,7 +108,8 @@ StandardOp: StandardOp = {
 
     "alloc" <Location> => StandardOp::Alloc(<>),
     "free" <Location> => StandardOp::Free(<>),
-
+    
+    "put-str" <StringLit> => StandardOp::PutStr(<>),
     "put-char" <Location> => StandardOp::PutChar(<>),
     "get-char" <Location> => StandardOp::GetChar(<>),
     "put-int" <Location> => StandardOp::PutInt(<>),

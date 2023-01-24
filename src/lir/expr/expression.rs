@@ -73,13 +73,18 @@ pub enum Expr {
     /// Take the logical not of an expression.
     Not(Box<Self>),
 
-    /// TODO: implement comparison operators.
-    // Lt(Box<Self>, Box<Self>),
-    // Le(Box<Self>, Box<Self>),
-    // Gt(Box<Self>, Box<Self>),
-    // Ge(Box<Self>, Box<Self>),
-    // Eq(Box<Self>, Box<Self>),
-    // Neq(Box<Self>, Box<Self>),
+    /// Is the lefthand expression less than the righthand expression?
+    Lt(Box<Self>, Box<Self>),
+    /// Is the lefthand expression less than or equal to the righthand expression?
+    Le(Box<Self>, Box<Self>),
+    /// Is the lefthand expression greater than the righthand expression?
+    Gt(Box<Self>, Box<Self>),
+    /// Is the lefthand expression greater than or equal to the righthand expression?
+    Ge(Box<Self>, Box<Self>),
+    /// Is the lefthand expression equal to the righthand expression?
+    Eq(Box<Self>, Box<Self>),
+    /// Is the lefthand expression unequal to the righthand expression?
+    Neq(Box<Self>, Box<Self>),
 
     /// Reference this expression (i.e. get a pointer to it).
     Refer(Box<Self>),
@@ -134,8 +139,39 @@ impl Expr {
     }
 
     /// Logical not this expression.
+    #[allow(clippy::should_implement_trait)]
     pub fn not(self) -> Self {
         Expr::Not(Box::new(self))
+    }
+
+    /// Is this expression less than another?
+    pub fn lt(self, other: impl Into<Self>) -> Self {
+        Expr::Lt(Box::new(self), Box::new(other.into()))
+    }
+
+    /// Is this expression less than or equal to another?
+    pub fn le(self, other: impl Into<Self>) -> Self {
+        Expr::Le(Box::new(self), Box::new(other.into()))
+    }
+
+    /// Is this expression greater than another?
+    pub fn gt(self, other: impl Into<Self>) -> Self {
+        Expr::Gt(Box::new(self), Box::new(other.into()))
+    }
+
+    /// Is this expression greater than or equal to another?
+    pub fn ge(self, other: impl Into<Self>) -> Self {
+        Expr::Ge(Box::new(self), Box::new(other.into()))
+    }
+
+    /// Is this expression greater than another?
+    pub fn eq(self, other: impl Into<Self>) -> Self {
+        Expr::Eq(Box::new(self), Box::new(other.into()))
+    }
+
+    /// Is this expression greater than or equal to another?
+    pub fn neq(self, other: impl Into<Self>) -> Self {
+        Expr::Neq(Box::new(self), Box::new(other.into()))
     }
 
     /// Logical and this expression with another.
@@ -149,26 +185,31 @@ impl Expr {
     }
 
     /// Add this expression to another.
+    #[allow(clippy::should_implement_trait)]
     pub fn add(self, other: impl Into<Self>) -> Self {
         Expr::Add(Box::new(self), Box::new(other.into()))
     }
 
     /// Subtract an expression from this expression.
+    #[allow(clippy::should_implement_trait)]
     pub fn sub(self, other: impl Into<Self>) -> Self {
         Expr::Sub(Box::new(self), Box::new(other.into()))
     }
 
     /// Multiply this expression by another.
+    #[allow(clippy::should_implement_trait)]
     pub fn mul(self, other: impl Into<Self>) -> Self {
         Expr::Mul(Box::new(self), Box::new(other.into()))
     }
 
     /// Divide this expression by another.
+    #[allow(clippy::should_implement_trait)]
     pub fn div(self, other: impl Into<Self>) -> Self {
         Expr::Div(Box::new(self), Box::new(other.into()))
     }
 
     /// Get the remainder of this expression divided by another.
+    #[allow(clippy::should_implement_trait)]
     pub fn rem(self, other: impl Into<Self>) -> Self {
         Expr::Rem(Box::new(self), Box::new(other.into()))
     }
@@ -483,7 +524,13 @@ impl TypeCheck for Expr {
             | Self::Sub(a, b)
             | Self::Mul(a, b)
             | Self::Div(a, b)
-            | Self::Rem(a, b) => {
+            | Self::Rem(a, b)
+            | Self::Lt(a, b)
+            | Self::Le(a, b) 
+            | Self::Gt(a, b) 
+            | Self::Ge(a, b)
+            | Self::Eq(a, b)
+            | Self::Neq(a, b) => {
                 a.type_check(env)?;
                 b.type_check(env)?;
                 let a_type = a.get_type(env)?;
@@ -762,9 +809,16 @@ impl Compile for Expr {
             | Self::Sub(ref a, ref b)
             | Self::Mul(ref a, ref b)
             | Self::Div(ref a, ref b)
-            | Self::Rem(ref a, ref b) => {
+            | Self::Rem(ref a, ref b)
+            | Self::Lt(ref a, ref b)
+            | Self::Le(ref a, ref b)
+            | Self::Gt(ref a, ref b)
+            | Self::Ge(ref a, ref b)
+            | Self::Eq(ref a, ref b)
+            | Self::Neq(ref a, ref b) => {
                 let src = SP.deref();
                 let dst = SP.deref().offset(-1);
+                let tmp = FP.offset(-1);
                 // Get the respective core operation for the current expression.
                 let core_op = match self {
                     Self::Add(_, _) => CoreOp::Add { src, dst },
@@ -772,10 +826,17 @@ impl Compile for Expr {
                     Self::Mul(_, _) => CoreOp::Mul { src, dst },
                     Self::Div(_, _) => CoreOp::Div { src, dst },
                     Self::Rem(_, _) => CoreOp::Rem { src, dst },
+                    Self::Lt(_, _) => CoreOp::IsLess { a: tmp, b: src, dst },
+                    Self::Le(_, _) => CoreOp::IsLessEqual { a: tmp, b: src, dst },
+                    Self::Gt(_, _) => CoreOp::IsGreater { a: tmp, b: src, dst },
+                    Self::Ge(_, _) => CoreOp::IsGreaterEqual { a: tmp, b: src, dst },
+                    Self::Eq(_, _) => CoreOp::IsEqual { a: tmp, b: src, dst },
+                    Self::Neq(_, _) => CoreOp::IsNotEqual { a: tmp, b: src, dst },
                     _ => unreachable!(),
                 };
                 let src = SP.deref();
                 let dst = SP.deref().offset(-1);
+                let tmp = SP.deref().offset(1);
                 // Get the respective standard operation for the current expression.
                 let std_op = match self {
                     Self::Add(_, _) => StandardOp::Add { src, dst },
@@ -783,11 +844,24 @@ impl Compile for Expr {
                     Self::Mul(_, _) => StandardOp::Mul { src, dst },
                     Self::Div(_, _) => StandardOp::Div { src, dst },
                     Self::Rem(_, _) => StandardOp::Rem { src, dst },
+                    Self::Lt(_, _) => StandardOp::IsLess { a: tmp, b: src, dst },
+                    Self::Gt(_, _) => StandardOp::IsGreater { a: tmp, b: src, dst },
+                    // Here we don't include the `Le` and `Ge` operations, because it could
+                    // be that the arguments are integers, and that this operation won't be
+                    // executed. These operations **are still not supported by the standard library**,
+                    // though.
+                    Self::Le(_, _)
+                    | Self::Ge(_, _)
+                    | Self::Eq(_, _)
+                    | Self::Neq(_, _) => StandardOp::CoreOp(CoreOp::Many(vec![])),
                     _ => unreachable!(),
                 };
                 // Evaluate the two expression on the stack.
                 a.clone().compile_expr(env, output)?;
                 b.clone().compile_expr(env, output)?;
+                let dst = SP.deref().offset(-1);
+                let tmp = FP.offset(-1);
+                output.op(CoreOp::Move { src: dst, dst: tmp });
                 // Now, perform the correct assembly expressions based on the types of the two expressions.
                 match (a.get_type(env)?, b.get_type(env)?) {
                     // If a `Float` and a `Cell` are used, we just interpret the `Cell` as a `Float`.
@@ -1227,7 +1301,7 @@ impl Compile for Expr {
                     // Push the address of the struct, tuple, or union onto the stack.
                     Self::Refer(val.clone()).compile_expr(env, output)?;
                     // Calculate the offset of the field from the address of the value.
-                    let (_, offset) = val_type.get_member_offset(&name, &*val, env)?;
+                    let (_, offset) = val_type.get_member_offset(&name, &val, env)?;
 
                     output.op(CoreOp::Pop(Some(A), 1));
                     output.op(CoreOp::Set(B, offset as isize));
@@ -1343,6 +1417,13 @@ impl GetType for Expr {
                 (Type::Cell, Type::Cell) => Type::Cell,
                 _ => return Err(Error::InvalidBinop(self.clone())),
             },
+
+            Self::Lt(_, _)
+            | Self::Le(_, _)
+            | Self::Gt(_, _)
+            | Self::Ge(_, _)
+            | Self::Eq(_, _)
+            | Self::Neq(_, _) => Type::Bool,
 
             Self::And(_, _) | Self::Or(_, _) | Self::Not(_) => Type::Bool,
 
@@ -1620,6 +1701,13 @@ impl fmt::Display for Expr {
             Self::Union(ty, variant, val) => {
                 write!(f, "union {{ {variant} = {val}, {ty}.. }}")
             }
+
+            Self::Lt(a, b) => write!(f, "{a} < {b}"),
+            Self::Le(a, b) => write!(f, "{a} <= {b}"),
+            Self::Gt(a, b) => write!(f, "{a} > {b}"),
+            Self::Ge(a, b) => write!(f, "{a} >= {b}"),
+            Self::Eq(a, b) => write!(f, "{a} == {b}"),
+            Self::Neq(a, b) => write!(f, "{a} != {b}"),
 
             Self::Add(a, b) => write!(f, "{a} + {b}"),
             Self::Sub(a, b) => write!(f, "{a} - {b}"),

@@ -80,7 +80,7 @@ impl StandardProgram {
 ///
 /// All the function definitions will be placed at the top of the returned list.
 fn flatten(code: Vec<StandardOp>) -> Vec<StandardOp> {
-    let mut functions = HashMap::new();
+    let mut functions: HashMap<i32, Vec<StandardOp>> = HashMap::new();
 
     // The current function body we are in.
     let mut fun = -1;
@@ -118,7 +118,7 @@ fn flatten(code: Vec<StandardOp>) -> Vec<StandardOp> {
                     // If the scope has ended
                     if matching_end == 0 {
                         // Get the function body we're defining.
-                        functions.entry(fun).or_insert(vec![]).push(std_op);
+                        functions.entry(fun).or_default().push(std_op);
                         // Resume flattening the previous scope.
                         (fun, matching_end) = scope_stack.pop().unwrap();
                         continue;
@@ -133,7 +133,7 @@ fn flatten(code: Vec<StandardOp>) -> Vec<StandardOp> {
         }
 
         // Insert the current instruction to the right function's definition.
-        functions.entry(fun).or_insert(vec![]).push(std_op);
+        functions.entry(fun).or_default().push(std_op);
     }
 
     // The final output code.

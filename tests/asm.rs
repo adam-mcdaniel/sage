@@ -78,8 +78,8 @@ fn test_cmp() {
 
     let program = CoreProgram(vec![
         Fn(String::from("cmp")),
-        Compare { dst: C, a: A, b: B },
-        Set(D, '=' as isize),
+        Compare { dst: D, a: A, b: B },
+        Set(C, '=' as isize),
         Add { dst: C, src: D },
         Put(A),
         Set(A, ' ' as isize),
@@ -252,13 +252,12 @@ fn test_str() {
         Next(D, None),
         End,
         Prev(D, None),
-        Move { src: C, dst: B },
+        
         IsLess { dst: B, a: C, b: D },
         While(B),
         Swap(C.deref(), D.deref()),
         Next(C, None),
         Prev(D, None),
-        Move { src: C, dst: B },
         IsLess { dst: B, a: C, b: D },
         End,
         End,
@@ -319,7 +318,7 @@ fn test_str() {
         Pop(None, 1),
         CoreOp::put_string(" characters long!\n"),
     ])
-    .assemble(16)
+    .assemble(512)
     .unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new("testing\n"));

@@ -1,0 +1,32 @@
+const getint = proc() -> Int = std {
+    next SP
+    get-int [SP]
+} in
+const putint = proc(n: Int) -> None = std {
+    put-int [SP]
+    pop
+} in
+const putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+} in {
+    putchar('a');
+    putchar(':');
+    putchar(' ');
+    let x = getint() in
+        {
+            putchar('b');
+            putchar(':');
+            putchar(' ');
+            let y = getint() in {
+                let cmp = if (x < y) '<' else if (x > y) '>' else '=' in {
+                    putint(x);
+                    putchar(' ');
+                    putchar(cmp);
+                    putchar(' ');
+                    putint(y);
+                    putchar('\n');
+                }
+            }
+        }
+}

@@ -120,7 +120,7 @@ impl Compile for Procedure {
         // Push the procedure label address onto the stack
         output.op(CoreOp::SetLabel(A, self.mangled_name));
         output.op(CoreOp::Push(A, 1));
-        output.comment(format!("done"));
+        output.comment("done".to_string());
         Ok(())
     }
 }

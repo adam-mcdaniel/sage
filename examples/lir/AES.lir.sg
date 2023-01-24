@@ -20,8 +20,6 @@ const bitxor = proc(a: Int, b: Int) -> Int = core {
 }, neq = proc(a: Int, b: Int) -> Bool = core {
     neq [SP - 1], [SP], A pop
     mov A, [SP]
-}, and = proc(a: Bool, b: Bool) -> Bool = core {
-    and [SP], [SP - 1] pop
 }, put = proc(n: Int) -> None = core {
     put [SP]
     pop
@@ -440,7 +438,7 @@ proc key_expansion(key: Key, nr: Int, nk: Int) -> &Int = {
                     if (eq(i % nk, 0)) {
                         tmp = bitxor(sub_word(rot_word(tmp)), word(rcon[i / nk - 1], 0, 0, 0));
                     } else {
-                        if (and(eq(nk, 8), eq(i % nk, 4))) {
+                        if (eq(nk, 8) and eq(i % nk, 4)) {
                             tmp = sub_word(tmp);
                         }
                     };

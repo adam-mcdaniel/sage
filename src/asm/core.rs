@@ -639,21 +639,33 @@ impl CoreOp {
             }
             .assemble(current_instruction, env, result)?,
 
-            CoreOp::IsGreater { dst, a, b } => a.is_greater_than(b, dst, result),
-            CoreOp::IsGreaterEqual { dst, a, b } => a.is_greater_or_equal_to(b, dst, result),
-            CoreOp::IsLess { dst, a, b } => a.is_less_than(b, dst, result),
-            CoreOp::IsLessEqual { dst, a, b } => a.is_less_or_equal_to(b, dst, result),
-            CoreOp::IsNotEqual { dst, a, b } => a.is_not_equal(b, dst, result),
-            CoreOp::IsEqual { dst, a, b } => a.is_equal(b, dst, result),
+            CoreOp::IsGreater { dst, a, b } => {
+                a.is_greater_than(b, dst, result)
+            },
+            CoreOp::IsGreaterEqual { dst, a, b } => {
+                a.is_greater_or_equal_to(b, dst, result)
+            },
+            CoreOp::IsLess { dst, a, b } => {
+                a.is_less_than(b, dst, result)
+            },
+            CoreOp::IsLessEqual { dst, a, b } => {
+                a.is_less_or_equal_to(b, dst, result)
+            },
+            CoreOp::IsEqual { dst, a, b } => {
+                a.is_equal(b, dst, result)
+            },
+            CoreOp::IsNotEqual { dst, a, b } => {
+                a.is_not_equal(b, dst, result)
+            },
 
             CoreOp::Compare { dst, a, b } => {
-                a.copy_to(dst, result);
                 a.is_greater_than(b, dst, result);
+                dst.restore_from(result);
                 result.begin_if();
                 result.set_register(1);
                 result.begin_else();
-                a.copy_to(dst, result);
                 a.is_less_than(b, dst, result);
+                dst.restore_from(result);
                 result.begin_if();
                 result.set_register(-1);
                 result.begin_else();

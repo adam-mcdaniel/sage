@@ -29,9 +29,9 @@ use super::asm::{CoreProgram, StandardProgram};
 use super::lir::Expr;
 use super::vm;
 use lalrpop_util::lalrpop_mod;
-lalrpop_mod!(lir_parser);
-lalrpop_mod!(asm_parser);
-lalrpop_mod!(vm_parser);
+lalrpop_mod!(#[allow(clippy::all)] lir_parser);
+lalrpop_mod!(#[allow(clippy::all)] asm_parser);
+lalrpop_mod!(#[allow(clippy::all)] vm_parser);
 pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
 
 /// Parse Core and Standard variants of virtual machine source code.
@@ -105,7 +105,7 @@ fn get_line(script: &str, location: usize) -> (usize, String, usize) {
     }
 
     // Get the line number from the character location
-    let line_number = script[..location + 1].lines().count();
+    let line_number = script[..(location + 1).min(script.len())].lines().count();
     // Get the line from the line number
     let line = match script.lines().nth(line_number - 1) {
         Some(line) => line,
@@ -117,7 +117,7 @@ fn get_line(script: &str, location: usize) -> (usize, String, usize) {
             }
         }
     }
-    .replace("\t", "    ");
+    .replace('\t', "    ");
 
     // Get the column number from the location
     let mut column = {
@@ -180,9 +180,9 @@ fn format_error<T: core::fmt::Debug>(script: &str, err: SyntaxError<T>) -> Strin
             make_error(&line, unexpected, line_number, column)
         }
         SyntaxError::User { error } => format!(
-            "  |\n? | {}\n  | {}\n  |\n  = unexpected compiling error",
+            "  |\n? | {}\n  | ^{}\n  |\n  = unexpected compiling error",
             error,
-            format!("^{}", "-".repeat(error.len() - 1))
+            "-".repeat(error.len() - 1)
         ),
     }
 }

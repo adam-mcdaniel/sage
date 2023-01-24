@@ -349,10 +349,15 @@ impl Location {
 
     /// dst = this cell > source cell.
     pub fn is_greater_than(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.is_less_or_equal_to(src, dst, result);
+        dst.not(result)
+    }
+
+    /// dst = this cell >= source cell.
+    pub fn is_greater_than_float(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.copy_to(dst, result);
-        dst.sub(src, result);
-        dst.dec(result);
-        dst.whole_int(result);
+        dst.sub_float(src, result)?;
+        dst.std_op(vm::StandardOp::IsNonNegative, result)
     }
 
     /// dst = this cell >= source cell.
@@ -362,9 +367,11 @@ impl Location {
         dst: &Self,
         result: &mut dyn VirtualMachineProgram,
     ) {
-        self.copy_to(dst, result);
-        dst.sub(src, result);
+        src.copy_to(dst, result);
+        dst.sub(self, result);
+        dst.dec(result);
         dst.whole_int(result);
+        dst.not(result);
     }
 
     /// dst = this cell < source cell.
@@ -375,6 +382,14 @@ impl Location {
         dst.whole_int(result);
     }
 
+    /// dst = this cell < source cell.
+    pub fn is_less_than_float(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        dst.set_float(-1.0, result)?;
+        dst.add_float(src, result)?;
+        dst.sub_float(self, result)?;
+        dst.mul_float(src, result)?;
+        dst.std_op(vm::StandardOp::IsNonNegative, result)
+    }
     /// dst = this cell <= source cell.
     pub fn is_less_or_equal_to(
         &self,

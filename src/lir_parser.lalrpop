@@ -26,6 +26,7 @@ TypeTerm: Type = {
     "enum" <List<"{", Symbol, ",", "}">> => Type::Enum(<>.into_iter().collect()),
     "union" <Dict<Symbol, Type>> => Type::Union(<>.into_iter().collect()),
     "struct" <Dict<Symbol, Type>> => Type::Struct(<>.into_iter().collect()),
+    "unit" <name: Symbol> "=" <t: Type> => Type::Unit(name, Box::new(t)), 
 }
 
 ConstExpr: ConstExpr = {
@@ -55,7 +56,7 @@ ConstExpr: ConstExpr = {
 }
 
 pub Expr: Expr = {
-    <defs: List<"let", (<Symbol> <(":" <Type>)?> "=" <Math>), ",", "in">> <e: Expr> => {
+    <defs: List<"let", (<Symbol> <(":" <Type>)?> "=" <Logic>), ",", "in">> <e: Expr> => {
         Expr::LetVars(defs, Box::new(e))
     },
     <defs: List<"type", (<Symbol> "=" <Type>), ",", "in">> <e: Expr> => {
@@ -72,9 +73,29 @@ pub Expr: Expr = {
     "&" <Expr> => <>.refer(),
     "*" <Expr> => <>.deref(),
     "return" <Expr> => Expr::Return(Box::new(<>)),
-    Math => <>
+    Logic => <>
 }
 
+
+Logic: Expr = {
+    <a: Logic> "or" <b: LogicFactor> => a.or(b),
+    LogicFactor => <>,
+}
+LogicFactor: Expr = {
+    <a: LogicFactor> "and" <b: Comparison> => a.and(b),
+    "not" <a: Comparison> => a.not(),
+    Comparison => <>,
+}
+
+Comparison: Expr = {
+    <a: Math> "<" <b: Math> => a.lt(b),
+    <a: Math> "<=" <b: Math> => a.le(b),
+    <a: Math> ">" <b: Math> => a.gt(b),
+    <a: Math> ">=" <b: Math> => a.ge(b),
+    <a: Math> "==" <b: Math> => a.eq(b),
+    <a: Math> "!=" <b: Math> => a.neq(b),
+    Math => <>,
+}
 
 Math: Expr = {
     <a: Math> "+" <b: Factor> => a.add(b),
@@ -97,8 +118,11 @@ Term: Expr = {
     <x: Term> "[" <idx: Expr> "]" => x.idx(idx),
     <x: Term> "as" <t: Type> => x.as_type(t),
     <f: Term> <args: List<"(", Expr, ",", ")">> => f.app(args),
-    "if" <cond: Atom> <t: Atom> <e: ("else" <Atom>)?> => {
-        Expr::If(Box::new(cond), Box::new(t), Box::new(e.unwrap_or(ConstExpr::None.into())))
+    "if" <cond: Atom> <then: Atom> <elif: ("else" "if" <Atom> <Atom>)*> <mut e: ("else" <Atom>)?> => {
+        for (c, t) in elif.into_iter().rev() {
+            e = Some(Expr::If(Box::new(c), Box::new(t), Box::new(e.unwrap_or(ConstExpr::None.into()))));
+        }
+        Expr::If(Box::new(cond), Box::new(then), Box::new(e.unwrap_or(ConstExpr::None.into())))
     },
     Atom => <>,
 }

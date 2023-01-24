@@ -1,0 +1,29 @@
+
+const putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+} in
+
+let x = 5,
+    y = 10
+    in {
+        putchar('T');
+        putchar('h');
+        putchar('i');
+        putchar('s');
+        putchar(' ');
+        putchar('s');
+        putchar('h');
+        putchar('o');
+        putchar('u');
+        putchar('l');
+        putchar('d');
+        putchar(' ');
+        putchar('b');
+        putchar('e');
+        putchar(' ');
+        putchar('T');
+        putchar(':');
+        putchar(' ');
+        putchar(if (false and false or x * 1 + 1 < y) 'T' else 'F')
+    }

@@ -25,22 +25,6 @@ impl WasmDevice {
             output: vec![],
         }
     }
-
-    pub fn new_raw(input: Vec<isize>) -> Self {
-        Self {
-            input: input.into(),
-            output: vec![],
-        }
-    }
-
-    /// Get the output of the testing device as a string (ascii).
-    pub fn output_str(&self) -> String {
-        let mut result = String::new();
-        for ch in &self.output {
-            result.push(*ch as u8 as char)
-        }
-        result
-    }
 }
 
 /// Make the testing device work with the interpreter.

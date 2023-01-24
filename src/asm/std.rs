@@ -5,7 +5,7 @@
 //! portable, but probably not supported on older systems or
 //! hardware implementations.
 use super::{
-    location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP,
+    location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP, 
 };
 use crate::vm::{self, VirtualMachineProgram};
 use core::fmt;
@@ -166,6 +166,8 @@ pub enum StandardOp {
     GetInt(Location),
     PutFloat(Location),
     GetFloat(Location),
+
+    PutStr(String),
 }
 
 fn unsupported(op: StandardOp) -> Result<(), Error> {
@@ -261,6 +263,27 @@ impl StandardOp {
                 }
             }
 
+            Self::IsLess { a, b, dst } => {
+                if a.is_less_than_float(b, dst, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::IsGreater { a, b, dst } => {
+                if a.is_greater_than_float(b, dst, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::PutStr(s) => {
+                for ch in s.chars() {
+                    result.set_register(ch as isize);
+                    
+                    if result.std_op(vm::StandardOp::PutChar).is_err() {
+                        unsupported(self.clone())?
+                    }
+                }
+            }
             Self::PutChar(loc) => {
                 if loc.put_char(result).is_err() {
                     unsupported(self.clone())?
@@ -343,6 +366,7 @@ impl fmt::Display for StandardOp {
             Self::Alloc(loc) => write!(f, "alloc {loc}"),
             Self::Free(loc) => write!(f, "free {loc}"),
 
+            Self::PutStr(s) => write!(f, "put-str {s:?}"),
             Self::PutChar(loc) => write!(f, "put-char {loc}"),
             Self::GetChar(loc) => write!(f, "get-char {loc}"),
             Self::PutInt(loc) => write!(f, "put-int {loc}"),
