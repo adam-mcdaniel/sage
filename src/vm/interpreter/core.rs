@@ -312,7 +312,7 @@ where
                     }
                 }
 
-                CoreOp::IsNonNegative => self.register = if self.register >= 0 { 1 } else { 0 },
+                CoreOp::IsNonNegative => self.register = isize::from(self.register >= 0),
                 CoreOp::Get => self.register = self.device.get()?,
                 CoreOp::Put => self.device.put(self.register)?,
             }

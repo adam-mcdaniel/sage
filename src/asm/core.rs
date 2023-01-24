@@ -334,7 +334,6 @@ pub enum CoreOp {
         dst: Location,
     },
     BitwiseNot(Location),
-    PutStr(String),
 }
 
 impl CoreOp {
@@ -409,12 +408,6 @@ impl CoreOp {
                 }
             }
             CoreOp::Comment(comment) => result.comment(comment),
-            CoreOp::PutStr(s) => {
-                for ch in s.chars() {
-                    result.set_register(ch as isize);
-                    result.put();
-                }
-            }
 
             CoreOp::Array { src, vals, dst } => {
                 // For every character in the message
@@ -647,31 +640,31 @@ impl CoreOp {
             .assemble(current_instruction, env, result)?,
 
             CoreOp::IsGreater { dst, a, b } => {
-                a.is_greater_than(&b, dst, result)
+                a.is_greater_than(b, dst, result)
             },
             CoreOp::IsGreaterEqual { dst, a, b } => {
-                a.is_greater_or_equal_to(&b, dst, result)
+                a.is_greater_or_equal_to(b, dst, result)
             },
             CoreOp::IsLess { dst, a, b } => {
-                a.is_less_than(&b, dst, result)
+                a.is_less_than(b, dst, result)
             },
             CoreOp::IsLessEqual { dst, a, b } => {
-                a.is_less_or_equal_to(&b, dst, result)
+                a.is_less_or_equal_to(b, dst, result)
             },
             CoreOp::IsEqual { dst, a, b } => {
-                a.is_equal(&b, dst, result)
+                a.is_equal(b, dst, result)
             },
             CoreOp::IsNotEqual { dst, a, b } => {
-                a.is_not_equal(&b, dst, result)
+                a.is_not_equal(b, dst, result)
             },
 
             CoreOp::Compare { dst, a, b } => {
-                a.is_greater_than(&b, dst, result);
+                a.is_greater_than(b, dst, result);
                 dst.restore_from(result);
                 result.begin_if();
                 result.set_register(1);
                 result.begin_else();
-                a.is_less_than(&b, dst, result);
+                a.is_less_than(b, dst, result);
                 dst.restore_from(result);
                 result.begin_if();
                 result.set_register(-1);
@@ -811,7 +804,6 @@ impl fmt::Display for CoreOp {
             Self::IsEqual { a, b, dst } => write!(f, "eq {a}, {b}, {dst}"),
             Self::IsNotEqual { a, b, dst } => write!(f, "neq {a}, {b}, {dst}"),
 
-            Self::PutStr(s) => write!(f, "put-str {s:?}"),
             Self::Put(loc) => write!(f, "put {loc}"),
             Self::Get(loc) => write!(f, "get {loc}"),
         }

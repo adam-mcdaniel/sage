@@ -325,7 +325,7 @@ where
                         }
                     }
 
-                    CoreOp::IsNonNegative => self.register = if self.register >= 0 { 1 } else { 0 },
+                    CoreOp::IsNonNegative => self.register = isize::from(self.register >= 0),
                     CoreOp::Get => self.register = self.device.get()?,
                     CoreOp::Put => self.device.put(self.register)?,
                 },
@@ -366,7 +366,7 @@ where
                     let b = as_float(*self.get_cell());
                     self.register = as_int(a % b)
                 }
-                StandardOp::IsNonNegative => self.register = if self.register >= 0 { 1 } else { 0 },
+                StandardOp::IsNonNegative => self.register = isize::from(self.register >= 0),
                 StandardOp::Sin => self.register = as_int(as_float(self.register).sin()),
                 StandardOp::Cos => self.register = as_int(as_float(self.register).cos()),
                 StandardOp::Tan => self.register = as_int(as_float(self.register).tan()),

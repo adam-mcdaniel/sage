@@ -69,7 +69,6 @@ CoreOp: CoreOp = {
     "neq" <a: Location> "," <b: Location> "," <dst: Location> => CoreOp::IsNotEqual { a, b, dst },
 
     "put" <Location> => CoreOp::Put(<>),
-    "put-str" <StringLit> => CoreOp::PutStr(<>),
     "get" <Location> => CoreOp::Get(<>),
 
     "array" <src: Location> "," <vals: List<"[", IntLit, ",", "]">> "," <dst: Location> => CoreOp::Array {
@@ -109,7 +108,8 @@ StandardOp: StandardOp = {
 
     "alloc" <Location> => StandardOp::Alloc(<>),
     "free" <Location> => StandardOp::Free(<>),
-
+    
+    "put-str" <StringLit> => StandardOp::PutStr(<>),
     "put-char" <Location> => StandardOp::PutChar(<>),
     "get-char" <Location> => StandardOp::GetChar(<>),
     "put-int" <Location> => StandardOp::PutInt(<>),

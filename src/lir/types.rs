@@ -56,7 +56,7 @@ impl TypeCheck for Type {
             }
             Self::Struct(fields) | Self::Union(fields) => {
                 for t in fields.values() {
-                    t.type_check(&env)?;
+                    t.type_check(env)?;
                 }
                 Ok(())
             }
@@ -675,7 +675,7 @@ impl Simplify for Type {
                     if *ret == Self::Symbol(name.clone()) {
                         // If the let body is the bound type, then we can subsitute the bound type
                         // for a copy of the whole let-binding.
-                        result.substitute(&name, &Self::Let(name.clone(), t.clone(), ret.clone()))
+                        result.substitute(&name, &Self::Let(name.clone(), t, ret))
                     } else {
                         // Otherwise, we can't reason much about the result, so return what
                         // we have.
@@ -687,7 +687,7 @@ impl Simplify for Type {
                 }
             }
 
-            Self::Unit(name, t) => Self::Unit(name.clone(), Box::new(t.simplify_checked(env, i)?)),
+            Self::Unit(name, t) => Self::Unit(name, Box::new(t.simplify_checked(env, i)?)),
 
             Self::Symbol(ref name) => {
                 if let Some(t) = env.get_type(name) {

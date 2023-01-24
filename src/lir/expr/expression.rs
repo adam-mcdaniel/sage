@@ -139,6 +139,7 @@ impl Expr {
     }
 
     /// Logical not this expression.
+    #[allow(clippy::should_implement_trait)]
     pub fn not(self) -> Self {
         Expr::Not(Box::new(self))
     }
@@ -184,26 +185,31 @@ impl Expr {
     }
 
     /// Add this expression to another.
+    #[allow(clippy::should_implement_trait)]
     pub fn add(self, other: impl Into<Self>) -> Self {
         Expr::Add(Box::new(self), Box::new(other.into()))
     }
 
     /// Subtract an expression from this expression.
+    #[allow(clippy::should_implement_trait)]
     pub fn sub(self, other: impl Into<Self>) -> Self {
         Expr::Sub(Box::new(self), Box::new(other.into()))
     }
 
     /// Multiply this expression by another.
+    #[allow(clippy::should_implement_trait)]
     pub fn mul(self, other: impl Into<Self>) -> Self {
         Expr::Mul(Box::new(self), Box::new(other.into()))
     }
 
     /// Divide this expression by another.
+    #[allow(clippy::should_implement_trait)]
     pub fn div(self, other: impl Into<Self>) -> Self {
         Expr::Div(Box::new(self), Box::new(other.into()))
     }
 
     /// Get the remainder of this expression divided by another.
+    #[allow(clippy::should_implement_trait)]
     pub fn rem(self, other: impl Into<Self>) -> Self {
         Expr::Rem(Box::new(self), Box::new(other.into()))
     }
@@ -855,7 +861,7 @@ impl Compile for Expr {
                 b.clone().compile_expr(env, output)?;
                 let dst = SP.deref().offset(-1);
                 let tmp = FP.offset(-1);
-                output.op(CoreOp::Move { src: dst.clone(), dst: tmp.clone() });
+                output.op(CoreOp::Move { src: dst, dst: tmp });
                 // Now, perform the correct assembly expressions based on the types of the two expressions.
                 match (a.get_type(env)?, b.get_type(env)?) {
                     // If a `Float` and a `Cell` are used, we just interpret the `Cell` as a `Float`.
@@ -1295,7 +1301,7 @@ impl Compile for Expr {
                     // Push the address of the struct, tuple, or union onto the stack.
                     Self::Refer(val.clone()).compile_expr(env, output)?;
                     // Calculate the offset of the field from the address of the value.
-                    let (_, offset) = val_type.get_member_offset(&name, &*val, env)?;
+                    let (_, offset) = val_type.get_member_offset(&name, &val, env)?;
 
                     output.op(CoreOp::Pop(Some(A), 1));
                     output.op(CoreOp::Set(B, offset as isize));

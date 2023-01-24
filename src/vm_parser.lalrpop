@@ -3,7 +3,6 @@ use crate::vm::*;
 
 grammar;
 
-
 pub CoreProgram: CoreProgram = CoreOp* => CoreProgram(<>);
 pub StandardProgram: StandardProgram = StandardOp* => StandardProgram(<>);
 
