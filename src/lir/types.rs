@@ -27,7 +27,7 @@ impl TypeCheck for Type {
             | Self::Char
             | Self::Enum(_) => Ok(()),
 
-            Self::Unit(_name, t) => {
+            Self::Unit(_unit_name, t) => {
                 t.type_check(env)
             }
 
@@ -186,7 +186,7 @@ impl Type {
                 }
                 Self::Symbol(typename.clone())
             }
-            Self::Unit(typename, t) => Self::Unit(typename.clone(), Box::new(t.substitute(name, t))),
+            Self::Unit(unit_name, t) => Self::Unit(unit_name.clone(), Box::new(t.substitute(name, t))),
             Self::None
             | Self::Never
             | Self::Any
@@ -265,7 +265,7 @@ impl Type {
                 }
             },
             // Two Units can only be cast between one another if they have the same name, and the types inside them can be cast.
-            (Self::Unit(a, t), Self::Unit(b, u)) if a == b => t.can_cast_to_checked(u, env, i),
+            (Self::Unit(unit_name1, t1), Self::Unit(unit_name2, t2)) if unit_name1 == unit_name2 => t1.can_cast_to_checked(t2, env, i),
             // If we're casting to or from a Unit, we can only cast if the type inside the Unit can be cast.
             (Self::Unit(_, t), other) | (other, Self::Unit(_, t)) => t.can_cast_to_checked(other, env, i),
 
@@ -472,8 +472,8 @@ impl Type {
 
             // If we're comparing two units, then we can just compare their names and confirm
             // their structures are equal.
-            (Self::Unit(name1, t1), Self::Unit(name2, t2)) => {
-                name1 == name2 && t1.equals_checked(t2, compared_symbols, env, i + 1)?
+            (Self::Unit(unit_name1, t1), Self::Unit(unit_name2, t2)) => {
+                unit_name1 == unit_name2 && t1.equals_checked(t2, compared_symbols, env, i + 1)?
             }
 
             (Self::Enum(a), Self::Enum(b)) => {
@@ -584,7 +584,7 @@ impl Type {
                 ret.get_member_offset(member, expr, &new_env)
             }
 
-            Type::Unit(_name, t) => t.get_member_offset(member, expr, env),
+            Type::Unit(_unit_name, t) => t.get_member_offset(member, expr, env),
 
             Type::Symbol(name) => {
                 if let Some(t) = env.get_type(name) {
@@ -620,7 +620,7 @@ impl GetSize for Type {
                 }
             }
 
-            Self::Unit(_name, t) => t.get_size_checked(env, i)?,
+            Self::Unit(_unit_name, t) => t.get_size_checked(env, i)?,
 
             Self::Int
             | Self::Float
@@ -687,7 +687,7 @@ impl Simplify for Type {
                 }
             }
 
-            Self::Unit(name, t) => Self::Unit(name, Box::new(t.simplify_checked(env, i)?)),
+            Self::Unit(unit_name, t) => Self::Unit(unit_name, Box::new(t.simplify_checked(env, i)?)),
 
             Self::Symbol(ref name) => {
                 if let Some(t) = env.get_type(name) {
@@ -795,7 +795,7 @@ impl fmt::Display for Type {
             }
 
             Self::Symbol(name) => write!(f, "{name}"),
-            Self::Unit(name, ty) => write!(f, "unit {name} = {ty}"),
+            Self::Unit(unit_name, ty) => write!(f, "unit {unit_name} = {ty}"),
             Self::Let(name, ty, ret) => write!(f, "let {name} = {ty} in {ret}"),
         }
     }
