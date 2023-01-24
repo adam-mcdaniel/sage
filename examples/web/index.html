@@ -994,6 +994,55 @@ proc fact(n: Int) -> Int = {
 } in putint(fact(getint()))`);
                     document.getElementById("input").value = "5";
                     break;
+                case "units":
+                    source.setValue(`const putint = proc(n: Int) -> None = std {
+    put-int [SP]
+    pop
+} in
+const putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+} in
+
+
+type
+    Kilometer = unit Kilometer = Int,
+    Meter = unit Meter = Int,
+    Second = unit Second = Int,
+    MetersPerSecond = unit MetersPerSec = Meter,
+    MetersPerSecondPerSecond = unit MetersPerSecondPerSecond = MetersPerSecond
+in
+
+proc putpos(x: Meter) -> None = {
+    putint(x as Int)
+} in
+
+proc shift_pos_by_dist(x0: Meter, dx: Meter) -> Meter = {
+    (x0 as Int + dx as Int) as Meter
+} in
+
+proc shift_pos_with_vel(x0: Meter, v: MetersPerSecond, t: Second) -> Meter = {
+    (x0 as Int + (v as Int * t as Int)) as Meter
+} in
+
+proc shift_pos_with_accel(x0: Meter, a: MetersPerSecondPerSecond, t: Second) -> Meter = {
+    (x0 as Int + a as Int * t as Int * t as Int / 2) as Meter
+} in
+
+proc km_to_m(km: Kilometer) -> Meter = {
+    (km as Int * 1000) as Meter
+} in
+
+proc shift_pos_with_vel_and_accel(x0: Meter, v0: MetersPerSecond, a: MetersPerSecondPerSecond, t: Second) -> Meter = {
+    shift_pos_with_vel(shift_pos_with_accel(x0, a, t), v0, t)
+} in
+
+let x0: Meter = km_to_m(1 as Kilometer),
+    v0: MetersPerSecond = 5 as MetersPerSecond,
+    accel: MetersPerSecondPerSecond = 2 as MetersPerSecondPerSecond,
+    t: Second = 10 as Second,
+    in putpos(shift_pos_with_vel_and_accel(x0, v0, accel, t))`);
+                    break;
                 case "collatz":
                     source.setValue(`const getint = proc() -> Int = std {
     next SP
@@ -1149,6 +1198,7 @@ type A = Int,
             <option value="aes">AES</option>
             <option value="quicksort">Quicksort</option>
             <option value="cat">Cat</option>
+            <option value="units">Units</option>
             <option value="lambda-sim">Simulate Lambda Functions</option>
             <option value="factorial">Factorial</option>
             <option value="collatz">Collatz</option>
