@@ -9,6 +9,7 @@ pub StandardProgram: StandardProgram = StandardOp* => StandardProgram(<>);
 
 CoreOp: CoreOp = {
     "set" <Location> "," <IntLit> => CoreOp::Set(<>),
+    "set" <loc: Location> "," <ch: CharLit> => CoreOp::Set(loc, ch as isize),
     "set" <Location> "," <Symbol> => CoreOp::SetLabel(<>),
 
     "lea" <addr: Location> "," <dst: Location> => CoreOp::GetAddress { addr, dst },
@@ -68,6 +69,7 @@ CoreOp: CoreOp = {
     "neq" <a: Location> "," <b: Location> "," <dst: Location> => CoreOp::IsNotEqual { a, b, dst },
 
     "put" <Location> => CoreOp::Put(<>),
+    "put-str" <StringLit> => CoreOp::PutStr(<>),
     "get" <Location> => CoreOp::Get(<>),
 
     "array" <src: Location> "," <vals: List<"[", IntLit, ",", "]">> "," <dst: Location> => CoreOp::Array {

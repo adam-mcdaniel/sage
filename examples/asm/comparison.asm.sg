@@ -1,0 +1,374 @@
+
+put-str "Testing `cmp` instruction...\n"
+set A, 5
+set B, 6
+cmp A, B, C
+inc C
+if C
+    put-str "This should not happen"
+else
+    put-int A
+    put-str " < "
+    put-int B
+    set C, '\n'
+    put-char C
+end
+
+set A, 5
+set B, 5
+cmp A, B, C
+if C
+    put-str "This should not happen"
+else
+    put-int A
+    put-str " = "
+    put-int B
+    set C, '\n'
+    put-char C
+end
+
+set A, 6
+set B, 5
+cmp A, B, C
+dec C
+if C
+    put-str "This should not happen"
+else
+    put-int A
+    put-str " > "
+    put-int B
+    set C, '\n'
+    put-char C
+end
+
+
+
+put-str "Testing `lt` instruction...\n"
+set A, 5
+set B, 6
+lt A, B, C
+if C
+    put-int A
+    put-str " < "
+    put-int B
+    set C, '\n'
+    put-char C
+else
+    put-str "This should not happen"
+end
+
+set A, 5
+set B, 5
+lt A, B, C
+if C
+    put-str "This should not happen"
+else
+    put-int A
+    put-str " >= "
+    put-int B
+    set C, '\n'
+    put-char C
+end
+
+set A, 6
+set B, 5
+lt A, B, C
+if C
+    put-str "This should not happen"
+else
+    put-int A
+    put-str " >= "
+    put-int B
+    set C, '\n'
+    put-char C
+end
+
+put-str "Testing `lte` instruction...\n"
+set A, 5
+set B, 6
+lte A, B, C
+if C
+    put-int A
+    put-str " <= "
+    put-int B
+    set C, '\n'
+    put-char C
+else
+    put-str "This should not happen"
+end
+
+set A, 5
+set B, 5
+lte A, B, C
+if C
+    put-int A
+    put-str " <= "
+    put-int B
+    set C, '\n'
+    put-char C
+else
+    put-str "This should not happen"
+end
+
+set A, 6
+set B, 5
+lte A, B, C
+if C
+    put-str "This should not happen"
+else
+    put-int A
+    put-str " > "
+    put-int B
+    set C, '\n'
+    put-char C
+end
+
+
+
+
+put-str "Testing `gt` instruction...\n"
+set A, 5
+set B, 6
+gt A, B, C
+if C
+    put-str "This should not happen"
+else
+    put-int A
+    put-str " <= "
+    put-int B
+    set C, '\n'
+    put-char C
+end
+
+set A, 5
+set B, 5
+gt A, B, C
+if C
+    put-str "This should not happen"
+else
+    put-int A
+    put-str " <= "
+    put-int B
+    set C, '\n'
+    put-char C
+end
+
+set A, 6
+set B, 5
+gt A, B, C
+if C
+    put-int A
+    put-str " > "
+    put-int B
+    set C, '\n'
+    put-char C
+else
+    put-str "This should not happen"
+end
+
+put-str "Testing `gte` instruction...\n"
+set A, 5
+set B, 6
+gte A, B, C
+if C
+    put-str "This should not happen"
+else
+    put-int A
+    put-str " < "
+    put-int B
+    set C, '\n'
+    put-char C
+end
+
+set A, 5
+set B, 5
+gte A, B, C
+if C
+    put-int A
+    put-str " >= "
+    put-int B
+    set C, '\n'
+    put-char C
+else
+    put-str "This should not happen"
+end
+
+set A, 6
+set B, 5
+gte A, B, C
+if C
+    put-int A
+    put-str " >= "
+    put-int B
+    set C, '\n'
+    put-char C
+else
+    put-str "This should not happen"
+end
+
+
+
+put-str "Testing `eq` instruction...\n"
+set A, 5
+set B, 6
+eq A, B, C
+if C
+    put-str "This should not happen"
+else
+    put-int A
+    put-str " != "
+    put-int B
+    set C, '\n'
+    put-char C
+end
+
+set A, 5
+set B, 5
+eq A, B, C
+if C
+    put-int A
+    put-str " = "
+    put-int B
+    set C, '\n'
+    put-char C
+else
+    put-str "This should not happen"
+end
+
+set A, 6
+set B, 5
+eq A, B, C
+if C
+    put-str "This should not happen"
+else
+    put-int A
+    put-str " != "
+    put-int B
+    set C, '\n'
+    put-char C
+end
+
+
+
+put-str "Testing `neq` instruction...\n"
+set A, 5
+set B, 6
+neq A, B, C
+if C
+    put-int A
+    put-str " != "
+    put-int B
+    set C, '\n'
+    put-char C
+else
+    put-str "This should not happen\n"
+end
+
+set A, 5
+set B, 5
+neq A, B, C
+if C
+    put-str "This should not happen\n"
+else
+    put-int A
+    put-str " = "
+    put-int B
+    set C, '\n'
+    put-char C
+end
+
+set A, 6
+set B, 5
+neq A, B, C
+if C
+    put-int A
+    put-str " != "
+    put-int B
+    set C, '\n'
+    put-char C
+else
+    put-str "This should not happen\n"
+end
+
+
+
+put-str "Testing `lt-f` instruction...\n"
+set-f A, 5.0
+set-f B, 6.0
+lt-f A, B, C
+if C
+    put-float A
+    put-str " < "
+    put-float B
+    set C, '\n'
+    put-char C
+else
+    put-str "This should not happen"
+end
+
+set-f A, 5.00000000001
+set-f B, 5.0
+lt-f A, B, C
+if C
+    put-str "This should not happen"
+else
+    put-float A
+    put-str " >= "
+    put-float B
+    set C, '\n'
+    put-char C
+end
+
+set-f A, 6.0
+set-f B, 5.0
+lt-f A, B, C
+if C
+    put-str "This should not happen"
+else
+    put-float A
+    put-str " >= "
+    put-float B
+    set C, '\n'
+    put-char C
+end
+
+
+put-str "Testing `gt-f` instruction...\n"
+set-f A, 5.0
+set-f B, 6.0
+gt-f A, B, C
+if C
+    put-str "This should not happen"
+else
+    put-float A
+    put-str " <= "
+    put-float B
+    set C, '\n'
+    put-char C
+end
+
+set-f A, 5.0
+set-f B, 5.00000000001
+gt-f A, B, C
+if C
+    put-str "This should not happen"
+else
+    put-float A
+    put-str " <= "
+    put-float B
+    set C, '\n'
+    put-char C
+end
+
+set-f A, 6.0
+set-f B, 5.0
+gt-f A, B, C
+if C
+    put-float A
+    put-str " > "
+    put-float B
+    set C, '\n'
+    put-char C
+else
+    put-str "This should not happen"
+end

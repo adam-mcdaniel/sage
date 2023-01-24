@@ -812,6 +812,7 @@ impl Compile for Expr {
             | Self::Neq(ref a, ref b) => {
                 let src = SP.deref();
                 let dst = SP.deref().offset(-1);
+                let tmp = FP.offset(-1);
                 // Get the respective core operation for the current expression.
                 let core_op = match self {
                     Self::Add(_, _) => CoreOp::Add { src, dst },
@@ -819,16 +820,17 @@ impl Compile for Expr {
                     Self::Mul(_, _) => CoreOp::Mul { src, dst },
                     Self::Div(_, _) => CoreOp::Div { src, dst },
                     Self::Rem(_, _) => CoreOp::Rem { src, dst },
-                    Self::Lt(_, _) => CoreOp::IsLess { a: src, b: dst.clone(), dst },
-                    Self::Le(_, _) => CoreOp::IsLessEqual { a: src, b: dst.clone(), dst },
-                    Self::Gt(_, _) => CoreOp::IsGreater { a: src, b: dst.clone(), dst },
-                    Self::Ge(_, _) => CoreOp::IsGreaterEqual { a: src, b: dst.clone(), dst },
-                    Self::Eq(_, _) => CoreOp::IsEqual { a: src, b: dst.clone(), dst },
-                    Self::Neq(_, _) => CoreOp::IsNotEqual { a: src, b: dst.clone(), dst },
+                    Self::Lt(_, _) => CoreOp::IsLess { a: tmp, b: src, dst },
+                    Self::Le(_, _) => CoreOp::IsLessEqual { a: tmp, b: src, dst },
+                    Self::Gt(_, _) => CoreOp::IsGreater { a: tmp, b: src, dst },
+                    Self::Ge(_, _) => CoreOp::IsGreaterEqual { a: tmp, b: src, dst },
+                    Self::Eq(_, _) => CoreOp::IsEqual { a: tmp, b: src, dst },
+                    Self::Neq(_, _) => CoreOp::IsNotEqual { a: tmp, b: src, dst },
                     _ => unreachable!(),
                 };
                 let src = SP.deref();
                 let dst = SP.deref().offset(-1);
+                let tmp = SP.deref().offset(1);
                 // Get the respective standard operation for the current expression.
                 let std_op = match self {
                     Self::Add(_, _) => StandardOp::Add { src, dst },
@@ -836,8 +838,12 @@ impl Compile for Expr {
                     Self::Mul(_, _) => StandardOp::Mul { src, dst },
                     Self::Div(_, _) => StandardOp::Div { src, dst },
                     Self::Rem(_, _) => StandardOp::Rem { src, dst },
-                    Self::Lt(_, _) => StandardOp::IsLess { a: src, b: dst.clone(), dst },
-                    Self::Gt(_, _) => StandardOp::IsGreater { a: src, b: dst.clone(), dst },
+                    Self::Lt(_, _) => StandardOp::IsLess { a: tmp, b: src, dst },
+                    Self::Gt(_, _) => StandardOp::IsGreater { a: tmp, b: src, dst },
+                    // Here we don't include the `Le` and `Ge` operations, because it could
+                    // be that the arguments are integers, and that this operation won't be
+                    // executed. These operations **are still not supported by the standard library**,
+                    // though.
                     Self::Le(_, _)
                     | Self::Ge(_, _)
                     | Self::Eq(_, _)
@@ -847,6 +853,9 @@ impl Compile for Expr {
                 // Evaluate the two expression on the stack.
                 a.clone().compile_expr(env, output)?;
                 b.clone().compile_expr(env, output)?;
+                let dst = SP.deref().offset(-1);
+                let tmp = FP.offset(-1);
+                output.op(CoreOp::Move { src: dst.clone(), dst: tmp.clone() });
                 // Now, perform the correct assembly expressions based on the types of the two expressions.
                 match (a.get_type(env)?, b.get_type(env)?) {
                     // If a `Float` and a `Cell` are used, we just interpret the `Cell` as a `Float`.

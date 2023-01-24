@@ -32,8 +32,6 @@ const bitxor = proc(a: Int, b: Int) -> Int = core {
 }, neq = proc(a: Int, b: Int) -> Bool = core {
     neq [SP - 1], [SP], A pop
     mov A, [SP]
-}, and = proc(a: Bool, b: Bool) -> Bool = core {
-    and [SP], [SP - 1] pop
 }, put = proc(n: Int) -> None = core {
     put [SP]
     pop

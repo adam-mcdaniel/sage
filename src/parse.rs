@@ -105,7 +105,7 @@ fn get_line(script: &str, location: usize) -> (usize, String, usize) {
     }
 
     // Get the line number from the character location
-    let line_number = script[..location + 1].lines().count();
+    let line_number = script[..(location + 1).min(script.len())].lines().count();
     // Get the line from the line number
     let line = match script.lines().nth(line_number - 1) {
         Some(line) => line,

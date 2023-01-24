@@ -27,6 +27,10 @@ impl TypeCheck for Type {
             | Self::Char
             | Self::Enum(_) => Ok(()),
 
+            Self::Unit(_name, t) => {
+                t.type_check(env)
+            }
+
             Self::Symbol(name) => {
                 if env.get_type(name).is_some() {
                     Ok(())
@@ -74,6 +78,15 @@ impl TypeCheck for Type {
 pub enum Type {
     /// Bind a type to a name in a temporary scope.
     Let(String, Box<Self>, Box<Self>),
+
+    /// This type is identified by its name. Most types are checked according
+    /// to structural equality, but this type is checked according to name. 
+    /// Structural equality is also verified in addition to name equality.
+    /// 
+    /// The inner type acts exactly the same, but it can only be type-equal
+    /// to another Unit type with the same name and inner type.
+    Unit(String, Box<Self>),
+
     /// A named type.
     Symbol(String),
     /// The type of void expressions.
@@ -121,6 +134,10 @@ impl Type {
     /// This will not count overshadowded versions of the symbol (overwritten by let-bindings).
     pub fn contains_symbol(&self, name: &str) -> bool {
         match self {
+            Self::Unit(_unit_name, t) => {
+                // Does the inner symbol use this type variable?
+                t.contains_symbol(name)
+            },
             Self::Let(typename, t, ret) => {
                 // We always check the type being bound to a variable.
                 // We only check the body of the let if the variable isn't overshadowed, however.
@@ -169,6 +186,7 @@ impl Type {
                 }
                 Self::Symbol(typename.clone())
             }
+            Self::Unit(typename, t) => Self::Unit(typename.clone(), Box::new(t.substitute(name, t))),
             Self::None
             | Self::Never
             | Self::Any
@@ -235,6 +253,21 @@ impl Type {
             }
 
             (Self::Symbol(a), Self::Symbol(b)) if a == b => Ok(true),
+            // If we're casting a value to a named type, then we need to check that the named type can be cast.
+            (a, Self::Symbol(b)) | (Self::Symbol(b), a) => {
+                // Get the named type...
+                if let Some(t) = env.get_type(b) {
+                    // ...and check if the value can be cast to it.
+                    a.can_cast_to_checked(t, env, i)
+                } else {
+                    // If the named type doesn't exist, then we can't cast.
+                    Ok(false)
+                }
+            },
+            // Two Units can only be cast between one another if they have the same name, and the types inside them can be cast.
+            (Self::Unit(a, t), Self::Unit(b, u)) if a == b => t.can_cast_to_checked(u, env, i),
+            // If we're casting to or from a Unit, we can only cast if the type inside the Unit can be cast.
+            (Self::Unit(_, t), other) | (other, Self::Unit(_, t)) => t.can_cast_to_checked(other, env, i),
 
             (Self::Int, Self::Float) | (Self::Float, Self::Int) => Ok(true),
             (Self::Int, Self::Char) | (Self::Char, Self::Int) => Ok(true),
@@ -249,6 +282,52 @@ impl Type {
             (Self::Pointer(_), Self::Pointer(_)) => Ok(true),
 
             (Self::Any, _) | (_, Self::Any) => Ok(true),
+
+            (Self::Struct(fields1), Self::Struct(fields2)) => {
+                // If the structs have a different number of fields, then they can't be equal.
+                if fields1.len() != fields2.len() {
+                    return Ok(false);
+                }
+                // For each name in the first struct, check that the second struct has the same name.
+                for (name1, t1) in fields1.iter() {
+                    if let Some(t2) = fields2.get(name1) {
+                        // Then, check that the types under the name are equal.
+                        if !t1.can_cast_to_checked(t2, env, i)? {
+                            return Ok(false);
+                        }
+                    } else {
+                        return Ok(false);
+                    }
+                }
+                // If we've made it this far, then we can reasonably assume the user is trying to
+                // cast between two very similar structs. If all their fields have the same names,
+                // and the types under those names are equal, then we can assume they are the same
+                // kind of struct.
+                Ok(true)
+            }
+
+            (Self::Union(fields1), Self::Union(fields2)) => {
+                // If the unions have a different number of fields, then they can't be equal.
+                if fields1.len() != fields2.len() {
+                    return Ok(false);
+                }
+                // For each name in the first union, check that the second union has the same name.
+                for (name1, t1) in fields1.iter() {
+                    if let Some(t2) = fields2.get(name1) {
+                        // Then, check that the types under the name are equal.
+                        if !t1.can_cast_to_checked(t2, env, i)? {
+                            return Ok(false);
+                        }
+                    } else {
+                        return Ok(false);
+                    }
+                }
+                // If we've made it this far, then we can reasonably assume the user is trying to
+                // cast between two very similar unions. If all their fields have the same names,
+                // and the types under those names are equal, then we can assume they are the same
+                // kind of union.
+                Ok(true)
+            }
 
             (Self::Proc(args1, ret1), Self::Proc(args2, ret2)) => {
                 if args1.len() != args2.len() {
@@ -391,6 +470,12 @@ impl Type {
                 }
             }
 
+            // If we're comparing two units, then we can just compare their names and confirm
+            // their structures are equal.
+            (Self::Unit(name1, t1), Self::Unit(name2, t2)) => {
+                name1 == name2 && t1.equals_checked(t2, compared_symbols, env, i + 1)?
+            }
+
             (Self::Enum(a), Self::Enum(b)) => {
                 let mut a = a.clone();
                 let mut b = b.clone();
@@ -499,6 +584,8 @@ impl Type {
                 ret.get_member_offset(member, expr, &new_env)
             }
 
+            Type::Unit(_name, t) => t.get_member_offset(member, expr, env),
+
             Type::Symbol(name) => {
                 if let Some(t) = env.get_type(name) {
                     t.get_member_offset(member, expr, env)
@@ -532,6 +619,8 @@ impl GetSize for Type {
                     return Err(Error::TypeNotDefined(name.clone()));
                 }
             }
+
+            Self::Unit(_name, t) => t.get_size_checked(env, i)?,
 
             Self::Int
             | Self::Float
@@ -597,6 +686,8 @@ impl Simplify for Type {
                     ret.substitute(&name, &t).simplify_checked(env, i)?
                 }
             }
+
+            Self::Unit(name, t) => Self::Unit(name.clone(), Box::new(t.simplify_checked(env, i)?)),
 
             Self::Symbol(ref name) => {
                 if let Some(t) = env.get_type(name) {
@@ -704,6 +795,7 @@ impl fmt::Display for Type {
             }
 
             Self::Symbol(name) => write!(f, "{name}"),
+            Self::Unit(name, ty) => write!(f, "unit {name} = {ty}"),
             Self::Let(name, ty, ret) => write!(f, "let {name} = {ty} in {ret}"),
         }
     }
