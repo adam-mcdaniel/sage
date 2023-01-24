@@ -122,9 +122,7 @@ Term: Expr = {
         for (c, t) in elif.into_iter().rev() {
             e = Some(Expr::If(Box::new(c), Box::new(t), Box::new(e.unwrap_or(ConstExpr::None.into()))));
         }
-        let result = Expr::If(Box::new(cond), Box::new(then), Box::new(e.unwrap_or(ConstExpr::None.into())));
-        eprintln!("{result:?}");
-        result
+        Expr::If(Box::new(cond), Box::new(then), Box::new(e.unwrap_or(ConstExpr::None.into())))
     },
     Atom => <>,
 }
