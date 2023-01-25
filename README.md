@@ -85,6 +85,8 @@ Every target should provide a chart of the standard instructions showing which a
 
 ## The Assembly Language
 
+[***Click here to see the documentation!***](https://adam-mcdaniel.github.io/sage/sage/asm/)
+
 ![Assembly Language](assets/ASM.png)
 
 While the virtual machine itself is meant to be as small as possible, the stages of IR built on top of it are meant to be as high level as possible. The assembly language has many instructions: *there are seven different instructions for comparisons!!*
@@ -119,6 +121,8 @@ The assembly instructions always take arguments of: constant integers known at c
 - [Comparisons](examples/asm/comparison.asm.sg)
 
 ## The Lower Intermediate Representation
+
+[***Click here to see the documentation!***](https://adam-mcdaniel.github.io/sage/sage/lir/)
 
 ![Lower Intermediate Representation](assets/LIR.png)
 
