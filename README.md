@@ -2,8 +2,8 @@
 
 
 <p float="left">
-  <a href="https://asciinema.org/a/441120"><img src="./assets/aes.png" width="58%"/></a>
-  <a href="https://asciinema.org/a/441120"><img src="./assets/anatomy.svg" width="41.5%"/></a>
+  <a href="https://adam-mcdaniel.net/sage"><img src="./assets/aes.png" width="58%"/></a>
+  <a href="https://adam-mcdaniel.net/sage"><img src="./assets/anatomy.svg" width="41.5%"/></a>
 </p>
 
 
