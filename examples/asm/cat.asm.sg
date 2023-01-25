@@ -1,0 +1,22 @@
+next SP
+get-char [SP]
+push [FP + 1]
+pop A
+while A
+   push [FP + 1]
+   put-char [SP]
+   pop
+   next SP
+   get-char [SP]
+   mov FP, A
+   set B, 1
+   index A, B, C
+   push C 
+   pop A
+   copy [SP], [A], 1
+   pop
+   push [FP + 1]
+   pop A
+end
+copy [SP + 1], [SP], 0
+pop

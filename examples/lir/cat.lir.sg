@@ -1,0 +1,10 @@
+const putchar = proc(ch: Char) -> None = std {
+    put-char [SP]
+    pop
+}, getchar = proc() -> Char = std {
+    next SP
+    get-char [SP]
+} in let ch = getchar() in while ch {
+    putchar(ch);
+    ch = getchar();   
+}
