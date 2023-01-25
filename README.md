@@ -1,6 +1,8 @@
 <div align="center">
   <h1>🌿🌱<b>sage</b>🪴🍃</h1>
-  <strong>Sage advice for your coding conundrums!</strong>
+  <p>
+    <strong>Sage advice for your coding conundrums!</strong>
+  </p>
   <p float="left">
     <a href="https://adam-mcdaniel.net/sage"><img src="./assets/aes.png" width="58%"/></a>
     <a href="https://adam-mcdaniel.net/sage"><img src="./assets/anatomy.svg" width="41.5%"/></a>
