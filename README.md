@@ -85,6 +85,8 @@ Every target should provide a chart of the standard instructions showing which a
 
 ## The Assembly Language
 
+![Assembly Language](assets/ASM.png)
+
 While the virtual machine itself is meant to be as small as possible, the stages of IR built on top of it are meant to be as high level as possible. The assembly language has many instructions: *there are seven different instructions for comparisons!!*
 
 The assembly language is also split into two halves as well: one built on the pure, Core variant, and the other built on the Standard variant. This way, programs can be compiled for maximum portability, but use standard instructions if necessary as a fallback.
@@ -117,6 +119,8 @@ The assembly instructions always take arguments of: constant integers known at c
 - [Comparisons](examples/asm/comparison.asm.sg)
 
 ## The Lower Intermediate Representation
+
+![Lower Intermediate Representation](assets/LIR.png)
 
 The lower intermediate representation is the type-checked layer of the compiler; all of the intermediate representations constructed on top of this layer are expressed in terms of LIR code before type-checking. LIR is high level enough to be *decently* human readable and usable. It's a bit more terse than C, but not by much. The type system is very expressive, and allows for unions, enums, procedures (as values), structures, arrays, and anonymous recursive types.
 
