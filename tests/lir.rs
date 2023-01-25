@@ -1548,7 +1548,7 @@ fn test_quicksort() {
     // Compiling quicksort overflows the tiny stack for tests.
     // So, we spawn a new thread with a larger stack size.
     let child = std::thread::Builder::new()
-        .stack_size(4 * 1024 * 1024)
+        .stack_size(8 * 1024 * 1024)
         .spawn(test_quicksort_helper)
         .unwrap();
 
