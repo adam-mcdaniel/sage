@@ -191,6 +191,15 @@
 <span id="186">186</span>
 <span id="187">187</span>
 <span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Parsing Module</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains all the related functions for parsing</span>
@@ -222,9 +231,18 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::lir::Expr</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::vm</span>;
 <span class="kw">use</span> <span class="ident">lalrpop_util::lalrpop_mod</span>;
-<span class="macro">lalrpop_mod!</span>(<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::all</span>)]</span> <span class="ident">lir_parser</span>);
-<span class="macro">lalrpop_mod!</span>(<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::all</span>)]</span> <span class="ident">asm_parser</span>);
-<span class="macro">lalrpop_mod!</span>(<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::all</span>)]</span> <span class="ident">vm_parser</span>);
+<span class="macro">lalrpop_mod!</span>(
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::all</span>)]</span>
+    <span class="ident">lir_parser</span>
+);
+<span class="macro">lalrpop_mod!</span>(
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::all</span>)]</span>
+    <span class="ident">asm_parser</span>
+);
+<span class="macro">lalrpop_mod!</span>(
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::all</span>)]</span>
+    <span class="ident">vm_parser</span>
+);
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">asm_parser</span>::{<span class="ident">CoreProgramParser</span>, <span class="ident">StandardProgramParser</span>};
 
 <span class="doccomment">/// Parse Core and Standard variants of virtual machine source code.</span>

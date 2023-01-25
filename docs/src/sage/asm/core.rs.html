@@ -804,18 +804,6 @@
 <span id="799">799</span>
 <span id="800">800</span>
 <span id="801">801</span>
-<span id="802">802</span>
-<span id="803">803</span>
-<span id="804">804</span>
-<span id="805">805</span>
-<span id="806">806</span>
-<span id="807">807</span>
-<span id="808">808</span>
-<span id="809">809</span>
-<span id="810">810</span>
-<span id="811">811</span>
-<span id="812">812</span>
-<span id="813">813</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Core Assembly Variant</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This variant of the assembly language is intended to be used</span>
@@ -823,7 +811,7 @@
 <span class="doccomment">//! portable, but minimal.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! [***Click here to view opcodes!***](./enum.CoreOp.html)</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! ## What kinds of instructions are supported by this variant?</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This variant attempts to support *as many instructions as possible</span>
@@ -1459,24 +1447,12 @@
             }
             .<span class="ident">assemble</span>(<span class="ident">current_instruction</span>, <span class="ident">env</span>, <span class="ident">result</span>)<span class="question-mark">?</span>,
 
-            <span class="ident">CoreOp::IsGreater</span> { <span class="ident">dst</span>, <span class="ident">a</span>, <span class="ident">b</span> } =&gt; {
-                <span class="ident">a</span>.<span class="ident">is_greater_than</span>(<span class="ident">b</span>, <span class="ident">dst</span>, <span class="ident">result</span>)
-            },
-            <span class="ident">CoreOp::IsGreaterEqual</span> { <span class="ident">dst</span>, <span class="ident">a</span>, <span class="ident">b</span> } =&gt; {
-                <span class="ident">a</span>.<span class="ident">is_greater_or_equal_to</span>(<span class="ident">b</span>, <span class="ident">dst</span>, <span class="ident">result</span>)
-            },
-            <span class="ident">CoreOp::IsLess</span> { <span class="ident">dst</span>, <span class="ident">a</span>, <span class="ident">b</span> } =&gt; {
-                <span class="ident">a</span>.<span class="ident">is_less_than</span>(<span class="ident">b</span>, <span class="ident">dst</span>, <span class="ident">result</span>)
-            },
-            <span class="ident">CoreOp::IsLessEqual</span> { <span class="ident">dst</span>, <span class="ident">a</span>, <span class="ident">b</span> } =&gt; {
-                <span class="ident">a</span>.<span class="ident">is_less_or_equal_to</span>(<span class="ident">b</span>, <span class="ident">dst</span>, <span class="ident">result</span>)
-            },
-            <span class="ident">CoreOp::IsEqual</span> { <span class="ident">dst</span>, <span class="ident">a</span>, <span class="ident">b</span> } =&gt; {
-                <span class="ident">a</span>.<span class="ident">is_equal</span>(<span class="ident">b</span>, <span class="ident">dst</span>, <span class="ident">result</span>)
-            },
-            <span class="ident">CoreOp::IsNotEqual</span> { <span class="ident">dst</span>, <span class="ident">a</span>, <span class="ident">b</span> } =&gt; {
-                <span class="ident">a</span>.<span class="ident">is_not_equal</span>(<span class="ident">b</span>, <span class="ident">dst</span>, <span class="ident">result</span>)
-            },
+            <span class="ident">CoreOp::IsGreater</span> { <span class="ident">dst</span>, <span class="ident">a</span>, <span class="ident">b</span> } =&gt; <span class="ident">a</span>.<span class="ident">is_greater_than</span>(<span class="ident">b</span>, <span class="ident">dst</span>, <span class="ident">result</span>),
+            <span class="ident">CoreOp::IsGreaterEqual</span> { <span class="ident">dst</span>, <span class="ident">a</span>, <span class="ident">b</span> } =&gt; <span class="ident">a</span>.<span class="ident">is_greater_or_equal_to</span>(<span class="ident">b</span>, <span class="ident">dst</span>, <span class="ident">result</span>),
+            <span class="ident">CoreOp::IsLess</span> { <span class="ident">dst</span>, <span class="ident">a</span>, <span class="ident">b</span> } =&gt; <span class="ident">a</span>.<span class="ident">is_less_than</span>(<span class="ident">b</span>, <span class="ident">dst</span>, <span class="ident">result</span>),
+            <span class="ident">CoreOp::IsLessEqual</span> { <span class="ident">dst</span>, <span class="ident">a</span>, <span class="ident">b</span> } =&gt; <span class="ident">a</span>.<span class="ident">is_less_or_equal_to</span>(<span class="ident">b</span>, <span class="ident">dst</span>, <span class="ident">result</span>),
+            <span class="ident">CoreOp::IsEqual</span> { <span class="ident">dst</span>, <span class="ident">a</span>, <span class="ident">b</span> } =&gt; <span class="ident">a</span>.<span class="ident">is_equal</span>(<span class="ident">b</span>, <span class="ident">dst</span>, <span class="ident">result</span>),
+            <span class="ident">CoreOp::IsNotEqual</span> { <span class="ident">dst</span>, <span class="ident">a</span>, <span class="ident">b</span> } =&gt; <span class="ident">a</span>.<span class="ident">is_not_equal</span>(<span class="ident">b</span>, <span class="ident">dst</span>, <span class="ident">result</span>),
 
             <span class="ident">CoreOp::Compare</span> { <span class="ident">dst</span>, <span class="ident">a</span>, <span class="ident">b</span> } =&gt; {
                 <span class="ident">a</span>.<span class="ident">is_greater_than</span>(<span class="ident">b</span>, <span class="ident">dst</span>, <span class="ident">result</span>);

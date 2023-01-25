@@ -1742,6 +1742,38 @@
 <span id="1737">1737</span>
 <span id="1738">1738</span>
 <span id="1739">1739</span>
+<span id="1740">1740</span>
+<span id="1741">1741</span>
+<span id="1742">1742</span>
+<span id="1743">1743</span>
+<span id="1744">1744</span>
+<span id="1745">1745</span>
+<span id="1746">1746</span>
+<span id="1747">1747</span>
+<span id="1748">1748</span>
+<span id="1749">1749</span>
+<span id="1750">1750</span>
+<span id="1751">1751</span>
+<span id="1752">1752</span>
+<span id="1753">1753</span>
+<span id="1754">1754</span>
+<span id="1755">1755</span>
+<span id="1756">1756</span>
+<span id="1757">1757</span>
+<span id="1758">1758</span>
+<span id="1759">1759</span>
+<span id="1760">1760</span>
+<span id="1761">1761</span>
+<span id="1762">1762</span>
+<span id="1763">1763</span>
+<span id="1764">1764</span>
+<span id="1765">1765</span>
+<span id="1766">1766</span>
+<span id="1767">1767</span>
+<span id="1768">1768</span>
+<span id="1769">1769</span>
+<span id="1770">1770</span>
+<span id="1771">1771</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::asm</span>::{<span class="ident">AssemblyProgram</span>, <span class="ident">CoreOp</span>, <span class="ident">StandardOp</span>, <span class="ident">A</span>, <span class="ident">B</span>, <span class="ident">C</span>, <span class="ident">FP</span>, <span class="ident">SP</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::lir</span>::{
     <span class="ident">Compile</span>, <span class="ident">ConstExpr</span>, <span class="ident">Env</span>, <span class="ident">Error</span>, <span class="ident">GetSize</span>, <span class="ident">GetType</span>, <span class="ident">Procedure</span>, <span class="ident">Simplify</span>, <span class="ident">Type</span>, <span class="ident">TypeCheck</span>,
@@ -2206,12 +2238,13 @@
                 <span class="kw">for</span> (<span class="ident">var</span>, <span class="ident">t</span>, <span class="ident">e</span>) <span class="kw">in</span> <span class="ident">vars</span> {
                     <span class="comment">// Typecheck the expression we&#39;re assigning to the variable.</span>
                     <span class="ident">e</span>.<span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="ident">new_env</span>)<span class="question-mark">?</span>;
-                        <span class="comment">// Get the inferred type of the expression.</span>
+                    <span class="comment">// Get the inferred type of the expression.</span>
                     <span class="kw">let</span> <span class="ident">inferred_t</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_type</span>(<span class="kw-2">&amp;</span><span class="ident">new_env</span>)<span class="question-mark">?</span>;
                     <span class="comment">// If there&#39;s a type specification for the variable, check it.</span>
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">t</span>) <span class="op">=</span> <span class="ident">t</span> {
                         <span class="comment">// Typecheck the type.</span>
                         <span class="ident">t</span>.<span class="ident">type_check</span>(<span class="ident">env</span>)<span class="question-mark">?</span>;
+
                         <span class="comment">// Check that the inferred type is compatible with the type specified.</span>
                         <span class="kw">if</span> <span class="op">!</span><span class="ident">inferred_t</span>.<span class="ident">equals</span>(<span class="ident">t</span>, <span class="ident">env</span>)<span class="question-mark">?</span> {
                             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::MismatchedTypes</span> {
@@ -2269,8 +2302,8 @@
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Div</span>(<span class="ident">a</span>, <span class="ident">b</span>)
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Rem</span>(<span class="ident">a</span>, <span class="ident">b</span>)
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Lt</span>(<span class="ident">a</span>, <span class="ident">b</span>)
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Le</span>(<span class="ident">a</span>, <span class="ident">b</span>) 
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Gt</span>(<span class="ident">a</span>, <span class="ident">b</span>) 
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Le</span>(<span class="ident">a</span>, <span class="ident">b</span>)
+            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Gt</span>(<span class="ident">a</span>, <span class="ident">b</span>)
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Ge</span>(<span class="ident">a</span>, <span class="ident">b</span>)
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Eq</span>(<span class="ident">a</span>, <span class="ident">b</span>)
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Neq</span>(<span class="ident">a</span>, <span class="ident">b</span>) =&gt; {
@@ -2569,12 +2602,36 @@
                     <span class="ident"><span class="self">Self</span>::Mul</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::Mul</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
                     <span class="ident"><span class="self">Self</span>::Div</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::Div</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
                     <span class="ident"><span class="self">Self</span>::Rem</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::Rem</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
-                    <span class="ident"><span class="self">Self</span>::Lt</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsLess</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
-                    <span class="ident"><span class="self">Self</span>::Le</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsLessEqual</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
-                    <span class="ident"><span class="self">Self</span>::Gt</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsGreater</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
-                    <span class="ident"><span class="self">Self</span>::Ge</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsGreaterEqual</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
-                    <span class="ident"><span class="self">Self</span>::Eq</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsEqual</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
-                    <span class="ident"><span class="self">Self</span>::Neq</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsNotEqual</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
+                    <span class="ident"><span class="self">Self</span>::Lt</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsLess</span> {
+                        <span class="ident">a</span>: <span class="ident">tmp</span>,
+                        <span class="ident">b</span>: <span class="ident">src</span>,
+                        <span class="ident">dst</span>,
+                    },
+                    <span class="ident"><span class="self">Self</span>::Le</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsLessEqual</span> {
+                        <span class="ident">a</span>: <span class="ident">tmp</span>,
+                        <span class="ident">b</span>: <span class="ident">src</span>,
+                        <span class="ident">dst</span>,
+                    },
+                    <span class="ident"><span class="self">Self</span>::Gt</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsGreater</span> {
+                        <span class="ident">a</span>: <span class="ident">tmp</span>,
+                        <span class="ident">b</span>: <span class="ident">src</span>,
+                        <span class="ident">dst</span>,
+                    },
+                    <span class="ident"><span class="self">Self</span>::Ge</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsGreaterEqual</span> {
+                        <span class="ident">a</span>: <span class="ident">tmp</span>,
+                        <span class="ident">b</span>: <span class="ident">src</span>,
+                        <span class="ident">dst</span>,
+                    },
+                    <span class="ident"><span class="self">Self</span>::Eq</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsEqual</span> {
+                        <span class="ident">a</span>: <span class="ident">tmp</span>,
+                        <span class="ident">b</span>: <span class="ident">src</span>,
+                        <span class="ident">dst</span>,
+                    },
+                    <span class="ident"><span class="self">Self</span>::Neq</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">CoreOp::IsNotEqual</span> {
+                        <span class="ident">a</span>: <span class="ident">tmp</span>,
+                        <span class="ident">b</span>: <span class="ident">src</span>,
+                        <span class="ident">dst</span>,
+                    },
                     <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
                 };
                 <span class="kw">let</span> <span class="ident">src</span> <span class="op">=</span> <span class="ident">SP</span>.<span class="ident">deref</span>();
@@ -2587,16 +2644,23 @@
                     <span class="ident"><span class="self">Self</span>::Mul</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::Mul</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
                     <span class="ident"><span class="self">Self</span>::Div</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::Div</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
                     <span class="ident"><span class="self">Self</span>::Rem</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::Rem</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
-                    <span class="ident"><span class="self">Self</span>::Lt</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::IsLess</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
-                    <span class="ident"><span class="self">Self</span>::Gt</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::IsGreater</span> { <span class="ident">a</span>: <span class="ident">tmp</span>, <span class="ident">b</span>: <span class="ident">src</span>, <span class="ident">dst</span> },
+                    <span class="ident"><span class="self">Self</span>::Lt</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::IsLess</span> {
+                        <span class="ident">a</span>: <span class="ident">tmp</span>,
+                        <span class="ident">b</span>: <span class="ident">src</span>,
+                        <span class="ident">dst</span>,
+                    },
+                    <span class="ident"><span class="self">Self</span>::Gt</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::IsGreater</span> {
+                        <span class="ident">a</span>: <span class="ident">tmp</span>,
+                        <span class="ident">b</span>: <span class="ident">src</span>,
+                        <span class="ident">dst</span>,
+                    },
                     <span class="comment">// Here we don&#39;t include the `Le` and `Ge` operations, because it could</span>
                     <span class="comment">// be that the arguments are integers, and that this operation won&#39;t be</span>
                     <span class="comment">// executed. These operations **are still not supported by the standard library**,</span>
                     <span class="comment">// though.</span>
-                    <span class="ident"><span class="self">Self</span>::Le</span>(<span class="kw">_</span>, <span class="kw">_</span>)
-                    <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Ge</span>(<span class="kw">_</span>, <span class="kw">_</span>)
-                    <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Eq</span>(<span class="kw">_</span>, <span class="kw">_</span>)
-                    <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Neq</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">StandardOp::CoreOp</span>(<span class="ident">CoreOp::Many</span>(<span class="macro">vec!</span>[])),
+                    <span class="ident"><span class="self">Self</span>::Le</span>(<span class="kw">_</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Ge</span>(<span class="kw">_</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Eq</span>(<span class="kw">_</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Neq</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
+                        <span class="ident">StandardOp::CoreOp</span>(<span class="ident">CoreOp::Many</span>(<span class="macro">vec!</span>[]))
+                    }
                     <span class="kw">_</span> =&gt; <span class="macro">unreachable!</span>(),
                 };
                 <span class="comment">// Evaluate the two expression on the stack.</span>

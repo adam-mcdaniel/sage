@@ -795,6 +795,35 @@
 <span id="790">790</span>
 <span id="791">791</span>
 <span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Types Module</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains a collection of types and traits</span>
@@ -824,9 +853,7 @@
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Char</span>
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Enum</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
 
-            <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">_unit_name</span>, <span class="ident">t</span>) =&gt; {
-                <span class="ident">t</span>.<span class="ident">type_check</span>(<span class="ident">env</span>)
-            }
+            <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">_unit_name</span>, <span class="ident">t</span>) =&gt; <span class="ident">t</span>.<span class="ident">type_check</span>(<span class="ident">env</span>),
 
             <span class="ident"><span class="self">Self</span>::Symbol</span>(<span class="ident">name</span>) =&gt; {
                 <span class="kw">if</span> <span class="ident">env</span>.<span class="ident">get_type</span>(<span class="ident">name</span>).<span class="ident">is_some</span>() {
@@ -877,9 +904,9 @@
     <span class="ident">Let</span>(<span class="ident">String</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
 
     <span class="doccomment">/// This type is identified by its name. Most types are checked according</span>
-    <span class="doccomment">/// to structural equality, but this type is checked according to name. </span>
+    <span class="doccomment">/// to structural equality, but this type is checked according to name.</span>
     <span class="doccomment">/// Structural equality is also verified in addition to name equality.</span>
-    <span class="doccomment">/// </span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// The inner type acts exactly the same, but it can only be type-equal</span>
     <span class="doccomment">/// to another Unit type with the same name and inner type.</span>
     <span class="ident">Unit</span>(<span class="ident">String</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
@@ -934,7 +961,7 @@
             <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">_unit_name</span>, <span class="ident">t</span>) =&gt; {
                 <span class="comment">// Does the inner symbol use this type variable?</span>
                 <span class="ident">t</span>.<span class="ident">contains_symbol</span>(<span class="ident">name</span>)
-            },
+            }
             <span class="ident"><span class="self">Self</span>::Let</span>(<span class="ident">typename</span>, <span class="ident">t</span>, <span class="ident">ret</span>) =&gt; {
                 <span class="comment">// We always check the type being bound to a variable.</span>
                 <span class="comment">// We only check the body of the let if the variable isn&#39;t overshadowed, however.</span>
@@ -983,7 +1010,10 @@
                 }
                 <span class="ident"><span class="self">Self</span>::Symbol</span>(<span class="ident">typename</span>.<span class="ident">clone</span>())
             }
-            <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">unit_name</span>, <span class="ident">inner</span>) =&gt; <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">unit_name</span>.<span class="ident">clone</span>(), <span class="ident">Box::new</span>(<span class="ident">inner</span>.<span class="ident">substitute</span>(<span class="ident">name</span>, <span class="ident">substitution</span>))),
+            <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">unit_name</span>, <span class="ident">inner</span>) =&gt; <span class="ident"><span class="self">Self</span>::Unit</span>(
+                <span class="ident">unit_name</span>.<span class="ident">clone</span>(),
+                <span class="ident">Box::new</span>(<span class="ident">inner</span>.<span class="ident">substitute</span>(<span class="ident">name</span>, <span class="ident">substitution</span>)),
+            ),
             <span class="ident"><span class="self">Self</span>::None</span>
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Never</span>
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Any</span>
@@ -999,23 +1029,30 @@
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">field_t</span><span class="op">|</span> <span class="ident">field_t</span>.<span class="ident">substitute</span>(<span class="ident">name</span>, <span class="ident">substitution</span>))
                     .<span class="ident">collect</span>(),
             ),
-            <span class="ident"><span class="self">Self</span>::Array</span>(<span class="ident">item_t</span>, <span class="ident">size</span>) =&gt; {
-                <span class="ident"><span class="self">Self</span>::Array</span>(<span class="ident">Box::new</span>(<span class="ident">item_t</span>.<span class="ident">substitute</span>(<span class="ident">name</span>, <span class="ident">substitution</span>)), <span class="ident">size</span>.<span class="ident">clone</span>())
-            }
+            <span class="ident"><span class="self">Self</span>::Array</span>(<span class="ident">item_t</span>, <span class="ident">size</span>) =&gt; <span class="ident"><span class="self">Self</span>::Array</span>(
+                <span class="ident">Box::new</span>(<span class="ident">item_t</span>.<span class="ident">substitute</span>(<span class="ident">name</span>, <span class="ident">substitution</span>)),
+                <span class="ident">size</span>.<span class="ident">clone</span>(),
+            ),
             <span class="ident"><span class="self">Self</span>::Struct</span>(<span class="ident">fields</span>) =&gt; <span class="ident"><span class="self">Self</span>::Struct</span>(
                 <span class="ident">fields</span>
                     .<span class="ident">iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">field_name</span>, <span class="ident">field_t</span>)<span class="op">|</span> (<span class="ident">field_name</span>.<span class="ident">clone</span>(), <span class="ident">field_t</span>.<span class="ident">substitute</span>(<span class="ident">name</span>, <span class="ident">substitution</span>)))
+                    .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">field_name</span>, <span class="ident">field_t</span>)<span class="op">|</span> {
+                        (<span class="ident">field_name</span>.<span class="ident">clone</span>(), <span class="ident">field_t</span>.<span class="ident">substitute</span>(<span class="ident">name</span>, <span class="ident">substitution</span>))
+                    })
                     .<span class="ident">collect</span>(),
             ),
             <span class="ident"><span class="self">Self</span>::Union</span>(<span class="ident">fields</span>) =&gt; <span class="ident"><span class="self">Self</span>::Union</span>(
                 <span class="ident">fields</span>
                     .<span class="ident">iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">field_name</span>, <span class="ident">field_t</span>)<span class="op">|</span> (<span class="ident">field_name</span>.<span class="ident">clone</span>(), <span class="ident">field_t</span>.<span class="ident">substitute</span>(<span class="ident">name</span>, <span class="ident">substitution</span>)))
+                    .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">field_name</span>, <span class="ident">field_t</span>)<span class="op">|</span> {
+                        (<span class="ident">field_name</span>.<span class="ident">clone</span>(), <span class="ident">field_t</span>.<span class="ident">substitute</span>(<span class="ident">name</span>, <span class="ident">substitution</span>))
+                    })
                     .<span class="ident">collect</span>(),
             ),
             <span class="ident"><span class="self">Self</span>::Proc</span>(<span class="ident">args</span>, <span class="ident">ret</span>) =&gt; <span class="ident"><span class="self">Self</span>::Proc</span>(
-                <span class="ident">args</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">arg</span><span class="op">|</span> <span class="ident">arg</span>.<span class="ident">substitute</span>(<span class="ident">name</span>, <span class="ident">substitution</span>)).<span class="ident">collect</span>(),
+                <span class="ident">args</span>.<span class="ident">iter</span>()
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">arg</span><span class="op">|</span> <span class="ident">arg</span>.<span class="ident">substitute</span>(<span class="ident">name</span>, <span class="ident">substitution</span>))
+                    .<span class="ident">collect</span>(),
                 <span class="ident">Box::new</span>(<span class="ident">ret</span>.<span class="ident">substitute</span>(<span class="ident">name</span>, <span class="ident">substitution</span>)),
             ),
             <span class="ident"><span class="self">Self</span>::Pointer</span>(<span class="ident">ptr</span>) =&gt; <span class="ident"><span class="self">Self</span>::Pointer</span>(<span class="ident">Box::new</span>(<span class="ident">ptr</span>.<span class="ident">substitute</span>(<span class="ident">name</span>, <span class="ident">substitution</span>))),
@@ -1050,11 +1087,28 @@
             }
 
             (<span class="ident"><span class="self">Self</span>::Symbol</span>(<span class="ident">a</span>), <span class="ident"><span class="self">Self</span>::Symbol</span>(<span class="ident">b</span>)) <span class="kw">if</span> <span class="ident">a</span> <span class="op">==</span> <span class="ident">b</span> =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
-            
+            <span class="comment">// If we&#39;re casting a value to a named type, then we need to check that the named type can be cast.</span>
+            (<span class="ident">a</span>, <span class="ident"><span class="self">Self</span>::Symbol</span>(<span class="ident">b</span>)) <span class="op">|</span> (<span class="ident"><span class="self">Self</span>::Symbol</span>(<span class="ident">b</span>), <span class="ident">a</span>) =&gt; {
+                <span class="comment">// Get the named type...</span>
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">t</span>) <span class="op">=</span> <span class="ident">env</span>.<span class="ident">get_type</span>(<span class="ident">b</span>) {
+                    <span class="comment">// ...and check if the value can be cast to it.</span>
+                    <span class="ident">a</span>.<span class="ident">can_cast_to_checked</span>(<span class="ident">t</span>, <span class="ident">env</span>, <span class="ident">i</span>)
+                } <span class="kw">else</span> {
+                    <span class="comment">// If the named type doesn&#39;t exist, then we can&#39;t cast.</span>
+                    <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
+                }
+            }
+
             <span class="comment">// Two Units can only be cast between one another if they have the same name, and the types inside them can be cast.</span>
-            (<span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">unit_name1</span>, <span class="ident">t1</span>), <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">unit_name2</span>, <span class="ident">t2</span>)) <span class="kw">if</span> <span class="ident">unit_name1</span> <span class="op">==</span> <span class="ident">unit_name2</span> =&gt; <span class="ident">t1</span>.<span class="ident">can_cast_to_checked</span>(<span class="ident">t2</span>, <span class="ident">env</span>, <span class="ident">i</span>),
+            (<span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">unit_name1</span>, <span class="ident">t1</span>), <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">unit_name2</span>, <span class="ident">t2</span>))
+                <span class="kw">if</span> <span class="ident">unit_name1</span> <span class="op">==</span> <span class="ident">unit_name2</span> =&gt;
+            {
+                <span class="ident">t1</span>.<span class="ident">can_cast_to_checked</span>(<span class="ident">t2</span>, <span class="ident">env</span>, <span class="ident">i</span>)
+            }
             <span class="comment">// If we&#39;re casting to or from a Unit, we can only cast if the type inside the Unit can be cast.</span>
-            (<span class="ident"><span class="self">Self</span>::Unit</span>(<span class="kw">_</span>, <span class="ident">t</span>), <span class="ident">other</span>) <span class="op">|</span> (<span class="ident">other</span>, <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="kw">_</span>, <span class="ident">t</span>)) =&gt; <span class="ident">t</span>.<span class="ident">can_cast_to_checked</span>(<span class="ident">other</span>, <span class="ident">env</span>, <span class="ident">i</span>),
+            (<span class="ident"><span class="self">Self</span>::Unit</span>(<span class="kw">_</span>, <span class="ident">t</span>), <span class="ident">other</span>) <span class="op">|</span> (<span class="ident">other</span>, <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="kw">_</span>, <span class="ident">t</span>)) =&gt; {
+                <span class="ident">t</span>.<span class="ident">can_cast_to_checked</span>(<span class="ident">other</span>, <span class="ident">env</span>, <span class="ident">i</span>)
+            }
 
             (<span class="ident"><span class="self">Self</span>::Int</span>, <span class="ident"><span class="self">Self</span>::Float</span>) <span class="op">|</span> (<span class="ident"><span class="self">Self</span>::Float</span>, <span class="ident"><span class="self">Self</span>::Int</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
             (<span class="ident"><span class="self">Self</span>::Int</span>, <span class="ident"><span class="self">Self</span>::Char</span>) <span class="op">|</span> (<span class="ident"><span class="self">Self</span>::Char</span>, <span class="ident"><span class="self">Self</span>::Int</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
@@ -1352,7 +1406,9 @@
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">offset</span> <span class="op">=</span> <span class="number">0</span>;
                 <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">t</span>) <span class="kw">in</span> <span class="ident">items</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
                     <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">ConstExpr::Int</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">i32</span>) <span class="op">==</span> <span class="ident">member</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Ok</span>((<span class="ident">t</span>.<span class="ident">clone</span>().<span class="ident">simplify</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">offset</span>));
+                        <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">t</span>.<span class="ident">clone</span>().<span class="ident">simplify</span>(<span class="ident">env</span>)<span class="question-mark">?</span>;
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;result {:?}&quot;</span>, <span class="ident">result</span>);
+                        <span class="kw">return</span> <span class="prelude-val">Ok</span>((<span class="ident">result</span>, <span class="ident">offset</span>));
                     }
 
                     <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">t</span>.<span class="ident">get_size</span>(<span class="ident">env</span>)<span class="question-mark">?</span>;
@@ -1474,7 +1530,9 @@
                 }
             }
 
-            <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">unit_name</span>, <span class="ident">t</span>) =&gt; <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">unit_name</span>, <span class="ident">Box::new</span>(<span class="ident">t</span>.<span class="ident">simplify_checked</span>(<span class="ident">env</span>, <span class="ident">i</span>)<span class="question-mark">?</span>)),
+            <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">unit_name</span>, <span class="ident">t</span>) =&gt; {
+                <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">unit_name</span>, <span class="ident">Box::new</span>(<span class="ident">t</span>.<span class="ident">simplify_checked</span>(<span class="ident">env</span>, <span class="ident">i</span>)<span class="question-mark">?</span>))
+            }
 
             <span class="ident"><span class="self">Self</span>::Symbol</span>(<span class="kw-2">ref</span> <span class="ident">name</span>) =&gt; {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">t</span>) <span class="op">=</span> <span class="ident">env</span>.<span class="ident">get_type</span>(<span class="ident">name</span>) {

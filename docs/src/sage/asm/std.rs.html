@@ -395,10 +395,10 @@
 <span class="doccomment">//! with the standard variant of the virtual machine. It is very</span>
 <span class="doccomment">//! portable, but probably not supported on older systems or</span>
 <span class="doccomment">//! hardware implementations.</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! [***Click here to view opcodes!***](./enum.StandardOp.html)</span>
 <span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">location::FP_STACK</span>, <span class="ident">AssemblyProgram</span>, <span class="ident">CoreOp</span>, <span class="ident">CoreProgram</span>, <span class="ident">Env</span>, <span class="ident">Error</span>, <span class="ident">Location</span>, <span class="ident">F</span>, <span class="ident">FP</span>, <span class="ident">SP</span>, 
+    <span class="ident">location::FP_STACK</span>, <span class="ident">AssemblyProgram</span>, <span class="ident">CoreOp</span>, <span class="ident">CoreProgram</span>, <span class="ident">Env</span>, <span class="ident">Error</span>, <span class="ident">Location</span>, <span class="ident">F</span>, <span class="ident">FP</span>, <span class="ident">SP</span>,
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::vm</span>::{<span class="self">self</span>, <span class="ident">VirtualMachineProgram</span>};
 <span class="kw">use</span> <span class="ident">core::fmt</span>;
@@ -671,7 +671,7 @@
             <span class="ident"><span class="self">Self</span>::PutStr</span>(<span class="ident">s</span>) =&gt; {
                 <span class="kw">for</span> <span class="ident">ch</span> <span class="kw">in</span> <span class="ident">s</span>.<span class="ident">chars</span>() {
                     <span class="ident">result</span>.<span class="ident">set_register</span>(<span class="ident">ch</span> <span class="kw">as</span> <span class="ident">isize</span>);
-                    
+
                     <span class="kw">if</span> <span class="ident">result</span>.<span class="ident">std_op</span>(<span class="ident">vm::StandardOp::PutChar</span>).<span class="ident">is_err</span>() {
                         <span class="ident">unsupported</span>(<span class="self">self</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>
                     }

@@ -99,10 +99,17 @@
 <span id="94">94</span>
 <span id="95">95</span>
 <span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # The Sage Programming Language</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! 🚧 🏗️ ⚠️ This language is under construction! ⚠️ 🏗️ 🚧</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! ```text</span>
 <span class="doccomment">//!   █████   ██████    ███████  ██████   `-.        _.-&#39;</span>
 <span class="doccomment">//!  ███░░   ░░░░░███  ███░░███ ███░░███   \ `,    .&#39;/.&#39;</span>
@@ -114,12 +121,19 @@
 <span class="doccomment">//!                   ░░██████                           `--&#39;</span>
 <span class="doccomment">//!                    ░░░░░░            </span>
 <span class="doccomment">//! ```</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! &lt;embed type=&quot;text/html&quot; src=&quot;web/index.html&quot; title=&quot;Compiler&quot; width=&quot;100%&quot; height=&quot;940em&quot;&gt;&lt;/embed&gt;</span>
 <span class="doccomment">//! ***(The sage compiler itself can be compiled to web assembly to be executed on the web. This allows a sage compiler + interpreter to be hosted on a static web page and run embded sage scripts. This web implementation compiles sage LIR code into sage virtual machine code, and then feeds it to a builtin virtual machine interpreter. The compiler can also switch to various backends, such as the C source code generator, or assembly output.)***</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! This crate implements a compiler for the sage programming language</span>
 <span class="doccomment">//! and its low level virtual machine.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## Index</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! 1. [The Lower Intermediate Representation](./lir/index.html)</span>
+<span class="doccomment">//! 2. [The Assembly Language](./asm/index.html)</span>
+<span class="doccomment">//! 3. [The Virtual Machine](./vm/index.html)</span>
+<span class="doccomment">//! 4. [Target Backends](./targets/index.html)</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## Stages of IR</span>
 <span class="doccomment">//!</span>
@@ -136,7 +150,7 @@
 <span class="doccomment">//! Standard variant. The Core variant is guaranteed to compile to all</span>
 <span class="doccomment">//! targets, and the Standard variant is akin to a standard library of</span>
 <span class="doccomment">//! instructions (which are implemented for most targets).</span>
-<span class="doccomment">//! </span>
+<span class="doccomment">//!</span>
 <span class="doccomment">//! This makes sage uniquely equipped to compile to very limited arcitectures:</span>
 <span class="doccomment">//! **the Core instruction set for the virtual machine is *almost guaranteed*</span>
 <span class="doccomment">//! to be a subset of most CPU architectures.**</span>
