@@ -114,7 +114,7 @@ The assembly instructions always take arguments of: constant integers known at c
 
 #### Examples
 
-- [Factorial](examples/asm/factorial.asm.sg)
+- [Factorial](examples/asm/fact.asm.sg)
 - [Cat](examples/asm/cat.asm.sg)
 - [Comparisons](examples/asm/comparison.asm.sg)
 
