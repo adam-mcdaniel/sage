@@ -1,6 +1,13 @@
 # sage
 
-[Here's an example of the compilation process.](https://adam-mcdaniel.net/sage)
+
+<p float="left">
+  <a href="https://adam-mcdaniel.net/sage"><img src="./assets/aes.png" width="58%"/></a>
+  <a href="https://adam-mcdaniel.net/sage"><img src="./assets/anatomy.svg" width="41.5%"/></a>
+</p>
+
+
+[***Here's a link to the online compiler with a builtin virtual machine interpreter!***](https://adam-mcdaniel.net/sage)
 
 ## The Compiler Caveat
 
@@ -44,11 +51,6 @@ In order to solve some of these problems, [I've created another virtual machine]
 5. The instruction set must be able to implement abstractions like functions, pointers, and compound data types.
 6. ***Interacting with the environment (the outside world) should not change the state of anything but the register***. 
 
-<div align="center">
-<img alt="Anatomy" align="center" src="assets/anatomy.svg" width="60%"/>
-</div>
-</br>
-
 Without further ado, here's the virtual machine instruction set.
 
 ## The Forty and Eight Instructions
@@ -76,7 +78,16 @@ The standard instructions are not guaranteed to be wholly implemented by every t
 
 Every target should provide a chart of the standard instructions showing which are implemented.
 
+#### Examples
+
+- [Factorial](examples/vm/factorial.vm.sg)
+- [Cat](examples/vm/cat.vm.sg)
+
 ## The Assembly Language
+
+[***Click here to see the documentation!***](https://adam-mcdaniel.github.io/sage/sage/asm/)
+
+![Assembly Language](assets/ASM.png)
 
 While the virtual machine itself is meant to be as small as possible, the stages of IR built on top of it are meant to be as high level as possible. The assembly language has many instructions: *there are seven different instructions for comparisons!!*
 
@@ -105,34 +116,29 @@ The assembly instructions always take arguments of: constant integers known at c
 
 #### Examples
 
-Here is how some example instructions are assembled (with some abstract methods like `copy_to` to make things easier).
+- [Factorial](examples/asm/fact.asm.sg)
+- [Cat](examples/asm/cat.asm.sg)
+- [Comparisons](examples/asm/comparison.asm.sg)
 
-<div align="center">
-<img alt="CopyTo" align="center" src="assets/copy_to.png" width="90%"/>
+## The Lower Intermediate Representation
 
-<img alt="PushTo" align="center" src="assets/push_to.png" width="90%"/>
-</div>
+[***Click here to see the documentation!***](https://adam-mcdaniel.github.io/sage/sage/lir/)
 
-</br>
-And here is an example assembly program to calculate the factorial of 10, and write the result to the output device.
-</br>
-</br>
+![Lower Intermediate Representation](assets/LIR.png)
 
-```f#
-fun fact
-    if [FP]
-        mov [FP], A
-        dec A
-        push A
-        call fact
-        mul [FP + 1], [FP]
-        pop
-    else
-        set [FP], 1
-    end
-end
+The lower intermediate representation is the type-checked layer of the compiler; all of the intermediate representations constructed on top of this layer are expressed in terms of LIR code before type-checking. LIR is high level enough to be *decently* human readable and usable. It's a bit more terse than C, but not by much. The type system is very expressive, and allows for unions, enums, procedures (as values), structures, arrays, and anonymous recursive types.
 
-set A, 10 push A
-call fact
-put [SP]
-```
+[***Click here to use the interactive compiler online!***](https://adam-mcdaniel.net/sage)
+
+- [128, 192, and 256 bit AES encryption and decryption](examples/lir/AES.lir.sg)
+- [Quicksort](examples/lir/quicksort.lir.sg)
+- [Factorial](examples/lir/fact.lir.sg)
+- [Mutually Recursive Types](examples/lir/recursive-types.lir.sg)
+- [Tagged Union](examples/lir/option.lir.sg)
+- [Units](examples/lir/units.lir.sg)
+- [Inline Assembly](examples/lir/inline-assembly.lir.sg)
+- [Simulating Variable Capturing Functions](examples/lir/lambda-sim.lir.sg)
+
+## The Higher Intermediate Representation
+
+🚧 🏗️ ⚠️ This is under construction! ⚠️ 🏗️ 🚧

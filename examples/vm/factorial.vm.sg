@@ -1,0 +1,163 @@
+fun
+   mov 3
+   deref
+   mov 1
+   where
+   mov -1
+   ref
+   mov -3
+   mov 3
+   sav
+   mov -3
+   mov 2
+   res
+   mov -2
+   mov 3
+   deref
+   sav
+   ref
+   mov -3
+   res
+   mov 2
+   sav
+   mov -2
+   mov 2
+   deref
+   res
+   ref
+   mov -2
+   if
+      mov 2
+      deref
+      res
+      ref
+      mov -2
+      mov 4
+      sav
+      mov -4
+      mov 4
+      set -1
+      add
+      sav
+      mov -4
+      mov 4
+      res
+      mov -4
+      deref
+      mov 1
+      sav
+      mov -1
+      ref
+      deref
+      mov 1
+      where
+      mov -1
+      ref
+      sav
+      set 0
+      call
+      mov 2
+      deref
+      res
+      ref
+      mov -2
+      mov 2
+      deref
+      mov 1
+      mul
+      mov -1
+      ref
+      mov -2
+      mov 2
+      deref
+      sav
+      ref
+      mov -2
+      deref
+      mov -1
+      where
+      mov 1
+      ref
+      sav
+   else
+      set 1
+      mov 2
+      deref
+      sav
+      ref
+      mov -2
+   end
+   mov 3
+   deref
+   res
+   ref
+   mov -3
+   mov 2
+   sav
+   mov -2
+   mov 3
+   deref
+   mov -1
+   where
+   mov 1
+   ref
+   mov -3
+   mov 3
+   sav
+   mov -3
+   ret
+end
+mov 9
+where
+mov -9
+mov 3
+sav
+mov -3
+mov 3
+deref
+mov 8192
+where
+mov -8192
+ref
+mov -3
+sav
+res
+mov 2
+sav
+mov -2
+set 5
+mov 4
+sav
+mov -4
+mov 4
+res
+mov -4
+deref
+mov 1
+sav
+mov -1
+ref
+deref
+mov 1
+where
+mov -1
+ref
+sav
+set 0
+call
+deref
+res
+ref
+mov 4
+sav
+mov -4
+deref
+mov -1
+where
+mov 1
+ref
+sav
+mov 4
+res
+put-int
+mov -4
