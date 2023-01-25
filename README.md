@@ -134,3 +134,7 @@ The lower intermediate representation is the type-checked layer of the compiler;
 - [Units](examples/lir/units.lir.sg)
 - [Inline Assembly](examples/lir/inline-assembly.lir.sg)
 - [Simulating Variable Capturing Functions](examples/lir/lambda-sim.lir.sg)
+
+## The Higher Intermediate Representation
+
+🚧 🏗️ ⚠️ This is under construction! ⚠️ 🏗️ 🚧
