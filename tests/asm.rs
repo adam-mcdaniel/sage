@@ -252,7 +252,6 @@ fn test_str() {
         Next(D, None),
         End,
         Prev(D, None),
-        
         IsLess { dst: B, a: C, b: D },
         While(B),
         Swap(C.deref(), D.deref()),

@@ -354,7 +354,12 @@ impl Location {
     }
 
     /// dst = this cell >= source cell.
-    pub fn is_greater_than_float(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub fn is_greater_than_float(
+        &self,
+        src: &Self,
+        dst: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) -> Result<(), Error> {
         self.copy_to(dst, result);
         dst.sub_float(src, result)?;
         dst.std_op(vm::StandardOp::IsNonNegative, result)
@@ -383,7 +388,12 @@ impl Location {
     }
 
     /// dst = this cell < source cell.
-    pub fn is_less_than_float(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub fn is_less_than_float(
+        &self,
+        src: &Self,
+        dst: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) -> Result<(), Error> {
         dst.set_float(-1.0, result)?;
         dst.add_float(src, result)?;
         dst.sub_float(self, result)?;

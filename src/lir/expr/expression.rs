@@ -526,8 +526,8 @@ impl TypeCheck for Expr {
             | Self::Div(a, b)
             | Self::Rem(a, b)
             | Self::Lt(a, b)
-            | Self::Le(a, b) 
-            | Self::Gt(a, b) 
+            | Self::Le(a, b)
+            | Self::Gt(a, b)
             | Self::Ge(a, b)
             | Self::Eq(a, b)
             | Self::Neq(a, b) => {
@@ -826,12 +826,36 @@ impl Compile for Expr {
                     Self::Mul(_, _) => CoreOp::Mul { src, dst },
                     Self::Div(_, _) => CoreOp::Div { src, dst },
                     Self::Rem(_, _) => CoreOp::Rem { src, dst },
-                    Self::Lt(_, _) => CoreOp::IsLess { a: tmp, b: src, dst },
-                    Self::Le(_, _) => CoreOp::IsLessEqual { a: tmp, b: src, dst },
-                    Self::Gt(_, _) => CoreOp::IsGreater { a: tmp, b: src, dst },
-                    Self::Ge(_, _) => CoreOp::IsGreaterEqual { a: tmp, b: src, dst },
-                    Self::Eq(_, _) => CoreOp::IsEqual { a: tmp, b: src, dst },
-                    Self::Neq(_, _) => CoreOp::IsNotEqual { a: tmp, b: src, dst },
+                    Self::Lt(_, _) => CoreOp::IsLess {
+                        a: tmp,
+                        b: src,
+                        dst,
+                    },
+                    Self::Le(_, _) => CoreOp::IsLessEqual {
+                        a: tmp,
+                        b: src,
+                        dst,
+                    },
+                    Self::Gt(_, _) => CoreOp::IsGreater {
+                        a: tmp,
+                        b: src,
+                        dst,
+                    },
+                    Self::Ge(_, _) => CoreOp::IsGreaterEqual {
+                        a: tmp,
+                        b: src,
+                        dst,
+                    },
+                    Self::Eq(_, _) => CoreOp::IsEqual {
+                        a: tmp,
+                        b: src,
+                        dst,
+                    },
+                    Self::Neq(_, _) => CoreOp::IsNotEqual {
+                        a: tmp,
+                        b: src,
+                        dst,
+                    },
                     _ => unreachable!(),
                 };
                 let src = SP.deref();
@@ -844,16 +868,23 @@ impl Compile for Expr {
                     Self::Mul(_, _) => StandardOp::Mul { src, dst },
                     Self::Div(_, _) => StandardOp::Div { src, dst },
                     Self::Rem(_, _) => StandardOp::Rem { src, dst },
-                    Self::Lt(_, _) => StandardOp::IsLess { a: tmp, b: src, dst },
-                    Self::Gt(_, _) => StandardOp::IsGreater { a: tmp, b: src, dst },
+                    Self::Lt(_, _) => StandardOp::IsLess {
+                        a: tmp,
+                        b: src,
+                        dst,
+                    },
+                    Self::Gt(_, _) => StandardOp::IsGreater {
+                        a: tmp,
+                        b: src,
+                        dst,
+                    },
                     // Here we don't include the `Le` and `Ge` operations, because it could
                     // be that the arguments are integers, and that this operation won't be
                     // executed. These operations **are still not supported by the standard library**,
                     // though.
-                    Self::Le(_, _)
-                    | Self::Ge(_, _)
-                    | Self::Eq(_, _)
-                    | Self::Neq(_, _) => StandardOp::CoreOp(CoreOp::Many(vec![])),
+                    Self::Le(_, _) | Self::Ge(_, _) | Self::Eq(_, _) | Self::Neq(_, _) => {
+                        StandardOp::CoreOp(CoreOp::Many(vec![]))
+                    }
                     _ => unreachable!(),
                 };
                 // Evaluate the two expression on the stack.

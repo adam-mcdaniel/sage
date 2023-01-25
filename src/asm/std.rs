@@ -4,8 +4,10 @@
 //! with the standard variant of the virtual machine. It is very
 //! portable, but probably not supported on older systems or
 //! hardware implementations.
+//!
+//! [***Click here to view opcodes!***](./enum.StandardOp.html)
 use super::{
-    location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP, 
+    location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP,
 };
 use crate::vm::{self, VirtualMachineProgram};
 use core::fmt;
@@ -278,7 +280,7 @@ impl StandardOp {
             Self::PutStr(s) => {
                 for ch in s.chars() {
                     result.set_register(ch as isize);
-                    
+
                     if result.std_op(vm::StandardOp::PutChar).is_err() {
                         unsupported(self.clone())?
                     }

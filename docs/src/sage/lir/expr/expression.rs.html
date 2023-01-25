@@ -1742,7 +1742,6 @@
 <span id="1737">1737</span>
 <span id="1738">1738</span>
 <span id="1739">1739</span>
-<span id="1740">1740</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::asm</span>::{<span class="ident">AssemblyProgram</span>, <span class="ident">CoreOp</span>, <span class="ident">StandardOp</span>, <span class="ident">A</span>, <span class="ident">B</span>, <span class="ident">C</span>, <span class="ident">FP</span>, <span class="ident">SP</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::lir</span>::{
     <span class="ident">Compile</span>, <span class="ident">ConstExpr</span>, <span class="ident">Env</span>, <span class="ident">Error</span>, <span class="ident">GetSize</span>, <span class="ident">GetType</span>, <span class="ident">Procedure</span>, <span class="ident">Simplify</span>, <span class="ident">Type</span>, <span class="ident">TypeCheck</span>,
@@ -2207,13 +2206,12 @@
                 <span class="kw">for</span> (<span class="ident">var</span>, <span class="ident">t</span>, <span class="ident">e</span>) <span class="kw">in</span> <span class="ident">vars</span> {
                     <span class="comment">// Typecheck the expression we&#39;re assigning to the variable.</span>
                     <span class="ident">e</span>.<span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="ident">new_env</span>)<span class="question-mark">?</span>;
-                    <span class="comment">// Get the inferred type of the expression.</span>
+                        <span class="comment">// Get the inferred type of the expression.</span>
                     <span class="kw">let</span> <span class="ident">inferred_t</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_type</span>(<span class="kw-2">&amp;</span><span class="ident">new_env</span>)<span class="question-mark">?</span>;
                     <span class="comment">// If there&#39;s a type specification for the variable, check it.</span>
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">t</span>) <span class="op">=</span> <span class="ident">t</span> {
                         <span class="comment">// Typecheck the type.</span>
                         <span class="ident">t</span>.<span class="ident">type_check</span>(<span class="ident">env</span>)<span class="question-mark">?</span>;
-
                         <span class="comment">// Check that the inferred type is compatible with the type specified.</span>
                         <span class="kw">if</span> <span class="op">!</span><span class="ident">inferred_t</span>.<span class="ident">equals</span>(<span class="ident">t</span>, <span class="ident">env</span>)<span class="question-mark">?</span> {
                             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::MismatchedTypes</span> {

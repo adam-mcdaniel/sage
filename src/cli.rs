@@ -1,8 +1,9 @@
 //! # The Sage Compiler
-//! 
+//!
 //! This program implements the CLI frontend to the sage programming
 //! language. This can compile sage's various source languages to
 //! the supported targets provided by the compiler.
+use clap::*;
 use sage::{
     lir::*,
     parse::*,
@@ -10,7 +11,6 @@ use sage::{
     vm::*,
     LOGO_WITH_COLOR, *,
 };
-use clap::*;
 use std::{
     fmt,
     fs::{read_to_string, write},

@@ -4,6 +4,8 @@
 //! with the core variant of the virtual machine. It is extremely
 //! portable, but minimal.
 //!
+//! [***Click here to view opcodes!***](./enum.CoreOp.html)
+//!
 //! ## What kinds of instructions are supported by this variant?
 //!
 //! This variant attempts to support *as many instructions as possible
@@ -639,24 +641,12 @@ impl CoreOp {
             }
             .assemble(current_instruction, env, result)?,
 
-            CoreOp::IsGreater { dst, a, b } => {
-                a.is_greater_than(b, dst, result)
-            },
-            CoreOp::IsGreaterEqual { dst, a, b } => {
-                a.is_greater_or_equal_to(b, dst, result)
-            },
-            CoreOp::IsLess { dst, a, b } => {
-                a.is_less_than(b, dst, result)
-            },
-            CoreOp::IsLessEqual { dst, a, b } => {
-                a.is_less_or_equal_to(b, dst, result)
-            },
-            CoreOp::IsEqual { dst, a, b } => {
-                a.is_equal(b, dst, result)
-            },
-            CoreOp::IsNotEqual { dst, a, b } => {
-                a.is_not_equal(b, dst, result)
-            },
+            CoreOp::IsGreater { dst, a, b } => a.is_greater_than(b, dst, result),
+            CoreOp::IsGreaterEqual { dst, a, b } => a.is_greater_or_equal_to(b, dst, result),
+            CoreOp::IsLess { dst, a, b } => a.is_less_than(b, dst, result),
+            CoreOp::IsLessEqual { dst, a, b } => a.is_less_or_equal_to(b, dst, result),
+            CoreOp::IsEqual { dst, a, b } => a.is_equal(b, dst, result),
+            CoreOp::IsNotEqual { dst, a, b } => a.is_not_equal(b, dst, result),
 
             CoreOp::Compare { dst, a, b } => {
                 a.is_greater_than(b, dst, result);

@@ -152,6 +152,13 @@
 <span id="147">147</span>
 <span id="148">148</span>
 <span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # LIR (Low Intermediate Representation) Module</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains a decently sized typechecked intermediate representation for the virtual machine.</span>
@@ -159,6 +166,13 @@
 <span class="doccomment">//! The LIR compiler will generate core assembly code *by default* for the LIR, but will revert to the standard</span>
 <span class="doccomment">//! variant if unsupported instructions or types are encountered (such as floating point operations or float types).</span>
 <span class="doccomment">//!</span>
+<span class="doccomment">//! ## Index</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! 1. [Types](./enum.Type.html)</span>
+<span class="doccomment">//! 2. [Constants](./enum.ConstExpr.html) and [Expressions](./enum.Expr.html)</span>
+<span class="doccomment">//! 3. [Core Builtins](struct.CoreBuiltin.html) and [Standard Builtins](struct.StandardBuiltin.html)</span>
+<span class="doccomment">//! 4. [Compilation Errors](./enum.Error.html)</span>
+
 <span class="doccomment">//! ## Purpose</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! The purpose of the LIR is to provide a powerful backend for the next stage of IR. Most of the heavy lifting</span>

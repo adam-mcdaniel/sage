@@ -2,13 +2,23 @@
 //!
 //! This module contains a small assembly language implemented
 //! over the virtual machine. The assembly language, much like the virtual machine, is split
-//! into two variants: the "core" variant and the "standard" variant.
+//! into two variants: the "core" variant and the "standard" variant. The assembly language
+//! is not typed, and simply works by performing basic operations on one or more parameter addresses,
+//! and automatically managing procedure pointers. It also gives the programmer the ability to
+//! write inline assembly code for optimized performance or code size.
+//!
+//! ## Index
+//!
+//! 1. [Core Assembly](./core)
+//! 2. [Standard Assembly](./std)
+//! 3. [Assembly Memory Model](./location)
 //!
 //! ## The Core Variant
 //!
 //! The core variant is intended to be used with the core variant of
 //! the virtual machine. It is very portable, and MUST be supported
 //! on all implementations.
+//!
 //!
 //! ## The Standard Variant
 //!

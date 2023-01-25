@@ -29,9 +29,18 @@ use super::asm::{CoreProgram, StandardProgram};
 use super::lir::Expr;
 use super::vm;
 use lalrpop_util::lalrpop_mod;
-lalrpop_mod!(#[allow(clippy::all)] lir_parser);
-lalrpop_mod!(#[allow(clippy::all)] asm_parser);
-lalrpop_mod!(#[allow(clippy::all)] vm_parser);
+lalrpop_mod!(
+    #[allow(clippy::all)]
+    lir_parser
+);
+lalrpop_mod!(
+    #[allow(clippy::all)]
+    asm_parser
+);
+lalrpop_mod!(
+    #[allow(clippy::all)]
+    vm_parser
+);
 pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
 
 /// Parse Core and Standard variants of virtual machine source code.

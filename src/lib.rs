@@ -1,7 +1,7 @@
 //! # The Sage Programming Language
-//! 
+//!
 //! 🚧 🏗️ ⚠️ This language is under construction! ⚠️ 🏗️ 🚧
-//! 
+//!
 //! ```text
 //!   █████   ██████    ███████  ██████   `-.        _.-'
 //!  ███░░   ░░░░░███  ███░░███ ███░░███   \ `,    .'/.'
@@ -13,11 +13,19 @@
 //!                   ░░██████                           `--'
 //!                    ░░░░░░            
 //! ```
-//! 
+//!
 //! <embed type="text/html" src="web/index.html" title="Compiler" width="100%" height="940em"></embed>
-//! 
+//! ***(The sage compiler itself can be compiled to web assembly to be executed on the web. This allows a sage compiler + interpreter to be hosted on a static web page and run embded sage scripts. This web implementation compiles sage LIR code into sage virtual machine code, and then feeds it to a builtin virtual machine interpreter. The compiler can also switch to various backends, such as the C source code generator, or assembly output.)***
+//!
 //! This crate implements a compiler for the sage programming language
 //! and its low level virtual machine.
+//!
+//! ## Index
+//!
+//! 1. [The Lower Intermediate Representation](./lir/index.html)
+//! 2. [The Assembly Language](./asm/index.html)
+//! 3. [The Virtual Machine](./vm/index.html)
+//! 4. [Target Backends](./targets/index.html)
 //!
 //! ## Stages of IR
 //!
@@ -34,7 +42,7 @@
 //! Standard variant. The Core variant is guaranteed to compile to all
 //! targets, and the Standard variant is akin to a standard library of
 //! instructions (which are implemented for most targets).
-//! 
+//!
 //! This makes sage uniquely equipped to compile to very limited arcitectures:
 //! **the Core instruction set for the virtual machine is *almost guaranteed*
 //! to be a subset of most CPU architectures.**

@@ -5,6 +5,13 @@
 //! The LIR compiler will generate core assembly code *by default* for the LIR, but will revert to the standard
 //! variant if unsupported instructions or types are encountered (such as floating point operations or float types).
 //!
+//! ## Index
+//!
+//! 1. [Types](./enum.Type.html)
+//! 2. [Constants](./enum.ConstExpr.html) and [Expressions](./enum.Expr.html)
+//! 3. [Core Builtins](struct.CoreBuiltin.html) and [Standard Builtins](struct.StandardBuiltin.html)
+//! 4. [Compilation Errors](./enum.Error.html)
+
 //! ## Purpose
 //!
 //! The purpose of the LIR is to provide a powerful backend for the next stage of IR. Most of the heavy lifting

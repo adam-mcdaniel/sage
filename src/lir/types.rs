@@ -27,9 +27,7 @@ impl TypeCheck for Type {
             | Self::Char
             | Self::Enum(_) => Ok(()),
 
-            Self::Unit(_unit_name, t) => {
-                t.type_check(env)
-            }
+            Self::Unit(_unit_name, t) => t.type_check(env),
 
             Self::Symbol(name) => {
                 if env.get_type(name).is_some() {
@@ -80,9 +78,9 @@ pub enum Type {
     Let(String, Box<Self>, Box<Self>),
 
     /// This type is identified by its name. Most types are checked according
-    /// to structural equality, but this type is checked according to name. 
+    /// to structural equality, but this type is checked according to name.
     /// Structural equality is also verified in addition to name equality.
-    /// 
+    ///
     /// The inner type acts exactly the same, but it can only be type-equal
     /// to another Unit type with the same name and inner type.
     Unit(String, Box<Self>),
@@ -137,7 +135,7 @@ impl Type {
             Self::Unit(_unit_name, t) => {
                 // Does the inner symbol use this type variable?
                 t.contains_symbol(name)
-            },
+            }
             Self::Let(typename, t, ret) => {
                 // We always check the type being bound to a variable.
                 // We only check the body of the let if the variable isn't overshadowed, however.
@@ -167,26 +165,29 @@ impl Type {
 
     /// Substitute all occurences of a symbol with another type.
     /// This will not traverse into let-bindings where the symbol is overshadowed.
-    pub fn substitute(&self, name: &str, t: &Self) -> Self {
+    pub fn substitute(&self, name: &str, substitution: &Self) -> Self {
         match self {
             Self::Let(typename, binding, ret) => Self::Let(
                 typename.clone(),
-                Box::new(binding.substitute(name, t)),
+                Box::new(binding.substitute(name, substitution)),
                 if typename == name {
                     // If the variable is overshadowed, then don't substitute in the body of the let.
                     ret.clone()
                 } else {
                     // If the variable is not overshadowed, then we're free to substitute in the body of the let.
-                    ret.substitute(name, t).into()
+                    ret.substitute(name, substitution).into()
                 },
             ),
             Self::Symbol(typename) => {
                 if typename == name {
-                    return t.clone();
+                    return substitution.clone();
                 }
                 Self::Symbol(typename.clone())
             }
-            Self::Unit(unit_name, t) => Self::Unit(unit_name.clone(), Box::new(t.substitute(name, t))),
+            Self::Unit(unit_name, inner) => Self::Unit(
+                unit_name.clone(),
+                Box::new(inner.substitute(name, substitution)),
+            ),
             Self::None
             | Self::Never
             | Self::Any
@@ -199,29 +200,36 @@ impl Type {
             Self::Tuple(items) => Self::Tuple(
                 items
                     .iter()
-                    .map(|field_t| field_t.substitute(name, t))
+                    .map(|field_t| field_t.substitute(name, substitution))
                     .collect(),
             ),
-            Self::Array(item_t, size) => {
-                Self::Array(Box::new(item_t.substitute(name, t)), size.clone())
-            }
+            Self::Array(item_t, size) => Self::Array(
+                Box::new(item_t.substitute(name, substitution)),
+                size.clone(),
+            ),
             Self::Struct(fields) => Self::Struct(
                 fields
                     .iter()
-                    .map(|(field_name, field_t)| (field_name.clone(), field_t.substitute(name, t)))
+                    .map(|(field_name, field_t)| {
+                        (field_name.clone(), field_t.substitute(name, substitution))
+                    })
                     .collect(),
             ),
             Self::Union(fields) => Self::Union(
                 fields
                     .iter()
-                    .map(|(field_name, field_t)| (field_name.clone(), field_t.substitute(name, t)))
+                    .map(|(field_name, field_t)| {
+                        (field_name.clone(), field_t.substitute(name, substitution))
+                    })
                     .collect(),
             ),
             Self::Proc(args, ret) => Self::Proc(
-                args.iter().map(|arg| arg.substitute(name, t)).collect(),
-                Box::new(ret.substitute(name, t)),
+                args.iter()
+                    .map(|arg| arg.substitute(name, substitution))
+                    .collect(),
+                Box::new(ret.substitute(name, substitution)),
             ),
-            Self::Pointer(ptr) => Self::Pointer(Box::new(ptr.substitute(name, t))),
+            Self::Pointer(ptr) => Self::Pointer(Box::new(ptr.substitute(name, substitution))),
         }
     }
 
@@ -263,11 +271,18 @@ impl Type {
                     // If the named type doesn't exist, then we can't cast.
                     Ok(false)
                 }
-            },
+            }
+
             // Two Units can only be cast between one another if they have the same name, and the types inside them can be cast.
-            (Self::Unit(unit_name1, t1), Self::Unit(unit_name2, t2)) if unit_name1 == unit_name2 => t1.can_cast_to_checked(t2, env, i),
+            (Self::Unit(unit_name1, t1), Self::Unit(unit_name2, t2))
+                if unit_name1 == unit_name2 =>
+            {
+                t1.can_cast_to_checked(t2, env, i)
+            }
             // If we're casting to or from a Unit, we can only cast if the type inside the Unit can be cast.
-            (Self::Unit(_, t), other) | (other, Self::Unit(_, t)) => t.can_cast_to_checked(other, env, i),
+            (Self::Unit(_, t), other) | (other, Self::Unit(_, t)) => {
+                t.can_cast_to_checked(other, env, i)
+            }
 
             (Self::Int, Self::Float) | (Self::Float, Self::Int) => Ok(true),
             (Self::Int, Self::Char) | (Self::Char, Self::Int) => Ok(true),
@@ -565,7 +580,9 @@ impl Type {
                 let mut offset = 0;
                 for (i, t) in items.iter().enumerate() {
                     if &ConstExpr::Int(i as i32) == member {
-                        return Ok((t.clone().simplify(env)?, offset));
+                        let result = t.clone().simplify(env)?;
+                        eprintln!("result {:?}", result);
+                        return Ok((result, offset));
                     }
 
                     let size = t.get_size(env)?;
@@ -687,7 +704,9 @@ impl Simplify for Type {
                 }
             }
 
-            Self::Unit(unit_name, t) => Self::Unit(unit_name, Box::new(t.simplify_checked(env, i)?)),
+            Self::Unit(unit_name, t) => {
+                Self::Unit(unit_name, Box::new(t.simplify_checked(env, i)?))
+            }
 
             Self::Symbol(ref name) => {
                 if let Some(t) = env.get_type(name) {

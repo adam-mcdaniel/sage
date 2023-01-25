@@ -1,10 +1,10 @@
+use maplit::btreemap;
 use sage::{
     asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, A, SP},
     lir::*,
     parse::*,
     vm::{as_int, CoreInterpreter, StandardInterpreter, TestingDevice},
 };
-use maplit::btreemap;
 
 fn var(name: impl ToString) -> ConstExpr {
     ConstExpr::Symbol(name.to_string())
