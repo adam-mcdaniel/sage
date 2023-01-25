@@ -122,7 +122,7 @@ The lower intermediate representation is the type-checked layer of the compiler;
 
 [***Click here to use the interactive compiler online!***](https://adam-mcdaniel.net/sage)
 
-- [128, 192, and 256 bit AES encryption and decryption](examples/lir/AES.asm.sg)
+- [128, 192, and 256 bit AES encryption and decryption](examples/lir/AES.lir.sg)
 - [Quicksort](examples/lir/quicksort.lir.sg)
 - [Factorial](examples/lir/fact.lir.sg)
 - [Mutually Recursive Types](examples/lir/recursive-types.lir.sg)
