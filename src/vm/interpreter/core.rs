@@ -313,8 +313,8 @@ where
                 }
 
                 CoreOp::IsNonNegative => self.register = isize::from(self.register >= 0),
-                CoreOp::Get => self.register = self.device.get()?,
-                CoreOp::Put => self.device.put(self.register)?,
+                CoreOp::Get(i) => self.register = self.device.get(i.clone())?,
+                CoreOp::Put(o) => self.device.put(self.register, o.clone())?,
             }
             self.i += 1
         } else {

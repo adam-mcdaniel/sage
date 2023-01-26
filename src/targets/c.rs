@@ -15,14 +15,14 @@
 //! fixed by this implementations by just moving function definitions
 //! code outside of the `main` function, since the virtual machine
 //! does not depend on defining functions at runtime.
-use super::Target;
+use super::CompiledTarget;
 use crate::vm::{CoreOp, CoreProgram, StandardOp, StandardProgram};
 
 /// The type for the C target which implements the `Target` trait.
 /// This allows the compiler to target the C language.
 pub struct C;
 
-impl Target for C {
+impl CompiledTarget for C {
     fn build_core(&self, program: &CoreProgram) -> Result<String, String> {
         let CoreProgram(ops) = program;
         let mut result = String::from(
@@ -128,8 +128,8 @@ int main() {
                 CoreOp::Rem => "reg.i %= ptr->i;".to_string(),
                 CoreOp::IsNonNegative => "reg.i = reg.i >= 0;".to_string(),
 
-                CoreOp::Get => "reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;".to_string(),
-                CoreOp::Put => "putchar(reg.i);".to_string(),
+                CoreOp::Get(src) => "reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;".to_string(),
+                CoreOp::Put(dst) => "putchar(reg.i);".to_string(),
             };
             result.push('\n')
         }
@@ -150,6 +150,18 @@ union int_or_float {
     union int_or_float *p;
 } tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg;
 void (*funs[10000])(void);
+
+union int_or_float peek() {
+    union int_or_float tmp;
+    tmp.i = 0;
+    return tmp;
+}
+
+void poke(union int_or_float val) {
+    return;
+}
+
+
 int main() {
 "#,
         );
@@ -171,28 +183,12 @@ int main() {
                 StandardOp::Set(v) => {
                     result += &format!("{}reg.f = {:?};\n", tab.repeat(indent), v)
                 }
-                StandardOp::GetChar => {
-                    result += &format!(
-                        "{}reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;\n",
-                        tab.repeat(indent)
-                    )
+                StandardOp::Peek => {
+                    result += &format!("{}reg = peek();\n", tab.repeat(indent))
                 }
-                StandardOp::PutChar => {
-                    result += &format!("{}putchar(reg.i);\n", tab.repeat(indent))
+                StandardOp::Poke => {
+                    result += &format!("{}poke(reg);\n", tab.repeat(indent));
                 }
-                StandardOp::GetInt => {
-                    result += &format!("{}scanf(\"%lld\", &reg.i);\n", tab.repeat(indent));
-                }
-                StandardOp::PutInt => {
-                    result += &format!("{}printf(\"%lld\", reg.i);\n", tab.repeat(indent));
-                }
-                StandardOp::GetFloat => {
-                    result += &format!("{}scanf(\"%lf\", &reg.f);\n", tab.repeat(indent));
-                }
-                StandardOp::PutFloat => {
-                    result += &format!("{}printf(\"%lg\", reg.f);\n", tab.repeat(indent));
-                }
-
                 StandardOp::Add => {
                     result += &format!("{}reg.f += ptr->f;\n", tab.repeat(indent));
                 }
@@ -364,14 +360,14 @@ int main() {
                     result += &format!("{}reg.i = reg.i >= 0;\n", tab.repeat(indent));
                 }
 
-                StandardOp::CoreOp(CoreOp::Get) => {
-                    result += &format!(
-                        "{}reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;\n",
-                        tab.repeat(indent)
-                    );
+                StandardOp::CoreOp(CoreOp::Get(src)) => {
+                    // result += &format!(
+                    //     "{}reg.i = (reg.i = getchar()) == EOF? -1 : reg.i;\n",
+                    //     tab.repeat(indent)
+                    // );
                 }
-                StandardOp::CoreOp(CoreOp::Put) => {
-                    result += &format!("{}putchar(reg.i);\n", tab.repeat(indent));
+                StandardOp::CoreOp(CoreOp::Put(dst)) => {
+                    // result += &format!("{}putchar(reg.i);\n", tab.repeat(indent));
                 }
             }
         }

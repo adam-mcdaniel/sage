@@ -251,18 +251,18 @@ pub enum StandardOp {
     /// Store the value of the register (as a float) to the power of the value pointed to on the tape (as a float) into the register.
     Pow,
 
-    /// Get a character from the input stream (like `getchar()`) and store it in the register.
-    GetChar,
-    /// Print the register as a character to the output stream (like `putchar(reg)`).
-    PutChar,
-    /// Get an integer from the input stream (like `scanf("%lld", &reg)`) and store it in the register.
-    GetInt,
-    /// Print the register as an integer to the output stream (like `printf("%lld", reg)`).
-    PutInt,
-    /// Get a float from the input stream (like `scanf("%f", &reg)`) and store it in the register.
-    GetFloat,
-    /// Print the register as a float to the output stream (like `printf("%f", reg)`).
-    PutFloat,
+    /// Get a value from the input interface / device and store it in the register.
+    /// This is intended to function something like system calls for using any external
+    /// functionality that can't be implemented in the virtual machine, such as I/O or OS operations.
+    ///
+    /// The specific behavior of this instruction is purposefully not defined.
+    Peek,
+    /// Write the value of the register to the output interface / device.
+    /// This is intended to function something like system calls for using any external
+    /// functionality that can't be implemented in the virtual machine, such as I/O or OS operations.
+    ///
+    /// The specific behavior of this instruction is purposefully not defined.
+    Poke,
 }
 
 impl fmt::Display for StandardOp {
@@ -287,12 +287,8 @@ impl fmt::Display for StandardOp {
             StandardOp::ACos => write!(f, "acos"),
             StandardOp::ATan => write!(f, "atan"),
             StandardOp::Pow => write!(f, "pow"),
-            StandardOp::GetChar => write!(f, "get-char"),
-            StandardOp::PutChar => write!(f, "put-char"),
-            StandardOp::GetInt => write!(f, "get-int"),
-            StandardOp::PutInt => write!(f, "put-int"),
-            StandardOp::GetFloat => write!(f, "get-float"),
-            StandardOp::PutFloat => write!(f, "put-float"),
+            StandardOp::Peek => write!(f, "peek"),
+            StandardOp::Poke => write!(f, "poke"),
         }
     }
 }

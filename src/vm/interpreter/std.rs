@@ -326,8 +326,8 @@ where
                     }
 
                     CoreOp::IsNonNegative => self.register = isize::from(self.register >= 0),
-                    CoreOp::Get => self.register = self.device.get()?,
-                    CoreOp::Put => self.device.put(self.register)?,
+                    CoreOp::Get(i) => self.register = self.device.get(i.clone())?,
+                    CoreOp::Put(o) => self.device.put(self.register, o.clone())?,
                 },
 
                 StandardOp::Set(n) => self.register = as_int(*n),
@@ -377,23 +377,11 @@ where
                     self.register = as_int(as_float(self.register).powf(as_float(*self.get_cell())))
                 }
 
-                StandardOp::GetFloat => {
-                    self.register = as_int(self.device.get_float()?);
+                StandardOp::Poke => {
+                    self.device.poke(self.register)?;
                 }
-                StandardOp::GetInt => {
-                    self.register = self.device.get_int()?;
-                }
-                StandardOp::GetChar => {
-                    self.register = self.device.get_char()? as u8 as isize;
-                }
-                StandardOp::PutFloat => {
-                    self.device.put_float(as_float(self.register))?;
-                }
-                StandardOp::PutInt => {
-                    self.device.put_int(self.register)?;
-                }
-                StandardOp::PutChar => {
-                    self.device.put_char(self.register as u8 as char)?;
+                StandardOp::Peek => {
+                    self.register = self.device.peek()?;
                 }
 
                 StandardOp::Alloc => {

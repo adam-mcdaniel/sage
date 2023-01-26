@@ -3,6 +3,8 @@
 //! Core instructions are instructions that **must** be implemented for
 //! every target. Write programs in the core variant to guarantee ports
 //! for ***every*** target.
+use crate::{Input, Output};
+
 use super::{Error, StandardOp, StandardProgram, VirtualMachineProgram};
 use core::fmt;
 use std::{collections::HashMap, hash::Hash};
@@ -231,18 +233,10 @@ pub enum CoreOp {
     /// Make the register equal to 1 if the register is non-negative, otherwise make it equal to 0.
     IsNonNegative,
 
-    /// Get a value from the input interface / device and store it in the register.
-    /// This is intended to function something like system calls for using any external
-    /// functionality that can't be implemented in the virtual machine, such as I/O or OS operations.
-    ///
-    /// The specific behavior of this instruction is purposefully not defined.
-    Get,
-    /// Write the value of the register to the output interface / device.
-    /// This is intended to function something like system calls for using any external
-    /// functionality that can't be implemented in the virtual machine, such as I/O or OS operations.
-    ///
-    /// The specific behavior of this instruction is purposefully not defined.
-    Put,
+    /// Get a value from an input source and store it in the register.
+    Get(Input),
+    /// Write the value of the register to an output source.
+    Put(Output),
 }
 
 impl fmt::Display for CoreOp {
@@ -271,8 +265,8 @@ impl fmt::Display for CoreOp {
             CoreOp::Div => write!(f, "div"),
             CoreOp::Rem => write!(f, "rem"),
             CoreOp::IsNonNegative => write!(f, "gez"),
-            CoreOp::Get => write!(f, "get"),
-            CoreOp::Put => write!(f, "put"),
+            CoreOp::Get(i) => write!(f, "get {i:?}"),
+            CoreOp::Put(o) => write!(f, "put {o:?}"),
         }
     }
 }

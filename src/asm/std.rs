@@ -277,45 +277,45 @@ impl StandardOp {
                 }
             }
 
-            Self::PutStr(s) => {
-                for ch in s.chars() {
-                    result.set_register(ch as isize);
+            // Self::PutStr(s) => {
+            //     for ch in s.chars() {
+            //         result.set_register(ch as isize);
 
-                    if result.std_op(vm::StandardOp::PutChar).is_err() {
-                        unsupported(self.clone())?
-                    }
-                }
-            }
-            Self::PutChar(loc) => {
-                if loc.put_char(result).is_err() {
-                    unsupported(self.clone())?
-                }
-            }
-            Self::GetChar(loc) => {
-                if loc.get_char(result).is_err() {
-                    unsupported(self.clone())?
-                }
-            }
-            Self::PutInt(loc) => {
-                if loc.put_int(result).is_err() {
-                    unsupported(self.clone())?
-                }
-            }
-            Self::GetInt(loc) => {
-                if loc.get_int(result).is_err() {
-                    unsupported(self.clone())?
-                }
-            }
-            Self::PutFloat(loc) => {
-                if loc.put_float(result).is_err() {
-                    unsupported(self.clone())?
-                }
-            }
-            Self::GetFloat(loc) => {
-                if loc.get_float(result).is_err() {
-                    unsupported(self.clone())?
-                }
-            }
+            //         if result.op(vm::StandardOp::PutChar).is_err() {
+            //             unsupported(self.clone())?
+            //         }
+            //     }
+            // }
+            // Self::PutChar(loc) => {
+            //     if loc.put_char(result).is_err() {
+            //         unsupported(self.clone())?
+            //     }
+            // }
+            // Self::GetChar(loc) => {
+            //     if loc.get_char(result).is_err() {
+            //         unsupported(self.clone())?
+            //     }
+            // }
+            // Self::PutInt(loc) => {
+            //     if loc.put_int(result).is_err() {
+            //         unsupported(self.clone())?
+            //     }
+            // }
+            // Self::GetInt(loc) => {
+            //     if loc.get_int(result).is_err() {
+            //         unsupported(self.clone())?
+            //     }
+            // }
+            // Self::PutFloat(loc) => {
+            //     if loc.put_float(result).is_err() {
+            //         unsupported(self.clone())?
+            //     }
+            // }
+            // Self::GetFloat(loc) => {
+            //     if loc.get_float(result).is_err() {
+            //         unsupported(self.clone())?
+            //     }
+            // }
             Self::Alloc(loc) => {
                 if loc.alloc(result).is_err() {
                     unsupported(self.clone())?

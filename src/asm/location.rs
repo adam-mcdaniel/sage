@@ -62,7 +62,7 @@
 //!   Indirect(Address(6)) // go the address pointed to by the value in the 6th cell of the tape
 //!   ```
 use crate::vm::{self, Error, VirtualMachineProgram};
-use crate::NULL;
+use crate::{Input, Output, NULL};
 use core::fmt;
 
 /// The stack pointer register.
@@ -565,50 +565,32 @@ impl Location {
         self.std_op(vm::StandardOp::ToInt, result)
     }
 
-    pub fn get_float(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub fn get(&self, src: Input, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
-        result.std_op(vm::StandardOp::GetFloat)?;
+        result.op(vm::CoreOp::Get(src));
+        result.save();
+        self.from(result);
+    }
+
+    pub fn put(&self, dst: Output, result: &mut dyn VirtualMachineProgram) {
+        self.to(result);
+        result.restore();
+        result.op(vm::CoreOp::Put(dst));
+        self.from(result);
+    }
+
+    pub fn peek(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+        self.to(result);
+        result.std_op(vm::StandardOp::Peek)?;
         result.save();
         self.from(result);
         Ok(())
     }
 
-    pub fn get_int(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
-        self.to(result);
-        result.std_op(vm::StandardOp::GetInt)?;
-        result.save();
-        self.from(result);
-        Ok(())
-    }
-
-    pub fn get_char(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
-        self.to(result);
-        result.std_op(vm::StandardOp::GetChar)?;
-        result.save();
-        self.from(result);
-        Ok(())
-    }
-
-    pub fn put_float(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub fn poke(&self, dst: Output, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.to(result);
         result.restore();
-        result.std_op(vm::StandardOp::PutFloat)?;
-        self.from(result);
-        Ok(())
-    }
-
-    pub fn put_int(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
-        self.to(result);
-        result.restore();
-        result.std_op(vm::StandardOp::PutInt)?;
-        self.from(result);
-        Ok(())
-    }
-
-    pub fn put_char(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
-        self.to(result);
-        result.restore();
-        result.std_op(vm::StandardOp::PutChar)?;
+        result.std_op(vm::StandardOp::Poke)?;
         self.from(result);
         Ok(())
     }

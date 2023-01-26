@@ -53,6 +53,7 @@
 //! 16 bit ints + no floats for a hardware implementation would suffice.
 //! Infinitely large ints and floats are also supported, but the implementation
 //! must be able to handle them.
+use crate::{Input, Output};
 
 mod core;
 pub use self::core::*;
@@ -151,12 +152,12 @@ pub trait VirtualMachineProgram {
         self.op(CoreOp::BitwiseNand)
     }
 
-    fn get(&mut self) {
-        self.op(CoreOp::Get)
+    fn get(&mut self, src: Input) {
+        self.op(CoreOp::Get(src))
     }
 
-    fn put(&mut self) {
-        self.op(CoreOp::Put)
+    fn put(&mut self, dst: Output) {
+        self.op(CoreOp::Put(dst))
     }
 
     fn is_non_negative(&mut self) {
