@@ -567,7 +567,10 @@ impl Type {
             Type::Struct(members) => {
                 let mut offset = 0;
                 for (k, t) in members.clone() {
+                    // If this element is the requested member
                     if &ConstExpr::Symbol(k) == member {
+                        // Return the member's type and the offset in memory
+                        // from the value's address
                         return Ok((t.simplify(env)?, offset));
                     }
 
@@ -579,8 +582,12 @@ impl Type {
             Type::Tuple(items) => {
                 let mut offset = 0;
                 for (i, t) in items.iter().enumerate() {
+                    // If this element is the requested member
                     if &ConstExpr::Int(i as i32) == member {
+                        // Simplify the type under the environment
                         let result = t.clone().simplify(env)?;
+                        // Return the member's type and its offset in memory
+                        // from the value's address.
                         return Ok((result, offset));
                     }
 
@@ -595,8 +602,11 @@ impl Type {
             },
 
             Type::Let(name, t, ret) => {
+                // Create a new scope and define the new type within it
                 let mut new_env = env.clone();
                 new_env.define_type(name, *t.clone());
+                // Find the member offset of the returned type under the new scope
+                // 
                 // NOTE:
                 // We simplfy the type before AND after getting the member offset because
                 // we want to make sure that recursive types don't leave undefined symbols
