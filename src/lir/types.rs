@@ -387,7 +387,7 @@ impl Type {
         if i > 50 {
             return Ok(false);
         }
-
+        
         Ok(match (self, other) {
             (Self::Any, _)
             | (_, Self::Any)
@@ -581,7 +581,6 @@ impl Type {
                 for (i, t) in items.iter().enumerate() {
                     if &ConstExpr::Int(i as i32) == member {
                         let result = t.clone().simplify(env)?;
-                        eprintln!("result {:?}", result);
                         return Ok((result, offset));
                     }
 
@@ -598,7 +597,12 @@ impl Type {
             Type::Let(name, t, ret) => {
                 let mut new_env = env.clone();
                 new_env.define_type(name, *t.clone());
-                ret.get_member_offset(member, expr, &new_env)
+                // NOTE:
+                // We simplfy the type before AND after getting the member offset because
+                // we want to make sure that recursive types don't leave undefined symbols
+                // in the in the resulting type.
+                let (t, offset) = ret.clone().simplify(env)?.get_member_offset(member, expr, &new_env)?;
+                Ok((t.simplify(&new_env)?, offset))
             }
 
             Type::Unit(_unit_name, t) => t.get_member_offset(member, expr, env),

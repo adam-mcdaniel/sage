@@ -131,7 +131,26 @@ The assembly instructions always take arguments of: constant integers known at c
 
 The lower intermediate representation is the type-checked layer of the compiler; all of the intermediate representations constructed on top of this layer are expressed in terms of LIR code before type-checking. LIR is high level enough to be *decently* human readable and usable. It's a bit more terse than C, but not by much. The type system is very expressive, and allows for unions, enums, procedures (as values), structures, arrays, and anonymous recursive types.
 
+Here's an example of an anynomous recursive type implementing a linked list which can be typed-checked and compiled to the virtual machine:
+
+```rs
+const putint = proc(i: Int) -> None = std {
+    put-int [SP]
+    pop
+} in
+
+type List = let B = let T = Int in (T, &B) in B in
+
+let x = (3, Null),
+    y = (2, &x),
+    z: (let A = (Int, &A) in A) = (1, &y),
+    w: List = (0, &z)
+    in putint(w.1->1->1->0)
+```
+
 [***Click here to use the interactive compiler online!***](https://adam-mcdaniel.net/sage)
+
+#### Examples
 
 - [128, 192, and 256 bit AES encryption and decryption](examples/lir/AES.lir.sg)
 - [Quicksort](examples/lir/quicksort.lir.sg)
