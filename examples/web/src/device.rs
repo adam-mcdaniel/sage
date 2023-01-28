@@ -122,13 +122,12 @@ impl Device for WasmDevice {
 
     fn put(&mut self, val: isize, dst: Output) -> Result<(), String> {
         match dst.mode {
-            OutputMode::StdoutChar => {
+            OutputMode::StdoutChar | OutputMode::StderrChar => {
                 self.output.push(val);
                 Ok(())
             }
             OutputMode::StdoutInt => self.put_int(val),
             OutputMode::StdoutFloat => self.put_float(as_float(val)),
-            OutputMode::StderrChar => self.put_char(val as u8 as char),
             OutputMode::StderrInt => self.put_int(val),
             OutputMode::StderrFloat => self.put_float(as_float(val)),
             _ => Err("invalid output mode".to_string()),
