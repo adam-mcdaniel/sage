@@ -142,7 +142,27 @@
 <span id="137">137</span>
 <span id="138">138</span>
 <span id="139">139</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::asm</span>::{<span class="ident">AssemblyProgram</span>, <span class="ident">CoreOp</span>, <span class="ident">A</span>, <span class="ident">FP</span>, <span class="ident">SP</span>};
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # Procedure</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! A procedure of LIR code which can be applied to a list of arguments.</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! A procedure is compiled down to a label in the assembly code.</span>
+<span class="doccomment">//! The label is called with the `Call` instruction. Procedures are also</span>
+<span class="doccomment">//! only compiled once, and referenced by their label every other time</span>
+<span class="doccomment">//! they are used.</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! Procedures are created by the `proc` keyword.</span>
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::asm</span>::{<span class="ident">AssemblyProgram</span>, <span class="ident">CoreOp</span>, <span class="ident">A</span>, <span class="ident">FP</span>, <span class="ident">SP</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::lir</span>::{<span class="ident">Compile</span>, <span class="ident">ConstExpr</span>, <span class="ident">Env</span>, <span class="ident">Error</span>, <span class="ident">Expr</span>, <span class="ident">GetSize</span>, <span class="ident">GetType</span>, <span class="ident">Type</span>, <span class="ident">TypeCheck</span>};
 <span class="kw">use</span> <span class="ident">core::fmt</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Mutex</span>;

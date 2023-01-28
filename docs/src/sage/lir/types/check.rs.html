@@ -722,6 +722,8 @@
 <span id="717">717</span>
 <span id="718">718</span>
 <span id="719">719</span>
+<span id="720">720</span>
+<span id="721">721</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Type Checking</span>
 <span class="doccomment">//! </span>
 <span class="doccomment">//! This module contains the type checking logic for the Lower Intermediate Representation.</span>
@@ -1301,6 +1303,8 @@
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Char</span>(<span class="kw">_</span>)
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Bool</span>(<span class="kw">_</span>)
             <span class="op">|</span> <span class="ident"><span class="self">Self</span>::SizeOfType</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+
+            <span class="ident"><span class="self">Self</span>::TypeOf</span>(<span class="ident">expr</span>) =&gt; <span class="ident">expr</span>.<span class="ident">type_check</span>(<span class="ident">env</span>),
 
             <span class="comment">// Typecheck a constant type-cast.</span>
             <span class="ident"><span class="self">Self</span>::As</span>(<span class="ident">expr</span>, <span class="ident">cast_ty</span>) =&gt; {

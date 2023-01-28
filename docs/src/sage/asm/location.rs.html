@@ -609,6 +609,13 @@
 <span id="604">604</span>
 <span id="605">605</span>
 <span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Assembly Memory Location</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains the `Location` type, which represents a memory</span>
@@ -1008,10 +1015,8 @@
         <span class="ident">dst</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>,
         <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="ident">dst</span>.<span class="ident">set_float</span>(<span class="op">-</span><span class="number">1.0</span>, <span class="ident">result</span>)<span class="question-mark">?</span>;
-        <span class="ident">dst</span>.<span class="ident">add_float</span>(<span class="ident">src</span>, <span class="ident">result</span>)<span class="question-mark">?</span>;
+        <span class="ident">src</span>.<span class="ident">copy_to</span>(<span class="ident">dst</span>, <span class="ident">result</span>);
         <span class="ident">dst</span>.<span class="ident">sub_float</span>(<span class="self">self</span>, <span class="ident">result</span>)<span class="question-mark">?</span>;
-        <span class="ident">dst</span>.<span class="ident">mul_float</span>(<span class="ident">src</span>, <span class="ident">result</span>)<span class="question-mark">?</span>;
         <span class="ident">dst</span>.<span class="ident">std_op</span>(<span class="ident">vm::StandardOp::IsNonNegative</span>, <span class="ident">result</span>)
     }
     <span class="doccomment">/// dst = this cell &lt;= source cell.</span>
@@ -1104,6 +1109,15 @@
         <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">std_binop</span>(<span class="ident">vm::StandardOp::Rem</span>, <span class="ident">src</span>, <span class="ident">result</span>)
+    }
+
+    <span class="doccomment">/// This cell **= source cell.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pow_float</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>,
+        <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">std_binop</span>(<span class="ident">vm::StandardOp::Pow</span>, <span class="ident">src</span>, <span class="ident">result</span>)
     }
 
     <span class="doccomment">/// This cell = a constant value.</span>

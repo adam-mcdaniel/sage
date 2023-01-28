@@ -584,10 +584,10 @@
         <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">src</span>.<span class="ident">mode</span> {
             <span class="ident">InputMode::StdinChar</span> =&gt; <span class="self">self</span>.<span class="ident">get_char</span>()<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">isize</span>,
             <span class="ident">InputMode::StdinInt</span> =&gt; <span class="self">self</span>.<span class="ident">get_int</span>()<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">isize</span>,
-            <span class="ident">InputMode::StdinFloat</span> =&gt; <span class="self">self</span>.<span class="ident">get_float</span>()<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">isize</span>,
+            <span class="ident">InputMode::StdinFloat</span> =&gt; <span class="ident">as_int</span>(<span class="self">self</span>.<span class="ident">get_float</span>()<span class="question-mark">?</span>),
             <span class="ident">InputMode::Thermometer</span> =&gt; <span class="ident">as_int</span>(<span class="number">295.15</span>),
             <span class="kw">_</span> =&gt; {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;Requested input mode: {}&quot;</span>, <span class="ident">src</span>.<span class="ident">mode</span>);
+                <span class="macro">eprintln!</span>(<span class="string">&quot;Requested input mode: {} (on channel #{})&quot;</span>, <span class="ident">src</span>.<span class="ident">mode</span>, <span class="ident">src</span>.<span class="ident">channel</span>);
                 <span class="number">0</span>
             },
         })
@@ -603,7 +603,7 @@
             <span class="ident">OutputMode::StderrInt</span> =&gt; <span class="macro">eprint!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">val</span>),
             <span class="ident">OutputMode::StderrFloat</span> =&gt; <span class="macro">eprint!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">as_float</span>(<span class="ident">val</span>)),
             <span class="kw">_</span> =&gt; {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;Requested output mode: {} (with output={val})&quot;</span>, <span class="ident">dst</span>.<span class="ident">mode</span>);
+                <span class="macro">eprintln!</span>(<span class="string">&quot;Requested output mode: {} (on channel #{}) with output={val}&quot;</span>, <span class="ident">dst</span>.<span class="ident">mode</span>, <span class="ident">dst</span>.<span class="ident">channel</span>);
             },
         }
         <span class="kw">if</span> <span class="ident">stdout</span>().<span class="ident">flush</span>().<span class="ident">is_err</span>() {

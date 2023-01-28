@@ -154,7 +154,18 @@
 <span id="149">149</span>
 <span id="150">150</span>
 <span id="151">151</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">lir</span>::<span class="kw-2">*</span>, <span class="ident">asm</span>::{<span class="ident">AssemblyProgram</span>, <span class="ident">CoreOp</span>, <span class="ident">SP</span>}};
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # Logic Operations</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! This module implements the `And`, `Or`, and `Not` structs,</span>
+<span class="doccomment">//! which implement boolean logic operations.</span>
+
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">lir</span>::<span class="kw-2">*</span>, <span class="ident">asm</span>::{<span class="ident">AssemblyProgram</span>, <span class="ident">CoreOp</span>, <span class="ident">SP</span>}};
 <span class="kw">use</span> <span class="ident">::core::fmt</span>::{<span class="ident">Debug</span>, <span class="ident">Display</span>, <span class="ident">Formatter</span>, <span class="prelude-ty">Result</span> <span class="kw">as</span> <span class="ident">FmtResult</span>};
 
 <span class="doccomment">/// A boolean &quot;And&quot; operation between two values.</span>
@@ -190,11 +201,11 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="doccomment">/// Clone this binary operation into a box.</span>
     <span class="kw">fn</span> <span class="ident">clone_box</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">BinaryOp</span><span class="op">&gt;</span> {
         <span class="ident">Box::new</span>(<span class="kw-2">*</span><span class="self">self</span>)
     }
 }
-
 
 <span class="doccomment">/// A boolean &quot;Or&quot; operation between two values.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
@@ -229,13 +240,13 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="doccomment">/// Clone this operation into a box.</span>
     <span class="kw">fn</span> <span class="ident">clone_box</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">BinaryOp</span><span class="op">&gt;</span> {
         <span class="ident">Box::new</span>(<span class="kw-2">*</span><span class="self">self</span>)
     }
 }
 
-
-<span class="doccomment">/// A boolean &quot;Or&quot; operation between two values.</span>
+<span class="doccomment">/// A boolean &quot;Not&quot; operation on a value.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Not</span>;
 
@@ -264,7 +275,8 @@
         <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Not</span>(<span class="ident">SP</span>.<span class="ident">deref</span>()));
         <span class="prelude-val">Ok</span>(())
     }
-
+    
+    <span class="doccomment">/// Clone this operation into a box.</span>
     <span class="kw">fn</span> <span class="ident">clone_box</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">UnaryOp</span><span class="op">&gt;</span> {
         <span class="ident">Box::new</span>(<span class="kw-2">*</span><span class="self">self</span>)
     }

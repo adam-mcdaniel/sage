@@ -328,7 +328,49 @@
 <span id="323">323</span>
 <span id="324">324</span>
 <span id="325">325</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::lir</span>::{
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # Constant Expressions</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! Constant expressions are expressions that can be evaluated at compile time.</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! They are used in a few places:</span>
+<span class="doccomment">//! - Array lengths</span>
+<span class="doccomment">//! - Getting the size of types and expressions</span>
+<span class="doccomment">//! - Procedures</span>
+<span class="doccomment">//! - Builtin functions</span>
+<span class="doccomment">//! - Enum variants</span>
+
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::lir</span>::{
     <span class="ident">CoreBuiltin</span>, <span class="ident">Env</span>, <span class="ident">Error</span>, <span class="ident">Expr</span>, <span class="ident">GetSize</span>, <span class="ident">GetType</span>, <span class="ident">Procedure</span>, <span class="ident">Simplify</span>, <span class="ident">StandardBuiltin</span>, <span class="ident">Type</span>
 };
 
@@ -357,6 +399,9 @@
     <span class="ident">Bool</span>(<span class="ident">bool</span>),
     <span class="doccomment">/// A constant enum variant.</span>
     <span class="ident">Of</span>(<span class="ident">Type</span>, <span class="ident">String</span>),
+
+    <span class="doccomment">/// Get the type of an expression. (as an array of chars)</span>
+    <span class="ident">TypeOf</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&gt;</span>),
 
     <span class="doccomment">/// Get the size of a type (in cells) as a constant int.</span>
     <span class="ident">SizeOfType</span>(<span class="ident">Type</span>),
@@ -425,6 +470,14 @@
                 <span class="op">|</span> <span class="ident"><span class="self">Self</span>::CoreBuiltin</span>(<span class="kw">_</span>)
                 <span class="op">|</span> <span class="ident"><span class="self">Self</span>::StandardBuiltin</span>(<span class="kw">_</span>)
                 <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Proc</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="self">self</span>),
+
+                <span class="ident"><span class="self">Self</span>::TypeOf</span>(<span class="ident">expr</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::Array</span>(
+                    <span class="ident">expr</span>.<span class="ident">get_type_checked</span>(<span class="ident">env</span>, <span class="ident">i</span>)<span class="question-mark">?</span>
+                        .<span class="ident">to_string</span>()
+                        .<span class="ident">chars</span>()
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident"><span class="self">Self</span>::Char</span>(<span class="ident">c</span>))
+                        .<span class="ident">collect</span>(),
+                )),
 
                 <span class="ident"><span class="self">Self</span>::As</span>(<span class="ident">expr</span>, <span class="ident">cast_ty</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">found</span> <span class="op">=</span> <span class="ident">expr</span>.<span class="ident">get_type_checked</span>(<span class="ident">env</span>, <span class="ident">i</span>)<span class="question-mark">?</span>;
@@ -530,6 +583,12 @@
 
                 <span class="ident">cast_ty</span>
             }
+            <span class="ident"><span class="self">Self</span>::TypeOf</span>(<span class="ident">expr</span>) =&gt; {
+                <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">expr</span>.<span class="ident">get_type_checked</span>(<span class="ident">env</span>, <span class="ident">i</span>)<span class="question-mark">?</span>
+                    .<span class="ident">to_string</span>()
+                    .<span class="ident">len</span>();
+                <span class="ident">Type::Array</span>(<span class="ident">Box::new</span>(<span class="ident">Type::Char</span>), <span class="ident">Box::new</span>(<span class="ident"><span class="self">Self</span>::Int</span>(<span class="ident">size</span> <span class="kw">as</span> <span class="ident">i32</span>)))
+            },
             <span class="ident"><span class="self">Self</span>::Null</span> =&gt; <span class="ident">Type::Pointer</span>(<span class="ident">Box::new</span>(<span class="ident">Type::Any</span>)),
             <span class="ident"><span class="self">Self</span>::None</span> =&gt; <span class="ident">Type::None</span>,
             <span class="ident"><span class="self">Self</span>::SizeOfType</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="ident"><span class="self">Self</span>::SizeOfExpr</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Int</span>(<span class="kw">_</span>) =&gt; <span class="ident">Type::Int</span>,
@@ -599,6 +658,9 @@
             }
             <span class="ident"><span class="self">Self</span>::StandardBuiltin</span>(<span class="ident">builtin</span>) =&gt; {
                 <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{builtin}&quot;</span>)
+            }
+            <span class="ident"><span class="self">Self</span>::TypeOf</span>(<span class="ident">expr</span>) =&gt; {
+                <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;typeof({expr})&quot;</span>)
             }
             <span class="ident"><span class="self">Self</span>::Proc</span>(<span class="ident">proc</span>) =&gt; {
                 <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{proc}&quot;</span>)

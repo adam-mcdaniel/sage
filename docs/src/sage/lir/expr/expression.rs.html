@@ -634,7 +634,27 @@
 <span id="629">629</span>
 <span id="630">630</span>
 <span id="631">631</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::lir</span>::{
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # Expression</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! An expression is a runtime value.</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! Expressions are compiled down into equivalent assembly code</span>
+<span class="doccomment">//! which are then executed by the runtime.</span>
+
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::lir</span>::{
     <span class="ident">ConstExpr</span>, <span class="ident">Procedure</span>, <span class="ident">Type</span>
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::ops</span>::<span class="kw-2">*</span>;
@@ -806,6 +826,12 @@
     <span class="doccomment">/// Logical or this expression with another.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">or</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">Or</span>, <span class="ident">other</span>)
+    }
+
+    <span class="doccomment">/// Get the power of this expression to another.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::should_implement_trait</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pow</span>(<span class="self">self</span>, <span class="ident">exp</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">Arithmetic::Power</span>, <span class="ident">exp</span>)
     }
 
     <span class="doccomment">/// Add this expression to another.</span>
@@ -1229,7 +1255,7 @@
             (<span class="ident">Refer</span>(<span class="ident">val1</span>), <span class="ident">Refer</span>(<span class="ident">val2</span>)) =&gt; <span class="ident">val1</span> <span class="op">==</span> <span class="ident">val2</span>,
             <span class="comment">// Dereference this expression (i.e. get the value it points to).</span>
             (<span class="ident">Deref</span>(<span class="ident">val1</span>), <span class="ident">Deref</span>(<span class="ident">val2</span>)) =&gt; <span class="ident">val1</span> <span class="op">==</span> <span class="ident">val2</span>,
-            <span class="comment">// /// Store an expression to an address (a pointer).</span>
+            <span class="comment">// Store an expression to an address (a pointer).</span>
             (<span class="ident">DerefMut</span>(<span class="ident">dst1</span>, <span class="ident">src1</span>), <span class="ident">DerefMut</span>(<span class="ident">dst2</span>, <span class="ident">src2</span>)) =&gt; <span class="ident">dst1</span> <span class="op">==</span> <span class="ident">dst2</span> <span class="op">&amp;&amp;</span> <span class="ident">src1</span> <span class="op">==</span> <span class="ident">src2</span>,
         
             <span class="comment">// Apply a function with some arguments.</span>

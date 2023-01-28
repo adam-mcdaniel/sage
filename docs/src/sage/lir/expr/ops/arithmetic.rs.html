@@ -257,7 +257,27 @@
 <span id="252">252</span>
 <span id="253">253</span>
 <span id="254">254</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">lir</span>::<span class="kw-2">*</span>, <span class="ident">asm</span>::{<span class="ident">AssemblyProgram</span>, <span class="ident">CoreOp</span>, <span class="ident">SP</span>, <span class="ident">FP</span>, <span class="ident">StandardOp</span>}};
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # Arithmetic Operations</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! This module implements several arithmetic operations:</span>
+<span class="doccomment">//! - `Add`</span>
+<span class="doccomment">//! - `Subtract`</span>
+<span class="doccomment">//! - `Multiply`</span>
+<span class="doccomment">//! - `Divide`</span>
+<span class="doccomment">//! - `Remainder`</span>
+<span class="doccomment">//! - `Power`</span>
+
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">lir</span>::<span class="kw-2">*</span>, <span class="ident">asm</span>::{<span class="ident">AssemblyProgram</span>, <span class="ident">CoreOp</span>, <span class="ident">SP</span>, <span class="ident">StandardOp</span>}};
 <span class="kw">use</span> <span class="ident">::core::fmt</span>::{<span class="ident">Debug</span>, <span class="ident">Display</span>, <span class="ident">Formatter</span>, <span class="prelude-ty">Result</span> <span class="kw">as</span> <span class="ident">FmtResult</span>};
 
 <span class="doccomment">/// An arithmetic operation.</span>
@@ -410,7 +430,7 @@
     <span class="kw">fn</span> <span class="ident">compile_types</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>, <span class="ident">output</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">AssemblyProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">src</span> <span class="op">=</span> <span class="ident">SP</span>.<span class="ident">deref</span>();
         <span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="op">-</span><span class="number">1</span>);
-        <span class="kw">let</span> <span class="ident">tmp</span> <span class="op">=</span> <span class="ident">FP</span>.<span class="ident">offset</span>(<span class="op">-</span><span class="number">1</span>);
+        <span class="kw">let</span> <span class="ident">tmp</span> <span class="op">=</span> <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span>);
         <span class="comment">// Get the respective core operation for the current expression.</span>
         <span class="kw">let</span> <span class="ident">core_op</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident"><span class="self">Self</span>::Add</span> =&gt; <span class="ident">CoreOp::Add</span> { <span class="ident">src</span>, <span class="ident">dst</span> },
@@ -421,8 +441,8 @@
             <span class="ident"><span class="self">Self</span>::Power</span> =&gt; <span class="ident">CoreOp::Many</span>(<span class="macro">vec!</span>[
                 <span class="comment">// We can&#39;t use the `Pow` operation, because it&#39;s not supported by</span>
                 <span class="comment">// the core variant. So we have to do it with a loop.</span>
+                <span class="ident">CoreOp::Move</span> { <span class="ident">src</span>: <span class="ident">dst</span>.<span class="ident">clone</span>(), <span class="ident">dst</span>: <span class="ident">tmp</span>.<span class="ident">clone</span>() },
                 <span class="ident">CoreOp::Set</span>(<span class="ident">dst</span>.<span class="ident">clone</span>(), <span class="number">1</span>),
-                <span class="ident">CoreOp::Move</span> { <span class="ident">src</span>: <span class="ident">src</span>.<span class="ident">clone</span>(), <span class="ident">dst</span>: <span class="ident">tmp</span>.<span class="ident">clone</span>() },
                 <span class="ident">CoreOp::While</span>(<span class="ident">src</span>.<span class="ident">clone</span>()),
                     <span class="ident">CoreOp::Mul</span> { <span class="ident">src</span>: <span class="ident">tmp</span>.<span class="ident">clone</span>(), <span class="ident">dst</span> },
                     <span class="ident">CoreOp::Dec</span>(<span class="ident">src</span>),

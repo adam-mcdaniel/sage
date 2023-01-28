@@ -200,6 +200,28 @@
 <span id="195">195</span>
 <span id="196">196</span>
 <span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Parsing Module</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains all the related functions for parsing</span>
@@ -230,7 +252,10 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::asm</span>::{<span class="ident">CoreProgram</span>, <span class="ident">StandardProgram</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::lir::Expr</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::vm</span>;
+
 <span class="kw">use</span> <span class="ident">lalrpop_util::lalrpop_mod</span>;
+<span class="kw">use</span> <span class="ident">no_comment</span>::{<span class="ident">IntoWithoutComments</span> <span class="kw">as</span> <span class="kw">_</span>, <span class="ident">languages</span>};
+
 <span class="macro">lalrpop_mod!</span>(
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::all</span>)]</span>
     <span class="ident">lir_parser</span>
@@ -243,6 +268,7 @@
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::all</span>)]</span>
     <span class="ident">vm_parser</span>
 );
+
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">asm_parser</span>::{<span class="ident">CoreProgramParser</span>, <span class="ident">StandardProgramParser</span>};
 
 <span class="doccomment">/// Parse Core and Standard variants of virtual machine source code.</span>
@@ -250,10 +276,16 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parse_vm</span>(
     <span class="ident">input</span>: <span class="kw">impl</span> <span class="ident">ToString</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">vm::CoreProgram</span>, <span class="ident">vm::StandardProgram</span><span class="op">&gt;</span>, <span class="ident">String</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="ident">input</span>.<span class="ident">to_string</span>();
-    <span class="kw">match</span> <span class="ident">vm_parser::CoreProgramParser::new</span>().<span class="ident">parse</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">to_string</span>()) {
+    <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="ident">input</span>.<span class="ident">to_string</span>()
+        .<span class="ident">chars</span>()
+        .<span class="ident">without_comments</span>(<span class="ident">languages::rust</span>())
+        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>();
+
+    <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="ident">code</span>.<span class="ident">trim</span>();
+    
+    <span class="kw">match</span> <span class="ident">vm_parser::CoreProgramParser::new</span>().<span class="ident">parse</span>(<span class="kw-2">&amp;</span><span class="ident">code</span>.<span class="ident">to_string</span>()) {
         <span class="prelude-val">Ok</span>(<span class="ident">parsed</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="ident">parsed</span>)),
-        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">match</span> <span class="ident">vm_parser::StandardProgramParser::new</span>().<span class="ident">parse</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">to_string</span>()) {
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">match</span> <span class="ident">vm_parser::StandardProgramParser::new</span>().<span class="ident">parse</span>(<span class="kw-2">&amp;</span><span class="ident">code</span>.<span class="ident">to_string</span>()) {
             <span class="prelude-val">Ok</span>(<span class="ident">parsed</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">parsed</span>)),
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">format_error</span>(<span class="kw-2">&amp;</span><span class="ident">code</span>, <span class="ident">e</span>)),
         },
@@ -263,10 +295,16 @@
 <span class="doccomment">/// Parse Core and Standard variants of assembly source code.</span>
 <span class="doccomment">/// This will return core code by default, but will fallback on standard.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parse_asm</span>(<span class="ident">input</span>: <span class="kw">impl</span> <span class="ident">ToString</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CoreProgram</span>, <span class="ident">StandardProgram</span><span class="op">&gt;</span>, <span class="ident">String</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="ident">input</span>.<span class="ident">to_string</span>();
-    <span class="kw">match</span> <span class="ident">asm_parser::CoreProgramParser::new</span>().<span class="ident">parse</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">to_string</span>()) {
+    <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="ident">input</span>.<span class="ident">to_string</span>()
+        .<span class="ident">chars</span>()
+        .<span class="ident">without_comments</span>(<span class="ident">languages::rust</span>())
+        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>();
+
+    <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="ident">code</span>.<span class="ident">trim</span>();
+
+    <span class="kw">match</span> <span class="ident">asm_parser::CoreProgramParser::new</span>().<span class="ident">parse</span>(<span class="kw-2">&amp;</span><span class="ident">code</span>.<span class="ident">to_string</span>()) {
         <span class="prelude-val">Ok</span>(<span class="ident">parsed</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="ident">parsed</span>)),
-        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">match</span> <span class="ident">asm_parser::StandardProgramParser::new</span>().<span class="ident">parse</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">to_string</span>()) {
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">match</span> <span class="ident">asm_parser::StandardProgramParser::new</span>().<span class="ident">parse</span>(<span class="kw-2">&amp;</span><span class="ident">code</span>.<span class="ident">to_string</span>()) {
             <span class="prelude-val">Ok</span>(<span class="ident">parsed</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">parsed</span>)),
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">format_error</span>(<span class="kw-2">&amp;</span><span class="ident">code</span>, <span class="ident">e</span>)),
         },
@@ -275,8 +313,14 @@
 
 <span class="doccomment">/// Parse LIR code as an LIR expression.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parse_lir</span>(<span class="ident">input</span>: <span class="kw">impl</span> <span class="ident">ToString</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Expr</span>, <span class="ident">String</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="ident">input</span>.<span class="ident">to_string</span>();
-    <span class="kw">match</span> <span class="ident">lir_parser::ExprParser::new</span>().<span class="ident">parse</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">to_string</span>()) {
+    <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="ident">input</span>.<span class="ident">to_string</span>()
+        .<span class="ident">chars</span>()
+        .<span class="ident">without_comments</span>(<span class="ident">languages::rust</span>())
+        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>();
+        
+    <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="ident">code</span>.<span class="ident">trim</span>();
+
+    <span class="kw">match</span> <span class="ident">lir_parser::ExprParser::new</span>().<span class="ident">parse</span>(<span class="kw-2">&amp;</span><span class="ident">code</span>.<span class="ident">to_string</span>()) {
         <span class="prelude-val">Ok</span>(<span class="ident">parsed</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">parsed</span>),
         <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">format_error</span>(<span class="kw-2">&amp;</span><span class="ident">code</span>, <span class="ident">e</span>)),
     }

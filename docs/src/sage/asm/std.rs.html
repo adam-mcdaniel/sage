@@ -338,6 +338,12 @@
 <span id="333">333</span>
 <span id="334">334</span>
 <span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Standard Assembly Variant</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This variant of the assembly language is intended to be used</span>
@@ -595,6 +601,12 @@
 
             <span class="ident"><span class="self">Self</span>::Rem</span> { <span class="ident">src</span>, <span class="ident">dst</span> } =&gt; {
                 <span class="kw">if</span> <span class="ident">dst</span>.<span class="ident">rem_float</span>(<span class="ident">src</span>, <span class="ident">result</span>).<span class="ident">is_err</span>() {
+                    <span class="ident">unsupported</span>(<span class="self">self</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>
+                }
+            }
+
+            <span class="ident"><span class="self">Self</span>::Pow</span> { <span class="ident">src</span>, <span class="ident">dst</span> } =&gt; {
+                <span class="kw">if</span> <span class="ident">dst</span>.<span class="ident">pow_float</span>(<span class="ident">src</span>, <span class="ident">result</span>).<span class="ident">is_err</span>() {
                     <span class="ident">unsupported</span>(<span class="self">self</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>
                 }
             }

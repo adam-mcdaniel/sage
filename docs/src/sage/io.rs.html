@@ -694,6 +694,12 @@
 <span id="689">689</span>
 <span id="690">690</span>
 <span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core::fmt</span>::{<span class="ident">Display</span>, <span class="ident">Formatter</span>, <span class="prelude-ty">Result</span> <span class="kw">as</span> <span class="ident">FmtResult</span>};
 
 <span class="doccomment">/// The different axes an input or output might use.</span>
@@ -1345,6 +1351,12 @@
             <span class="comment">// A custom output mode (for use with a custom output device)</span>
             <span class="ident">OutputMode::Custom</span>(<span class="ident">name</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{name}&quot;</span>),
         }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Channel</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Formatter</span>) -&gt; <span class="ident">FmtResult</span> {
+        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>)
     }
 }
 

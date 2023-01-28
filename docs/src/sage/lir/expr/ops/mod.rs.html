@@ -202,7 +202,53 @@
 <span id="197">197</span>
 <span id="198">198</span>
 <span id="199">199</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # LIR Expression Operations</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # Operations</span>
 <span class="doccomment">//! </span>
 <span class="doccomment">//! This module contains implementations of various</span>
 <span class="doccomment">//! tertiary, binary, and unary operations on LIR expressions.</span>
@@ -220,40 +266,56 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">asm::AssemblyProgram</span>, <span class="ident">lir</span>::<span class="kw-2">*</span>};
 
+<span class="doccomment">/// A trait used to implemented an assignment operation.</span>
+<span class="doccomment">/// </span>
+<span class="doccomment">/// This trait is used to implement assignment operations like `+=` and `-=`.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">AssignOp</span>: <span class="ident">std::fmt::Debug</span> <span class="op">+</span> <span class="ident">std::fmt::Display</span> {
-    <span class="kw">fn</span> <span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="ident">lhs</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">rhs</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>)<span class="question-mark">?</span> {
+    <span class="doccomment">/// Typechecks the operation on the given expressions.</span>
+    <span class="kw">fn</span> <span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dst</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="ident">dst</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">src</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>)<span class="question-mark">?</span> {
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">Error::InvalidAssignOp</span>(<span class="self">self</span>.<span class="ident">clone_box</span>(), <span class="ident">lhs</span>.<span class="ident">clone</span>(), <span class="ident">rhs</span>.<span class="ident">clone</span>()))
+            <span class="prelude-val">Err</span>(<span class="ident">Error::InvalidAssignOp</span>(<span class="self">self</span>.<span class="ident">clone_box</span>(), <span class="ident">dst</span>.<span class="ident">clone</span>(), <span class="ident">src</span>.<span class="ident">clone</span>()))
         }
     }
-    <span class="kw">fn</span> <span class="ident">return_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Type</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">can_apply_exprs</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="ident">env</span>)<span class="question-mark">?</span> {
-            <span class="ident">lhs</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)
+    <span class="doccomment">/// Gets the type of the operation on the given expressions.</span>
+    <span class="kw">fn</span> <span class="ident">return_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dst</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Type</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">can_apply_exprs</span>(<span class="ident">dst</span>, <span class="ident">src</span>, <span class="ident">env</span>)<span class="question-mark">?</span> {
+            <span class="ident">dst</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)
         } <span class="kw">else</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">Error::InvalidAssignOp</span>(<span class="self">self</span>.<span class="ident">clone_box</span>(), <span class="ident">lhs</span>.<span class="ident">clone</span>(), <span class="ident">rhs</span>.<span class="ident">clone</span>()))
+            <span class="prelude-val">Err</span>(<span class="ident">Error::InvalidAssignOp</span>(<span class="self">self</span>.<span class="ident">clone_box</span>(), <span class="ident">dst</span>.<span class="ident">clone</span>(), <span class="ident">src</span>.<span class="ident">clone</span>()))
         }
     }
+    <span class="doccomment">/// Clones the operation into a boxed trait object.</span>
     <span class="kw">fn</span> <span class="ident">clone_box</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">AssignOp</span><span class="op">&gt;</span>;
-    <span class="kw">fn</span> <span class="ident">display</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>) -&gt; <span class="ident">String</span> {
-        <span class="macro">format!</span>(<span class="string">&quot;{} {} {}&quot;</span>, <span class="ident">lhs</span>, <span class="self">self</span>, <span class="ident">rhs</span>)
+    <span class="doccomment">/// Formats the operation for display.</span>
+    <span class="kw">fn</span> <span class="ident">display</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dst</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>) -&gt; <span class="ident">String</span> {
+        <span class="macro">format!</span>(<span class="string">&quot;{} {} {}&quot;</span>, <span class="ident">dst</span>, <span class="self">self</span>, <span class="ident">src</span>)
     }
     
-    <span class="kw">fn</span> <span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
-    <span class="kw">fn</span> <span class="ident">can_apply_exprs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="ident">lhs</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">rhs</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>)
+    <span class="doccomment">/// Checks if the operation can be applied to the given types.</span>
+    <span class="kw">fn</span> <span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dst</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Checks if the operation can be applied to the given expressions.</span>
+    <span class="kw">fn</span> <span class="ident">can_apply_exprs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dst</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="ident">dst</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">src</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>)
     }
-    <span class="kw">fn</span> <span class="ident">eval</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">ConstExpr</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">ConstExpr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConstExpr</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
-    <span class="kw">fn</span> <span class="ident">compile</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>, <span class="ident">output</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">AssemblyProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="ident">rhs</span>.<span class="ident">clone</span>().<span class="ident">compile_expr</span>(<span class="ident">env</span>, <span class="ident">output</span>)<span class="question-mark">?</span>;
-        <span class="ident">lhs</span>.<span class="ident">clone</span>().<span class="ident">compile_expr</span>(<span class="ident">env</span>, <span class="ident">output</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">compile_types</span>(<span class="kw-2">&amp;</span><span class="ident">lhs</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">rhs</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>, <span class="ident">output</span>)
+    <span class="doccomment">/// Evaluates the operation on the given constant expressions.</span>
+    <span class="kw">fn</span> <span class="ident">eval</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dst</span>: <span class="kw-2">&amp;</span><span class="ident">ConstExpr</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="ident">ConstExpr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConstExpr</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Compiles the operation on the given expressions.</span>
+    <span class="kw">fn</span> <span class="ident">compile</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dst</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>, <span class="ident">output</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">AssemblyProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="ident">dst</span>.<span class="ident">clone</span>().<span class="ident">compile_expr</span>(<span class="ident">env</span>, <span class="ident">output</span>)<span class="question-mark">?</span>;
+        <span class="ident">src</span>.<span class="ident">clone</span>().<span class="ident">compile_expr</span>(<span class="ident">env</span>, <span class="ident">output</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">compile_types</span>(<span class="kw-2">&amp;</span><span class="ident">dst</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">src</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>, <span class="ident">output</span>)
     }
-    <span class="kw">fn</span> <span class="ident">compile_types</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>, <span class="ident">output</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">AssemblyProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Compiles the operation on the given types. (Generates the code for the operation.)</span>
+    <span class="kw">fn</span> <span class="ident">compile_types</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dst</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">src</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>, <span class="ident">output</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">AssemblyProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>;
 }
 
+<span class="doccomment">/// A trait used to implement a unary operation.</span>
+<span class="doccomment">/// </span>
+<span class="doccomment">/// This trait is used to implement unary operations like `not` and `~`.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">UnaryOp</span>: <span class="ident">std::fmt::Debug</span> <span class="op">+</span> <span class="ident">std::fmt::Display</span> {
+    <span class="doccomment">/// Typechecks the operation on the given expression.</span>
     <span class="kw">fn</span> <span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">expr</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="ident">expr</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>)<span class="question-mark">?</span> {
             <span class="prelude-val">Ok</span>(())
@@ -261,6 +323,7 @@
             <span class="prelude-val">Err</span>(<span class="ident">Error::InvalidUnaryOp</span>(<span class="self">self</span>.<span class="ident">clone_box</span>(), <span class="ident">expr</span>.<span class="ident">clone</span>()))
         }
     }
+    <span class="doccomment">/// Gets the type of the operation on the given expression.</span>
     <span class="kw">fn</span> <span class="ident">return_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">expr</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Type</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">can_apply_exprs</span>(<span class="ident">expr</span>, <span class="ident">env</span>)<span class="question-mark">?</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">expr</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>)
@@ -268,24 +331,34 @@
             <span class="prelude-val">Err</span>(<span class="ident">Error::InvalidUnaryOp</span>(<span class="self">self</span>.<span class="ident">clone_box</span>(), <span class="ident">expr</span>.<span class="ident">clone</span>()))
         }
     }
+    <span class="doccomment">/// Clones the operation into a boxed trait object.</span>
     <span class="kw">fn</span> <span class="ident">clone_box</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">UnaryOp</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Formats the operation for display.</span>
     <span class="kw">fn</span> <span class="ident">display</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">expr</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>) -&gt; <span class="ident">String</span> {
         <span class="macro">format!</span>(<span class="string">&quot;{} {}&quot;</span>, <span class="self">self</span>, <span class="ident">expr</span>)
     }
-    
+    <span class="doccomment">/// Checks if the operation can be applied to the given type.</span>
     <span class="kw">fn</span> <span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">expr</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Checks if the operation can be applied to the given expression.</span>
     <span class="kw">fn</span> <span class="ident">can_apply_exprs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">expr</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="ident">expr</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>)
     }
+    <span class="doccomment">/// Evaluates the operation on the given constant expression.</span>
     <span class="kw">fn</span> <span class="ident">eval</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">expr</span>: <span class="kw-2">&amp;</span><span class="ident">ConstExpr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConstExpr</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Compiles the operation on the given expression.</span>
     <span class="kw">fn</span> <span class="ident">compile</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">expr</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>, <span class="ident">output</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">AssemblyProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">expr</span>.<span class="ident">clone</span>().<span class="ident">compile_expr</span>(<span class="ident">env</span>, <span class="ident">output</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">compile_types</span>(<span class="kw-2">&amp;</span><span class="ident">expr</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>, <span class="ident">output</span>)
     }
+    <span class="doccomment">/// Compiles the operation on the given type. (Generates the code for the operation.)</span>
     <span class="kw">fn</span> <span class="ident">compile_types</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">expr</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>, <span class="ident">output</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">AssemblyProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>;
 }
 
+<span class="doccomment">/// A trait used to implement a binary operation.</span>
+<span class="doccomment">/// </span>
+<span class="doccomment">/// This trait is used to implement binary operations like `+` and `==`.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">BinaryOp</span>: <span class="ident">std::fmt::Debug</span> <span class="op">+</span> <span class="ident">std::fmt::Display</span> {
+    <span class="doccomment">/// Typechecks the operation on the given expressions.</span>
     <span class="kw">fn</span> <span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="ident">lhs</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">rhs</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>)<span class="question-mark">?</span> {
             <span class="prelude-val">Ok</span>(())
@@ -293,6 +366,7 @@
             <span class="prelude-val">Err</span>(<span class="ident">Error::InvalidBinaryOp</span>(<span class="self">self</span>.<span class="ident">clone_box</span>(), <span class="ident">lhs</span>.<span class="ident">clone</span>(), <span class="ident">rhs</span>.<span class="ident">clone</span>()))
         }
     }
+    <span class="doccomment">/// Gets the type of the operation on the given expressions.</span>
     <span class="kw">fn</span> <span class="ident">return_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Type</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">can_apply_exprs</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="ident">env</span>)<span class="question-mark">?</span> {
             <span class="ident">lhs</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)
@@ -300,25 +374,34 @@
             <span class="prelude-val">Err</span>(<span class="ident">Error::InvalidBinaryOp</span>(<span class="self">self</span>.<span class="ident">clone_box</span>(), <span class="ident">lhs</span>.<span class="ident">clone</span>(), <span class="ident">rhs</span>.<span class="ident">clone</span>()))
         }
     }
+    <span class="doccomment">/// Clones the operation into a boxed trait object.</span>
     <span class="kw">fn</span> <span class="ident">clone_box</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">BinaryOp</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Formats the operation for display.</span>
     <span class="kw">fn</span> <span class="ident">display</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>) -&gt; <span class="ident">String</span> {
         <span class="macro">format!</span>(<span class="string">&quot;{} {} {}&quot;</span>, <span class="ident">lhs</span>, <span class="self">self</span>, <span class="ident">rhs</span>)
     }
     
+    <span class="doccomment">/// Checks if the operation can be applied to the given types.</span>
     <span class="kw">fn</span> <span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Checks if the operation can be applied to the given expressions.</span>
     <span class="kw">fn</span> <span class="ident">can_apply_exprs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="ident">lhs</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">rhs</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>)
     }
+    <span class="doccomment">/// Evaluates the operation on the given constant expressions.</span>
     <span class="kw">fn</span> <span class="ident">eval</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">ConstExpr</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">ConstExpr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConstExpr</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Compiles the operation on the given expressions.</span>
     <span class="kw">fn</span> <span class="ident">compile</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>, <span class="ident">output</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">AssemblyProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">lhs</span>.<span class="ident">clone</span>().<span class="ident">compile_expr</span>(<span class="ident">env</span>, <span class="ident">output</span>)<span class="question-mark">?</span>;
         <span class="ident">rhs</span>.<span class="ident">clone</span>().<span class="ident">compile_expr</span>(<span class="ident">env</span>, <span class="ident">output</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">compile_types</span>(<span class="kw-2">&amp;</span><span class="ident">lhs</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">rhs</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>, <span class="ident">output</span>)
     }
+    <span class="doccomment">/// Compiles the operation on the given types. (Generates the code for the operation.)</span>
     <span class="kw">fn</span> <span class="ident">compile_types</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>, <span class="ident">output</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">AssemblyProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>;
 }
 
+<span class="doccomment">/// A trait used to implement a ternary operation.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">TernaryOp</span>: <span class="ident">std::fmt::Debug</span> <span class="op">+</span> <span class="ident">std::fmt::Display</span> {
+    <span class="doccomment">/// Typechecks the operation on the given expressions.</span>
     <span class="kw">fn</span> <span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">a</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">c</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="ident">a</span>.<span class="ident">clone</span>().<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">b</span>.<span class="ident">clone</span>().<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>)<span class="question-mark">?</span> {
             <span class="prelude-val">Ok</span>(())
@@ -326,6 +409,7 @@
             <span class="prelude-val">Err</span>(<span class="ident">Error::InvalidTernaryOp</span>(<span class="self">self</span>.<span class="ident">clone_box</span>(), <span class="ident">a</span>.<span class="ident">clone</span>(), <span class="ident">b</span>.<span class="ident">clone</span>(), <span class="ident">c</span>.<span class="ident">clone</span>()))
         }
     }
+    <span class="doccomment">/// Gets the type of the operation on the given expressions.</span>
     <span class="kw">fn</span> <span class="ident">return_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">a</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">c</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Type</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">can_apply_exprs</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>, <span class="ident">env</span>)<span class="question-mark">?</span> {
             <span class="ident">c</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)
@@ -333,23 +417,31 @@
             <span class="prelude-val">Err</span>(<span class="ident">Error::InvalidTernaryOp</span>(<span class="self">self</span>.<span class="ident">clone_box</span>(), <span class="ident">a</span>.<span class="ident">clone</span>(), <span class="ident">b</span>.<span class="ident">clone</span>(), <span class="ident">c</span>.<span class="ident">clone</span>()))
         }
     }
+    <span class="doccomment">/// Clones the operation into a boxed trait object.</span>
     <span class="kw">fn</span> <span class="ident">clone_box</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">TernaryOp</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Formats the operation for display.</span>
     <span class="kw">fn</span> <span class="ident">display</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">a</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">c</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>) -&gt; <span class="ident">String</span> {
         <span class="macro">format!</span>(<span class="string">&quot;{} {} {} {}&quot;</span>, <span class="ident">a</span>, <span class="self">self</span>, <span class="ident">b</span>, <span class="ident">c</span>)
     }
-
+    
+    <span class="doccomment">/// Checks if the operation can be applied to the given types.</span>
     <span class="kw">fn</span> <span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">a</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">c</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Checks if the operation can be applied to the given expressions.</span>
     <span class="kw">fn</span> <span class="ident">can_apply_exprs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">a</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">c</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">can_apply</span>(<span class="kw-2">&amp;</span><span class="ident">a</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">b</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>)
     }
+    <span class="doccomment">/// Evaluates the operation on the given constant expressions.</span>
     <span class="kw">fn</span> <span class="ident">eval</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">a</span>: <span class="kw-2">&amp;</span><span class="ident">ConstExpr</span>, <span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="ident">ConstExpr</span>, <span class="ident">c</span>: <span class="kw-2">&amp;</span><span class="ident">ConstExpr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConstExpr</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Compiles the operation on the given expressions.</span>
     <span class="kw">fn</span> <span class="ident">compile</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">a</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">c</span>: <span class="kw-2">&amp;</span><span class="ident">Expr</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>, <span class="ident">output</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">AssemblyProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="comment">// Evaluate the two expression on the stack.</span>
+        <span class="comment">// Evaluate the three expression on the stack.</span>
         <span class="ident">a</span>.<span class="ident">clone</span>().<span class="ident">compile_expr</span>(<span class="ident">env</span>, <span class="ident">output</span>)<span class="question-mark">?</span>;
         <span class="ident">b</span>.<span class="ident">clone</span>().<span class="ident">compile_expr</span>(<span class="ident">env</span>, <span class="ident">output</span>)<span class="question-mark">?</span>;
         <span class="ident">c</span>.<span class="ident">clone</span>().<span class="ident">compile_expr</span>(<span class="ident">env</span>, <span class="ident">output</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Compile the operation.</span>
         <span class="self">self</span>.<span class="ident">compile_types</span>(<span class="kw-2">&amp;</span><span class="ident">a</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">b</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">get_type</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">env</span>, <span class="ident">output</span>)
     }
+    <span class="doccomment">/// Compiles the operation on the given types. (Generates the code for the operation.)</span>
     <span class="kw">fn</span> <span class="ident">compile_types</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">a</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">c</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>, <span class="ident">output</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">AssemblyProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>;
 }
 
