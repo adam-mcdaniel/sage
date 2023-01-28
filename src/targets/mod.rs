@@ -44,50 +44,70 @@ use crate::{
     io::{Input, Output},
 };
 
+/// A trait for a target architecture to be compiled to.
 pub trait Architecture {
+    /// The name of the target architecture.
     fn name(&self) -> &str;
+    /// The version of the target architecture.
     fn version(&self) -> &str;
 
+    /// Whether or not the target architecture supports floating point.
     fn supports_floats(&self) -> bool;
+    /// Whether or not the target architecture supports the given input (mode + channel).
     fn supports_input(&self, src: &Input) -> bool {
         self.get(src).is_ok()
     }
+    /// Whether or not the target architecture supports the given output (mode + channel).
     fn supports_output(&self, dst: &Output) -> bool {
         self.put(dst).is_ok()
     }
 
+    /// Get a value from the given input stream (mode + channel).
     fn get(&self, src: &Input) -> Result<String, String>;
+    /// Put a value to the given output stream (mode + channel).
     fn put(&self, dst: &Output) -> Result<String, String>;
+    /// Peek a value from the device connected to the program.
     fn peek(&self) -> Result<String, String>;
+    /// Poke a value to the device connected to the program.
     fn poke(&self) -> Result<String, String>;
 
+    /// The code before the program starts.
     fn prelude(&self, _is_core: bool) -> Option<String> {
         None
     }
 
+    /// The code after each instruction.
     fn postop(&self) -> Option<String> {
         None
     }
 
+    /// The code after the program ends.
     fn postlude(&self, _is_core: bool) -> Option<String> {
         None
     }
 
+    /// The code before the function definitions.
     fn pre_funs(&self, _funs: Vec<i32>) -> Option<String> {
         None
     }
-
+    
+    /// The code after the function definitions.
     fn post_funs(&self, _funs: Vec<i32>) -> Option<String> {
         None
     }
 
+    /// The string used for indentation.
     fn indentation(&self) -> Option<String> {
         Some("\t".to_string())
     }
 
-    fn label(&self, label_id: usize) -> String;
+    /// Compile the declaration of a procedure.
+    fn declare_proc(&self, label_id: usize) -> String;
+    /// Compile an `End` instruction (with the matching `If` or `While` or `Function`)
     fn end(&self, matching: &CoreOp, fun: Option<usize>) -> String;
+    /// Compile a `CoreOp` instruction.
     fn op(&self, op: &vm::CoreOp) -> String;
+    /// Compile a `StandardOp` instruction.
     fn std_op(&self, op: &vm::StandardOp) -> Result<String, String>;
 }
 
@@ -99,7 +119,7 @@ pub trait CompiledTarget: Architecture {
                 matching_ops.push(op.clone());
 
                 matching_funs.push(*current_fun);
-                let fun_header = self.label(*current_fun);
+                let fun_header = self.declare_proc(*current_fun);
                 *current_fun += 1;
 
                 *indent += 1;
