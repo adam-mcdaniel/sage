@@ -326,10 +326,21 @@ where
                     }
 
                     CoreOp::IsNonNegative => self.register = if self.register >= 0 { 1 } else { 0 },
-                    CoreOp::Get => self.register = self.device.get()? as i64,
-                    CoreOp::Put => self.device.put(self.register as isize)?,
+                    CoreOp::Get(i) => self.register = self.device.get(i.clone())? as i64,
+                    CoreOp::Put(o) => self.device.put(self.register as isize, o.clone())?,
                 },
 
+                StandardOp::Peek => {
+                    match self.device.peek() {
+                        Ok(val) => self.register = val as i64,
+                        Err(e) => eprintln!("Error: {}", e)
+                    }
+                },
+                StandardOp::Poke => {
+                    if let Err(e) = self.device.poke(self.register as isize) {
+                        eprintln!("Error: {}", e)
+                    }
+                },
                 StandardOp::Set(n) => self.register = as_int(*n as f32),
                 StandardOp::ToInt => {
                     // self.register = f32::from_bits(self.register as u64) as i64
@@ -375,25 +386,6 @@ where
                 StandardOp::ATan => self.register = as_int(as_float(self.register).atan()),
                 StandardOp::Pow => {
                     self.register = as_int(as_float(self.register).powf(as_float(*self.get_cell())))
-                }
-
-                StandardOp::GetFloat => {
-                    self.register = as_int(self.device.get_float()? as f32);
-                }
-                StandardOp::GetInt => {
-                    self.register = self.device.get_int()? as i64;
-                }
-                StandardOp::GetChar => {
-                    self.register = self.device.get_char()? as u8 as i64;
-                }
-                StandardOp::PutFloat => {
-                    self.device.put_float(as_float(self.register) as f64)?;
-                }
-                StandardOp::PutInt => {
-                    self.device.put_int(self.register as isize)?;
-                }
-                StandardOp::PutChar => {
-                    self.device.put_char(self.register as u8 as char)?;
                 }
 
                 StandardOp::Alloc => {

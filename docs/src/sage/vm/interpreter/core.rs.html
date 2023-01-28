@@ -643,8 +643,8 @@
                 }
 
                 <span class="ident">CoreOp::IsNonNegative</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">isize::from</span>(<span class="self">self</span>.<span class="ident">register</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span>),
-                <span class="ident">CoreOp::Get</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">device</span>.<span class="ident">get</span>()<span class="question-mark">?</span>,
-                <span class="ident">CoreOp::Put</span> =&gt; <span class="self">self</span>.<span class="ident">device</span>.<span class="ident">put</span>(<span class="self">self</span>.<span class="ident">register</span>)<span class="question-mark">?</span>,
+                <span class="ident">CoreOp::Get</span>(<span class="ident">i</span>) =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">device</span>.<span class="ident">get</span>(<span class="ident">i</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>,
+                <span class="ident">CoreOp::Put</span>(<span class="ident">o</span>) =&gt; <span class="self">self</span>.<span class="ident">device</span>.<span class="ident">put</span>(<span class="self">self</span>.<span class="ident">register</span>, <span class="ident">o</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>,
             }
             <span class="self">self</span>.<span class="ident">i</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>
         } <span class="kw">else</span> {

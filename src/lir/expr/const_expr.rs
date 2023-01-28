@@ -1,9 +1,18 @@
-use crate::asm::{AssemblyProgram, CoreOp, StandardOp, A, FP, SP};
+//! # Constant Expressions
+//! 
+//! Constant expressions are expressions that can be evaluated at compile time.
+//! 
+//! They are used in a few places:
+//! - Array lengths
+//! - Getting the size of types and expressions
+//! - Procedures
+//! - Builtin functions
+//! - Enum variants
+
 use crate::lir::{
-    Compile, CoreBuiltin, Env, Error, Expr, GetSize, GetType, Procedure, Simplify, StandardBuiltin,
-    Type, TypeCheck,
+    CoreBuiltin, Env, Error, Expr, GetSize, GetType, Procedure, Simplify, StandardBuiltin, Type
 };
-use crate::NULL;
+
 use core::fmt;
 use std::collections::BTreeMap;
 
@@ -30,6 +39,9 @@ pub enum ConstExpr {
     /// A constant enum variant.
     Of(Type, String),
 
+    /// Get the type of an expression. (as an array of chars)
+    TypeOf(Box<Expr>),
+
     /// Get the size of a type (in cells) as a constant int.
     SizeOfType(Type),
     /// Get the size of an expression's type (in cells) as a constant int.
@@ -51,6 +63,9 @@ pub enum ConstExpr {
     StandardBuiltin(StandardBuiltin),
     /// A procedure.
     Proc(Procedure),
+
+    /// Cast a constant expression to another type.
+    As(Box<Self>, Type),
 }
 
 impl ConstExpr {
@@ -68,6 +83,11 @@ impl ConstExpr {
     /// and get the result.
     pub fn eval(self, env: &Env) -> Result<Self, Error> {
         self.eval_checked(env, 0)
+    }
+
+    /// Cast an expression as another type.
+    pub fn as_type(self, t: Type) -> Self {
+        Self::As(Box::new(self), t)
     }
 
     /// Evaluate this constant with stack overflow prevention.
@@ -89,6 +109,27 @@ impl ConstExpr {
                 | Self::CoreBuiltin(_)
                 | Self::StandardBuiltin(_)
                 | Self::Proc(_) => Ok(self),
+
+                Self::TypeOf(expr) => Ok(Self::Array(
+                    expr.get_type_checked(env, i)?
+                        .to_string()
+                        .chars()
+                        .map(|c| Self::Char(c))
+                        .collect(),
+                )),
+
+                Self::As(expr, cast_ty) => {
+                    let found = expr.get_type_checked(env, i)?;
+                    if !found.can_cast_to(&cast_ty, env)? {
+                        return Err(Error::InvalidAs(
+                            Expr::ConstExpr(*expr.clone()),
+                            found,
+                            cast_ty.clone()
+                        ))
+                    }
+    
+                    expr.eval_checked(env, i)
+                }
 
                 Self::SizeOfType(t) => Ok(Self::Int(t.get_size(env)? as i32)),
                 Self::SizeOfExpr(e) => Ok(Self::Int(e.get_size(env)? as i32)),
@@ -160,210 +201,6 @@ impl ConstExpr {
     }
 }
 
-impl TypeCheck for ConstExpr {
-    fn type_check(&self, env: &Env) -> Result<(), Error> {
-        match self {
-            Self::None
-            | Self::Null
-            | Self::Int(_)
-            | Self::Float(_)
-            | Self::Char(_)
-            | Self::Bool(_)
-            | Self::SizeOfType(_) => Ok(()),
-
-            Self::SizeOfExpr(e) => e.type_check(env),
-
-            Self::CoreBuiltin(builtin) => builtin.type_check(env),
-            Self::StandardBuiltin(builtin) => builtin.type_check(env),
-            Self::Proc(proc) => proc.type_check(env),
-
-            Self::Symbol(name) => {
-                if env.get_const(name).is_some()
-                    || env.get_proc(name).is_some()
-                    || env.get_var(name).is_some()
-                {
-                    Ok(())
-                } else {
-                    Err(Error::SymbolNotDefined(name.clone()))
-                }
-            }
-
-            Self::Of(t, variant) => {
-                if let Type::Enum(variants) = t.clone().simplify(env)? {
-                    if variants.contains(variant) {
-                        Ok(())
-                    } else {
-                        Err(Error::VariantNotFound(t.clone(), variant.clone()))
-                    }
-                } else {
-                    Err(Error::VariantNotFound(t.clone(), variant.clone()))
-                }
-            }
-
-            Self::Tuple(items) => {
-                for item in items {
-                    item.type_check(env)?;
-                }
-                Ok(())
-            }
-
-            Self::Array(items) => {
-                for item in items {
-                    item.type_check(env)?;
-                }
-                Ok(())
-            }
-
-            Self::Struct(fields) => {
-                for item in fields.values() {
-                    item.type_check(env)?;
-                }
-                Ok(())
-            }
-
-            Self::Union(t, variant, val) => {
-                // Confirm the type supplied is a union.
-                if let Type::Union(fields) = t.clone().simplify(env)? {
-                    // Confirm that the variant is contained within the union.
-                    if let Some(ty) = fields.get(variant) {
-                        // Typecheck the value assigned to the variant.
-                        val.type_check(env)?;
-                        let found = val.get_type(env)?;
-                        if !ty.equals(&found, env)? {
-                            return Err(Error::MismatchedTypes {
-                                expected: ty.clone(),
-                                found,
-                                expr: Expr::ConstExpr(self.clone()),
-                            });
-                        }
-                        Ok(())
-                    } else {
-                        Err(Error::VariantNotFound(t.clone(), variant.clone()))
-                    }
-                } else {
-                    Err(Error::VariantNotFound(t.clone(), variant.clone()))
-                }
-            }
-        }
-    }
-}
-
-impl Compile for ConstExpr {
-    fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        let mut comment = format!("{self}");
-        comment.truncate(70);
-        output.comment(format!("compiling constant `{comment}`"));
-
-        match self {
-            Self::None => {}
-            Self::Null => {
-                output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), NULL));
-            }
-            Self::Char(ch) => {
-                output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), ch as usize as isize));
-            }
-            Self::Bool(x) => {
-                output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), x as isize));
-            }
-            Self::Int(n) => {
-                output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), n as isize));
-            }
-            Self::Float(f) => {
-                output.op(CoreOp::Next(SP, None));
-                output.std_op(StandardOp::Set(SP.deref(), f))?;
-            }
-            Self::SizeOfType(t) => {
-                output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), t.get_size(env)? as isize));
-            }
-            Self::SizeOfExpr(e) => {
-                output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), e.get_size(env)? as isize));
-            }
-            Self::Tuple(items) => {
-                for item in items {
-                    item.compile_expr(env, output)?;
-                }
-            }
-            Self::Array(items) => {
-                for item in items {
-                    item.compile_expr(env, output)?;
-                }
-            }
-            Self::Struct(items) => {
-                for (_, expr) in items {
-                    expr.compile_expr(env, output)?;
-                }
-            }
-            Self::Union(types, variant, val) => {
-                let result_type = Self::Union(types, variant, val.clone()).get_type(env)?;
-                let result_size = result_type.get_size(env)?;
-                let val_size = val.get_size(env)?;
-
-                val.compile_expr(env, output)?;
-                output.op(CoreOp::Next(
-                    SP,
-                    Some(result_size as isize - val_size as isize),
-                ));
-            }
-            Self::CoreBuiltin(builtin) => {
-                builtin.compile_expr(env, output)?;
-            }
-            Self::StandardBuiltin(builtin) => {
-                builtin.compile_expr(env, output)?;
-            }
-            Self::Proc(proc) => {
-                // Get the mangled name of the procedure.
-                let name = proc.get_name().to_string();
-
-                if !env.has_proc(&name) {
-                    // If the procedure is not yet defined, define it.
-                    env.define_proc(&name, proc);
-                }
-
-                // Push the procedure onto the stack.
-                env.push_proc(&name, output)?;
-            }
-            Self::Of(enum_type, variant) => {
-                if let Type::Enum(mut variants) = enum_type.clone().simplify(env)? {
-                    variants.sort();
-                    if let Ok(index) = variants.binary_search(&variant) {
-                        output.op(CoreOp::Set(A, index as isize));
-                        output.op(CoreOp::Push(A, 1));
-                    } else {
-                        return Err(Error::VariantNotFound(enum_type, variant));
-                    }
-                } else {
-                    return Err(Error::VariantNotFound(enum_type, variant));
-                }
-            }
-
-            Self::Symbol(name) => {
-                // Compile a symbol.
-                if let Some((t, offset)) = env.get_var(&name) {
-                    // If the symbol is a variable, push it onto the stack.
-                    output.op(CoreOp::Push(FP.deref().offset(*offset), t.get_size(env)?))
-                } else {
-                    // If the symbol is not a variable, evaluate it like a constant.
-                    match Self::Symbol(name).eval(env)? {
-                        // If the symbol isn't a constant, try to get the procedure
-                        // with the same name.
-                        Self::Symbol(name) => env.push_proc(&name, output)?,
-                        // If the symbol is a constant, push it onto the stack.
-                        x => x.compile_expr(env, output)?,
-                    }
-                }
-            }
-        }
-        output.comment("done".to_string());
-        Ok(())
-    }
-}
-
 impl Simplify for ConstExpr {
     fn simplify_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
         self.eval_checked(env, i)
@@ -373,6 +210,24 @@ impl Simplify for ConstExpr {
 impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
         Ok(match self.clone() {
+            Self::As(expr, cast_ty) => {
+                let found = expr.get_type_checked(env, i)?;
+                if !found.can_cast_to(&cast_ty, env)? {
+                    return Err(Error::InvalidAs(
+                        Expr::ConstExpr(self.clone()),
+                        found,
+                        cast_ty.clone()
+                    ))
+                }
+
+                cast_ty
+            }
+            Self::TypeOf(expr) => {
+                let size = expr.get_type_checked(env, i)?
+                    .to_string()
+                    .len();
+                Type::Array(Box::new(Type::Char), Box::new(Self::Int(size as i32)))
+            },
             Self::Null => Type::Pointer(Box::new(Type::Any)),
             Self::None => Type::None,
             Self::SizeOfType(_) | Self::SizeOfExpr(_) | Self::Int(_) => Type::Int,
@@ -443,8 +298,14 @@ impl fmt::Display for ConstExpr {
             Self::StandardBuiltin(builtin) => {
                 write!(f, "{builtin}")
             }
+            Self::TypeOf(expr) => {
+                write!(f, "typeof({expr})")
+            }
             Self::Proc(proc) => {
                 write!(f, "{proc}")
+            }
+            Self::As(expr, ty) => {
+                write!(f, "{expr} as {ty}")
             }
             Self::Tuple(items) => {
                 write!(f, "(")?;

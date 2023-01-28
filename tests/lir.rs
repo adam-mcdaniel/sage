@@ -1,5 +1,6 @@
 use maplit::btreemap;
 use sage::{
+    io::{Input, Output},
     asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, A, SP},
     lir::*,
     parse::*,
@@ -12,16 +13,28 @@ fn var(name: impl ToString) -> ConstExpr {
 
 #[test]
 fn test_struct() {
+    // Executing `test_struct_helper` overflows the tiny stack for tests.
+    // So, we spawn a new thread with a larger stack size.
+    let child = std::thread::Builder::new()
+        .stack_size(8 * 1024 * 1024)
+        .spawn(test_struct_helper)
+        .unwrap();
+
+    // Wait for the thread to finish.
+    child.join().unwrap();
+}
+
+fn test_struct_helper() {
     let mut env = Env::default();
     let mut program = CoreProgram(vec![]);
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -40,7 +53,7 @@ fn test_struct() {
             ),
             ("z", None, ConstExpr::Char('z').into()),
             (
-                "put",
+                "put_char",
                 None,
                 ConstExpr::proc(
                     vec![(
@@ -53,15 +66,15 @@ fn test_struct() {
                     )],
                     Type::None,
                     Expr::Many(vec![
-                        put.clone().app(vec![Expr::var("x").field(var("a"))]),
-                        put.clone().app(vec![Expr::var("x").field(var("b"))]),
-                        put.clone().app(vec![Expr::var("x").field(var("c"))]),
+                        put_char.clone().app(vec![Expr::var("x").field(var("a"))]),
+                        put_char.clone().app(vec![Expr::var("x").field(var("b"))]),
+                        put_char.clone().app(vec![Expr::var("x").field(var("c"))]),
                     ]),
                 )
                 .into(),
             ),
         ],
-        var("put").app(vec![Expr::structure(btreemap! {
+        var("put_char").app(vec![Expr::structure(btreemap! {
             "a" => var("x").into(),
             "b" => Expr::var("y").field(var("b")),
             "c" => var("z").into(),
@@ -96,13 +109,13 @@ fn test_scopes() {
         ],
     });
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -122,7 +135,7 @@ fn test_scopes() {
                 Expr::var("z"),
             ]),
         ),
-        put.app(vec![Expr::var("f").app(vec![
+        put_char.app(vec![Expr::var("f").app(vec![
             ConstExpr::Int(1).into(),
             ConstExpr::Int(2).into(),
             ConstExpr::Int(3).into(),
@@ -157,13 +170,13 @@ fn test_tuples() {
         ],
     });
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -178,7 +191,7 @@ fn test_tuples() {
             )],
             Type::Int,
             Expr::Many(vec![
-                put.clone()
+                put_char.clone()
                     .app(vec![Expr::var("tup").field(ConstExpr::Int(0))]),
                 add.clone().app(vec![
                     Expr::var("tup")
@@ -190,7 +203,7 @@ fn test_tuples() {
                 ]),
             ]),
         ),
-        put.app(vec![Expr::var("test").app(vec![Expr::Tuple(vec![
+        put_char.app(vec![Expr::var("test").app(vec![Expr::Tuple(vec![
             ConstExpr::Char('?').into(),
             Expr::Tuple(vec![ConstExpr::Int(2).into(), ConstExpr::Int(3).into()]),
         ])])]),
@@ -223,13 +236,13 @@ fn test_array() {
         ],
     });
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -238,7 +251,7 @@ fn test_array() {
         "i",
         None,
         ConstExpr::Int(0),
-        put.app(vec![add.app(vec![
+        put_char.app(vec![add.app(vec![
             Expr::Array(vec![
                 ConstExpr::Char('a').into(),
                 ConstExpr::Char('b').into(),
@@ -270,13 +283,13 @@ fn test_nested_arrays() {
     let mut env = Env::default();
     let mut program = CoreProgram(vec![]);
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -315,13 +328,13 @@ fn test_nested_arrays() {
                         .idx(Expr::var("j"))
                         .refer()
                         .deref_mut(ConstExpr::Char('!')),
-                    put.clone().app(vec![Expr::var("arr")
+                    put_char.clone().app(vec![Expr::var("arr")
                         .idx(Expr::var("i"))
                         .idx(ConstExpr::Int(0))]),
-                    put.clone().app(vec![Expr::var("arr")
+                    put_char.clone().app(vec![Expr::var("arr")
                         .idx(Expr::var("i"))
                         .idx(ConstExpr::Int(1))]),
-                    put.clone().app(vec![Expr::var("arr")
+                    put_char.clone().app(vec![Expr::var("arr")
                         .idx(Expr::var("i"))
                         .idx(ConstExpr::Int(2))]),
                 ]),
@@ -342,13 +355,13 @@ fn test_nested_structs() {
     let mut env = Env::default();
     let mut program = CoreProgram(vec![]);
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -374,25 +387,25 @@ fn test_nested_structs() {
                 .field(ConstExpr::Symbol("b".to_string()))
                 .refer()
                 .deref_mut(ConstExpr::Int(8)),
-            put.clone().app(vec![Expr::var("p")
+            put_char.clone().app(vec![Expr::var("p")
                 .field(ConstExpr::Symbol("a".to_string()))
                 .field(ConstExpr::Symbol("a".to_string()))]),
-            put.clone().app(vec![Expr::var("p")
+            put_char.clone().app(vec![Expr::var("p")
                 .field(ConstExpr::Symbol("a".to_string()))
                 .field(ConstExpr::Symbol("b".to_string()))]),
-            put.clone().app(vec![Expr::var("p")
+            put_char.clone().app(vec![Expr::var("p")
                 .field(ConstExpr::Symbol("a".to_string()))
                 .field(ConstExpr::Symbol("c".to_string()))]),
-            put.clone().app(vec![Expr::var("p")
+            put_char.clone().app(vec![Expr::var("p")
                 .field(ConstExpr::Symbol("b".to_string()))
                 .field(ConstExpr::Symbol("x".to_string()))]),
-            put.clone().app(vec![Expr::var("p")
+            put_char.clone().app(vec![Expr::var("p")
                 .field(ConstExpr::Symbol("b".to_string()))
                 .field(ConstExpr::Symbol("y".to_string()))]),
-            put.clone().app(vec![Expr::var("p")
+            put_char.clone().app(vec![Expr::var("p")
                 .field(ConstExpr::Symbol("b".to_string()))
                 .field(ConstExpr::Symbol("z".to_string()))]),
-            put.clone().app(vec![ConstExpr::Char('\n').into()]),
+            put_char.clone().app(vec![ConstExpr::Char('\n').into()]),
             Expr::var("p")
                 .field(ConstExpr::Symbol("b".to_string()))
                 .refer()
@@ -401,22 +414,22 @@ fn test_nested_structs() {
                     "y".to_string() => ConstExpr::Int(4).into(),
                     "z".to_string() => ConstExpr::Int(3).into(),
                 })),
-            put.clone().app(vec![Expr::var("p")
+            put_char.clone().app(vec![Expr::var("p")
                 .field(ConstExpr::Symbol("a".to_string()))
                 .field(ConstExpr::Symbol("a".to_string()))]),
-            put.clone().app(vec![Expr::var("p")
+            put_char.clone().app(vec![Expr::var("p")
                 .field(ConstExpr::Symbol("a".to_string()))
                 .field(ConstExpr::Symbol("b".to_string()))]),
-            put.clone().app(vec![Expr::var("p")
+            put_char.clone().app(vec![Expr::var("p")
                 .field(ConstExpr::Symbol("a".to_string()))
                 .field(ConstExpr::Symbol("c".to_string()))]),
-            put.clone().app(vec![Expr::var("p")
+            put_char.clone().app(vec![Expr::var("p")
                 .field(ConstExpr::Symbol("b".to_string()))
                 .field(ConstExpr::Symbol("x".to_string()))]),
-            put.clone().app(vec![Expr::var("p")
+            put_char.clone().app(vec![Expr::var("p")
                 .field(ConstExpr::Symbol("b".to_string()))
                 .field(ConstExpr::Symbol("y".to_string()))]),
-            put.app(vec![Expr::var("p")
+            put_char.app(vec![Expr::var("p")
                 .field(ConstExpr::Symbol("b".to_string()))
                 .field(ConstExpr::Symbol("z".to_string()))]),
         ]),
@@ -428,7 +441,7 @@ fn test_nested_structs() {
     let vm_code = program.assemble(16).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(device.output, vec![3, 8, 5, 1, 2, 3, 10, 3, 8, 5, 5, 4, 3]);
+    assert_eq!(device.output_vals(), vec![3, 8, 5, 1, 2, 3, 10, 3, 8, 5, 5, 4, 3]);
 }
 
 #[test]
@@ -436,13 +449,13 @@ fn test_union() {
     let mut env = Env::default();
     let mut program = CoreProgram(vec![]);
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -472,7 +485,7 @@ fn test_union() {
                 Expr::var("b").field(ConstExpr::Symbol("ch".to_string()))
             ]),
         ),
-        put.app(vec![Expr::var("test").app(vec![Expr::Tuple(vec![
+        put_char.app(vec![Expr::var("test").app(vec![Expr::Tuple(vec![
             Expr::Union(
                 Type::Union(btreemap! {
                     "ch".to_string() => Type::Char,
@@ -508,13 +521,13 @@ fn test_struct2() {
     let mut env = Env::default();
     let mut program = CoreProgram(vec![]);
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -546,12 +559,12 @@ fn test_struct2() {
             )],
             Type::None,
             Expr::Many(vec![
-                put.clone().app(vec![
+                put_char.clone().app(vec![
                     Expr::var("p").field(ConstExpr::Symbol("x".to_string()))
                 ]),
-                put.clone().app(vec![ConstExpr::Char(',').into()]),
-                put.clone().app(vec![ConstExpr::Char(' ').into()]),
-                put.clone().app(vec![
+                put_char.clone().app(vec![ConstExpr::Char(',').into()]),
+                put_char.clone().app(vec![ConstExpr::Char(' ').into()]),
+                put_char.clone().app(vec![
                     Expr::var("p").field(ConstExpr::Symbol("y".to_string()))
                 ]),
             ]),
@@ -576,7 +589,7 @@ fn test_struct2() {
                     "y".to_string() => Type::Int,
                 }),
                 Expr::Many(vec![
-                    // put.clone()
+                    // put_char.clone()
                     //     .app(vec![Expr::var("union").field(ConstExpr::Symbol("tup".to_string()))]),
                     Expr::Struct(btreemap! {
                         "x".to_string() => add.clone().app(vec![
@@ -617,18 +630,18 @@ fn test_mixed_types() {
     let mut env = Env::default();
     let mut program = CoreProgram(vec![]);
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
 
-    let expr = put.app(vec![Expr::Tuple(vec![
+    let expr = put_char.app(vec![Expr::Tuple(vec![
         ConstExpr::Char('a').into(),
         Expr::Tuple(vec![
             ConstExpr::Bool(false).into(),
@@ -663,13 +676,13 @@ fn test_loop() {
     let mut env = Env::default();
     let mut program = CoreProgram(vec![]);
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -696,7 +709,7 @@ fn test_loop() {
             Expr::var("a")
                 .refer()
                 .deref_mut(sub.app(vec![Expr::var("a"), ConstExpr::Int(1).into()])),
-            put.app(vec![Expr::var("a")]),
+            put_char.app(vec![Expr::var("a")]),
         ])),
     );
 
@@ -706,7 +719,7 @@ fn test_loop() {
     let vm_code = program.assemble(16).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(device.output, vec![5, 4, 3, 2, 1, 0]);
+    assert_eq!(device.output_vals(), vec![5, 4, 3, 2, 1, 0]);
 }
 
 #[test]
@@ -714,13 +727,13 @@ fn test_if() {
     let mut env = Env::default();
     let mut program = CoreProgram(vec![]);
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -729,7 +742,7 @@ fn test_if() {
         "a",
         None,
         ConstExpr::Int(6),
-        put.app(vec![Expr::from(ConstExpr::Int(1)).if_then(
+        put_char.app(vec![Expr::from(ConstExpr::Int(1)).if_then(
             Expr::from(ConstExpr::Int(0)).if_then(ConstExpr::Char('a'), ConstExpr::Char('b')),
             ConstExpr::Char('c'),
         )]),
@@ -749,13 +762,13 @@ fn test_int_arithmetic() {
     let mut env = Env::default();
     let mut program = CoreProgram(vec![]);
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -764,11 +777,11 @@ fn test_int_arithmetic() {
         name: "get".to_string(),
         args: vec![],
         ret: Type::Cell,
-        body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref())],
+        body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref(), Input::stdin_char())],
     });
 
     // The program to compile
-    let expr = put.app(vec![Expr::from(ConstExpr::Int(16))
+    let expr = put_char.app(vec![Expr::from(ConstExpr::Int(16))
         .add(ConstExpr::Int(1))
         .div(ConstExpr::Int(2))
         .mul(get.app(vec![]))
@@ -780,7 +793,7 @@ fn test_int_arithmetic() {
     let vm_code = program.assemble(16).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(device.output, vec![7]);
+    assert_eq!(device.output_vals(), vec![7]);
 }
 
 #[test]
@@ -788,13 +801,13 @@ fn test_float_arithmetic() {
     let mut env = Env::default();
     let mut program = StandardProgram(vec![]);
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -803,11 +816,11 @@ fn test_float_arithmetic() {
         name: "get".to_string(),
         args: vec![],
         ret: Type::Cell,
-        body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref())],
+        body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref(), Input::stdin_char())],
     });
 
     // The program to compile
-    let expr = put.app(vec![Expr::from(ConstExpr::Int(16))
+    let expr = put_char.app(vec![Expr::from(ConstExpr::Int(16))
         .add(ConstExpr::Float(1.2))
         .div(ConstExpr::Int(2))
         .mul(get.app(vec![]).as_type(Type::Float))]);
@@ -818,7 +831,7 @@ fn test_float_arithmetic() {
     let vm_code = program.assemble(16).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(device.output, vec![as_int(18.92)]);
+    assert_eq!(device.output_vals(), vec![as_int(18.92)]);
 }
 
 #[test]
@@ -826,13 +839,13 @@ fn test_as() {
     let mut env = Env::default();
     let mut program = StandardProgram(vec![]);
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -841,10 +854,10 @@ fn test_as() {
         name: "get".to_string(),
         args: vec![],
         ret: Type::Cell,
-        body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref())],
+        body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref(), Input::stdin_char())],
     });
 
-    let expr = put.app(vec![get
+    let expr = put_char.app(vec![get
         .clone()
         .app(vec![])
         .as_type(Type::Int)
@@ -858,7 +871,7 @@ fn test_as() {
     let vm_code = program.assemble(16).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(device.output, vec![25]);
+    assert_eq!(device.output_vals(), vec![25]);
 }
 
 #[test]
@@ -874,11 +887,8 @@ fn test_typecheck() {
         }),
         Expr::from(ConstExpr::Int(5)).add(Expr::var("a").field(var("y"))),
     );
-    assert_eq!(
-        expr.type_check(&env),
-        Err(Error::InvalidBinop(
-            Expr::from(ConstExpr::Int(5)).add(Expr::var("a").field(var("y")))
-        ))
+    assert!(
+        matches!(expr.type_check(&env), Err(Error::InvalidBinaryOp(_, _, _)))
     );
 
     let expr = Expr::let_var(
@@ -895,13 +905,25 @@ fn test_typecheck() {
 
 #[test]
 fn test_recursive_types() {
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    // Executing `test_recursive_types_helper` overflows the tiny stack for tests.
+    // So, we spawn a new thread with a larger stack size.
+    let child = std::thread::Builder::new()
+        .stack_size(8 * 1024 * 1024)
+        .spawn(test_recursive_types_helper)
+        .unwrap();
+
+    // Wait for the thread to finish.
+    child.join().unwrap();
+}
+
+fn test_recursive_types_helper() {
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -913,7 +935,7 @@ fn test_recursive_types() {
         body: vec![StandardOp::Alloc(SP.deref())],
     });
 
-    let expr = put.app(vec![Expr::let_type(
+    let expr = put_char.app(vec![Expr::let_type(
         "Node",
         Type::Struct(btreemap! {
             "data".to_string() => Type::Int,
@@ -989,11 +1011,23 @@ fn test_recursive_types() {
     let vm_code = program.assemble(16).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(device.output, vec![7]);
+    assert_eq!(device.output_vals(), vec![7]);
 }
 
 #[test]
 fn test_alloc_and_free() {
+    // Executing `test_alloc_and_free_helper` overflows the tiny stack for tests.
+    // So, we spawn a new thread with a larger stack size.
+    let child = std::thread::Builder::new()
+        .stack_size(8 * 1024 * 1024)
+        .spawn(test_alloc_and_free_helper)
+        .unwrap();
+
+    // Wait for the thread to finish.
+    child.join().unwrap();
+}
+
+fn test_alloc_and_free_helper() {
     let alloc = ConstExpr::StandardBuiltin(StandardBuiltin {
         name: "alloc".to_string(),
         args: vec![("size".to_string(), Type::Int)],
@@ -1011,18 +1045,18 @@ fn test_alloc_and_free() {
         ],
     });
 
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
 
-    let expr = put.clone().app(vec![Expr::let_type(
+    let expr = put_char.clone().app(vec![Expr::let_type(
         "Node",
         Type::Struct(btreemap! {
             "data".to_string() => Type::Int,
@@ -1048,7 +1082,7 @@ fn test_alloc_and_free() {
                     )],
                     Type::None,
                     Expr::Many(vec![
-                        put.app(vec![Expr::var("node").field(var("data"))]),
+                        put_char.app(vec![Expr::var("node").field(var("data"))]),
                         Expr::var("node").field(var("next"))
                             .as_type(Type::Cell)
                             .sub(Expr::from(ConstExpr::Null).as_type(Type::Cell).as_type(Type::Int))
@@ -1111,23 +1145,23 @@ fn test_alloc_and_free() {
     let vm_code = program.assemble(256).unwrap();
 
     let device = i.run(&vm_code).unwrap();
-    assert_eq!(device.output, vec![3, 5, 7, 0]);
+    assert_eq!(device.output_vals(), vec![3, 5, 7, 0]);
 }
 
 #[test]
 fn test_recursion() {
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
 
-    let expr = put.app(vec![Expr::let_proc(
+    let expr = put_char.app(vec![Expr::let_proc(
         "factorial",
         Procedure::new(
             vec![("n".to_string(), Type::Int)],
@@ -1148,23 +1182,23 @@ fn test_recursion() {
     let vm_code = program.assemble(256).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(device.output, vec![120]);
+    assert_eq!(device.output_vals(), vec![120]);
 }
 
 #[test]
 fn test_inline_let_type() {
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
 
-    let expr = put.app(vec![Expr::let_proc(
+    let expr = put_char.app(vec![Expr::let_proc(
         "factorial",
         Procedure::new(
             vec![("n".to_string(), Type::Int)],
@@ -1197,23 +1231,23 @@ fn test_inline_let_type() {
     let vm_code = program.assemble(256).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(device.output, vec![120]);
+    assert_eq!(device.output_vals(), vec![120]);
 }
 
 #[test]
 fn test_inline_let_recursive_type() {
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
 
-    let expr = put.clone().app(vec![Expr::let_type(
+    let expr = put_char.clone().app(vec![Expr::let_type(
         "hmm",
         Type::Let(
             "data".to_string(),
@@ -1240,7 +1274,7 @@ fn test_inline_let_recursive_type() {
 
     expr.compile().unwrap().unwrap();
 
-    let expr = put.app(vec![Expr::let_type(
+    let expr = put_char.app(vec![Expr::let_type(
         "List<Int>",
         Type::Let(
             "List<Int>".to_string(),
@@ -1323,13 +1357,25 @@ fn test_inline_let_type_equality() {
 
 #[test]
 fn test_pseudotemplates() {
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    // Executing `test_pseudotemplates_helper` overflows the tiny stack for tests.
+    // So, we spawn a new thread with a larger stack size.
+    let child = std::thread::Builder::new()
+        .stack_size(8 * 1024 * 1024)
+        .spawn(test_pseudotemplates_helper)
+        .unwrap();
+
+    // Wait for the thread to finish.
+    child.join().unwrap();
+}
+
+fn test_pseudotemplates_helper() {
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
@@ -1391,7 +1437,7 @@ fn test_pseudotemplates() {
                 Box::new(Expr::var("first").refer()),
             ).into()]),
             Expr::Many(vec![
-                put.clone().app(vec![Expr::var("second")
+                put_char.clone().app(vec![Expr::var("second")
                     .field(ConstExpr::Int(1))
                     .field(ConstExpr::Symbol("Some".to_string()))
                     .deref()
@@ -1401,7 +1447,7 @@ fn test_pseudotemplates() {
                     .field(ConstExpr::Symbol("Some".to_string()))
                     .refer()
                     .deref_mut(Expr::var("second").refer()),
-                put.clone().app(vec![Expr::var("second")
+                put_char.clone().app(vec![Expr::var("second")
                     .field(ConstExpr::Int(1))
                     .field(ConstExpr::Symbol("Some".to_string()))
                     .deref()
@@ -1420,25 +1466,25 @@ fn test_pseudotemplates() {
     let vm_code = program.assemble(10).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(device.output, vec![3, 5]);
+    assert_eq!(device.output_vals(), vec![3, 5]);
 
     expr.compile().unwrap().unwrap();
 }
 
 #[test]
 fn test_mutually_recursive_types() {
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
 
-    let expr = put.clone().app(vec![Expr::let_types(
+    let expr = put_char.clone().app(vec![Expr::let_types(
         vec![
             ("A", Type::Pointer(Box::new(Type::Symbol("B".to_string())))),
             ("B", Type::Pointer(Box::new(Type::Symbol("A".to_string())))),
@@ -1469,9 +1515,9 @@ fn test_mutually_recursive_types() {
     let vm_code = program.assemble(10).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(device.output, vec![sage::NULL]);
+    assert_eq!(device.output_vals(), vec![sage::NULL]);
 
-    let expr = put.clone().app(vec![Expr::let_types(
+    let expr = put_char.clone().app(vec![Expr::let_types(
         vec![
             ("A", Type::Pointer(Box::new(Type::Symbol("B".to_string())))),
             ("B", Type::Pointer(Box::new(Type::Symbol("A".to_string())))),
@@ -1503,18 +1549,18 @@ fn test_mutually_recursive_types() {
 
 #[test]
 fn test_let_multiple_vars() {
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
         body: vec![
             CoreOp::Comment("Put an integer from the stack".to_string()),
-            CoreOp::Put(SP.deref()),
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
             CoreOp::Pop(None, 1),
         ],
     });
 
-    let expr = put.clone().app(vec![Expr::let_vars(
+    let expr = put_char.clone().app(vec![Expr::let_vars(
         vec![
             ("x", None, ConstExpr::Int(5).into()),
             ("y", None, Expr::var("x").add(ConstExpr::Int(5))),
@@ -1529,9 +1575,9 @@ fn test_let_multiple_vars() {
     let vm_code = program.assemble(10).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(device.output, vec![50]);
+    assert_eq!(device.output_vals(), vec![50]);
 
-    let expr = put.clone().app(vec![Expr::let_vars(
+    let expr = put_char.clone().app(vec![Expr::let_vars(
         vec![
             ("y", None, Expr::var("x").add(ConstExpr::Int(5))),
             ("x", None, ConstExpr::Int(5).into()),
@@ -1557,11 +1603,11 @@ fn test_quicksort() {
 }
 
 fn test_quicksort_helper() {
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
-        body: vec![CoreOp::Put(SP.deref()), CoreOp::Pop(None, 1)],
+        body: vec![CoreOp::Put(SP.deref(), Output::stdout_char()), CoreOp::Pop(None, 1)],
     });
 
     let swap = ConstExpr::CoreBuiltin(CoreBuiltin {
@@ -1660,7 +1706,7 @@ fn test_quicksort_helper() {
         i = 0;
         quicksort_arr(ptr, 0, SIZE - 1);
         while lt(i, SIZE) {
-            put(ptr[i]);
+            put_char(ptr[i]);
             inc(&i);
         }
     }
@@ -1674,17 +1720,17 @@ fn test_quicksort_helper() {
             ("lte", lte.clone()),
             ("lt", lt.clone()),
             ("swap", swap.clone()),
-            ("put", put.clone()),
+            ("put_char", put_char.clone()),
         ],
         expr,
     );
     let asm_std = expr.clone().compile().unwrap().unwrap_err();
-    let vm_code = asm_std.assemble(100).unwrap();
+    let vm_code = asm_std.assemble(512).unwrap();
     let device = StandardInterpreter::new(TestingDevice::new_raw(vec![]))
         .run(&vm_code)
         .unwrap();
 
-    assert_eq!(device.output, (1..=50).into_iter().collect::<Vec<_>>());
+    assert_eq!(device.output_vals(), (1..=50).into_iter().collect::<Vec<_>>());
 }
 
 #[test]
@@ -1701,11 +1747,11 @@ fn test_collatz() {
 }
 
 fn test_collatz_helper() {
-    let put = ConstExpr::CoreBuiltin(CoreBuiltin {
-        name: "put".to_string(),
+    let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
+        name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
-        body: vec![CoreOp::Put(SP.deref()), CoreOp::Pop(None, 1)],
+        body: vec![CoreOp::Put(SP.deref(), Output::stdout_char()), CoreOp::Pop(None, 1)],
     });
 
     let collatz = r#"
@@ -1718,16 +1764,16 @@ fn test_collatz_helper() {
     } in
     
     proc collatz(n: Int) -> None = {
-        put(n);
+        put_char(n);
         while n - 1 {
             n = step(n);
-            put(n);
+            put_char(n);
         };
     } in collatz(19)
     "#;
 
     let expr = parse_lir(collatz).unwrap();
-    let expr = Expr::let_const("put", put.clone(), expr);
+    let expr = Expr::let_const("put_char", put_char.clone(), expr);
     let asm_std = expr.clone().compile().unwrap().unwrap();
     let vm_code = asm_std.assemble(16).unwrap();
     let device = CoreInterpreter::new(TestingDevice::new(""))
@@ -1735,7 +1781,7 @@ fn test_collatz_helper() {
         .unwrap();
 
     assert_eq!(
-        device.output,
+        device.output_vals(),
         vec![19, 58, 29, 88, 44, 22, 11, 34, 17, 52, 26, 13, 40, 20, 10, 5, 16, 8, 4, 2, 1]
     );
 }

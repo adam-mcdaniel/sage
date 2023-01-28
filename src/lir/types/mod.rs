@@ -3,73 +3,15 @@
 //! This module contains a collection of types and traits
 //! used to implement and confirm the soundness of the LIR
 //! typesystem.
-use super::{ConstExpr, Env, Error, Expr, GetSize, Simplify};
+use super::{ConstExpr, Env, Error, Expr, Simplify};
 use core::fmt;
 use std::collections::{BTreeMap, HashSet};
-
-/// A value that can be typechecked.
-pub trait TypeCheck {
-    /// Type check the expression.
-    fn type_check(&self, env: &Env) -> Result<(), Error>;
-}
-
-impl TypeCheck for Type {
-    fn type_check(&self, env: &Env) -> Result<(), Error> {
-        // TODO: Also add checks for infinitely sized types.
-        match self {
-            Self::Any
-            | Self::Never
-            | Self::None
-            | Self::Cell
-            | Self::Int
-            | Self::Float
-            | Self::Bool
-            | Self::Char
-            | Self::Enum(_) => Ok(()),
-
-            Self::Unit(_unit_name, t) => t.type_check(env),
-
-            Self::Symbol(name) => {
-                if env.get_type(name).is_some() {
-                    Ok(())
-                } else {
-                    Err(Error::TypeNotDefined(name.clone()))
-                }
-            }
-            Self::Let(name, t, ret) => {
-                let mut new_env = env.clone();
-                new_env.define_type(name, *t.clone());
-                t.type_check(&new_env)?;
-                ret.type_check(&new_env)
-            }
-            Self::Array(t, e) => {
-                t.type_check(env)?;
-                e.type_check(env)
-            }
-            Self::Tuple(ts) => {
-                for t in ts {
-                    t.type_check(env)?;
-                }
-                Ok(())
-            }
-            Self::Struct(fields) | Self::Union(fields) => {
-                for t in fields.values() {
-                    t.type_check(env)?;
-                }
-                Ok(())
-            }
-
-            Self::Proc(args, ret) => {
-                for t in args {
-                    t.type_check(env)?;
-                }
-                ret.type_check(env)
-            }
-
-            Self::Pointer(t) => t.type_check(env),
-        }
-    }
-}
+mod size;
+mod check;
+mod inference;
+pub use size::*;
+pub use check::*;
+pub use inference::*;
 
 /// The representation of a type in the LIR type system.
 #[derive(Clone, Debug, PartialEq)]
@@ -128,6 +70,17 @@ pub enum Type {
 }
 
 impl Type {
+    /// Calculate the integral value of a variant in an enum.
+    pub fn variant_index(variants: &Vec<String>, variant: &String) -> Option<usize> {
+        let mut variants = variants.clone();
+        variants.sort();
+        if let Ok(index) = variants.binary_search(variant) {
+            Some(index)
+        } else {
+            None
+        }
+    }
+
     /// Does this type contain a symbol with the given name?
     /// This will not count overshadowded versions of the symbol (overwritten by let-bindings).
     pub fn contains_symbol(&self, name: &str) -> bool {
@@ -387,7 +340,7 @@ impl Type {
         if i > 50 {
             return Ok(false);
         }
-        
+
         Ok(match (self, other) {
             (Self::Any, _)
             | (_, Self::Any)
@@ -606,12 +559,15 @@ impl Type {
                 let mut new_env = env.clone();
                 new_env.define_type(name, *t.clone());
                 // Find the member offset of the returned type under the new scope
-                // 
+                //
                 // NOTE:
                 // We simplfy the type before AND after getting the member offset because
                 // we want to make sure that recursive types don't leave undefined symbols
                 // in the in the resulting type.
-                let (t, offset) = ret.clone().simplify(env)?.get_member_offset(member, expr, &new_env)?;
+                let (t, offset) = ret
+                    .clone()
+                    .simplify(env)?
+                    .get_member_offset(member, expr, &new_env)?;
                 Ok((t.simplify(&new_env)?, offset))
             }
 
@@ -630,54 +586,6 @@ impl Type {
     }
 }
 
-impl GetSize for Type {
-    fn get_size_checked(&self, env: &Env, i: usize) -> Result<usize, Error> {
-        let i = i + 1;
-        Ok(match self {
-            Self::None | Self::Never => 0,
-            Self::Any => return Err(Error::UnsizedType(self.clone())),
-
-            Self::Let(name, t, ret) => {
-                let mut new_env = env.clone();
-                new_env.define_type(name, *t.clone());
-                ret.get_size_checked(&new_env, i)?
-            }
-
-            Self::Symbol(name) => {
-                if let Some(t) = env.get_type(name) {
-                    t.get_size_checked(env, i)?
-                } else {
-                    return Err(Error::TypeNotDefined(name.clone()));
-                }
-            }
-
-            Self::Unit(_unit_name, t) => t.get_size_checked(env, i)?,
-
-            Self::Int
-            | Self::Float
-            | Self::Char
-            | Self::Bool
-            | Self::Cell
-            | Self::Enum(_)
-            | Self::Pointer(_)
-            | Self::Proc(_, _) => 1,
-
-            Self::Tuple(items) => items.iter().flat_map(|t| t.get_size_checked(env, i)).sum(),
-            Self::Array(elem, size) => {
-                elem.get_size_checked(env, i)? * size.clone().as_int(env)? as usize
-            }
-            Self::Struct(fields) => fields
-                .iter()
-                .flat_map(|(_, t)| t.get_size_checked(env, i))
-                .sum(),
-            Self::Union(types) => types
-                .iter()
-                .flat_map(|(_, t)| t.get_size_checked(env, i))
-                .max()
-                .unwrap_or(0),
-        })
-    }
-}
 
 impl Simplify for Type {
     fn simplify_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
@@ -762,6 +670,7 @@ impl Simplify for Type {
         })
     }
 }
+
 
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

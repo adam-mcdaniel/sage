@@ -73,23 +73,23 @@
 }, neq = proc(a: Int, b: Int) -> Bool = core {
     neq [SP - 1], [SP], A pop
     mov A, [SP]
-}, put = proc(n: Int) -> None = core {
-    put [SP]
+}, putinch = proc(n: Int) -> None = core {
+    put-char [SP]
     pop
 } in
 
 proc putdec(n: Int) -> None = {
     if (lt(n, 10)) {
-        put(n + 48)
+        putinch(n + 48)
     } else {
         putdec(n / 10);
-        put(n % 10 + 48)
+        putinch(n % 10 + 48)
     }
 } in
 
 proc puthex(n: Int, lower: Bool) -> None = {
     if (lt(n, 16)) {
-        put(n + if (lt(n, 10)) {
+        putinch(n + if (lt(n, 10)) {
             48
         } else {
             if lower {
@@ -112,12 +112,12 @@ proc putbyte(n: Int, lower: Bool) -> None = {
 const putint = proc(n: Int) -> None = { putbyte(n, false) } in
 
 const putchar = proc(ch: Char) -> None = {
-    put(ch as Int)
+    putinch(ch as Int)
 } in
 
 const getchar = proc() -> Char = core {
     next SP
-    get [SP]
+    get-char [SP]
 } in
 
 proc ln() -> None = {
@@ -699,8 +699,8 @@ let state = row_major(
 }, neq = proc(a: Int, b: Int) -> Bool = core {
     neq [SP - 1], [SP], A pop
     mov A, [SP]
-}, put = proc(n: Int) -> None = core {
-    put [SP]
+}, putinch = proc(n: Int) -> None = core {
+    put-char [SP]
     pop
 } in
 const alloc = proc(size: Int) -> &Int = core {
@@ -716,16 +716,16 @@ const alloc = proc(size: Int) -> &Int = core {
 const free = proc(ptr: &Int) -> None = {} in
 proc putdec(n: Int) -> None = {
     if (lt(n, 10)) {
-        put(n + 48)
+        putinch(n + 48)
     } else {
         putdec(n / 10);
-        put(n % 10 + 48)
+        putinch(n % 10 + 48)
     }
 } in
 
 proc puthex(n: Int, lower: Bool) -> None = {
     if (lt(n, 16)) {
-        put(n + if (lt(n, 10)) {
+        putinch(n + if (lt(n, 10)) {
             48
         } else {
             if lower {
@@ -748,7 +748,7 @@ proc putbyte(n: Int, lower: Bool) -> None = {
 const putint = putdec in
 
 const putchar = proc(ch: Char) -> None = {
-    put(ch as Int)
+    putinch(ch as Int)
 } in
 
 proc ln() -> None = {
@@ -878,21 +878,17 @@ let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
 }`);
                     break;
                 case "lambda-sim":
-                    source.setValue(`const putint = proc(n: Int) -> None = std {
+                    source.setValue(`const putint = proc(n: Int) -> None = core {
     put-int [SP]
     pop
 } in
-const putchar = proc(ch: Char) -> None = std {
+const putchar = proc(ch: Char) -> None = core {
     put-char [SP]
     pop
 } in
 const lt = proc(a: Int, b: Int) -> Bool = core {
     lt [SP - 1], [SP], A pop
     mov A, [SP]
-} in
-const put = proc(n: Int) -> None = core {
-    put [SP]
-    pop
 } in
 
 type Op = struct {
@@ -924,16 +920,16 @@ proc app(op: Op, y: Int) -> Int = {
 
 proc putdec(n: Int) -> None = {
     if (lt(n, 10)) {
-        put(n + 48)
+        putchar((n + 48) as Char)
     } else {
         putdec(n / 10);
-        put(n % 10 + 48)
+        putchar((n % 10 + 48) as Char)
     }
 } in
 
 proc puthex(n: Int, lower: Bool) -> None = {
     if (lt(n, 16)) {
-        put(n + if (lt(n, 10)) {
+        putchar((n + if (lt(n, 10)) {
             48
         } else {
             if lower {
@@ -941,7 +937,7 @@ proc puthex(n: Int, lower: Bool) -> None = {
             } else {
                 55
             }
-        })
+        }) as Char)
     } else {
         puthex(n / 16, lower);
         puthex(n % 16, lower)
@@ -954,7 +950,7 @@ proc putbyte(n: Int, lower: Bool) -> None = {
 } in
 
 proc ln() -> None = {
-    put(10)
+    putchar('\n')
 } in
 
 let double = mul(2),
@@ -963,13 +959,15 @@ let double = mul(2),
         app(add(10), app(triple, app(double, 5)))
     );
     ln();
+
+    putbyte(255, false);
 }`);
                     break;
                 case "cat":
-                    source.setValue(`const putchar = proc(ch: Char) -> None = std {
+                    source.setValue(`const putchar = proc(ch: Char) -> None = core {
     put-char [SP]
     pop
-}, getchar = proc() -> Char = std {
+}, getchar = proc() -> Char = core {
     next SP
     get-char [SP]
 } in let ch = getchar() in while ch {
@@ -979,10 +977,10 @@ let double = mul(2),
                     document.getElementById("input").value = "this is a cat program!";
                     break;
                 case "factorial":
-                    source.setValue(`const putint = proc(n: Int) -> None = std {
+                    source.setValue(`const putint = proc(n: Int) -> None = core {
     put-int [SP]
     pop
-}, getint = proc() -> Int = std {
+}, getint = proc() -> Int = core {
     next SP
     get-int [SP]
 } in
@@ -995,11 +993,11 @@ proc fact(n: Int) -> Int = {
                     document.getElementById("input").value = "5";
                     break;
                 case "units":
-                    source.setValue(`const putint = proc(n: Int) -> None = std {
+                    source.setValue(`const putint = proc(n: Int) -> None = core {
     put-int [SP]
     pop
 } in
-const putchar = proc(ch: Char) -> None = std {
+const putchar = proc(ch: Char) -> None = core {
     put-char [SP]
     pop
 } in
@@ -1012,10 +1010,6 @@ type
     MetersPerSecond = unit MetersPerSec = Meter,
     MetersPerSecondPerSecond = unit MetersPerSecondPerSecond = MetersPerSecond
 in
-
-proc putpos(x: Meter) -> None = {
-    putint(x as Int)
-} in
 
 proc shift_pos_by_dist(x0: Meter, dx: Meter) -> Meter = {
     (x0 as Int + dx as Int) as Meter
@@ -1041,16 +1035,16 @@ let x0: Meter = km_to_m(1 as Kilometer),
     v0: MetersPerSecond = 5 as MetersPerSecond,
     accel: MetersPerSecondPerSecond = 2 as MetersPerSecondPerSecond,
     t: Second = 10 as Second,
-    in putpos(shift_pos_with_vel_and_accel(x0, v0, accel, t))`);
+    in put shift_pos_with_vel_and_accel(x0, v0, accel, t)`);
                     break;
                 case "collatz":
-                    source.setValue(`const getint = proc() -> Int = std {
+                    source.setValue(`const getint = proc() -> Int = core {
     next SP
     get-int [SP]
-}, putint = proc(n: Int) -> None = std {
+}, putint = proc(n: Int) -> None = core {
     put-int [SP]
     pop
-}, putchar = proc(ch: Char) -> None = std {
+}, putchar = proc(ch: Char) -> None = core {
     put-char [SP]
     pop
 } in
@@ -1072,11 +1066,11 @@ proc collatz(n: Int) -> Int = {
                     document.getElementById("input").value = "129";
                     break;
                 case "inline-asm":
-                    source.setValue(`const putint = proc(n: Int) -> None = std {
+                    source.setValue(`const putint = proc(n: Int) -> None = core {
     put-int [SP]
     pop
 } in
-const putchar = proc(ch: Char) -> None = std {
+const putchar = proc(ch: Char) -> None = core {
     put-char [SP]
     pop
 } in
@@ -1105,12 +1099,12 @@ const asm_init = proc() -> None = core {
 }`);
                     break;
                 case "type-demo-1":
-                    source.setValue(`const putchar = proc(ch: Char) -> None = std {
+                    source.setValue(`const putchar = proc(ch: Char) -> None = core {
     put-char [SP]
     pop
 } in
 
-const getchar = proc() -> Char = std {
+const getchar = proc() -> Char = core {
     next SP
     get-char [SP]
 } in
@@ -1150,7 +1144,7 @@ let x: let A = (Int, &A) in A
 }`);
                     break;
                 case "type-demo-2":
-                    source.setValue(`const putint = proc(n: Int) -> None = std {
+                    source.setValue(`const putint = proc(n: Int) -> None = core {
     put-int [SP]
     pop
 } in

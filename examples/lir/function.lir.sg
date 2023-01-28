@@ -1,5 +1,5 @@
-const put = proc(n: Int) -> None = core {
-    put [SP] pop
+const putchar = proc(n: Char) -> None = core {
+    put-char [SP] pop
 } in
 
 proc test(
@@ -8,6 +8,6 @@ proc test(
     y: Int) -> Int = {
     order(x, y)
 } in 
-    put(test(proc(x: Int, y: Int) -> Int = {x},
+    putchar(test(proc(x: Int, y: Int) -> Int = {x},
             'a' as Int,
-            'b' as Int))
+            'b' as Int) as Char)

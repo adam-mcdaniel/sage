@@ -134,8 +134,20 @@
 <span id="129">129</span>
 <span id="130">130</span>
 <span id="131">131</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">AssemblyProgram</span>, <span class="ident">Compile</span>, <span class="ident">Env</span>, <span class="ident">Error</span>, <span class="ident">GetType</span>, <span class="ident">Type</span>, <span class="ident">TypeCheck</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::asm</span>::{<span class="ident">CoreOp</span>, <span class="ident">StandardOp</span>};
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # Builtin Procedures</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! `CoreBuiltin` and `StandardBuiltin` procedures which are implemented in core or standard assembly respectively.</span>
+<span class="doccomment">//! </span>
+<span class="doccomment">//! These are not executed like genuine procedures, but instead, their code is inlined into the assembly code.</span>
+
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::lir</span>::{<span class="ident">Compile</span>, <span class="ident">Env</span>, <span class="ident">Error</span>, <span class="ident">GetType</span>, <span class="ident">Type</span>, <span class="ident">TypeCheck</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::asm</span>::{<span class="ident">AssemblyProgram</span>, <span class="ident">CoreOp</span>, <span class="ident">StandardOp</span>};
 <span class="kw">use</span> <span class="ident">core::fmt</span>;
 
 <span class="doccomment">/// A builtin pseudo-procedure implemented in the core assembly variant.</span>

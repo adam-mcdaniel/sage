@@ -1,8 +1,8 @@
-const putfloat = proc(n: Float) -> None = std {
+const putfloat = proc(n: Float) -> None = core {
     put-float [SP]
     pop
 } in
-const putchar = proc(ch: Char) -> None = std {
+const putchar = proc(ch: Char) -> None = core {
     put-char [SP]
     pop
 } in

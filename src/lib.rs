@@ -64,12 +64,12 @@
 //! | Trigonometry           | `Sine`           | `Cosine`  | `Tangent`       | `ArcSine`  | `ArcCosine` | `ArcTangent` |
 //! | Arithmetic             | `IsNonNegative?` | `Add`     | `Subtract`      | `Multiply` | `Divide`    | `Remainder`  |
 //! | Worldly                | `GetChar`        | `PutChar` | `GetInt`        | `PutInt`   | `GetFloat`  | `PutFloat`   |
-
 pub mod asm;
 pub mod lir;
 pub mod parse;
 pub mod targets;
 pub mod vm;
+pub mod io;
 
 /// The value of the NULL pointer constant.
 ///

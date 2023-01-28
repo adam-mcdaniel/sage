@@ -1,4 +1,4 @@
-use sage::vm::Device;
+use sage::{io::*, vm::*};
 use std::collections::VecDeque;
 
 /// A device used for testing the compiler. This simply keeps a buffer
@@ -25,22 +25,6 @@ impl WasmDevice {
             output: vec![],
         }
     }
-}
-
-/// Make the testing device work with the interpreter.
-impl Device for WasmDevice {
-    fn get(&mut self) -> Result<isize, String> {
-        if let Some(n) = self.input.pop_front() {
-            Ok(n)
-        } else {
-            Ok(0)
-        }
-    }
-
-    fn put(&mut self, val: isize) -> Result<(), String> {
-        self.output.push(val);
-        Ok(())
-    }
 
     fn put_char(&mut self, ch: char) -> Result<(), String> {
         self.output.push(ch as usize as isize);
@@ -62,7 +46,7 @@ impl Device for WasmDevice {
     }
 
     fn get_char(&mut self) -> Result<char, String> {
-        self.get().map(|n| n as u8 as char)
+        Ok(self.input.pop_front().map(|n| n as u8 as char).unwrap_or('\0'))
     }
 
     fn get_int(&mut self) -> Result<isize, String> {
@@ -112,6 +96,41 @@ impl Device for WasmDevice {
 
         } else {
             Ok(whole_part)
+        }
+    }
+}
+
+/// Make the testing device work with the interpreter.
+impl Device for WasmDevice {
+    fn peek(&mut self) -> Result<isize, String> { Ok(0) }
+    fn poke(&mut self, _val: isize) -> Result<(), String> { Ok(()) }
+
+    fn get(&mut self, src: Input) -> Result<isize, String> {
+        match src.mode {
+            InputMode::StdinChar => {
+                Ok(if let Some(n) = self.input.pop_front() {
+                    n
+                } else {
+                    0
+                })
+            }
+            InputMode::StdinInt => self.get_int(),
+            InputMode::StdinFloat => self.get_float().map(as_int),
+            _ => Err("invalid input mode".to_string()),
+        }
+    }
+
+    fn put(&mut self, val: isize, dst: Output) -> Result<(), String> {
+        match dst.mode {
+            OutputMode::StdoutChar | OutputMode::StderrChar => {
+                self.output.push(val);
+                Ok(())
+            }
+            OutputMode::StdoutInt => self.put_int(val),
+            OutputMode::StdoutFloat => self.put_float(as_float(val)),
+            OutputMode::StderrInt => self.put_int(val),
+            OutputMode::StderrFloat => self.put_float(as_float(val)),
+            _ => Err("invalid output mode".to_string()),
         }
     }
 }

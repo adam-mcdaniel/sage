@@ -12,7 +12,7 @@ fn test_lir_examples() {
     // Compiling most examples overflows the tiny stack for tests.
     // So, we spawn a new thread with a larger stack size.
     let child = std::thread::Builder::new()
-        .stack_size(16 * 1024 * 1024)
+        .stack_size(24 * 1024 * 1024)
         .spawn(test_lir_examples_helper)
         .unwrap();
 
@@ -24,6 +24,7 @@ fn test_lir_examples_helper() {
     for entry in read_dir("examples/lir/").unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
+        eprintln!("Starting test for `{path:?}`");
         if path.is_file()
             && matches!(
                 path.extension().map(|p| p
@@ -81,7 +82,7 @@ fn test_lir_examples_helper() {
                     .expect(&format!("Could not interpret code in `{path:?}`")),
             };
 
-            if device.output != correct_output {
+            if device.output_vals() != correct_output {
                 panic!("{:?} != {correct_output:?}, device output did not match correct output for program {path:?}", device.output)
             }
         }
@@ -159,7 +160,7 @@ fn test_asm_examples_helper() {
                     .expect(&format!("Could not interpret code in `{path:?}`")),
             };
 
-            if device.output != correct_output {
+            if device.output_vals() != correct_output {
                 panic!("{:?} != {correct_output:?}, device output did not match correct output for program {path:?}", device.output)
             }
         }

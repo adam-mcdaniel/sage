@@ -168,6 +168,7 @@
 <span id="163">163</span>
 <span id="164">164</span>
 <span id="165">165</span>
+<span id="166">166</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Virtual Machine Module</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains all things related to the virtual machine.</span>
@@ -223,6 +224,7 @@
 <span class="doccomment">//! 16 bit ints + no floats for a hardware implementation would suffice.</span>
 <span class="doccomment">//! Infinitely large ints and floats are also supported, but the implementation</span>
 <span class="doccomment">//! must be able to handle them.</span>
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::io</span>::{<span class="ident">Input</span>, <span class="ident">Output</span>};
 
 <span class="kw">mod</span> <span class="ident">core</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::core</span>::<span class="kw-2">*</span>;
@@ -321,12 +323,12 @@
         <span class="self">self</span>.<span class="ident">op</span>(<span class="ident">CoreOp::BitwiseNand</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Get</span>)
+    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">src</span>: <span class="ident">Input</span>) {
+        <span class="self">self</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Get</span>(<span class="ident">src</span>))
     }
 
-    <span class="kw">fn</span> <span class="ident">put</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Put</span>)
+    <span class="kw">fn</span> <span class="ident">put</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">dst</span>: <span class="ident">Output</span>) {
+        <span class="self">self</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Put</span>(<span class="ident">dst</span>))
     }
 
     <span class="kw">fn</span> <span class="ident">is_non_negative</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {

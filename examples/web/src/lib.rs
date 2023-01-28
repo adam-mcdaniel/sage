@@ -5,7 +5,7 @@ mod device;
 use interpreter::WasmInterpreter;
 use device::WasmDevice;
 use wasm_bindgen::prelude::*;
-use sage::{lir::Compile, targets::{self, Target}};
+use sage::{lir::Compile, targets::{self, CompiledTarget}};
 
 // Called by our JS entry point to run the example
 #[wasm_bindgen(start)]

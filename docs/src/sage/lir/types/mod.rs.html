@@ -1,9 +1,9 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/types.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>types.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../sage/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/types/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script src="../../../../crates.js"></script><script defer src="../../../../main.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script>
+    <noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../sage/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div>
         </a><h2 class="location"></h2>
     </nav>
-    <nav class="sidebar"><a class="sidebar-logo" href="../../../sage/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../sage/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+    <nav class="sidebar"><a class="sidebar-logo" href="../../../../sage/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div>
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -747,155 +747,20 @@
 <span id="742">742</span>
 <span id="743">743</span>
 <span id="744">744</span>
-<span id="745">745</span>
-<span id="746">746</span>
-<span id="747">747</span>
-<span id="748">748</span>
-<span id="749">749</span>
-<span id="750">750</span>
-<span id="751">751</span>
-<span id="752">752</span>
-<span id="753">753</span>
-<span id="754">754</span>
-<span id="755">755</span>
-<span id="756">756</span>
-<span id="757">757</span>
-<span id="758">758</span>
-<span id="759">759</span>
-<span id="760">760</span>
-<span id="761">761</span>
-<span id="762">762</span>
-<span id="763">763</span>
-<span id="764">764</span>
-<span id="765">765</span>
-<span id="766">766</span>
-<span id="767">767</span>
-<span id="768">768</span>
-<span id="769">769</span>
-<span id="770">770</span>
-<span id="771">771</span>
-<span id="772">772</span>
-<span id="773">773</span>
-<span id="774">774</span>
-<span id="775">775</span>
-<span id="776">776</span>
-<span id="777">777</span>
-<span id="778">778</span>
-<span id="779">779</span>
-<span id="780">780</span>
-<span id="781">781</span>
-<span id="782">782</span>
-<span id="783">783</span>
-<span id="784">784</span>
-<span id="785">785</span>
-<span id="786">786</span>
-<span id="787">787</span>
-<span id="788">788</span>
-<span id="789">789</span>
-<span id="790">790</span>
-<span id="791">791</span>
-<span id="792">792</span>
-<span id="793">793</span>
-<span id="794">794</span>
-<span id="795">795</span>
-<span id="796">796</span>
-<span id="797">797</span>
-<span id="798">798</span>
-<span id="799">799</span>
-<span id="800">800</span>
-<span id="801">801</span>
-<span id="802">802</span>
-<span id="803">803</span>
-<span id="804">804</span>
-<span id="805">805</span>
-<span id="806">806</span>
-<span id="807">807</span>
-<span id="808">808</span>
-<span id="809">809</span>
-<span id="810">810</span>
-<span id="811">811</span>
-<span id="812">812</span>
-<span id="813">813</span>
-<span id="814">814</span>
-<span id="815">815</span>
-<span id="816">816</span>
-<span id="817">817</span>
-<span id="818">818</span>
-<span id="819">819</span>
-<span id="820">820</span>
-<span id="821">821</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Types Module</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains a collection of types and traits</span>
 <span class="doccomment">//! used to implement and confirm the soundness of the LIR</span>
 <span class="doccomment">//! typesystem.</span>
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">ConstExpr</span>, <span class="ident">Env</span>, <span class="ident">Error</span>, <span class="ident">Expr</span>, <span class="ident">GetSize</span>, <span class="ident">Simplify</span>};
+<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">ConstExpr</span>, <span class="ident">Env</span>, <span class="ident">Error</span>, <span class="ident">Expr</span>, <span class="ident">Simplify</span>};
 <span class="kw">use</span> <span class="ident">core::fmt</span>;
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">BTreeMap</span>, <span class="ident">HashSet</span>};
-
-<span class="doccomment">/// A value that can be typechecked.</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">TypeCheck</span> {
-    <span class="doccomment">/// Type check the expression.</span>
-    <span class="kw">fn</span> <span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span>;
-}
-
-<span class="kw">impl</span> <span class="ident">TypeCheck</span> <span class="kw">for</span> <span class="ident">Type</span> {
-    <span class="kw">fn</span> <span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="comment">// TODO: Also add checks for infinitely sized types.</span>
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident"><span class="self">Self</span>::Any</span>
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Never</span>
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::None</span>
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Cell</span>
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Int</span>
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Float</span>
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Bool</span>
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Char</span>
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Enum</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
-
-            <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">_unit_name</span>, <span class="ident">t</span>) =&gt; <span class="ident">t</span>.<span class="ident">type_check</span>(<span class="ident">env</span>),
-
-            <span class="ident"><span class="self">Self</span>::Symbol</span>(<span class="ident">name</span>) =&gt; {
-                <span class="kw">if</span> <span class="ident">env</span>.<span class="ident">get_type</span>(<span class="ident">name</span>).<span class="ident">is_some</span>() {
-                    <span class="prelude-val">Ok</span>(())
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">Err</span>(<span class="ident">Error::TypeNotDefined</span>(<span class="ident">name</span>.<span class="ident">clone</span>()))
-                }
-            }
-            <span class="ident"><span class="self">Self</span>::Let</span>(<span class="ident">name</span>, <span class="ident">t</span>, <span class="ident">ret</span>) =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_env</span> <span class="op">=</span> <span class="ident">env</span>.<span class="ident">clone</span>();
-                <span class="ident">new_env</span>.<span class="ident">define_type</span>(<span class="ident">name</span>, <span class="kw-2">*</span><span class="ident">t</span>.<span class="ident">clone</span>());
-                <span class="ident">t</span>.<span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="ident">new_env</span>)<span class="question-mark">?</span>;
-                <span class="ident">ret</span>.<span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="ident">new_env</span>)
-            }
-            <span class="ident"><span class="self">Self</span>::Array</span>(<span class="ident">t</span>, <span class="ident">e</span>) =&gt; {
-                <span class="ident">t</span>.<span class="ident">type_check</span>(<span class="ident">env</span>)<span class="question-mark">?</span>;
-                <span class="ident">e</span>.<span class="ident">type_check</span>(<span class="ident">env</span>)
-            }
-            <span class="ident"><span class="self">Self</span>::Tuple</span>(<span class="ident">ts</span>) =&gt; {
-                <span class="kw">for</span> <span class="ident">t</span> <span class="kw">in</span> <span class="ident">ts</span> {
-                    <span class="ident">t</span>.<span class="ident">type_check</span>(<span class="ident">env</span>)<span class="question-mark">?</span>;
-                }
-                <span class="prelude-val">Ok</span>(())
-            }
-            <span class="ident"><span class="self">Self</span>::Struct</span>(<span class="ident">fields</span>) <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Union</span>(<span class="ident">fields</span>) =&gt; {
-                <span class="kw">for</span> <span class="ident">t</span> <span class="kw">in</span> <span class="ident">fields</span>.<span class="ident">values</span>() {
-                    <span class="ident">t</span>.<span class="ident">type_check</span>(<span class="ident">env</span>)<span class="question-mark">?</span>;
-                }
-                <span class="prelude-val">Ok</span>(())
-            }
-
-            <span class="ident"><span class="self">Self</span>::Proc</span>(<span class="ident">args</span>, <span class="ident">ret</span>) =&gt; {
-                <span class="kw">for</span> <span class="ident">t</span> <span class="kw">in</span> <span class="ident">args</span> {
-                    <span class="ident">t</span>.<span class="ident">type_check</span>(<span class="ident">env</span>)<span class="question-mark">?</span>;
-                }
-                <span class="ident">ret</span>.<span class="ident">type_check</span>(<span class="ident">env</span>)
-            }
-
-            <span class="ident"><span class="self">Self</span>::Pointer</span>(<span class="ident">t</span>) =&gt; <span class="ident">t</span>.<span class="ident">type_check</span>(<span class="ident">env</span>),
-        }
-    }
-}
+<span class="kw">mod</span> <span class="ident">size</span>;
+<span class="kw">mod</span> <span class="ident">check</span>;
+<span class="kw">mod</span> <span class="ident">inference</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">size</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">check</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">inference</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// The representation of a type in the LIR type system.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
@@ -954,6 +819,17 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Type</span> {
+    <span class="doccomment">/// Calculate the integral value of a variant in an enum.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">variant_index</span>(<span class="ident">variants</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">variant</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">variants</span> <span class="op">=</span> <span class="ident">variants</span>.<span class="ident">clone</span>();
+        <span class="ident">variants</span>.<span class="ident">sort</span>();
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">index</span>) <span class="op">=</span> <span class="ident">variants</span>.<span class="ident">binary_search</span>(<span class="ident">variant</span>) {
+            <span class="prelude-val">Some</span>(<span class="ident">index</span>)
+        } <span class="kw">else</span> {
+            <span class="prelude-val">None</span>
+        }
+    }
+
     <span class="doccomment">/// Does this type contain a symbol with the given name?</span>
     <span class="doccomment">/// This will not count overshadowded versions of the symbol (overwritten by let-bindings).</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">contains_symbol</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">bool</span> {
@@ -1393,7 +1269,10 @@
             <span class="ident">Type::Struct</span>(<span class="ident">members</span>) =&gt; {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">offset</span> <span class="op">=</span> <span class="number">0</span>;
                 <span class="kw">for</span> (<span class="ident">k</span>, <span class="ident">t</span>) <span class="kw">in</span> <span class="ident">members</span>.<span class="ident">clone</span>() {
+                    <span class="comment">// If this element is the requested member</span>
                     <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">ConstExpr::Symbol</span>(<span class="ident">k</span>) <span class="op">==</span> <span class="ident">member</span> {
+                        <span class="comment">// Return the member&#39;s type and the offset in memory</span>
+                        <span class="comment">// from the value&#39;s address</span>
                         <span class="kw">return</span> <span class="prelude-val">Ok</span>((<span class="ident">t</span>.<span class="ident">simplify</span>(<span class="ident">env</span>)<span class="question-mark">?</span>, <span class="ident">offset</span>));
                     }
 
@@ -1405,9 +1284,12 @@
             <span class="ident">Type::Tuple</span>(<span class="ident">items</span>) =&gt; {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">offset</span> <span class="op">=</span> <span class="number">0</span>;
                 <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">t</span>) <span class="kw">in</span> <span class="ident">items</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+                    <span class="comment">// If this element is the requested member</span>
                     <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">ConstExpr::Int</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">i32</span>) <span class="op">==</span> <span class="ident">member</span> {
+                        <span class="comment">// Simplify the type under the environment</span>
                         <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">t</span>.<span class="ident">clone</span>().<span class="ident">simplify</span>(<span class="ident">env</span>)<span class="question-mark">?</span>;
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;result {:?}&quot;</span>, <span class="ident">result</span>);
+                        <span class="comment">// Return the member&#39;s type and its offset in memory</span>
+                        <span class="comment">// from the value&#39;s address.</span>
                         <span class="kw">return</span> <span class="prelude-val">Ok</span>((<span class="ident">result</span>, <span class="ident">offset</span>));
                     }
 
@@ -1422,9 +1304,20 @@
             },
 
             <span class="ident">Type::Let</span>(<span class="ident">name</span>, <span class="ident">t</span>, <span class="ident">ret</span>) =&gt; {
+                <span class="comment">// Create a new scope and define the new type within it</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_env</span> <span class="op">=</span> <span class="ident">env</span>.<span class="ident">clone</span>();
                 <span class="ident">new_env</span>.<span class="ident">define_type</span>(<span class="ident">name</span>, <span class="kw-2">*</span><span class="ident">t</span>.<span class="ident">clone</span>());
-                <span class="ident">ret</span>.<span class="ident">get_member_offset</span>(<span class="ident">member</span>, <span class="ident">expr</span>, <span class="kw-2">&amp;</span><span class="ident">new_env</span>)
+                <span class="comment">// Find the member offset of the returned type under the new scope</span>
+                <span class="comment">//</span>
+                <span class="comment">// NOTE:</span>
+                <span class="comment">// We simplfy the type before AND after getting the member offset because</span>
+                <span class="comment">// we want to make sure that recursive types don&#39;t leave undefined symbols</span>
+                <span class="comment">// in the in the resulting type.</span>
+                <span class="kw">let</span> (<span class="ident">t</span>, <span class="ident">offset</span>) <span class="op">=</span> <span class="ident">ret</span>
+                    .<span class="ident">clone</span>()
+                    .<span class="ident">simplify</span>(<span class="ident">env</span>)<span class="question-mark">?</span>
+                    .<span class="ident">get_member_offset</span>(<span class="ident">member</span>, <span class="ident">expr</span>, <span class="kw-2">&amp;</span><span class="ident">new_env</span>)<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>((<span class="ident">t</span>.<span class="ident">simplify</span>(<span class="kw-2">&amp;</span><span class="ident">new_env</span>)<span class="question-mark">?</span>, <span class="ident">offset</span>))
             }
 
             <span class="ident">Type::Unit</span>(<span class="ident">_unit_name</span>, <span class="ident">t</span>) =&gt; <span class="ident">t</span>.<span class="ident">get_member_offset</span>(<span class="ident">member</span>, <span class="ident">expr</span>, <span class="ident">env</span>),
@@ -1442,54 +1335,6 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">GetSize</span> <span class="kw">for</span> <span class="ident">Type</span> {
-    <span class="kw">fn</span> <span class="ident">get_size_checked</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">i</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">i</span> <span class="op">=</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>;
-        <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident"><span class="self">Self</span>::None</span> <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Never</span> =&gt; <span class="number">0</span>,
-            <span class="ident"><span class="self">Self</span>::Any</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::UnsizedType</span>(<span class="self">self</span>.<span class="ident">clone</span>())),
-
-            <span class="ident"><span class="self">Self</span>::Let</span>(<span class="ident">name</span>, <span class="ident">t</span>, <span class="ident">ret</span>) =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_env</span> <span class="op">=</span> <span class="ident">env</span>.<span class="ident">clone</span>();
-                <span class="ident">new_env</span>.<span class="ident">define_type</span>(<span class="ident">name</span>, <span class="kw-2">*</span><span class="ident">t</span>.<span class="ident">clone</span>());
-                <span class="ident">ret</span>.<span class="ident">get_size_checked</span>(<span class="kw-2">&amp;</span><span class="ident">new_env</span>, <span class="ident">i</span>)<span class="question-mark">?</span>
-            }
-
-            <span class="ident"><span class="self">Self</span>::Symbol</span>(<span class="ident">name</span>) =&gt; {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">t</span>) <span class="op">=</span> <span class="ident">env</span>.<span class="ident">get_type</span>(<span class="ident">name</span>) {
-                    <span class="ident">t</span>.<span class="ident">get_size_checked</span>(<span class="ident">env</span>, <span class="ident">i</span>)<span class="question-mark">?</span>
-                } <span class="kw">else</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::TypeNotDefined</span>(<span class="ident">name</span>.<span class="ident">clone</span>()));
-                }
-            }
-
-            <span class="ident"><span class="self">Self</span>::Unit</span>(<span class="ident">_unit_name</span>, <span class="ident">t</span>) =&gt; <span class="ident">t</span>.<span class="ident">get_size_checked</span>(<span class="ident">env</span>, <span class="ident">i</span>)<span class="question-mark">?</span>,
-
-            <span class="ident"><span class="self">Self</span>::Int</span>
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Float</span>
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Char</span>
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Bool</span>
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Cell</span>
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Enum</span>(<span class="kw">_</span>)
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Pointer</span>(<span class="kw">_</span>)
-            <span class="op">|</span> <span class="ident"><span class="self">Self</span>::Proc</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="number">1</span>,
-
-            <span class="ident"><span class="self">Self</span>::Tuple</span>(<span class="ident">items</span>) =&gt; <span class="ident">items</span>.<span class="ident">iter</span>().<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">t</span>.<span class="ident">get_size_checked</span>(<span class="ident">env</span>, <span class="ident">i</span>)).<span class="ident">sum</span>(),
-            <span class="ident"><span class="self">Self</span>::Array</span>(<span class="ident">elem</span>, <span class="ident">size</span>) =&gt; {
-                <span class="ident">elem</span>.<span class="ident">get_size_checked</span>(<span class="ident">env</span>, <span class="ident">i</span>)<span class="question-mark">?</span> <span class="op">*</span> <span class="ident">size</span>.<span class="ident">clone</span>().<span class="ident">as_int</span>(<span class="ident">env</span>)<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">usize</span>
-            }
-            <span class="ident"><span class="self">Self</span>::Struct</span>(<span class="ident">fields</span>) =&gt; <span class="ident">fields</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">flat_map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">t</span>)<span class="op">|</span> <span class="ident">t</span>.<span class="ident">get_size_checked</span>(<span class="ident">env</span>, <span class="ident">i</span>))
-                .<span class="ident">sum</span>(),
-            <span class="ident"><span class="self">Self</span>::Union</span>(<span class="ident">types</span>) =&gt; <span class="ident">types</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">flat_map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">t</span>)<span class="op">|</span> <span class="ident">t</span>.<span class="ident">get_size_checked</span>(<span class="ident">env</span>, <span class="ident">i</span>))
-                .<span class="ident">max</span>()
-                .<span class="ident">unwrap_or</span>(<span class="number">0</span>),
-        })
-    }
-}
 
 <span class="kw">impl</span> <span class="ident">Simplify</span> <span class="kw">for</span> <span class="ident">Type</span> {
     <span class="kw">fn</span> <span class="ident">simplify_checked</span>(<span class="self">self</span>, <span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="ident">Env</span>, <span class="ident">i</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
@@ -1575,6 +1420,7 @@
     }
 }
 
+
 <span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Type</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="kw">match</span> <span class="self">self</span> {
@@ -1646,5 +1492,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="sage" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0 (a8314ef7d 2022-06-27)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="sage" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0 (a8314ef7d 2022-06-27)" ></div>
 </body></html>

@@ -18,6 +18,7 @@ lazy_static = "1.4.0"
 lalrpop-util = "0.19.8"
 lalrpop = "0.19.8"
 clap = { version ="3.2.22", features = ["derive", "cargo"] }
+no-comment = "0.0.3"
 
 # Add a build-time dependency on the lalrpop library:
 [build-dependencies]

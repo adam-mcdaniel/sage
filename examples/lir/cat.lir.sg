@@ -1,7 +1,7 @@
-const putchar = proc(ch: Char) -> None = std {
+const putchar = proc(ch: Char) -> None = core {
     put-char [SP]
     pop
-}, getchar = proc() -> Char = std {
+}, getchar = proc() -> Char = core {
     next SP
     get-char [SP]
 } in let ch = getchar() in while ch {

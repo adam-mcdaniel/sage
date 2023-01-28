@@ -1,0 +1,170 @@
+
+type State = enum {
+    Heating,
+    Cooling,
+    Idle
+} in
+
+type Kelvin = unit Kelvin = Float in
+type Celcius = unit Celcius = Float in
+type Fahrenheit = unit Fahrenheit = Float in
+
+proc get_temperature() -> Kelvin = core {
+    next SP
+    get [SP], thermometer #0
+} in
+
+proc turn_on_heater() = core {
+    set A, 1
+    put A, heater #0
+    put-str "[Heater on]\n", stderr.char
+} in
+
+proc turn_off_heater() = core {
+    set A, 0
+    put A, heater #0
+    put-str "[Heater off]\n", stderr.char
+} in
+
+proc turn_on_cooler() = core {
+    set A, 1
+    put A, cooler #0
+    put-str "[Cooler on]\n", stderr.char
+} in
+
+proc turn_off_cooler() = core {
+    set A, 0
+    put A, cooler #0
+    put-str "[Cooler off]\n", stderr.char
+} in
+
+proc read_power_button() -> Bool = core {
+    next SP
+    get [SP], button #0
+} in
+
+proc read_up_button() -> Bool = core {
+    next SP
+    get [SP], button #1
+} in
+
+proc read_down_button() -> Bool = core {
+    next SP
+    get [SP], button #2
+} in
+
+proc putint(n: Int) = core {
+    put-int [SP]
+} in
+
+proc putchar(c: Char) = core {
+    put-char [SP]
+} in
+
+proc putfloat(c: Float) = core {
+    put-float [SP]
+} in
+
+proc f_to_c(f: Fahrenheit) -> Celcius = {
+    ((f as Float - 32.0) * 5.0 / 9.0) as Celcius
+} in
+
+proc c_to_f(c: Celcius) -> Fahrenheit = {
+    ((c as Float * 9.0 / 5.0) + 32.0) as Fahrenheit
+} in
+
+proc k_to_c(k: Kelvin) -> Celcius = {
+    (k as Float - 273.15) as Celcius
+} in 
+
+proc c_to_k(c: Celcius) -> Kelvin = {
+    (c as Float + 273.15) as Kelvin
+} in
+
+proc f_to_k(f: Fahrenheit) -> Kelvin = {
+    c_to_k(f_to_c(f))
+} in
+
+proc k_to_f(k: Kelvin) -> Fahrenheit = {
+    c_to_f(k_to_c(k))
+} in
+
+proc putf(temp: Fahrenheit) = {
+    putfloat(temp as Float);
+    putchar('°');
+    putchar('F')
+} in
+
+proc putc(temp: Celcius) = {
+    putfloat(temp as Float);
+    putchar('°');
+    putchar('C')
+} in
+
+proc putk(temp: Kelvin) = {
+    putfloat(temp as Float);
+    putchar('°');
+    putchar('K')
+} in
+
+
+proc main() = {
+    let state = Idle of State,
+        desired_temp = 20.0 as Celcius,
+        current_temp = k_to_c(get_temperature()),
+        up_button = read_up_button(),
+        down_button = read_down_button(),
+        power_button = read_power_button()
+    in while (not power_button) {
+        if (up_button) {
+            desired_temp = desired_temp + 0.1 as Celcius
+        };
+
+        if (down_button) {
+            desired_temp = desired_temp - 0.1 as Celcius
+        };
+
+        put "Current temp: ";
+        putc(current_temp);
+        put "\nDesired temp: ";
+        putc(desired_temp);
+        put "\nCurrent state: ";
+        put state; put "\n";
+        
+        if (current_temp > desired_temp) {
+            put "Too hot\n"
+        } else if (current_temp < desired_temp) {
+            put "Too cold\n"
+        } else {
+            put "Just right\n"
+        };
+
+        if (state == Heating of State) {
+            if (current_temp > desired_temp) {
+                turn_off_heater();
+                state = Idle of State
+            }
+        } else if (state == Cooling of State) {
+            if (current_temp < desired_temp) {
+                turn_off_cooler();
+                state = Idle of State
+            }
+        } else {
+            if (current_temp < desired_temp) {
+                turn_on_heater();
+                state = Heating of State
+            } else if (current_temp > desired_temp) {
+                turn_on_cooler();
+                state = Cooling of State
+            } else {
+                state = Idle of State
+            }
+        };
+
+        up_button = read_up_button();
+        down_button = read_down_button();
+        power_button = read_power_button();
+        current_temp = k_to_c(get_temperature());
+    };
+    putchar('!')
+} in main()

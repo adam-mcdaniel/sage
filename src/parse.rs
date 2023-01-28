@@ -28,7 +28,10 @@
 use super::asm::{CoreProgram, StandardProgram};
 use super::lir::Expr;
 use super::vm;
+
 use lalrpop_util::lalrpop_mod;
+use no_comment::{IntoWithoutComments as _, languages};
+
 lalrpop_mod!(
     #[allow(clippy::all)]
     lir_parser
@@ -41,6 +44,7 @@ lalrpop_mod!(
     #[allow(clippy::all)]
     vm_parser
 );
+
 pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
 
 /// Parse Core and Standard variants of virtual machine source code.
@@ -48,10 +52,16 @@ pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
 pub fn parse_vm(
     input: impl ToString,
 ) -> Result<Result<vm::CoreProgram, vm::StandardProgram>, String> {
-    let code = input.to_string();
-    match vm_parser::CoreProgramParser::new().parse(&input.to_string()) {
+    let code = input.to_string()
+        .chars()
+        .without_comments(languages::rust())
+        .collect::<String>();
+
+    let code = code.trim();
+    
+    match vm_parser::CoreProgramParser::new().parse(&code.to_string()) {
         Ok(parsed) => Ok(Ok(parsed)),
-        Err(_) => match vm_parser::StandardProgramParser::new().parse(&input.to_string()) {
+        Err(_) => match vm_parser::StandardProgramParser::new().parse(&code.to_string()) {
             Ok(parsed) => Ok(Err(parsed)),
             Err(e) => Err(format_error(&code, e)),
         },
@@ -61,10 +71,16 @@ pub fn parse_vm(
 /// Parse Core and Standard variants of assembly source code.
 /// This will return core code by default, but will fallback on standard.
 pub fn parse_asm(input: impl ToString) -> Result<Result<CoreProgram, StandardProgram>, String> {
-    let code = input.to_string();
-    match asm_parser::CoreProgramParser::new().parse(&input.to_string()) {
+    let code = input.to_string()
+        .chars()
+        .without_comments(languages::rust())
+        .collect::<String>();
+
+    let code = code.trim();
+
+    match asm_parser::CoreProgramParser::new().parse(&code.to_string()) {
         Ok(parsed) => Ok(Ok(parsed)),
-        Err(_) => match asm_parser::StandardProgramParser::new().parse(&input.to_string()) {
+        Err(_) => match asm_parser::StandardProgramParser::new().parse(&code.to_string()) {
             Ok(parsed) => Ok(Err(parsed)),
             Err(e) => Err(format_error(&code, e)),
         },
@@ -73,8 +89,14 @@ pub fn parse_asm(input: impl ToString) -> Result<Result<CoreProgram, StandardPro
 
 /// Parse LIR code as an LIR expression.
 pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
-    let code = input.to_string();
-    match lir_parser::ExprParser::new().parse(&input.to_string()) {
+    let code = input.to_string()
+        .chars()
+        .without_comments(languages::rust())
+        .collect::<String>();
+        
+    let code = code.trim();
+
+    match lir_parser::ExprParser::new().parse(&code.to_string()) {
         Ok(parsed) => Ok(parsed),
         Err(e) => Err(format_error(&code, e)),
     }

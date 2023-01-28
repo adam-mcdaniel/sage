@@ -3,6 +3,8 @@
 //! Core instructions are instructions that **must** be implemented for
 //! every target. Write programs in the core variant to guarantee ports
 //! for ***every*** target.
+use crate::io::{Input, Output};
+
 use super::{Error, StandardOp, StandardProgram, VirtualMachineProgram};
 use core::fmt;
 use std::{collections::HashMap, hash::Hash};
@@ -29,7 +31,23 @@ impl CoreProgram {
     /// Flatten a core program so that all of its functions
     /// are defined sequentially at the beginning.
     pub fn flatten(self) -> Self {
-        Self(flatten(self.0))
+        Self(flatten(self.0).0)
+    }
+
+    /// Get the code outside of any functions.
+    pub fn get_main(&self) -> Vec<CoreOp> {
+        flatten(self.0.clone()).2
+    }
+
+    /// Get the code for each function.
+    pub fn get_functions(&self) -> HashMap<i32, Vec<CoreOp>> {
+        flatten(self.0.clone()).1
+    }
+
+    /// Get the code outside of any functions, and the code for each function.
+    pub fn get_main_and_functions(self) -> (Vec<CoreOp>, HashMap<i32, Vec<CoreOp>>) {
+        let (_, functions, main) = flatten(self.0);
+        (main, functions)
     }
 }
 
@@ -38,7 +56,7 @@ impl CoreProgram {
 /// and un-nest them while preserving the order in which functions are defined.
 ///
 /// All the function definitions will be placed at the top of the returned list.
-fn flatten(code: Vec<CoreOp>) -> Vec<CoreOp> {
+fn flatten(code: Vec<CoreOp>) -> (Vec<CoreOp>, HashMap<i32, Vec<CoreOp>>, Vec<CoreOp>) {
     let mut functions: HashMap<i32, Vec<CoreOp>> = HashMap::new();
 
     // The current function body we are in.
@@ -50,7 +68,18 @@ fn flatten(code: Vec<CoreOp>) -> Vec<CoreOp> {
     let mut matching_end = 0;
     // Keep track of each `matching_end`, and the scope we were previously in, for each nested scope.
     let mut scope_stack = vec![];
+    // All of the instructions which are not part of a function definition.
+    let mut main_instructions = vec![];
     for op in code {
+        match &op {
+            CoreOp::Function => {},
+            _ => if scope_stack.is_empty() {
+                // If we are not defining a function,
+                // push the instruction to the main instructions.
+                main_instructions.push(op.clone());
+            }
+        }
+
         match op {
             CoreOp::Function => {
                 // If we are declaring a new function,
@@ -93,6 +122,10 @@ fn flatten(code: Vec<CoreOp>) -> Vec<CoreOp> {
         functions.entry(fun).or_default().push(op);
     }
 
+    // Clone the functions so that we can remove them from the map.
+    let mut result_functions = functions.clone();
+    result_functions.remove(&-1);
+
     // The final output code.
     let mut result = vec![];
     // For every function, insert its body into the resulting output code.
@@ -108,7 +141,7 @@ fn flatten(code: Vec<CoreOp>) -> Vec<CoreOp> {
     }
 
     // Return the output code
-    result
+    (result, result_functions, main_instructions)
 }
 
 impl fmt::Display for CoreProgram {
@@ -231,18 +264,10 @@ pub enum CoreOp {
     /// Make the register equal to 1 if the register is non-negative, otherwise make it equal to 0.
     IsNonNegative,
 
-    /// Get a value from the input interface / device and store it in the register.
-    /// This is intended to function something like system calls for using any external
-    /// functionality that can't be implemented in the virtual machine, such as I/O or OS operations.
-    ///
-    /// The specific behavior of this instruction is purposefully not defined.
-    Get,
-    /// Write the value of the register to the output interface / device.
-    /// This is intended to function something like system calls for using any external
-    /// functionality that can't be implemented in the virtual machine, such as I/O or OS operations.
-    ///
-    /// The specific behavior of this instruction is purposefully not defined.
-    Put,
+    /// Get a value from an input source and store it in the register.
+    Get(Input),
+    /// Write the value of the register to an output source.
+    Put(Output),
 }
 
 impl fmt::Display for CoreOp {
@@ -271,8 +296,8 @@ impl fmt::Display for CoreOp {
             CoreOp::Div => write!(f, "div"),
             CoreOp::Rem => write!(f, "rem"),
             CoreOp::IsNonNegative => write!(f, "gez"),
-            CoreOp::Get => write!(f, "get"),
-            CoreOp::Put => write!(f, "put"),
+            CoreOp::Get(i) => write!(f, "get {i}"),
+            CoreOp::Put(o) => write!(f, "put {o}"),
         }
     }
 }

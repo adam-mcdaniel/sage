@@ -30,7 +30,10 @@ use super::{
     location::{FP_STACK, TMP},
     AssemblyProgram, Env, Error, Location, F, FP, SP,
 };
-use crate::vm::{self, VirtualMachineProgram};
+use crate::{
+    vm::{self, VirtualMachineProgram},
+    io::{Input, Output, InputMode, OutputMode},
+};
 use core::fmt;
 
 /// A program composed of core instructions, which can be assembled
@@ -308,9 +311,9 @@ pub enum CoreOp {
     },
 
     /// Get a value from the input device / interface and store it in a destination register.
-    Get(Location),
+    Get(Location, Input),
     /// Put a value from a source register to the output device / interface.
-    Put(Location),
+    Put(Location, Output),
     /// Store a list of values at a source location. Then, store the address past the
     /// last value into the destination location.
     Array {
@@ -340,14 +343,19 @@ pub enum CoreOp {
 
 impl CoreOp {
     /// Put a string literal as UTF-8 to the output device.
-    pub fn put_string(msg: impl ToString) -> Self {
+    pub fn put_string(msg: impl ToString, dst: Output) -> Self {
         Self::Many(
             msg.to_string()
                 // For every character
                 .chars()
                 // Set the TMP register to the character,
                 // and Put the TMP register.
-                .map(|ch| Self::Many(vec![Self::Set(TMP, ch as isize), Self::Put(TMP)]))
+                .map(|ch| {
+                    Self::Many(vec![
+                        Self::Set(TMP, ch as isize),
+                        Self::Put(TMP, dst.clone()),
+                    ])
+                })
                 .collect(),
         )
     }
@@ -665,13 +673,13 @@ impl CoreOp {
                 dst.save_to(result);
             }
 
-            CoreOp::Get(dst) => {
-                result.get();
+            CoreOp::Get(dst, input) => {
+                result.get(input.clone());
                 dst.save_to(result)
             }
-            CoreOp::Put(dst) => {
+            CoreOp::Put(dst, output) => {
                 dst.restore_from(result);
-                result.put()
+                result.put(output.clone())
             }
 
             CoreOp::Copy { src, dst, size } => {
@@ -794,8 +802,14 @@ impl fmt::Display for CoreOp {
             Self::IsEqual { a, b, dst } => write!(f, "eq {a}, {b}, {dst}"),
             Self::IsNotEqual { a, b, dst } => write!(f, "neq {a}, {b}, {dst}"),
 
-            Self::Put(loc) => write!(f, "put {loc}"),
-            Self::Get(loc) => write!(f, "get {loc}"),
+            Self::Get(loc, Input { mode: InputMode::StdinChar, .. })=> write!(f, "get-char {loc}"),
+            Self::Get(loc, Input { mode: InputMode::StdinInt, .. })=> write!(f, "get-int {loc}"),
+            Self::Get(loc, Input { mode: InputMode::StdinFloat, .. })=> write!(f, "get-float {loc}"),
+            Self::Get(loc, i)=> write!(f, "get {loc}, {i}"),
+            Self::Put(loc, Output { mode: OutputMode::StdoutChar, .. })=> write!(f, "put-char {loc}"),
+            Self::Put(loc, Output { mode: OutputMode::StdoutInt, .. })=> write!(f, "put-int {loc}"),
+            Self::Put(loc, Output { mode: OutputMode::StdoutFloat, .. })=> write!(f, "put-float {loc}"),
+            Self::Put(loc, o) => write!(f, "put {loc}, {o}"),
         }
     }
 }

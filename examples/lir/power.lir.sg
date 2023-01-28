@@ -1,0 +1,15 @@
+proc getfloat() -> Float = core {
+    next SP
+    get [SP], stdin.float
+} in
+
+proc getint() -> Int = core {
+    next SP
+    get [SP], stdin.int
+} in
+
+let x = getint(),
+    y = getint(),
+    z = getint() in {
+    put x ** y ** z;
+}
