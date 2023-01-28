@@ -162,14 +162,8 @@ pub enum StandardOp {
     Alloc(Location),
     Free(Location),
 
-    PutChar(Location),
-    GetChar(Location),
-    PutInt(Location),
-    GetInt(Location),
-    PutFloat(Location),
-    GetFloat(Location),
-
-    PutStr(String),
+    Peek(Location),
+    Poke(Location),
 }
 
 fn unsupported(op: StandardOp) -> Result<(), Error> {
@@ -265,6 +259,12 @@ impl StandardOp {
                 }
             }
 
+            Self::Pow { src, dst } => {
+                if dst.pow_float(src, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
             Self::IsLess { a, b, dst } => {
                 if a.is_less_than_float(b, dst, result).is_err() {
                     unsupported(self.clone())?
@@ -276,46 +276,6 @@ impl StandardOp {
                     unsupported(self.clone())?
                 }
             }
-
-            // Self::PutStr(s) => {
-            //     for ch in s.chars() {
-            //         result.set_register(ch as isize);
-
-            //         if result.op(vm::StandardOp::PutChar).is_err() {
-            //             unsupported(self.clone())?
-            //         }
-            //     }
-            // }
-            // Self::PutChar(loc) => {
-            //     if loc.put_char(result).is_err() {
-            //         unsupported(self.clone())?
-            //     }
-            // }
-            // Self::GetChar(loc) => {
-            //     if loc.get_char(result).is_err() {
-            //         unsupported(self.clone())?
-            //     }
-            // }
-            // Self::PutInt(loc) => {
-            //     if loc.put_int(result).is_err() {
-            //         unsupported(self.clone())?
-            //     }
-            // }
-            // Self::GetInt(loc) => {
-            //     if loc.get_int(result).is_err() {
-            //         unsupported(self.clone())?
-            //     }
-            // }
-            // Self::PutFloat(loc) => {
-            //     if loc.put_float(result).is_err() {
-            //         unsupported(self.clone())?
-            //     }
-            // }
-            // Self::GetFloat(loc) => {
-            //     if loc.get_float(result).is_err() {
-            //         unsupported(self.clone())?
-            //     }
-            // }
             Self::Alloc(loc) => {
                 if loc.alloc(result).is_err() {
                     unsupported(self.clone())?
@@ -368,13 +328,8 @@ impl fmt::Display for StandardOp {
             Self::Alloc(loc) => write!(f, "alloc {loc}"),
             Self::Free(loc) => write!(f, "free {loc}"),
 
-            Self::PutStr(s) => write!(f, "put-str {s:?}"),
-            Self::PutChar(loc) => write!(f, "put-char {loc}"),
-            Self::GetChar(loc) => write!(f, "get-char {loc}"),
-            Self::PutInt(loc) => write!(f, "put-int {loc}"),
-            Self::GetInt(loc) => write!(f, "get-int {loc}"),
-            Self::PutFloat(loc) => write!(f, "put-float {loc}"),
-            Self::GetFloat(loc) => write!(f, "get-float {loc}"),
+            Self::Peek(loc) => write!(f, "peek {loc}"),
+            Self::Poke(loc) => write!(f, "poke {loc}"),
         }
     }
 }

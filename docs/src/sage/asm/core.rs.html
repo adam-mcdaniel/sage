@@ -804,6 +804,20 @@
 <span id="799">799</span>
 <span id="800">800</span>
 <span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Core Assembly Variant</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This variant of the assembly language is intended to be used</span>
@@ -836,7 +850,10 @@
     <span class="ident">location</span>::{<span class="ident">FP_STACK</span>, <span class="ident">TMP</span>},
     <span class="ident">AssemblyProgram</span>, <span class="ident">Env</span>, <span class="ident">Error</span>, <span class="ident">Location</span>, <span class="ident">F</span>, <span class="ident">FP</span>, <span class="ident">SP</span>,
 };
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::vm</span>::{<span class="self">self</span>, <span class="ident">VirtualMachineProgram</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">vm</span>::{<span class="self">self</span>, <span class="ident">VirtualMachineProgram</span>},
+    <span class="ident">io</span>::{<span class="ident">Input</span>, <span class="ident">Output</span>, <span class="ident">InputMode</span>, <span class="ident">OutputMode</span>},
+};
 <span class="kw">use</span> <span class="ident">core::fmt</span>;
 
 <span class="doccomment">/// A program composed of core instructions, which can be assembled</span>
@@ -1114,9 +1131,9 @@
     },
 
     <span class="doccomment">/// Get a value from the input device / interface and store it in a destination register.</span>
-    <span class="ident">Get</span>(<span class="ident">Location</span>),
+    <span class="ident">Get</span>(<span class="ident">Location</span>, <span class="ident">Input</span>),
     <span class="doccomment">/// Put a value from a source register to the output device / interface.</span>
-    <span class="ident">Put</span>(<span class="ident">Location</span>),
+    <span class="ident">Put</span>(<span class="ident">Location</span>, <span class="ident">Output</span>),
     <span class="doccomment">/// Store a list of values at a source location. Then, store the address past the</span>
     <span class="doccomment">/// last value into the destination location.</span>
     <span class="ident">Array</span> {
@@ -1146,14 +1163,19 @@
 
 <span class="kw">impl</span> <span class="ident">CoreOp</span> {
     <span class="doccomment">/// Put a string literal as UTF-8 to the output device.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put_string</span>(<span class="ident">msg</span>: <span class="kw">impl</span> <span class="ident">ToString</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put_string</span>(<span class="ident">msg</span>: <span class="kw">impl</span> <span class="ident">ToString</span>, <span class="ident">dst</span>: <span class="ident">Output</span>) -&gt; <span class="self">Self</span> {
         <span class="ident"><span class="self">Self</span>::Many</span>(
             <span class="ident">msg</span>.<span class="ident">to_string</span>()
                 <span class="comment">// For every character</span>
                 .<span class="ident">chars</span>()
                 <span class="comment">// Set the TMP register to the character,</span>
                 <span class="comment">// and Put the TMP register.</span>
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ch</span><span class="op">|</span> <span class="ident"><span class="self">Self</span>::Many</span>(<span class="macro">vec!</span>[<span class="ident"><span class="self">Self</span>::Set</span>(<span class="ident">TMP</span>, <span class="ident">ch</span> <span class="kw">as</span> <span class="ident">isize</span>), <span class="ident"><span class="self">Self</span>::Put</span>(<span class="ident">TMP</span>)]))
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ch</span><span class="op">|</span> {
+                    <span class="ident"><span class="self">Self</span>::Many</span>(<span class="macro">vec!</span>[
+                        <span class="ident"><span class="self">Self</span>::Set</span>(<span class="ident">TMP</span>, <span class="ident">ch</span> <span class="kw">as</span> <span class="ident">isize</span>),
+                        <span class="ident"><span class="self">Self</span>::Put</span>(<span class="ident">TMP</span>, <span class="ident">dst</span>.<span class="ident">clone</span>()),
+                    ])
+                })
                 .<span class="ident">collect</span>(),
         )
     }
@@ -1471,13 +1493,13 @@
                 <span class="ident">dst</span>.<span class="ident">save_to</span>(<span class="ident">result</span>);
             }
 
-            <span class="ident">CoreOp::Get</span>(<span class="ident">dst</span>) =&gt; {
-                <span class="ident">result</span>.<span class="ident">get</span>();
+            <span class="ident">CoreOp::Get</span>(<span class="ident">dst</span>, <span class="ident">input</span>) =&gt; {
+                <span class="ident">result</span>.<span class="ident">get</span>(<span class="ident">input</span>.<span class="ident">clone</span>());
                 <span class="ident">dst</span>.<span class="ident">save_to</span>(<span class="ident">result</span>)
             }
-            <span class="ident">CoreOp::Put</span>(<span class="ident">dst</span>) =&gt; {
+            <span class="ident">CoreOp::Put</span>(<span class="ident">dst</span>, <span class="ident">output</span>) =&gt; {
                 <span class="ident">dst</span>.<span class="ident">restore_from</span>(<span class="ident">result</span>);
-                <span class="ident">result</span>.<span class="ident">put</span>()
+                <span class="ident">result</span>.<span class="ident">put</span>(<span class="ident">output</span>.<span class="ident">clone</span>())
             }
 
             <span class="ident">CoreOp::Copy</span> { <span class="ident">src</span>, <span class="ident">dst</span>, <span class="ident">size</span> } =&gt; {
@@ -1600,8 +1622,14 @@
             <span class="ident"><span class="self">Self</span>::IsEqual</span> { <span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">dst</span> } =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;eq {a}, {b}, {dst}&quot;</span>),
             <span class="ident"><span class="self">Self</span>::IsNotEqual</span> { <span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">dst</span> } =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;neq {a}, {b}, {dst}&quot;</span>),
 
-            <span class="ident"><span class="self">Self</span>::Put</span>(<span class="ident">loc</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;put {loc}&quot;</span>),
-            <span class="ident"><span class="self">Self</span>::Get</span>(<span class="ident">loc</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;get {loc}&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::Get</span>(<span class="ident">loc</span>, <span class="ident">Input</span> { <span class="ident">mode</span>: <span class="ident">InputMode::StdinChar</span>, .. })=&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;get-char {loc}&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::Get</span>(<span class="ident">loc</span>, <span class="ident">Input</span> { <span class="ident">mode</span>: <span class="ident">InputMode::StdinInt</span>, .. })=&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;get-int {loc}&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::Get</span>(<span class="ident">loc</span>, <span class="ident">Input</span> { <span class="ident">mode</span>: <span class="ident">InputMode::StdinFloat</span>, .. })=&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;get-float {loc}&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::Get</span>(<span class="ident">loc</span>, <span class="ident">i</span>)=&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;get {loc}, {i}&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::Put</span>(<span class="ident">loc</span>, <span class="ident">Output</span> { <span class="ident">mode</span>: <span class="ident">OutputMode::StdoutChar</span>, .. })=&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;put-char {loc}&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::Put</span>(<span class="ident">loc</span>, <span class="ident">Output</span> { <span class="ident">mode</span>: <span class="ident">OutputMode::StdoutInt</span>, .. })=&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;put-int {loc}&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::Put</span>(<span class="ident">loc</span>, <span class="ident">Output</span> { <span class="ident">mode</span>: <span class="ident">OutputMode::StdoutFloat</span>, .. })=&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;put-float {loc}&quot;</span>),
+            <span class="ident"><span class="self">Self</span>::Put</span>(<span class="ident">loc</span>, <span class="ident">o</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;put {loc}, {o}&quot;</span>),
         }
     }
 }

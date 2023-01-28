@@ -30,7 +30,10 @@ use super::{
     location::{FP_STACK, TMP},
     AssemblyProgram, Env, Error, Location, F, FP, SP,
 };
-use crate::{Input, Output, vm::{self, VirtualMachineProgram}};
+use crate::{
+    vm::{self, VirtualMachineProgram},
+    io::{Input, Output, InputMode, OutputMode},
+};
 use core::fmt;
 
 /// A program composed of core instructions, which can be assembled
@@ -347,7 +350,12 @@ impl CoreOp {
                 .chars()
                 // Set the TMP register to the character,
                 // and Put the TMP register.
-                .map(|ch| Self::Many(vec![Self::Set(TMP, ch as isize), Self::Put(TMP, dst)]))
+                .map(|ch| {
+                    Self::Many(vec![
+                        Self::Set(TMP, ch as isize),
+                        Self::Put(TMP, dst.clone()),
+                    ])
+                })
                 .collect(),
         )
     }
@@ -794,8 +802,14 @@ impl fmt::Display for CoreOp {
             Self::IsEqual { a, b, dst } => write!(f, "eq {a}, {b}, {dst}"),
             Self::IsNotEqual { a, b, dst } => write!(f, "neq {a}, {b}, {dst}"),
 
-            Self::Get(loc, i) => write!(f, "get {loc}, {i:?}"),
-            Self::Put(loc, o) => write!(f, "put {loc}, {o:?}"),
+            Self::Get(loc, Input { mode: InputMode::StdinChar, .. })=> write!(f, "get-char {loc}"),
+            Self::Get(loc, Input { mode: InputMode::StdinInt, .. })=> write!(f, "get-int {loc}"),
+            Self::Get(loc, Input { mode: InputMode::StdinFloat, .. })=> write!(f, "get-float {loc}"),
+            Self::Get(loc, i)=> write!(f, "get {loc}, {i}"),
+            Self::Put(loc, Output { mode: OutputMode::StdoutChar, .. })=> write!(f, "put-char {loc}"),
+            Self::Put(loc, Output { mode: OutputMode::StdoutInt, .. })=> write!(f, "put-int {loc}"),
+            Self::Put(loc, Output { mode: OutputMode::StdoutFloat, .. })=> write!(f, "put-float {loc}"),
+            Self::Put(loc, o) => write!(f, "put {loc}, {o}"),
         }
     }
 }

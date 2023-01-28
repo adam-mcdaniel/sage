@@ -1,4 +1,4 @@
-const putint = proc(n: Int) -> None = std {
+const putint = proc(n: Int) -> None = core {
     put-int [SP]
     pop
 } in

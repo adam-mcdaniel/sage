@@ -1,5 +1,11 @@
-use super::{AssemblyProgram, Compile, Env, Error, GetType, Type, TypeCheck};
-use crate::asm::{CoreOp, StandardOp};
+//! # Builtin Procedures
+//! 
+//! `CoreBuiltin` and `StandardBuiltin` procedures which are implemented in core or standard assembly respectively.
+//! 
+//! These are not executed like genuine procedures, but instead, their code is inlined into the assembly code.
+
+use crate::lir::{Compile, Env, Error, GetType, Type, TypeCheck};
+use crate::asm::{AssemblyProgram, CoreOp, StandardOp};
 use core::fmt;
 
 /// A builtin pseudo-procedure implemented in the core assembly variant.

@@ -2,6 +2,7 @@ use sage::{
     asm::*,
     parse::parse_asm,
     vm::{CoreInterpreter, TestingDevice},
+    io::{Input, Output}
 };
 
 #[test]
@@ -24,7 +25,7 @@ fn test_add() {
         Set(A, 1),
         Push(A, 1),
         CallLabel(String::from("add")),
-        Put(SP.deref()),
+        Put(SP.deref(), Output::stdout_char()),
     ])
     .assemble(32)
     .unwrap();
@@ -32,7 +33,7 @@ fn test_add() {
 
     let device = i.run(&program).unwrap();
 
-    assert_eq!(device.output, vec![33]);
+    assert_eq!(device.output_vals(), vec![33]);
 }
 
 #[test]
@@ -45,7 +46,7 @@ fn test_alphabet() {
         Prev(A, Some(25)),
         Set(B, 26),
         While(B),
-        Put(A.deref()),
+        Put(A.deref(), Output::stdout_char()),
         Next(A, None),
         Dec(B),
         End,
@@ -60,7 +61,7 @@ fn test_alphabet() {
         CallLabel(String::from("print_alphabet")),
         Prev(SP, Some(26)),
         Set(A, '\n' as isize),
-        Put(A),
+        Put(A, Output::stdout_char()),
     ])
     .assemble(32)
     .unwrap();
@@ -81,29 +82,29 @@ fn test_cmp() {
         Compare { dst: D, a: A, b: B },
         Set(C, '=' as isize),
         Add { dst: C, src: D },
-        Put(A),
+        Put(A, Output::stdout_char()),
         Set(A, ' ' as isize),
-        Put(A),
-        Put(C),
+        Put(A, Output::stdout_char()),
+        Put(C, Output::stdout_char()),
         Set(A, ' ' as isize),
-        Put(A),
-        Put(B),
+        Put(A, Output::stdout_char()),
+        Put(B, Output::stdout_char()),
         Set(A, 10),
-        Put(A),
+        Put(A, Output::stdout_char()),
         End,
         Set(A, 'a' as isize),
-        Put(A),
+        Put(A, Output::stdout_char()),
         Set(A, '=' as isize),
-        Put(A),
-        Get(A),
-        Get(C),
+        Put(A, Output::stdout_char()),
+        Get(A, Input::stdin_char()),
+        Get(C, Input::stdin_char()),
         Set(B, 'b' as isize),
-        Put(B),
+        Put(B, Output::stdout_char()),
         Set(B, '=' as isize),
-        Put(B),
-        Get(B),
-        Get(C),
-        CallLabel(String::from("cmp")),
+        Put(B, Output::stdout_char()),
+        Get(B, Input::stdin_char()),
+        Get(C, Input::stdin_char()),
+        CallLabel(String::from("cmp"))
     ])
     .assemble(32)
     .unwrap();
@@ -133,15 +134,15 @@ fn test_stack() {
         Set(A, 'c' as isize),
         Push(A, 1),
         Pop(Some(B), 1),
-        Put(B),
+        Put(B, Output::stdout_char()),
         Set(A, 'd' as isize),
         Push(A, 1),
         Pop(Some(B), 1),
-        Put(B),
+        Put(B, Output::stdout_char()),
         Pop(Some(B), 1),
-        Put(B),
+        Put(B, Output::stdout_char()),
         Pop(Some(B), 1),
-        Put(B),
+        Put(B, Output::stdout_char()),
     ])
     .assemble(32)
     .unwrap();
@@ -174,7 +175,7 @@ fn test_str() {
         End,
         Set(A, '0' as isize),
         Add { src: A, dst: B },
-        Put(B),
+        Put(B, Output::stdout_char()),
         End,
     ]);
 
@@ -185,7 +186,7 @@ fn test_str() {
             dst: C,
         },
         While(C.deref()),
-        Put(C.deref()),
+        Put(C.deref(), Output::stdout_char()),
         Next(C, None),
         End,
         End,
@@ -198,7 +199,7 @@ fn test_str() {
             dst: C,
         },
         Move { src: C, dst: B },
-        Get(C.deref()),
+        Get(C.deref(), Input::stdin_char()),
         Set(D, '\n' as isize),
         IsNotEqual {
             dst: E,
@@ -207,7 +208,7 @@ fn test_str() {
         },
         While(E),
         Next(C, None),
-        Get(C.deref()),
+        Get(C.deref(), Input::stdin_char()),
         Set(D, '\n' as isize),
         IsNotEqual {
             dst: E,
@@ -264,9 +265,9 @@ fn test_str() {
 
     let program = CoreProgram(vec![
         Fn(String::from("return-test")),
-        CoreOp::put_string("return test 1!\n"),
+        CoreOp::put_string("return test 1!\n", Output::stdout_char()),
         Return,
-        CoreOp::put_string("return test 2!\n"),
+        CoreOp::put_string("return test 2!\n", Output::stdout_char()),
         End,
         putint.clone(),
         putstr.clone(),
@@ -303,19 +304,19 @@ fn test_str() {
         Dec(D),
         End,
         CoreOp::stack_alloc_cells(C, vec![0].repeat(1024)),
-        CoreOp::put_string(">> "),
+        CoreOp::put_string(">> ", Output::stdout_char()),
         Push(C, 1),
         CallLabel(String::from("getstr")),
         Pop(Some(F), 1),
-        CoreOp::put_string("you entered: `"),
+        CoreOp::put_string("you entered: `", Output::stdout_char()),
         Push(F, 1),
         CallLabel(String::from("strrev")),
         CallLabel(String::from("putstr")),
-        CoreOp::put_string("`\nwhich is "),
+        CoreOp::put_string("`\nwhich is ", Output::stdout_char()),
         CallLabel(String::from("strlen")),
         CallLabel(String::from("putint")),
         Pop(None, 1),
-        CoreOp::put_string(" characters long!\n"),
+        CoreOp::put_string(" characters long!\n", Output::stdout_char()),
     ])
     .assemble(512)
     .unwrap();
@@ -345,7 +346,7 @@ fn test_factorial() {
     set A, 10 push A
     call fact
     pop A
-    put A
+    put-int A
     "#;
 
     let asm_core = parse_asm(factorial).unwrap().unwrap();
@@ -355,5 +356,5 @@ fn test_factorial() {
         .run(&vm_code)
         .unwrap();
 
-    assert_eq!(device.output, vec![3628800])
+    assert_eq!(&device.output_str(), "3628800")
 }

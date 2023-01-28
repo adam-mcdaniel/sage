@@ -1,5 +1,8 @@
 use ::std::str::FromStr;
-use crate::vm::*;
+use crate::{
+    io::*,
+    vm::*
+};
 
 grammar;
 
@@ -34,8 +37,8 @@ CoreOp: CoreOp = {
     "rem" => CoreOp::Rem,
     "gez" => CoreOp::IsNonNegative,
 
-    "get" => CoreOp::Get,
-    "put" => CoreOp::Put,
+    "get" <Input> => CoreOp::Get(<>),
+    "put" <Output> => CoreOp::Put(<>),
 }
 
 StandardOp: StandardOp = {
@@ -62,14 +65,289 @@ StandardOp: StandardOp = {
     "alloc" => StandardOp::Alloc,
     "free" => StandardOp::Free,
 
-    "put-int" => StandardOp::PutInt,
-    "put-char" => StandardOp::PutChar,
-    "put-float" => StandardOp::PutFloat,
-
-    "get-int" => StandardOp::GetInt,
-    "get-char" => StandardOp::GetChar,
-    "get-float" => StandardOp::GetFloat,
+    "peek" => StandardOp::Peek,
+    "poke" => StandardOp::Poke,
 }
+
+Input: Input = {
+    // ///////////////////////////////////////////////////////////////
+    // Standard input modes
+    // (The standard interface is typically used for command line programs,
+    // and for all pipelines between programs)
+    ///////////////////////////////////////////////////////////////
+    // Standard input (ASCII character)
+    "stdin" "." "char" => Input::stdin_char(),
+    // Standard input (integer)
+    "stdin" "." "int" => Input::stdin_int(),
+    // Standard input (float)
+    "stdin" "." "float" => Input::stdin_float(),
+    
+    ///////////////////////////////////////////////////////////////
+    // Special input modes
+    ///////////////////////////////////////////////////////////////
+    "clock" => Input::clock(),
+    
+    ///////////////////////////////////////////////////////////////
+    // User input modes
+    // (These should typically be used for games or other interactive programs)
+    ///////////////////////////////////////////////////////////////
+    // Input from a D-Pad
+    "dpad" "." <dir: Direction> <ch: Channel> => Input::new(InputMode::DPad(dir), ch),
+    // Input from a button (0=not pressed, 1=pressed)
+    "button" <ch: Channel> => Input::new(InputMode::Button, ch),
+    // Input from keyboard (ASCII character)
+    "keyboard" "." "char" <ch: Channel> => Input::new(InputMode::StdinChar, ch),
+    // Input from a JoyStick the degree of displacement in a given direction (from -128 to 128).
+    "joystick" "." <dir: Direction> <ch: Channel> => Input::new(InputMode::JoyStick(dir), ch),
+
+
+    ///////////////////////////////////////////////////////////////
+    // Physical sensor input modes
+    // (These should typically be implemented for devices that measure
+    // the physical world, like a smart watch or a smart phone)
+    ///////////////////////////////////////////////////////////////
+    // Time (in seconds) since the program started
+    "clock" <ch: Channel> => Input::new(InputMode::Clock, ch),
+    // Input from an accelerometer (in meters per second per second) in a given axis
+    "accelerometer" "." <axis: Axis> <ch: Channel> => Input::new(InputMode::Accelerometer(axis), ch),
+    // Input from a gyroscope (in degrees per second) around a given axis
+    "gyrocope" "." <axis: Axis> <ch: Channel> => Input::new(InputMode::Gyroscope(axis), ch),
+    // Input from a microphone (frequency in hertz)
+    "microphone" <ch: Channel> => Input::new(InputMode::Microphone, ch),
+
+    ///////////////////////////////////////////////////////////////
+    // Environment sensor input modes
+    // (These should typically be implemented for devices that measure
+    // the environment, like a weather station or a smart thermostat)
+    ///////////////////////////////////////////////////////////////    
+    // Red light intensity (in lux)
+    "redlight" <ch:Channel> => Input::new(InputMode::RedLight, ch),
+    // Green light intensity (in lux)
+    "greenlight" <ch:Channel> => Input::new(InputMode::GreenLight, ch),
+    // Blue light intensity (in lux)
+    "bluelight" <ch:Channel> => Input::new(InputMode::BlueLight, ch),
+    // Input from a light sensor (in lux)
+    "brightness" <ch:Channel> => Input::new(InputMode::Brightness, ch),
+    // Input from a humidity sensor (in percent)
+    "humidity" <ch:Channel> => Input::new(InputMode::Humidity, ch),
+    // Input from a barometer (pressure in atmospheres)
+    "barometer" <ch:Channel> => Input::new(InputMode::Barometer, ch),
+    // Input from a magnetometer (in teslas) in a given axis
+    "magnetometer" "." <axis:Axis> <ch:Channel> => Input::new(InputMode::Magnetometer(axis), ch),
+    // Input from a thermometer (degrees K)
+    "thermometer" <ch:Channel> => Input::new(InputMode::Thermometer, ch),
+    // Input from a rain gauge (in millimeters)
+    "raingauge" <ch:Channel> => Input::new(InputMode::RainGauge, ch),
+    // Input from a UV sensor (in watts per square meter)
+    "uvsensor" <ch:Channel> => Input::new(InputMode::UVSensor, ch),
+    // Input from a wind speed sensor (in meters per second)
+    "windspeed" <ch:Channel> => Input::new(InputMode::WindSpeed, ch),
+    // Input from a wind direction sensor (in degrees)
+    "winddirection" <ch:Channel> => Input::new(InputMode::WindDirection, ch),
+
+    ///////////////////////////////////////////////////////////////
+    // Engineering / Science sensor input modes
+    ///////////////////////////////////////////////////////////////
+    // Input from a pressure gauge (in atmospheres)
+    "pressuregauge" <ch: Channel> => Input::new(InputMode::PressureGauge, ch),
+    // Input from a flow sensor (in liters per second)
+    "flowsensor" <ch: Channel> => Input::new(InputMode::FlowSensor, ch),
+    // Input from a volume sensor (in liters)
+    "volumesensor" <ch: Channel> => Input::new(InputMode::VolumeSensor, ch),
+    // Input from a weight sensor (in kilograms)
+    "weightsensor" <ch: Channel> => Input::new(InputMode::WeightSensor, ch),
+    // Input from a pH sensor (in pH)
+    "phsensor" <ch: Channel> => Input::new(InputMode::PHSensor, ch),
+    // Input from a conductivity sensor (in siemens per meter)
+    "conductivitysensor" <ch: Channel> => Input::new(InputMode::ConductivitySensor, ch),
+
+    ///////////////////////////////////////////////////////////////
+    // Navigation input modes
+    // (These should typically be implemented for devices that use GPS,
+    // or for robots)
+    ///////////////////////////////////////////////////////////////
+    // Input from a speedometer (in meters per second) in a given axis
+    "speedometer" "." <axis: Axis> <ch: Channel> => Input::new(InputMode::Speedometer(Some(axis)), ch),
+    "speedometer" <ch: Channel> => Input::new(InputMode::Speedometer(None), ch),
+    // Input from an odometer (in meters)
+    "odometer" <ch: Channel> => Input::new(InputMode::Odometer, ch),
+    // Input from a position sensor in a given axis (x, y, z)
+    "position" "." <axis: Axis> <ch: Channel> => Input::new(InputMode::Position(axis), ch),
+    // Input from a compass (degrees)
+    "compass" <ch: Channel> => Input::new(InputMode::Compass, ch),
+    // Input from a distance sensor (in meters)
+    "proximity" <ch: Channel> => Input::new(InputMode::Proximity, ch),
+    // Input from altitude sensor (in meters)
+    "altimeter" <ch: Channel> => Input::new(InputMode::Altimeter, ch),
+    // Input from depth sensor (in meters)
+    "depthsensor" <ch: Channel> => Input::new(InputMode::DepthSensor, ch),
+
+    ///////////////////////////////////////////////////////////////
+    // Electrical device input modes
+    // (These should typically be used for programs using a GPIO interface,
+    // like a Raspberry Pi or Arduino)
+    ///////////////////////////////////////////////////////////////
+    // Input from an analog input (in volts)
+    "analogpin" <ch: Channel> => Input::new(InputMode::AnalogPin, ch),
+    // Input from a digital input (0=low, 1=high)
+    "digitalpin" <ch: Channel> => Input::new(InputMode::DigitalPin, ch),
+
+    ///////////////////////////////////////////////////////////////
+    // Custom output modes
+    ///////////////////////////////////////////////////////////////
+    // A custom input mode (for use with a custom output device)
+    <name:StringLit> <ch: Channel> => Input::new(InputMode::Custom(name), ch),
+}
+
+Output: Output = {
+    ///////////////////////////////////////////////////////////////
+    // Standard output modes
+    ///////////////////////////////////////////////////////////////
+    // Standard output (ASCII character)
+    "stdout" "." "char" <ch: Channel> => Output::new(OutputMode::StdoutChar, ch),
+    // Standard output (integer)
+    "stdout" "." "int" <ch: Channel> => Output::new(OutputMode::StdoutInt, ch),
+    // Standard output (float)
+    "stdout" "." "float" <ch: Channel> => Output::new(OutputMode::StdoutFloat, ch),
+    // Standard error (ASCII character)
+    "stderr" "." "char" <ch: Channel> => Output::new(OutputMode::StderrChar, ch),
+    // Standard error (integer)
+    "stderr" "." "int" <ch: Channel> => Output::new(OutputMode::StderrInt, ch),
+    // Standard error (float)
+    "stderr" "." "float" <ch: Channel> => Output::new(OutputMode::StderrFloat, ch),
+
+    ///////////////////////////////////////////////////////////////
+    // Alternative output modes for standard output
+    ///////////////////////////////////////////////////////////////
+    // Printer (ASCII character)
+    "printer" "." "char" <ch: Channel> => Output::new(OutputMode::PrinterChar, ch),
+    // Printer (integer)
+    "printer" "." "int" <ch: Channel> => Output::new(OutputMode::PrinterInt, ch),
+    // Printer (float)
+    "printer" "." "float" <ch: Channel> => Output::new(OutputMode::PrinterFloat, ch),
+
+    ///////////////////////////////////////////////////////////////
+    // Lighting device output modes
+    ///////////////////////////////////////////////////////////////
+    // Set the brightness of a given light (in percent)
+    "brightness" <ch: Channel> => Output::new(OutputMode::Brightness, ch),
+
+    ///////////////////////////////////////////////////////////////
+    // Electrical device output modes
+    ///////////////////////////////////////////////////////////////
+    // Set the voltage of a given analog output
+    "analogpin" <ch: Channel> => Output::new(OutputMode::AnalogPin, ch),
+    // Set the state of a given digital output (0=low, 1=high)
+    "digitalpin" <ch: Channel> => Output::new(OutputMode::DigitalPin, ch),
+    
+    ///////////////////////////////////////////////////////////////
+    // Robotics device output modes
+    ///////////////////////////////////////////////////////////////
+    // Set the position of a given stepper motor (in radians)
+    "steppermotor" <ch: Channel> => Output::new(OutputMode::StepperMotor, ch),
+    // Set the polarity of a solenoid (0=off, 1=on)
+    "solenoid" <ch: Channel> => Output::new(OutputMode::Solenoid, ch),
+    // Set the position of a given valve (0=closed, 1=open)
+    "valve" <ch: Channel> => Output::new(OutputMode::Valve, ch),
+    // Set the speed of a given motor (in revolutions per minute)
+    "motorspeed" <ch: Channel> => Output::new(OutputMode::MotorSpeed, ch),
+    // Set the position of a given servo (in radians)
+    "servo" <ch: Channel> => Output::new(OutputMode::Servo, ch),
+    // Set the temperature of a given heating/cooling device (degrees K)
+    "temperature" <ch: Channel> => Output::new(OutputMode::Temperature, ch),
+    // Set the pressure of a given pump (in atmospheres)
+    "pump" <ch: Channel> => Output::new(OutputMode::Pump, ch),
+    // Set the pressure of a given fan (in atmospheres)
+    "fan" <ch: Channel> => Output::new(OutputMode::Fan, ch),
+    // Set the pressure of a given blower (in atmospheres)
+    "blower" <ch: Channel> => Output::new(OutputMode::Blower, ch),
+    // Turn a heater on or off (0=off, 1=on)
+    "heater" <ch: Channel> => Output::new(OutputMode::Heater, ch),
+    // Turn a cooler on or off (0=off, 1=on)
+    "cooler" <ch: Channel> => Output::new(OutputMode::Cooler, ch),
+    // Set the pressure of a given vacuum/pressurizer (atmospheres)
+    "pressure" <ch: Channel> => Output::new(OutputMode::Pressure, ch),
+
+    ///////////////////////////////////////////////////////////////
+    // Sound output modes
+    ///////////////////////////////////////////////////////////////
+    // Ring a given buzzer (in hertz)
+    "buzzer" <ch: Channel> => Output::new(OutputMode::Buzzer, ch),
+    // Ring a bell (in hertz)
+    "bell" <ch: Channel> => Output::new(OutputMode::Bell, ch),
+    // Play a given note (in hertz)
+    "note" <ch: Channel> => Output::new(OutputMode::Note, ch),
+    // Set the volume of a given speaker (in percent)
+    "speakervolume" <ch: Channel> => Output::new(OutputMode::SpeakerVolume, ch),
+    // Set the frequency of a given speaker (in hertz)
+    "speakerfrequency" <ch: Channel> => Output::new(OutputMode::SpeakerFrequency, ch),
+
+    ///////////////////////////////////////////////////////////////
+    // Display output modes
+    ///////////////////////////////////////////////////////////////
+    // Update the display
+    "updatedisplay" <ch: Channel> => Output::new(OutputMode::UpdateDisplay, ch),
+    // Clear the display
+    "cleardisplay" <ch: Channel> => Output::new(OutputMode::ClearDisplay, ch),
+    // Set the cursor row on the display
+    "setcursorrow" <ch: Channel> => Output::new(OutputMode::SetCursorRow, ch),
+    // Set the cursor column on the display
+    "setcursorcolumn" <ch: Channel> => Output::new(OutputMode::SetCursorColumn, ch),
+    // Move the cursor up on the display
+    "movecursorup" <ch: Channel> => Output::new(OutputMode::MoveCursorUp, ch),
+    // Move the cursor down on the display
+    "movecursordown" <ch: Channel> => Output::new(OutputMode::MoveCursorDown, ch),
+    // Move the cursor left on the display
+    "movecursorleft" <ch: Channel> => Output::new(OutputMode::MoveCursorLeft, ch),
+    // Move the cursor right on the display
+    "movecursorright" <ch: Channel> => Output::new(OutputMode::MoveCursorRight, ch),
+    // Write a character to the display
+    "setcursorchar" "." <c: Color> <ch: Channel> => Output::new(OutputMode::SetCursorChar(c), ch),
+    // Set the color of a given pixel on the display
+    "setcursorpixel" "." <c: Color> <ch: Channel> => Output::new(OutputMode::SetCursorPixel(c), ch),
+
+    ///////////////////////////////////////////////////////////////
+    // Custom output modes
+    ///////////////////////////////////////////////////////////////
+    // A custom output mode (for use with a custom output device)
+    <name: StringLit> <ch: Channel> => Output::new(OutputMode::Custom(name), ch),
+}
+
+Color: Color = {
+    // Black
+    "black" => Color::Black,
+    // White
+    "white" => Color::White,
+    // Red
+    "red" => Color::Red,
+    // Green
+    "green" => Color::Green,
+    // Blue
+    "blue" => Color::Blue,
+    // Yellow
+    "yellow" => Color::Yellow,
+    // Cyan
+    "cyan" => Color::Cyan,
+    // Magenta
+    "magenta" => Color::Magenta,
+    // Orange
+    "orange" => Color::Orange,
+    // RGB
+    "rgb" "(" <r: IntLit> "," <g: IntLit> "," <b: IntLit> ")" => Color::RGB(r as u8, g as u8, b as u8),
+}
+
+Axis: Axis = {
+    "x" => Axis::X,
+    "y" => Axis::Y,
+    "z" => Axis::Z,
+}
+Direction: Direction = {
+    "up" => Direction::Up,
+    "down" => Direction::Down,
+    "left" => Direction::Left,
+    "right" => Direction::Right,
+}
+Channel: usize = "#" <IntLit> => <> as usize;
 
 StringLit: String = <s:r#""(\\.|[^"])*""#> => String::from(&s[1..s.len()-1]).replace("\\\"", "\"").replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t").replace("\\0", "\0");
 CharLit: char = <s:r#"'(\\.|[^'])'"#> => s.replace("\\'", "'").replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t").replace("\\0", "\0").chars().nth(1).unwrap() as char;

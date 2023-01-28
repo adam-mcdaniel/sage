@@ -1,0 +1,10 @@
+proc putint(n: Int) = core {
+    put-int [SP]
+    pop [SP]
+} in
+
+let x = 65536 in {
+    x /= 2;
+    x += 1;
+    putint(x)
+}

@@ -61,8 +61,11 @@
 //!   ```rs
 //!   Indirect(Address(6)) // go the address pointed to by the value in the 6th cell of the tape
 //!   ```
-use crate::vm::{self, Error, VirtualMachineProgram};
-use crate::{Input, Output, NULL};
+use crate::{
+    vm::{self, Error, VirtualMachineProgram},
+    io::{Input, Output},
+    NULL,
+};
 use core::fmt;
 
 /// The stack pointer register.
@@ -394,10 +397,8 @@ impl Location {
         dst: &Self,
         result: &mut dyn VirtualMachineProgram,
     ) -> Result<(), Error> {
-        dst.set_float(-1.0, result)?;
-        dst.add_float(src, result)?;
+        src.copy_to(dst, result);
         dst.sub_float(self, result)?;
-        dst.mul_float(src, result)?;
         dst.std_op(vm::StandardOp::IsNonNegative, result)
     }
     /// dst = this cell <= source cell.
@@ -490,6 +491,15 @@ impl Location {
         result: &mut dyn VirtualMachineProgram,
     ) -> Result<(), Error> {
         self.std_binop(vm::StandardOp::Rem, src, result)
+    }
+
+    /// This cell **= source cell.
+    pub fn pow_float(
+        &self,
+        src: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) -> Result<(), Error> {
+        self.std_binop(vm::StandardOp::Pow, src, result)
     }
 
     /// This cell = a constant value.
@@ -587,7 +597,7 @@ impl Location {
         Ok(())
     }
 
-    pub fn poke(&self, dst: Output, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub fn poke(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.to(result);
         result.restore();
         result.std_op(vm::StandardOp::Poke)?;

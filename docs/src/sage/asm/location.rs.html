@@ -609,21 +609,6 @@
 <span id="604">604</span>
 <span id="605">605</span>
 <span id="606">606</span>
-<span id="607">607</span>
-<span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
-<span id="616">616</span>
-<span id="617">617</span>
-<span id="618">618</span>
-<span id="619">619</span>
-<span id="620">620</span>
-<span id="621">621</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Assembly Memory Location</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains the `Location` type, which represents a memory</span>
@@ -687,8 +672,11 @@
 <span class="doccomment">//!   ```rs</span>
 <span class="doccomment">//!   Indirect(Address(6)) // go the address pointed to by the value in the 6th cell of the tape</span>
 <span class="doccomment">//!   ```</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::vm</span>::{<span class="self">self</span>, <span class="ident">Error</span>, <span class="ident">VirtualMachineProgram</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::NULL</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">vm</span>::{<span class="self">self</span>, <span class="ident">Error</span>, <span class="ident">VirtualMachineProgram</span>},
+    <span class="ident">io</span>::{<span class="ident">Input</span>, <span class="ident">Output</span>},
+    <span class="ident">NULL</span>,
+};
 <span class="kw">use</span> <span class="ident">core::fmt</span>;
 
 <span class="doccomment">/// The stack pointer register.</span>
@@ -1191,50 +1179,32 @@
         <span class="self">self</span>.<span class="ident">std_op</span>(<span class="ident">vm::StandardOp::ToInt</span>, <span class="ident">result</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_float</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">src</span>: <span class="ident">Input</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
         <span class="self">self</span>.<span class="ident">to</span>(<span class="ident">result</span>);
-        <span class="ident">result</span>.<span class="ident">std_op</span>(<span class="ident">vm::StandardOp::GetFloat</span>)<span class="question-mark">?</span>;
+        <span class="ident">result</span>.<span class="ident">op</span>(<span class="ident">vm::CoreOp::Get</span>(<span class="ident">src</span>));
+        <span class="ident">result</span>.<span class="ident">save</span>();
+        <span class="self">self</span>.<span class="ident">from</span>(<span class="ident">result</span>);
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dst</span>: <span class="ident">Output</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
+        <span class="self">self</span>.<span class="ident">to</span>(<span class="ident">result</span>);
+        <span class="ident">result</span>.<span class="ident">restore</span>();
+        <span class="ident">result</span>.<span class="ident">op</span>(<span class="ident">vm::CoreOp::Put</span>(<span class="ident">dst</span>));
+        <span class="self">self</span>.<span class="ident">from</span>(<span class="ident">result</span>);
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">peek</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">to</span>(<span class="ident">result</span>);
+        <span class="ident">result</span>.<span class="ident">std_op</span>(<span class="ident">vm::StandardOp::Peek</span>)<span class="question-mark">?</span>;
         <span class="ident">result</span>.<span class="ident">save</span>();
         <span class="self">self</span>.<span class="ident">from</span>(<span class="ident">result</span>);
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_int</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">to</span>(<span class="ident">result</span>);
-        <span class="ident">result</span>.<span class="ident">std_op</span>(<span class="ident">vm::StandardOp::GetInt</span>)<span class="question-mark">?</span>;
-        <span class="ident">result</span>.<span class="ident">save</span>();
-        <span class="self">self</span>.<span class="ident">from</span>(<span class="ident">result</span>);
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_char</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">to</span>(<span class="ident">result</span>);
-        <span class="ident">result</span>.<span class="ident">std_op</span>(<span class="ident">vm::StandardOp::GetChar</span>)<span class="question-mark">?</span>;
-        <span class="ident">result</span>.<span class="ident">save</span>();
-        <span class="self">self</span>.<span class="ident">from</span>(<span class="ident">result</span>);
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put_float</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">poke</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">to</span>(<span class="ident">result</span>);
         <span class="ident">result</span>.<span class="ident">restore</span>();
-        <span class="ident">result</span>.<span class="ident">std_op</span>(<span class="ident">vm::StandardOp::PutFloat</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">from</span>(<span class="ident">result</span>);
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put_int</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">to</span>(<span class="ident">result</span>);
-        <span class="ident">result</span>.<span class="ident">restore</span>();
-        <span class="ident">result</span>.<span class="ident">std_op</span>(<span class="ident">vm::StandardOp::PutInt</span>)<span class="question-mark">?</span>;
-        <span class="self">self</span>.<span class="ident">from</span>(<span class="ident">result</span>);
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">put_char</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">to</span>(<span class="ident">result</span>);
-        <span class="ident">result</span>.<span class="ident">restore</span>();
-        <span class="ident">result</span>.<span class="ident">std_op</span>(<span class="ident">vm::StandardOp::PutChar</span>)<span class="question-mark">?</span>;
+        <span class="ident">result</span>.<span class="ident">std_op</span>(<span class="ident">vm::StandardOp::Poke</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">from</span>(<span class="ident">result</span>);
         <span class="prelude-val">Ok</span>(())
     }

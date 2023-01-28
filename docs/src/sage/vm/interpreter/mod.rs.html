@@ -280,6 +280,39 @@
 <span id="275">275</span>
 <span id="276">276</span>
 <span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # The Interpreter Module</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module implements two interpreters for the virtual machine: one for each variant.</span>
@@ -288,6 +321,7 @@
 <span class="doccomment">//! supplying the input and handling the output of the program. For testing the compiler,</span>
 <span class="doccomment">//! assembler, and virtual machine, we use a `TestingDevice` object to supply sample input</span>
 <span class="doccomment">//! and capture the output to test against the predicted output.</span>
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::io</span>::{<span class="ident">Input</span>, <span class="ident">InputMode</span>, <span class="ident">Output</span>, <span class="ident">OutputMode</span>};
 
 <span class="kw">mod</span> <span class="ident">core</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::core</span>::<span class="kw-2">*</span>;
@@ -306,16 +340,17 @@
 <span class="doccomment">/// TODO: Make a trait for a device with the standard variant, which requires</span>
 <span class="doccomment">/// `get_char`, `put_char`, `get_int`, `put_int`, `get_float`, and `put_float` methods.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Device</span> {
-    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">isize</span>, <span class="ident">String</span><span class="op">&gt;</span>;
-    <span class="kw">fn</span> <span class="ident">put</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">isize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Get the next input (from a given input source).</span>
+    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">src</span>: <span class="ident">Input</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">isize</span>, <span class="ident">String</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Put the given value to the given output destination.</span>
+    <span class="kw">fn</span> <span class="ident">put</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">isize</span>, <span class="ident">dst</span>: <span class="ident">Output</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">get_char</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">char</span>, <span class="ident">String</span><span class="op">&gt;</span>;
-    <span class="kw">fn</span> <span class="ident">put_char</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">char</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span>;
-
-    <span class="kw">fn</span> <span class="ident">get_int</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">isize</span>, <span class="ident">String</span><span class="op">&gt;</span>;
-    <span class="kw">fn</span> <span class="ident">put_int</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">isize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span>;
-    <span class="kw">fn</span> <span class="ident">get_float</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">f64</span>, <span class="ident">String</span><span class="op">&gt;</span>;
-    <span class="kw">fn</span> <span class="ident">put_float</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">f64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Peek a value from the side-effecting device wrapping</span>
+    <span class="doccomment">/// the virtual machine.</span>
+    <span class="kw">fn</span> <span class="ident">peek</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">isize</span>, <span class="ident">String</span><span class="op">&gt;</span>;
+    <span class="doccomment">/// Poke a value into the side-effecting device wrapping</span>
+    <span class="doccomment">/// the virtual machine.</span>
+    <span class="kw">fn</span> <span class="ident">poke</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">isize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span>;
 }
 
 <span class="doccomment">/// A device used for testing the compiler. This simply keeps a buffer</span>
@@ -327,7 +362,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TestingDevice</span> {
     <span class="kw">pub</span> <span class="ident">input</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">isize</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">output</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">isize</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">output</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">isize</span>, <span class="ident">Output</span>)<span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">TestingDevice</span> {
@@ -350,33 +385,8 @@
         }
     }
 
-    <span class="doccomment">/// Get the output of the testing device as a string (ascii).</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">output_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">String::new</span>();
-        <span class="kw">for</span> <span class="ident">ch</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">output</span> {
-            <span class="ident">result</span>.<span class="ident">push</span>(<span class="kw-2">*</span><span class="ident">ch</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="kw">as</span> <span class="ident">char</span>)
-        }
-        <span class="ident">result</span>
-    }
-}
-
-<span class="doccomment">/// Make the testing device work with the interpreter.</span>
-<span class="kw">impl</span> <span class="ident">Device</span> <span class="kw">for</span> <span class="ident">TestingDevice</span> {
-    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">isize</span>, <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">n</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">input</span>.<span class="ident">pop_front</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">n</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">String::from</span>(<span class="string">&quot;ran out of input&quot;</span>))
-        }
-    }
-
-    <span class="kw">fn</span> <span class="ident">put</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">isize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">output</span>.<span class="ident">push</span>(<span class="ident">val</span>);
-        <span class="prelude-val">Ok</span>(())
-    }
-
     <span class="kw">fn</span> <span class="ident">put_char</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ch</span>: <span class="ident">char</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">output</span>.<span class="ident">push</span>(<span class="ident">ch</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="kw">as</span> <span class="ident">isize</span>);
+        <span class="self">self</span>.<span class="ident">output</span>.<span class="ident">push</span>((<span class="ident">ch</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="kw">as</span> <span class="ident">isize</span>, <span class="ident">Output::stdout_char</span>()));
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -395,7 +405,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">get_char</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">char</span>, <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">n</span><span class="op">|</span> <span class="ident">n</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="kw">as</span> <span class="ident">char</span>)
+        <span class="self">self</span>.<span class="ident">get</span>(<span class="ident">Input::stdin_char</span>()).<span class="ident">map</span>(<span class="op">|</span><span class="ident">n</span><span class="op">|</span> <span class="ident">n</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="kw">as</span> <span class="ident">char</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">get_int</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">isize</span>, <span class="ident">String</span><span class="op">&gt;</span> {
@@ -453,6 +463,65 @@
             <span class="prelude-val">Ok</span>(<span class="ident">whole_part</span>)
         }
     }
+
+    <span class="doccomment">/// Get the output of the testing device as a string (ascii).</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">output_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">String::new</span>();
+        <span class="kw">for</span> (<span class="ident">ch</span>, <span class="kw">_</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">output</span> {
+            <span class="ident">result</span>.<span class="ident">push</span>(<span class="kw-2">*</span><span class="ident">ch</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="kw">as</span> <span class="ident">char</span>)
+        }
+        <span class="ident">result</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">output_vals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">isize</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">output</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">val</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">val</span>).<span class="ident">collect</span>()
+    }
+}
+
+<span class="doccomment">/// Make the testing device work with the interpreter.</span>
+<span class="kw">impl</span> <span class="ident">Device</span> <span class="kw">for</span> <span class="ident">TestingDevice</span> {
+    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">src</span>: <span class="ident">Input</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">isize</span>, <span class="ident">String</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="ident">src</span>.<span class="ident">mode</span> {
+            <span class="ident">InputMode::StdinChar</span> =&gt; {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">n</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">input</span>.<span class="ident">pop_front</span>() {
+                    <span class="prelude-val">Ok</span>(<span class="ident">n</span>)
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">Err</span>(<span class="string">&quot;input is empty&quot;</span>.<span class="ident">to_string</span>())
+                }
+            }
+            <span class="ident">InputMode::StdinInt</span> =&gt; <span class="self">self</span>.<span class="ident">get_int</span>(),
+            <span class="ident">InputMode::StdinFloat</span> =&gt; <span class="self">self</span>.<span class="ident">get_float</span>().<span class="ident">map</span>(<span class="ident">as_int</span>),
+            <span class="kw">_</span> =&gt; {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;Requested input mode: {}&quot;</span>, <span class="ident">src</span>.<span class="ident">mode</span>);
+                <span class="prelude-val">Ok</span>(<span class="number">0</span>)
+            },
+        }
+    }
+
+    <span class="kw">fn</span> <span class="ident">put</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">isize</span>, <span class="ident">dst</span>: <span class="ident">Output</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="ident">dst</span>.<span class="ident">mode</span> {
+            <span class="ident">OutputMode::StdoutChar</span> =&gt; {
+                <span class="self">self</span>.<span class="ident">output</span>.<span class="ident">push</span>((<span class="ident">val</span>, <span class="ident">dst</span>));
+                <span class="prelude-val">Ok</span>(())
+            }
+            <span class="ident">OutputMode::StdoutInt</span> =&gt; <span class="self">self</span>.<span class="ident">put_int</span>(<span class="ident">val</span>),
+            <span class="ident">OutputMode::StdoutFloat</span> =&gt; <span class="self">self</span>.<span class="ident">put_float</span>(<span class="ident">as_float</span>(<span class="ident">val</span>)),
+            <span class="kw">_</span> =&gt; {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;Requested output mode: {} (with output={val})&quot;</span>, <span class="ident">dst</span>.<span class="ident">mode</span>);
+                <span class="prelude-val">Ok</span>(())
+            },
+        }
+    }
+
+    <span class="kw">fn</span> <span class="ident">peek</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">isize</span>, <span class="ident">String</span><span class="op">&gt;</span> {
+        <span class="macro">println!</span>(<span class="string">&quot;peeking&quot;</span>);
+        <span class="prelude-val">Ok</span>(<span class="number">0</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">poke</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">isize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
+        <span class="macro">println!</span>(<span class="string">&quot;poking {}&quot;</span>, <span class="ident">val</span>);
+        <span class="prelude-val">Ok</span>(())
+    }
 }
 
 <span class="doccomment">/// A device used for standard input and output.</span>
@@ -460,32 +529,7 @@
 <span class="doccomment">/// and writes a character to standard-out with `put`.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StandardDevice</span>;
 
-<span class="kw">impl</span> <span class="ident">Device</span> <span class="kw">for</span> <span class="ident">StandardDevice</span> {
-    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">isize</span>, <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="comment">// Buffer with exactly 1 character of space</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ch</span> <span class="op">=</span> [<span class="number">0</span>];
-        <span class="comment">// Flush stdout to write any prompts for the user</span>
-        <span class="kw">if</span> <span class="ident">stdout</span>().<span class="ident">flush</span>().<span class="ident">is_err</span>() {
-            <span class="prelude-val">Err</span>(<span class="ident">String::from</span>(<span class="string">&quot;could not flush output&quot;</span>))
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">stdin</span>().<span class="ident">read</span>(<span class="kw-2">&amp;mut</span> <span class="ident">ch</span>).<span class="ident">is_ok</span>() {
-            <span class="comment">// If the buffer was successfully read into, return the result.</span>
-            <span class="prelude-val">Ok</span>(<span class="ident">ch</span>[<span class="number">0</span>] <span class="kw">as</span> <span class="ident">isize</span>)
-        } <span class="kw">else</span> {
-            <span class="comment">// Otherwise, the buffer was not read into, and the input failed.</span>
-            <span class="prelude-val">Err</span>(<span class="ident">String::from</span>(<span class="string">&quot;could not read input&quot;</span>))
-        }
-    }
-
-    <span class="kw">fn</span> <span class="ident">put</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">isize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="comment">// Print the character without a newline</span>
-        <span class="macro">print!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">val</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="kw">as</span> <span class="ident">char</span>);
-        <span class="kw">if</span> <span class="ident">stdout</span>().<span class="ident">flush</span>().<span class="ident">is_err</span>() {
-            <span class="prelude-val">Err</span>(<span class="ident">String::from</span>(<span class="string">&quot;could not flush output&quot;</span>))
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(())
-        }
-    }
-
+<span class="kw">impl</span> <span class="ident">StandardDevice</span> {
     <span class="kw">fn</span> <span class="ident">get_char</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">char</span>, <span class="ident">String</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> [<span class="number">0</span>];
         <span class="kw">if</span> <span class="ident">stdout</span>().<span class="ident">flush</span>().<span class="ident">is_err</span>() {
@@ -495,13 +539,6 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Could not get user input&quot;</span>.<span class="ident">to_string</span>());
         }
         <span class="prelude-val">Ok</span>(<span class="ident">buf</span>[<span class="number">0</span>] <span class="kw">as</span> <span class="ident">char</span>)
-    }
-    <span class="kw">fn</span> <span class="ident">put_char</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ch</span>: <span class="ident">char</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="macro">print!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">ch</span>);
-        <span class="kw">if</span> <span class="ident">stdout</span>().<span class="ident">flush</span>().<span class="ident">is_err</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Could not flush output&quot;</span>.<span class="ident">to_string</span>());
-        }
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">fn</span> <span class="ident">get_int</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">isize</span>, <span class="ident">String</span><span class="op">&gt;</span> {
@@ -530,14 +567,6 @@
         <span class="prelude-val">Ok</span>(<span class="ident">result</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">put_int</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">isize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="macro">print!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">val</span>);
-        <span class="kw">if</span> <span class="ident">stdout</span>().<span class="ident">flush</span>().<span class="ident">is_err</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Could not flush output&quot;</span>.<span class="ident">to_string</span>());
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-
     <span class="kw">fn</span> <span class="ident">get_float</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">f64</span>, <span class="ident">String</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">String::new</span>();
         <span class="kw">if</span> <span class="ident">stdout</span>().<span class="ident">flush</span>().<span class="ident">is_err</span>() {
@@ -548,12 +577,49 @@
         }
         <span class="prelude-val">Ok</span>(<span class="ident">buf</span>.<span class="ident">trim</span>().<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>().<span class="ident">unwrap_or</span>(<span class="number">0.0</span>))
     }
+}
 
-    <span class="kw">fn</span> <span class="ident">put_float</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">f64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="macro">print!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">val</span>);
-        <span class="kw">if</span> <span class="ident">stdout</span>().<span class="ident">flush</span>().<span class="ident">is_err</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Could not flush output&quot;</span>.<span class="ident">to_string</span>());
+<span class="kw">impl</span> <span class="ident">Device</span> <span class="kw">for</span> <span class="ident">StandardDevice</span> {
+    <span class="kw">fn</span> <span class="ident">get</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">src</span>: <span class="ident">Input</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">isize</span>, <span class="ident">String</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">src</span>.<span class="ident">mode</span> {
+            <span class="ident">InputMode::StdinChar</span> =&gt; <span class="self">self</span>.<span class="ident">get_char</span>()<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">isize</span>,
+            <span class="ident">InputMode::StdinInt</span> =&gt; <span class="self">self</span>.<span class="ident">get_int</span>()<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">isize</span>,
+            <span class="ident">InputMode::StdinFloat</span> =&gt; <span class="self">self</span>.<span class="ident">get_float</span>()<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">isize</span>,
+            <span class="ident">InputMode::Thermometer</span> =&gt; <span class="ident">as_int</span>(<span class="number">295.15</span>),
+            <span class="kw">_</span> =&gt; {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;Requested input mode: {}&quot;</span>, <span class="ident">src</span>.<span class="ident">mode</span>);
+                <span class="number">0</span>
+            },
+        })
+    }
+
+    <span class="kw">fn</span> <span class="ident">put</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">isize</span>, <span class="ident">dst</span>: <span class="ident">Output</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
+        <span class="comment">// Print the character without a newline</span>
+        <span class="kw">match</span> <span class="ident">dst</span>.<span class="ident">mode</span> {
+            <span class="ident">OutputMode::StdoutChar</span> =&gt; <span class="macro">print!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">val</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="kw">as</span> <span class="ident">char</span>),
+            <span class="ident">OutputMode::StdoutInt</span> =&gt; <span class="macro">print!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">val</span>),
+            <span class="ident">OutputMode::StdoutFloat</span> =&gt; <span class="macro">print!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">as_float</span>(<span class="ident">val</span>)),
+            <span class="ident">OutputMode::StderrChar</span> =&gt; <span class="macro">eprint!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">val</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="kw">as</span> <span class="ident">char</span>),
+            <span class="ident">OutputMode::StderrInt</span> =&gt; <span class="macro">eprint!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">val</span>),
+            <span class="ident">OutputMode::StderrFloat</span> =&gt; <span class="macro">eprint!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">as_float</span>(<span class="ident">val</span>)),
+            <span class="kw">_</span> =&gt; {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;Requested output mode: {} (with output={val})&quot;</span>, <span class="ident">dst</span>.<span class="ident">mode</span>);
+            },
         }
+        <span class="kw">if</span> <span class="ident">stdout</span>().<span class="ident">flush</span>().<span class="ident">is_err</span>() {
+            <span class="prelude-val">Err</span>(<span class="ident">String::from</span>(<span class="string">&quot;could not flush output&quot;</span>))
+        } <span class="kw">else</span> {
+            <span class="prelude-val">Ok</span>(())
+        }
+    }
+
+    <span class="kw">fn</span> <span class="ident">peek</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">isize</span>, <span class="ident">String</span><span class="op">&gt;</span> {
+        <span class="macro">println!</span>(<span class="string">&quot;peeking&quot;</span>);
+        <span class="prelude-val">Ok</span>(<span class="number">0</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">poke</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">isize</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
+        <span class="macro">println!</span>(<span class="string">&quot;poking {}&quot;</span>, <span class="ident">val</span>);
         <span class="prelude-val">Ok</span>(())
     }
 }

@@ -6,8 +6,7 @@
 //! supplying the input and handling the output of the program. For testing the compiler,
 //! assembler, and virtual machine, we use a `TestingDevice` object to supply sample input
 //! and capture the output to test against the predicted output.
-use crate::InputMode;
-use crate::{Input, Output, OutputMode};
+use crate::io::{Input, InputMode, Output, OutputMode};
 
 mod core;
 pub use self::core::*;
@@ -71,14 +70,83 @@ impl TestingDevice {
         }
     }
 
-    // Get the next character from the input buffer.
-    fn get_char(&mut self) -> Result<char, String> {
-        self.get(Input::stdin()).map(|n| n as u8 as char)
+    fn put_char(&mut self, ch: char) -> Result<(), String> {
+        self.output.push((ch as usize as isize, Output::stdout_char()));
+        Ok(())
     }
 
-    fn put_char(&mut self, ch: char) -> Result<(), String> {
-        self.output.push((ch as usize as isize, Output::stdout()));
+    fn put_int(&mut self, val: isize) -> Result<(), String> {
+        for ch in val.to_string().chars() {
+            self.put_char(ch)?
+        }
         Ok(())
+    }
+
+    fn put_float(&mut self, val: f64) -> Result<(), String> {
+        for ch in format!("{val:?}").chars() {
+            self.put_char(ch)?
+        }
+        Ok(())
+    }
+
+    fn get_char(&mut self) -> Result<char, String> {
+        self.get(Input::stdin_char()).map(|n| n as u8 as char)
+    }
+
+    fn get_int(&mut self) -> Result<isize, String> {
+        let mut result: isize = 0;
+        loop {
+            if self.input.is_empty() {
+                break;
+            }
+            let ch = self.input[0] as u8 as char;
+            if ch.is_ascii_whitespace() {
+                self.get_char()?;
+            } else {
+                break;
+            }
+        }
+
+        loop {
+            if self.input.is_empty() {
+                break;
+            }
+            let n = self.input[0] as u8;
+            let ch = n as char;
+            if ch.is_ascii_digit() {
+                result *= 10;
+                result += (n - b'0') as isize;
+                self.input.pop_front();
+            } else {
+                break;
+            }
+        }
+
+        Ok(result)
+    }
+
+    fn get_float(&mut self) -> Result<f64, String> {
+        let whole_part = self.get_int()? as f64;
+
+        if self.input.is_empty() {
+            return Ok(whole_part);
+        }
+
+        let n = self.input[0] as u8;
+        let ch = n as char;
+        if ch == '.' {
+            self.get_char()?;
+            let fractional_part = self.get_int()? as f64;
+            let digits = fractional_part.log10() as i32 + 1;
+            Ok(whole_part
+                + if digits > 1 {
+                    fractional_part / 10.0_f64.powi(digits)
+                } else {
+                    0.0
+                })
+        } else {
+            Ok(whole_part)
+        }
     }
 
     /// Get the output of the testing device as a string (ascii).
@@ -89,21 +157,45 @@ impl TestingDevice {
         }
         result
     }
+
+    pub fn output_vals(&self) -> Vec<isize> {
+        self.output.iter().map(|(val, _)| *val).collect()
+    }
 }
 
 /// Make the testing device work with the interpreter.
 impl Device for TestingDevice {
     fn get(&mut self, src: Input) -> Result<isize, String> {
-        if let Some(n) = self.input.pop_front() {
-            Ok(n)
-        } else {
-            Err(String::from("ran out of input"))
+        match src.mode {
+            InputMode::StdinChar => {
+                if let Some(n) = self.input.pop_front() {
+                    Ok(n)
+                } else {
+                    Err("input is empty".to_string())
+                }
+            }
+            InputMode::StdinInt => self.get_int(),
+            InputMode::StdinFloat => self.get_float().map(as_int),
+            _ => {
+                eprintln!("Requested input mode: {}", src.mode);
+                Ok(0)
+            },
         }
     }
 
     fn put(&mut self, val: isize, dst: Output) -> Result<(), String> {
-        self.output.push((val, dst));
-        Ok(())
+        match dst.mode {
+            OutputMode::StdoutChar => {
+                self.output.push((val, dst));
+                Ok(())
+            }
+            OutputMode::StdoutInt => self.put_int(val),
+            OutputMode::StdoutFloat => self.put_float(as_float(val)),
+            _ => {
+                eprintln!("Requested output mode: {} (with output={val})", dst.mode);
+                Ok(())
+            },
+        }
     }
 
     fn peek(&mut self) -> Result<isize, String> {
@@ -122,32 +214,82 @@ impl Device for TestingDevice {
 /// and writes a character to standard-out with `put`.
 pub struct StandardDevice;
 
+impl StandardDevice {
+    fn get_char(&mut self) -> Result<char, String> {
+        let mut buf = [0];
+        if stdout().flush().is_err() {
+            return Err("Could not flush output".to_string());
+        }
+        if stdin().read(&mut buf).is_err() {
+            return Err("Could not get user input".to_string());
+        }
+        Ok(buf[0] as char)
+    }
+
+    fn get_int(&mut self) -> Result<isize, String> {
+        let mut buf = [0];
+        if stdout().flush().is_err() {
+            return Err("Could not flush output".to_string());
+        }
+
+        while stdin().read(&mut buf).is_ok() && (buf[0] as char).is_whitespace() {}
+
+        let mut result = if buf[0].is_ascii_digit() {
+            (buf[0] - b'0') as isize
+        } else {
+            0
+        };
+
+        while stdin().read(&mut buf).is_ok() {
+            if buf[0].is_ascii_digit() {
+                result *= 10;
+                result += (buf[0] - b'0') as isize
+            } else {
+                break;
+            }
+        }
+
+        Ok(result)
+    }
+
+    fn get_float(&mut self) -> Result<f64, String> {
+        let mut buf = String::new();
+        if stdout().flush().is_err() {
+            return Err("Could not flush output".to_string());
+        }
+        if stdin().read_line(&mut buf).is_err() {
+            return Err("Could not get user input".to_string());
+        }
+        Ok(buf.trim().parse::<f64>().unwrap_or(0.0))
+    }
+}
+
 impl Device for StandardDevice {
     fn get(&mut self, src: Input) -> Result<isize, String> {
-        // Buffer with exactly 1 character of space
-        let mut ch = [0];
-        // Flush stdout to write any prompts for the user
-        if stdout().flush().is_err() {
-            Err(String::from("could not flush output"))
-        } else if stdin().read(&mut ch).is_ok() {
-            // If the buffer was successfully read into, return the result.
-            Ok(ch[0] as isize)
-        } else {
-            // Otherwise, the buffer was not read into, and the input failed.
-            Err(String::from("could not read input"))
-        }
+        Ok(match src.mode {
+            InputMode::StdinChar => self.get_char()? as isize,
+            InputMode::StdinInt => self.get_int()? as isize,
+            InputMode::StdinFloat => as_int(self.get_float()?),
+            InputMode::Thermometer => as_int(295.15),
+            _ => {
+                eprintln!("Requested input mode: {} (on channel #{})", src.mode, src.channel);
+                0
+            },
+        })
     }
 
     fn put(&mut self, val: isize, dst: Output) -> Result<(), String> {
         // Print the character without a newline
         match dst.mode {
-            OutputMode::Stdout => print!("{}", val as u8 as char),
+            OutputMode::StdoutChar => print!("{}", val as u8 as char),
             OutputMode::StdoutInt => print!("{}", val),
             OutputMode::StdoutFloat => print!("{}", as_float(val)),
-            OutputMode::Stderr => eprint!("{}", val as u8 as char),
+            OutputMode::StderrChar => eprint!("{}", val as u8 as char),
             OutputMode::StderrInt => eprint!("{}", val),
             OutputMode::StderrFloat => eprint!("{}", as_float(val)),
-            _ => return Err(String::from("invalid output mode")),
+            _ => {
+                eprintln!("Requested output mode: {} (on channel #{}) with output={val}", dst.mode, dst.channel);
+            },
         }
         if stdout().flush().is_err() {
             Err(String::from("could not flush output"))

@@ -1,0 +1,19 @@
+// First comment!
+
+let x = ( /* wow! */
+    1, 4, 5,
+    struct {
+        method = proc() -> Int = {
+            put "Hello world! (x2)\n";
+            5
+        },
+        x = 5,
+        y = ['c', 'h', 'a', 'r', 's', '!']
+    },
+    A of enum {A, B, C}
+) in {
+    x.2 *= 2;
+    (x.3).y[0] = 'C';
+    debug x; put "\n";
+    put (x.3).y
+}

@@ -7,7 +7,7 @@ use clap::*;
 use sage::{
     lir::*,
     parse::*,
-    targets::{self, Target},
+    targets::{self, CompiledTarget},
     vm::*,
     LOGO_WITH_COLOR, *,
 };

@@ -67,10 +67,26 @@ impl VirtualMachineProgram for StandardProgram {
 pub struct StandardProgram(pub Vec<StandardOp>);
 
 impl StandardProgram {
-    /// Flatten a standard program so that all of its functions
+    /// Flatten a core program so that all of its functions
     /// are defined sequentially at the beginning.
     pub fn flatten(self) -> Self {
-        Self(flatten(self.0))
+        Self(flatten(self.0).0)
+    }
+
+    /// Get the code outside of any functions.
+    pub fn get_main(&self) -> Vec<StandardOp> {
+        flatten(self.0.clone()).2
+    }
+
+    /// Get the code for each function.
+    pub fn get_functions(&self) -> HashMap<i32, Vec<StandardOp>> {
+        flatten(self.0.clone()).1
+    }
+
+    /// Get the code outside of any functions, and the code for each function.
+    pub fn get_main_and_functions(self) -> (Vec<StandardOp>, HashMap<i32, Vec<StandardOp>>) {
+        let (_, functions, main) = flatten(self.0);
+        (main, functions)
     }
 }
 
@@ -79,7 +95,7 @@ impl StandardProgram {
 /// and un-nest them while preserving the order in which functions are defined.
 ///
 /// All the function definitions will be placed at the top of the returned list.
-fn flatten(code: Vec<StandardOp>) -> Vec<StandardOp> {
+fn flatten(code: Vec<StandardOp>) -> (Vec<StandardOp>, HashMap<i32, Vec<StandardOp>>, Vec<StandardOp>) {
     let mut functions: HashMap<i32, Vec<StandardOp>> = HashMap::new();
 
     // The current function body we are in.
@@ -91,7 +107,18 @@ fn flatten(code: Vec<StandardOp>) -> Vec<StandardOp> {
     let mut matching_end = 0;
     // Keep track of each `matching_end`, and the scope we were previously in, for each nested scope.
     let mut scope_stack = vec![];
+    // The main instructions of the program. (Not in a function.)
+    let mut main_instructions = vec![];
     for std_op in code {
+        match &std_op {
+            StandardOp::CoreOp(CoreOp::Function) => {},
+            _ => if scope_stack.is_empty() {
+                // If we are not defining a function,
+                // push the instruction to the main instructions.
+                main_instructions.push(std_op.clone());
+            }
+        }
+        
         if let StandardOp::CoreOp(op) = &std_op {
             match op {
                 CoreOp::Function => {
@@ -136,6 +163,10 @@ fn flatten(code: Vec<StandardOp>) -> Vec<StandardOp> {
         functions.entry(fun).or_default().push(std_op);
     }
 
+    // Clone the functions so that we can remove them from the map.
+    let mut result_functions = functions.clone();
+    result_functions.remove(&-1);
+
     // The final output code.
     let mut result = vec![];
 
@@ -152,7 +183,7 @@ fn flatten(code: Vec<StandardOp>) -> Vec<StandardOp> {
     }
 
     // Return the output code
-    result
+    (result, result_functions, main_instructions)
 }
 
 impl fmt::Display for StandardProgram {
