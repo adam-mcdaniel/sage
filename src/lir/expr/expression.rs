@@ -6,7 +6,7 @@
 //! which are then executed by the runtime.
 
 use crate::lir::{
-    ConstExpr, Procedure, Type
+    ConstExpr, Procedure, Type, Pattern
 };
 use super::ops::*;
 use core::fmt;
@@ -62,6 +62,9 @@ pub enum Expr {
     /// If the condition is true, then this `when` expression is replaced with the first expression.
     /// Otherwise, this `when` expression is replaced with the second expression.
     When(ConstExpr, Box<Self>, Box<Self>),
+
+    /// A match expression.
+    Match(Box<Self>, Vec<(Pattern, Self)>),
 
 
     /// Perform a unary operation on two expressions.
@@ -464,6 +467,16 @@ impl fmt::Display for Expr {
             }
             Self::If(cond, t, e) => {
                 write!(f, "if ({cond}) {t} else {e}")
+            }
+            Self::Match(expr, branches) => {
+                write!(f, "match {expr} {{")?;
+                for (i, (pat, val)) in branches.iter().enumerate() {
+                    write!(f, "{pat} => {val}")?;
+                    if i < branches.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, "}}")
             }
             Self::When(cond, t, e) => {
                 write!(f, "when ({cond}) {t} else {e}")

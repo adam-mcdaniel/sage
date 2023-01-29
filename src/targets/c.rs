@@ -92,7 +92,7 @@ impl Architecture for C {
         }
     }
 
-    fn label(&self, label_id: usize) -> String {
+    fn declare_proc(&self, label_id: usize) -> String {
         format!("void f{label_id}() {{")
     }
 

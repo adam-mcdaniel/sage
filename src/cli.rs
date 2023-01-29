@@ -286,6 +286,30 @@ fn read_file(name: &str) -> Result<String, Error> {
 fn main() -> Result<(), Error> {
     // Parse the arguments to the CLI.
     let args = Args::parse();
+    
+    use maplit::{hashmap, btreemap};
+    eprintln!("{}", Pattern::tup(vec![
+        Pattern::sym("a"),
+        Pattern::struct_(hashmap! {
+            "x".to_string() => Pattern::sym("dist"),
+            "y".to_string() => Pattern::sym("height"),
+        }),
+        Pattern::alt(vec![
+            Pattern::int(7),
+            Pattern::int(6),
+            Pattern::int(5),
+        ])
+    ]).let_pattern(&Expr::Tuple(vec![
+        Expr::ConstExpr(ConstExpr::Int(5)),
+        Expr::ConstExpr(ConstExpr::Struct(btreemap! {
+            "x".to_string() => ConstExpr::Int(5),
+            "y".to_string() => ConstExpr::Int(5),
+        })),
+        Expr::ConstExpr(ConstExpr::Int(5)),
+    ]), &Expr::var("dist").add(Expr::var("height")).add(Expr::var("a")), &Env::default()).unwrap());
+
+
+
 
     // Compile the source code according to the supplied arguments.
     compile(

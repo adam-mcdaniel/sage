@@ -129,6 +129,18 @@ impl TypeCheck for Expr {
                 op.type_check(dst, src, env)
             }
 
+            Self::Match(expr, branches) => {
+                // Check the expression we're matching on.
+                expr.type_check(env)?;
+                // Check each branch.
+                for (pat, branch) in branches {
+                    // Check the branch.
+                    pat.type_check(expr, branch, env)?;
+                }
+                // Return success if all the branches are sound.
+                Ok(())
+            }
+
             // Typecheck the inner constant expression.
             Self::ConstExpr(c) => c.type_check(env),
 

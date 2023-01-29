@@ -27,6 +27,13 @@ pub trait GetType {
 impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
         Ok(match self {
+            Self::Match(expr, branches) => {
+                for (pat, branch) in branches {
+                    return pat.get_branch_result_type(&expr, branch, env)
+                }
+                Type::None
+            }
+
             Self::UnaryOp(unop, expr) => {
                 // Infer the type of the unary operation
                 // on the expression.

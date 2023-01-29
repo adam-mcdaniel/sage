@@ -64,6 +64,11 @@ impl Compile for Expr {
 
         // Compile the expression.
         match self {
+            Self::Match(expr, branches) => {
+                Pattern::match_pattern(&expr, &branches, env)?
+                    .compile_expr(env, output)?;
+            }
+
             Self::UnaryOp(unop, expr) => {
                 // Compile the unary operation on the expression.
                 unop.compile(&expr, env, output)?;

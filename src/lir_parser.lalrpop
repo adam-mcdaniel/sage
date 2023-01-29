@@ -3,7 +3,21 @@ use crate::lir::*;
 use crate::parse::{CoreProgramParser, StandardProgramParser};
 
 grammar;
+Pattern: Pattern = {
+    <mut list: (<PatternAtom> "|")+> <last: PatternAtom> => {
+        list.push(last);
+        Pattern::Alt(list)
+    },
+    <PatternAtom> => <>,
+}
 
+PatternAtom: Pattern = {
+    List<"(", Pattern, ",", ")"> => Pattern::Tuple(<>),
+    List<("struct" "{"), (<Symbol> ":" <Pattern>), ",", "}"> => Pattern::Struct(<>.into_iter().collect()),
+    Symbol => Pattern::Symbol(<>),
+    ConstExpr => Pattern::ConstExpr(<>), 
+    "_" => Pattern::Wildcard,
+}
 
 Type: Type = {
     "let" <var: Symbol> "=" <t: Type> "in" <ret: Type> => Type::Let(var, Box::new(t), Box::new(ret)),
@@ -106,6 +120,9 @@ pub Expr: Expr = {
     "return" <Expr> => Expr::Return(Box::new(<>)),
     "debug" <Expr> => Expr::UnaryOp(Put::Debug.clone_box(), Box::new(<>)),
     "put" <Expr> => Expr::UnaryOp(Put::Display.clone_box(), Box::new(<>)),
+    // "match" <expr:Atom> <list: NonEmptyList<"{", (<Pattern> "=>" <Block>), ";", "}">> => {
+    //     Expr::Match(Box::new(expr), list.into_iter().collect())
+    // },
     Logic => <>
 }
 
@@ -219,6 +236,14 @@ Tuple<T>: Vec<T> = {
 
 Array<T>: Vec<T> = List<"[", T, ",", "]"> => <>;
 Dict<K, V>: Vec<(K, V)> = List<"{", (<K> ":" <V>), ",", "}"> => <>;
+
+NonEmptyList<Begin, T, Sep, End>: Vec<T> = {
+    <first:Begin> <list: (<T> <Sep>)*> <end:(<T> Sep?)> <last:End> => {
+        let mut list: Vec<_> = list.iter().map(|(v, s)| v.clone()).collect();
+        list.push(end);
+        list
+    }
+}
 
 List<Begin, T, Sep, End>: Vec<T> = {
     <first:Begin> <list: (<T> <Sep>)*> <end:T?> <last:End> => {
