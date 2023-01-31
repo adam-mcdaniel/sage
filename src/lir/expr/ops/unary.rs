@@ -82,7 +82,7 @@ impl Put {
                 for variant in variants.iter() {
                     let variant_id = Type::variant_index(&variants, variant).unwrap();
     
-                    output.op(CoreOp::Move { src: SP.deref(), dst: A });
+                    output.op(CoreOp::Move { src: addr.clone(), dst: A });
                     output.op(CoreOp::Set(B, variant_id as isize));
                     // Check if the value is the same as the variant ID
                     output.op(CoreOp::IsEqual { a: A, b: B, dst: C });
