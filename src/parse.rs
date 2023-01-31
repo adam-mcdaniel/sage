@@ -96,10 +96,9 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
         
     let code = code.trim();
 
-    match lir_parser::ExprParser::new().parse(&code.to_string()) {
-        Ok(parsed) => Ok(parsed),
-        Err(e) => Err(format_error(&code, e)),
-    }
+    lir_parser::ExprParser::new()
+        .parse(&code.to_string())
+        .map_err(|e| format_error(&code, e))
 }
 
 type SyntaxError<'a, T> = lalrpop_util::ParseError<usize, T, &'a str>;

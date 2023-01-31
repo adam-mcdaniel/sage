@@ -65,7 +65,16 @@ impl Compile for Expr {
         // Compile the expression.
         match self {
             Self::Match(expr, branches) => {
+                // Generate the pattern matching code.
                 Pattern::match_pattern(&expr, &branches, env)?
+                    // Compile the pattern matching code.
+                    .compile_expr(env, output)?;
+            }
+
+            Self::IfLet(pat, expr, t, e) => {
+                // Generate the pattern matching code.
+                pat.if_let_pattern(&expr, &t, &e, env)?
+                    // Compile the pattern matching code.
                     .compile_expr(env, output)?;
             }
 

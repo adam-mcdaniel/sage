@@ -65,6 +65,13 @@ pub enum Expr {
 
     /// A match expression.
     Match(Box<Self>, Vec<(Pattern, Self)>),
+    /// An if-let expression.
+    /// 
+    /// This attempts to match an expression against a pattern,
+    /// and if it succeeds, evaluates the body expression with
+    /// the matched variables in scope.
+    /// If the match fails, the else expression is evaluated.
+    IfLet(Pattern, Box<Self>, Box<Self>, Box<Self>),
 
 
     /// Perform a unary operation on two expressions.
@@ -477,6 +484,9 @@ impl fmt::Display for Expr {
                     }
                 }
                 write!(f, "}}")
+            }
+            Self::IfLet(pat, expr, t, e) => {
+                write!(f, "if let {pat} = {expr} {t} else {e}")
             }
             Self::When(cond, t, e) => {
                 write!(f, "when ({cond}) {t} else {e}")

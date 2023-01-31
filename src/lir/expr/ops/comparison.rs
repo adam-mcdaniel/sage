@@ -154,25 +154,21 @@ impl BinaryOp for Comparison {
         match (lhs, self, rhs) {
             // If a `Float` and a `Cell` are used, we just interpret the `Cell` as a `Float`.
             (Type::Cell, _, Type::Float) | (Type::Float, _, Type::Cell) => {
-                eprintln!("1. Comparing {:?} and {:?}", lhs, rhs);
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.std_op(std_op)?;
             }
             // Two floats are used as floats.
             (Type::Float, _, Type::Float) => {
-                eprintln!("2. Comparing {:?} and {:?}", lhs, rhs);
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.std_op(std_op)?;
             }
             // An integer used with a float is promoted, and returns a float.
             (Type::Int, _, Type::Float) => {
-                eprintln!("3. Comparing {:?} and {:?}", lhs, rhs);
                 output.std_op(StandardOp::ToFloat(SP.deref().offset(-1)))?;
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.std_op(std_op)?;
             }
             (Type::Float, _, Type::Int) => {
-                eprintln!("4. Comparing {:?} and {:?}", lhs, rhs);
                 output.std_op(StandardOp::ToFloat(SP.deref()))?;
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.std_op(std_op)?;
@@ -183,23 +179,19 @@ impl BinaryOp for Comparison {
             | (Type::Cell, _, Type::Cell)
             | (Type::Cell, _, Type::Int)
             | (Type::Int, _, Type::Cell) => {
-                eprintln!("5. Comparing {:?} and {:?}", lhs, rhs);
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.op(core_op);
             }
 
             (Type::Unit(_name1, a_type), _, Type::Unit(_name2, b_type)) => {
-                eprintln!("6. Comparing {:?} and {:?}", lhs, rhs);
                 return self.compile_types(&a_type, &b_type, env, output);
             },
 
             (a, Self::Equal, b) if a.equals(b, env)? => {
-                eprintln!("7. Comparing {:?} and {:?}", lhs, rhs);
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.op(core_op);
             }
             (a, Self::NotEqual, b) if a.equals(b, env)? => {
-                eprintln!("8. Comparing {:?} and {:?}", lhs, rhs);
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.op(core_op);
             }

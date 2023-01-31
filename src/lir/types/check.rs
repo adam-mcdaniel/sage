@@ -132,10 +132,63 @@ impl TypeCheck for Expr {
             Self::Match(expr, branches) => {
                 // Check the expression we're matching on.
                 expr.type_check(env)?;
+                let ty = expr.get_type(env)?;
+
+                let mut result_ty: Option<Type> = None;
+
                 // Check each branch.
                 for (pat, branch) in branches {
-                    // Check the branch.
+                    // Create a new environment with the bindings defined.
+                    let mut new_env = env.clone();
+                    // Get the bindings from the pattern.
+                    let bindings = pat.get_bindings(expr, &ty, env)?;
+                    // Define the bindings in the environment.
+                    for (name, t) in bindings {
+                        new_env.define_var(name, t)?;
+                    }
+                    // Check the branch under the new environment.
                     pat.type_check(expr, branch, env)?;
+
+                    // Check that the branch has the same type as the others.
+                    // Get the type of the branch.
+                    let branch_ty = branch.get_type(&new_env)?;
+                    // If we haven't found a type yet, set it.
+                    if let Some(result_ty) = &mut result_ty {
+                        // Check that the branch type matches the result type.
+                        if !result_ty.equals(&branch_ty, &new_env)? {
+                            // If it doesn't, return an error.
+                            return Err(Error::MismatchedTypes {
+                                found: branch_ty,
+                                expected: result_ty.clone(),
+                                expr: branch.clone()
+                            });
+                        }
+                    } else {
+                        // Set the result type.
+                        result_ty = Some(branch_ty);
+                    }
+                }
+                // Return success if all the branches are sound.
+                Ok(())
+            }
+
+            // Typecheck an if-let expression.
+            Self::IfLet(pat, expr, then, otherwise) => {
+                // Check the expression we're matching on.
+                expr.type_check(env)?;
+                // Typecheck the else branch.
+                otherwise.type_check(env)?;
+                // Check the then and otherwise branches.
+                pat.type_check(expr, then, env)?;
+
+                let then_type = pat.get_branch_result_type(expr, then, env)?;
+                let otherwise_type = otherwise.get_type(env)?;
+                if !then_type.equals(&otherwise_type, env)? {
+                    return Err(Error::MismatchedTypes {
+                        expected: then_type,
+                        found: otherwise_type,
+                        expr: self.clone(),
+                    });
                 }
                 // Return success if all the branches are sound.
                 Ok(())
