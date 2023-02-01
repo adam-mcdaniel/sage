@@ -136,15 +136,15 @@ impl Compiler {
     }
 
     #[wasm_bindgen]
-    pub fn get_output_as_vals(&mut self, output: &str) -> Vec<i64> {
+    pub fn get_output_as_vals(&mut self, output: &str) -> Vec<i32> {
         let output = Output::try_from(output).unwrap();
-        self.interpreter.device.get_output_to(output).clone().into()
+        self.interpreter.device.get_output_to(output).iter().map(|n| *n as i32).collect()
     }
 
     #[wasm_bindgen]
-    pub fn get_input_as_vals(&mut self, input: &str) -> Vec<i64> {
+    pub fn get_input_as_vals(&mut self, input: &str) -> Vec<i32> {
         let input = Input::try_from(input).unwrap();
-        self.interpreter.device.get_input_from(input).clone().into()
+        self.interpreter.device.get_input_from(input).iter().map(|n| *n as i32).collect()
     }
 
     #[wasm_bindgen]
@@ -166,14 +166,15 @@ impl Compiler {
     }
 
     #[wasm_bindgen]
-    pub fn update_input_as_int(&mut self, input: &str, value: i64) {
+    pub fn update_input_as_int(&mut self, input: &str, value: i32) {
         let input = Input::try_from(input).unwrap();
-        self.interpreter.device.update_input_as_value(&input, value).clone()
+        self.interpreter.device.update_input_as_value(&input, value as i64).clone()
     }
 
     #[wasm_bindgen]
     pub fn update_input_as_float(&mut self, input: &str, value: f64) {
         let input = Input::try_from(input).unwrap();
+        crate::console_log!("adding {value} to input {input}");
         self.interpreter.device.update_input_as_float(&input, value).clone()
     }
 

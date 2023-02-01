@@ -366,7 +366,7 @@ where
                     let b = as_float(*self.get_cell());
                     self.register = as_int(a % b)
                 }
-                StandardOp::IsNonNegative => self.register = i64::from(self.register >= 0),
+                StandardOp::IsNonNegative => self.register = i64::from(as_float(self.register) >= 0.0),
                 StandardOp::Sin => self.register = as_int(as_float(self.register).sin()),
                 StandardOp::Cos => self.register = as_int(as_float(self.register).cos()),
                 StandardOp::Tan => self.register = as_int(as_float(self.register).tan()),

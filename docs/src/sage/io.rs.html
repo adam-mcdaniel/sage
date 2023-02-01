@@ -936,7 +936,7 @@
     <span class="ident">Temperature</span>,
     <span class="doccomment">/// Set the pressure of a given pump (in atmospheres)</span>
     <span class="ident">Pump</span>,
-    <span class="doccomment">/// Set the pressure of a given fan (in atmospheres)</span>
+    <span class="doccomment">/// Turn a fan on or off (0=off, 1=on)</span>
     <span class="ident">Fan</span>,
     <span class="doccomment">/// Set the pressure of a given blower (in atmospheres)</span>
     <span class="ident">Blower</span>,
@@ -1296,7 +1296,7 @@
             <span class="ident">OutputMode::Temperature</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;temperature&quot;</span>),
             <span class="comment">// Set the pressure of a given pump (in atmospheres)</span>
             <span class="ident">OutputMode::Pump</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;pump&quot;</span>),
-            <span class="comment">// Set the pressure of a given fan (in atmospheres)</span>
+            <span class="comment">// Turn a fan on or off (0=off, 1=on)</span>
             <span class="ident">OutputMode::Fan</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;fan&quot;</span>),
             <span class="comment">// Set the pressure of a given blower (in atmospheres)</span>
             <span class="ident">OutputMode::Blower</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;blower&quot;</span>),

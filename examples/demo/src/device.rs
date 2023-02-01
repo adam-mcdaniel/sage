@@ -12,6 +12,7 @@ pub struct WasmDevice {
     pub outputs: HashMap<Output, VecDeque<i64>>,
 }
 
+
 impl Default for WasmDevice {
     fn default() -> Self {
         let mut inputs = HashMap::new();
@@ -102,7 +103,9 @@ impl WasmDevice {
 
     pub fn update_input_as_float(&mut self, src: &Input, val: f64) {
         if let Some(input) = self.get_input(src) {
-            input.push_back(super::as_int(val as f32));
+            let n = super::as_int(val as f32);
+            crate::console_log!("converted {val} to {n}");
+            input.push_back(n);
         }
     }
 

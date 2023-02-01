@@ -22,7 +22,7 @@ extern {
     // Use `js_namespace` here to bind `console.log(..)` instead of just
     // `log(..)`
     #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
+    pub fn log(s: &str);
 
     // The `console.log` is quite polymorphic, so we can bind it with multiple
     // signatures. Note that we need to use `js_name` to ensure we always call
@@ -38,8 +38,9 @@ extern {
 macro_rules! console_log {
     // Note that this is using the `log` function imported above during
     // `bare_bones`
-    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+    ($($t:tt)*) => (crate::log(&format_args!($($t)*).to_string()))
 }
+pub(crate) use console_log;
 
 // Called by our JS entry point to run the example
 #[wasm_bindgen(start)]
