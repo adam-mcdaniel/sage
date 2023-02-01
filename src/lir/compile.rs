@@ -241,8 +241,8 @@ impl Compile for Expr {
 
                 // Overwrite the arguments with the return value
                 output.op(CoreOp::Copy {
-                    dst: FP.deref().offset(1 - args_size as isize),
-                    src: SP.deref().offset(1 - ret_size as isize),
+                    dst: FP.deref().offset(1 - args_size as i64),
+                    src: SP.deref().offset(1 - ret_size as i64),
                     size: ret_size,
                 });
 
@@ -258,7 +258,7 @@ impl Compile for Expr {
                 // arguments and return value, to leave the return value on the stack.
                 output.op(CoreOp::Prev(
                     SP,
-                    Some(args_size as isize - ret_size as isize),
+                    Some(args_size as i64 - ret_size as i64),
                 ));
                 output.op(CoreOp::Return);
             }
@@ -289,10 +289,10 @@ impl Compile for Expr {
                 // so that when we pop the stack, it's as if we popped the variables
                 // and arguments, and pushed our return value.
                 output.op(CoreOp::Copy {
-                    src: SP.deref().offset(1 - result_size as isize),
+                    src: SP.deref().offset(1 - result_size as i64),
                     dst: SP
                         .deref()
-                        .offset(1 - var_size as isize - result_size as isize),
+                        .offset(1 - var_size as i64 - result_size as i64),
                     size: result_size,
                 });
                 output.op(CoreOp::Pop(None, var_size));
@@ -377,7 +377,7 @@ impl Compile for Expr {
                 output.op(CoreOp::Pop(Some(A), 1));
                 // Copy the result of the compiled value into the pointer
                 output.op(CoreOp::Copy {
-                    src: SP.deref().offset(1 - size as isize),
+                    src: SP.deref().offset(1 - size as i64),
                     dst: A.deref(),
                     size,
                 });
@@ -421,7 +421,7 @@ impl Compile for Expr {
                 // Increment the stack pointer to pad out the union.
                 output.op(CoreOp::Next(
                     SP,
-                    Some(result_size as isize - val_size as isize),
+                    Some(result_size as i64 - val_size as i64),
                 ));
             }
 
@@ -452,12 +452,12 @@ impl Compile for Expr {
                         // Calculate the offset of the element we want to return
                         // (the index times the size of the element), and store it in `B`.
                         output.op(CoreOp::Pop(Some(B), 1));
-                        output.op(CoreOp::Set(A, elem_size as isize));
+                        output.op(CoreOp::Set(A, elem_size as i64));
                         output.op(CoreOp::Mul { dst: B, src: A });
 
                         // Get the address of the array's first element, and store it in `A`.
                         output.op(CoreOp::GetAddress {
-                            addr: SP.deref().offset(1 - val_size as isize),
+                            addr: SP.deref().offset(1 - val_size as i64),
                             dst: A,
                         });
                         // Index the address stored in `A` with the offset stored in `B`,
@@ -472,7 +472,7 @@ impl Compile for Expr {
                         // array's first element on the stack.
                         output.op(CoreOp::Copy {
                             src: C.deref(),
-                            dst: SP.deref().offset(1 - val_size as isize),
+                            dst: SP.deref().offset(1 - val_size as i64),
                             size,
                         });
                         // Pop the remaining elements off the stack, so the element we indexed remains.
@@ -492,7 +492,7 @@ impl Compile for Expr {
                         // Store the index in `B`.
                         output.op(CoreOp::Pop(Some(B), 1));
                         // Store the size of the element in `C`.
-                        output.op(CoreOp::Set(C, elem_size as isize));
+                        output.op(CoreOp::Set(C, elem_size as i64));
                         // Store the offset of the element from the pointer in `B`
                         // (the index times the size of the element).
                         output.op(CoreOp::Mul { dst: B, src: C });
@@ -524,8 +524,8 @@ impl Compile for Expr {
                 val.clone().compile_expr(env, output)?;
                 // Copy the contents of the field over top of the value on the stack.
                 output.op(CoreOp::Copy {
-                    src: SP.deref().offset(1 - val_size as isize + offset as isize),
-                    dst: SP.deref().offset(1 - val_size as isize),
+                    src: SP.deref().offset(1 - val_size as i64 + offset as i64),
+                    dst: SP.deref().offset(1 - val_size as i64),
                     size,
                 });
                 // Pop the remaining elements off the stack, so the field remains.
@@ -572,7 +572,7 @@ impl Compile for Expr {
                     let (_, offset) = val_type.get_member_offset(&name, &val, env)?;
 
                     output.op(CoreOp::Pop(Some(A), 1));
-                    output.op(CoreOp::Set(B, offset as isize));
+                    output.op(CoreOp::Set(B, offset as i64));
                     // Index the address of the struct, tuple, or union with the offset of the field.
                     // This is the address of the field.
                     output.op(CoreOp::Index {
@@ -602,7 +602,7 @@ impl Compile for Expr {
                             // Store the address of the array in `A`.
                             output.op(CoreOp::Pop(Some(A), 1));
                             // Store the size of the element in `C`.
-                            output.op(CoreOp::Set(C, elem_size as isize));
+                            output.op(CoreOp::Set(C, elem_size as i64));
 
                             // Calculate the offset of the element from the address of the array.
                             // (the index times the size of the element).
@@ -632,7 +632,7 @@ impl Compile for Expr {
                             // Store the index in `B`.
                             output.op(CoreOp::Pop(Some(B), 1));
                             // Store the size of the element in `C`.
-                            output.op(CoreOp::Set(C, elem_size as isize));
+                            output.op(CoreOp::Set(C, elem_size as i64));
 
                             // Calculate the offset of the element from the pointer.
                             // (the index times the size of the element).
@@ -683,17 +683,17 @@ impl Compile for ConstExpr {
             // Compile a char constant.
             Self::Char(ch) => {
                 output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), ch as usize as isize));
+                output.op(CoreOp::Set(SP.deref(), ch as usize as i64));
             }
             // Compile a bool constant.
             Self::Bool(x) => {
                 output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), x as isize));
+                output.op(CoreOp::Set(SP.deref(), x as i64));
             }
             // Compile an integer constant.
             Self::Int(n) => {
                 output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), n as isize));
+                output.op(CoreOp::Set(SP.deref(), n as i64));
             }
             // Compile a float constant.
             Self::Float(f) => {
@@ -703,12 +703,12 @@ impl Compile for ConstExpr {
             // Calculate the size of a type.
             Self::SizeOfType(t) => {
                 output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), t.get_size(env)? as isize));
+                output.op(CoreOp::Set(SP.deref(), t.get_size(env)? as i64));
             }
             // Calculate the size of an expression.
             Self::SizeOfExpr(e) => {
                 output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), e.get_size(env)? as isize));
+                output.op(CoreOp::Set(SP.deref(), e.get_size(env)? as i64));
             }
             // Compile a tuple constant.
             Self::Tuple(items) => {
@@ -744,7 +744,7 @@ impl Compile for ConstExpr {
                 // Pad the value to the size of the union.
                 output.op(CoreOp::Next(
                     SP,
-                    Some(result_size as isize - val_size as isize),
+                    Some(result_size as i64 - val_size as i64),
                 ));
             }
             // Compile a core builtin.
@@ -788,7 +788,7 @@ impl Compile for ConstExpr {
                     // Get the index of the variant.
                     if let Some(index) = Type::variant_index(&variants, &variant) {
                         // Push the index of the variant onto the stack.
-                        output.op(CoreOp::Set(A, index as isize));
+                        output.op(CoreOp::Set(A, index as i64));
                         output.op(CoreOp::Push(A, 1));
                     } else {
                         // If the variant is not found, return an error.

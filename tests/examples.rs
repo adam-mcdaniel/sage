@@ -48,7 +48,7 @@ fn test_lir_examples_helper() {
                     .replace("\r\n", "\n")
                     .as_bytes()
                     .into_iter()
-                    .map(|byte| *byte as isize)
+                    .map(|byte| *byte as i64)
                     .collect::<Vec<_>>(),
                 Err(_) => {
                     eprintln!("WARNING: Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
@@ -129,7 +129,7 @@ fn test_asm_examples_helper() {
                     .replace("\r\n", "\n")
                     .as_bytes()
                     .into_iter()
-                    .map(|byte| *byte as isize)
+                    .map(|byte| *byte as i64)
                     .collect::<Vec<_>>(),
                 Err(_) => {
                     eprintln!("WARNING: Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");

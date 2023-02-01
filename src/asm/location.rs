@@ -102,7 +102,7 @@ pub enum Location {
     Indirect(Box<Self>),
     /// Go to a position in memory, and then move the pointer according to an offset.
     /// For example, `Offset(Address(8), -2)` is equivalent to `Address(6)`.
-    Offset(Box<Self>, isize),
+    Offset(Box<Self>, i64),
 }
 
 impl fmt::Display for Location {
@@ -149,7 +149,7 @@ impl fmt::Display for Location {
 impl Location {
     /// Get the location offset by a constant number of cells from a starting location.
     /// For example, `Offset(Address(8), -2)` is equivalent to `Address(6)`.
-    pub fn offset(&self, offset: isize) -> Self {
+    pub fn offset(&self, offset: i64) -> Self {
         if offset == 0 {
             self.clone()
         } else if let Self::Offset(addr, x) = self {
@@ -187,7 +187,7 @@ impl Location {
     /// Move the pointer to this location.
     pub fn to(&self, result: &mut dyn VirtualMachineProgram) {
         match self {
-            Location::Address(addr) => result.move_pointer(*addr as isize),
+            Location::Address(addr) => result.move_pointer(*addr as i64),
             Location::Indirect(loc) => {
                 loc.to(result);
                 result.deref();
@@ -202,7 +202,7 @@ impl Location {
     /// Move the pointer from this location.
     pub fn from(&self, result: &mut dyn VirtualMachineProgram) {
         match self {
-            Location::Address(addr) => result.move_pointer(-(*addr as isize)),
+            Location::Address(addr) => result.move_pointer(-(*addr as i64)),
             Location::Indirect(loc) => {
                 result.refer();
                 loc.from(result);
@@ -217,13 +217,13 @@ impl Location {
 
     /// Take the pointer value of this location, and make it point
     /// `count` number of cells to the right of its original position.
-    pub fn next(&self, count: isize, result: &mut dyn VirtualMachineProgram) {
+    pub fn next(&self, count: i64, result: &mut dyn VirtualMachineProgram) {
         self.deref().offset(count).copy_address_to(self, result);
     }
 
     /// Take the pointer value of this location, and make it point
     /// `count` number of cells to the left of its original position.
-    pub fn prev(&self, count: isize, result: &mut dyn VirtualMachineProgram) {
+    pub fn prev(&self, count: i64, result: &mut dyn VirtualMachineProgram) {
         self.deref().offset(-count).copy_address_to(self, result);
     }
 
@@ -503,7 +503,7 @@ impl Location {
     }
 
     /// This cell = a constant value.
-    pub fn set(&self, val: isize, result: &mut dyn VirtualMachineProgram) {
+    pub fn set(&self, val: i64, result: &mut dyn VirtualMachineProgram) {
         result.set_register(val);
         self.save_to(result)
     }

@@ -360,9 +360,9 @@
     <span class="doccomment">/// The current pointer on the turing tape.</span>
     <span class="ident">pointer</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// The register (which contains a single cell of data).</span>
-    <span class="ident">register</span>: <span class="ident">isize</span>,
+    <span class="ident">register</span>: <span class="ident">i64</span>,
     <span class="doccomment">/// The turing tape (composed of integer cells)</span>
-    <span class="ident">cells</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">isize</span><span class="op">&gt;</span>,
+    <span class="ident">cells</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">i64</span><span class="op">&gt;</span>,
     <span class="doccomment">/// The addresses of defined functions. `functions[N]` is the</span>
     <span class="doccomment">/// instruction pointer for the Nth function&#39;s code.</span>
     <span class="ident">functions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
@@ -557,7 +557,7 @@
     }
 
     <span class="doccomment">/// Get the current cell pointed to on the turing tape.</span>
-    <span class="kw">fn</span> <span class="ident">get_cell</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">isize</span> {
+    <span class="kw">fn</span> <span class="ident">get_cell</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">i64</span> {
         <span class="kw">while</span> <span class="self">self</span>.<span class="ident">pointer</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">cells</span>.<span class="ident">len</span>() {
             <span class="self">self</span>.<span class="ident">cells</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">1000</span>]);
         }
@@ -618,7 +618,7 @@
                     }
                 }
 
-                <span class="ident">CoreOp::Where</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">pointer</span> <span class="kw">as</span> <span class="ident">isize</span>,
+                <span class="ident">CoreOp::Where</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">pointer</span> <span class="kw">as</span> <span class="ident">i64</span>,
                 <span class="ident">CoreOp::Deref</span> =&gt; <span class="self">self</span>.<span class="ident">deref</span>(),
                 <span class="ident">CoreOp::Refer</span> =&gt; <span class="self">self</span>.<span class="ident">refer</span>()<span class="question-mark">?</span>,
 
@@ -642,7 +642,7 @@
                     }
                 }
 
-                <span class="ident">CoreOp::IsNonNegative</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">isize::from</span>(<span class="self">self</span>.<span class="ident">register</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span>),
+                <span class="ident">CoreOp::IsNonNegative</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">i64::from</span>(<span class="self">self</span>.<span class="ident">register</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span>),
                 <span class="ident">CoreOp::Get</span>(<span class="ident">i</span>) =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">device</span>.<span class="ident">get</span>(<span class="ident">i</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>,
                 <span class="ident">CoreOp::Put</span>(<span class="ident">o</span>) =&gt; <span class="self">self</span>.<span class="ident">device</span>.<span class="ident">put</span>(<span class="self">self</span>.<span class="ident">register</span>, <span class="ident">o</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>,
             }

@@ -52,7 +52,7 @@ impl CoreProgram {
         // Copy the address just after the allocated space to the stack pointer.
         FP_STACK
             .deref()
-            .offset(allowed_recursion_depth as isize)
+            .offset(allowed_recursion_depth as i64)
             .copy_address_to(&SP, &mut result);
 
         SP.copy_to(&FP, &mut result);
@@ -129,7 +129,7 @@ pub enum CoreOp {
     Many(Vec<CoreOp>),
 
     /// Set the value of a register, or any location in memory, to a given constant.
-    Set(Location, isize),
+    Set(Location, i64),
     /// Set the value of a register, or any location in memory, to the value of a label's ID.
     SetLabel(Location, String),
     /// Get the address of a location, and store it in a destination
@@ -180,9 +180,9 @@ pub enum CoreOp {
     Swap(Location, Location),
 
     /// Make this pointer point to the next cell (or the nth next cell).
-    Next(Location, Option<isize>),
+    Next(Location, Option<i64>),
     /// Make this pointer point to the previous cell (or the nth previous cell).
-    Prev(Location, Option<isize>),
+    Prev(Location, Option<i64>),
 
     /// Get the address of a location indexed by an offset stored at another location.
     /// Store the result in the destination register.
@@ -319,7 +319,7 @@ pub enum CoreOp {
     Array {
         src: Location,
         dst: Location,
-        vals: Vec<isize>,
+        vals: Vec<i64>,
     },
 
     BitwiseNand {
@@ -352,7 +352,7 @@ impl CoreOp {
                 // and Put the TMP register.
                 .map(|ch| {
                     Self::Many(vec![
-                        Self::Set(TMP, ch as isize),
+                        Self::Set(TMP, ch as i64),
                         Self::Put(TMP, dst.clone()),
                     ])
                 })
@@ -361,7 +361,7 @@ impl CoreOp {
     }
 
     pub fn push_string(msg: impl ToString) -> Self {
-        let mut vals: Vec<isize> = msg.to_string().chars().map(|c| c as isize).collect();
+        let mut vals: Vec<i64> = msg.to_string().chars().map(|c| c as i64).collect();
         vals.push(0);
         Self::Many(vec![
             Self::Array {
@@ -373,7 +373,7 @@ impl CoreOp {
         ])
     }
 
-    pub fn stack_alloc_cells(dst: Location, vals: Vec<isize>) -> Self {
+    pub fn stack_alloc_cells(dst: Location, vals: Vec<i64>) -> Self {
         Self::Many(vec![
             Self::GetAddress {
                 addr: SP.deref().offset(1),
@@ -389,7 +389,7 @@ impl CoreOp {
     }
 
     pub fn stack_alloc_string(dst: Location, text: impl ToString) -> Self {
-        let mut vals: Vec<isize> = text.to_string().chars().map(|c| c as isize).collect();
+        let mut vals: Vec<i64> = text.to_string().chars().map(|c| c as i64).collect();
         vals.push(0);
         Self::Many(vec![
             Self::GetAddress {
@@ -434,7 +434,7 @@ impl CoreOp {
                 // Save where we ended up
                 result.where_is_pointer();
                 // Move the pointer back where we came from
-                src.offset(vals.len() as isize).from(result);
+                src.offset(vals.len() as i64).from(result);
                 // Save where we ended up to the destination
                 dst.to(result);
                 result.save();
@@ -459,7 +459,7 @@ impl CoreOp {
 
             CoreOp::Set(dst, value) => dst.set(*value, result),
             CoreOp::SetLabel(dst, name) => {
-                dst.set(env.get(name, current_instruction)? as isize, result)
+                dst.set(env.get(name, current_instruction)? as i64, result)
             }
 
             CoreOp::Call(src) => {
@@ -468,7 +468,7 @@ impl CoreOp {
             }
 
             CoreOp::CallLabel(name) => {
-                result.set_register(env.get(name, current_instruction)? as isize);
+                result.set_register(env.get(name, current_instruction)? as i64);
                 result.call();
             }
 
@@ -621,19 +621,19 @@ impl CoreOp {
 
             CoreOp::PushTo { sp, src, size } => {
                 for i in 0..*size {
-                    src.offset(i as isize)
-                        .copy_to(&sp.deref().offset(i as isize + 1), result);
+                    src.offset(i as i64)
+                        .copy_to(&sp.deref().offset(i as i64 + 1), result);
                 }
-                sp.next(*size as isize, result);
+                sp.next(*size as i64, result);
             }
 
             CoreOp::PopFrom { sp, dst, size } => {
                 if let Some(dst) = dst {
                     for i in 1..=*size {
-                        dst.offset((*size - i) as isize).pop_from(sp, result)
+                        dst.offset((*size - i) as i64).pop_from(sp, result)
                     }
                 } else {
-                    sp.prev(*size as isize, result)
+                    sp.prev(*size as i64, result)
                 }
             }
             CoreOp::Push(src, size) => CoreOp::PushTo {
@@ -684,8 +684,8 @@ impl CoreOp {
 
             CoreOp::Copy { src, dst, size } => {
                 for i in 0..*size {
-                    src.offset(i as isize)
-                        .copy_to(&dst.offset(i as isize), result);
+                    src.offset(i as i64)
+                        .copy_to(&dst.offset(i as i64), result);
                 }
             }
         }

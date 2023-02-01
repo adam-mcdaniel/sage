@@ -24,7 +24,7 @@ impl StandardProgram {
         // Copy the address just after the allocated space to the stack pointer.
         FP_STACK
             .deref()
-            .offset(allowed_recursion_depth as isize)
+            .offset(allowed_recursion_depth as i64)
             .copy_address_to(&SP, &mut result);
 
         SP.copy_to(&FP, &mut result);

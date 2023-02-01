@@ -76,7 +76,7 @@ pub mod io;
 /// I've chosen to use the smallest value that can be expressed by an 8-bit signed integer.
 /// This is because I want to make sure that this works with 8-bit machines as well.
 /// The value of this constant might change in the future though.
-pub const NULL: isize = i8::MIN as isize;
+pub const NULL: i64 = i8::MIN as i64;
 
 /// The UNICODE character art for the logo of the language.
 pub const LOGO: &str = r#"

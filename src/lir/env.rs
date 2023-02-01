@@ -20,10 +20,10 @@ pub struct Env {
     /// The procedures defined under the environment.
     procs: Rc<HashMap<String, Procedure>>,
     /// The variables defined under the environment.
-    vars: Rc<HashMap<String, (Type, isize)>>,
+    vars: Rc<HashMap<String, (Type, i64)>>,
     /// The current offset of the frame pointer to assign to the next variable.
     /// This is incremented by the size of each variable as it is defined.
-    fp_offset: isize,
+    fp_offset: i64,
     /// The size of the arguments supplied to the function, in cells.
     /// This is incremented by the size of each argument defined (for a procedure).
     /// This is unaffected by defining *variables* in the scope of the function.
@@ -121,7 +121,7 @@ impl Env {
     }
 
     /// Get a variable's type and its offset from the frame pointer in the current scope.
-    pub fn get_var(&self, var: &str) -> Option<&(Type, isize)> {
+    pub fn get_var(&self, var: &str) -> Option<&(Type, i64)> {
         self.vars.get(var)
     }
 
@@ -138,7 +138,7 @@ impl Env {
             self.args_size += size;
             // Decrement the frame pointer offset by the size of the argument
             // so that the FP + the offset is the address of the argument.
-            self.fp_offset -= size as isize;
+            self.fp_offset -= size as i64;
             // Store the argument's type and offset in the environment.
             Rc::make_mut(&mut self.vars).insert(name, (t, self.fp_offset));
         }
@@ -153,9 +153,9 @@ impl Env {
     /// Define a variable in the current scope.
     /// This will increment the scope's frame pointer offset by the size of the variable.
     /// This method returns the offset of the variable from the frame pointer under this scope.
-    pub fn define_var(&mut self, var: impl ToString, t: Type) -> Result<isize, Error> {
+    pub fn define_var(&mut self, var: impl ToString, t: Type) -> Result<i64, Error> {
         // Get the size of the variable we're defining.
-        let size = t.get_size(self)? as isize;
+        let size = t.get_size(self)? as i64;
         // Remember the offset of the variable under the current scope.
         let offset = self.fp_offset;
         // Increment the frame pointer offset by the size of the variable

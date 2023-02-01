@@ -110,13 +110,13 @@ pub trait VirtualMachineProgram {
         self.op(CoreOp::Refer);
     }
 
-    fn move_pointer(&mut self, cells: isize) {
+    fn move_pointer(&mut self, cells: i64) {
         if cells != 0 {
             self.op(CoreOp::Move(cells));
         }
     }
 
-    fn set_register(&mut self, val: isize) {
+    fn set_register(&mut self, val: i64) {
         self.op(CoreOp::Set(val))
     }
 

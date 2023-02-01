@@ -234,7 +234,7 @@ pub enum OutputMode {
     Temperature,
     /// Set the pressure of a given pump (in atmospheres)
     Pump,
-    /// Set the pressure of a given fan (in atmospheres)
+    /// Turn a fan on or off (0=off, 1=on)
     Fan,
     /// Set the pressure of a given blower (in atmospheres)
     Blower,
@@ -594,7 +594,7 @@ impl Display for OutputMode {
             OutputMode::Temperature => write!(f, "temperature"),
             // Set the pressure of a given pump (in atmospheres)
             OutputMode::Pump => write!(f, "pump"),
-            // Set the pressure of a given fan (in atmospheres)
+            // Turn a fan on or off (0=off, 1=on)
             OutputMode::Fan => write!(f, "fan"),
             // Set the pressure of a given blower (in atmospheres)
             OutputMode::Blower => write!(f, "blower"),

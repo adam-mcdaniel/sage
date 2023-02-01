@@ -28,6 +28,7 @@
 use super::asm::{CoreProgram, StandardProgram};
 use super::lir::Expr;
 use super::vm;
+use super::io::{Input, Output};
 
 use lalrpop_util::lalrpop_mod;
 use no_comment::{IntoWithoutComments as _, languages};
@@ -215,5 +216,27 @@ fn format_error<T: core::fmt::Debug>(script: &str, err: SyntaxError<T>) -> Strin
             error,
             "-".repeat(error.len() - 1)
         ),
+    }
+}
+
+impl TryFrom<&str> for Input {
+    type Error = String;
+
+    fn try_from(input: &str) -> Result<Self, Self::Error> {
+        match asm_parser::InputParser::new().parse(input) {
+            Ok(i) => Ok(i),
+            Err(e) => Err(format_error(input, e)),
+        }
+    }
+}
+
+impl TryFrom<&str> for Output {
+    type Error = String;
+
+    fn try_from(output: &str) -> Result<Self, Self::Error> {
+        match asm_parser::OutputParser::new().parse(output) {
+            Ok(o) => Ok(o),
+            Err(e) => Err(format_error(output, e)),
+        }
     }
 }

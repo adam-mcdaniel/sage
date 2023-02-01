@@ -195,7 +195,7 @@ pub enum CoreOp {
     Comment(String),
 
     /// Set the register equal to a constant value.
-    Set(isize),
+    Set(i64),
 
     /// Create a new function.
     Function,
@@ -232,7 +232,7 @@ pub enum CoreOp {
     Restore,
 
     /// Move the pointer on the tape by a number of cells.
-    Move(isize),
+    Move(i64),
 
     /// Store the value of the pointer to the register.
     Where,

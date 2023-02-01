@@ -270,8 +270,8 @@
 
         <span class="comment">// Overwrite the arguments with the return value</span>
         <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Copy</span> {
-            <span class="ident">dst</span>: <span class="ident">FP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">args_size</span> <span class="kw">as</span> <span class="ident">isize</span>),
-            <span class="ident">src</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">ret_size</span> <span class="kw">as</span> <span class="ident">isize</span>),
+            <span class="ident">dst</span>: <span class="ident">FP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">args_size</span> <span class="kw">as</span> <span class="ident">i64</span>),
+            <span class="ident">src</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">ret_size</span> <span class="kw">as</span> <span class="ident">i64</span>),
             <span class="ident">size</span>: <span class="ident">ret_size</span>,
         });
         <span class="comment">// Decrement the stack pointer by the difference between the size of the</span>

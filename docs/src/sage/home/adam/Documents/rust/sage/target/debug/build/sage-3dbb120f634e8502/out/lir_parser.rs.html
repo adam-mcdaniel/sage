@@ -14634,7 +14634,7 @@
         <span class="ident">Variant35</span>(<span class="ident">CoreBuiltin</span>),
         <span class="ident">Variant36</span>(<span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">Type</span>)<span class="op">&gt;</span>),
         <span class="ident">Variant37</span>(<span class="ident">f64</span>),
-        <span class="ident">Variant38</span>(<span class="ident">isize</span>),
+        <span class="ident">Variant38</span>(<span class="ident">i64</span>),
         <span class="ident">Variant39</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Type</span><span class="op">&gt;</span>),
         <span class="ident">Variant40</span>(<span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">ConstExpr</span>)<span class="op">&gt;</span>),
         <span class="ident">Variant41</span>(<span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">core::option::Option</span><span class="op">&lt;</span><span class="ident">Type</span><span class="op">&gt;</span>, <span class="ident">Expr</span>)<span class="op">&gt;</span>),
@@ -18024,7 +18024,7 @@
       <span class="lifetime">&#39;input</span>,
     <span class="op">&gt;</span>(
         <span class="ident">__symbols</span>: <span class="kw-2">&amp;mut</span> <span class="ident">alloc::vec::Vec</span><span class="op">&lt;</span>(<span class="ident">usize</span>,<span class="ident">__Symbol</span><span class="op">&lt;</span><span class="lifetime">&#39;input</span><span class="op">&gt;</span>,<span class="ident">usize</span>)<span class="op">&gt;</span>
-    ) -&gt; (<span class="ident">usize</span>, <span class="ident">isize</span>, <span class="ident">usize</span>)
+    ) -&gt; (<span class="ident">usize</span>, <span class="ident">i64</span>, <span class="ident">usize</span>)
      {
         <span class="kw">match</span> <span class="ident">__symbols</span>.<span class="ident">pop</span>() {
             <span class="prelude-val">Some</span>((<span class="ident">__l</span>, <span class="ident">__Symbol::Variant38</span>(<span class="ident">__v</span>), <span class="ident">__r</span>)) =&gt; (<span class="ident">__l</span>, <span class="ident">__v</span>, <span class="ident">__r</span>),
@@ -23284,7 +23284,7 @@
     <span class="lifetime">&#39;input</span>,
 <span class="op">&gt;</span>(
     <span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;input</span> <span class="ident">str</span>,
-    (<span class="kw">_</span>, <span class="ident">__0</span>, <span class="kw">_</span>): (<span class="ident">usize</span>, <span class="ident">isize</span>, <span class="ident">usize</span>),
+    (<span class="kw">_</span>, <span class="ident">__0</span>, <span class="kw">_</span>): (<span class="ident">usize</span>, <span class="ident">i64</span>, <span class="ident">usize</span>),
 ) -&gt; <span class="ident">ConstExpr</span>
 {
     <span class="ident">ConstExpr::Int</span>(<span class="ident">__0</span> <span class="kw">as</span> <span class="ident">i32</span>)
@@ -24062,7 +24062,7 @@
     <span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;input</span> <span class="ident">str</span>,
     (<span class="kw">_</span>, <span class="ident">x</span>, <span class="kw">_</span>): (<span class="ident">usize</span>, <span class="ident">Expr</span>, <span class="ident">usize</span>),
     (<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>): (<span class="ident">usize</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;input</span> <span class="ident">str</span>, <span class="ident">usize</span>),
-    (<span class="kw">_</span>, <span class="ident">field</span>, <span class="kw">_</span>): (<span class="ident">usize</span>, <span class="ident">isize</span>, <span class="ident">usize</span>),
+    (<span class="kw">_</span>, <span class="ident">field</span>, <span class="kw">_</span>): (<span class="ident">usize</span>, <span class="ident">i64</span>, <span class="ident">usize</span>),
 ) -&gt; <span class="ident">Expr</span>
 {
     <span class="ident">x</span>.<span class="ident">field</span>(<span class="ident">ConstExpr::Int</span>(<span class="ident">field</span> <span class="kw">as</span> <span class="ident">i32</span>))
@@ -24088,7 +24088,7 @@
     <span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;input</span> <span class="ident">str</span>,
     (<span class="kw">_</span>, <span class="ident">x</span>, <span class="kw">_</span>): (<span class="ident">usize</span>, <span class="ident">Expr</span>, <span class="ident">usize</span>),
     (<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>): (<span class="ident">usize</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;input</span> <span class="ident">str</span>, <span class="ident">usize</span>),
-    (<span class="kw">_</span>, <span class="ident">field</span>, <span class="kw">_</span>): (<span class="ident">usize</span>, <span class="ident">isize</span>, <span class="ident">usize</span>),
+    (<span class="kw">_</span>, <span class="ident">field</span>, <span class="kw">_</span>): (<span class="ident">usize</span>, <span class="ident">i64</span>, <span class="ident">usize</span>),
 ) -&gt; <span class="ident">Expr</span>
 {
     <span class="ident">x</span>.<span class="ident">deref</span>().<span class="ident">field</span>(<span class="ident">ConstExpr::Int</span>(<span class="ident">field</span> <span class="kw">as</span> <span class="ident">i32</span>))
@@ -24351,9 +24351,9 @@
 <span class="op">&gt;</span>(
     <span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;input</span> <span class="ident">str</span>,
     (<span class="kw">_</span>, <span class="ident">s</span>, <span class="kw">_</span>): (<span class="ident">usize</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;input</span> <span class="ident">str</span>, <span class="ident">usize</span>),
-) -&gt; <span class="ident">isize</span>
+) -&gt; <span class="ident">i64</span>
 {
-    <span class="ident">isize::from_str</span>(<span class="ident">s</span>).<span class="ident">unwrap</span>()
+    <span class="ident">i64::from_str</span>(<span class="ident">s</span>).<span class="ident">unwrap</span>()
 }
 
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>)]</span>

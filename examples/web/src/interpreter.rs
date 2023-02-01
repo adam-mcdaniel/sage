@@ -327,7 +327,7 @@ where
 
                     CoreOp::IsNonNegative => self.register = if self.register >= 0 { 1 } else { 0 },
                     CoreOp::Get(i) => self.register = self.device.get(i.clone())? as i64,
-                    CoreOp::Put(o) => self.device.put(self.register as isize, o.clone())?,
+                    CoreOp::Put(o) => self.device.put(self.register as i64, o.clone())?,
                 },
 
                 StandardOp::Peek => {
@@ -337,7 +337,7 @@ where
                     }
                 },
                 StandardOp::Poke => {
-                    if let Err(e) = self.device.poke(self.register as isize) {
+                    if let Err(e) = self.device.poke(self.register as i64) {
                         eprintln!("Error: {}", e)
                     }
                 },

@@ -720,7 +720,7 @@
     <span class="ident">Indirect</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Go to a position in memory, and then move the pointer according to an offset.</span>
     <span class="doccomment">/// For example, `Offset(Address(8), -2)` is equivalent to `Address(6)`.</span>
-    <span class="ident">Offset</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">isize</span>),
+    <span class="ident">Offset</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">i64</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Location</span> {
@@ -767,7 +767,7 @@
 <span class="kw">impl</span> <span class="ident">Location</span> {
     <span class="doccomment">/// Get the location offset by a constant number of cells from a starting location.</span>
     <span class="doccomment">/// For example, `Offset(Address(8), -2)` is equivalent to `Address(6)`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">offset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">offset</span>: <span class="ident">isize</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">offset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">offset</span>: <span class="ident">i64</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">if</span> <span class="ident">offset</span> <span class="op">==</span> <span class="number">0</span> {
             <span class="self">self</span>.<span class="ident">clone</span>()
         } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="ident"><span class="self">Self</span>::Offset</span>(<span class="ident">addr</span>, <span class="ident">x</span>) <span class="op">=</span> <span class="self">self</span> {
@@ -805,7 +805,7 @@
     <span class="doccomment">/// Move the pointer to this location.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Location::Address</span>(<span class="ident">addr</span>) =&gt; <span class="ident">result</span>.<span class="ident">move_pointer</span>(<span class="kw-2">*</span><span class="ident">addr</span> <span class="kw">as</span> <span class="ident">isize</span>),
+            <span class="ident">Location::Address</span>(<span class="ident">addr</span>) =&gt; <span class="ident">result</span>.<span class="ident">move_pointer</span>(<span class="kw-2">*</span><span class="ident">addr</span> <span class="kw">as</span> <span class="ident">i64</span>),
             <span class="ident">Location::Indirect</span>(<span class="ident">loc</span>) =&gt; {
                 <span class="ident">loc</span>.<span class="ident">to</span>(<span class="ident">result</span>);
                 <span class="ident">result</span>.<span class="ident">deref</span>();
@@ -820,7 +820,7 @@
     <span class="doccomment">/// Move the pointer from this location.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Location::Address</span>(<span class="ident">addr</span>) =&gt; <span class="ident">result</span>.<span class="ident">move_pointer</span>(<span class="op">-</span>(<span class="kw-2">*</span><span class="ident">addr</span> <span class="kw">as</span> <span class="ident">isize</span>)),
+            <span class="ident">Location::Address</span>(<span class="ident">addr</span>) =&gt; <span class="ident">result</span>.<span class="ident">move_pointer</span>(<span class="op">-</span>(<span class="kw-2">*</span><span class="ident">addr</span> <span class="kw">as</span> <span class="ident">i64</span>)),
             <span class="ident">Location::Indirect</span>(<span class="ident">loc</span>) =&gt; {
                 <span class="ident">result</span>.<span class="ident">refer</span>();
                 <span class="ident">loc</span>.<span class="ident">from</span>(<span class="ident">result</span>);
@@ -835,13 +835,13 @@
 
     <span class="doccomment">/// Take the pointer value of this location, and make it point</span>
     <span class="doccomment">/// `count` number of cells to the right of its original position.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">count</span>: <span class="ident">isize</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">count</span>: <span class="ident">i64</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
         <span class="self">self</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="ident">count</span>).<span class="ident">copy_address_to</span>(<span class="self">self</span>, <span class="ident">result</span>);
     }
 
     <span class="doccomment">/// Take the pointer value of this location, and make it point</span>
     <span class="doccomment">/// `count` number of cells to the left of its original position.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prev</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">count</span>: <span class="ident">isize</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prev</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">count</span>: <span class="ident">i64</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
         <span class="self">self</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="op">-</span><span class="ident">count</span>).<span class="ident">copy_address_to</span>(<span class="self">self</span>, <span class="ident">result</span>);
     }
 
@@ -1121,7 +1121,7 @@
     }
 
     <span class="doccomment">/// This cell = a constant value.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">val</span>: <span class="ident">isize</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">val</span>: <span class="ident">i64</span>, <span class="ident">result</span>: <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">VirtualMachineProgram</span>) {
         <span class="ident">result</span>.<span class="ident">set_register</span>(<span class="ident">val</span>);
         <span class="self">self</span>.<span class="ident">save_to</span>(<span class="ident">result</span>)
     }

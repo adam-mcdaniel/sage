@@ -419,13 +419,13 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::vm</span>::{<span class="ident">CoreOp</span>, <span class="ident">Device</span>, <span class="ident">StandardDevice</span>, <span class="ident">StandardOp</span>, <span class="ident">StandardProgram</span>};
 
 <span class="doccomment">/// A function to reinterpret the bits of an integer as a float.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_float</span>(<span class="ident">n</span>: <span class="ident">isize</span>) -&gt; <span class="ident">f64</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_float</span>(<span class="ident">n</span>: <span class="ident">i64</span>) -&gt; <span class="ident">f64</span> {
     <span class="ident">f64::from_bits</span>(<span class="ident">n</span> <span class="kw">as</span> <span class="ident">u64</span>)
 }
 
 <span class="doccomment">/// A function to reinterpret the bits of a float as an integer.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_int</span>(<span class="ident">n</span>: <span class="ident">f64</span>) -&gt; <span class="ident">isize</span> {
-    <span class="ident">n</span>.<span class="ident">to_bits</span>() <span class="kw">as</span> <span class="ident">isize</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_int</span>(<span class="ident">n</span>: <span class="ident">f64</span>) -&gt; <span class="ident">i64</span> {
+    <span class="ident">n</span>.<span class="ident">to_bits</span>() <span class="kw">as</span> <span class="ident">i64</span>
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">StandardInterpreter</span><span class="op">&lt;</span><span class="ident">StandardDevice</span><span class="op">&gt;</span> {
@@ -444,9 +444,9 @@
     <span class="doccomment">/// The current pointer on the turing tape.</span>
     <span class="ident">pointer</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// The register (which contains a single cell of data).</span>
-    <span class="ident">register</span>: <span class="ident">isize</span>,
+    <span class="ident">register</span>: <span class="ident">i64</span>,
     <span class="doccomment">/// The turing tape (composed of integer cells)</span>
-    <span class="ident">cells</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">isize</span><span class="op">&gt;</span>,
+    <span class="ident">cells</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">i64</span><span class="op">&gt;</span>,
     <span class="doccomment">/// The addresses of defined functions. `functions[N]` is the</span>
     <span class="doccomment">/// instruction pointer for the Nth function&#39;s code.</span>
     <span class="ident">functions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
@@ -649,7 +649,7 @@
     }
 
     <span class="doccomment">/// Get the current cell pointed to on the turing tape.</span>
-    <span class="kw">fn</span> <span class="ident">get_cell</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">isize</span> {
+    <span class="kw">fn</span> <span class="ident">get_cell</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">i64</span> {
         <span class="kw">while</span> <span class="self">self</span>.<span class="ident">pointer</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">cells</span>.<span class="ident">len</span>() {
             <span class="self">self</span>.<span class="ident">cells</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">1000</span>]);
         }
@@ -714,7 +714,7 @@
                         }
                     }
 
-                    <span class="ident">CoreOp::Where</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">pointer</span> <span class="kw">as</span> <span class="ident">isize</span>,
+                    <span class="ident">CoreOp::Where</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">pointer</span> <span class="kw">as</span> <span class="ident">i64</span>,
                     <span class="ident">CoreOp::Deref</span> =&gt; <span class="self">self</span>.<span class="ident">deref</span>(),
                     <span class="ident">CoreOp::Refer</span> =&gt; <span class="self">self</span>.<span class="ident">refer</span>()<span class="question-mark">?</span>,
 
@@ -738,22 +738,22 @@
                         }
                     }
 
-                    <span class="ident">CoreOp::IsNonNegative</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">isize::from</span>(<span class="self">self</span>.<span class="ident">register</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span>),
+                    <span class="ident">CoreOp::IsNonNegative</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">i64::from</span>(<span class="self">self</span>.<span class="ident">register</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span>),
                     <span class="ident">CoreOp::Get</span>(<span class="ident">i</span>) =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">device</span>.<span class="ident">get</span>(<span class="ident">i</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>,
                     <span class="ident">CoreOp::Put</span>(<span class="ident">o</span>) =&gt; <span class="self">self</span>.<span class="ident">device</span>.<span class="ident">put</span>(<span class="self">self</span>.<span class="ident">register</span>, <span class="ident">o</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>,
                 },
 
                 <span class="ident">StandardOp::Set</span>(<span class="ident">n</span>) =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">as_int</span>(<span class="kw-2">*</span><span class="ident">n</span>),
                 <span class="ident">StandardOp::ToInt</span> =&gt; {
-                    <span class="comment">// self.register = f64::from_bits(self.register as u64) as isize</span>
-                    <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">as_float</span>(<span class="self">self</span>.<span class="ident">register</span>) <span class="kw">as</span> <span class="ident">isize</span>;
+                    <span class="comment">// self.register = f64::from_bits(self.register as u64) as i64</span>
+                    <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">as_float</span>(<span class="self">self</span>.<span class="ident">register</span>) <span class="kw">as</span> <span class="ident">i64</span>;
                 }
                 <span class="ident">StandardOp::ToFloat</span> =&gt; {
-                    <span class="comment">// self.register = (self.register as f64).to_bits() as isize</span>
+                    <span class="comment">// self.register = (self.register as f64).to_bits() as i64</span>
                     <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">as_int</span>(<span class="self">self</span>.<span class="ident">register</span> <span class="kw">as</span> <span class="ident">f64</span>);
                 }
                 <span class="comment">// let cell = f64::from_bits(*self.get_cell() as u64);</span>
-                <span class="comment">// self.register = (f64::from_bits(self.register as u64) + cell).to_bits() as isize;</span>
+                <span class="comment">// self.register = (f64::from_bits(self.register as u64) + cell).to_bits() as i64;</span>
                 <span class="ident">StandardOp::Add</span> =&gt; {
                     <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="ident">as_float</span>(<span class="self">self</span>.<span class="ident">register</span>);
                     <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">as_float</span>(<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">get_cell</span>());
@@ -779,7 +779,7 @@
                     <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">as_float</span>(<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">get_cell</span>());
                     <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">as_int</span>(<span class="ident">a</span> <span class="op">%</span> <span class="ident">b</span>)
                 }
-                <span class="ident">StandardOp::IsNonNegative</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">isize::from</span>(<span class="self">self</span>.<span class="ident">register</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span>),
+                <span class="ident">StandardOp::IsNonNegative</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">i64::from</span>(<span class="self">self</span>.<span class="ident">register</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span>),
                 <span class="ident">StandardOp::Sin</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">as_int</span>(<span class="ident">as_float</span>(<span class="self">self</span>.<span class="ident">register</span>).<span class="ident">sin</span>()),
                 <span class="ident">StandardOp::Cos</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">as_int</span>(<span class="ident">as_float</span>(<span class="self">self</span>.<span class="ident">register</span>).<span class="ident">cos</span>()),
                 <span class="ident">StandardOp::Tan</span> =&gt; <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">as_int</span>(<span class="ident">as_float</span>(<span class="self">self</span>.<span class="ident">register</span>).<span class="ident">tan</span>()),
@@ -808,7 +808,7 @@
                     <span class="comment">// Allocate new space at the end of the type.</span>
                     <span class="self">self</span>.<span class="ident">cells</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[<span class="number">0</span>; <span class="self">self</span>.<span class="ident">register</span> <span class="kw">as</span> <span class="ident">usize</span>]);
                     <span class="comment">// Store the address of the new space in the register.</span>
-                    <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">result</span> <span class="kw">as</span> <span class="ident">isize</span>;
+                    <span class="self">self</span>.<span class="ident">register</span> <span class="op">=</span> <span class="ident">result</span> <span class="kw">as</span> <span class="ident">i64</span>;
                 }
                 <span class="ident">StandardOp::Free</span> =&gt; {}
             }

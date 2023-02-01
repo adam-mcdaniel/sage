@@ -1070,8 +1070,8 @@
 
                 <span class="comment">// Overwrite the arguments with the return value</span>
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Copy</span> {
-                    <span class="ident">dst</span>: <span class="ident">FP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">args_size</span> <span class="kw">as</span> <span class="ident">isize</span>),
-                    <span class="ident">src</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">ret_size</span> <span class="kw">as</span> <span class="ident">isize</span>),
+                    <span class="ident">dst</span>: <span class="ident">FP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">args_size</span> <span class="kw">as</span> <span class="ident">i64</span>),
+                    <span class="ident">src</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">ret_size</span> <span class="kw">as</span> <span class="ident">i64</span>),
                     <span class="ident">size</span>: <span class="ident">ret_size</span>,
                 });
 
@@ -1087,7 +1087,7 @@
                 <span class="comment">// arguments and return value, to leave the return value on the stack.</span>
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Prev</span>(
                     <span class="ident">SP</span>,
-                    <span class="prelude-val">Some</span>(<span class="ident">args_size</span> <span class="kw">as</span> <span class="ident">isize</span> <span class="op">-</span> <span class="ident">ret_size</span> <span class="kw">as</span> <span class="ident">isize</span>),
+                    <span class="prelude-val">Some</span>(<span class="ident">args_size</span> <span class="kw">as</span> <span class="ident">i64</span> <span class="op">-</span> <span class="ident">ret_size</span> <span class="kw">as</span> <span class="ident">i64</span>),
                 ));
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Return</span>);
             }
@@ -1118,10 +1118,10 @@
                 <span class="comment">// so that when we pop the stack, it&#39;s as if we popped the variables</span>
                 <span class="comment">// and arguments, and pushed our return value.</span>
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Copy</span> {
-                    <span class="ident">src</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">result_size</span> <span class="kw">as</span> <span class="ident">isize</span>),
+                    <span class="ident">src</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">result_size</span> <span class="kw">as</span> <span class="ident">i64</span>),
                     <span class="ident">dst</span>: <span class="ident">SP</span>
                         .<span class="ident">deref</span>()
-                        .<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">var_size</span> <span class="kw">as</span> <span class="ident">isize</span> <span class="op">-</span> <span class="ident">result_size</span> <span class="kw">as</span> <span class="ident">isize</span>),
+                        .<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">var_size</span> <span class="kw">as</span> <span class="ident">i64</span> <span class="op">-</span> <span class="ident">result_size</span> <span class="kw">as</span> <span class="ident">i64</span>),
                     <span class="ident">size</span>: <span class="ident">result_size</span>,
                 });
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Pop</span>(<span class="prelude-val">None</span>, <span class="ident">var_size</span>));
@@ -1206,7 +1206,7 @@
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Pop</span>(<span class="prelude-val">Some</span>(<span class="ident">A</span>), <span class="number">1</span>));
                 <span class="comment">// Copy the result of the compiled value into the pointer</span>
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Copy</span> {
-                    <span class="ident">src</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">size</span> <span class="kw">as</span> <span class="ident">isize</span>),
+                    <span class="ident">src</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">size</span> <span class="kw">as</span> <span class="ident">i64</span>),
                     <span class="ident">dst</span>: <span class="ident">A</span>.<span class="ident">deref</span>(),
                     <span class="ident">size</span>,
                 });
@@ -1250,7 +1250,7 @@
                 <span class="comment">// Increment the stack pointer to pad out the union.</span>
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Next</span>(
                     <span class="ident">SP</span>,
-                    <span class="prelude-val">Some</span>(<span class="ident">result_size</span> <span class="kw">as</span> <span class="ident">isize</span> <span class="op">-</span> <span class="ident">val_size</span> <span class="kw">as</span> <span class="ident">isize</span>),
+                    <span class="prelude-val">Some</span>(<span class="ident">result_size</span> <span class="kw">as</span> <span class="ident">i64</span> <span class="op">-</span> <span class="ident">val_size</span> <span class="kw">as</span> <span class="ident">i64</span>),
                 ));
             }
 
@@ -1281,12 +1281,12 @@
                         <span class="comment">// Calculate the offset of the element we want to return</span>
                         <span class="comment">// (the index times the size of the element), and store it in `B`.</span>
                         <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Pop</span>(<span class="prelude-val">Some</span>(<span class="ident">B</span>), <span class="number">1</span>));
-                        <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">A</span>, <span class="ident">elem_size</span> <span class="kw">as</span> <span class="ident">isize</span>));
+                        <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">A</span>, <span class="ident">elem_size</span> <span class="kw">as</span> <span class="ident">i64</span>));
                         <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Mul</span> { <span class="ident">dst</span>: <span class="ident">B</span>, <span class="ident">src</span>: <span class="ident">A</span> });
 
                         <span class="comment">// Get the address of the array&#39;s first element, and store it in `A`.</span>
                         <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::GetAddress</span> {
-                            <span class="ident">addr</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">val_size</span> <span class="kw">as</span> <span class="ident">isize</span>),
+                            <span class="ident">addr</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">val_size</span> <span class="kw">as</span> <span class="ident">i64</span>),
                             <span class="ident">dst</span>: <span class="ident">A</span>,
                         });
                         <span class="comment">// Index the address stored in `A` with the offset stored in `B`,</span>
@@ -1301,7 +1301,7 @@
                         <span class="comment">// array&#39;s first element on the stack.</span>
                         <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Copy</span> {
                             <span class="ident">src</span>: <span class="ident">C</span>.<span class="ident">deref</span>(),
-                            <span class="ident">dst</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">val_size</span> <span class="kw">as</span> <span class="ident">isize</span>),
+                            <span class="ident">dst</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">val_size</span> <span class="kw">as</span> <span class="ident">i64</span>),
                             <span class="ident">size</span>,
                         });
                         <span class="comment">// Pop the remaining elements off the stack, so the element we indexed remains.</span>
@@ -1321,7 +1321,7 @@
                         <span class="comment">// Store the index in `B`.</span>
                         <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Pop</span>(<span class="prelude-val">Some</span>(<span class="ident">B</span>), <span class="number">1</span>));
                         <span class="comment">// Store the size of the element in `C`.</span>
-                        <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">C</span>, <span class="ident">elem_size</span> <span class="kw">as</span> <span class="ident">isize</span>));
+                        <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">C</span>, <span class="ident">elem_size</span> <span class="kw">as</span> <span class="ident">i64</span>));
                         <span class="comment">// Store the offset of the element from the pointer in `B`</span>
                         <span class="comment">// (the index times the size of the element).</span>
                         <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Mul</span> { <span class="ident">dst</span>: <span class="ident">B</span>, <span class="ident">src</span>: <span class="ident">C</span> });
@@ -1353,8 +1353,8 @@
                 <span class="ident">val</span>.<span class="ident">clone</span>().<span class="ident">compile_expr</span>(<span class="ident">env</span>, <span class="ident">output</span>)<span class="question-mark">?</span>;
                 <span class="comment">// Copy the contents of the field over top of the value on the stack.</span>
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Copy</span> {
-                    <span class="ident">src</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">val_size</span> <span class="kw">as</span> <span class="ident">isize</span> <span class="op">+</span> <span class="ident">offset</span> <span class="kw">as</span> <span class="ident">isize</span>),
-                    <span class="ident">dst</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">val_size</span> <span class="kw">as</span> <span class="ident">isize</span>),
+                    <span class="ident">src</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">val_size</span> <span class="kw">as</span> <span class="ident">i64</span> <span class="op">+</span> <span class="ident">offset</span> <span class="kw">as</span> <span class="ident">i64</span>),
+                    <span class="ident">dst</span>: <span class="ident">SP</span>.<span class="ident">deref</span>().<span class="ident">offset</span>(<span class="number">1</span> <span class="op">-</span> <span class="ident">val_size</span> <span class="kw">as</span> <span class="ident">i64</span>),
                     <span class="ident">size</span>,
                 });
                 <span class="comment">// Pop the remaining elements off the stack, so the field remains.</span>
@@ -1401,7 +1401,7 @@
                     <span class="kw">let</span> (<span class="kw">_</span>, <span class="ident">offset</span>) <span class="op">=</span> <span class="ident">val_type</span>.<span class="ident">get_member_offset</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">val</span>, <span class="ident">env</span>)<span class="question-mark">?</span>;
 
                     <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Pop</span>(<span class="prelude-val">Some</span>(<span class="ident">A</span>), <span class="number">1</span>));
-                    <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">B</span>, <span class="ident">offset</span> <span class="kw">as</span> <span class="ident">isize</span>));
+                    <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">B</span>, <span class="ident">offset</span> <span class="kw">as</span> <span class="ident">i64</span>));
                     <span class="comment">// Index the address of the struct, tuple, or union with the offset of the field.</span>
                     <span class="comment">// This is the address of the field.</span>
                     <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Index</span> {
@@ -1431,7 +1431,7 @@
                             <span class="comment">// Store the address of the array in `A`.</span>
                             <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Pop</span>(<span class="prelude-val">Some</span>(<span class="ident">A</span>), <span class="number">1</span>));
                             <span class="comment">// Store the size of the element in `C`.</span>
-                            <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">C</span>, <span class="ident">elem_size</span> <span class="kw">as</span> <span class="ident">isize</span>));
+                            <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">C</span>, <span class="ident">elem_size</span> <span class="kw">as</span> <span class="ident">i64</span>));
 
                             <span class="comment">// Calculate the offset of the element from the address of the array.</span>
                             <span class="comment">// (the index times the size of the element).</span>
@@ -1461,7 +1461,7 @@
                             <span class="comment">// Store the index in `B`.</span>
                             <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Pop</span>(<span class="prelude-val">Some</span>(<span class="ident">B</span>), <span class="number">1</span>));
                             <span class="comment">// Store the size of the element in `C`.</span>
-                            <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">C</span>, <span class="ident">elem_size</span> <span class="kw">as</span> <span class="ident">isize</span>));
+                            <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">C</span>, <span class="ident">elem_size</span> <span class="kw">as</span> <span class="ident">i64</span>));
 
                             <span class="comment">// Calculate the offset of the element from the pointer.</span>
                             <span class="comment">// (the index times the size of the element).</span>
@@ -1512,17 +1512,17 @@
             <span class="comment">// Compile a char constant.</span>
             <span class="ident"><span class="self">Self</span>::Char</span>(<span class="ident">ch</span>) =&gt; {
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Next</span>(<span class="ident">SP</span>, <span class="prelude-val">None</span>));
-                <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">SP</span>.<span class="ident">deref</span>(), <span class="ident">ch</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="kw">as</span> <span class="ident">isize</span>));
+                <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">SP</span>.<span class="ident">deref</span>(), <span class="ident">ch</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="kw">as</span> <span class="ident">i64</span>));
             }
             <span class="comment">// Compile a bool constant.</span>
             <span class="ident"><span class="self">Self</span>::Bool</span>(<span class="ident">x</span>) =&gt; {
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Next</span>(<span class="ident">SP</span>, <span class="prelude-val">None</span>));
-                <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">SP</span>.<span class="ident">deref</span>(), <span class="ident">x</span> <span class="kw">as</span> <span class="ident">isize</span>));
+                <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">SP</span>.<span class="ident">deref</span>(), <span class="ident">x</span> <span class="kw">as</span> <span class="ident">i64</span>));
             }
             <span class="comment">// Compile an integer constant.</span>
             <span class="ident"><span class="self">Self</span>::Int</span>(<span class="ident">n</span>) =&gt; {
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Next</span>(<span class="ident">SP</span>, <span class="prelude-val">None</span>));
-                <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">SP</span>.<span class="ident">deref</span>(), <span class="ident">n</span> <span class="kw">as</span> <span class="ident">isize</span>));
+                <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">SP</span>.<span class="ident">deref</span>(), <span class="ident">n</span> <span class="kw">as</span> <span class="ident">i64</span>));
             }
             <span class="comment">// Compile a float constant.</span>
             <span class="ident"><span class="self">Self</span>::Float</span>(<span class="ident">f</span>) =&gt; {
@@ -1532,12 +1532,12 @@
             <span class="comment">// Calculate the size of a type.</span>
             <span class="ident"><span class="self">Self</span>::SizeOfType</span>(<span class="ident">t</span>) =&gt; {
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Next</span>(<span class="ident">SP</span>, <span class="prelude-val">None</span>));
-                <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">SP</span>.<span class="ident">deref</span>(), <span class="ident">t</span>.<span class="ident">get_size</span>(<span class="ident">env</span>)<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">isize</span>));
+                <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">SP</span>.<span class="ident">deref</span>(), <span class="ident">t</span>.<span class="ident">get_size</span>(<span class="ident">env</span>)<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">i64</span>));
             }
             <span class="comment">// Calculate the size of an expression.</span>
             <span class="ident"><span class="self">Self</span>::SizeOfExpr</span>(<span class="ident">e</span>) =&gt; {
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Next</span>(<span class="ident">SP</span>, <span class="prelude-val">None</span>));
-                <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">SP</span>.<span class="ident">deref</span>(), <span class="ident">e</span>.<span class="ident">get_size</span>(<span class="ident">env</span>)<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">isize</span>));
+                <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">SP</span>.<span class="ident">deref</span>(), <span class="ident">e</span>.<span class="ident">get_size</span>(<span class="ident">env</span>)<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">i64</span>));
             }
             <span class="comment">// Compile a tuple constant.</span>
             <span class="ident"><span class="self">Self</span>::Tuple</span>(<span class="ident">items</span>) =&gt; {
@@ -1573,7 +1573,7 @@
                 <span class="comment">// Pad the value to the size of the union.</span>
                 <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Next</span>(
                     <span class="ident">SP</span>,
-                    <span class="prelude-val">Some</span>(<span class="ident">result_size</span> <span class="kw">as</span> <span class="ident">isize</span> <span class="op">-</span> <span class="ident">val_size</span> <span class="kw">as</span> <span class="ident">isize</span>),
+                    <span class="prelude-val">Some</span>(<span class="ident">result_size</span> <span class="kw">as</span> <span class="ident">i64</span> <span class="op">-</span> <span class="ident">val_size</span> <span class="kw">as</span> <span class="ident">i64</span>),
                 ));
             }
             <span class="comment">// Compile a core builtin.</span>
@@ -1617,7 +1617,7 @@
                     <span class="comment">// Get the index of the variant.</span>
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">index</span>) <span class="op">=</span> <span class="ident">Type::variant_index</span>(<span class="kw-2">&amp;</span><span class="ident">variants</span>, <span class="kw-2">&amp;</span><span class="ident">variant</span>) {
                         <span class="comment">// Push the index of the variant onto the stack.</span>
-                        <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">A</span>, <span class="ident">index</span> <span class="kw">as</span> <span class="ident">isize</span>));
+                        <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">A</span>, <span class="ident">index</span> <span class="kw">as</span> <span class="ident">i64</span>));
                         <span class="ident">output</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Push</span>(<span class="ident">A</span>, <span class="number">1</span>));
                     } <span class="kw">else</span> {
                         <span class="comment">// If the variant is not found, return an error.</span>

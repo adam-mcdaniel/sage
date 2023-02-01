@@ -116,8 +116,8 @@ impl Compile for Procedure {
 
         // Overwrite the arguments with the return value
         output.op(CoreOp::Copy {
-            dst: FP.deref().offset(1 - args_size as isize),
-            src: SP.deref().offset(1 - ret_size as isize),
+            dst: FP.deref().offset(1 - args_size as i64),
+            src: SP.deref().offset(1 - ret_size as i64),
             size: ret_size,
         });
         // Decrement the stack pointer by the difference between the size of the

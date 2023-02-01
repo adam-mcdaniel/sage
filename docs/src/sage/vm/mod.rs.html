@@ -281,13 +281,13 @@
         <span class="self">self</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Refer</span>);
     }
 
-    <span class="kw">fn</span> <span class="ident">move_pointer</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cells</span>: <span class="ident">isize</span>) {
+    <span class="kw">fn</span> <span class="ident">move_pointer</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cells</span>: <span class="ident">i64</span>) {
         <span class="kw">if</span> <span class="ident">cells</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
             <span class="self">self</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Move</span>(<span class="ident">cells</span>));
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">set_register</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">isize</span>) {
+    <span class="kw">fn</span> <span class="ident">set_register</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="ident">i64</span>) {
         <span class="self">self</span>.<span class="ident">op</span>(<span class="ident">CoreOp::Set</span>(<span class="ident">val</span>))
     }
 

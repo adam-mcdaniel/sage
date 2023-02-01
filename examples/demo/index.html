@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bootstrap demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+
+    <script type="module">
+        import init, {Compiler} from './demo.js';
+        var compiler = null
+        init().then(module => {
+          compiler = new Compiler()
+
+          compiler.add_output_channel('heater #0')
+          compiler.add_output_channel('cooler #0')
+
+          compiler.add_input_channel('thermometer #0')
+          document.getElementById("temp").value = 20.0
+          var temp = document.getElementById("temp").value
+          document.getElementById("temp").oninput = function() {
+            temp = this.value
+          }
+          compiler.add_input_channel('button #1')
+          var up_button = document.getElementById("up")
+          up_button.oninput = function() {
+            compiler.update_input_as_int('button #1', 1)
+          }
+          compiler.add_input_channel('button #2')
+          var down_button = document.getElementById("down")
+          down_button.oninput = function() {
+            compiler.update_input_as_int('button #2', 1)
+          }
+          compiler.add_input_channel('button #0')
+          var power_button = document.getElementById("power")
+          power_button.oninput = function() {
+            compiler.update_input_as_int('button #0', 1)
+          }
+
+          var output = document.getElementById("output");
+
+          compiler.compile(`
+type State = enum {
+    Heating,
+    Cooling,
+    Idle
+} in
+
+type Kelvin = unit Kelvin = Float in
+type Celcius = unit Celcius = Float in
+type Fahrenheit = unit Fahrenheit = Float in
+
+proc get_temperature() -> Kelvin = std {
+    next SP
+    get [SP], thermometer #0
+} in
+
+proc turn_on_heater() = core {
+    set A, 1
+    put A, heater #0
+    put-str "[Heater on]\n", stderr.char
+} in
+
+proc turn_off_heater() = core {
+    set A, 0
+    put A, heater #0
+    put-str "[Heater off]\n", stderr.char
+} in
+
+proc turn_on_cooler() = core {
+    set A, 1
+    put A, cooler #0
+    put-str "[Cooler on]\n", stderr.char
+} in
+
+proc turn_off_cooler() = core {
+    set A, 0
+    put A, cooler #0
+    put-str "[Cooler off]\n", stderr.char
+} in
+
+proc read_power_button() -> Bool = core {
+    next SP
+    get [SP], button #0
+} in
+
+proc read_up_button() -> Bool = core {
+    next SP
+    get [SP], button #1
+} in
+
+proc read_down_button() -> Bool = core {
+    next SP
+    get [SP], button #2
+} in
+
+proc putint(n: Int) = core {
+    put-int [SP]
+} in
+
+proc putchar(c: Char) = core {
+    put-char [SP]
+} in
+
+proc putfloat(c: Float) = core {
+    put-float [SP]
+} in
+
+proc f_to_c(f: Fahrenheit) -> Celcius = {
+    ((f as Float - 32.0) * 5.0 / 9.0) as Celcius
+} in
+
+proc c_to_f(c: Celcius) -> Fahrenheit = {
+    ((c as Float * 9.0 / 5.0) + 32.0) as Fahrenheit
+} in
+
+proc k_to_c(k: Kelvin) -> Celcius = {
+    (k as Float - 273.15) as Celcius
+} in 
+
+proc c_to_k(c: Celcius) -> Kelvin = {
+    (c as Float + 273.15) as Kelvin
+} in
+
+proc f_to_k(f: Fahrenheit) -> Kelvin = {
+    c_to_k(f_to_c(f))
+} in
+
+proc k_to_f(k: Kelvin) -> Fahrenheit = {
+    c_to_f(k_to_c(k))
+} in
+
+proc putf(temp: Fahrenheit) = {
+    putfloat(temp as Float);
+    putchar('°');
+    putchar('F')
+} in
+
+proc putc(temp: Celcius) = {
+    putfloat(temp as Float);
+    putchar('°');
+    putchar('C')
+} in
+
+proc putk(temp: Kelvin) = {
+    putfloat(temp as Float);
+    putchar('°');
+    putchar('K')
+} in
+
+
+proc main() = {
+    let state = Idle of State,
+        desired_temp = 20.0 as Celcius,
+        current_temp = k_to_c(get_temperature()),
+        up_button = read_up_button(),
+        down_button = read_down_button(),
+        power_button = read_power_button()
+    in while (not power_button) {
+        if (up_button) {
+            desired_temp = desired_temp + 0.1 as Celcius
+        };
+
+        if (down_button) {
+            desired_temp = desired_temp - 0.1 as Celcius
+        };
+
+        put "Current temp: ";
+        putc(current_temp);
+        put "\nDesired temp: ";
+        putc(desired_temp);
+        put "\nCurrent state: ";
+        put state; put "\n";
+        
+        if (current_temp > desired_temp) {
+            put "Too hot\n"
+        } else if (current_temp < desired_temp) {
+            put "Too cold\n"
+        } else {
+            put "Just right\n"
+        };
+
+        if (state == Heating of State) {
+            if (current_temp > desired_temp) {
+                turn_off_heater();
+                state = Idle of State
+            }
+        } else if (state == Cooling of State) {
+            if (current_temp < desired_temp) {
+                turn_off_cooler();
+                state = Idle of State
+            }
+        } else {
+            if (current_temp < desired_temp) {
+                turn_on_heater();
+                state = Heating of State
+            } else if (current_temp > desired_temp) {
+                turn_on_cooler();
+                state = Cooling of State
+            } else {
+                state = Idle of State
+            }
+        };
+
+        up_button = read_up_button();
+        down_button = read_down_button();
+        power_button = read_power_button();
+        current_temp = k_to_c(get_temperature());
+    };
+    putchar('!')
+} in main()
+`)
+        setInterval(() => {
+          console.log(compiler.get_input_as_vals('thermometer #0'))
+
+          for (let i=0; i<50; i++) {
+            compiler.step()
+            let stdout = compiler.read_stdout()
+            output.innerHTML += stdout
+            compiler.clear_output()
+          }
+        })
+            
+//           compiler.write_stdin("5 6")
+//           compiler.run(`
+// proc getint() -> Int = core {
+//     put-str "Waiting for input...", analogpin #0
+//     next SP
+//     get-int [SP]
+// } in
+
+// proc alloc(len: Int) -> &Cell = std {
+//     alloc [SP]
+// } in
+
+// let x = getint(),
+//     y = getint(),
+//     z = alloc(30000) in {put x * y; put &x;}`)
+//           console.log(compiler.read_stdout())
+//           console.log('Analog pin: ', compiler.get_output_as_string('analogpin #0'))
+//           compiler.run(`
+// proc getint() -> Int = core {
+//     put-str "Waiting for input...", analogpin #0
+//     next SP
+//     get-int [SP]
+// } in
+
+// proc alloc(len: Int) -> &Cell = std {
+//     alloc [SP]
+// } in
+
+
+// let x = getint(),
+//     y = getint(),
+//     z = alloc(30000) in {put x * y; put &x;}`)
+//           console.log(compiler.read_stdout())
+//           console.log('Analog pin: ', compiler.get_output_as_string('analogpin #0'))
+        });
+    </script>
+  </head>
+  <body>
+    <h1>Hello, world!</h1>
+    <div class="slidecontainer">
+      <button id="up">Up</button>
+      <button id="down">Down</button>
+      <button id="power">Power</button>
+      <input type="range" min="-100" max="100" value="20" class="slider" id="temp">
+    </div>
+    <div>
+      <p id="output"></p>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous"></script>
+  </body>
+</html>

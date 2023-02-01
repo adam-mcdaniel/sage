@@ -370,7 +370,7 @@
         <span class="comment">// Copy the address just after the allocated space to the stack pointer.</span>
         <span class="ident">FP_STACK</span>
             .<span class="ident">deref</span>()
-            .<span class="ident">offset</span>(<span class="ident">allowed_recursion_depth</span> <span class="kw">as</span> <span class="ident">isize</span>)
+            .<span class="ident">offset</span>(<span class="ident">allowed_recursion_depth</span> <span class="kw">as</span> <span class="ident">i64</span>)
             .<span class="ident">copy_address_to</span>(<span class="kw-2">&amp;</span><span class="ident">SP</span>, <span class="kw-2">&amp;mut</span> <span class="ident">result</span>);
 
         <span class="ident">SP</span>.<span class="ident">copy_to</span>(<span class="kw-2">&amp;</span><span class="ident">FP</span>, <span class="kw-2">&amp;mut</span> <span class="ident">result</span>);
