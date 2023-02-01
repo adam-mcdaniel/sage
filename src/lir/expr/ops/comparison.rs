@@ -45,7 +45,7 @@ impl BinaryOp for Comparison {
                 
                 self.can_apply(&a_type, &b_type, env)
             }
-            (a, Self::Equal, b) | (a, Self::NotEqual, b) => a.equals(b, env),
+            (a, Self::Equal, b) | (a, Self::NotEqual, b) => Ok(a.equals(b, env)? && a.get_size(env)? == 1),
             _ => Ok(false),
         }
     }

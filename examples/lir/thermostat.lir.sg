@@ -1,4 +1,3 @@
-
 type State = enum {
     Heating,
     Cooling,
@@ -114,8 +113,9 @@ proc main() = {
         current_temp = k_to_c(get_temperature()),
         up_button = read_up_button(),
         down_button = read_down_button(),
-        power_button = read_power_button()
-    in while (not power_button) {
+        power_button = read_power_button(),
+        i = 0
+    in while (not power_button and i < 100) {
         if (up_button) {
             desired_temp = desired_temp + 0.1 as Celcius
         };
@@ -125,11 +125,12 @@ proc main() = {
         };
 
         put "Current temp: ";
-        putc(current_temp);
+        put current_temp;
         put "\nDesired temp: ";
-        putc(desired_temp);
+        put desired_temp;
         put "\nCurrent state: ";
-        put state; put "\n";
+        put state;
+        put "\n";
         
         if (current_temp > desired_temp) {
             put "Too hot\n"
@@ -139,25 +140,30 @@ proc main() = {
             put "Just right\n"
         };
 
-        if (state == Heating of State) {
-            if (current_temp > desired_temp) {
-                turn_off_heater();
-                state = Idle of State
-            }
-        } else if (state == Cooling of State) {
-            if (current_temp < desired_temp) {
-                turn_off_cooler();
-                state = Idle of State
-            }
-        } else {
-            if (current_temp < desired_temp) {
-                turn_on_heater();
-                state = Heating of State
-            } else if (current_temp > desired_temp) {
-                turn_on_cooler();
-                state = Cooling of State
-            } else {
-                state = Idle of State
+        match (state) {
+            Heating of State => {
+                put "Heating\n";
+                if (current_temp > desired_temp) {
+                    turn_off_heater();
+                    state = Idle of State
+                }
+            },
+            Cooling of State => {
+                put "Cooling\n";
+                if (current_temp < desired_temp) {
+                    turn_off_cooler();
+                    state = Idle of State
+                }
+            },
+            Idle of State => {
+                put "Idle\n";
+                if (current_temp > desired_temp) {
+                    turn_on_cooler();
+                    state = Cooling of State
+                } else if (current_temp < desired_temp) {
+                    turn_on_heater();
+                    state = Heating of State
+                }
             }
         };
 
@@ -165,6 +171,7 @@ proc main() = {
         down_button = read_down_button();
         power_button = read_power_button();
         current_temp = k_to_c(get_temperature());
+        i += 1
     };
-    putchar('!')
+    put "Goodbye!\n"
 } in main()

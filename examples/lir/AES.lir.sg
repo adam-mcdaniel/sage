@@ -1,42 +1,26 @@
-const bitxor = proc(a: Int, b: Int) -> Int = core {
+proc bitxor(a: Int, b: Int) -> Int = core {
     bitwise-xor [SP], [SP - 1] pop
-}, bitor = proc(a: Int, b: Int) -> Int = core {
+} in
+
+proc bitor(a: Int, b: Int) -> Int = core {
     bitwise-or [SP], [SP - 1] pop
-}, bitnand = proc(a: Int, b: Int) -> Int = core {
+} in
+
+proc bitnand(a: Int, b: Int) -> Int = core {
     bitwise-nand [SP], [SP - 1] pop
-}, bitand = proc(a: Int, b: Int) -> Int = core {
+} in
+
+proc bitand(a: Int, b: Int) -> Int = core {
     bitwise-and [SP], [SP - 1] pop
-}, bitnot = proc(x: Int) -> Int = core {
+} in
+
+proc bitnot(x: Int) -> Int = core {
     bitwise-not [SP]
-}, lt = proc(a: Int, b: Int) -> Bool = core {
-    lt [SP - 1], [SP], A pop
-    mov A, [SP]
-}, gt = proc(a: Int, b: Int) -> Bool = core {
-    gt [SP - 1], [SP], A pop
-    mov A, [SP]
-}, eq = proc(a: Int, b: Int) -> Bool = core {
-    eq [SP - 1], [SP], A pop
-    mov A, [SP]
-}, neq = proc(a: Int, b: Int) -> Bool = core {
-    neq [SP - 1], [SP], A pop
-    mov A, [SP]
-}, putinch = proc(n: Int) -> None = core {
-    put-char [SP]
-    pop
 } in
 
-proc putdec(n: Int) -> None = {
-    if (lt(n, 10)) {
-        putinch(n + 48)
-    } else {
-        putdec(n / 10);
-        putinch(n % 10 + 48)
-    }
-} in
-
-proc puthex(n: Int, lower: Bool) -> None = {
-    if (lt(n, 16)) {
-        putinch(n + if (lt(n, 10)) {
+proc puthex(n: Int, lower: Bool) = {
+    if (n < 16) {
+        put (n + if (n < 10) {
             48
         } else {
             if lower {
@@ -44,22 +28,16 @@ proc puthex(n: Int, lower: Bool) -> None = {
             } else {
                 55
             }
-        })
+        }) as Char
     } else {
         puthex(n / 16, lower);
         puthex(n % 16, lower)
     }
 } in
 
-proc putbyte(n: Int, lower: Bool) -> None = {
+proc putbyte(n: Int, lower: Bool) = {
     puthex(n / 16, lower);
     puthex(n % 16, lower)
-} in
-
-const putint = proc(n: Int) -> None = { putbyte(n, false) } in
-
-const putchar = proc(ch: Char) -> None = {
-    putinch(ch as Int)
 } in
 
 const getchar = proc() -> Char = core {
@@ -67,8 +45,8 @@ const getchar = proc() -> Char = core {
     get-char [SP]
 } in
 
-proc ln() -> None = {
-    putchar('\n')
+proc ln() = {
+    put '\n'
 } in
 
 proc lsh(a: Int, b: Int) -> Int = {
@@ -80,15 +58,15 @@ proc lsh(a: Int, b: Int) -> Int = {
 } in
 
 proc rsh(a: Int, b: Int) -> Int = {
-    let added = -2147483648, i = 0, negative = lt(a, 0) in {
-        while (lt(i, b - 1)) {
-            added = added / 2;
-            i = i + 1;
+    let added = -2147483648, i = 0, negative = a < 0 in {
+        while (i < b - 1) {
+            added /= 2;
+            i += 1;
         };
         if negative { a = bitnot(a) };
         while b {
-            a = a / 2;
-            b = b - 1;
+            a /= 2;
+            b -= 1;
         };
         if negative { a = bitxor(bitnot(a), added) };
     };
@@ -97,7 +75,7 @@ proc rsh(a: Int, b: Int) -> Int = {
 
 proc xtime(n: Int) -> Int = {
     n = bitand(n, 255) * 2;
-    if (lt(n, 256)) n
+    if (n < 256) n
     else (bitxor(n, 27))
 } in
 
@@ -107,12 +85,12 @@ proc mul(a: Int, b: Int) -> Int = {
     let result = 0,
         next_term = a,
         i = 0 in {
-        while (lt(i, 8)) {
+        while (i < 8) {
             if (bitand(rsh(b, i), 1)) {
                 result = bitxor(result, next_term);
             };
             next_term = xtime(next_term);
-            i = i + 1;
+            i += 1;
         };
         bitand(result, 255)
     }
@@ -176,19 +154,21 @@ proc get(self: &State, x: Int, y: Int) -> Int = {
     self[0][x + y * 4]
 } in
 
-proc set(self: &State, x: Int, y: Int, val: Int) -> None = {
+proc set(self: &State, x: Int, y: Int, val: Int) = {
     self[0][x + y * 4] = val;
 } in
 
-proc putstate(self: State) -> None = {
+proc putstate(self: State) = {
     let i = 0, j = 0 in {
-        while lt(i, 4) {
-            while lt(j, 4) {
-                putint(get(&self, j, i)); putchar(' ');
-                j = j + 1;
-            }; putchar('\n');
+        while i < 4 {
+            while j < 4 {
+                putbyte(get(&self, j, i), false);
+                put ' ';
+                j += 1;
+            };
+            ln();
             j = 0;
-            i = i + 1;
+            i += 1;
         }
     }
 } in
@@ -204,7 +184,7 @@ proc rot_row(self: State, y: Int, n: Int) -> State = {
             set(&self, 2, y, d);
             set(&self, 3, y, a);
         };
-        n = n - 1;
+        n -= 1;
     };
     self
 } in
@@ -218,17 +198,19 @@ proc inverse_shift_rows(self: State) -> State = {
 } in
 
 proc add_round_key(self: State, round_key: State) -> State = {
-    let i = 0 in {
-        while lt(i, 16) {
-            ((&self) as &Int)[i] = bitxor(((&self) as &Int)[i], ((&round_key) as &Int)[i]);
-            i = i + 1;
+    let i = 0,
+        self_int_ptr = (&self) as &Int,
+        round_key_int_ptr = (&round_key) as &Int in {
+        while i < 16 {
+            self_int_ptr[i] = bitxor(self_int_ptr[i], round_key_int_ptr[i]);
+            i += 1;
         };
         self
     }
 } in
 
 proc mix_columns(self: State) -> State = {
-    let j = 0 in while lt(j, 4) {
+    let j = 0 in while j < 4 {
         let s0 = bitxor(bitxor(bitxor(mul(get(&self, j, 0), 2), mul(get(&self, j, 1), 3)), get(&self, j, 2)), get(&self, j, 3)),
             s1 = bitxor(bitxor(bitxor(get(&self, j, 0), mul(get(&self, j, 1), 2)), mul(get(&self, j, 2), 3)), get(&self, j, 3)),
             s2 = bitxor(bitxor(bitxor(get(&self, j, 0), get(&self, j, 1)), mul(get(&self, j, 2), 2)), mul(get(&self, j, 3), 3)),
@@ -239,13 +221,13 @@ proc mix_columns(self: State) -> State = {
             set(&self, j, 2, s2);
             set(&self, j, 3, s3);
         };
-        j = j + 1;
+        j += 1;
     };
     self
 } in
 
 proc inverse_mix_columns(self: State) -> State = {
-    let j = 0 in while lt(j, 4) {
+    let j = 0 in while j < 4 {
         let s0 = bitxor(bitxor(bitxor(mul(get(&self, j, 0), 14), mul(get(&self, j, 1), 11)), mul(get(&self, j, 2), 13)), mul(get(&self, j, 3), 9)),
             s1 = bitxor(bitxor(bitxor(mul(get(&self, j, 0), 9),  mul(get(&self, j, 1), 14)), mul(get(&self, j, 2), 11)), mul(get(&self, j, 3), 13)),
             s2 = bitxor(bitxor(bitxor(mul(get(&self, j, 0), 13), mul(get(&self, j, 1), 9)),  mul(get(&self, j, 2), 14)), mul(get(&self, j, 3), 11)),
@@ -256,7 +238,7 @@ proc inverse_mix_columns(self: State) -> State = {
             set(&self, j, 2, s2);
             set(&self, j, 3, s3);
         };
-        j = j + 1;
+        j += 1;
     };
     self
 } in
@@ -282,13 +264,13 @@ proc inverse_sub_byte(byte: Int) -> Int = {
 
 proc sub_bytes(self: State) -> State = {
     let i = 0, j = 0 in {
-        while lt(i, 4) {
-            while lt(j, 4) {
+        while i < 4 {
+            while j < 4 {
                 set(&self, j, i, sub_byte(get(&self, j, i)));
-                j = j + 1;
+                j += 1;
             };
             j = 0;
-            i = i + 1;
+            i += 1;
         };
     };
     self
@@ -296,13 +278,13 @@ proc sub_bytes(self: State) -> State = {
 
 proc inverse_sub_bytes(self: State) -> State = {
     let i = 0, j = 0 in {
-        while lt(i, 4) {
-            while lt(j, 4) {
+        while i < 4 {
+            while j < 4 {
                 set(&self, j, i, inverse_sub_byte(get(&self, j, i)));
-                j = j + 1;
+                j += 1;
             };
             j = 0;
-            i = i + 1;
+            i += 1;
         };
     };
     self
@@ -320,21 +302,27 @@ type Key = struct {
 } in
 
 proc get_key_len(key: Key) -> Int = {
-    if (eq(key.ty as Int, AES256 of AESKeyType as Int)) 8
-    else (if (eq(key.ty as Int, AES192 of AESKeyType as Int)) 6
-    else 4)
+    match (key.ty) {
+        AES256 of AESKeyType => 8,
+        AES192 of AESKeyType => 6,
+        AES128 of AESKeyType => 4
+    }
 } in
 
 proc get_key_rounds(key: Key) -> Int = {
-    if (eq(key.ty as Int, AES256 of AESKeyType as Int)) 14
-    else (if (eq(key.ty as Int, AES192 of AESKeyType as Int)) 12
-    else 10)
+    match (key.ty) {
+        AES256 of AESKeyType => 14,
+        AES192 of AESKeyType => 12,
+        AES128 of AESKeyType => 10
+    }
 } in
 
 proc get_key_size(key: Key) -> Int = {
-    if (eq(key.ty as Int, AES256 of AESKeyType as Int)) 32
-    else (if (eq(key.ty as Int, AES192 of AESKeyType as Int)) 24
-    else 16)
+    match (key.ty) {
+        AES256 of AESKeyType => 32,
+        AES192 of AESKeyType => 24,
+        AES128 of AESKeyType => 16
+    }
 } in
 
 proc get_key_data(key: &Key) -> &Int = {
@@ -342,33 +330,16 @@ proc get_key_data(key: &Key) -> &Int = {
 } in
 
 proc putkey(key: Key) -> None = {
-    if (eq(key.ty as Int, AES256 of AESKeyType as Int)) {
-        putchar('A');
-        putchar('E');
-        putchar('S');
-        putchar('2');
-        putchar('5');
-        putchar('6');
-    } else (if (eq(key.ty as Int, AES192 of AESKeyType as Int)) {
-        putchar('A');
-        putchar('E');
-        putchar('S');
-        putchar('1');
-        putchar('9');
-        putchar('2');
-    } else  {
-        putchar('A');
-        putchar('E');
-        putchar('S');
-        putchar('1');
-        putchar('2');
-        putchar('8');
-    });
-    putchar(' ');
+    match (key.ty) {
+        AES256 of AESKeyType => put "AES256",
+        AES192 of AESKeyType => put "AES192",
+        AES128 of AESKeyType => put "AES128"
+    };
+    put " ";
     let i = 0, size = get_key_size(key), data = get_key_data(&key) in 
-        while lt(i, size) {
-            putint(data[i]);
-            i = i + 1;
+        while i < size {
+            putbyte(data[i], false);
+            i += 1;
         }
 } in
 
@@ -411,17 +382,17 @@ proc round_key(word0: Int, word1: Int, word2: Int, word3: Int) -> State = {
             bytes0[3], bytes1[3], bytes2[3], bytes3[3])
 } in
 
-const alloc = proc(size: Int) -> &Int = std {
+proc alloc(size: Int) -> &Int = std {
     alloc [SP]
 } in
 
-const free = proc(ptr: &Int) -> None = std { free[SP] pop } in
+proc free(ptr: &Int) = std { free[SP] pop } in
 
 proc key_expansion(key: Key, nr: Int, nk: Int) -> &Int = {
     let key_data = get_key_data(&key),
         w: &Int = alloc(4 * (nr + 1) * sizeof(Int)),
         i = 0 in {
-        while lt(i, nk) {
+        while i < nk {
             (w[i]) = word(
                 key_data[4 * i],
                 key_data[4 * i + 1],
@@ -433,12 +404,12 @@ proc key_expansion(key: Key, nr: Int, nk: Int) -> &Int = {
 
         i = nk;
         let rcon = [1, 2, 4, 8, 16, 32, 64, 128, 27, 54] in {
-            while lt(i, 4 * (nr + 1)) {
+            while i < 4 * (nr + 1) {
                 let tmp = w[i - 1] in {
-                    if (eq(i % nk, 0)) {
+                    if (i % nk == 0) {
                         tmp = bitxor(sub_word(rot_word(tmp)), word(rcon[i / nk - 1], 0, 0, 0));
                     } else {
-                        if (eq(nk, 8) and eq(i % nk, 4)) {
+                        if (nk == 8 and i % nk == 4) {
                             tmp = sub_word(tmp);
                         }
                     };
@@ -490,15 +461,15 @@ proc cipher(self: State, key: Key) -> State = {
         in {
 
         result = add_round_key(result, round_key(k[0], k[1], k[2], k[3]));
-        while lt(i, 4 * (rounds + 1)) {
+        while (i < 4 * (rounds + 1)) {
             let rk = round_key(k[i], k[i + 1], k[i + 2], k[i + 3]) in {
                 result = shift_rows(sub_bytes(result));
-                if (neq(i / 4, rounds)) {
+                if (i / 4 != rounds) {
                     result = mix_columns(result);
                 };
                 result = add_round_key(result, rk);
             };
-            i = i + 4;
+            i += 4;
         };
         free(k);
         result
@@ -513,15 +484,15 @@ proc inverse_cipher(self: State, key: Key) -> State = {
         k = key_expansion(key, rounds, len)
         in {
 
-        while gt(i, 0) {
+        while i > 0 {
             let rk = round_key(k[i], k[i + 1], k[i + 2], k[i + 3]) in {
                 result = add_round_key(result, rk);
-                if (neq(i / 4, rounds)) {
+                if (i / 4 != rounds) {
                     result = inverse_mix_columns(result);
                 };
                 result = inverse_sub_bytes(inverse_shift_rows(result));
             };
-            i = i - 4;
+            i -= 4;
         };
         result = add_round_key(result, round_key(k[0], k[1], k[2], k[3]));
         free(k);
@@ -530,11 +501,11 @@ proc inverse_cipher(self: State, key: Key) -> State = {
 } in
 
 proc between(lower: Int, n: Int, upper: Int) -> Bool = {
-    if (lt(n, lower)) {
+    if (n < lower) {
         return false
     };
 
-    if (gt(n, upper)) {
+    if (n > upper) {
         return false
     };
 
@@ -545,13 +516,13 @@ proc gethexdigit() -> Int = {
     let digit = getchar() as Int in
         if (between(48, digit, 57)) {
             digit - 48
-        } else (if (between(65, digit, 70)) {
+        } else if (between(65, digit, 70)) {
             digit - 55
-        } else (if (between(97, digit, 102)) {
+        } else if (between(97, digit, 102)) {
             digit - 87
         } else {
             0
-        }))
+        }
 } in
 
 proc getbyte() -> Int = {
@@ -568,45 +539,17 @@ let state = row_major(
         0, 1, 2, 3, 4, 5, 6, 7,
         8, 9, 10, 11, 12, 13, 14, 15,
     ]) in {
-        putchar('k');
-        putchar('e');
-        putchar('y');
-        putchar(':');
-        putchar(' ');
-        putchar('\n');
+        put "key: \n";
         putkey(key);
-        putchar('\n');
-
-        putchar('i');
-        putchar('n');
-        putchar('p');
-        putchar('u');
-        putchar('t');
-        putchar(':');
-        putchar('\n');
+        put "\ninput:\n";
         putstate(state);
 
         state = cipher(state, key);
-        putchar('o');
-        putchar('u');
-        putchar('t');
-        putchar('p');
-        putchar('u');
-        putchar('t');
-        putchar(':');
-        putchar('\n');
+        put "output:\n";
         putstate(state);
         state = inverse_cipher(state, key);
-
-        putchar('i');
-        putchar('n');
-        putchar('v');
-        putchar('e');
-        putchar('r');
-        putchar('s');
-        putchar('e');
-        putchar(':');
-        putchar('\n');
+        
+        put "inverse:\n";
         putstate(state);
     };
 }

@@ -5,7 +5,7 @@ use std::{
 };
 
 const INPUT: &str = "2 4 8 16 32 64 128 256 512 1024 2048 4096";
-const CALL_STACK_SIZE: usize = 1024;
+const CALL_STACK_SIZE: usize = 8192;
 
 #[test]
 fn test_lir_examples() {
@@ -43,18 +43,19 @@ fn test_lir_examples_helper() {
             let correct_output_path = PathBuf::from("examples/output")
                 .join(file_name)
                 .with_extension("txt");
-            let correct_output = match read_to_string(&correct_output_path) {
-                Ok(contents) => contents
-                    .replace("\r\n", "\n")
-                    .as_bytes()
-                    .into_iter()
-                    .map(|byte| *byte as isize)
-                    .collect::<Vec<_>>(),
+            let correct_output_text = match read_to_string(&correct_output_path) {
+                Ok(contents) => contents.replace("\r\n", "\n"),
                 Err(_) => {
                     eprintln!("WARNING: Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
                     continue;
                 }
             };
+            let correct_output = correct_output_text
+                .as_bytes()
+                .into_iter()
+                .map(|byte| *byte as isize)
+                .collect::<Vec<_>>();
+    
 
             let lir_src = read_to_string(&path)
                 .expect(&format!("Could not read contents of file `{path:?}`"));
@@ -82,8 +83,9 @@ fn test_lir_examples_helper() {
                     .expect(&format!("Could not interpret code in `{path:?}`")),
             };
 
+            let output_text = device.output_str();
             if device.output_vals() != correct_output {
-                panic!("{:?} != {correct_output:?}, device output did not match correct output for program {path:?}", device.output)
+                panic!("{output_text:?} != {correct_output_text:?}, device output did not match correct output for program {path:?}")
             }
         }
     }
@@ -124,18 +126,18 @@ fn test_asm_examples_helper() {
             let correct_output_path = PathBuf::from("examples/output")
                 .join(file_name)
                 .with_extension("txt");
-            let correct_output = match read_to_string(&correct_output_path) {
-                Ok(contents) => contents
-                    .replace("\r\n", "\n")
-                    .as_bytes()
-                    .into_iter()
-                    .map(|byte| *byte as isize)
-                    .collect::<Vec<_>>(),
+            let correct_output_text = match read_to_string(&correct_output_path) {
+                Ok(contents) => contents.replace("\r\n", "\n"),
                 Err(_) => {
                     eprintln!("WARNING: Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
                     continue;
                 }
             };
+            let correct_output = correct_output_text
+                .as_bytes()
+                .into_iter()
+                .map(|byte| *byte as isize)
+                .collect::<Vec<_>>();
 
             let asm_src = read_to_string(&path)
                 .expect(&format!("Could not read contents of file `{path:?}`"));
@@ -160,8 +162,9 @@ fn test_asm_examples_helper() {
                     .expect(&format!("Could not interpret code in `{path:?}`")),
             };
 
+            let output_text = device.output_str();
             if device.output_vals() != correct_output {
-                panic!("{:?} != {correct_output:?}, device output did not match correct output for program {path:?}", device.output)
+                panic!("{output_text:?} != {correct_output_text:?}, device output did not match correct output for program {path:?}")
             }
         }
     }

@@ -103,7 +103,8 @@ impl Pattern {
     pub fn if_let_pattern(&self, expr: &Expr, then: &Expr, else_: &Expr, env: &Env) -> Result<Expr, Error> {
         // Create a var which is used to do pattern matching instead of the original expression.
         // This is to avoid evaluating the expression multiple times.
-        let var = Expr::var(expr.to_string());
+        let var_name = expr.to_string() + "__PATTERN_MATCH";
+        let var = Expr::var(&var_name);
         // Get the type of the expression being matched.
         let ty = expr.get_type(env)?;
         // An expression which evaluates to true if the expression matches the pattern.
@@ -113,12 +114,12 @@ impl Pattern {
             Box::new(cond),
             // If the expression matches the pattern, bind the pattern to the expression,
             // and evaluate the `then` expression.
-            Box::new(self.bind(&expr, &ty, &then, env)?),
+            Box::new(self.bind(&var, &ty, &then, env)?),
             // Otherwise, evaluate the `else_` expression.
             Box::new(else_.clone())
         );
         // Create a new environment with the bindings and evaluate the `if let` expression.
-        Ok(Expr::let_var(expr.to_string(), None, expr.clone(), self.bind(&var, &ty, &if_let, env)?))
+        Ok(Expr::let_var(var_name, None, expr.clone(), self.bind(&var, &ty, &if_let, env)?))
     }
 
     /// Generate an expression which evaluates a `match` expression, which matches
@@ -126,7 +127,7 @@ impl Pattern {
     pub fn match_pattern(expr: &Expr, branches: &[(Self, Expr)], env: &Env) -> Result<Expr, Error> {
         // Create a var name which is used to do pattern matching instead of the original expression.
         // This is to avoid evaluating the expression multiple times.
-        let var_name = expr.to_string();
+        let var_name = expr.to_string() + "__PATTERN_MATCH";
         // Create a new environment with the bindings
         let mut new_env = env.clone();
         // Define the variable in the new environment.
@@ -311,8 +312,8 @@ impl Pattern {
             // If the pattern is a constant expression, it will match any expression
             // which is equal to the constant expression.
             (Self::ConstExpr(const_expr), _) => {
-                Expr::ConstExpr(const_expr.clone())
-                    .eq(expr.clone())
+                expr.clone()
+                    .eq(Expr::ConstExpr(const_expr.clone()))
             }
 
             // If the pattern is an alternative, then check if any of the patterns match.

@@ -14,11 +14,10 @@ impl Put {
     pub fn debug(addr: Location, t: &Type, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         match t.clone().simplify(env)? {
             Type::Pointer(x) => {
-                for ch in format!("&{x}=").chars() {
+                for ch in format!("&{x}").chars() {
                     output.op(CoreOp::Set(A, ch as u8 as isize));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
-                output.op(CoreOp::Put(addr, Output::stdout_int()));
             }
             Type::Bool => {
                 output.op(CoreOp::If(addr.clone()));
@@ -47,7 +46,7 @@ impl Put {
             }
             Type::Cell => {
                 output.op(CoreOp::Put(addr.clone(), Output::stdout_int()));
-                for ch in " as Cell".to_string().chars() {
+                for ch in " (Cell)".to_string().chars() {
                     output.op(CoreOp::Set(A, ch as u8 as isize));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
@@ -66,16 +65,10 @@ impl Put {
                 output.op(CoreOp::Put(A, Output::stdout_char()));
             }
             Type::Never => {
-                output.op(CoreOp::Set(A, 'N' as u8 as isize));
-                output.op(CoreOp::Put(A, Output::stdout_char()));
-                output.op(CoreOp::Set(A, 'e' as u8 as isize));
-                output.op(CoreOp::Put(A, Output::stdout_char()));
-                output.op(CoreOp::Set(A, 'v' as u8 as isize));
-                output.op(CoreOp::Put(A, Output::stdout_char()));
-                output.op(CoreOp::Set(A, 'e' as u8 as isize));
-                output.op(CoreOp::Put(A, Output::stdout_char()));
-                output.op(CoreOp::Set(A, 'r' as u8 as isize));
-                output.op(CoreOp::Put(A, Output::stdout_char()));
+                for c in format!("Never").chars() {
+                    output.op(CoreOp::Set(A, c as u8 as isize));
+                    output.op(CoreOp::Put(A, Output::stdout_char()));
+                }
             }
     
             Type::Enum(variants) => {
@@ -195,7 +188,7 @@ impl Put {
     
             Type::Unit(name, ty) => {
                 Self::debug(addr, &ty, env, output)?;
-                for ch in format!(" as {}", name).chars() {
+                for ch in format!(" ({})", name).chars() {
                     output.op(CoreOp::Set(A, ch as u8 as isize));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
@@ -260,6 +253,24 @@ impl Put {
             Type::Char => {
                 output.op(CoreOp::Put(addr, Output::stdout_char()));
             }
+
+            Type::Enum(variants) => {
+                for variant in variants.iter() {
+                    let variant_id = Type::variant_index(&variants, variant).unwrap();
+    
+                    output.op(CoreOp::Move { src: addr.clone(), dst: A });
+                    output.op(CoreOp::Set(B, variant_id as isize));
+                    // Check if the value is the same as the variant ID
+                    output.op(CoreOp::IsEqual { a: A, b: B, dst: C });
+                    output.op(CoreOp::If(C));
+                    for c in variant.chars() {
+                        output.op(CoreOp::Set(A, c as u8 as isize));
+                        output.op(CoreOp::Put(A, Output::stdout_char()));
+                    }
+                    output.op(CoreOp::End);
+                }
+            }
+    
     
             Type::Array(ty, array_len_expr) => {
                 let array_len = array_len_expr.as_int(env)?;

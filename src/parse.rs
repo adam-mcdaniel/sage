@@ -97,7 +97,7 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
     let code = code.trim();
 
     lir_parser::ExprParser::new()
-        .parse(&code.to_string())
+        .parse(&code)
         .map_err(|e| format_error(&code, e))
 }
 

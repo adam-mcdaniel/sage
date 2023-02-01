@@ -1,13 +1,4 @@
-const putint = proc(n: Int) -> None = core {
-    put-int [SP]
-    pop
-} in
-const putchar = proc(ch: Char) -> None = core {
-    put-char [SP]
-    pop
-} in
-
-const asm_init = proc() -> None = core {
+proc asm_init() = core {
     fun FACT
         set A, 0
         gt [SP], A, B
@@ -21,11 +12,13 @@ const asm_init = proc() -> None = core {
             set [SP], 1
         end
     end
-}, fact = proc(n: Int) -> Int = core {
+} in
+
+proc fact(n: Int) -> Int = core {
     call FACT
 } in {
     asm_init();
 
-    putint(fact(5)); putchar('\n');
-    putint(fact(10)); putchar('\n');
+    put fact(5); put '\n';
+    put fact(10); put '\n';
 }
