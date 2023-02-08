@@ -320,7 +320,7 @@
     <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="ident">code</span>.<span class="ident">trim</span>();
 
     <span class="ident">lir_parser::ExprParser::new</span>()
-        .<span class="ident">parse</span>(<span class="kw-2">&amp;</span><span class="ident">code</span>.<span class="ident">to_string</span>())
+        .<span class="ident">parse</span>(<span class="kw-2">&amp;</span><span class="ident">code</span>)
         .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">format_error</span>(<span class="kw-2">&amp;</span><span class="ident">code</span>, <span class="ident">e</span>))
 }
 

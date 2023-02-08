@@ -75,12 +75,10 @@ proc puthex(n: Int, lower: Bool) = {
     if (n < 16) {
         put (n + if (n < 10) {
             48
+        } else if lower {
+            87
         } else {
-            if lower {
-                87
-            } else {
-                55
-            }
+            55
         }) as Char
     } else {
         puthex(n / 16, lower);
@@ -645,12 +643,10 @@ proc puthex(n: Int, lower: Bool) -> None = {
     if (n < 16) {
         put (n + if (n < 10) {
             48
+        } else if lower {
+            87
         } else {
-            if lower {
-                87
-            } else {
-                55
-            }
+            55
         }) as Char
     } else {
         puthex(n / 16, lower);
@@ -808,12 +804,10 @@ proc puthex(n: Int, lower: Bool) = {
     if (n < 16) {
         put (n + if (n < 10) {
             48
+        } else if lower {
+            87
         } else {
-            if lower {
-                87
-            } else {
-                55
-            }
+            55
         }) as Char
     } else {
         puthex(n / 16, lower);

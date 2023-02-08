@@ -598,10 +598,10 @@
         <span class="kw">match</span> <span class="ident">dst</span>.<span class="ident">mode</span> {
             <span class="ident">OutputMode::StdoutChar</span> =&gt; <span class="macro">print!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">val</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="kw">as</span> <span class="ident">char</span>),
             <span class="ident">OutputMode::StdoutInt</span> =&gt; <span class="macro">print!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">val</span>),
-            <span class="ident">OutputMode::StdoutFloat</span> =&gt; <span class="macro">print!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">as_float</span>(<span class="ident">val</span>)),
+            <span class="ident">OutputMode::StdoutFloat</span> =&gt; <span class="macro">print!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">as_float</span>(<span class="ident">val</span>)),
             <span class="ident">OutputMode::StderrChar</span> =&gt; <span class="macro">eprint!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">val</span> <span class="kw">as</span> <span class="ident">u8</span> <span class="kw">as</span> <span class="ident">char</span>),
             <span class="ident">OutputMode::StderrInt</span> =&gt; <span class="macro">eprint!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">val</span>),
-            <span class="ident">OutputMode::StderrFloat</span> =&gt; <span class="macro">eprint!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">as_float</span>(<span class="ident">val</span>)),
+            <span class="ident">OutputMode::StderrFloat</span> =&gt; <span class="macro">eprint!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">as_float</span>(<span class="ident">val</span>)),
             <span class="kw">_</span> =&gt; {
                 <span class="macro">eprintln!</span>(<span class="string">&quot;Requested output mode: {} (on channel #{}) with output={val}&quot;</span>, <span class="ident">dst</span>.<span class="ident">mode</span>, <span class="ident">dst</span>.<span class="ident">channel</span>);
             },

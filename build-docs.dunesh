@@ -1,3 +1,4 @@
+#!/home/adam/.cargo/bin/dunesh
 # To execute, run `use build-docs.sh`.
 cargo doc --no-deps;
 rm -Rf docs;
