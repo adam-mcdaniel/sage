@@ -16,35 +16,110 @@
             var ints = []
             var floats = []
 
-            compiler.add_output_channel('heater #0')
-            compiler.add_output_channel('cooler #0')
+            // compiler.add_output_channel('heater #0')
+            // compiler.add_output_channel('cooler #0')
 
-            compiler.add_input_channel('thermometer #0')
-            compiler.add_input_channel('button #0')
-            compiler.add_input_channel('button #1')
-            compiler.add_input_channel('button #2')
-            floats.push(['thermometer #0', 298.15])
-            ints.push(['button #0', 0])
-            ints.push(['button #1', 0])
-            ints.push(['button #2', 0])
+            // compiler.add_input_channel('thermometer #0')
+            // compiler.add_input_channel('button #0')
+            // compiler.add_input_channel('button #1')
+            // compiler.add_input_channel('button #2')
+            // floats.push(['thermometer #0', 298.15])
+            // ints.push(['button #0', 0])
+            // ints.push(['button #1', 0])
+            // ints.push(['button #2', 0])
+
+            var char_outputs = {
+                // 'printer #0': (ch) => document.getElementById('test').value += String.fromCharCode(ch),
+            }
+
+            var float_outputs = {
+            }
+
+            var int_outputs = {
+                // 'heater #0': (n) => document.getElementById('heater').checked = n,
+                // 'cooler #0': (n) => document.getElementById('cooler').checked = n,
+            }
+
+            function add_button_input(id, channel) {
+                compiler.add_input_channel(channel)
+                document.getElementById(id).onclick = function() {
+                    ints.push([channel, 1])
+                    ints.push([channel, 0])
+                }
+            }
+
+            function add_slider_input(id, channel, initial_value, f=null) {
+                compiler.add_input_channel(channel)
+                floats.push([channel, initial_value])
+                if (f == null) {
+                    f = (x) => x
+                }
+                document.getElementById(id).oninput = function() {
+                    floats.push([channel, f(parseFloat(this.value))])
+                }
+            }
+
+            const DEFAULT_INT_OUTPUT = (id) => (n) => document.getElementById(id).value = n;
+            const DEFAULT_FLOAT_OUTPUT = (id) => (n) => document.getElementById(id).value = n;
+            const DEFAULT_CHAR_OUTPUT = (id) => (ch) => document.getElementById(id).innerText += ch;
+            const STDOUT = (x) => {
+                var stdout = document.getElementById("stdout")
+                stdout.innerText += x
+
+                // Trim the output to the last 30 lines
+                const TRIM_TO_LINES = 30
+
+                let lines = stdout.innerText.split('\n')
+                if (lines.length > TRIM_TO_LINES) {
+                    lines = lines.slice(lines.length - TRIM_TO_LINES)
+                    stdout.innerText = lines.join('\n')
+                }
+            }
+
+            function add_bool_output(id, channel, f=null) {
+                compiler.add_output_channel(channel)
+                if (f == null) {
+                    f = (x) => document.getElementById(id).checked = x
+                }
+                int_outputs[channel] = f
+            }
+
+            function add_int_output(id, channel, f=null) {
+                compiler.add_output_channel(channel)
+                if (f == null) {
+                    f = DEFAULT_INT_OUTPUT(id)
+                }
+                int_outputs[channel] = f
+            }
+
+            function add_char_output(id, channel, f=null) {
+                compiler.add_output_channel(channel)
+                if (f == null) {
+                    f = DEFAULT_CHAR_OUTPUT(id)
+                }
+                char_outputs[channel] = f
+            }
+
+            function add_float_output(id, channel, f=null) {
+                compiler.add_output_channel(channel)
+                if (f == null) {
+                    f = DEFAULT_FLOAT_OUTPUT(id)
+                }
+                float_outputs[channel] = f
+            }
+
+            add_button_input('power', 'button #0')
+            add_button_input('up', 'button #1')
+            add_button_input('down', 'button #2')
+            add_slider_input('temp', 'thermometer #0', 298.15, (x) => x + 273.15)
+            add_bool_output('heater', 'heater #0')
+            add_bool_output('cooler', 'cooler #0')
             
-            document.getElementById("temp").oninput = function() {
-                floats.push(['thermometer #0', parseFloat(this.value) + 273.15])
-            }
-            document.getElementById("up").onclick = function() {
-                ints.push(['button #1', 1])
-                ints.push(['button #1', 0])
-            }
-            document.getElementById("down").onclick = function() {
-                ints.push(['button #2', 1])
-                ints.push(['button #2', 0])
-            }
-            document.getElementById("power").onclick = function() {
-                ints.push(['button #0', 1])
-                ints.push(['button #0', 0])
-            }
+            add_char_output('stdout', 'stdout.char', STDOUT)
+            add_int_output('stdout', 'stdout.int', STDOUT)
+            add_float_output('stdout', 'stdout.float', STDOUT)
 
-            var output = document.getElementById("output");
+            // var stdout = document.getElementById("stdout");
             compiler.compile(`
 type State = enum {
     Heating,
@@ -64,19 +139,19 @@ proc get_temperature() -> Kelvin = std {
 proc turn_on_heater() = core {
     set A, 1
     put A, heater #0
-    put-str "[Heater on]\n", stderr.char
+    put-str "[Heater on]\\n", stderr.char
 } in
 
 proc turn_off_heater() = core {
     set A, 0
     put A, heater #0
-    put-str "[Heater off]\n", stderr.char
+    put-str "[Heater off]\\n", stderr.char
 } in
 
 proc turn_on_cooler() = core {
     set A, 1
     put A, cooler #0
-    put-str "[Cooler on]\n", stderr.char
+    put-str "[Cooler on]\\n", stderr.char
 } in
 
 proc turn_off_cooler() = core {
@@ -158,16 +233,16 @@ proc putk(temp: Kelvin) = {
 proc show(current_temp: Celcius, desired_temp: Celcius, state: State) = {
     put "Current temp: ";
     putc(current_temp);
-    put "\nDesired temp: ";
+    put "\\nDesired temp: ";
     putc(desired_temp);
-    put "\nCurrent state: ";
+    put "\\nCurrent state: ";
     put state; put "\n";
     if (current_temp > desired_temp) {
-        put "Too hot\n"
+        put "Too hot\\n"
     } else if (current_temp < desired_temp) {
-        put "Too cold\n"
+        put "Too cold\\n"
     } else {
-        put "Just right\n"
+        put "Just right\\n"
     }
 } in
 
@@ -224,12 +299,10 @@ proc main() = {
             current_temp = k_to_c(get_temperature());
         };
     };
-    put "Goodbye!\n"
-} in main()
-`)
-        
+    put "Goodbye!\\n"
+} in main()`)
             setInterval(() => {
-                for (let i=0; i<100; i++) {
+                for (let i=0; i<1000; i++) {
                     if (ints.length > 0) {
                         let pair = ints.shift()
                         let channel = pair[0]
@@ -249,30 +322,66 @@ proc main() = {
                         compiler.update_input_as_char(channel, val)
                     }
                     compiler.step()
-                    let stdout = compiler.read_stdout()
-                    output.innerHTML += stdout
-                    // Trim the output to the last 50 lines
-                    let lines = output.innerHTML.split('\n')
-                    if (lines.length > 30) {
-                        lines = lines.slice(lines.length - 30)
-                        output.innerHTML = lines.join('\n')
-                    }
-
-                    compiler.clear_output()
                 }
+
+
+                Object.keys(int_outputs).forEach((channel) => {
+                    let output = compiler.get_next_output_as_int(channel)
+                    while (output != null) {
+                        console.log("Got int output", channel, output)
+                        int_outputs[channel](output)
+                        output = compiler.get_next_output_as_int(channel)
+                    }
+                })
+
+                Object.keys(float_outputs).forEach((channel) => {
+                    let output = compiler.get_next_output_as_float(channel)
+                    while (output != null) {
+                        console.log("Got float output", channel, output)
+                        float_outputs[channel](output)
+                        output = compiler.get_next_output_as_float(channel)
+                    }
+                })
+
+                Object.keys(char_outputs).forEach((channel) => {
+                    let output = compiler.get_next_output_as_char(channel)
+                    while (output != null) {
+                        console.log("Got char output", channel, output)
+                        char_outputs[channel](output)
+                        output = compiler.get_next_output_as_char(channel)
+                    }
+                })
+                compiler.clear_output()
             })
         });
     </script>
   </head>
   <body>
-    <div class="slidecontainer">
-      <button id="up">Up</button>
-      <button id="down">Down</button>
-      <button id="power">Power</button>
-      <input type="range" min="-100" max="100" value="25" class="slider" id="temp">
+    <div id="input">
+        <button id="up">Up</button>
+        <button id="down">Down</button>
+        <button id="power">Power</button>
+        <div class="slidecontainer">
+            <input type="range" min="-100" max="100" value="25" class="slider" id="temp">
+        </div>
+    </div>
+    <div id="output">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="" id="heater">
+            <label class="form-check-label" for="flexCheckDefault">
+                Heater
+            </label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="" id="cooler">
+            <label class="form-check-label" for="flexCheckDefault">
+                Cooler
+            </label>
+        </div>
     </div>
     <div>
-      <pre id="output"></pre>
+      <pre id="stdout"></pre>
+      <p id="test"></p>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous"></script>
   </body>

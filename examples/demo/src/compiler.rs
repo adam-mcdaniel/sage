@@ -148,21 +148,33 @@ impl Compiler {
     }
 
     #[wasm_bindgen]
-    pub fn get_output_as_string(&mut self, output: &str) -> String {
+    pub fn get_next_output_as_char(&mut self, output: &str) -> Option<String> {
         let output = Output::try_from(output).unwrap();
-        self.interpreter.device.get_output_to(output).iter().map(|n| *n as u8 as char).collect()
+        self.interpreter.device.get_output_as_char(&output).map(|n| n.to_string())
     }
 
     #[wasm_bindgen]
-    pub fn get_output_as_bytes(&mut self, output: &str) -> Vec<u8> {
+    pub fn get_next_output_as_int(&mut self, output: &str) -> Option<i32> {
         let output = Output::try_from(output).unwrap();
-        self.interpreter.device.get_output_to(output).into_iter().map(|n| *n as u8).collect()
+        self.interpreter.device.get_output_as_int(&output).map(|n| n as i32)
     }
 
     #[wasm_bindgen]
-    pub fn update_input_as_char(&mut self, input: &str, value: char) {
-        let input = Input::try_from(input).unwrap();
-        self.interpreter.device.update_input_as_char(&input, value).clone()
+    pub fn get_next_output_as_float(&mut self, output: &str) -> Option<f32> {
+        let output = Output::try_from(output).unwrap();
+        self.interpreter.device.get_output_as_float(&output)
+    }
+
+    #[wasm_bindgen]
+    pub fn get_next_output_as_string(&mut self, output: &str) -> Option<String> {
+        let output = Output::try_from(output).unwrap();
+        self.interpreter.device.get_output_as_string(&output)
+    }
+
+    #[wasm_bindgen]
+    pub fn get_next_output_as_bytes(&mut self, output: &str) -> Vec<u8> {
+        let output = Output::try_from(output).unwrap();
+        self.interpreter.device.get_output_as_bytes(&output).unwrap_or(vec![])
     }
 
     #[wasm_bindgen]

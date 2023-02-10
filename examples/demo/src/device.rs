@@ -125,6 +125,57 @@ impl WasmDevice {
         }
     }
 
+    pub fn get_output_as_char(&mut self, dst: &Output) -> Option<char> {
+        if let Some(output) = self.get_output(dst) {
+            output.pop_front().map(|n| n as u8 as char)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_output_as_int(&mut self, dst: &Output) -> Option<i64> {
+        if let Some(output) = self.get_output(dst) {
+            output.pop_front()
+        } else {
+            None
+        }
+    }
+
+    pub fn get_output_as_float(&mut self, dst: &Output) -> Option<f32> {
+        if let Some(output) = self.get_output(dst) {
+            output.pop_front().map(|n| super::as_float(n))
+        } else {
+            None
+        }
+    }
+
+    pub fn get_output_as_bytes(&mut self, dst: &Output) -> Option<Vec<u8>> {
+        if let Some(output) = self.get_output(dst) {
+            let mut result = Vec::new();
+            while let Some(n) = output.pop_front() {
+                result.push(n as u8);
+            }
+            Some(result)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_output_as_string(&mut self, dst: &Output) -> Option<String> {
+        if let Some(output) = self.get_output(dst) {
+            let mut result = String::new();
+            while let Some(n) = output.pop_front() {
+                if n == 0 {
+                    break;
+                }
+                result.push(n as u8 as char);
+            }
+            Some(result)
+        } else {
+            None
+        }
+    }
+
     pub fn update_input_as_value(&mut self, src: &Input, val: i64) {
         self.update_input_as_int(src, val)
     }
