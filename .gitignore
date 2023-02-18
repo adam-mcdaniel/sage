@@ -7,3 +7,4 @@ a.out
 redirect.html
 out.*
 wasm-pack.log
+/*.sg
