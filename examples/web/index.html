@@ -1238,35 +1238,6 @@ let x: let A = (Int, &A) in A
         setExampleProgram();
         document.getElementById("example").addEventListener("change", () => {
             setExampleProgram();
-<<<<<<< HEAD
-            document.getElementById("example").addEventListener("change", () => {
-                setExampleProgram();
-                document.getElementById("source").value = source.getValue();
-                source.refresh();
-                compile_and_run();
-            });
-            document.getElementById("target").addEventListener("change", () => {
-                document.getElementById("source").value = source.getValue();
-                source.refresh();
-                compile_and_run();
-            });
-            document.getElementById("run").addEventListener("click", compile_and_run, false);
-        </script>
-        <select id="example" style="height: 3em; float: left;">
-            <option value="aes">AES</option>
-            <option value="thermostat">Thermostat</option>
-            <option value="quicksort">Quicksort</option>
-            <option value="if-let">If Let</option>
-            <option value="match">Match</option>
-            <option value="cat">Cat</option>
-            <option value="units">Units</option>
-            <option value="lambda-sim">Simulate Lambda Functions</option>
-            <option value="factorial">Factorial</option>
-            <option value="collatz">Collatz</option>
-            <option value="inline-asm">Inline Assembly Demo</option>
-            <option value="type-demo-1">Type System Demo 1</option>
-            <option value="type-demo-2">Type System Demo 2</option>
-=======
             document.getElementById("source").value = source.getValue();
             source.refresh();
             compile_and_run();
@@ -1277,38 +1248,38 @@ let x: let A = (Int, &A) in A
             compile_and_run();
         });
         document.getElementById("run").addEventListener("click", compile_and_run, false);
-    </script>
-    <select id="example" style="height: 3em; float: left;">
-        <option value="aes">AES</option>
-        <option value="quicksort">Quicksort</option>
-        <option value="units">Units</option>
-        <option value="lambda-sim">Simulate Lambda Functions</option>
-        <option value="inline-asm">Inline Assembly Demo</option>
-        <option value="type-demo-1">Type System Demo 1</option>
-        <option value="type-demo-2">Type System Demo 2</option>
-        <option value="hello world">Hello world!</option>
-        <option value="cat">Cat</option>
-        <option value="factorial">Factorial</option>
-        <option value="collatz">Collatz</option>
-    </select>
-    <div class="row">
-        <div class="col"><textarea id="source"></textarea></div>
-        <div class="col" style="height: 20em;">
-            <textarea style="overflow: auto; background-color: black; color: white;" id="output"></textarea>
-        </div>
-    </div>
-    <div>
-        <textarea id="input" style="resize: none; float: left;" cols="10">Input Text</textarea>
-        <select id="target" style="height: 3em; float: left;">
-            <option value="run"><b>Click to see stages of output</b></option>
-            <option value="run">Execution Output</option>
-            <option value="asm">Assembly</option>
-            <option value="vm">Virtual Machine Code</option>
-            <option value="c">C Source</option>
->>>>>>> main
+        </script>
+        <select id="example" style="height: 3em; float: left;">
+            <option value="aes">AES</option>
+            <option value="quicksort">Quicksort</option>
+            <option value="thermostat">Thermostat</option>
+            <option value="if-let">Pattern Matching If-Let</option>
+            <option value="match">Pattern Matching Case</option>
+            <option value="cat">Cat</option>
+            <option value="units">Units</option>
+            <option value="lambda-sim">Simulate Lambda Functions</option>
+            <option value="factorial">Factorial</option>
+            <option value="collatz">Collatz</option>
+            <option value="inline-asm">Inline Assembly Demo</option>
+            <option value="type-demo-1">Type System Demo 1</option>
+            <option value="type-demo-2">Type System Demo 2</option>
         </select>
-        <button id="run" style="height: 3em; float: left;">Compile</button>
-    </div>
-</body>
-
+        <div class="row">
+            <div class="col"><textarea id="source"></textarea></div>
+            <div class="col" style="height: 20em;">
+                <textarea style="overflow: auto; background-color: black; color: white;" id="output"></textarea>
+            </div>
+        </div>
+        <div>
+            <textarea id="input" style="resize: none; float: left;" cols="10">Input Text</textarea>
+            <select id="target" style="height: 3em; float: left;">
+                <option value="run"><b>Click to see stages of output</b></option>
+                <option value="run">Execution Output</option>
+                <option value="asm">Assembly</option>
+                <option value="vm">Virtual Machine Code</option>
+                <option value="c">C Source</option>
+            </select>
+            <button id="run" style="height: 3em; float: left;">Compile</button>
+        </div>
+    </body>
 </html>
