@@ -719,6 +719,71 @@
 <a href="#719" id="719">719</a>
 <a href="#720" id="720">720</a>
 <a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Type Checking
 //! 
 //! This module contains the type checking logic for the Lower Intermediate Representation.
@@ -848,6 +913,71 @@
                 <span class="comment">// Check if the assignment operator is sound with
                 // the given expressions.
                 </span>op.type_check(dst, src, env)
+            }
+
+            <span class="self">Self</span>::Match(expr, branches) =&gt; {
+                <span class="comment">// Check the expression we&#39;re matching on.
+                </span>expr.type_check(env)<span class="question-mark">?</span>;
+                <span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
+
+                <span class="kw">let </span><span class="kw-2">mut </span>result_ty: <span class="prelude-ty">Option</span>&lt;Type&gt; = <span class="prelude-val">None</span>;
+
+                <span class="comment">// Check each branch.
+                </span><span class="kw">for </span>(pat, branch) <span class="kw">in </span>branches {
+                    <span class="comment">// Create a new environment with the bindings defined.
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
+                    <span class="comment">// Get the bindings from the pattern.
+                    </span><span class="kw">let </span>bindings = pat.get_bindings(expr, <span class="kw-2">&amp;</span>ty, env)<span class="question-mark">?</span>;
+                    <span class="comment">// Define the bindings in the environment.
+                    </span><span class="kw">for </span>(name, t) <span class="kw">in </span>bindings {
+                        new_env.define_var(name, t)<span class="question-mark">?</span>;
+                    }
+                    <span class="comment">// Check the branch under the new environment.
+                    </span>pat.type_check(expr, branch, env)<span class="question-mark">?</span>;
+
+                    <span class="comment">// Check that the branch has the same type as the others.
+                    // Get the type of the branch.
+                    </span><span class="kw">let </span>branch_ty = branch.get_type(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
+                    <span class="comment">// If we haven&#39;t found a type yet, set it.
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(result_ty) = <span class="kw-2">&amp;mut </span>result_ty {
+                        <span class="comment">// Check that the branch type matches the result type.
+                        </span><span class="kw">if </span>!result_ty.equals(<span class="kw-2">&amp;</span>branch_ty, <span class="kw-2">&amp;</span>new_env)<span class="question-mark">? </span>{
+                            <span class="comment">// If it doesn&#39;t, return an error.
+                            </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
+                                found: branch_ty,
+                                expected: result_ty.clone(),
+                                expr: branch.clone()
+                            });
+                        }
+                    } <span class="kw">else </span>{
+                        <span class="comment">// Set the result type.
+                        </span>result_ty = <span class="prelude-val">Some</span>(branch_ty);
+                    }
+                }
+                <span class="comment">// Return success if all the branches are sound.
+                </span><span class="prelude-val">Ok</span>(())
+            }
+
+            <span class="comment">// Typecheck an if-let expression.
+            </span><span class="self">Self</span>::IfLet(pat, expr, then, otherwise) =&gt; {
+                <span class="comment">// Check the expression we&#39;re matching on.
+                </span>expr.type_check(env)<span class="question-mark">?</span>;
+                <span class="comment">// Typecheck the else branch.
+                </span>otherwise.type_check(env)<span class="question-mark">?</span>;
+                <span class="comment">// Check the then and otherwise branches.
+                </span>pat.type_check(expr, then, env)<span class="question-mark">?</span>;
+
+                <span class="kw">let </span>then_type = pat.get_branch_result_type(expr, then, env)<span class="question-mark">?</span>;
+                <span class="kw">let </span>otherwise_type = otherwise.get_type(env)<span class="question-mark">?</span>;
+                <span class="kw">if </span>!then_type.equals(<span class="kw-2">&amp;</span>otherwise_type, env)<span class="question-mark">? </span>{
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
+                        expected: then_type,
+                        found: otherwise_type,
+                        expr: <span class="self">self</span>.clone(),
+                    });
+                }
+                <span class="comment">// Return success if all the branches are sound.
+                </span><span class="prelude-val">Ok</span>(())
             }
 
             <span class="comment">// Typecheck the inner constant expression.

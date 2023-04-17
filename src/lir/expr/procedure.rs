@@ -139,11 +139,11 @@ impl fmt::Display for Procedure {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "proc(")?;
         for (i, (name, ty)) in self.args.iter().enumerate() {
-            write!(f, "{name:?}: {ty:?}")?;
+            write!(f, "{name}: {ty}")?;
             if i < self.args.len() - 1 {
                 write!(f, ", ")?
             }
         }
-        write!(f, ") -> {:?} = {:?}", self.ret, self.body)
+        write!(f, ") -> {} = {}", self.ret, self.body)
     }
 }

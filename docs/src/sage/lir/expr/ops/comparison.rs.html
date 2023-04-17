@@ -235,14 +235,6 @@
 <a href="#235" id="235">235</a>
 <a href="#236" id="236">236</a>
 <a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
-<a href="#242" id="242">242</a>
-<a href="#243" id="243">243</a>
-<a href="#244" id="244">244</a>
-<a href="#245" id="245">245</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Comparison Operations
 //! 
 //! This module implements comparison operators between two expressions.
@@ -290,7 +282,7 @@
                 
                 <span class="self">self</span>.can_apply(<span class="kw-2">&amp;</span>a_type, <span class="kw-2">&amp;</span>b_type, env)
             }
-            (a, <span class="self">Self</span>::Equal, b) | (a, <span class="self">Self</span>::NotEqual, b) =&gt; a.equals(b, env),
+            (a, <span class="self">Self</span>::Equal, b) | (a, <span class="self">Self</span>::NotEqual, b) =&gt; <span class="prelude-val">Ok</span>(a.equals(b, env)<span class="question-mark">? </span>&amp;&amp; a.get_size(env)<span class="question-mark">? </span>== <span class="number">1</span>),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
         }
     }
@@ -399,25 +391,21 @@
         </span><span class="kw">match </span>(lhs, <span class="self">self</span>, rhs) {
             <span class="comment">// If a `Float` and a `Cell` are used, we just interpret the `Cell` as a `Float`.
             </span>(Type::Cell, <span class="kw">_</span>, Type::Float) | (Type::Float, <span class="kw">_</span>, Type::Cell) =&gt; {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;1. Comparing {:?} and {:?}&quot;</span>, lhs, rhs);
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.std_op(std_op)<span class="question-mark">?</span>;
             }
             <span class="comment">// Two floats are used as floats.
             </span>(Type::Float, <span class="kw">_</span>, Type::Float) =&gt; {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;2. Comparing {:?} and {:?}&quot;</span>, lhs, rhs);
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.std_op(std_op)<span class="question-mark">?</span>;
             }
             <span class="comment">// An integer used with a float is promoted, and returns a float.
             </span>(Type::Int, <span class="kw">_</span>, Type::Float) =&gt; {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;3. Comparing {:?} and {:?}&quot;</span>, lhs, rhs);
                 output.std_op(StandardOp::ToFloat(SP.deref().offset(-<span class="number">1</span>)))<span class="question-mark">?</span>;
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.std_op(std_op)<span class="question-mark">?</span>;
             }
             (Type::Float, <span class="kw">_</span>, Type::Int) =&gt; {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;4. Comparing {:?} and {:?}&quot;</span>, lhs, rhs);
                 output.std_op(StandardOp::ToFloat(SP.deref()))<span class="question-mark">?</span>;
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.std_op(std_op)<span class="question-mark">?</span>;
@@ -428,23 +416,19 @@
             | (Type::Cell, <span class="kw">_</span>, Type::Cell)
             | (Type::Cell, <span class="kw">_</span>, Type::Int)
             | (Type::Int, <span class="kw">_</span>, Type::Cell) =&gt; {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;5. Comparing {:?} and {:?}&quot;</span>, lhs, rhs);
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.op(core_op);
             }
 
             (Type::Unit(_name1, a_type), <span class="kw">_</span>, Type::Unit(_name2, b_type)) =&gt; {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;6. Comparing {:?} and {:?}&quot;</span>, lhs, rhs);
                 <span class="kw">return </span><span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>a_type, <span class="kw-2">&amp;</span>b_type, env, output);
             },
 
             (a, <span class="self">Self</span>::Equal, b) <span class="kw">if </span>a.equals(b, env)<span class="question-mark">? </span>=&gt; {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;7. Comparing {:?} and {:?}&quot;</span>, lhs, rhs);
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.op(core_op);
             }
             (a, <span class="self">Self</span>::NotEqual, b) <span class="kw">if </span>a.equals(b, env)<span class="question-mark">? </span>=&gt; {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;8. Comparing {:?} and {:?}&quot;</span>, lhs, rhs);
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.op(core_op);
             }

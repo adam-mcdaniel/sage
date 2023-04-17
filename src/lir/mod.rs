@@ -150,6 +150,9 @@ pub enum Error {
     /// Tried to create an array with a negative length.
     NegativeArrayLength(Expr),
 
+    InvalidPatternForType(Type, Pattern),
+    InvalidPatternForExpr(Expr, Pattern),
+
     /// Invalid type casting expression.
     InvalidAs(Expr, Type, Type),
 }

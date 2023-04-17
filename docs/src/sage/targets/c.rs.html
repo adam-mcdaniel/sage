@@ -176,14 +176,6 @@
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # C Target
 //!
 //! An implementation of the virtual machine for the C language.
@@ -327,29 +319,21 @@
         <span class="prelude-val">Ok</span>(<span class="string">&quot;*ptr = reg;&quot;</span>.to_string())
     }
     <span class="kw">fn </span>prelude(<span class="kw-2">&amp;</span><span class="self">self</span>, is_core: bool) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="kw">if </span>!is_core {
-            <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="string">r#&quot;#include &lt;stdlib.h&gt;
-#include &lt;stdio.h&gt;
+        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="string">r#&quot;#include &lt;stdio.h&gt;
 union int_or_float {
-    long long int i;
-    double f;
-    union int_or_float *p;
+long long int i;
+double f;
+union int_or_float *p;
 } tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg;
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);
-&quot;#</span>.to_string())
+&quot;#</span>.to_string();
+
+        <span class="kw">if </span>!is_core {
+            result = <span class="string">&quot;#include &lt;stdlib.h&gt;\n&quot;</span>.to_string() + <span class="kw-2">&amp;</span>result;
         }
         
-        <span class="prelude-val">Some</span>(
-            <span class="string">r#&quot;#include &lt;stdio.h&gt;
-union int_or_float {
-    long long int i;
-    double f;
-    union int_or_float *p;
-} tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg;
-unsigned int ref_ptr = 0;
-void (*funs[10000])(void);
-&quot;#</span>.to_string())
+        <span class="prelude-val">Some</span>(result)
     }
 
     <span class="kw">fn </span>post_funs(<span class="kw-2">&amp;</span><span class="self">self</span>, funs: Vec&lt;i32&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {

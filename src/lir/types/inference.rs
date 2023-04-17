@@ -26,7 +26,23 @@ pub trait GetType {
 /// Infer the type associated with an expression under a given environment.
 impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
+        let i = i + 1;
         Ok(match self {
+            Self::Match(expr, branches) => {
+                for (pat, branch) in branches {
+                    return pat.get_branch_result_type(&expr, branch, env)
+                }
+                Type::None
+            }
+
+            Self::IfLet(_pat, _expr, _a, b) => {
+                // We could get the type of the then branch,
+                // but the else branch should always be the same type.
+                // (and if it isn't, the type checker will catch it)
+                // return pat.get_branch_result_type(&expr, a, env)
+                b.get_type_checked(env, i)?
+            }
+
             Self::UnaryOp(unop, expr) => {
                 // Infer the type of the unary operation
                 // on the expression.

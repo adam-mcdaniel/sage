@@ -1,10 +1,9 @@
-const putchar = proc(ch: Char) -> None = core {
-    put-char [SP]
-    pop
-}, getchar = proc() -> Char = core {
+proc getchar() -> Char = core {
     next SP
     get-char [SP]
-} in let ch = getchar() in while ch {
-    putchar(ch);
-    ch = getchar();   
+} in
+
+let ch = getchar() in while ch {
+    put ch;
+    ch = getchar();
 }

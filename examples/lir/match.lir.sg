@@ -1,0 +1,17 @@
+type Dir = enum { North, South, East, West } in
+
+let expr = (South of Dir, 2, struct {x=5, y=-6}) in
+    match expr {
+        (North of Dir, _, _)
+        | (East of Dir, _, _)
+        | (West of Dir, _, _)
+        | (South of Dir, 3, _) => put "Incorrect!\n",
+        (South of Dir, 2, struct {x=a, y=b}) => {
+            if (a == 5 and b == -6) {
+                put "Correct!\n"
+            } else {
+                put "Incorrect!\n"
+            }
+        },
+        _ => put "Default! (incorrect)\n"
+    }

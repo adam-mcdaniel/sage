@@ -141,29 +141,21 @@ impl Architecture for C {
         Ok("*ptr = reg;".to_string())
     }
     fn prelude(&self, is_core: bool) -> Option<String> {
-        if !is_core {
-            return Some(r#"#include <stdlib.h>
-#include <stdio.h>
+        let mut result = r#"#include <stdio.h>
 union int_or_float {
-    long long int i;
-    double f;
-    union int_or_float *p;
+long long int i;
+double f;
+union int_or_float *p;
 } tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg;
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);
-"#.to_string())
+"#.to_string();
+
+        if !is_core {
+            result = "#include <stdlib.h>\n".to_string() + &result;
         }
         
-        Some(
-            r#"#include <stdio.h>
-union int_or_float {
-    long long int i;
-    double f;
-    union int_or_float *p;
-} tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg;
-unsigned int ref_ptr = 0;
-void (*funs[10000])(void);
-"#.to_string())
+        Some(result)
     }
 
     fn post_funs(&self, funs: Vec<i32>) -> Option<String> {

@@ -3,7 +3,28 @@ use crate::lir::*;
 use crate::parse::{CoreProgramParser, StandardProgramParser};
 
 grammar;
+Pattern: Pattern = {
+    <mut list: (<PatternAtom> "|")+> <last: PatternAtom> => {
+        list.push(last);
+        Pattern::Alt(list)
+    },
+    <PatternAtom> => <>,
+}
 
+PatternAtom: Pattern = {
+    List<"(", Pattern, ",", ")"> => Pattern::Tuple(<>),
+    List<("struct" "{"), (<Symbol> "=" <Pattern>), ",", "}"> => Pattern::Struct(<>.into_iter().collect()),
+    Symbol => Pattern::Symbol(<>),
+    // ConstAtom => Pattern::ConstExpr(<>), 
+    <variant: Symbol> "of" <t: TypeTerm> => Pattern::ConstExpr(ConstExpr::Of(t, variant)),
+    "true" => Pattern::ConstExpr(ConstExpr::Bool(true)),
+    "false" => Pattern::ConstExpr(ConstExpr::Bool(false)),
+    "Null" => Pattern::ConstExpr(ConstExpr::Null),
+    "None" => Pattern::ConstExpr(ConstExpr::None),
+    <IntLit> => Pattern::ConstExpr(ConstExpr::Int(<> as i32)),
+    <CharLit> => Pattern::ConstExpr(ConstExpr::Char(<>)),
+    "_" => Pattern::Wildcard,
+}
 
 Type: Type = {
     "let" <var: Symbol> "=" <t: Type> "in" <ret: Type> => Type::Let(var, Box::new(t), Box::new(ret)),
@@ -32,19 +53,6 @@ TypeTerm: Type = {
 ConstExpr: ConstExpr = {
     "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <body: Block> => ConstExpr::Proc(Procedure::new(args, ret, body)),
     "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "=" <body: Block> => ConstExpr::Proc(Procedure::new(args, Type::None, body)),
-    <variant: Symbol> "of" <t: TypeTerm> => ConstExpr::Of(t, variant).into(),
-    Symbol => ConstExpr::Symbol(<>),
-    IntLit => ConstExpr::Int(<> as i32),
-    FloatLit => ConstExpr::Float(<>),
-    CharLit => ConstExpr::Char(<>),
-    "true" => ConstExpr::Bool(true),
-    "false" => ConstExpr::Bool(false),
-    "Null" => ConstExpr::Null,
-    "None" => ConstExpr::None,
-    "typeof" "(" <Expr> ")" => ConstExpr::TypeOf(Box::new(<>)),
-    "sizeof" "(" <Type> ")" => ConstExpr::SizeOfType(<>),
-    "sizeofexpr" "(" <Expr> ")" => ConstExpr::SizeOfExpr(Box::new(<>)),
-    "(" ")" => ConstExpr::None,
     "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <mut body: CoreAsm> => {
         body.args = args;
         body.ret = ret;
@@ -55,6 +63,23 @@ ConstExpr: ConstExpr = {
         body.ret = ret;
         ConstExpr::StandardBuiltin(body)
     },
+    "typeof" "(" <Expr> ")" => ConstExpr::TypeOf(Box::new(<>)),
+    "sizeof" "(" <Type> ")" => ConstExpr::SizeOfType(<>),
+    "sizeofexpr" "(" <Expr> ")" => ConstExpr::SizeOfExpr(Box::new(<>)),
+    "(" ")" => ConstExpr::None,
+    <ConstAtom> => <>,
+}
+
+ConstAtom: ConstExpr = {
+    <variant: Symbol> "of" <t: TypeTerm> => ConstExpr::Of(t, variant).into(),
+    Symbol => ConstExpr::Symbol(<>),
+    IntLit => ConstExpr::Int(<> as i32),
+    FloatLit => ConstExpr::Float(<>),
+    CharLit => ConstExpr::Char(<>),
+    "true" => ConstExpr::Bool(true),
+    "false" => ConstExpr::Bool(false),
+    "Null" => ConstExpr::Null,
+    "None" => ConstExpr::None,
 }
 
 pub Expr: Expr = {
@@ -162,6 +187,15 @@ Term: Expr = {
         }
         Expr::If(Box::new(cond), Box::new(then), Box::new(e.unwrap_or(ConstExpr::None.into())))
     },
+    "if" "let" <pat: Pattern> "=" <expr: Atom> <then: Atom> <elif: ("else" "if" "let" <Pattern> "=" <Atom> <Atom>)*> <mut e: ("else" <Atom>)?> => {
+        for (p, c, t) in elif.into_iter().rev() {
+            e = Some(Expr::IfLet(p, Box::new(c), Box::new(t), Box::new(e.unwrap_or(ConstExpr::None.into()))));
+        }
+        Expr::IfLet(pat, Box::new(expr), Box::new(then), Box::new(e.unwrap_or(ConstExpr::None.into())))
+    },
+    "match" <expr:Atom> <list: NonEmptyList<"{", (<Pattern> "=>" <Expr>), ",", "}">> => {
+        Expr::Match(Box::new(expr), list.into_iter().collect())
+    },
     Atom => <>,
 }
 
@@ -219,6 +253,14 @@ Tuple<T>: Vec<T> = {
 
 Array<T>: Vec<T> = List<"[", T, ",", "]"> => <>;
 Dict<K, V>: Vec<(K, V)> = List<"{", (<K> ":" <V>), ",", "}"> => <>;
+
+NonEmptyList<Begin, T, Sep, End>: Vec<T> = {
+    <first:Begin> <list: (<T> <Sep>)*> <end:(<T> Sep?)> <last:End> => {
+        let mut list: Vec<_> = list.iter().map(|(v, s)| v.clone()).collect();
+        list.push(end);
+        list
+    }
+}
 
 List<Begin, T, Sep, End>: Vec<T> = {
     <first:Begin> <list: (<T> <Sep>)*> <end:T?> <last:End> => {

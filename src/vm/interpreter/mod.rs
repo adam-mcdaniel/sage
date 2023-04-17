@@ -283,10 +283,10 @@ impl Device for StandardDevice {
         match dst.mode {
             OutputMode::StdoutChar => print!("{}", val as u8 as char),
             OutputMode::StdoutInt => print!("{}", val),
-            OutputMode::StdoutFloat => print!("{}", as_float(val)),
+            OutputMode::StdoutFloat => print!("{:?}", as_float(val)),
             OutputMode::StderrChar => eprint!("{}", val as u8 as char),
             OutputMode::StderrInt => eprint!("{}", val),
-            OutputMode::StderrFloat => eprint!("{}", as_float(val)),
+            OutputMode::StderrFloat => eprint!("{:?}", as_float(val)),
             _ => {
                 eprintln!("Requested output mode: {} (on channel #{}) with output={val}", dst.mode, dst.channel);
             },

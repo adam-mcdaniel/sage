@@ -1,64 +1,56 @@
-const bitxor = proc(a: Int, b: Int) -> Int = core {
-    bitwise-xor [SP], [SP - 1] pop
-}, bitor = proc(a: Int, b: Int) -> Int = core {
-    bitwise-or [SP], [SP - 1] pop
-}, bitnand = proc(a: Int, b: Int) -> Int = core {
-    bitwise-nand [SP], [SP - 1] pop
-}, bitand = proc(a: Int, b: Int) -> Int = core {
-    bitwise-and [SP], [SP - 1] pop
-}, bitnot = proc(x: Int) -> Int = core {
-    bitwise-not [SP]
-}, inc = proc(x: &Int) -> None = core {
-    inc [[SP]]
-    pop
-}, dec = proc(x: &Int) -> None = core {
-    dec [[SP]]
-    pop
-}, lt = proc(a: Int, b: Int) -> Bool = core {
-    lt [SP - 1], [SP], A pop
-    mov A, [SP]
-}, lte = proc(a: Int, b: Int) -> Bool = core {
-    lte [SP - 1], [SP], A pop
-    mov A, [SP]
-}, gt = proc(a: Int, b: Int) -> Bool = core {
-    gt [SP - 1], [SP], A pop
-    mov A, [SP]
-}, gte = proc(a: Int, b: Int) -> Bool = core {
-    gte [SP - 1], [SP], A pop
-    mov A, [SP]
-}, eq = proc(a: Int, b: Int) -> Bool = core {
-    eq [SP - 1], [SP], A pop
-    mov A, [SP]
-}, neq = proc(a: Int, b: Int) -> Bool = core {
-    neq [SP - 1], [SP], A pop
-    mov A, [SP]
-}, putinch = proc(n: Int) -> None = core {
-    put-char [SP]
-    pop
-} in
-const alloc = proc(size: Int) -> &Int = core {
-    set A, 10000
-    index SP, A, C
-    push C
-    add [SP - 1], [[SP]]
-    lea [[SP]], [SP - 1]
-    add [[SP]], [SP - 1]
+proc bitxor(a: Int, b: Int) -> Int = core {
+    bitwise-xor [SP], [SP - 1]
     pop
 } in
 
-const free = proc(ptr: &Int) -> None = {} in
-proc putdec(n: Int) -> None = {
-    if (lt(n, 10)) {
-        putinch(n + 48)
-    } else {
-        putdec(n / 10);
-        putinch(n % 10 + 48)
-    }
+proc bitor(a: Int, b: Int) -> Int = core {
+    bitwise-or [SP], [SP - 1]
+    pop
+} in
+
+proc bitnand(a: Int, b: Int) -> Int = core {
+    bitwise-nand [SP], [SP - 1]
+    pop
+} in
+
+proc bitand(a: Int, b: Int) -> Int = core {
+    bitwise-and [SP], [SP - 1]
+    pop
+} in
+
+proc bitnot(x: Int) -> Int = core {
+    bitwise-not [SP]
+} in
+
+proc inc(x: &Int) = core {
+    inc [[SP]]
+    pop
+} in
+
+proc dec(x: &Int) = core {
+    dec [[SP]]
+    pop
+} in
+
+proc alloc(size: Int) -> &Cell = std {
+    // set A, 10000
+    // index SP, A, C
+    // push C
+    // add [SP - 1], [[SP]]
+    // lea [[SP]], [SP - 1]
+    // add [[SP]], [SP - 1]
+    // pop
+    alloc [SP]
+} in
+
+proc free(ptr: &Int) = std {
+    free [SP]
+    pop
 } in
 
 proc puthex(n: Int, lower: Bool) -> None = {
-    if (lt(n, 16)) {
-        putinch(n + if (lt(n, 10)) {
+    if (n < 16) {
+        put (n + if (n < 10) {
             48
         } else {
             if lower {
@@ -66,7 +58,7 @@ proc puthex(n: Int, lower: Bool) -> None = {
             } else {
                 55
             }
-        })
+        }) as Char
     } else {
         puthex(n / 16, lower);
         puthex(n % 16, lower)
@@ -78,33 +70,28 @@ proc putbyte(n: Int, lower: Bool) -> None = {
     puthex(n % 16, lower)
 } in
 
-const putint = putdec in
-
-const putchar = proc(ch: Char) -> None = {
-    putinch(ch as Int)
-} in
 
 proc ln() -> None = {
-    putchar('\n')
+    put '\n'
 } in
 
 proc min(x: Int, y: Int) -> Int = {
-    if (lt(x, y)) x else y
+    if (x < y) x else y
 } in
 proc max(x: Int, y: Int) -> Int = {
-    if (gt(x, y)) x else y
+    if (x > y) x else y
 } in
 
 
 type List = struct { data: Int, next: &List } in
 
 proc sort(node: &List) -> None = {
-    if (node->next as Cell as Int + 128) {
+    if (node->next != Null) {
         sort(node->next);
         let a = min(node->data, node->next->data),
             b = max(node->data, node->next->data)
             in {
-            if (b - node->data) {
+            if (b != node->data) {
                 sort(node->next);
             };
             node->data = a;
@@ -114,26 +101,23 @@ proc sort(node: &List) -> None = {
 } in
 
 proc len(node: &List) -> Int = {
-    if (node as Cell as Int + 128) {
+    if (node != Null) {
         len(node->next) + 1
     } else {
         0
     }
 } in
 
-proc neq(a: Int, b: Int) -> Bool = {
-    (if ((a - b) as Bool) 1 else 0) as Bool
-} in
 
 proc index(node: &List, n: Int) -> &List = {
     while n {
         node = node->next;
-        n = n - 1;
+        n -= 1;
     };
     node
 } in
 
-proc swapi(a: &Int, b: &Int) -> None = {
+proc swapi(a: &Int, b: &Int) = {
     let tmp = (*a) in {
         (*a) = *b;
         (*b) = tmp;
@@ -144,20 +128,20 @@ proc partition_arr(arr: &Int, low: Int, high: Int) -> Int = {
     let pivot = arr[high],
         i = low - 1,
         j = low in {
-        while lt(j, high) {
-            if (lte(arr[j], pivot)) {
-                inc(&i);
+        while j < high {
+            if (arr[j] <= pivot) {
+                i += 1;
                 swapi(&arr[j], &arr[i]);
             };
-            inc(&j);
+            j += 1
         };
         swapi(&arr[i + 1], &arr[high]);
         i + 1
     }
 } in
 
-proc quicksort_arr(arr: &Int, low: Int, high: Int) -> None = {
-    if (lt(low, high)) {
+proc quicksort_arr(arr: &Int, low: Int, high: Int) = {
+    if (low < high) {
         let pi = partition_arr(arr, low, high) in {
             quicksort_arr(arr, low, pi - 1);
             quicksort_arr(arr, pi + 1, high);
@@ -166,46 +150,26 @@ proc quicksort_arr(arr: &Int, low: Int, high: Int) -> None = {
 } in
 
 const SIZE = 100 in
-let arr: &Int = alloc(SIZE * 2), i = 0, a = 5, b = 6 in {
-    putchar('u');
-    putchar('n');
-    putchar('s');
-    putchar('o');
-    putchar('r');
-    putchar('t');
-    putchar('e');
-    putchar('d');
-    putchar(':');
-    putchar(' ');
-    putchar('[');
-    while lt(i, SIZE) {
+let arr: &Int = alloc(SIZE * 2) as &Int, i = 0, a = 5, b = 6 in {
+    put "unsorted: [";
+    while i < SIZE {
         arr[i] = SIZE - i;
-        putint(arr[i]);
-        if (lt(i, SIZE - 1)) {
-            putchar(','); putchar(' ');
+        put arr[i];
+        if (i < SIZE - 1) {
+            put ", ";
         };
-        inc(&i);
+        i += 1;
     };
-    putchar(']');
+    put "]\n";
     quicksort_arr(arr, 0, SIZE - 1);
-    putchar('\n');
-    putchar('s');
-    putchar('o');
-    putchar('r');
-    putchar('t');
-    putchar('e');
-    putchar('d');
-    putchar(':');
-    putchar(' ');
-    putchar('[');
+    put "sorted: [";
     i = 0;
-    while lt(i, SIZE) {
-        putint(arr[i]);
-        if (lt(i, SIZE - 1)) {
-            putchar(','); putchar(' ');
+    while i < SIZE {
+        put arr[i];
+        if (i < SIZE - 1) {
+            put ", ";
         };
-        inc(&i);
+        i += 1;
     };
-    putchar(']');
-    putchar('\n');
+    put "]\n";
 }
