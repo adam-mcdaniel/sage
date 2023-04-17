@@ -288,12 +288,20 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="macro">write!</span>(f, <span class="string">&quot;proc(&quot;</span>)<span class="question-mark">?</span>;
         <span class="kw">for </span>(i, (name, ty)) <span class="kw">in </span><span class="self">self</span>.args.iter().enumerate() {
+<<<<<<< HEAD
             <span class="macro">write!</span>(f, <span class="string">&quot;{name}: {ty}&quot;</span>)<span class="question-mark">?</span>;
+=======
+            <span class="macro">write!</span>(f, <span class="string">&quot;{name:?}: {ty:?}&quot;</span>)<span class="question-mark">?</span>;
+>>>>>>> da6f5d3 (Added links to table in docs)
             <span class="kw">if </span>i &lt; <span class="self">self</span>.args.len() - <span class="number">1 </span>{
                 <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
             </span>}
         }
+<<<<<<< HEAD
         <span class="macro">write!</span>(f, <span class="string">&quot;) -&gt; {} = {}&quot;</span>, <span class="self">self</span>.ret, <span class="self">self</span>.body)
+=======
+        <span class="macro">write!</span>(f, <span class="string">&quot;) -&gt; {:?} = {:?}&quot;</span>, <span class="self">self</span>.ret, <span class="self">self</span>.body)
+>>>>>>> da6f5d3 (Added links to table in docs)
     }
 }
 </code></pre></div>

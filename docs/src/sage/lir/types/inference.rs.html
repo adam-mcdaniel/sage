@@ -323,6 +323,7 @@
 <a href="#323" id="323">323</a>
 <a href="#324" id="324">324</a>
 <a href="#325" id="325">325</a>
+<<<<<<< HEAD
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
@@ -339,6 +340,8 @@
 <a href="#339" id="339">339</a>
 <a href="#340" id="340">340</a>
 <a href="#341" id="341">341</a>
+=======
+>>>>>>> da6f5d3 (Added links to table in docs)
 </pre><pre class="rust"><code><span class="doccomment">//! # Type Inference
 //! 
 //! This module contains the type inference algorithm for the language.
@@ -367,6 +370,7 @@
 <span class="doccomment">/// Infer the type associated with an expression under a given environment.
 </span><span class="kw">impl </span>GetType <span class="kw">for </span>Expr {
     <span class="kw">fn </span>get_type_checked(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env, i: usize) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
+<<<<<<< HEAD
         <span class="kw">let </span>i = i + <span class="number">1</span>;
         <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Match(expr, branches) =&gt; {
@@ -405,6 +409,30 @@
                 </span>op.return_type(dst, src, env)<span class="question-mark">?
             </span>}
 
+=======
+        <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::UnaryOp(unop, expr) =&gt; {
+                <span class="comment">// Infer the type of the unary operation
+                // on the expression.
+                </span>unop.return_type(expr, env)<span class="question-mark">?
+            </span>}
+            <span class="self">Self</span>::BinaryOp(binop, lhs, rhs) =&gt; {
+                <span class="comment">// Infer the type of the binary operation
+                // on the two expressions.
+                </span>binop.return_type(lhs, rhs, env)<span class="question-mark">?
+            </span>}
+            <span class="self">Self</span>::TernaryOp(ternop, a, b, c) =&gt; {
+                <span class="comment">// Infer the type of the ternary operation
+                // on the three expressions.
+                </span>ternop.return_type(a, b, c, env)<span class="question-mark">?
+            </span>}
+            <span class="self">Self</span>::AssignOp(op, dst, src) =&gt; {
+                <span class="comment">// Infer the type of the assignment operation
+                // on the two expressions.
+                </span>op.return_type(dst, src, env)<span class="question-mark">?
+            </span>}
+
+>>>>>>> da6f5d3 (Added links to table in docs)
             <span class="comment">// Get the type of the inner constant expression.
             </span><span class="self">Self</span>::ConstExpr(c) =&gt; c.get_type_checked(env, i)<span class="question-mark">?</span>,
             <span class="comment">// Get the type of the result of the block of expressions.

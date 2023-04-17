@@ -1,55 +1,69 @@
 <!DOCTYPE html>
 
 <html>
-    <head>
-        <title>hello-wasm example</title>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js" integrity="sha512-8RnEqURPUc5aqFEN04aQEiPlSAdE0jlFS/9iGgUyNtwFnSKCXhmB6ZTNl7LnDtDWKabJIASzXrzD0K+LYexU9g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css" integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/mode/simple.min.js" integrity="sha512-CGM6DWPHs250F/m90YZ9NEiEUhd9a4+u8wAzeKC6uHzZbYyt9/e2dLC5BGGB6Y0HtEdZQdSDYjDsoTyNGdMrMA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/rust/rust.min.js" integrity="sha512-g3Nhw36S0p4ZJQcky87D5M+vZbFvLrgsHWYltUy5IW0zKbvi8GlPRjJSo2CyUyQiU01Ier7u+rBABDs3BawKyQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/clike/clike.min.js" integrity="sha512-l8ZIWnQ3XHPRG3MQ8+hT1OffRSTrFwrph1j1oc1Fzc9UKVGef5XN9fdO0vm3nW0PRgQ9LJgck6ciG59m69rvfg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/ayu-dark.min.css" integrity="sha512-mV3RUXi1gt22jDb4UyRBFhZVFgAIiOfRE6ul+2l1Hcj6glyg6x4xlnjPH+neGm/t6XrFmsMRu4++McQu0asjqg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-        <style>
-            .CodeMirror {
-                border: 1px solid #eee;
-                height: 100%;
+
+<head>
+    <title>hello-wasm example</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"
+        integrity="sha512-8RnEqURPUc5aqFEN04aQEiPlSAdE0jlFS/9iGgUyNtwFnSKCXhmB6ZTNl7LnDtDWKabJIASzXrzD0K+LYexU9g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"
+        integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/mode/simple.min.js"
+        integrity="sha512-CGM6DWPHs250F/m90YZ9NEiEUhd9a4+u8wAzeKC6uHzZbYyt9/e2dLC5BGGB6Y0HtEdZQdSDYjDsoTyNGdMrMA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/rust/rust.min.js"
+        integrity="sha512-g3Nhw36S0p4ZJQcky87D5M+vZbFvLrgsHWYltUy5IW0zKbvi8GlPRjJSo2CyUyQiU01Ier7u+rBABDs3BawKyQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/clike/clike.min.js"
+        integrity="sha512-l8ZIWnQ3XHPRG3MQ8+hT1OffRSTrFwrph1j1oc1Fzc9UKVGef5XN9fdO0vm3nW0PRgQ9LJgck6ciG59m69rvfg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/ayu-dark.min.css"
+        integrity="sha512-mV3RUXi1gt22jDb4UyRBFhZVFgAIiOfRE6ul+2l1Hcj6glyg6x4xlnjPH+neGm/t6XrFmsMRu4++McQu0asjqg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        .CodeMirror {
+            border: 1px solid #eee;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body style="height: 100%">
+    <script type="module">
+        import init, { compile_and_run } from './web.js';
+        init();
+
+        var source = CodeMirror.fromTextArea(document.getElementById("source"), {
+            mode: "rust",
+            lineNumbers: true,
+            indentUnit: 4,
+            theme: 'ayu-dark',
+            autoRefresh: true,
+        });
+        source.setSize("100%", "40em");
+        setInterval(function () {
+            document.getElementById("source").value = source.getValue();
+            source.refresh()
+        }, 50);
+        var output = CodeMirror.fromTextArea(document.getElementById("output"), {
+            mode: "text/x-csrc",
+            lineNumbers: true,
+            indentUnit: 4,
+            theme: 'ayu-dark',
+            autoRefresh: true,
+        });
+        output.setSize("100%", "100%");
+        setInterval(function () {
+            if (output.getValue() != document.getElementById("output").value) {
+                output.setValue(document.getElementById("output").value);
+                output.refresh()
             }
-        </style>
-    </head>
-    <body style="height: 100%">
-        <script type="module">
-            import init, {compile_and_run} from './web.js';
-            init();
-            
-            var source = CodeMirror.fromTextArea(document.getElementById("source"), {
-                mode: "rust",
-                lineNumbers: true,
-                indentUnit: 4,
-                theme: 'ayu-dark',
-                autoRefresh: true,
-            });
-            source.setSize("100%", "40em");
-            setInterval(function () {
-                document.getElementById("source").value = source.getValue();
-                source.refresh()
-            }, 50);
-            var output = CodeMirror.fromTextArea(document.getElementById("output"), {
-                mode: "text/x-csrc",
-                lineNumbers: true,
-                indentUnit: 4,
-                theme: 'ayu-dark',
-                autoRefresh: true,
-            });
-            output.setSize("100%", "100%");
-            setInterval(function () {
-                if (output.getValue() != document.getElementById("output").value) {
-                    output.setValue(document.getElementById("output").value);
-                    output.refresh()
-                }
-            }, 50);
-            function setExampleProgram() {
-                console.log(document.getElementById("example").value);
-                switch (document.getElementById("example").value) {
+        }, 50);
+        function setExampleProgram() {
+            console.log(document.getElementById("example").value);
+            switch (document.getElementById("example").value) {
                 case "aes":
                     source.setValue(`proc bitxor(a: Int, b: Int) -> Int = core {
     bitwise-xor [SP], [SP - 1] pop
@@ -1213,11 +1227,16 @@ let x: let A = (Int, &A) in A
             }
         }`);
                     break;
+                case "hello world":
+                    source.setValue(`{\n    put "Hello world!\\n";\n    put 1 + 2\n}\n`);
+                    break;
                 default:
                     console.log("Unknown example: " + example);
                     break;
-                }
             }
+        }
+        setExampleProgram();
+        document.getElementById("example").addEventListener("change", () => {
             setExampleProgram();
             document.getElementById("example").addEventListener("change", () => {
                 setExampleProgram();
@@ -1247,21 +1266,8 @@ let x: let A = (Int, &A) in A
             <option value="type-demo-1">Type System Demo 1</option>
             <option value="type-demo-2">Type System Demo 2</option>
         </select>
-        <div class="row">
-            <div class="col"><textarea id="source"></textarea></div>
-            <div class="col" style="height: 20em;">
-                <textarea style="overflow: auto; background-color: black; color: white;" id="output"></textarea>
-            </div>
-        </div>
-        <div>
-            <textarea id="input" style="resize: none; float: left;" cols="10">Input Text</textarea>
-            <select id="target" style="height: 3em; float: left;">
-                <option value="run">Execution Output</option>
-                <option value="asm">Assembly</option>
-                <option value="vm">Virtual Machine Code</option>
-                <option value="c">C Source</option>
-            </select>
-            <button id="run" style="height: 3em; float: left;">Compile</button>
-        </div>
-    </body>
+        <button id="run" style="height: 3em; float: left;">Compile</button>
+    </div>
+</body>
+
 </html>
