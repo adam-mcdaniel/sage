@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":[["c","C Target"]],"trait":[["Architecture","A trait for a target architecture to be compiled to."],["CompiledTarget","Implement a compiler for the given target."]]};

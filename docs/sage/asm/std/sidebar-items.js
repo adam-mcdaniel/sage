@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":[["StandardOp","A standard instruction of the assembly language. These are instructions that should be implemented for every target possible. Standard instructions should only not be implemented for targets like physical hardware, where the program is executed on the bare metal (a custom CPU or FPGA)."]],"struct":[["StandardProgram",""]]};

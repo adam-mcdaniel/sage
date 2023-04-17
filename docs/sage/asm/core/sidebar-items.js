@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":[["CoreOp","A core instruction of the assembly language. These are instructions guaranteed to be implemented for every target possible."]],"struct":[["CoreProgram","A program composed of core instructions, which can be assembled into the core virtual machine instructions."]]};
