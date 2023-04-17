@@ -131,6 +131,9 @@ pub Expr: Expr = {
     "return" <Expr> => Expr::Return(Box::new(<>)),
     "debug" <Expr> => Expr::UnaryOp(Put::Debug.clone_box(), Box::new(<>)),
     "put" <Expr> => Expr::UnaryOp(Put::Display.clone_box(), Box::new(<>)),
+    // "match" <expr:Atom> <list: NonEmptyList<"{", (<Pattern> "=>" <Block>), ";", "}">> => {
+    //     Expr::Match(Box::new(expr), list.into_iter().collect())
+    // },
     Logic => <>
 }
 
