@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/expression.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>expression.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-6827029ac823cab7.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-8af5e100b21cd173.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-c55e1eb52e1886b4.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+=======
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/expression.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>expression.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-93196c7a1c3542a8.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-3367e395607fafc1.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+>>>>>>> main
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -642,6 +646,7 @@
 <a href="#642" id="642">642</a>
 <a href="#643" id="643">643</a>
 <a href="#644" id="644">644</a>
+<<<<<<< HEAD
 <a href="#645" id="645">645</a>
 <a href="#646" id="646">646</a>
 <a href="#647" id="647">647</a>
@@ -665,6 +670,8 @@
 <a href="#665" id="665">665</a>
 <a href="#666" id="666">666</a>
 <a href="#667" id="667">667</a>
+=======
+>>>>>>> main
 </pre><pre class="rust"><code><span class="doccomment">//! # Expression
 //! 
 //! An expression is a runtime value.
@@ -673,7 +680,11 @@
 //! which are then executed by the runtime.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::lir::{
+<<<<<<< HEAD
     ConstExpr, Procedure, Type, Pattern
+=======
+    ConstExpr, Procedure, Type
+>>>>>>> main
 };
 <span class="kw">use </span><span class="kw">super</span>::ops::<span class="kw-2">*</span>;
 <span class="kw">use </span>core::fmt;
@@ -729,6 +740,7 @@
     /// If the condition is true, then this `when` expression is replaced with the first expression.
     /// Otherwise, this `when` expression is replaced with the second expression.
     </span>When(ConstExpr, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
+<<<<<<< HEAD
 
     <span class="doccomment">/// A match expression.
     </span>Match(Box&lt;<span class="self">Self</span>&gt;, Vec&lt;(Pattern, <span class="self">Self</span>)&gt;),
@@ -739,6 +751,8 @@
     /// the matched variables in scope.
     /// If the match fails, the else expression is evaluated.
     </span>IfLet(Pattern, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
+=======
+>>>>>>> main
 
 
     <span class="doccomment">/// Perform a unary operation on two expressions.
@@ -1142,24 +1156,43 @@
             <span class="self">Self</span>::If(cond, t, e) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;if ({cond}) {t} else {e}&quot;</span>)
             }
+<<<<<<< HEAD
             <span class="self">Self</span>::Match(expr, branches) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;match {expr} {{&quot;</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, (pat, val)) <span class="kw">in </span>branches.iter().enumerate() {
                     <span class="macro">write!</span>(f, <span class="string">&quot;{pat} =&gt; {val}&quot;</span>)<span class="question-mark">?</span>;
                     <span class="kw">if </span>i &lt; branches.len() - <span class="number">1 </span>{
+=======
+            <span class="self">Self</span>::When(cond, t, e) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;when ({cond}) {t} else {e}&quot;</span>)
+            }
+            <span class="self">Self</span>::As(val, ty) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{val} as {ty}&quot;</span>),
+
+            <span class="self">Self</span>::Struct(items) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;struct {{&quot;</span>)<span class="question-mark">?</span>;
+                <span class="kw">for </span>(i, (name, val)) <span class="kw">in </span>items.iter().enumerate() {
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{name} = {val}&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="kw">if </span>i &lt; items.len() - <span class="number">1 </span>{
+>>>>>>> main
                         <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
                     </span>}
                 }
                 <span class="macro">write!</span>(f, <span class="string">&quot;}}&quot;</span>)
             }
+<<<<<<< HEAD
             <span class="self">Self</span>::IfLet(pat, expr, t, e) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;if let {pat} = {expr} {t} else {e}&quot;</span>)
+=======
+            <span class="self">Self</span>::Union(ty, variant, val) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;union {{ {variant} = {val}, {ty}.. }}&quot;</span>)
+>>>>>>> main
             }
             <span class="self">Self</span>::When(cond, t, e) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;when ({cond}) {t} else {e}&quot;</span>)
             }
             <span class="self">Self</span>::As(val, ty) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{val} as {ty}&quot;</span>),
 
+<<<<<<< HEAD
             <span class="self">Self</span>::Struct(items) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;struct {{&quot;</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, (name, val)) <span class="kw">in </span>items.iter().enumerate() {
@@ -1194,6 +1227,28 @@
                         <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
                     </span>}
                 }
+=======
+            <span class="self">Self</span>::UnaryOp(op, x) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, op.display(x)),
+            <span class="self">Self</span>::BinaryOp(op, x, y) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, op.display(x, y)),
+            <span class="self">Self</span>::TernaryOp(op, x, y, z) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, op.display(x, y, z)),
+            <span class="self">Self</span>::AssignOp(op, x, y) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, op.display(x, y)),
+
+            <span class="self">Self</span>::Member(val, field) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{val}.{field}&quot;</span>),
+            <span class="self">Self</span>::Index(val, idx) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{val}[{idx}]&quot;</span>),
+
+            <span class="self">Self</span>::Return(val) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;return {val}&quot;</span>),
+            <span class="self">Self</span>::Refer(val) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;&amp;{val}&quot;</span>),
+            <span class="self">Self</span>::Deref(ptr) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;*{ptr}&quot;</span>),
+            <span class="self">Self</span>::DerefMut(ptr, val) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;(*{ptr}) = {val}&quot;</span>),
+            <span class="self">Self</span>::Apply(fun, args) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;{fun}(&quot;</span>)<span class="question-mark">?</span>;
+                <span class="kw">for </span>(i, arg) <span class="kw">in </span>args.iter().enumerate() {
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{arg}&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="kw">if </span>i &lt; args.len() - <span class="number">1 </span>{
+                        <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
+                    </span>}
+                }
+>>>>>>> main
                 <span class="macro">write!</span>(f, <span class="string">&quot;)&quot;</span>)
             }
         }
@@ -1332,4 +1387,8 @@
         }
     }
 }</code></pre></div>
+<<<<<<< HEAD
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+=======
+</section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.1 (8460ca823 2023-03-20)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
+>>>>>>> main

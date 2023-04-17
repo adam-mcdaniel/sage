@@ -11,5 +11,7 @@
   ],
   "module": "web.js",
   "types": "web.d.ts",
-  "sideEffects": false
+  "sideEffects": [
+    "./snippets/*"
+  ]
 }
