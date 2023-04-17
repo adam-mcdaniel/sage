@@ -848,6 +848,7 @@ let double = mul(2),
     putbyte(255, false);
 }`);
                     break;
+<<<<<<< HEAD
                 case "if-let":
                     source.setValue(`type Dir = enum { North, South, East, West } in
 
@@ -940,6 +941,141 @@ proc putint(n: Int) = core {
 } in
 
 proc putchar(c: Char) = core {
+=======
+                case "pattern-matching":
+                    source.setValue(`type Dir = enum { North, South, East, West } in
+
+proc alloc(n: Int) -> &Cell = std {
+    alloc [SP]
+} in
+
+proc test(i: Int) -> Char = {
+    match i {
+        0 => 'a',
+        1 => 'b',
+        2 => 'c',
+        3 => 'd',
+        4 => 'e',
+        5 => 'f',
+        6 => 'g',
+        7 => 'h',
+        8 => 'i',
+        9 => 'j',
+        _ => '?'
+    }
+} in
+
+proc write(user_ptr: &Char, len: Int) -> None = {
+    match user_ptr {
+        Null => put "Null pointer!\\n",
+        valid_ptr => {
+            let i = 0 in {
+                while i < len {
+                    put valid_ptr[i];
+                    i += 1
+                }
+            }
+        }
+    }
+} in
+
+
+type List = (Int, &List) in
+
+proc putlist(l: &List) -> None = {
+    match l {
+        Null => put '\\n',
+        valid_ptr => {
+            put valid_ptr->0;
+            put ' ';
+            putlist(valid_ptr->1)
+        }
+    }
+} in
+
+let i = 0,
+    pos = struct { x = 16, y = -17 },
+    dir = South of Dir,
+    g = (North of Dir, 2, 3, pos),
+    x = match (dir, (6, 'a', pos)) {
+    (North of Dir, (6, 'b', _)) => put "Wow, north 1!\\n",
+    (South of Dir, (5, 'a', _)) => put "Wow, north 2!\\n",
+    (North of Dir, (6, 'a', _)) => put "Wow, north 3!\\n",
+    (North of Dir, (5, 'b', _)) => put "Wow, north 4!\\n",
+    (North of Dir, (5, 'a', _)) => put "Wow, north 5!\\n",
+    (South of Dir, (6, 'a', struct { x = 16, y = -16})) => put "Wow, north 6!\\n",
+    (South of Dir, (6, 'a', struct { x = 16, y = h})) => {
+        put h;
+        put "Wow, north 7!\\n";
+    },
+    _ => put "default!\\n"
+} in {
+    while i < 10 {
+        put test(i);
+        i += 1
+    };
+    put "\\nDone!\\n";
+    
+    let str = "Hello, world!" in {
+        write((&str) as &Char, 13)
+    };
+
+    if let (North of Dir, b, c, struct {x=d, y=e}) = g {
+        put b;
+        put c;
+        put d;
+        put e;
+    } else {
+        put "Nope!"
+    };
+
+    match (5, 8) {
+        (4, x) | (x, 5) => put 'g',
+        _ => put "Nope!"
+    };
+
+
+    type Tag = enum { A, B, C },
+        Union = union {
+        a: Int,
+        b: Float,
+        c: Bool
+    } in match (C of Tag, union {a = 5, Union..}) {
+        (A of Tag, u) => { put "\\na\\n"; put u },
+        (B of Tag, u) => { put "\\na\\n"; put u },
+        (C of Tag, u) => { put "\\na\\n"; put u },
+        _ => put "Nope!"
+    };
+    put '\\n';
+
+
+    let n = 16 in
+        match (alloc(n)) {
+            Null => put "Null pointer!\\n",
+            valid_ptr => {
+                put "Allocated ";
+                put n;
+                put " cells at ";
+                put valid_ptr;
+                put '\\n'
+            }
+        };
+
+
+    write(Null, 10);
+    
+    let x = (1, Null),
+        y = (2, &x),
+        z = (3, &y),
+        w = (4, &z) in {
+        putlist(&w)
+    };
+}`);
+                    document.getElementById("input").value = "";
+                    break;
+                case "cat":
+                    source.setValue(`const putchar = proc(ch: Char) -> None = core {
+>>>>>>> 5cb8140 (Merged main docs)
     put-char [SP]
 } in
 
@@ -1281,6 +1417,7 @@ let x: let A = (Int, &A) in A
     <select id="example" style="height: 3em; float: left;">
         <option value="aes">AES</option>
         <option value="quicksort">Quicksort</option>
+        <option value="pattern-matching">Pattern Matching</option>
         <option value="units">Units</option>
         <option value="lambda-sim">Simulate Lambda Functions</option>
         <option value="inline-asm">Inline Assembly Demo</option>
