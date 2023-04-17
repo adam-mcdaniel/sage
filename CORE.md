@@ -26,11 +26,11 @@ This is to account for the fact that the virtual machine is abstracted over poin
 
 ![Index](assets/index.svg)
 
-#### Swap
+#### BitwiseNand
 
-`Swap` swaps the value in the register with the value pointed to on the tape. The tape will be assigned the register's value, and the register will be assigned the tape's value.
+`BitwiseNand` performs a bitwise-NAND operation on the register and the tape, and stores the result in the register. This should perform a bitwise-NAND across all the bits which represent the cell, or the maximum integer size of the machine (usually 32 or 64 bits). Variation in this configuration *will* affect the runtime of programs. If a compiler is going to target a specific configuration of this parameter, it should be known to the compiler. I am considering implementing bitwise operations in a more canonical way, or enforcing that the program state all of the required configuration parameters.
 
-![Swap](assets/swap.svg)
+![Bitwise Nand](assets/bitwise-nand.svg)
 
 #### Where?
 
