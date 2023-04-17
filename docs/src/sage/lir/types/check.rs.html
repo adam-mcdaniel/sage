@@ -719,7 +719,6 @@
 <a href="#719" id="719">719</a>
 <a href="#720" id="720">720</a>
 <a href="#721" id="721">721</a>
-<<<<<<< HEAD
 <a href="#722" id="722">722</a>
 <a href="#723" id="723">723</a>
 <a href="#724" id="724">724</a>
@@ -785,8 +784,6 @@
 <a href="#784" id="784">784</a>
 <a href="#785" id="785">785</a>
 <a href="#786" id="786">786</a>
-=======
->>>>>>> da6f5d3 (Added links to table in docs)
 </pre><pre class="rust"><code><span class="doccomment">//! # Type Checking
 //! 
 //! This module contains the type checking logic for the Lower Intermediate Representation.
@@ -918,7 +915,6 @@
                 </span>op.type_check(dst, src, env)
             }
 
-<<<<<<< HEAD
             <span class="self">Self</span>::Match(expr, branches) =&gt; {
                 <span class="comment">// Check the expression we&#39;re matching on.
                 </span>expr.type_check(env)<span class="question-mark">?</span>;
@@ -1005,28 +1001,6 @@
                 new_env.define_const(name.clone(), e.clone());
                 e.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
                 <span class="comment">// Typecheck the resulting expression with the constant
-=======
-            <span class="comment">// Typecheck the inner constant expression.
-            </span><span class="self">Self</span>::ConstExpr(c) =&gt; c.type_check(env),
-
-            <span class="comment">// Typecheck a block of expressions.
-            </span><span class="self">Self</span>::Many(exprs) =&gt; {
-                <span class="comment">// Typecheck each expression.
-                </span><span class="kw">for </span>expr <span class="kw">in </span>exprs {
-                    <span class="comment">// Check the inner expression.
-                    </span>expr.type_check(env)<span class="question-mark">?</span>;
-                }
-                <span class="comment">// Return success if all the expressions are sound.
-                </span><span class="prelude-val">Ok</span>(())
-            }
-
-            <span class="comment">// Typecheck a declaration of a constant.
-            </span><span class="self">Self</span>::LetConst(name, e, ret) =&gt; {
-                <span class="comment">// Typecheck the constant expression we&#39;re assigning to the variable.
-                </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                new_env.define_const(name.clone(), e.clone());
-                e.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
-                <span class="comment">// Typecheck the resulting expression with the constant
                 // defined in the environment.
                 </span>ret.type_check(<span class="kw-2">&amp;</span>new_env)
             }
@@ -1061,83 +1035,6 @@
                 </span>ret.type_check(<span class="kw-2">&amp;</span>new_env)
             }
 
-            <span class="self">Self</span>::LetProcs(procs, ret) =&gt; {
-                <span class="comment">// Create a new environment with the procedures defined.
-                </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                <span class="kw">for </span>(name, proc) <span class="kw">in </span>procs {
-                    <span class="comment">// Define the procedure in the environment.
-                    </span>new_env.define_proc(name, proc.clone());
-                }
-                <span class="comment">// Typecheck the procedures we&#39;re defining.
-                </span><span class="kw">for </span>(<span class="kw">_</span>, proc) <span class="kw">in </span>procs {
-                    <span class="comment">// Typecheck the procedure in the new environment.
-                    </span>proc.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
-                }
-                <span class="comment">// Typecheck the resulting expression with the procedures
->>>>>>> da6f5d3 (Added links to table in docs)
-                // defined in the environment.
-                </span>ret.type_check(<span class="kw-2">&amp;</span>new_env)
-            }
-
-<<<<<<< HEAD
-            <span class="comment">// Typecheck a declaration of multiple constants.
-            </span><span class="self">Self</span>::LetConsts(constants, ret) =&gt; {
-                <span class="comment">// Add all the constants to the scope.
-                </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                <span class="kw">for </span>(name, c) <span class="kw">in </span>constants {
-                    <span class="comment">// Define the constant in the environment.
-                    </span>new_env.define_const(name, c.clone());
-                }
-                <span class="comment">// Typecheck the constant expression we&#39;re assigning to each name.
-                </span><span class="kw">for </span>c <span class="kw">in </span>constants.values() {
-                    <span class="comment">// Typecheck the constant expression in the new environment.
-                    </span>c.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
-                }
-                <span class="comment">// Typecheck the resulting expression with the constants
-=======
-            <span class="comment">// Typecheck a declaration of a type.
-            </span><span class="self">Self</span>::LetType(name, t, ret) =&gt; {
-                <span class="comment">// Create a new environment with the type defined.
-                </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                new_env.define_type(name.clone(), t.clone());
-                <span class="comment">// Typecheck the type we&#39;re defining.
-                </span>t.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
-                <span class="comment">// Typecheck the resulting expression with the type
->>>>>>> da6f5d3 (Added links to table in docs)
-                // defined in the environment.
-                </span>ret.type_check(<span class="kw-2">&amp;</span>new_env)
-            }
-
-<<<<<<< HEAD
-            <span class="comment">// Typecheck a declaration of a procedure.
-            </span><span class="self">Self</span>::LetProc(var, proc, ret) =&gt; {
-                <span class="comment">// Create a new environment with the procedure defined.
-                </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                new_env.define_proc(var.clone(), proc.clone());
-                <span class="comment">// Typecheck the procedure we&#39;re defining.
-                </span>proc.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
-                <span class="comment">// Typecheck the resulting expression with the procedure
-=======
-            <span class="comment">// Typecheck a declaration of multiple types.
-            </span><span class="self">Self</span>::LetTypes(types, ret) =&gt; {
-                <span class="comment">// Create a new environment with the types defined.
-                </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                <span class="kw">for </span>(name, ty) <span class="kw">in </span>types {
-                    <span class="comment">// Define the type in the environment.
-                    </span>new_env.define_type(name, ty.clone());
-                }
-                <span class="comment">// Typecheck the types we&#39;re defining.
-                </span><span class="kw">for </span>(<span class="kw">_</span>, t) <span class="kw">in </span>types {
-                    <span class="comment">// Typecheck the type in the new environment.
-                    </span>t.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
-                }
-                <span class="comment">// Typecheck the resulting expression with the types
->>>>>>> da6f5d3 (Added links to table in docs)
-                // defined in the environment.
-                </span>ret.type_check(<span class="kw-2">&amp;</span>new_env)
-            }
-
-<<<<<<< HEAD
             <span class="self">Self</span>::LetProcs(procs, ret) =&gt; {
                 <span class="comment">// Create a new environment with the procedures defined.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
@@ -1196,19 +1093,6 @@
                     <span class="comment">// Typecheck the type.
                     </span>t.type_check(env)<span class="question-mark">?</span>;
 
-=======
-            <span class="comment">// Typecheck a declaration of a variable.
-            </span><span class="self">Self</span>::LetVar(var, t, e, ret) =&gt; {
-                <span class="comment">// Typecheck the expression we&#39;re assigning to the variable.
-                </span>e.type_check(env)<span class="question-mark">?</span>;
-                <span class="comment">// Get the inferred type of the expression.
-                </span><span class="kw">let </span>inferred_t = e.get_type(env)<span class="question-mark">?</span>;
-                <span class="comment">// If there&#39;s a type specification for the variable, check it.
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(t) = t {
-                    <span class="comment">// Typecheck the type.
-                    </span>t.type_check(env)<span class="question-mark">?</span>;
-
->>>>>>> da6f5d3 (Added links to table in docs)
                     <span class="comment">// Check that the inferred type is compatible with the type specified.
                     </span><span class="kw">if </span>!inferred_t.equals(t, env)<span class="question-mark">? </span>{
                         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {

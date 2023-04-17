@@ -642,7 +642,6 @@
 <a href="#642" id="642">642</a>
 <a href="#643" id="643">643</a>
 <a href="#644" id="644">644</a>
-<<<<<<< HEAD
 <a href="#645" id="645">645</a>
 <a href="#646" id="646">646</a>
 <a href="#647" id="647">647</a>
@@ -666,8 +665,6 @@
 <a href="#665" id="665">665</a>
 <a href="#666" id="666">666</a>
 <a href="#667" id="667">667</a>
-=======
->>>>>>> da6f5d3 (Added links to table in docs)
 </pre><pre class="rust"><code><span class="doccomment">//! # Expression
 //! 
 //! An expression is a runtime value.
@@ -676,11 +673,7 @@
 //! which are then executed by the runtime.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::lir::{
-<<<<<<< HEAD
     ConstExpr, Procedure, Type, Pattern
-=======
-    ConstExpr, Procedure, Type
->>>>>>> da6f5d3 (Added links to table in docs)
 };
 <span class="kw">use </span><span class="kw">super</span>::ops::<span class="kw-2">*</span>;
 <span class="kw">use </span>core::fmt;
@@ -736,7 +729,6 @@
     /// If the condition is true, then this `when` expression is replaced with the first expression.
     /// Otherwise, this `when` expression is replaced with the second expression.
     </span>When(ConstExpr, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
-<<<<<<< HEAD
 
     <span class="doccomment">/// A match expression.
     </span>Match(Box&lt;<span class="self">Self</span>&gt;, Vec&lt;(Pattern, <span class="self">Self</span>)&gt;),
@@ -747,8 +739,6 @@
     /// the matched variables in scope.
     /// If the match fails, the else expression is evaluated.
     </span>IfLet(Pattern, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
-=======
->>>>>>> da6f5d3 (Added links to table in docs)
 
 
     <span class="doccomment">/// Perform a unary operation on two expressions.
@@ -1152,43 +1142,24 @@
             <span class="self">Self</span>::If(cond, t, e) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;if ({cond}) {t} else {e}&quot;</span>)
             }
-<<<<<<< HEAD
             <span class="self">Self</span>::Match(expr, branches) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;match {expr} {{&quot;</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, (pat, val)) <span class="kw">in </span>branches.iter().enumerate() {
                     <span class="macro">write!</span>(f, <span class="string">&quot;{pat} =&gt; {val}&quot;</span>)<span class="question-mark">?</span>;
                     <span class="kw">if </span>i &lt; branches.len() - <span class="number">1 </span>{
-=======
-            <span class="self">Self</span>::When(cond, t, e) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;when ({cond}) {t} else {e}&quot;</span>)
-            }
-            <span class="self">Self</span>::As(val, ty) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{val} as {ty}&quot;</span>),
-
-            <span class="self">Self</span>::Struct(items) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;struct {{&quot;</span>)<span class="question-mark">?</span>;
-                <span class="kw">for </span>(i, (name, val)) <span class="kw">in </span>items.iter().enumerate() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{name} = {val}&quot;</span>)<span class="question-mark">?</span>;
-                    <span class="kw">if </span>i &lt; items.len() - <span class="number">1 </span>{
->>>>>>> da6f5d3 (Added links to table in docs)
                         <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
                     </span>}
                 }
                 <span class="macro">write!</span>(f, <span class="string">&quot;}}&quot;</span>)
             }
-<<<<<<< HEAD
             <span class="self">Self</span>::IfLet(pat, expr, t, e) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;if let {pat} = {expr} {t} else {e}&quot;</span>)
-=======
-            <span class="self">Self</span>::Union(ty, variant, val) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;union {{ {variant} = {val}, {ty}.. }}&quot;</span>)
->>>>>>> da6f5d3 (Added links to table in docs)
             }
             <span class="self">Self</span>::When(cond, t, e) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;when ({cond}) {t} else {e}&quot;</span>)
             }
             <span class="self">Self</span>::As(val, ty) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{val} as {ty}&quot;</span>),
 
-<<<<<<< HEAD
             <span class="self">Self</span>::Struct(items) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;struct {{&quot;</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, (name, val)) <span class="kw">in </span>items.iter().enumerate() {
@@ -1223,28 +1194,6 @@
                         <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
                     </span>}
                 }
-=======
-            <span class="self">Self</span>::UnaryOp(op, x) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, op.display(x)),
-            <span class="self">Self</span>::BinaryOp(op, x, y) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, op.display(x, y)),
-            <span class="self">Self</span>::TernaryOp(op, x, y, z) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, op.display(x, y, z)),
-            <span class="self">Self</span>::AssignOp(op, x, y) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, op.display(x, y)),
-
-            <span class="self">Self</span>::Member(val, field) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{val}.{field}&quot;</span>),
-            <span class="self">Self</span>::Index(val, idx) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{val}[{idx}]&quot;</span>),
-
-            <span class="self">Self</span>::Return(val) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;return {val}&quot;</span>),
-            <span class="self">Self</span>::Refer(val) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;&amp;{val}&quot;</span>),
-            <span class="self">Self</span>::Deref(ptr) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;*{ptr}&quot;</span>),
-            <span class="self">Self</span>::DerefMut(ptr, val) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;(*{ptr}) = {val}&quot;</span>),
-            <span class="self">Self</span>::Apply(fun, args) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{fun}(&quot;</span>)<span class="question-mark">?</span>;
-                <span class="kw">for </span>(i, arg) <span class="kw">in </span>args.iter().enumerate() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{arg}&quot;</span>)<span class="question-mark">?</span>;
-                    <span class="kw">if </span>i &lt; args.len() - <span class="number">1 </span>{
-                        <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
-                    </span>}
-                }
->>>>>>> da6f5d3 (Added links to table in docs)
                 <span class="macro">write!</span>(f, <span class="string">&quot;)&quot;</span>)
             }
         }

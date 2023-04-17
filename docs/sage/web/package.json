@@ -1,0 +1,17 @@
+{
+  "name": "web",
+  "collaborators": [
+    "Adam McDaniel <adam.mcdaniel17@gmail.com>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "web_bg.wasm",
+    "web.js",
+    "web.d.ts"
+  ],
+  "module": "web.js",
+  "types": "web.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
