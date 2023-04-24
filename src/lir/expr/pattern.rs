@@ -237,7 +237,7 @@ impl Pattern {
                 result
             }
 
-            _ => todo!(),
+            _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
         })
     }
 
@@ -334,8 +334,7 @@ impl Pattern {
                 result
             }
             
-            
-            _ => todo!(),
+            _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
         })
     }
 
@@ -410,8 +409,8 @@ impl Pattern {
                 }
                 result
             }
-
-            _ => todo!(),
+            
+            _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
         })
     }
 }
