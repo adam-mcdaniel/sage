@@ -477,6 +477,7 @@ impl TypeCheck for Expr {
                             expr: self.clone(),
                         });
                     }
+                    // eprintln!("f: {f:?}\nsupplied args: {args:?}\ninferred: {args_inferred:?}\nexpected: {args_t:?}");
                     // If the function is a procedure, confirm that the type of each
                     // argument matches the the type of the supplied value.
                     for (arg_t, arg) in args_t.into_iter().zip(args_inferred.into_iter()) {

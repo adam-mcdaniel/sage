@@ -23,7 +23,7 @@ pub trait AssignOp: std::fmt::Debug + std::fmt::Display {
     /// Typechecks the operation on the given expressions.
     fn type_check(&self, dst: &Expr, src: &Expr, env: &Env) -> Result<(), Error> {
         if self.can_apply(&dst.get_type(env)?, &src.get_type(env)?, env)? {
-            Ok(())
+            dst.type_check(env).and(src.type_check(env))
         } else {
             Err(Error::InvalidAssignOp(self.clone_box(), dst.clone(), src.clone()))
         }
@@ -68,7 +68,7 @@ pub trait UnaryOp: std::fmt::Debug + std::fmt::Display {
     /// Typechecks the operation on the given expression.
     fn type_check(&self, expr: &Expr, env: &Env) -> Result<(), Error> {
         if self.can_apply(&expr.get_type(env)?, env)? {
-            Ok(())
+            expr.type_check(env)
         } else {
             Err(Error::InvalidUnaryOp(self.clone_box(), expr.clone()))
         }
