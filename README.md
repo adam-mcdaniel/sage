@@ -4,8 +4,8 @@
     <strong>Sage advice for your coding conundrums!</strong>
   </p>
   <p float="left">
-    <a href="https://adam-mcdaniel.net/sage"><img src="./assets/aes.png" width="58%"/></a>
-    <a href="https://adam-mcdaniel.net/sage"><img src="./assets/anatomy.svg" width="41.5%"/></a>
+    <a href="https://adam-mcdaniel.net/sage"><img src="./assets/aes.png" width="57%"/></a>
+    <a href="https://adam-mcdaniel.net/sage"><img src="./assets/anatomy.svg" width="40.5%"/></a>
   </p>
 </div>
 
