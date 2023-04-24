@@ -232,7 +232,7 @@ Block: Expr = {
 
 StringLit: String = <s:r#""(\\.|[^"])*""#> => String::from(&s[1..s.len()-1]).replace("\\\"", "\"").replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t").replace("\\0", "\0");
 CharLit: char = <s:r#"'(\\.|[^'])'"#> => s.replace("\\'", "'").replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t").replace("\\0", "\0").chars().nth(1).unwrap() as char;
-IntLit: isize = <s:r"-?[0-9]\d*"> => isize::from_str(s).unwrap();
+IntLit: isize = <s:r"-?(0|[1-9][0-9]*)"> => isize::from_str(s).unwrap();
 FloatLit: f64 = {
     r"-?([1-9][0-9]*|[0])[.]([0-9]+)?" => <>.to_string().parse::<f64>().unwrap(),
 }
@@ -277,7 +277,7 @@ List<Begin, T, Sep, End>: Vec<T> = {
 
 
 CoreAsm: CoreBuiltin = {
-    <offset: @L> <body: r"core\s?[{][^}]*[}]"> =>? match CoreProgramParser::new().parse(&body[body.find("{").unwrap()+1..body.len() - 1]) {
+    <offset: @L> <body: r"core[\t\r\n ]*[{][^}]*[}]"> =>? match CoreProgramParser::new().parse(&body[body.find("{").unwrap()+1..body.len() - 1]) {
         Ok(prog) => Ok(CoreBuiltin {
             name: String::new(),
             args: vec![],
@@ -289,7 +289,7 @@ CoreAsm: CoreBuiltin = {
 }
 
 StandardAsm: StandardBuiltin = {
-    <offset: @L> <body: r"std\s[{][^}]*[}]"> =>? match StandardProgramParser::new().parse(&body[body.find("{").unwrap()+1..body.len() - 1]) {
+    <offset: @L> <body: r"std[\t\r\n ]*[{][^}]*[}]"> =>? match StandardProgramParser::new().parse(&body[body.find("{").unwrap()+1..body.len() - 1]) {
         Ok(prog) => Ok(StandardBuiltin {
             name: String::new(),
             args: vec![],

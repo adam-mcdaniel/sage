@@ -4,13 +4,13 @@
 //! tertiary, binary, and unary operations on LIR expressions.
 mod arithmetic;
 mod comparison;
-mod unary;
+mod io;
 mod assign;
 mod logic;
 
 pub use arithmetic::*;
 pub use comparison::*;
-pub use unary::*;
+pub use io::*;
 pub use assign::*;
 pub use logic::*;
 
@@ -23,7 +23,7 @@ pub trait AssignOp: std::fmt::Debug + std::fmt::Display {
     /// Typechecks the operation on the given expressions.
     fn type_check(&self, dst: &Expr, src: &Expr, env: &Env) -> Result<(), Error> {
         if self.can_apply(&dst.get_type(env)?, &src.get_type(env)?, env)? {
-            Ok(())
+            dst.type_check(env).and(src.type_check(env))
         } else {
             Err(Error::InvalidAssignOp(self.clone_box(), dst.clone(), src.clone()))
         }
@@ -68,7 +68,7 @@ pub trait UnaryOp: std::fmt::Debug + std::fmt::Display {
     /// Typechecks the operation on the given expression.
     fn type_check(&self, expr: &Expr, env: &Env) -> Result<(), Error> {
         if self.can_apply(&expr.get_type(env)?, env)? {
-            Ok(())
+            expr.type_check(env)
         } else {
             Err(Error::InvalidUnaryOp(self.clone_box(), expr.clone()))
         }
@@ -111,7 +111,7 @@ pub trait BinaryOp: std::fmt::Debug + std::fmt::Display {
     /// Typechecks the operation on the given expressions.
     fn type_check(&self, lhs: &Expr, rhs: &Expr, env: &Env) -> Result<(), Error> {
         if self.can_apply(&lhs.get_type(env)?, &rhs.get_type(env)?, env)? {
-            Ok(())
+            lhs.type_check(env).and(rhs.type_check(env))
         } else {
             Err(Error::InvalidBinaryOp(self.clone_box(), lhs.clone(), rhs.clone()))
         }
@@ -154,7 +154,7 @@ pub trait TernaryOp: std::fmt::Debug + std::fmt::Display {
     /// Typechecks the operation on the given expressions.
     fn type_check(&self, a: &Expr, b: &Expr, c: &Expr, env: &Env) -> Result<(), Error> {
         if self.can_apply(&a.clone().get_type(env)?, &b.clone().get_type(env)?, &c.get_type(env)?, env)? {
-            Ok(())
+            a.type_check(env).and(b.type_check(env)).and(c.type_check(env))
         } else {
             Err(Error::InvalidTernaryOp(self.clone_box(), a.clone(), b.clone(), c.clone()))
         }
