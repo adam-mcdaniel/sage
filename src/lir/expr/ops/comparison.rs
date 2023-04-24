@@ -1,8 +1,11 @@
 //! # Comparison Operations
-//! 
+//!
 //! This module implements comparison operators between two expressions.
 
-use crate::{lir::*, asm::{AssemblyProgram, CoreOp, SP, StandardOp}};
+use crate::{
+    asm::{AssemblyProgram, CoreOp, StandardOp, SP},
+    lir::*,
+};
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 /// A comparison operation between two values.
@@ -42,10 +45,12 @@ impl BinaryOp for Comparison {
                 if !a_type.equals(&b_type, env)? {
                     return Ok(false);
                 }
-                
+
                 self.can_apply(&a_type, &b_type, env)
             }
-            (a, Self::Equal, b) | (a, Self::NotEqual, b) => Ok(a.equals(b, env)? && a.get_size(env)? == 1),
+            (a, Self::Equal, b) | (a, Self::NotEqual, b) => {
+                Ok(a.equals(b, env)? && a.get_size(env)? == 1)
+            }
             _ => Ok(false),
         }
     }
@@ -61,21 +66,47 @@ impl BinaryOp for Comparison {
             (a, Self::Equal, b) => Ok(ConstExpr::Bool(a == b)),
             (a, Self::NotEqual, b) => Ok(ConstExpr::Bool(a != b)),
             (ConstExpr::Int(a), Self::LessThan, ConstExpr::Int(b)) => Ok(ConstExpr::Bool(a < b)),
-            (ConstExpr::Int(a), Self::LessThanOrEqual, ConstExpr::Int(b)) => Ok(ConstExpr::Bool(a <= b)),
+            (ConstExpr::Int(a), Self::LessThanOrEqual, ConstExpr::Int(b)) => {
+                Ok(ConstExpr::Bool(a <= b))
+            }
             (ConstExpr::Int(a), Self::GreaterThan, ConstExpr::Int(b)) => Ok(ConstExpr::Bool(a > b)),
-            (ConstExpr::Int(a), Self::GreaterThanOrEqual, ConstExpr::Int(b)) => Ok(ConstExpr::Bool(a >= b)),
-            (ConstExpr::Float(a), Self::LessThan, ConstExpr::Float(b)) => Ok(ConstExpr::Bool(a < b)),
-            (ConstExpr::Float(a), Self::GreaterThan, ConstExpr::Float(b)) => Ok(ConstExpr::Bool(a > b)),
-            (ConstExpr::Float(a), Self::LessThan, ConstExpr::Int(b)) => Ok(ConstExpr::Bool(a < b as f64)),
-            (ConstExpr::Int(a), Self::LessThan, ConstExpr::Float(b)) => Ok(ConstExpr::Bool((a as f64) < b)),
-            (ConstExpr::Float(a), Self::GreaterThan, ConstExpr::Int(b)) => Ok(ConstExpr::Bool(a > b as f64)),
-            (ConstExpr::Int(a), Self::GreaterThan, ConstExpr::Float(b)) => Ok(ConstExpr::Bool((a as f64) > b)),
-            _ => Err(Error::InvalidBinaryOp(self.clone_box(), Expr::ConstExpr(lhs.clone()), Expr::ConstExpr(rhs.clone()))),
+            (ConstExpr::Int(a), Self::GreaterThanOrEqual, ConstExpr::Int(b)) => {
+                Ok(ConstExpr::Bool(a >= b))
+            }
+            (ConstExpr::Float(a), Self::LessThan, ConstExpr::Float(b)) => {
+                Ok(ConstExpr::Bool(a < b))
+            }
+            (ConstExpr::Float(a), Self::GreaterThan, ConstExpr::Float(b)) => {
+                Ok(ConstExpr::Bool(a > b))
+            }
+            (ConstExpr::Float(a), Self::LessThan, ConstExpr::Int(b)) => {
+                Ok(ConstExpr::Bool(a < b as f64))
+            }
+            (ConstExpr::Int(a), Self::LessThan, ConstExpr::Float(b)) => {
+                Ok(ConstExpr::Bool((a as f64) < b))
+            }
+            (ConstExpr::Float(a), Self::GreaterThan, ConstExpr::Int(b)) => {
+                Ok(ConstExpr::Bool(a > b as f64))
+            }
+            (ConstExpr::Int(a), Self::GreaterThan, ConstExpr::Float(b)) => {
+                Ok(ConstExpr::Bool((a as f64) > b))
+            }
+            _ => Err(Error::InvalidBinaryOp(
+                self.clone_box(),
+                Expr::ConstExpr(lhs.clone()),
+                Expr::ConstExpr(rhs.clone()),
+            )),
         }
     }
 
     /// Compile the binary operation.
-    fn compile_types(&self, lhs: &Type, rhs: &Type, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    fn compile_types(
+        &self,
+        lhs: &Type,
+        rhs: &Type,
+        env: &mut Env,
+        output: &mut dyn AssemblyProgram,
+    ) -> Result<(), Error> {
         let src = SP.deref();
         let dst = SP.deref().offset(-1);
         let tmp = SP.deref().offset(1);
@@ -110,7 +141,7 @@ impl BinaryOp for Comparison {
                 a: tmp,
                 b: src,
                 dst,
-            }
+            },
         };
         let src = SP.deref();
         let dst = SP.deref().offset(-1);
@@ -146,7 +177,7 @@ impl BinaryOp for Comparison {
                 a: tmp,
                 b: src,
                 dst,
-            }
+            },
         };
         let dst = SP.deref().offset(-1);
         let tmp = SP.deref().offset(1);
@@ -185,7 +216,7 @@ impl BinaryOp for Comparison {
 
             (Type::Unit(_name1, a_type), _, Type::Unit(_name2, b_type)) => {
                 return self.compile_types(&a_type, &b_type, env, output);
-            },
+            }
 
             (a, Self::Equal, b) if a.equals(b, env)? => {
                 output.op(CoreOp::Move { src: dst, dst: tmp });
@@ -197,7 +228,13 @@ impl BinaryOp for Comparison {
             }
 
             // Cannot do arithmetic on other pairs of types.
-            _ => return Err(Error::InvalidBinaryOpTypes(Box::new(*self), lhs.clone(), rhs.clone())),
+            _ => {
+                return Err(Error::InvalidBinaryOpTypes(
+                    Box::new(*self),
+                    lhs.clone(),
+                    rhs.clone(),
+                ))
+            }
         }
         // Pop `b` off of the stack: we only needed it to evaluate
         // the arithmetic and store the result to `a` on the stack.

@@ -1,10 +1,10 @@
 //! # Assignment Operations
-//! 
+//!
 //! This module implements the `Assign` struct, which wraps a `BinaryOp` and
 //! implements the `AssignOp` trait. This turns any binary operation into an
 //! assignment operation (such as transforming `+` into `+=`).
 
-use crate::{lir::*, asm::{AssemblyProgram}};
+use crate::{asm::AssemblyProgram, lir::*};
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 /// An assignment operation. This is used to implement assignment operators like `+=`.
@@ -24,7 +24,11 @@ impl AssignOp for Assign {
         if let Type::Pointer(t) = lhs.clone().simplify(env)? {
             self.0.can_apply(&t, rhs, env)
         } else {
-            Err(Error::InvalidAssignOpTypes(self.clone_box(), lhs.clone(), rhs.clone()))
+            Err(Error::InvalidAssignOpTypes(
+                self.clone_box(),
+                lhs.clone(),
+                rhs.clone(),
+            ))
         }
     }
 
@@ -33,7 +37,11 @@ impl AssignOp for Assign {
         if let Type::Pointer(_t) = lhs.get_type(env)? {
             self.0.return_type(lhs, rhs, env)
         } else {
-            Err(Error::InvalidAssignOp(self.clone_box(), lhs.clone(), rhs.clone()))
+            Err(Error::InvalidAssignOp(
+                self.clone_box(),
+                lhs.clone(),
+                rhs.clone(),
+            ))
         }
     }
 
@@ -43,31 +51,50 @@ impl AssignOp for Assign {
     }
 
     /// Compile the assignment operation.
-    fn compile(&self, lhs: &Expr, rhs: &Expr, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    fn compile(
+        &self,
+        lhs: &Expr,
+        rhs: &Expr,
+        env: &mut Env,
+        output: &mut dyn AssemblyProgram,
+    ) -> Result<(), Error> {
         // TODO: This is a bit of a hack.
 
         // Create temporary variables for the lhs and rhs.
         let expr = Expr::let_var(
             // Create the lhs variable.
-            lhs.to_string(), None, lhs.clone(),
+            lhs.to_string(),
+            None,
+            lhs.clone(),
             Expr::let_var(
                 // Create the rhs variable.
-                rhs.to_string(), None, rhs.clone(),
+                rhs.to_string(),
+                None,
+                rhs.clone(),
                 Expr::DerefMut(
                     // Assign the operation to the lhs.
                     Box::new(Expr::var(lhs.to_string())),
                     // Perform the operation.
-                    Box::new(Expr::BinaryOp(self.0.clone_box(), Box::new(Expr::var(lhs.to_string()).deref()), Box::new(rhs.clone())))
+                    Box::new(Expr::BinaryOp(
+                        self.0.clone_box(),
+                        Box::new(Expr::var(lhs.to_string()).deref()),
+                        Box::new(rhs.clone()),
+                    )),
                 ),
-            )
-        // Compile the operation.
+            ), // Compile the operation.
         );
-        
+
         expr.compile_expr(env, output)
     }
-    
+
     /// Compile the assignment operation.
-    fn compile_types(&self, _ptr_type: &Type, _val_type: &Type, _env: &mut Env, _output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    fn compile_types(
+        &self,
+        _ptr_type: &Type,
+        _val_type: &Type,
+        _env: &mut Env,
+        _output: &mut dyn AssemblyProgram,
+    ) -> Result<(), Error> {
         unimplemented!("Don't use this function, use compile instead")
     }
 

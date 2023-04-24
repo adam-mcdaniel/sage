@@ -1,9 +1,12 @@
 //! # Logic Operations
-//! 
+//!
 //! This module implements the `And`, `Or`, and `Not` structs,
 //! which implement boolean logic operations.
 
-use crate::{lir::*, asm::{AssemblyProgram, CoreOp, SP}};
+use crate::{
+    asm::{AssemblyProgram, CoreOp, SP},
+    lir::*,
+};
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 /// A boolean "And" operation between two values.
@@ -25,12 +28,22 @@ impl BinaryOp for And {
     fn eval(&self, lhs: &ConstExpr, rhs: &ConstExpr, env: &mut Env) -> Result<ConstExpr, Error> {
         match (lhs.clone().eval(env)?, rhs.clone().eval(env)?) {
             (ConstExpr::Bool(a), ConstExpr::Bool(b)) => Ok(ConstExpr::Bool(a && b)),
-            _ => Err(Error::InvalidBinaryOp(self.clone_box(), Expr::ConstExpr(lhs.clone()), Expr::ConstExpr(rhs.clone()))),
+            _ => Err(Error::InvalidBinaryOp(
+                self.clone_box(),
+                Expr::ConstExpr(lhs.clone()),
+                Expr::ConstExpr(rhs.clone()),
+            )),
         }
     }
 
     /// Compile the binary operation.
-    fn compile_types(&self, _lhs: &Type, _rhs: &Type, _env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    fn compile_types(
+        &self,
+        _lhs: &Type,
+        _rhs: &Type,
+        _env: &mut Env,
+        output: &mut dyn AssemblyProgram,
+    ) -> Result<(), Error> {
         output.op(CoreOp::And {
             src: SP.deref(),
             dst: SP.deref().offset(-1),
@@ -64,12 +77,22 @@ impl BinaryOp for Or {
     fn eval(&self, lhs: &ConstExpr, rhs: &ConstExpr, env: &mut Env) -> Result<ConstExpr, Error> {
         match (lhs.clone().eval(env)?, rhs.clone().eval(env)?) {
             (ConstExpr::Bool(a), ConstExpr::Bool(b)) => Ok(ConstExpr::Bool(a || b)),
-            _ => Err(Error::InvalidBinaryOp(self.clone_box(), Expr::ConstExpr(lhs.clone()), Expr::ConstExpr(rhs.clone()))),
+            _ => Err(Error::InvalidBinaryOp(
+                self.clone_box(),
+                Expr::ConstExpr(lhs.clone()),
+                Expr::ConstExpr(rhs.clone()),
+            )),
         }
     }
 
     /// Compile the binary operation.
-    fn compile_types(&self, _lhs: &Type, _rhs: &Type, _env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    fn compile_types(
+        &self,
+        _lhs: &Type,
+        _rhs: &Type,
+        _env: &mut Env,
+        output: &mut dyn AssemblyProgram,
+    ) -> Result<(), Error> {
         output.op(CoreOp::Or {
             src: SP.deref(),
             dst: SP.deref().offset(-1),
@@ -104,16 +127,24 @@ impl UnaryOp for Not {
         if let ConstExpr::Bool(x) = expr.clone().eval(env)? {
             Ok(ConstExpr::Bool(!x))
         } else {
-            Err(Error::InvalidUnaryOp(self.clone_box(), Expr::ConstExpr(expr.clone())))
+            Err(Error::InvalidUnaryOp(
+                self.clone_box(),
+                Expr::ConstExpr(expr.clone()),
+            ))
         }
     }
 
     /// Compile the unary operation.
-    fn compile_types(&self, _expr: &Type, _env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    fn compile_types(
+        &self,
+        _expr: &Type,
+        _env: &mut Env,
+        output: &mut dyn AssemblyProgram,
+    ) -> Result<(), Error> {
         output.op(CoreOp::Not(SP.deref()));
         Ok(())
     }
-    
+
     /// Clone this operation into a box.
     fn clone_box(&self) -> Box<dyn UnaryOp> {
         Box::new(*self)

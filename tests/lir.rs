@@ -1,7 +1,7 @@
 use maplit::btreemap;
 use sage::{
-    io::{Input, Output},
     asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, A, SP},
+    io::{Input, Output},
     lir::*,
     parse::*,
     vm::{as_int, CoreInterpreter, StandardInterpreter, TestingDevice},
@@ -191,7 +191,8 @@ fn test_tuples() {
             )],
             Type::Int,
             Expr::Many(vec![
-                put_char.clone()
+                put_char
+                    .clone()
                     .app(vec![Expr::var("tup").field(ConstExpr::Int(0))]),
                 add.clone().app(vec![
                     Expr::var("tup")
@@ -441,7 +442,10 @@ fn test_nested_structs() {
     let vm_code = program.assemble(16).unwrap();
     let device = i.run(&vm_code).unwrap();
 
-    assert_eq!(device.output_vals(), vec![3, 8, 5, 1, 2, 3, 10, 3, 8, 5, 5, 4, 3]);
+    assert_eq!(
+        device.output_vals(),
+        vec![3, 8, 5, 1, 2, 3, 10, 3, 8, 5, 5, 4, 3]
+    );
 }
 
 #[test]
@@ -777,7 +781,10 @@ fn test_int_arithmetic() {
         name: "get".to_string(),
         args: vec![],
         ret: Type::Cell,
-        body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref(), Input::stdin_char())],
+        body: vec![
+            CoreOp::Next(SP, None),
+            CoreOp::Get(SP.deref(), Input::stdin_char()),
+        ],
     });
 
     // The program to compile
@@ -816,7 +823,10 @@ fn test_float_arithmetic() {
         name: "get".to_string(),
         args: vec![],
         ret: Type::Cell,
-        body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref(), Input::stdin_char())],
+        body: vec![
+            CoreOp::Next(SP, None),
+            CoreOp::Get(SP.deref(), Input::stdin_char()),
+        ],
     });
 
     // The program to compile
@@ -854,7 +864,10 @@ fn test_as() {
         name: "get".to_string(),
         args: vec![],
         ret: Type::Cell,
-        body: vec![CoreOp::Next(SP, None), CoreOp::Get(SP.deref(), Input::stdin_char())],
+        body: vec![
+            CoreOp::Next(SP, None),
+            CoreOp::Get(SP.deref(), Input::stdin_char()),
+        ],
     });
 
     let expr = put_char.app(vec![get
@@ -887,9 +900,10 @@ fn test_typecheck() {
         }),
         Expr::from(ConstExpr::Int(5)).add(Expr::var("a").field(var("y"))),
     );
-    assert!(
-        matches!(expr.type_check(&env), Err(Error::InvalidBinaryOp(_, _, _)))
-    );
+    assert!(matches!(
+        expr.type_check(&env),
+        Err(Error::InvalidBinaryOp(_, _, _))
+    ));
 
     let expr = Expr::let_var(
         "a",
@@ -1607,7 +1621,10 @@ fn test_quicksort_helper() {
         name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
-        body: vec![CoreOp::Put(SP.deref(), Output::stdout_char()), CoreOp::Pop(None, 1)],
+        body: vec![
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
+            CoreOp::Pop(None, 1),
+        ],
     });
 
     let swap = ConstExpr::CoreBuiltin(CoreBuiltin {
@@ -1730,7 +1747,10 @@ fn test_quicksort_helper() {
         .run(&vm_code)
         .unwrap();
 
-    assert_eq!(device.output_vals(), (1..=50).into_iter().collect::<Vec<_>>());
+    assert_eq!(
+        device.output_vals(),
+        (1..=50).into_iter().collect::<Vec<_>>()
+    );
 }
 
 #[test]
@@ -1751,7 +1771,10 @@ fn test_collatz_helper() {
         name: "put_char".to_string(),
         args: vec![("x".to_string(), Type::Int)],
         ret: Type::None,
-        body: vec![CoreOp::Put(SP.deref(), Output::stdout_char()), CoreOp::Pop(None, 1)],
+        body: vec![
+            CoreOp::Put(SP.deref(), Output::stdout_char()),
+            CoreOp::Pop(None, 1),
+        ],
     });
 
     let collatz = r#"

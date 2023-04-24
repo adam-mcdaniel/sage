@@ -1,8 +1,8 @@
 use sage::{
     asm::*,
+    io::{Input, Output},
     parse::parse_asm,
     vm::{CoreInterpreter, TestingDevice},
-    io::{Input, Output}
 };
 
 #[test]
@@ -104,7 +104,7 @@ fn test_cmp() {
         Put(B, Output::stdout_char()),
         Get(B, Input::stdin_char()),
         Get(C, Input::stdin_char()),
-        CallLabel(String::from("cmp"))
+        CallLabel(String::from("cmp")),
     ])
     .assemble(32)
     .unwrap();

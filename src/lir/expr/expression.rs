@@ -1,17 +1,14 @@
 //! # Expression
-//! 
+//!
 //! An expression is a runtime value.
-//! 
+//!
 //! Expressions are compiled down into equivalent assembly code
 //! which are then executed by the runtime.
 
-use crate::lir::{
-    ConstExpr, Procedure, Type, Pattern
-};
 use super::ops::*;
+use crate::lir::{ConstExpr, Pattern, Procedure, Type};
 use core::fmt;
 use std::collections::BTreeMap;
-
 
 /// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
 ///       This way, we don't overflow the stack with several clones of the environment.
@@ -66,13 +63,12 @@ pub enum Expr {
     /// A match expression.
     Match(Box<Self>, Vec<(Pattern, Self)>),
     /// An if-let expression.
-    /// 
+    ///
     /// This attempts to match an expression against a pattern,
     /// and if it succeeds, evaluates the body expression with
     /// the matched variables in scope.
     /// If the match fails, the else expression is evaluated.
     IfLet(Pattern, Box<Self>, Box<Self>, Box<Self>),
-
 
     /// Perform a unary operation on two expressions.
     UnaryOp(Box<dyn UnaryOp>, Box<Self>),
@@ -373,7 +369,6 @@ impl Expr {
     }
 }
 
-
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -533,7 +528,6 @@ impl fmt::Display for Expr {
     }
 }
 
-
 impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         use Expr::*;
@@ -542,14 +536,13 @@ impl PartialEq for Expr {
             (ConstExpr(a), ConstExpr(b)) => a == b,
             // A block of expressions. The last expression in the block is the value of the block.
             (Many(a), Many(b)) => a == b,
-        
+
             // A `const` binding expression.
             // Declare a constant under a new scope, and evaluate a subexpression in that scope.
-            (LetConst(name1, const_expr1, ret1),
-                LetConst(name2, const_expr2, ret2)) => {
-                    name1 == name2 && const_expr1 == const_expr2 && ret1 == ret2
-                }
-            
+            (LetConst(name1, const_expr1, ret1), LetConst(name2, const_expr2, ret2)) => {
+                name1 == name2 && const_expr1 == const_expr2 && ret1 == ret2
+            }
+
             // A `const` binding expression.
             // Declare multiple constants under a new scope, and evaluate a subexpression in that scope.
             (LetConsts(consts1, ret1), LetConsts(consts2, ret2)) => {
@@ -563,9 +556,7 @@ impl PartialEq for Expr {
             }
             // A `proc` binding expression.
             // Declare multiple procedures under a new scope, and evaluate a subexpression in that scope.
-            (LetProcs(procs1, ret1), LetProcs(procs2, ret2)) => {
-                procs1 == procs2 && ret1 == ret2
-            }
+            (LetProcs(procs1, ret1), LetProcs(procs2, ret2)) => procs1 == procs2 && ret1 == ret2,
             // A `type` binding expression.
             // Declare a type under a new scope, and evaluate a subexpression in that scope.
             (LetType(name1, ty1, ret1), LetType(name2, ty2, ret2)) => {
@@ -573,9 +564,7 @@ impl PartialEq for Expr {
             }
             // A `type` binding expression.
             // Declare multiple types under a new scope, and evaluate a subexpression in that scope.
-            (LetTypes(types1, ret1), LetTypes(types2, ret2)) => {
-                types1 == types2 && ret1 == ret2
-            }
+            (LetTypes(types1, ret1), LetTypes(types2, ret2)) => types1 == types2 && ret1 == ret2,
             // A `let` binding expression.
             // Declare a variable under a new scope, and evaluate a subexpression in that scope.
             (LetVar(name1, ty1, val1, ret1), LetVar(name2, ty2, val2, ret2)) => {
@@ -583,14 +572,10 @@ impl PartialEq for Expr {
             }
             // A `let` binding expression.
             // Declare multiple variables under a new scope, and evaluate a subexpression in that scope.
-            (LetVars(vars1, ret1), LetVars(vars2, ret2)) => {
-                vars1 == vars2 && ret1 == ret2
-            }
-        
+            (LetVars(vars1, ret1), LetVars(vars2, ret2)) => vars1 == vars2 && ret1 == ret2,
+
             // Create a while loop: while the first expression evaluates to true, evaluate the second expression.
-            (While(cond1, body1), While(cond2, body2)) => {
-                cond1 == cond2 && body1 == body2
-            }
+            (While(cond1, body1), While(cond2, body2)) => cond1 == cond2 && body1 == body2,
             // An if-then-else expression.
             //
             // Evaluate a condition.
@@ -607,11 +592,9 @@ impl PartialEq for Expr {
             (When(cond1, then1, else1), When(cond2, then2, else2)) => {
                 cond1 == cond2 && then1 == then2 && else1 == else2
             }
-        
+
             // Perform a unary operation on two expressions.
-            (UnaryOp(op1, val1), UnaryOp(op2, val2)) => {
-                op1 == op2 && val1 == val2
-            }
+            (UnaryOp(op1, val1), UnaryOp(op2, val2)) => op1 == op2 && val1 == val2,
             // Perform a binary operation on two expressions.
             (BinaryOp(op1, lhs1, rhs1), BinaryOp(op2, lhs2, rhs2)) => {
                 op1 == op2 && lhs1 == lhs2 && rhs1 == rhs2
@@ -624,19 +607,19 @@ impl PartialEq for Expr {
             (AssignOp(op1, lhs1, rhs1), AssignOp(op2, lhs2, rhs2)) => {
                 op1 == op2 && lhs1 == lhs2 && rhs1 == rhs2
             }
-        
+
             // Reference this expression (i.e. get a pointer to it).
             (Refer(val1), Refer(val2)) => val1 == val2,
             // Dereference this expression (i.e. get the value it points to).
             (Deref(val1), Deref(val2)) => val1 == val2,
             // Store an expression to an address (a pointer).
             (DerefMut(dst1, src1), DerefMut(dst2, src2)) => dst1 == dst2 && src1 == src2,
-        
+
             // Apply a function with some arguments.
             (Apply(func1, args1), Apply(func2, args2)) => func1 == func2 && args1 == args2,
             // Return a value from a function.
             (Return(val1), Return(val2)) => val1 == val2,
-        
+
             // An array of expressions.
             (Array(vals1), Array(vals2)) => vals1 == vals2,
             // A tuple of expressions.
@@ -650,15 +633,15 @@ impl PartialEq for Expr {
             }
             // A structure of fields to expressions.
             (Struct(fields1), Struct(fields2)) => fields1 == fields2,
-        
+
             // Cast an expression to another type.
             (As(val1, ty1), As(val2, ty2)) => val1 == val2 && ty1 == ty2,
-        
+
             // Get a field or member from a structure, union, or tuple.
             // For tuples, use an `Int` constant expression to access the nth field (zero indexed).
             // For unions or structures, use a `Symbol` constant expression to access the field.
             (Member(val1, field1), Member(val2, field2)) => val1 == val2 && field1 == field2,
-            
+
             // Index an array or pointer with an expression that evaluates to an `Int` at runtime.
             (Index(val1, idx1), Index(val2, idx2)) => val1 == val2 && idx1 == idx2,
             _ => false,

@@ -1,12 +1,12 @@
 //! # Procedure
-//! 
+//!
 //! A procedure of LIR code which can be applied to a list of arguments.
-//! 
+//!
 //! A procedure is compiled down to a label in the assembly code.
 //! The label is called with the `Call` instruction. Procedures are also
 //! only compiled once, and referenced by their label every other time
 //! they are used.
-//! 
+//!
 //! Procedures are created by the `proc` keyword.
 use crate::asm::{AssemblyProgram, CoreOp, A, FP, SP};
 use crate::lir::{Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Type, TypeCheck};

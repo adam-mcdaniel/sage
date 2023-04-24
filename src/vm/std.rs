@@ -95,7 +95,13 @@ impl StandardProgram {
 /// and un-nest them while preserving the order in which functions are defined.
 ///
 /// All the function definitions will be placed at the top of the returned list.
-fn flatten(code: Vec<StandardOp>) -> (Vec<StandardOp>, HashMap<i32, Vec<StandardOp>>, Vec<StandardOp>) {
+fn flatten(
+    code: Vec<StandardOp>,
+) -> (
+    Vec<StandardOp>,
+    HashMap<i32, Vec<StandardOp>>,
+    Vec<StandardOp>,
+) {
     let mut functions: HashMap<i32, Vec<StandardOp>> = HashMap::new();
 
     // The current function body we are in.
@@ -111,14 +117,16 @@ fn flatten(code: Vec<StandardOp>) -> (Vec<StandardOp>, HashMap<i32, Vec<Standard
     let mut main_instructions = vec![];
     for std_op in code {
         match &std_op {
-            StandardOp::CoreOp(CoreOp::Function) => {},
-            _ => if scope_stack.is_empty() {
-                // If we are not defining a function,
-                // push the instruction to the main instructions.
-                main_instructions.push(std_op.clone());
+            StandardOp::CoreOp(CoreOp::Function) => {}
+            _ => {
+                if scope_stack.is_empty() {
+                    // If we are not defining a function,
+                    // push the instruction to the main instructions.
+                    main_instructions.push(std_op.clone());
+                }
             }
         }
-        
+
         if let StandardOp::CoreOp(op) = &std_op {
             match op {
                 CoreOp::Function => {

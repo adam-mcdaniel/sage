@@ -55,7 +55,6 @@ fn test_lir_examples_helper() {
                 .into_iter()
                 .map(|byte| *byte as isize)
                 .collect::<Vec<_>>();
-    
 
             let lir_src = read_to_string(&path)
                 .expect(&format!("Could not read contents of file `{path:?}`"));

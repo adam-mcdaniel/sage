@@ -31,8 +31,8 @@ use super::{
     AssemblyProgram, Env, Error, Location, F, FP, SP,
 };
 use crate::{
+    io::{Input, InputMode, Output, OutputMode},
     vm::{self, VirtualMachineProgram},
-    io::{Input, Output, InputMode, OutputMode},
 };
 use core::fmt;
 
@@ -802,13 +802,49 @@ impl fmt::Display for CoreOp {
             Self::IsEqual { a, b, dst } => write!(f, "eq {a}, {b}, {dst}"),
             Self::IsNotEqual { a, b, dst } => write!(f, "neq {a}, {b}, {dst}"),
 
-            Self::Get(loc, Input { mode: InputMode::StdinChar, .. })=> write!(f, "get-char {loc}"),
-            Self::Get(loc, Input { mode: InputMode::StdinInt, .. })=> write!(f, "get-int {loc}"),
-            Self::Get(loc, Input { mode: InputMode::StdinFloat, .. })=> write!(f, "get-float {loc}"),
-            Self::Get(loc, i)=> write!(f, "get {loc}, {i}"),
-            Self::Put(loc, Output { mode: OutputMode::StdoutChar, .. })=> write!(f, "put-char {loc}"),
-            Self::Put(loc, Output { mode: OutputMode::StdoutInt, .. })=> write!(f, "put-int {loc}"),
-            Self::Put(loc, Output { mode: OutputMode::StdoutFloat, .. })=> write!(f, "put-float {loc}"),
+            Self::Get(
+                loc,
+                Input {
+                    mode: InputMode::StdinChar,
+                    ..
+                },
+            ) => write!(f, "get-char {loc}"),
+            Self::Get(
+                loc,
+                Input {
+                    mode: InputMode::StdinInt,
+                    ..
+                },
+            ) => write!(f, "get-int {loc}"),
+            Self::Get(
+                loc,
+                Input {
+                    mode: InputMode::StdinFloat,
+                    ..
+                },
+            ) => write!(f, "get-float {loc}"),
+            Self::Get(loc, i) => write!(f, "get {loc}, {i}"),
+            Self::Put(
+                loc,
+                Output {
+                    mode: OutputMode::StdoutChar,
+                    ..
+                },
+            ) => write!(f, "put-char {loc}"),
+            Self::Put(
+                loc,
+                Output {
+                    mode: OutputMode::StdoutInt,
+                    ..
+                },
+            ) => write!(f, "put-int {loc}"),
+            Self::Put(
+                loc,
+                Output {
+                    mode: OutputMode::StdoutFloat,
+                    ..
+                },
+            ) => write!(f, "put-float {loc}"),
             Self::Put(loc, o) => write!(f, "put {loc}, {o}"),
         }
     }

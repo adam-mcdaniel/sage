@@ -72,11 +72,13 @@ fn flatten(code: Vec<CoreOp>) -> (Vec<CoreOp>, HashMap<i32, Vec<CoreOp>>, Vec<Co
     let mut main_instructions = vec![];
     for op in code {
         match &op {
-            CoreOp::Function => {},
-            _ => if scope_stack.is_empty() {
-                // If we are not defining a function,
-                // push the instruction to the main instructions.
-                main_instructions.push(op.clone());
+            CoreOp::Function => {}
+            _ => {
+                if scope_stack.is_empty() {
+                    // If we are not defining a function,
+                    // push the instruction to the main instructions.
+                    main_instructions.push(op.clone());
+                }
             }
         }
 

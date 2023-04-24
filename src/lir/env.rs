@@ -1,5 +1,5 @@
 //! # Environment
-//! 
+//!
 //! This module defines the `Env` type, which is used to store the types, constants, and procedures
 //! defined in a given scope. It also stores the variables defined in the scope, and the their offsets
 //! with respect to the frame pointer.

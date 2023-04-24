@@ -1,7 +1,7 @@
 //! # Constant Expressions
-//! 
+//!
 //! Constant expressions are expressions that can be evaluated at compile time.
-//! 
+//!
 //! They are used in a few places:
 //! - Array lengths
 //! - Getting the size of types and expressions
@@ -10,7 +10,7 @@
 //! - Enum variants
 
 use crate::lir::{
-    CoreBuiltin, Env, Error, Expr, GetSize, GetType, Procedure, Simplify, StandardBuiltin, Type
+    CoreBuiltin, Env, Error, Expr, GetSize, GetType, Procedure, Simplify, StandardBuiltin, Type,
 };
 
 use core::fmt;
@@ -124,10 +124,10 @@ impl ConstExpr {
                         return Err(Error::InvalidAs(
                             Expr::ConstExpr(*expr.clone()),
                             found,
-                            cast_ty.clone()
-                        ))
+                            cast_ty.clone(),
+                        ));
                     }
-    
+
                     expr.eval_checked(env, i)
                 }
 
@@ -216,18 +216,16 @@ impl GetType for ConstExpr {
                     return Err(Error::InvalidAs(
                         Expr::ConstExpr(self.clone()),
                         found,
-                        cast_ty.clone()
-                    ))
+                        cast_ty.clone(),
+                    ));
                 }
 
                 cast_ty
             }
             Self::TypeOf(expr) => {
-                let size = expr.get_type_checked(env, i)?
-                    .to_string()
-                    .len();
+                let size = expr.get_type_checked(env, i)?.to_string().len();
                 Type::Array(Box::new(Type::Char), Box::new(Self::Int(size as i32)))
-            },
+            }
             Self::Null => Type::Pointer(Box::new(Type::Any)),
             Self::None => Type::None,
             Self::SizeOfType(_) | Self::SizeOfExpr(_) | Self::Int(_) => Type::Int,

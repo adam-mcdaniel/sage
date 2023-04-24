@@ -1,17 +1,26 @@
 use super::*;
 
-use crate::{io::*, lir::*, asm::{Location, CoreOp, SP, A, B, C, AssemblyProgram}};
+use crate::{
+    asm::{AssemblyProgram, CoreOp, Location, A, B, C, SP},
+    io::*,
+    lir::*,
+};
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 /// Print a value to a given output.
 #[derive(Clone, Copy)]
 pub enum Put {
     Debug,
-    Display
+    Display,
 }
 
 impl Put {
-    pub fn debug(addr: Location, t: &Type, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    pub fn debug(
+        addr: Location,
+        t: &Type,
+        env: &mut Env,
+        output: &mut dyn AssemblyProgram,
+    ) -> Result<(), Error> {
         match t.clone().simplify(env)? {
             Type::Pointer(x) => {
                 for ch in format!("&{x}").chars() {
@@ -70,12 +79,15 @@ impl Put {
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
-    
+
             Type::Enum(variants) => {
                 for variant in variants.iter() {
                     let variant_id = Type::variant_index(&variants, variant).unwrap();
-    
-                    output.op(CoreOp::Move { src: addr.clone(), dst: A });
+
+                    output.op(CoreOp::Move {
+                        src: addr.clone(),
+                        dst: A,
+                    });
                     output.op(CoreOp::Set(B, variant_id as isize));
                     // Check if the value is the same as the variant ID
                     output.op(CoreOp::IsEqual { a: A, b: B, dst: C });
@@ -84,7 +96,7 @@ impl Put {
                         output.op(CoreOp::Set(A, c as u8 as isize));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
-                    
+
                     for c in format!(" of {t}").chars() {
                         output.op(CoreOp::Set(A, c as u8 as isize));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
@@ -93,12 +105,12 @@ impl Put {
                     output.op(CoreOp::End);
                 }
             }
-    
+
             Type::Array(ty, array_len_expr) => {
                 let array_len = array_len_expr.as_int(env)?;
-    
+
                 let ty_size = ty.get_size(env)? as isize;
-    
+
                 output.op(CoreOp::Set(A, '[' as u8 as isize));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
                 for i in 0..array_len as isize {
@@ -113,7 +125,7 @@ impl Put {
                 output.op(CoreOp::Set(A, ']' as u8 as isize));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
             }
-    
+
             Type::Struct(fields) => {
                 for c in "struct {".chars() {
                     output.op(CoreOp::Set(A, c as u8 as isize));
@@ -139,7 +151,7 @@ impl Put {
                 output.op(CoreOp::Set(A, '}' as u8 as isize));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
             }
-    
+
             Type::Tuple(types) => {
                 output.op(CoreOp::Set(A, '(' as u8 as isize));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
@@ -157,7 +169,7 @@ impl Put {
                 output.op(CoreOp::Set(A, ')' as u8 as isize));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
             }
-    
+
             Type::Proc(args, ret) => {
                 for c in "proc(".chars() {
                     output.op(CoreOp::Set(A, c as u8 as isize));
@@ -179,13 +191,13 @@ impl Put {
                     output.op(CoreOp::Set(A, ch as u8 as isize));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
-    
+
                 for ch in ret.to_string().chars() {
                     output.op(CoreOp::Set(A, ch as u8 as isize));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
-    
+
             Type::Unit(name, ty) => {
                 Self::debug(addr, &ty, env, output)?;
                 for ch in format!(" ({})", name).chars() {
@@ -193,7 +205,7 @@ impl Put {
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
-    
+
             Type::Symbol(name) => {
                 t.type_check(env)?;
                 for ch in name.chars() {
@@ -201,7 +213,7 @@ impl Put {
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
-    
+
             Type::Union(fields) => {
                 for c in "union {".chars() {
                     output.op(CoreOp::Set(A, c as u8 as isize));
@@ -237,7 +249,7 @@ impl Put {
                 output.op(CoreOp::Set(A, '}' as u8 as isize));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
             }
-    
+
             Type::Let(_, _, _) => {
                 return Err(Error::InvalidUnaryOpTypes(Box::new(Self::Debug), t.clone()))
             }
@@ -245,7 +257,12 @@ impl Put {
         Ok(())
     }
 
-    pub fn display(addr: Location, t: &Type, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    pub fn display(
+        addr: Location,
+        t: &Type,
+        env: &mut Env,
+        output: &mut dyn AssemblyProgram,
+    ) -> Result<(), Error> {
         match t.clone().simplify(env)? {
             Type::Cell => {
                 output.op(CoreOp::Put(addr, Output::stdout_int()));
@@ -257,8 +274,11 @@ impl Put {
             Type::Enum(variants) => {
                 for variant in variants.iter() {
                     let variant_id = Type::variant_index(&variants, variant).unwrap();
-    
-                    output.op(CoreOp::Move { src: addr.clone(), dst: A });
+
+                    output.op(CoreOp::Move {
+                        src: addr.clone(),
+                        dst: A,
+                    });
                     output.op(CoreOp::Set(B, variant_id as isize));
                     // Check if the value is the same as the variant ID
                     output.op(CoreOp::IsEqual { a: A, b: B, dst: C });
@@ -270,11 +290,10 @@ impl Put {
                     output.op(CoreOp::End);
                 }
             }
-    
-    
+
             Type::Array(ty, array_len_expr) => {
                 let array_len = array_len_expr.as_int(env)?;
-    
+
                 let ty_size = ty.get_size(env)? as isize;
                 if ty.equals(&Type::Char, env)? {
                     for i in 0..array_len as isize {
@@ -296,7 +315,7 @@ impl Put {
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
-            
+
             _ => {
                 Self::debug(addr, t, env, output)?;
             }
@@ -304,7 +323,6 @@ impl Put {
         Ok(())
     }
 }
-
 
 impl UnaryOp for Put {
     /// Can this unary operation be applied to the given type?
@@ -323,7 +341,12 @@ impl UnaryOp for Put {
     }
 
     /// Compile the unary operation.
-    fn compile_types(&self, ty: &Type, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    fn compile_types(
+        &self,
+        ty: &Type,
+        env: &mut Env,
+        output: &mut dyn AssemblyProgram,
+    ) -> Result<(), Error> {
         // Get the size of the type.
         let size = ty.get_size(env)? as isize;
 
@@ -337,7 +360,7 @@ impl UnaryOp for Put {
         output.op(CoreOp::Pop(None, size as usize));
         Ok(())
     }
-    
+
     /// Clone this operation into a box.
     fn clone_box(&self) -> Box<dyn UnaryOp> {
         Box::new(*self)
@@ -346,18 +369,26 @@ impl UnaryOp for Put {
 
 impl Debug for Put {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{}", match self {
-            Self::Debug => "debug",
-            Self::Display => "put",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Debug => "debug",
+                Self::Display => "put",
+            }
+        )
     }
 }
 
 impl Display for Put {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{}", match self {
-            Self::Debug => "debug",
-            Self::Display => "put",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Debug => "debug",
+                Self::Display => "put",
+            }
+        )
     }
 }

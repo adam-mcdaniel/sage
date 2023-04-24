@@ -1,5 +1,5 @@
 //! # Arithmetic Operations
-//! 
+//!
 //! This module implements several arithmetic operations:
 //! - `Add`
 //! - `Subtract`
@@ -8,7 +8,10 @@
 //! - `Remainder`
 //! - `Power`
 
-use crate::{lir::*, asm::{AssemblyProgram, CoreOp, SP, StandardOp}};
+use crate::{
+    asm::{AssemblyProgram, CoreOp, StandardOp, SP},
+    lir::*,
+};
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 /// An arithmetic operation.
@@ -30,8 +33,9 @@ impl BinaryOp for Arithmetic {
             (Type::Int, Type::Float) | (Type::Float, Type::Int) | (Type::Float, Type::Float) => {
                 Ok(true)
             }
-            (Type::Int | Type::Float, Type::Cell)
-            | (Type::Cell, Type::Int | Type::Float) => Ok(true),
+            (Type::Int | Type::Float, Type::Cell) | (Type::Cell, Type::Int | Type::Float) => {
+                Ok(true)
+            }
             (Type::Unit(name1, a_type), Type::Unit(name2, b_type)) => {
                 // Make sure that the two units are the same.
                 if name1 != name2 {
@@ -42,7 +46,7 @@ impl BinaryOp for Arithmetic {
                 if !a_type.equals(&b_type, env)? {
                     return Ok(false);
                 }
-                
+
                 Ok(true)
             }
             _ => Ok(false),
@@ -56,23 +60,38 @@ impl BinaryOp for Arithmetic {
             (Type::Int, Type::Float) | (Type::Float, Type::Int) | (Type::Float, Type::Float) => {
                 Type::Float
             }
-            (Type::Int | Type::Float, Type::Cell)
-            | (Type::Cell, Type::Int | Type::Float) => Type::Cell,
+            (Type::Int | Type::Float, Type::Cell) | (Type::Cell, Type::Int | Type::Float) => {
+                Type::Cell
+            }
 
             (Type::Unit(name1, a_type), Type::Unit(name2, b_type)) => {
                 // Make sure that the two units are the same.
                 if name1 != name2 {
-                    return Err(Error::InvalidBinaryOp(Box::new(*self), lhs.clone(), rhs.clone()));
+                    return Err(Error::InvalidBinaryOp(
+                        Box::new(*self),
+                        lhs.clone(),
+                        rhs.clone(),
+                    ));
                 }
 
                 // Make sure that inner types are compatible.
                 if !a_type.equals(&b_type, env)? {
-                    return Err(Error::InvalidBinaryOp(Box::new(*self), lhs.clone(), rhs.clone()));
+                    return Err(Error::InvalidBinaryOp(
+                        Box::new(*self),
+                        lhs.clone(),
+                        rhs.clone(),
+                    ));
                 }
-                
+
                 Type::Unit(name1.clone(), a_type.clone())
             }
-            _ => return Err(Error::InvalidBinaryOp(Box::new(*self), lhs.clone(), rhs.clone())),
+            _ => {
+                return Err(Error::InvalidBinaryOp(
+                    Box::new(*self),
+                    lhs.clone(),
+                    rhs.clone(),
+                ))
+            }
         })
     }
 
@@ -97,7 +116,7 @@ impl BinaryOp for Arithmetic {
             (ConstExpr::Int(lhs), Arithmetic::Power, ConstExpr::Int(rhs)) => {
                 Ok(ConstExpr::Int(lhs.pow(rhs as u32)))
             }
-            
+
             (ConstExpr::Float(lhs), Arithmetic::Add, ConstExpr::Float(rhs)) => {
                 Ok(ConstExpr::Float(lhs + rhs))
             }
@@ -113,7 +132,7 @@ impl BinaryOp for Arithmetic {
             | (ConstExpr::Int(b), Arithmetic::Multiply, ConstExpr::Float(a)) => {
                 Ok(ConstExpr::Float(a * b as f64))
             }
-            
+
             (ConstExpr::Float(lhs), Arithmetic::Subtract, ConstExpr::Float(rhs)) => {
                 Ok(ConstExpr::Float(lhs - rhs))
             }
@@ -153,12 +172,22 @@ impl BinaryOp for Arithmetic {
             (ConstExpr::Float(lhs), Arithmetic::Power, ConstExpr::Int(rhs)) => {
                 Ok(ConstExpr::Float(lhs.powf(rhs as f64)))
             }
-            _ => Err(Error::InvalidBinaryOp(Box::new(*self), Expr::ConstExpr(lhs.clone()), Expr::ConstExpr(rhs.clone()))),
+            _ => Err(Error::InvalidBinaryOp(
+                Box::new(*self),
+                Expr::ConstExpr(lhs.clone()),
+                Expr::ConstExpr(rhs.clone()),
+            )),
         }
     }
 
     /// Compile the binary operation.
-    fn compile_types(&self, lhs: &Type, rhs: &Type, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    fn compile_types(
+        &self,
+        lhs: &Type,
+        rhs: &Type,
+        env: &mut Env,
+        output: &mut dyn AssemblyProgram,
+    ) -> Result<(), Error> {
         let src = SP.deref();
         let dst = SP.deref().offset(-1);
         let tmp = SP.deref().offset(1);
@@ -172,11 +201,17 @@ impl BinaryOp for Arithmetic {
             Self::Power => CoreOp::Many(vec![
                 // We can't use the `Pow` operation, because it's not supported by
                 // the core variant. So we have to do it with a loop.
-                CoreOp::Move { src: dst.clone(), dst: tmp.clone() },
+                CoreOp::Move {
+                    src: dst.clone(),
+                    dst: tmp.clone(),
+                },
                 CoreOp::Set(dst.clone(), 1),
                 CoreOp::While(src.clone()),
-                    CoreOp::Mul { src: tmp.clone(), dst },
-                    CoreOp::Dec(src),
+                CoreOp::Mul {
+                    src: tmp.clone(),
+                    dst,
+                },
+                CoreOp::Dec(src),
                 CoreOp::End,
             ]),
         };
@@ -221,10 +256,16 @@ impl BinaryOp for Arithmetic {
 
             (Type::Unit(_name1, a_type), Type::Unit(_name2, b_type)) => {
                 return self.compile_types(&a_type, &b_type, env, output);
-            },
+            }
 
             // Cannot do arithmetic on other pairs of types.
-            _ => return Err(Error::InvalidBinaryOpTypes(Box::new(*self), lhs.clone(), rhs.clone())),
+            _ => {
+                return Err(Error::InvalidBinaryOpTypes(
+                    Box::new(*self),
+                    lhs.clone(),
+                    rhs.clone(),
+                ))
+            }
         }
         // Pop `b` off of the stack: we only needed it to evaluate
         // the arithmetic and store the result to `a` on the stack.

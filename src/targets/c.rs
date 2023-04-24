@@ -17,8 +17,8 @@
 //! does not depend on defining functions at runtime.
 use super::{Architecture, CompiledTarget};
 use crate::{
-    vm::{CoreOp, StandardOp},
     io::{Input, InputMode, Output, OutputMode},
+    vm::{CoreOp, StandardOp},
 };
 
 /// The type for the C target which implements the `Target` trait.
@@ -116,7 +116,9 @@ impl Architecture for C {
             InputMode::Thermometer => Ok("reg.f = 293.15;".to_string()),
             InputMode::Clock => Ok("reg.i = time(NULL);".to_string()),
             InputMode::Random => Ok("reg.i = rand();".to_string()),
-            InputMode::Button => Ok(format!("printf(\"Button #{ch}: \"); reg.i = getchar() == 'y'; while (getchar() != 10);")),
+            InputMode::Button => Ok(format!(
+                "printf(\"Button #{ch}: \"); reg.i = getchar() == 'y'; while (getchar() != 10);"
+            )),
             _ => Err("Input not supported by this target".to_string()),
         }
     }
@@ -149,19 +151,20 @@ union int_or_float *p;
 } tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg;
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);
-"#.to_string();
+"#
+        .to_string();
 
         if !is_core {
             result = "#include <stdlib.h>\n".to_string() + &result;
         }
-        
+
         Some(result)
     }
 
     fn post_funs(&self, funs: Vec<i32>) -> Option<String> {
         let mut result = String::from("int main () {\n");
         for fun in funs {
-            result += &format!("\tfuns[{fun}] = f{fun};\n", fun=fun)
+            result += &format!("\tfuns[{fun}] = f{fun};\n", fun = fun)
         }
         Some(result)
     }

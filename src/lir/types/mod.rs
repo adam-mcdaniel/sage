@@ -6,12 +6,12 @@
 use super::{ConstExpr, Env, Error, Expr, Simplify};
 use core::fmt;
 use std::collections::{BTreeMap, HashSet};
-mod size;
 mod check;
 mod inference;
-pub use size::*;
+mod size;
 pub use check::*;
 pub use inference::*;
+pub use size::*;
 
 /// The representation of a type in the LIR type system.
 #[derive(Clone, Debug, PartialEq)]
@@ -586,7 +586,6 @@ impl Type {
     }
 }
 
-
 impl Simplify for Type {
     fn simplify_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
         let i = i + 1;
@@ -670,7 +669,6 @@ impl Simplify for Type {
         })
     }
 }
-
 
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

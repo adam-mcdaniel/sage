@@ -76,7 +76,6 @@ pub enum InputMode {
     /// Input from a JoyStick the degree of displacement in a given direction (from -128 to 128).
     JoyStick(Direction),
 
-
     ///////////////////////////////////////////////////////////////
     /// Physical sensor input modes
     /// (These should typically be implemented for devices that measure
@@ -95,7 +94,7 @@ pub enum InputMode {
     /// Environment sensor input modes
     /// (These should typically be implemented for devices that measure
     /// the environment, like a weather station or a smart thermostat)
-    ///////////////////////////////////////////////////////////////    
+    ///////////////////////////////////////////////////////////////
     /// Red light intensity (in lux)
     RedLight,
     /// Green light intensity (in lux)
@@ -216,7 +215,7 @@ pub enum OutputMode {
     AnalogPin,
     /// Set the state of a given digital output (0=low, 1=high)
     DigitalPin,
-    
+
     ///////////////////////////////////////////////////////////////
     /// Robotics device output modes
     ///////////////////////////////////////////////////////////////
@@ -289,7 +288,6 @@ pub enum OutputMode {
     /// A custom output mode (for use with a custom output device)
     Custom(String),
 }
-
 
 /// The channel to use for a given I/O mode.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -386,7 +384,6 @@ impl Output {
     }
 }
 
-
 impl Display for Input {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         write!(f, "{} #{}", self.mode, self.channel.0)
@@ -413,26 +410,25 @@ impl Display for InputMode {
             InputMode::StdinInt => write!(f, "stdin.int"),
             // Standard input (float)
             InputMode::StdinFloat => write!(f, "stdin.float"),
-            
+
             ///////////////////////////////////////////////////////////////
             // Special input modes
             ///////////////////////////////////////////////////////////////
             // A random number
             InputMode::Random => write!(f, "random"),
-            
+
             ///////////////////////////////////////////////////////////////
             // User input modes
             // (These should typically be used for games or other interactive programs)
             ///////////////////////////////////////////////////////////////
             // Input from a D-Pad
-            InputMode::DPad(dir) =>  write!(f, "dpad.{dir}"),
+            InputMode::DPad(dir) => write!(f, "dpad.{dir}"),
             // Input from a button (0=not pressed, 1=pressed)
             InputMode::Button => write!(f, "button"),
             // Input from keyboard (ASCII character)
             InputMode::Keyboard => write!(f, "keyboard"),
             // Input from a JoyStick the degree of displacement in a given direction (from -128 to 128).
             InputMode::JoyStick(dir) => write!(f, "joystick.{dir}"),
-
 
             ///////////////////////////////////////////////////////////////
             // Physical sensor input modes
@@ -452,7 +448,7 @@ impl Display for InputMode {
             // Environment sensor input modes
             // (These should typically be implemented for devices that measure
             // the environment, like a weather station or a smart thermostat)
-            ///////////////////////////////////////////////////////////////    
+            ///////////////////////////////////////////////////////////////
             // Red light intensity (in lux)
             InputMode::RedLight => write!(f, "redlight"),
             // Green light intensity (in lux)
@@ -552,7 +548,7 @@ impl Display for OutputMode {
             OutputMode::StderrInt => write!(f, "stderr.int"),
             // Standard error (float)
             OutputMode::StderrFloat => write!(f, "stderr.float"),
-        
+
             ///////////////////////////////////////////////////////////////
             // Alternative output modes for standard output
             ///////////////////////////////////////////////////////////////
@@ -562,13 +558,13 @@ impl Display for OutputMode {
             OutputMode::PrinterInt => write!(f, "printer.int"),
             // Printer (float)
             OutputMode::PrinterFloat => write!(f, "printer.float"),
-        
+
             ///////////////////////////////////////////////////////////////
             // Lighting device output modes
             ///////////////////////////////////////////////////////////////
             // Set the brightness of a given light (in percent)
             OutputMode::Brightness => write!(f, "brightness"),
-        
+
             ///////////////////////////////////////////////////////////////
             // Electrical device output modes
             ///////////////////////////////////////////////////////////////
@@ -576,7 +572,7 @@ impl Display for OutputMode {
             OutputMode::AnalogPin => write!(f, "analogpin"),
             // Set the state of a given digital output (0=low, 1=high)
             OutputMode::DigitalPin => write!(f, "digitalpin"),
-            
+
             ///////////////////////////////////////////////////////////////
             // Robotics device output modes
             ///////////////////////////////////////////////////////////////
@@ -604,7 +600,7 @@ impl Display for OutputMode {
             OutputMode::Cooler => write!(f, "cooler"),
             // Set the pressure of a given vacuum/pressurizer (atmospheres)
             OutputMode::Pressure => write!(f, "pressure"),
-        
+
             ///////////////////////////////////////////////////////////////
             // Sound output modes
             ///////////////////////////////////////////////////////////////
@@ -618,7 +614,7 @@ impl Display for OutputMode {
             OutputMode::SpeakerVolume => write!(f, "speakervolume"),
             // Set the frequency of a given speaker (in hertz)
             OutputMode::SpeakerFrequency => write!(f, "speakerfrequency"),
-        
+
             ///////////////////////////////////////////////////////////////
             // Display output modes
             ///////////////////////////////////////////////////////////////
@@ -642,7 +638,7 @@ impl Display for OutputMode {
             OutputMode::SetCursorChar(c) => write!(f, "setcursorchar.{c}"),
             // Set the color of a given pixel on the display
             OutputMode::SetCursorPixel(c) => write!(f, "setcursorpixel.{c}"),
-        
+
             ///////////////////////////////////////////////////////////////
             // Custom output modes
             ///////////////////////////////////////////////////////////////
@@ -660,38 +656,50 @@ impl Display for Channel {
 
 impl Display for Direction {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{}", match self {
-            Direction::Up => "up",
-            Direction::Down => "down",
-            Direction::Left => "left",
-            Direction::Right => "right",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Direction::Up => "up",
+                Direction::Down => "down",
+                Direction::Left => "left",
+                Direction::Right => "right",
+            }
+        )
     }
 }
 
 impl Display for Axis {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{}", match self {
-            Axis::X => "x",
-            Axis::Y => "y",
-            Axis::Z => "z",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Axis::X => "x",
+                Axis::Y => "y",
+                Axis::Z => "z",
+            }
+        )
     }
 }
 
 impl Display for Color {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{}", match self {
-            Color::Red => "red",
-            Color::Green => "green",
-            Color::Blue => "blue",
-            Color::Yellow => "yellow",
-            Color::Magenta => "magenta",
-            Color::Cyan => "cyan",
-            Color::White => "white",
-            Color::Black => "black",
-            Color::Orange => "orange",
-            Color::RGB(r, g, b) => return write!(f, "rgb({},{},{})", r, g, b),
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Color::Red => "red",
+                Color::Green => "green",
+                Color::Blue => "blue",
+                Color::Yellow => "yellow",
+                Color::Magenta => "magenta",
+                Color::Cyan => "cyan",
+                Color::White => "white",
+                Color::Black => "black",
+                Color::Orange => "orange",
+                Color::RGB(r, g, b) => return write!(f, "rgb({},{},{})", r, g, b),
+            }
+        )
     }
 }

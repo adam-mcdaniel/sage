@@ -1,11 +1,11 @@
 //! # Type Inference
-//! 
+//!
 //! This module contains the type inference algorithm for the language.
 //!
 //! Type inference is done with one trait: `GetType`. This trait allows
 //! the type of any expression, constant expression, or other type to be
 //! inferred under a given environment.
-//! 
+//!
 //! The algorithm should ***always*** halt, and any infinite recursion
 //! or stack overflow is a [bug that should be reported](https://github.com/adam-mcdaniel/sage/issues/new).
 
@@ -30,7 +30,7 @@ impl GetType for Expr {
         Ok(match self {
             Self::Match(expr, branches) => {
                 for (pat, branch) in branches {
-                    return pat.get_branch_result_type(&expr, branch, env)
+                    return pat.get_branch_result_type(&expr, branch, env);
                 }
                 Type::None
             }

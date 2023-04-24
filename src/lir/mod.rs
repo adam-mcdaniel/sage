@@ -65,16 +65,15 @@
 //! *inlined* recursive types, mutually recursive types, recursive functions, and core builtins are all supported without a problem.
 //! **The LIR compiler will only use a standard instruction if it has to.**
 
+mod compile;
 mod env;
 mod expr;
 mod types;
-mod compile;
 
-
+pub use compile::*;
 pub use env::*;
 pub use expr::*;
 pub use types::*;
-pub use compile::*;
 
 /// Simplify an expression while maintaining structural equality.
 pub trait Simplify: Sized {
@@ -135,7 +134,7 @@ pub enum Error {
     InvalidAssignOp(Box<dyn AssignOp>, Expr, Expr),
     /// Invalid assign op types (incorrect types).
     InvalidAssignOpTypes(Box<dyn AssignOp>, Type, Type),
-    
+
     /// Mismatched types
     MismatchedTypes {
         expected: Type,

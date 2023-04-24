@@ -71,7 +71,8 @@ impl TestingDevice {
     }
 
     fn put_char(&mut self, ch: char) -> Result<(), String> {
-        self.output.push((ch as usize as isize, Output::stdout_char()));
+        self.output
+            .push((ch as usize as isize, Output::stdout_char()));
         Ok(())
     }
 
@@ -179,7 +180,7 @@ impl Device for TestingDevice {
             _ => {
                 eprintln!("Requested input mode: {}", src.mode);
                 Ok(0)
-            },
+            }
         }
     }
 
@@ -194,7 +195,7 @@ impl Device for TestingDevice {
             _ => {
                 eprintln!("Requested output mode: {} (with output={val})", dst.mode);
                 Ok(())
-            },
+            }
         }
     }
 
@@ -272,9 +273,12 @@ impl Device for StandardDevice {
             InputMode::StdinFloat => as_int(self.get_float()?),
             InputMode::Thermometer => as_int(295.15),
             _ => {
-                eprintln!("Requested input mode: {} (on channel #{})", src.mode, src.channel);
+                eprintln!(
+                    "Requested input mode: {} (on channel #{})",
+                    src.mode, src.channel
+                );
                 0
-            },
+            }
         })
     }
 
@@ -288,8 +292,11 @@ impl Device for StandardDevice {
             OutputMode::StderrInt => eprint!("{}", val),
             OutputMode::StderrFloat => eprint!("{:?}", as_float(val)),
             _ => {
-                eprintln!("Requested output mode: {} (on channel #{}) with output={val}", dst.mode, dst.channel);
-            },
+                eprintln!(
+                    "Requested output mode: {} (on channel #{}) with output={val}",
+                    dst.mode, dst.channel
+                );
+            }
         }
         if stdout().flush().is_err() {
             Err(String::from("could not flush output"))

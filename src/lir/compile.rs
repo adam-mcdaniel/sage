@@ -1,17 +1,19 @@
 //! # Compile
-//! 
+//!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
-//! 
+//!
 //! ## Compilation Process
-//! 
+//!
 //! How does the compiler compile an LIR expression into an assembly program?
-//! 
+//!
 //! 1. First, type check the expression.
 //! 2. Then, attempt to compile the expression into a core assembly program.
 //! 3. If the expression cannot be compiled into a core assembly program, then compile it into a standard assembly program.
 use super::*;
+use crate::asm::{
+    AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
+};
 use crate::NULL;
-use crate::asm::{A, B, C, FP, SP, CoreOp, StandardOp, AssemblyProgram, CoreProgram, StandardProgram};
 
 /// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
@@ -151,7 +153,7 @@ impl Compile for Expr {
                 // Compile under the new scope.
                 body.compile_expr(&mut new_env, output)?;
             }
-            
+
             // Compile a procedure declaration.
             Self::LetProc(name, proc, body) => {
                 // Declare a new scope for the procedure.
@@ -311,7 +313,7 @@ impl Compile for Expr {
                 });
                 output.op(CoreOp::Pop(None, var_size));
             }
-            
+
             // Compile a let statement with multiple variables.
             Self::LetVars(vars, body) => {
                 let mut result = *body;
@@ -673,7 +675,6 @@ impl Compile for Expr {
     }
 }
 
-
 /// Compile a constant expression.
 impl Compile for ConstExpr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
@@ -787,12 +788,8 @@ impl Compile for ConstExpr {
                 // Get the type of the expression.
                 let ty = expr.get_type(env)?;
                 // Return the type as a string.
-                ConstExpr::Array(
-                    ty.to_string()
-                        .chars()
-                        .map(|c| ConstExpr::Char(c))
-                        .collect()
-                ).compile_expr(env, output)?
+                ConstExpr::Array(ty.to_string().chars().map(|c| ConstExpr::Char(c)).collect())
+                    .compile_expr(env, output)?
             }
 
             // Compile a variant of an enum.

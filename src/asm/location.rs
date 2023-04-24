@@ -62,8 +62,8 @@
 //!   Indirect(Address(6)) // go the address pointed to by the value in the 6th cell of the tape
 //!   ```
 use crate::{
-    vm::{self, Error, VirtualMachineProgram},
     io::{Input, Output},
+    vm::{self, Error, VirtualMachineProgram},
     NULL,
 };
 use core::fmt;

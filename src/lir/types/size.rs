@@ -1,10 +1,10 @@
 //! # Type Size
-//! 
+//!
 //! This module contains the `GetSize` trait, which is used to calculate the size
 //! of a type in units of cells.
-//! 
+//!
 //! ## Size of a Type
-//! 
+//!
 //! |Type|Size|
 //! |---|---|
 //! |`None`|0|
@@ -48,7 +48,7 @@ impl GetSize for Type {
             // The `Any` type is really a placeholder for a type that is not yet
             // known. It *does* have a size, unlike `None` and `Never`, but we
             // don't know what it is yet. So we return an error.
-            // 
+            //
             // **Its size is undefined.**
             Self::Any => return Err(Error::UnsizedType(self.clone())),
 
@@ -117,7 +117,7 @@ impl GetSize for Type {
 }
 
 /// Implement `GetSize` for any type that implements `GetType`.
-/// 
+///
 /// We can do this because the size of a variable should be exactly
 /// the size of its type.
 impl<T> GetSize for T

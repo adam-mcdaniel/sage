@@ -40,8 +40,8 @@ pub mod c;
 pub use c::*;
 
 use crate::{
-    vm::{self, *},
     io::{Input, Output},
+    vm::{self, *},
 };
 
 /// A trait for a target architecture to be compiled to.
@@ -90,7 +90,7 @@ pub trait Architecture {
     fn pre_funs(&self, _funs: Vec<i32>) -> Option<String> {
         None
     }
-    
+
     /// The code after the function definitions.
     fn post_funs(&self, _funs: Vec<i32>) -> Option<String> {
         None
@@ -113,7 +113,14 @@ pub trait Architecture {
 
 /// Implement a compiler for the given target.
 pub trait CompiledTarget: Architecture {
-    fn build_op(&self, op: &vm::CoreOp, matching_ops: &mut Vec<vm::CoreOp>, matching_funs: &mut Vec<usize>, current_fun: &mut usize, indent: &mut usize) -> Result<String, String> {
+    fn build_op(
+        &self,
+        op: &vm::CoreOp,
+        matching_ops: &mut Vec<vm::CoreOp>,
+        matching_funs: &mut Vec<usize>,
+        current_fun: &mut usize,
+        indent: &mut usize,
+    ) -> Result<String, String> {
         Ok(match op {
             CoreOp::Function => {
                 matching_ops.push(op.clone());
@@ -179,9 +186,18 @@ pub trait CompiledTarget: Architecture {
         })
     }
 
-    fn build_std_op(&self, std_op: &vm::StandardOp, matching_ops: &mut Vec<vm::CoreOp>, matching_funs: &mut Vec<usize>, current_fun: &mut usize, indent: &mut usize) -> Result<String, String> {
+    fn build_std_op(
+        &self,
+        std_op: &vm::StandardOp,
+        matching_ops: &mut Vec<vm::CoreOp>,
+        matching_funs: &mut Vec<usize>,
+        current_fun: &mut usize,
+        indent: &mut usize,
+    ) -> Result<String, String> {
         match std_op {
-            StandardOp::CoreOp(op) => self.build_op(op, matching_ops, matching_funs, current_fun, indent),
+            StandardOp::CoreOp(op) => {
+                self.build_op(op, matching_ops, matching_funs, current_fun, indent)
+            }
             other => self.std_op(other),
         }
     }
@@ -199,20 +215,36 @@ pub trait CompiledTarget: Architecture {
 
         let mut indent = 0;
 
-        result += &self.pre_funs(function_defs.keys().cloned().collect()).unwrap_or("".to_string());
+        result += &self
+            .pre_funs(function_defs.keys().cloned().collect())
+            .unwrap_or("".to_string());
         for i in 0..function_defs.len() as i32 {
             let f = &function_defs[&i];
             for op in f {
                 result += &tab.repeat(indent);
-                result += &self.build_op(&op, &mut matching_ops, &mut matching_funs, &mut current_fun, &mut indent)?;
+                result += &self.build_op(
+                    &op,
+                    &mut matching_ops,
+                    &mut matching_funs,
+                    &mut current_fun,
+                    &mut indent,
+                )?;
                 result += &self.postop().unwrap_or("".to_string());
             }
         }
-        result += &self.post_funs(function_defs.keys().cloned().collect()).unwrap_or("".to_string());
+        result += &self
+            .post_funs(function_defs.keys().cloned().collect())
+            .unwrap_or("".to_string());
         indent = 1;
         for op in main_ops {
             result += &tab.repeat(indent);
-            result += &self.build_op(&op, &mut matching_ops, &mut matching_funs, &mut current_fun, &mut indent)?;
+            result += &self.build_op(
+                &op,
+                &mut matching_ops,
+                &mut matching_funs,
+                &mut current_fun,
+                &mut indent,
+            )?;
             result += &self.postop().unwrap_or("".to_string());
         }
 
@@ -231,20 +263,36 @@ pub trait CompiledTarget: Architecture {
         let tab = self.indentation().unwrap_or("".to_string());
 
         let mut indent = 0;
-        result += &self.pre_funs(function_defs.keys().cloned().collect()).unwrap_or("".to_string());
+        result += &self
+            .pre_funs(function_defs.keys().cloned().collect())
+            .unwrap_or("".to_string());
         for i in 0..function_defs.len() as i32 {
             let f = &function_defs[&i];
             for op in f {
                 result += &tab.repeat(indent);
-                result += &self.build_std_op(&op, &mut matching_ops, &mut matching_funs, &mut current_fun, &mut indent)?;
+                result += &self.build_std_op(
+                    &op,
+                    &mut matching_ops,
+                    &mut matching_funs,
+                    &mut current_fun,
+                    &mut indent,
+                )?;
                 result += &self.postop().unwrap_or("".to_string());
             }
         }
-        result += &self.post_funs(function_defs.keys().cloned().collect()).unwrap_or("".to_string());
+        result += &self
+            .post_funs(function_defs.keys().cloned().collect())
+            .unwrap_or("".to_string());
         indent = 1;
         for op in main_ops {
             result += &tab.repeat(indent);
-            result += &self.build_std_op(&op, &mut matching_ops, &mut matching_funs, &mut current_fun, &mut indent)?;
+            result += &self.build_std_op(
+                &op,
+                &mut matching_ops,
+                &mut matching_funs,
+                &mut current_fun,
+                &mut indent,
+            )?;
             result += &self.postop().unwrap_or("".to_string());
         }
 

@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use core::fmt::{Display, Formatter, Result as FmtResult};
 use crate::lir::*;
+use core::fmt::{Display, Formatter, Result as FmtResult};
+use std::collections::HashMap;
 
 /// A pattern which can be matched against an expression.
-/// 
+///
 /// Patterns are used in the `match` expression, and in the `let` expression.
 /// Patterns can either `match` or `bind` to an expression.
 /// When `match`ing, the pattern just checks if the expression matches the pattern.
@@ -54,7 +54,12 @@ impl Pattern {
     }
 
     /// Get the type of a branch with a given expression matched to this pattern.
-    pub fn get_branch_result_type(&self, expr: &Expr, branch: &Expr, env: &Env) -> Result<Type, Error> {
+    pub fn get_branch_result_type(
+        &self,
+        expr: &Expr,
+        branch: &Expr,
+        env: &Env,
+    ) -> Result<Type, Error> {
         // Get the type of the expression being matched.
         let ty = expr.get_type(env)?;
         // Get the bindings for the pattern.
@@ -78,7 +83,8 @@ impl Pattern {
         // Get the type of the branch as a result of the match.
         let expected = self.get_branch_result_type(matching_expr, branch, env)?;
         // Type-check the expression generated to match the pattern.
-        self.matches(&matching_expr, &matching_ty, env)?.type_check(env)?;
+        self.matches(&matching_expr, &matching_ty, env)?
+            .type_check(env)?;
         // Generate an expression with the bindings defined for the branch.
         let result_expr = self.bind(&matching_expr, &matching_ty, &branch, env)?;
         // Type-check the expression generated to bind the pattern.
@@ -92,7 +98,7 @@ impl Pattern {
                 expected,
                 found,
                 expr: matching_expr.clone(),
-            })
+            });
         }
         // If no error was returned, the type-checking succeeded.
         Ok(())
@@ -100,7 +106,13 @@ impl Pattern {
 
     /// Generate an `if let`expression, which matches a given `expr`, and executes
     /// `then` if the expression matches the pattern, and `else_` otherwise.
-    pub fn if_let_pattern(&self, expr: &Expr, then: &Expr, else_: &Expr, env: &Env) -> Result<Expr, Error> {
+    pub fn if_let_pattern(
+        &self,
+        expr: &Expr,
+        then: &Expr,
+        else_: &Expr,
+        env: &Env,
+    ) -> Result<Expr, Error> {
         // Create a var which is used to do pattern matching instead of the original expression.
         // This is to avoid evaluating the expression multiple times.
         let var_name = expr.to_string() + "__PATTERN_MATCH";
@@ -116,10 +128,15 @@ impl Pattern {
             // and evaluate the `then` expression.
             Box::new(self.bind(&var, &ty, &then, env)?),
             // Otherwise, evaluate the `else_` expression.
-            Box::new(else_.clone())
+            Box::new(else_.clone()),
         );
         // Create a new environment with the bindings and evaluate the `if let` expression.
-        Ok(Expr::let_var(var_name, None, expr.clone(), self.bind(&var, &ty, &if_let, env)?))
+        Ok(Expr::let_var(
+            var_name,
+            None,
+            expr.clone(),
+            self.bind(&var, &ty, &if_let, env)?,
+        ))
     }
 
     /// Generate an expression which evaluates a `match` expression, which matches
@@ -141,7 +158,11 @@ impl Pattern {
     /// A helper function for generating a `match` expression.
     /// This function simply generates code which matches a given `expr` against a set of patterns and branches.
     /// It does not prevent multiple evaluations of the `expr`.
-    fn match_pattern_helper(expr: &Expr, branches: &[(Self, Expr)], env: &Env) -> Result<Expr, Error> {
+    fn match_pattern_helper(
+        expr: &Expr,
+        branches: &[(Self, Expr)],
+        env: &Env,
+    ) -> Result<Expr, Error> {
         // Get the type of the expression being matched.
         let ty = expr.get_type(env)?;
         // The result of the `match` expression.
@@ -157,27 +178,41 @@ impl Pattern {
             result = Expr::If(
                 Box::new(cond),
                 Box::new(pattern.bind(&expr, &ty, ret, env)?),
-                Box::new(result)
+                Box::new(result),
             );
         }
         Ok(result)
     }
 
     /// Get the map of new variables and their types which are bound by this pattern.
-    /// 
+    ///
     /// For example `(a, b)` binds the variables `a` and `b` to the first and second
     /// elements of the tuple respectively. This function would return a map with
     /// the keys `a` and `b` and the values being their types.
-    pub fn get_bindings(&self, expr: &Expr, ty: &Type, env: &Env) -> Result<HashMap<String, Type>, Error> {
+    pub fn get_bindings(
+        &self,
+        expr: &Expr,
+        ty: &Type,
+        env: &Env,
+    ) -> Result<HashMap<String, Type>, Error> {
         Ok(match (self, ty) {
             // If the pattern is a tuple, and the type is a tuple, then
             // get the bindings for each element of the tuple.
             (Self::Tuple(patterns), Type::Tuple(item_types)) => {
                 let mut result = HashMap::new();
                 // Iterate over the patterns and types of the tuple.
-                for (i, (pattern, item_type)) in patterns.iter().zip(item_types.iter()).enumerate() {
+                for (i, (pattern, item_type)) in patterns.iter().zip(item_types.iter()).enumerate()
+                {
                     // Get the bindings for the pattern and add them to the result.
-                    result.extend(pattern.get_bindings(&expr.clone().field(ConstExpr::Int(i as i32)), item_type, env)?.into_iter())
+                    result.extend(
+                        pattern
+                            .get_bindings(
+                                &expr.clone().field(ConstExpr::Int(i as i32)),
+                                item_type,
+                                env,
+                            )?
+                            .into_iter(),
+                    )
                 }
                 // Return the result.
                 result
@@ -193,11 +228,19 @@ impl Pattern {
                     // get the bindings for the pattern and add them to the result.
                     if let Some(item_type) = item_types.get(name) {
                         // Get the bindings for the pattern and add them to the result.
-                        result.extend(pattern.get_bindings(&expr.clone().field(ConstExpr::Symbol(name.clone())), item_type, env)?.into_iter())
+                        result.extend(
+                            pattern
+                                .get_bindings(
+                                    &expr.clone().field(ConstExpr::Symbol(name.clone())),
+                                    item_type,
+                                    env,
+                                )?
+                                .into_iter(),
+                        )
                     } else {
                         // If the struct does not have a field with the given name, then
                         // return an error.
-                        return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
+                        return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
                     }
                 }
                 result
@@ -212,10 +255,7 @@ impl Pattern {
             }
 
             // If the pattern is a wildcard, then return an empty map (no bindings).
-            (Self::Wildcard, _)
-            | (Self::ConstExpr(_), _) => {
-                HashMap::new()
-            }
+            (Self::Wildcard, _) | (Self::ConstExpr(_), _) => HashMap::new(),
 
             // If the pattern is an alternative, then get the bindings for each pattern
             (Self::Alt(patterns), _) => {
@@ -230,14 +270,14 @@ impl Pattern {
                     } else if result != bindings {
                         // If the bindings for this pattern are different to the previous patterns,
                         // then return an error.
-                        return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
+                        return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
                     }
                 }
                 // Return the result.
                 result
             }
 
-            _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
+            _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone())),
         })
     }
 
@@ -254,18 +294,20 @@ impl Pattern {
                 // If the number of patterns does not match the number of members,
                 // then return an error.
                 if patterns.len() != item_types.len() {
-                    return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
+                    return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
                 }
 
                 // Iterate over the patterns and types of the tuple.
-                for (i, (pattern, item_type)) in patterns.iter().zip(item_types.iter()).enumerate() {
+                for (i, (pattern, item_type)) in patterns.iter().zip(item_types.iter()).enumerate()
+                {
                     // Check if the pattern matches the element of the tuple.
-                    result = result.and(
-                        pattern.matches(&expr.clone().field(ConstExpr::Int(i as i32)), 
-                        item_type, env)?
-                    );
+                    result = result.and(pattern.matches(
+                        &expr.clone().field(ConstExpr::Int(i as i32)),
+                        item_type,
+                        env,
+                    )?);
                 }
-                
+
                 // Return the result.
                 result
             }
@@ -279,7 +321,7 @@ impl Pattern {
                 // If the number of patterns does not match the number of members,
                 // then return an error.
                 if patterns.len() != item_types.len() {
-                    return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
+                    return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
                 }
 
                 // Iterate over the field names and patterns of the struct.
@@ -288,14 +330,15 @@ impl Pattern {
                     // check if the pattern matches the field.
                     if let Some(item_type) = item_types.get(name) {
                         // Check if the pattern matches the field.
-                        result = result.and(
-                            pattern.matches(&expr.clone().field(ConstExpr::Symbol(name.clone())), 
-                            item_type, env)?
-                        );
+                        result = result.and(pattern.matches(
+                            &expr.clone().field(ConstExpr::Symbol(name.clone())),
+                            item_type,
+                            env,
+                        )?);
                     } else {
                         // If the struct does not have a field with the given name, then
                         // return an error.
-                        return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
+                        return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
                     }
                 }
 
@@ -312,8 +355,7 @@ impl Pattern {
             // If the pattern is a constant expression, it will match any expression
             // which is equal to the constant expression.
             (Self::ConstExpr(const_expr), _) => {
-                expr.clone()
-                    .eq(Expr::ConstExpr(const_expr.clone()))
+                expr.clone().eq(Expr::ConstExpr(const_expr.clone()))
             }
 
             // If the pattern is an alternative, then check if any of the patterns match.
@@ -325,25 +367,23 @@ impl Pattern {
                 for pattern in patterns.iter() {
                     // Check if the pattern matches the expression.
                     // If any of the patterns match, then the alternative matches.
-                    result = result.or(
-                        pattern.matches(expr, ty, env)?
-                    );
+                    result = result.or(pattern.matches(expr, ty, env)?);
                 }
 
                 // Return the result.
                 result
             }
-            
-            _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
+
+            _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone())),
         })
     }
 
     /// Bind the pattern to the given expression.
-    /// 
-    /// This will take the given `ret` expression, and return a new expression 
+    ///
+    /// This will take the given `ret` expression, and return a new expression
     /// which will evaluate to the same value as `ret`, but with the pattern bound
     /// in the environment.
-    /// 
+    ///
     /// Binding a pattern simply means that each `Symbol` in the pattern will be
     /// added to the environment, and will be bound to the corresponding value in
     /// the expression which is being matched.
@@ -355,9 +395,15 @@ impl Pattern {
                 // The result of the binding.
                 let mut result = ret.clone();
                 // Iterate over the patterns and types of the tuple.
-                for (i, (pattern, item_type)) in patterns.iter().zip(item_types.iter()).enumerate() {
+                for (i, (pattern, item_type)) in patterns.iter().zip(item_types.iter()).enumerate()
+                {
                     // Bind the sub-pattern to the element of the tuple.
-                    result = pattern.bind(&expr.clone().field(ConstExpr::Int(i as i32)), item_type, &result, env)?;
+                    result = pattern.bind(
+                        &expr.clone().field(ConstExpr::Int(i as i32)),
+                        item_type,
+                        &result,
+                        env,
+                    )?;
                 }
                 // Return the result.
                 result
@@ -374,11 +420,16 @@ impl Pattern {
                     // bind the sub-pattern to the field.
                     if let Some(item_type) = item_types.get(name) {
                         // Bind the sub-pattern to the field.
-                        result = pattern.bind(&expr.clone().field(ConstExpr::Symbol(name.clone())), item_type, &result, env)?;
+                        result = pattern.bind(
+                            &expr.clone().field(ConstExpr::Symbol(name.clone())),
+                            item_type,
+                            &result,
+                            env,
+                        )?;
                     } else {
                         // If the struct does not have a field with the given name, then
                         // return an error.
-                        return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
+                        return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
                     }
                 }
 
@@ -390,12 +441,9 @@ impl Pattern {
             (Self::Symbol(name), ty) => {
                 Expr::let_var(name.clone(), Some(ty.clone()), expr.clone(), ret.clone())
             }
-            
+
             // If the pattern is a wildcard, then it will not add any bindings.
-            (Self::Wildcard, _)
-            | (Self::ConstExpr(_), _) => {
-                ret.clone()
-            }
+            (Self::Wildcard, _) | (Self::ConstExpr(_), _) => ret.clone(),
 
             // If the pattern is an alternative, then bind the first pattern.
             // All their bindings will be the same, so it doesn't matter which one
@@ -409,8 +457,8 @@ impl Pattern {
                 }
                 result
             }
-            
-            _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
+
+            _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone())),
         })
     }
 }

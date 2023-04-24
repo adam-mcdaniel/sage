@@ -1,5 +1,5 @@
 //! # Type Checking
-//! 
+//!
 //! This module contains the type checking logic for the Lower Intermediate Representation.
 //! Type checking is the process of ensuring that the types of expressions are sound.
 //! This performs a number of checks, including:
@@ -12,7 +12,7 @@
 use super::*;
 
 /// A trait used to enforce type checking.
-/// 
+///
 /// Whenever this is applied, it will return `Ok(())`
 /// if the typing is sound, and `Err(...)` if it is not.
 pub trait TypeCheck {
@@ -103,7 +103,6 @@ impl TypeCheck for Type {
     }
 }
 
-
 /// Check the type-soundness of a given expression.
 impl TypeCheck for Expr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
@@ -160,7 +159,7 @@ impl TypeCheck for Expr {
                             return Err(Error::MismatchedTypes {
                                 found: branch_ty,
                                 expected: result_ty.clone(),
-                                expr: branch.clone()
+                                expr: branch.clone(),
                             });
                         }
                     } else {
@@ -522,8 +521,8 @@ impl TypeCheck for Expr {
                             return Err(Error::MismatchedTypes {
                                 expected: last_type,
                                 found: item_type,
-                                expr: self.clone()
-                            })
+                                expr: self.clone(),
+                            });
                         }
                     }
                     last_type = Some(item_type);
@@ -629,12 +628,11 @@ impl TypeCheck for Expr {
     }
 }
 
-
 // Typecheck a constant expression.
 impl TypeCheck for ConstExpr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
         match self {
-            // These are all guaranteed to be valid, or 
+            // These are all guaranteed to be valid, or
             // to fail at compile time.
             Self::None
             | Self::Null
@@ -656,8 +654,8 @@ impl TypeCheck for ConstExpr {
                     return Err(Error::InvalidAs(
                         Expr::ConstExpr(*expr.clone()),
                         found,
-                        cast_ty.clone()
-                    ))
+                        cast_ty.clone(),
+                    ));
                 }
                 // If it is, return success.
                 Ok(())
@@ -736,8 +734,8 @@ impl TypeCheck for ConstExpr {
                             return Err(Error::MismatchedTypes {
                                 expected: last_type,
                                 found: item_type,
-                                expr: Expr::ConstExpr(self.clone())
-                            })
+                                expr: Expr::ConstExpr(self.clone()),
+                            });
                         }
                     }
                     last_type = Some(item_type);
@@ -775,7 +773,6 @@ impl TypeCheck for ConstExpr {
                         }
                         Ok(())
                     } else {
-
                         Err(Error::VariantNotFound(t.clone(), variant.clone()))
                     }
                 } else {
