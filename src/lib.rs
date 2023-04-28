@@ -19,9 +19,9 @@
 //!
 //! This crate implements a compiler for the sage programming language
 //! and its low level virtual machine.
-//! 
+//!
 //! ## What is Sage?
-//! 
+//!
 //! Sage is a programming language with a low level virtual machine based on a Turing tape.
 //! The sage virtual machine has a read/write head and a single register.
 //! The read/write head moves around the tape, and uses the register as an accumulator.
@@ -32,7 +32,7 @@
 //! the same time complexity as they would on x86, but with the smallest possible number of instructions. This allows sage
 //! code to be *maximally* portable: [sage's core instruction set](https://github.com/adam-mcdaniel/sage/blob/main/CORE.md) could be implemented in hardware much easier
 //! than any modern architecture due to its very small pool of opcodes and their simplicity.
-//! 
+//!
 //! ## Index
 //!
 //! 1. [The Lower Intermediate Representation](./lir/index.html)
