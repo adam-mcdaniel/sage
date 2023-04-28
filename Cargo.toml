@@ -15,11 +15,11 @@ path = "src/cli.rs"
 [dependencies]
 maplit = "1.0.2"
 lazy_static = "1.4.0"
-lalrpop-util = "0.19.9"
-lalrpop = "0.19.9"
+lalrpop-util = "0.19.8"
+lalrpop = { version = "=0.19.9", features = [ "lexer" ] }
 clap = { version ="4.2.4", features = ["derive", "cargo"] }
 no-comment = "0.0.3"
 
 # Add a build-time dependency on the lalrpop library:
 [build-dependencies]
-lalrpop = "0.19.9"
+lalrpop = { version = "=0.19.9", features = [ "lexer" ] }
