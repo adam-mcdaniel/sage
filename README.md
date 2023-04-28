@@ -9,8 +9,11 @@
   </p>
 </div>
 
-
 [***Here's a link to the online compiler with a builtin virtual machine interpreter!***](https://adam-mcdaniel.net/sage)
+
+## What is Sage?
+
+Sage is a programming language with a low level virtual machine based on a Turing tape. The sage virtual machine has a read/write head and a single register. The read/write head moves around the tape, and uses the register as an accumulator. All worldly input is done through a single instruction, and all worldly output is done through a single instruction. Functionality which cannot be achieved with any algorithm, such as using an operating system's system calls to write to persistent memory, is also done through two instructions: one for sending values to the virtual machine's foreign function interface, and one for receiving. The goal of the virtual machine is to allow algorithms to be expressed in the same time complexity as they would on x86, but with the smallest possible number of instructions. This allows sage code to be *maximally* portable: [sage's core instruction set](./CORE.md) could be implemented in hardware much easier than any modern architecture due to its very small pool of opcodes and their simplicity.
 
 ## The Compiler Caveat
 
