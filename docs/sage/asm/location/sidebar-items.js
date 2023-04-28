@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":[["A","The “A” general purpose register."],["B","The “B” general purpose register."],["C","The “C” general purpose register."],["D","The “D” general purpose register."],["E","The “E” general purpose register."],["F","The “F” general purpose register."],["FP","The frame pointer register."],["SP","The stack pointer register."]],"enum":[["Location","A location in memory (on the tape of the virtual machine)."]]};
+window.SIDEBAR_ITEMS = {"constant":["A","B","C","D","E","F","FP","SP"],"enum":["Location"]};

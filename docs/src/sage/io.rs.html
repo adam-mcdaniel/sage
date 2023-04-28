@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/io.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>io.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-93196c7a1c3542a8.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-3367e395607fafc1.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../sage/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/io.rs`."><title>io.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" disabled href="../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" disabled href="../../static.files/ayu-be46fdc453a55015.css"><script src="../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../sage/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -695,6 +695,14 @@
 <a href="#695" id="695">695</a>
 <a href="#696" id="696">696</a>
 <a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core::fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 
 <span class="doccomment">/// The different axes an input or output might use.
@@ -773,7 +781,6 @@
     <span class="doccomment">/// Input from a JoyStick the degree of displacement in a given direction (from -128 to 128).
     </span>JoyStick(Direction),
 
-
     <span class="comment">///////////////////////////////////////////////////////////////
     </span><span class="doccomment">/// Physical sensor input modes
     /// (These should typically be implemented for devices that measure
@@ -792,7 +799,7 @@
     </span><span class="doccomment">/// Environment sensor input modes
     /// (These should typically be implemented for devices that measure
     /// the environment, like a weather station or a smart thermostat)
-    </span><span class="comment">///////////////////////////////////////////////////////////////    
+    </span><span class="comment">///////////////////////////////////////////////////////////////
     </span><span class="doccomment">/// Red light intensity (in lux)
     </span>RedLight,
     <span class="doccomment">/// Green light intensity (in lux)
@@ -913,7 +920,7 @@
     </span>AnalogPin,
     <span class="doccomment">/// Set the state of a given digital output (0=low, 1=high)
     </span>DigitalPin,
-    
+
     <span class="comment">///////////////////////////////////////////////////////////////
     </span><span class="doccomment">/// Robotics device output modes
     </span><span class="comment">///////////////////////////////////////////////////////////////
@@ -986,7 +993,6 @@
     </span><span class="doccomment">/// A custom output mode (for use with a custom output device)
     </span>Custom(String),
 }
-
 
 <span class="doccomment">/// The channel to use for a given I/O mode.
 </span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -1083,7 +1089,6 @@
     }
 }
 
-
 <span class="kw">impl </span>Display <span class="kw">for </span>Input {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
         <span class="macro">write!</span>(f, <span class="string">&quot;{} #{}&quot;</span>, <span class="self">self</span>.mode, <span class="self">self</span>.channel.<span class="number">0</span>)
@@ -1110,26 +1115,25 @@
             </span>InputMode::StdinInt =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;stdin.int&quot;</span>),
             <span class="comment">// Standard input (float)
             </span>InputMode::StdinFloat =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;stdin.float&quot;</span>),
-            
+
             <span class="comment">///////////////////////////////////////////////////////////////
             // Special input modes
             ///////////////////////////////////////////////////////////////
             // A random number
             </span>InputMode::Random =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;random&quot;</span>),
-            
+
             <span class="comment">///////////////////////////////////////////////////////////////
             // User input modes
             // (These should typically be used for games or other interactive programs)
             ///////////////////////////////////////////////////////////////
             // Input from a D-Pad
-            </span>InputMode::DPad(dir) =&gt;  <span class="macro">write!</span>(f, <span class="string">&quot;dpad.{dir}&quot;</span>),
+            </span>InputMode::DPad(dir) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;dpad.{dir}&quot;</span>),
             <span class="comment">// Input from a button (0=not pressed, 1=pressed)
             </span>InputMode::Button =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;button&quot;</span>),
             <span class="comment">// Input from keyboard (ASCII character)
             </span>InputMode::Keyboard =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;keyboard&quot;</span>),
             <span class="comment">// Input from a JoyStick the degree of displacement in a given direction (from -128 to 128).
             </span>InputMode::JoyStick(dir) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;joystick.{dir}&quot;</span>),
-
 
             <span class="comment">///////////////////////////////////////////////////////////////
             // Physical sensor input modes
@@ -1149,7 +1153,7 @@
             // Environment sensor input modes
             // (These should typically be implemented for devices that measure
             // the environment, like a weather station or a smart thermostat)
-            ///////////////////////////////////////////////////////////////    
+            ///////////////////////////////////////////////////////////////
             // Red light intensity (in lux)
             </span>InputMode::RedLight =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;redlight&quot;</span>),
             <span class="comment">// Green light intensity (in lux)
@@ -1249,7 +1253,7 @@
             </span>OutputMode::StderrInt =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;stderr.int&quot;</span>),
             <span class="comment">// Standard error (float)
             </span>OutputMode::StderrFloat =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;stderr.float&quot;</span>),
-        
+
             <span class="comment">///////////////////////////////////////////////////////////////
             // Alternative output modes for standard output
             ///////////////////////////////////////////////////////////////
@@ -1259,13 +1263,13 @@
             </span>OutputMode::PrinterInt =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;printer.int&quot;</span>),
             <span class="comment">// Printer (float)
             </span>OutputMode::PrinterFloat =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;printer.float&quot;</span>),
-        
+
             <span class="comment">///////////////////////////////////////////////////////////////
             // Lighting device output modes
             ///////////////////////////////////////////////////////////////
             // Set the brightness of a given light (in percent)
             </span>OutputMode::Brightness =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;brightness&quot;</span>),
-        
+
             <span class="comment">///////////////////////////////////////////////////////////////
             // Electrical device output modes
             ///////////////////////////////////////////////////////////////
@@ -1273,7 +1277,7 @@
             </span>OutputMode::AnalogPin =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;analogpin&quot;</span>),
             <span class="comment">// Set the state of a given digital output (0=low, 1=high)
             </span>OutputMode::DigitalPin =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;digitalpin&quot;</span>),
-            
+
             <span class="comment">///////////////////////////////////////////////////////////////
             // Robotics device output modes
             ///////////////////////////////////////////////////////////////
@@ -1301,7 +1305,7 @@
             </span>OutputMode::Cooler =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;cooler&quot;</span>),
             <span class="comment">// Set the pressure of a given vacuum/pressurizer (atmospheres)
             </span>OutputMode::Pressure =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;pressure&quot;</span>),
-        
+
             <span class="comment">///////////////////////////////////////////////////////////////
             // Sound output modes
             ///////////////////////////////////////////////////////////////
@@ -1315,7 +1319,7 @@
             </span>OutputMode::SpeakerVolume =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;speakervolume&quot;</span>),
             <span class="comment">// Set the frequency of a given speaker (in hertz)
             </span>OutputMode::SpeakerFrequency =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;speakerfrequency&quot;</span>),
-        
+
             <span class="comment">///////////////////////////////////////////////////////////////
             // Display output modes
             ///////////////////////////////////////////////////////////////
@@ -1339,7 +1343,7 @@
             </span>OutputMode::SetCursorChar(c) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;setcursorchar.{c}&quot;</span>),
             <span class="comment">// Set the color of a given pixel on the display
             </span>OutputMode::SetCursorPixel(c) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;setcursorpixel.{c}&quot;</span>),
-        
+
             <span class="comment">///////////////////////////////////////////////////////////////
             // Custom output modes
             ///////////////////////////////////////////////////////////////
@@ -1357,40 +1361,52 @@
 
 <span class="kw">impl </span>Display <span class="kw">for </span>Direction {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="kw">match </span><span class="self">self </span>{
-            Direction::Up =&gt; <span class="string">&quot;up&quot;</span>,
-            Direction::Down =&gt; <span class="string">&quot;down&quot;</span>,
-            Direction::Left =&gt; <span class="string">&quot;left&quot;</span>,
-            Direction::Right =&gt; <span class="string">&quot;right&quot;</span>,
-        })
+        <span class="macro">write!</span>(
+            f,
+            <span class="string">&quot;{}&quot;</span>,
+            <span class="kw">match </span><span class="self">self </span>{
+                Direction::Up =&gt; <span class="string">&quot;up&quot;</span>,
+                Direction::Down =&gt; <span class="string">&quot;down&quot;</span>,
+                Direction::Left =&gt; <span class="string">&quot;left&quot;</span>,
+                Direction::Right =&gt; <span class="string">&quot;right&quot;</span>,
+            }
+        )
     }
 }
 
 <span class="kw">impl </span>Display <span class="kw">for </span>Axis {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="kw">match </span><span class="self">self </span>{
-            Axis::X =&gt; <span class="string">&quot;x&quot;</span>,
-            Axis::Y =&gt; <span class="string">&quot;y&quot;</span>,
-            Axis::Z =&gt; <span class="string">&quot;z&quot;</span>,
-        })
+        <span class="macro">write!</span>(
+            f,
+            <span class="string">&quot;{}&quot;</span>,
+            <span class="kw">match </span><span class="self">self </span>{
+                Axis::X =&gt; <span class="string">&quot;x&quot;</span>,
+                Axis::Y =&gt; <span class="string">&quot;y&quot;</span>,
+                Axis::Z =&gt; <span class="string">&quot;z&quot;</span>,
+            }
+        )
     }
 }
 
 <span class="kw">impl </span>Display <span class="kw">for </span>Color {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="kw">match </span><span class="self">self </span>{
-            Color::Red =&gt; <span class="string">&quot;red&quot;</span>,
-            Color::Green =&gt; <span class="string">&quot;green&quot;</span>,
-            Color::Blue =&gt; <span class="string">&quot;blue&quot;</span>,
-            Color::Yellow =&gt; <span class="string">&quot;yellow&quot;</span>,
-            Color::Magenta =&gt; <span class="string">&quot;magenta&quot;</span>,
-            Color::Cyan =&gt; <span class="string">&quot;cyan&quot;</span>,
-            Color::White =&gt; <span class="string">&quot;white&quot;</span>,
-            Color::Black =&gt; <span class="string">&quot;black&quot;</span>,
-            Color::Orange =&gt; <span class="string">&quot;orange&quot;</span>,
-            Color::RGB(r, g, b) =&gt; <span class="kw">return </span><span class="macro">write!</span>(f, <span class="string">&quot;rgb({},{},{})&quot;</span>, r, g, b),
-        })
+        <span class="macro">write!</span>(
+            f,
+            <span class="string">&quot;{}&quot;</span>,
+            <span class="kw">match </span><span class="self">self </span>{
+                Color::Red =&gt; <span class="string">&quot;red&quot;</span>,
+                Color::Green =&gt; <span class="string">&quot;green&quot;</span>,
+                Color::Blue =&gt; <span class="string">&quot;blue&quot;</span>,
+                Color::Yellow =&gt; <span class="string">&quot;yellow&quot;</span>,
+                Color::Magenta =&gt; <span class="string">&quot;magenta&quot;</span>,
+                Color::Cyan =&gt; <span class="string">&quot;cyan&quot;</span>,
+                Color::White =&gt; <span class="string">&quot;white&quot;</span>,
+                Color::Black =&gt; <span class="string">&quot;black&quot;</span>,
+                Color::Orange =&gt; <span class="string">&quot;orange&quot;</span>,
+                Color::RGB(r, g, b) =&gt; <span class="kw">return </span><span class="macro">write!</span>(f, <span class="string">&quot;rgb({},{},{})&quot;</span>, r, g, b),
+            }
+        )
     }
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.1 (8460ca823 2023-03-20)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0 (84c898d65 2023-04-16)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

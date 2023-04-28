@@ -13,6 +13,7 @@ name = "sage"
 path = "src/cli.rs"
 
 [dependencies]
+regex = { version = "1.8.1", features = ["unicode"] }
 maplit = "1.0.2"
 lazy_static = "1.4.0"
 lalrpop-util = "0.19.8"
@@ -22,4 +23,5 @@ no-comment = "0.0.3"
 
 # Add a build-time dependency on the lalrpop library:
 [build-dependencies]
-lalrpop = { version = "=0.19.9", features = [ "lexer" ] }
+regex = { version = "1.8.1", features = ["unicode"] }
+lalrpop = { version = "=0.19.9", features = [ "lexer",  ] }

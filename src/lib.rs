@@ -30,7 +30,7 @@
 //! to persistent memory, is also done through two instructions: one for sending values to the virtual machine's foreign
 //! function interface, and one for receiving. The goal of the virtual machine is to allow algorithms to be expressed in
 //! the same time complexity as they would on x86, but with the smallest possible number of instructions. This allows sage
-//! code to be *maximally* portable: [sage's core instruction set](./CORE.md) could be implemented in hardware much easier
+//! code to be *maximally* portable: [sage's core instruction set](https://github.com/adam-mcdaniel/sage/blob/main/CORE.md) could be implemented in hardware much easier
 //! than any modern architecture due to its very small pool of opcodes and their simplicity.
 //! 
 //! ## Index

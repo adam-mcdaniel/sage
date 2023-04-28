@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["parse_asm","Parse Core and Standard variants of assembly source code. This will return core code by default, but will fallback on standard."],["parse_lir","Parse LIR code as an LIR expression."],["parse_vm","Parse Core and Standard variants of virtual machine source code. This will return core code by default, but will fallback on standard."]]};
+window.SIDEBAR_ITEMS = {"fn":["parse_asm","parse_lir","parse_vm"]};

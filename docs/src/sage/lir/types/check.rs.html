@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/types/check.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>check.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-93196c7a1c3542a8.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-3367e395607fafc1.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/types/check.rs`."><title>check.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-be46fdc453a55015.css"><script src="../../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -782,10 +782,8 @@
 <a href="#782" id="782">782</a>
 <a href="#783" id="783">783</a>
 <a href="#784" id="784">784</a>
-<a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Type Checking
-//! 
+//!
 //! This module contains the type checking logic for the Lower Intermediate Representation.
 //! Type checking is the process of ensuring that the types of expressions are sound.
 //! This performs a number of checks, including:
@@ -798,7 +796,7 @@
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// A trait used to enforce type checking.
-/// 
+///
 /// Whenever this is applied, it will return `Ok(())`
 /// if the typing is sound, and `Err(...)` if it is not.
 </span><span class="kw">pub trait </span>TypeCheck {
@@ -889,7 +887,6 @@
     }
 }
 
-
 <span class="doccomment">/// Check the type-soundness of a given expression.
 </span><span class="kw">impl </span>TypeCheck <span class="kw">for </span>Expr {
     <span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
@@ -946,7 +943,7 @@
                             </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                 found: branch_ty,
                                 expected: result_ty.clone(),
-                                expr: branch.clone()
+                                expr: branch.clone(),
                             });
                         }
                     } <span class="kw">else </span>{
@@ -1263,7 +1260,8 @@
                             expr: <span class="self">self</span>.clone(),
                         });
                     }
-                    <span class="comment">// If the function is a procedure, confirm that the type of each
+                    <span class="comment">// eprintln!(&quot;f: {f:?}\nsupplied args: {args:?}\ninferred: {args_inferred:?}\nexpected: {args_t:?}&quot;);
+                    // If the function is a procedure, confirm that the type of each
                     // argument matches the the type of the supplied value.
                     </span><span class="kw">for </span>(arg_t, arg) <span class="kw">in </span>args_t.into_iter().zip(args_inferred.into_iter()) {
                         <span class="comment">// If the types don&#39;t match, return an error.
@@ -1307,8 +1305,8 @@
                             </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                 expected: last_type,
                                 found: item_type,
-                                expr: <span class="self">self</span>.clone()
-                            })
+                                expr: <span class="self">self</span>.clone(),
+                            });
                         }
                     }
                     last_type = <span class="prelude-val">Some</span>(item_type);
@@ -1414,12 +1412,11 @@
     }
 }
 
-
 <span class="comment">// Typecheck a constant expression.
 </span><span class="kw">impl </span>TypeCheck <span class="kw">for </span>ConstExpr {
     <span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="comment">// These are all guaranteed to be valid, or 
+            <span class="comment">// These are all guaranteed to be valid, or
             // to fail at compile time.
             </span><span class="self">Self</span>::None
             | <span class="self">Self</span>::Null
@@ -1441,8 +1438,8 @@
                     </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidAs(
                         Expr::ConstExpr(<span class="kw-2">*</span>expr.clone()),
                         found,
-                        cast_ty.clone()
-                    ))
+                        cast_ty.clone(),
+                    ));
                 }
                 <span class="comment">// If it is, return success.
                 </span><span class="prelude-val">Ok</span>(())
@@ -1521,8 +1518,8 @@
                             </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                 expected: last_type,
                                 found: item_type,
-                                expr: Expr::ConstExpr(<span class="self">self</span>.clone())
-                            })
+                                expr: Expr::ConstExpr(<span class="self">self</span>.clone()),
+                            });
                         }
                     }
                     last_type = <span class="prelude-val">Some</span>(item_type);
@@ -1560,7 +1557,6 @@
                         }
                         <span class="prelude-val">Ok</span>(())
                     } <span class="kw">else </span>{
-
                         <span class="prelude-val">Err</span>(Error::VariantNotFound(t.clone(), variant.clone()))
                     }
                 } <span class="kw">else </span>{
@@ -1569,5 +1565,6 @@
             }
         }
     }
-}</code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.1 (8460ca823 2023-03-20)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
+}
+</code></pre></div>
+</section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0 (84c898d65 2023-04-16)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
