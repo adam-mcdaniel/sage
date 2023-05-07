@@ -75,6 +75,222 @@ impl Pattern {
         branch.get_type(&new_env)
     }
 
+    /// This associated function returns whether or not a set of patterns is exhaustive,
+    /// that is, whether or not it matches all possible values of a given type.
+    /// This is used to check if a `match` expression is exhaustive.
+    pub fn are_patterns_exhaustive(expr: &Expr, patterns: &[Pattern], matching_expr_ty: &Type, env: &Env) -> Result<bool, Error> {
+        match matching_expr_ty {
+            Type::Bool => {
+                // If the type is a boolean, the patterns are exhaustive if they match both `true` and `false`.
+                let mut true_found = false;
+                let mut false_found = false;
+
+                // Check if the patterns match `true` and `false`.
+                for pattern in patterns {
+                    match pattern {
+                        // If there's a pattern which matches `true`, set `true_found` to true.
+                        Pattern::ConstExpr(ConstExpr::Bool(true)) => true_found = true,
+                        // If there's a pattern which matches `false`, set `false_found` to true.
+                        Pattern::ConstExpr(ConstExpr::Bool(false)) => false_found = true,
+                        // If there's a wildcard or a symbol, set both `true_found` and `false_found` to true.
+                        Pattern::Wildcard | Pattern::Symbol(_) => {
+                            true_found = true;
+                            false_found = true;
+                        }
+                        // Check if the alternate pattern branches are exhaustive.
+                        Pattern::Alt(branches) => {
+                            // If there's an alternate pattern, check if it's exhaustive.
+                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)? {
+                                // If it is exhaustive, set both `true_found` and `false_found` to true.
+                                true_found = true;
+                                false_found = true;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                // Return whether or not both `true` and `false` were matched.
+                Ok(true_found && false_found)
+            }
+
+            // Confirm all the variants of an enum are matched.
+            Type::Enum(items) => {
+                // Create a vector of booleans, one for each variant.
+                let mut found = vec![false; items.len()];
+                // Iterate over the patterns.
+                for pattern in patterns {
+                    match pattern {
+                        // If this pattern matches a variant, set the corresponding boolean to true.    
+                        Pattern::ConstExpr(ConstExpr::Of(ty, name)) => {
+                            // Confirm the type of the expression matches the type of the enum.
+                            if ty.equals(matching_expr_ty, env)? {
+                                // Find the index of the variant.
+                                if let Some(index) = items.iter().position(|item| *item == *name) {
+                                    // Set the corresponding boolean to true.
+                                    found[index] = true;
+                                }
+                            } else {
+                                // If the types don't match (the pattern doesn't match the matched expression's type), return an error.
+                                return Err(Error::MismatchedTypes {
+                                    expected: matching_expr_ty.clone(),
+                                    found: ty.clone(),
+                                    expr: expr.clone()
+                                });
+                            }
+                        }
+                        // If this pattern matches a wildcard or a symbol, set all the booleans to true.
+                        Pattern::Symbol(_) | Pattern::Wildcard => {
+                            for i in 0..items.len() {
+                                found[i] = true;
+                            }
+                        }
+                        // Check if the alternate pattern branches are exhaustive.
+                        Pattern::Alt(branches) => {
+                            // If there's an alternate pattern, check if it's exhaustive.
+                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)? {
+                                // If it is exhaustive, set all the booleans to true.
+                                for i in 0..items.len() {
+                                    found[i] = true;
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                // Return whether or not all the variants are exhaustively matched.
+                Ok(found.iter().all(|b| *b))
+            }
+
+            // Confirm all the fields of a tuple are matched.
+            Type::Tuple(items) => {
+                // Create a vector of booleans, one for each field.
+                let mut found = vec![false; items.len()];
+
+                // Iterate over the patterns.
+                for pattern in patterns {
+                    match pattern {
+                        // If this pattern matches a tuple, recursively check if the patterns are exhaustive.
+                        Pattern::Tuple(patterns) => {
+                            // Iterate over the patterns.
+                            let mut all_found = true;
+                            for (i, pattern) in patterns.iter().enumerate() {
+                                // If the subpattern is non-exhaustive, set `all_found` to false.
+                                if !Self::are_patterns_exhaustive(expr, &[pattern.clone()], &items[i], env)? {
+                                    all_found = false;
+                                }
+                            }
+
+                            // If all the subpatterns are exhaustive, set all the booleans to true.
+                            if all_found {
+                                for i in 0..items.len() {
+                                    if let Some(found) = found.get_mut(i) {
+                                        *found = true;
+                                    }
+                                }
+                            }
+                        }
+                        // If this pattern matches a wildcard or a symbol, set all the booleans to true.
+                        Pattern::Wildcard | Pattern::Symbol(_) => {
+                            for i in 0..items.len() {
+                                if let Some(found) = found.get_mut(i) {
+                                    *found = true;
+                                }
+                            }
+                        }
+                        // Check if the alternate pattern branches are exhaustive.
+                        Pattern::Alt(branches) => {
+                            // If there's an alternate pattern, check if it's exhaustive.
+                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)? {
+                                // If it is exhaustive, set all the booleans to true.
+                                for i in 0..items.len() {
+                                    if let Some(found) = found.get_mut(i) {
+                                        *found = true;
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                // Return whether or not all the fields are exhaustively matched.
+                Ok(found.iter().all(|b| *b))
+            }
+
+            // Confirm all the members of a struct are matched.
+            Type::Struct(members) => {
+                // Create a vector of booleans, one for each member.
+                let mut found = vec![false; members.len()];
+
+                // Iterate over the patterns.
+                for pattern in patterns {
+                    match pattern {
+                        // If this pattern matches a struct, recursively check if the patterns are exhaustive.
+                        Pattern::Struct(patterns) => {
+                            // Iterate over the patterns.    
+                            for (name, pattern) in patterns.iter() {
+                                if let Some(index) = members.iter().position(|member| *member.0 == *name) {
+                                    if let Some(found) = found.get_mut(index) {
+                                        // If the pattern is exhaustive, set the corresponding boolean to true.
+                                        if Self::are_patterns_exhaustive(expr, &[pattern.clone()], &members[name], env)? {
+                                            *found = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // If this pattern matches a wildcard or a symbol, set all the booleans to true.
+                        Pattern::Wildcard | Pattern::Symbol(_) => {
+                            for i in 0..members.len() {
+                                if let Some(found) = found.get_mut(i) {
+                                    *found = true;
+                                }
+                            }
+                        }
+                        // Check if the alternate pattern branches are exhaustive.
+                        Pattern::Alt(branches) => {
+                            // If there's an alternate pattern, check if it's exhaustive.
+                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)? {
+                                // If it is exhaustive, set all the booleans to true.
+                                for i in 0..members.len() {
+                                    if let Some(found) = found.get_mut(i) {
+                                        *found = true;
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                
+                // Return whether or not all the members are exhaustively matched.
+                Ok(found.iter().all(|b| *b))
+            }
+
+            // For any other type, only a default pattern is exhaustive.
+            _ => {
+                for pattern in patterns {
+                    match pattern {
+                        Pattern::Wildcard | Pattern::Symbol(_) => {
+                            return Ok(true)
+                        }
+                        Pattern::Alt(branches) => {
+                            // If there's an alternate pattern, check if it's exhaustive.
+                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)? {
+                                // If it is exhaustive, return `true`.
+                                return Ok(true);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                Ok(false)
+            }
+        }
+    }
+
     /// Type-check a pattern match of an expression against this pattern,
     /// and type-check the branch where the expression is bound to the pattern.
     pub fn type_check(&self, matching_expr: &Expr, branch: &Expr, env: &Env) -> Result<(), Error> {

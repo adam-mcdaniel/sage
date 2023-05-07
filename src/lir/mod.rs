@@ -149,8 +149,19 @@ pub enum Error {
     /// Tried to create an array with a negative length.
     NegativeArrayLength(Expr),
 
+    /// Tried to use a pattern that is not valid for the given type.
     InvalidPatternForType(Type, Pattern),
+    /// Tried to use a pattern that is not valid for the given expression.
     InvalidPatternForExpr(Expr, Pattern),
+
+    /// Tried to match over an expression that cannot be matched over.
+    InvalidMatchExpr(Expr),
+
+    /// Invalid pattern for a match expression.
+    NonExhaustivePatterns {
+        patterns: Vec<Pattern>,
+        expr: Expr,
+    },
 
     /// Invalid type casting expression.
     InvalidAs(Expr, Type, Type),

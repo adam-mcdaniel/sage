@@ -10,6 +10,7 @@
 //! - Ensuring that all array lengths are non-negative.
 //! - Ensuring that you don't attempt to access a variable that is out of scope.
 use super::*;
+use crate::lir::Pattern;
 
 /// A trait used to enforce type checking.
 ///
@@ -133,6 +134,20 @@ impl TypeCheck for Expr {
                 expr.type_check(env)?;
                 let ty = expr.get_type(env)?;
 
+                if ty == Type::Never {
+                    // If the expression is of type `Never`, then
+                    // throw an `InvalidMatchExpr` error. We do this
+                    // because `Never` is an opaque type, and we can't
+                    // match on it.
+                    return Err(Error::InvalidMatchExpr(*expr.clone()));
+                } else if ty == Type::Any {
+                    // If the expression is an opaque `Any` type,
+                    // then throw an `InvalidMatchExpr` error. We do this
+                    // because `Any` is an opaque type, and we can't
+                    // match on it.
+                    return Err(Error::InvalidMatchExpr(*expr.clone()));
+                }
+
                 let mut result_ty: Option<Type> = None;
 
                 // Check each branch.
@@ -167,6 +182,20 @@ impl TypeCheck for Expr {
                         result_ty = Some(branch_ty);
                     }
                 }
+
+                // Now collect patterns into a list and check if they're exhaustive with Pattern::are_patterns_exhaustive.
+                let mut patterns = Vec::new();
+                for (pat, _) in branches {
+                    patterns.push(pat.clone());
+                }
+                // If they're not exhaustive, return an error.
+                if !Pattern::are_patterns_exhaustive(self, &patterns, &ty, env)? {
+                    return Err(Error::NonExhaustivePatterns {
+                        patterns,
+                        expr: self.clone(),
+                    });
+                }
+
                 // Return success if all the branches are sound.
                 Ok(())
             }
