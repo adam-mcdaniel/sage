@@ -162,6 +162,14 @@
 <a href="#162" id="162">162</a>
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # LIR (Low Intermediate Representation) Module
 //!
 //! This module contains a decently sized typechecked intermediate representation for the virtual machine.
@@ -313,8 +321,16 @@
     <span class="doccomment">/// Tried to create an array with a negative length.
     </span>NegativeArrayLength(Expr),
 
-    InvalidPatternForType(Type, Pattern),
-    InvalidPatternForExpr(Expr, Pattern),
+    <span class="doccomment">/// Tried to use a pattern that is not valid for the given type.
+    </span>InvalidPatternForType(Type, Pattern),
+    <span class="doccomment">/// Tried to use a pattern that is not valid for the given expression.
+    </span>InvalidPatternForExpr(Expr, Pattern),
+
+    <span class="doccomment">/// Tried to match over an expression that cannot be matched over.
+    </span>InvalidMatchExpr(Expr),
+
+    <span class="doccomment">/// Invalid pattern for a match expression.
+    </span>NonExhaustivePatterns { patterns: Vec&lt;Pattern&gt;, expr: Expr },
 
     <span class="doccomment">/// Invalid type casting expression.
     </span>InvalidAs(Expr, Type, Type),

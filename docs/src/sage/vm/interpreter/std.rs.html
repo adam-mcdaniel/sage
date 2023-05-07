@@ -406,6 +406,9 @@
 <a href="#406" id="406">406</a>
 <a href="#407" id="407">407</a>
 <a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Standard Interpreter Module
 //!
 //! This module implements an interpreter for the Standard virtual machine
@@ -705,6 +708,9 @@
                         <span class="kw">if </span><span class="kw-2">*</span>n &gt;= <span class="number">0 </span>{
                             <span class="self">self</span>.pointer += <span class="kw-2">*</span>n <span class="kw">as </span>usize
                         } <span class="kw">else </span>{
+                            <span class="kw">if </span><span class="self">self</span>.pointer &lt; -<span class="kw-2">*</span>n <span class="kw">as </span>usize {
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;Instruction #{} tried to move the pointer to a negative index.&quot;</span>, <span class="self">self</span>.i));
+                            }
                             <span class="self">self</span>.pointer -= -<span class="kw-2">*</span>n <span class="kw">as </span>usize
                         }
                     }

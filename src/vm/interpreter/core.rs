@@ -285,7 +285,10 @@ where
                         self.pointer += *n as usize
                     } else {
                         if self.pointer < -*n as usize {
-                            eprintln!("Instruction #{} tried to move the pointer to a negative index.", self.i)
+                            return Err(format!(
+                                "Instruction #{} tried to move the pointer to a negative index.",
+                                self.i
+                            ));
                         }
                         self.pointer -= -*n as usize
                     }
