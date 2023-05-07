@@ -308,7 +308,7 @@ impl fmt::Display for StandardOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             StandardOp::CoreOp(op) => write!(f, "{}", op),
-            StandardOp::Set(val) => write!(f, "set {}", val),
+            StandardOp::Set(val) => write!(f, "set-f {}", val),
             StandardOp::Alloc => write!(f, "alloc"),
             StandardOp::Free => write!(f, "free"),
             StandardOp::ToInt => write!(f, "to-int"),
