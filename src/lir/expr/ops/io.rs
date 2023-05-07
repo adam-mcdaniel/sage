@@ -214,6 +214,10 @@ impl Put {
                 }
             }
 
+            Type::EnumUnion(fields) => {
+                // First, get the tag
+            }
+
             Type::Union(fields) => {
                 for c in "union {".chars() {
                     output.op(CoreOp::Set(A, c as u8 as isize));

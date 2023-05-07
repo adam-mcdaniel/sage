@@ -112,6 +112,19 @@ impl GetSize for Type {
                 .max()
                 // If there are no fields, just return 0.
                 .unwrap_or(0),
+
+            // EnumUnion types are the size of the largest field + 1 (for the tag). (All other fields are padded to this size.)
+            Self::EnumUnion(types) => types
+                // Make an iterator over the fields.
+                .iter()
+                // Get the size of each field.
+                .flat_map(|(_, t)| t.get_size_checked(env, i))
+                // Get the largest size.
+                .max()
+                // If there are no fields, just return 0.
+                .unwrap_or(0)
+                // Add 1 for the tag.
+                + 1,
         })
     }
 }

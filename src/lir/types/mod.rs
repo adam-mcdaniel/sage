@@ -50,6 +50,10 @@ pub enum Type {
     Array(Box<Self>, Box<ConstExpr>),
     /// A tuple with named members. This is a product type.
     Struct(BTreeMap<String, Self>),
+
+    /// An enumeration of a list of possible types. This is a sum type.
+    EnumUnion(BTreeMap<String, Self>),
+
     /// A union of a list of possible types mapped to named members.
     /// A union's value is reinterpreted as a single type, depending on the member accessed.
     /// Unions' values are stored starting at the beginning of the union's address in memory,
@@ -109,6 +113,8 @@ impl Type {
             Self::Array(t, _) => t.contains_symbol(name),
             Self::Struct(fields) => fields.values().any(|t| t.contains_symbol(name)),
             Self::Union(fields) => fields.values().any(|t| t.contains_symbol(name)),
+            Self::EnumUnion(fields) => fields.values().any(|t| t.contains_symbol(name)),
+
             Self::Proc(params, ret) => {
                 params.iter().any(|t| t.contains_symbol(name)) || ret.contains_symbol(name)
             }
@@ -169,6 +175,14 @@ impl Type {
                     .collect(),
             ),
             Self::Union(fields) => Self::Union(
+                fields
+                    .iter()
+                    .map(|(field_name, field_t)| {
+                        (field_name.clone(), field_t.substitute(name, substitution))
+                    })
+                    .collect(),
+            ),
+            Self::EnumUnion(fields) => Self::EnumUnion(
                 fields
                     .iter()
                     .map(|(field_name, field_t)| {
@@ -451,6 +465,7 @@ impl Type {
                 b.sort();
                 a == b
             }
+
             (Self::Tuple(a), Self::Tuple(b)) => {
                 if a.len() != b.len() {
                     return Ok(false);
@@ -479,6 +494,18 @@ impl Type {
             }
 
             (Self::Union(a), Self::Union(b)) => {
+                if a.len() != b.len() {
+                    return Ok(false);
+                }
+                for ((name1, item1), (name2, item2)) in a.iter().zip(b.iter()) {
+                    if name1 != name2 || !item1.equals_checked(item2, compared_symbols, env, i)? {
+                        return Ok(false);
+                    }
+                }
+                true
+            }
+
+            (Self::EnumUnion(a), Self::EnumUnion(b)) => {
                 if a.len() != b.len() {
                     return Ok(false);
                 }
@@ -551,6 +578,10 @@ impl Type {
             }
             Type::Union(types) => match types.get(&member.clone().as_symbol(env)?) {
                 Some(t) => Ok((t.clone().simplify(env)?, 0)),
+                None => Err(Error::MemberNotFound(expr.clone(), member.clone())),
+            },
+            Type::EnumUnion(types) => match types.get(&member.clone().as_symbol(env)?) {
+                Some(t) => Ok((t.clone().simplify(env)?, 1)),
                 None => Err(Error::MemberNotFound(expr.clone(), member.clone())),
             },
 
@@ -666,6 +697,12 @@ impl Simplify for Type {
                     .map(|(k, t)| Ok((k, t.simplify_checked(env, i)?)))
                     .collect::<Result<BTreeMap<String, Type>, Error>>()?,
             ),
+            Self::EnumUnion(types) => Self::EnumUnion(
+                types
+                    .into_iter()
+                    .map(|(k, t)| Ok((k, t.simplify_checked(env, i)?)))
+                    .collect::<Result<BTreeMap<String, Type>, Error>>()?,
+            ),
         })
     }
 }
@@ -717,6 +754,16 @@ impl fmt::Display for Type {
                 write!(f, "union {{")?;
                 for (i, (name, ty)) in fields.iter().enumerate() {
                     write!(f, "{name}: {ty}")?;
+                    if i < fields.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, "}}")
+            }
+            Self::EnumUnion(fields) => {
+                write!(f, "enum {{")?;
+                for (i, (name, ty)) in fields.iter().enumerate() {
+                    write!(f, "{name} = {ty}")?;
                     if i < fields.len() - 1 {
                         write!(f, ", ")?
                     }

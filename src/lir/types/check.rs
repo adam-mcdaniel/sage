@@ -78,7 +78,7 @@ impl TypeCheck for Type {
                 // Return success if all the types are sound.
                 Ok(())
             }
-            Self::Struct(fields) | Self::Union(fields) => {
+            Self::Struct(fields) | Self::Union(fields) | Self::EnumUnion(fields) => {
                 // Check each inner type.
                 for t in fields.values() {
                     // Check the inner type.
