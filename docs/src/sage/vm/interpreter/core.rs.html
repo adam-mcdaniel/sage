@@ -616,10 +616,10 @@
                         <span class="self">self</span>.pointer += <span class="kw-2">*</span>n <span class="kw">as </span>usize
                     } <span class="kw">else </span>{
                         <span class="kw">if </span><span class="self">self</span>.pointer &lt; -<span class="kw-2">*</span>n <span class="kw">as </span>usize {
-                            <span class="macro">eprintln!</span>(
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(
                                 <span class="string">&quot;Instruction #{} tried to move the pointer to a negative index.&quot;</span>,
                                 <span class="self">self</span>.i
-                            )
+                            ));
                         }
                         <span class="self">self</span>.pointer -= -<span class="kw-2">*</span>n <span class="kw">as </span>usize
                     }

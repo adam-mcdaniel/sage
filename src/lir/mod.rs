@@ -158,10 +158,7 @@ pub enum Error {
     InvalidMatchExpr(Expr),
 
     /// Invalid pattern for a match expression.
-    NonExhaustivePatterns {
-        patterns: Vec<Pattern>,
-        expr: Expr,
-    },
+    NonExhaustivePatterns { patterns: Vec<Pattern>, expr: Expr },
 
     /// Invalid type casting expression.
     InvalidAs(Expr, Type, Type),

@@ -782,6 +782,35 @@
 <a href="#782" id="782">782</a>
 <a href="#783" id="783">783</a>
 <a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # Type Checking
 //!
 //! This module contains the type checking logic for the Lower Intermediate Representation.
@@ -794,6 +823,7 @@
 //! - Ensuring that all array lengths are non-negative.
 //! - Ensuring that you don&#39;t attempt to access a variable that is out of scope.
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::lir::Pattern;
 
 <span class="doccomment">/// A trait used to enforce type checking.
 ///
@@ -917,6 +947,20 @@
                 </span>expr.type_check(env)<span class="question-mark">?</span>;
                 <span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
 
+                <span class="kw">if </span>ty == Type::Never {
+                    <span class="comment">// If the expression is of type `Never`, then
+                    // throw an `InvalidMatchExpr` error. We do this
+                    // because `Never` is an opaque type, and we can&#39;t
+                    // match on it.
+                    </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidMatchExpr(<span class="kw-2">*</span>expr.clone()));
+                } <span class="kw">else if </span>ty == Type::Any {
+                    <span class="comment">// If the expression is an opaque `Any` type,
+                    // then throw an `InvalidMatchExpr` error. We do this
+                    // because `Any` is an opaque type, and we can&#39;t
+                    // match on it.
+                    </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidMatchExpr(<span class="kw-2">*</span>expr.clone()));
+                }
+
                 <span class="kw">let </span><span class="kw-2">mut </span>result_ty: <span class="prelude-ty">Option</span>&lt;Type&gt; = <span class="prelude-val">None</span>;
 
                 <span class="comment">// Check each branch.
@@ -951,6 +995,20 @@
                         </span>result_ty = <span class="prelude-val">Some</span>(branch_ty);
                     }
                 }
+
+                <span class="comment">// Now collect patterns into a list and check if they&#39;re exhaustive with Pattern::are_patterns_exhaustive.
+                </span><span class="kw">let </span><span class="kw-2">mut </span>patterns = Vec::new();
+                <span class="kw">for </span>(pat, <span class="kw">_</span>) <span class="kw">in </span>branches {
+                    patterns.push(pat.clone());
+                }
+                <span class="comment">// If they&#39;re not exhaustive, return an error.
+                </span><span class="kw">if </span>!Pattern::are_patterns_exhaustive(<span class="self">self</span>, <span class="kw-2">&amp;</span>patterns, <span class="kw-2">&amp;</span>ty, env)<span class="question-mark">? </span>{
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NonExhaustivePatterns {
+                        patterns,
+                        expr: <span class="self">self</span>.clone(),
+                    });
+                }
+
                 <span class="comment">// Return success if all the branches are sound.
                 </span><span class="prelude-val">Ok</span>(())
             }

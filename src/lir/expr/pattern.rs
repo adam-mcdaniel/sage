@@ -78,7 +78,12 @@ impl Pattern {
     /// This associated function returns whether or not a set of patterns is exhaustive,
     /// that is, whether or not it matches all possible values of a given type.
     /// This is used to check if a `match` expression is exhaustive.
-    pub fn are_patterns_exhaustive(expr: &Expr, patterns: &[Pattern], matching_expr_ty: &Type, env: &Env) -> Result<bool, Error> {
+    pub fn are_patterns_exhaustive(
+        expr: &Expr,
+        patterns: &[Pattern],
+        matching_expr_ty: &Type,
+        env: &Env,
+    ) -> Result<bool, Error> {
         match matching_expr_ty {
             Type::Bool => {
                 // If the type is a boolean, the patterns are exhaustive if they match both `true` and `false`.
@@ -100,7 +105,8 @@ impl Pattern {
                         // Check if the alternate pattern branches are exhaustive.
                         Pattern::Alt(branches) => {
                             // If there's an alternate pattern, check if it's exhaustive.
-                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)? {
+                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)?
+                            {
                                 // If it is exhaustive, set both `true_found` and `false_found` to true.
                                 true_found = true;
                                 false_found = true;
@@ -121,7 +127,7 @@ impl Pattern {
                 // Iterate over the patterns.
                 for pattern in patterns {
                     match pattern {
-                        // If this pattern matches a variant, set the corresponding boolean to true.    
+                        // If this pattern matches a variant, set the corresponding boolean to true.
                         Pattern::ConstExpr(ConstExpr::Of(ty, name)) => {
                             // Confirm the type of the expression matches the type of the enum.
                             if ty.equals(matching_expr_ty, env)? {
@@ -135,7 +141,7 @@ impl Pattern {
                                 return Err(Error::MismatchedTypes {
                                     expected: matching_expr_ty.clone(),
                                     found: ty.clone(),
-                                    expr: expr.clone()
+                                    expr: expr.clone(),
                                 });
                             }
                         }
@@ -148,7 +154,8 @@ impl Pattern {
                         // Check if the alternate pattern branches are exhaustive.
                         Pattern::Alt(branches) => {
                             // If there's an alternate pattern, check if it's exhaustive.
-                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)? {
+                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)?
+                            {
                                 // If it is exhaustive, set all the booleans to true.
                                 for i in 0..items.len() {
                                     found[i] = true;
@@ -177,7 +184,12 @@ impl Pattern {
                             let mut all_found = true;
                             for (i, pattern) in patterns.iter().enumerate() {
                                 // If the subpattern is non-exhaustive, set `all_found` to false.
-                                if !Self::are_patterns_exhaustive(expr, &[pattern.clone()], &items[i], env)? {
+                                if !Self::are_patterns_exhaustive(
+                                    expr,
+                                    &[pattern.clone()],
+                                    &items[i],
+                                    env,
+                                )? {
                                     all_found = false;
                                 }
                             }
@@ -202,7 +214,8 @@ impl Pattern {
                         // Check if the alternate pattern branches are exhaustive.
                         Pattern::Alt(branches) => {
                             // If there's an alternate pattern, check if it's exhaustive.
-                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)? {
+                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)?
+                            {
                                 // If it is exhaustive, set all the booleans to true.
                                 for i in 0..items.len() {
                                     if let Some(found) = found.get_mut(i) {
@@ -229,12 +242,19 @@ impl Pattern {
                     match pattern {
                         // If this pattern matches a struct, recursively check if the patterns are exhaustive.
                         Pattern::Struct(patterns) => {
-                            // Iterate over the patterns.    
+                            // Iterate over the patterns.
                             for (name, pattern) in patterns.iter() {
-                                if let Some(index) = members.iter().position(|member| *member.0 == *name) {
+                                if let Some(index) =
+                                    members.iter().position(|member| *member.0 == *name)
+                                {
                                     if let Some(found) = found.get_mut(index) {
                                         // If the pattern is exhaustive, set the corresponding boolean to true.
-                                        if Self::are_patterns_exhaustive(expr, &[pattern.clone()], &members[name], env)? {
+                                        if Self::are_patterns_exhaustive(
+                                            expr,
+                                            &[pattern.clone()],
+                                            &members[name],
+                                            env,
+                                        )? {
                                             *found = true;
                                         }
                                     }
@@ -252,7 +272,8 @@ impl Pattern {
                         // Check if the alternate pattern branches are exhaustive.
                         Pattern::Alt(branches) => {
                             // If there's an alternate pattern, check if it's exhaustive.
-                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)? {
+                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)?
+                            {
                                 // If it is exhaustive, set all the booleans to true.
                                 for i in 0..members.len() {
                                     if let Some(found) = found.get_mut(i) {
@@ -264,7 +285,7 @@ impl Pattern {
                         _ => {}
                     }
                 }
-                
+
                 // Return whether or not all the members are exhaustively matched.
                 Ok(found.iter().all(|b| *b))
             }
@@ -273,12 +294,11 @@ impl Pattern {
             _ => {
                 for pattern in patterns {
                     match pattern {
-                        Pattern::Wildcard | Pattern::Symbol(_) => {
-                            return Ok(true)
-                        }
+                        Pattern::Wildcard | Pattern::Symbol(_) => return Ok(true),
                         Pattern::Alt(branches) => {
                             // If there's an alternate pattern, check if it's exhaustive.
-                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)? {
+                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)?
+                            {
                                 // If it is exhaustive, return `true`.
                                 return Ok(true);
                             }
