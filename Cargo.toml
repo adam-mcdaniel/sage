@@ -1,7 +1,7 @@
 [package]
 name = "sage"
 authors = ["Adam McDaniel <adam.mcdaniel17@gmail.com>"]
-version = "0.1.0-alpha"
+version = "0.0.1-alpha"
 edition = "2021"
 license = "GPL-2.0-or-later"
 description = "A portable programming language with a compact backend"

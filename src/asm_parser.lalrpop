@@ -99,6 +99,7 @@ CoreOp: CoreOp = {
 
 StandardOp: StandardOp = {
     CoreOp => StandardOp::CoreOp(<>),
+    "set-f" <loc: Location> "," <n: IntLit> => StandardOp::Set(loc, n as f64),
     "set-f" <Location> "," <FloatLit> => StandardOp::Set(<>),
     "to-float" <Location> => StandardOp::ToFloat(<>),
     "to-int" <Location> => StandardOp::ToInt(<>),
@@ -152,10 +153,13 @@ Input: Input = {
     ///////////////////////////////////////////////////////////////
     // Standard input (ASCII character)
     "stdin" "." "char" => Input::stdin_char(),
+    "stdin" "." "char" <ch: Channel> => Input::new(InputMode::StdinChar, ch),
     // Standard input (integer)
     "stdin" "." "int" => Input::stdin_int(),
+    "stdin" "." "int" <ch: Channel> => Input::new(InputMode::StdinInt, ch),
     // Standard input (float)
     "stdin" "." "float" => Input::stdin_float(),
+    "stdin" "." "float" <ch: Channel> => Input::new(InputMode::StdinFloat, ch),
     
     ///////////////////////////////////////////////////////////////
     // Special input modes
@@ -280,16 +284,22 @@ Output: Output = {
     ///////////////////////////////////////////////////////////////
     // Standard output (ASCII character)
     "stdout" "." "char" => Output::stdout_char(),
+    "stdout" "." "char" <ch: Channel> => Output::new(OutputMode::StdoutChar, ch),
     // Standard output (integer)
     "stdout" "." "int" => Output::stdout_int(),
+    "stdout" "." "int" <ch: Channel> => Output::new(OutputMode::StdoutInt, ch),
     // Standard output (float)
     "stdout" "." "float" => Output::stdout_float(),
+    "stdout" "." "float" <ch: Channel> => Output::new(OutputMode::StdoutFloat, ch),
     // Standard error (ASCII character)
     "stderr" "." "char" => Output::stderr_char(),
+    "stderr" "." "char" <ch: Channel> => Output::new(OutputMode::StderrChar, ch),
     // Standard error (integer)
     "stderr" "." "int" => Output::stderr_int(),
+    "stderr" "." "int" <ch: Channel> => Output::new(OutputMode::StderrInt, ch),
     // Standard error (float)
     "stderr" "." "float" => Output::stderr_float(),
+    "stderr" "." "float" <ch: Channel> => Output::new(OutputMode::StderrFloat, ch),
 
     ///////////////////////////////////////////////////////////////
     // Alternative output modes for standard output
