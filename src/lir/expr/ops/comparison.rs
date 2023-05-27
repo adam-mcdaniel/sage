@@ -91,6 +91,7 @@ impl BinaryOp for Comparison {
             (ConstExpr::Int(a), Self::GreaterThan, ConstExpr::Float(b)) => {
                 Ok(ConstExpr::Bool((a as f64) > b))
             }
+
             _ => Err(Error::InvalidBinaryOp(
                 self.clone_box(),
                 Expr::ConstExpr(lhs.clone()),

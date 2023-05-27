@@ -56,6 +56,8 @@ pub enum ConstExpr {
     Struct(BTreeMap<String, Self>),
     /// A union of constant values.
     Union(Type, String, Box<Self>),
+    /// A tagged union of constant values.
+    EnumUnion(Type, String, Box<Self>),
 
     /// A builtin implemented in handwritten core assembly.
     CoreBuiltin(CoreBuiltin),
@@ -165,6 +167,11 @@ impl ConstExpr {
                     variant,
                     Box::new(val.eval_checked(env, i)?),
                 )),
+                Self::EnumUnion(types, variant, val) => Ok(Self::Union(
+                    types,
+                    variant,
+                    Box::new(val.eval_checked(env, i)?),
+                )),
             }
         }
     }
@@ -255,6 +262,7 @@ impl GetType for ConstExpr {
             ),
 
             Self::Union(t, _, _) => t,
+            Self::EnumUnion(t, _, _) => t,
 
             Self::Proc(proc) => proc.get_type_checked(env, i)?,
             Self::CoreBuiltin(builtin) => builtin.get_type_checked(env, i)?,
@@ -326,6 +334,9 @@ impl fmt::Display for ConstExpr {
                 write!(f, "}}")
             }
             Self::Union(ty, variant, val) => {
+                write!(f, "union {{ {variant} = {val}, {ty}.. }}")
+            }
+            Self::EnumUnion(ty, variant, val) => {
                 write!(f, "union {{ {variant} = {val}, {ty}.. }}")
             }
             Self::Array(items) => {

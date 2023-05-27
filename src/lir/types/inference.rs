@@ -130,6 +130,7 @@ impl GetType for Expr {
                 // Create a new environment with the type
                 let mut new_env = env.clone();
                 new_env.define_type(name, t.clone());
+                new_env.define_type(name, t.clone().simplify(&new_env)?);
                 // Get the type of the return expression in the new environment.
                 ret.get_type_checked(&new_env, i)?
             }
@@ -141,6 +142,7 @@ impl GetType for Expr {
                 for (name, ty) in types {
                     // Define the type in the new environment.
                     new_env.define_type(name, ty.clone());
+                    new_env.define_type(name, ty.clone().simplify(&new_env)?);
                 }
                 // Get the type of the return expression in the new environment.
                 ret.get_type_checked(&new_env, i)?
@@ -259,6 +261,9 @@ impl GetType for Expr {
 
             // Get the type of a union literal.
             Self::Union(t, _, _) => t.clone(),
+
+            // Get the type of a tagged union literal.
+            Self::EnumUnion(t, _, _) => t.clone(),
 
             // Get the type of a member access.
             Self::Member(val, field) => {

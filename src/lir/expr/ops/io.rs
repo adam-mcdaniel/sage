@@ -215,7 +215,32 @@ impl Put {
             }
 
             Type::EnumUnion(fields) => {
-                // First, get the tag
+                // Calculate the address of the tag and the data
+                let tag_address = SP.deref();
+                let data_address = SP.deref().offset(1 - (t.get_size(env)? as isize));
+                // The list of possible variants
+                let variants: Vec<String> = fields.clone().into_keys().collect();
+                // Iterate through all of the possible tags and check if the value is one of them
+                for (name, variant_t) in fields.iter() {
+                    if let Some(tag_value) = Type::variant_index(&variants, name) {
+                        // Check if the value's tag is equal to tag for the name
+                        output.op(CoreOp::Set(A, tag_value as isize));
+                        output.op(CoreOp::IsEqual {
+                            a: tag_address.clone(),
+                            b: A,
+                            dst: B,
+                        });
+                        output.op(CoreOp::If(B));
+                        for c in format!("{name} of ").chars() {
+                            output.op(CoreOp::Set(A, c as u8 as isize));
+                            output.op(CoreOp::Put(A, Output::stdout_char()));
+                        }
+                        Self::debug(data_address.clone(), variant_t, env, output)?;
+                        output.op(CoreOp::End);
+                    } else {
+                        return Err(Error::VariantNotFound(t.clone(), name.clone()));
+                    }
+                }
             }
 
             Type::Union(fields) => {
@@ -292,6 +317,11 @@ impl Put {
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
                     output.op(CoreOp::End);
+                }
+
+                for c in format!(" of {t}").chars() {
+                    output.op(CoreOp::Set(A, c as u8 as isize));
+                    output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
 

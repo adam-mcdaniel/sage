@@ -100,6 +100,11 @@ pub enum Expr {
     /// The `String` field is the field the union is being initialized with.
     /// The `Box<Self>` field is the value of the field we want to initialize.
     Union(Type, String, Box<Self>),
+    /// A tagged union: a typechecked union of different variants.
+    /// The `Type` value is the type of the tagged union.
+    /// The `String` field is the variant the tagged union is being initialized with.
+    /// The `Box<Self>` field is the value of the union's data we want to initialize.
+    EnumUnion(Type, String, Box<Self>),
     /// A structure of fields to expressions.
     Struct(BTreeMap<String, Self>),
 
@@ -501,6 +506,9 @@ impl fmt::Display for Expr {
             Self::Union(ty, variant, val) => {
                 write!(f, "union {{ {variant} = {val}, {ty}.. }}")
             }
+            Self::EnumUnion(ty, variant, val) => {
+                write!(f, "enum {{ {variant} = {val}, {ty}.. }}")
+            }
 
             Self::UnaryOp(op, x) => write!(f, "{}", op.display(x)),
             Self::BinaryOp(op, x, y) => write!(f, "{}", op.display(x, y)),
@@ -629,6 +637,13 @@ impl PartialEq for Expr {
             // The `String` field is the field the union is being initialized with.
             // The `Box<Self>` field is the value of the field we want to initialize.
             (Union(ty1, field1, val1), Union(ty2, field2, val2)) => {
+                ty1 == ty2 && field1 == field2 && val1 == val2
+            }
+            // A tagged union: a typechecked union of different variants.
+            // The `Type` value is the type of the tagged union.
+            // The `String` field is the variant the tagged union is being initialized with.
+            // The `Box<Self>` field is the value of the union's data we want to initialize.
+            (EnumUnion(ty1, field1, val1), EnumUnion(ty2, field2, val2)) => {
                 ty1 == ty2 && field1 == field2 && val1 == val2
             }
             // A structure of fields to expressions.

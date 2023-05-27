@@ -52,6 +52,10 @@ pub enum Type {
     Struct(BTreeMap<String, Self>),
 
     /// An enumeration of a list of possible types. This is a sum type.
+    /// The enum union is essentially a regular union type, but with a tag
+    /// to guarantee typesafety of accessing members.
+    ///
+    /// The tag is stored at the very beginning of the value.
     EnumUnion(BTreeMap<String, Self>),
 
     /// A union of a list of possible types mapped to named members.
@@ -580,10 +584,10 @@ impl Type {
                 Some(t) => Ok((t.clone().simplify(env)?, 0)),
                 None => Err(Error::MemberNotFound(expr.clone(), member.clone())),
             },
-            Type::EnumUnion(types) => match types.get(&member.clone().as_symbol(env)?) {
-                Some(t) => Ok((t.clone().simplify(env)?, 1)),
-                None => Err(Error::MemberNotFound(expr.clone(), member.clone())),
-            },
+            // Type::EnumUnion(types) => match types.get(&member.clone().as_symbol(env)?) {
+            //     Some(t) => Ok((t.clone().simplify(env)?, 0)),
+            //     None => Err(Error::MemberNotFound(expr.clone(), member.clone())),
+            // },
 
             Type::Let(name, t, ret) => {
                 // Create a new scope and define the new type within it

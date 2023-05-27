@@ -441,6 +441,48 @@ impl Compile for Expr {
                 ));
             }
 
+            // Compile a tagged union literal.
+            Self::EnumUnion(mut t, variant, val) => {
+                // Get the size of the tagged union.
+                let result_size = t.get_size(env)?;
+                loop {
+                    t = t.clone().simplify(env)?;
+                    match t {
+                        // Get the inner list of variants and compile the expression using this information.
+                        Type::EnumUnion(fields) => {
+                            // Get the list of possible variant names.
+                            let variants = fields.clone().into_keys().collect::<Vec<_>>();
+                            // Get the value of the tag associated with this variant.
+                            if let Some(tag_value) = Type::variant_index(&variants, &variant) {
+                                // Get the size of the value we are storing in the union.
+                                let val_size = val.get_size(env)?;
+        
+                                // Evaluate the value and push it onto the stack
+                                val.compile_expr(env, output)?;
+        
+                                // Increment the stack pointer to pad out the union.
+                                output.op(CoreOp::Next(
+                                    SP,
+                                    // This size *includes* the tag: it allocates space for it so we
+                                    // can immediately set the value under the stack poiner as the tag.
+                                    Some(result_size as isize - val_size as isize),
+                                ));
+        
+                                output.op(CoreOp::Set(SP.deref(), tag_value as isize));
+                                return Ok(())
+                            } else {
+                                // If we could not find the variant return an error.
+                                return Err(Error::VariantNotFound(Type::EnumUnion(fields), variant));
+                            }
+                        },
+                        Type::Symbol(_) | Type::Let(_, _, _) => {
+                            continue
+                        },
+                        _ => return Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                    }
+                }
+            }
+
             // Compile an indexing operation.
             Self::Index(val, idx) => {
                 // TODO: optimize this by using `Refer` when possible
@@ -747,11 +789,9 @@ impl Compile for ConstExpr {
                 }
             }
             // Compile a union constant.
-            Self::Union(types, variant, val) => {
-                // Get the type of the union.
-                let result_type = Self::Union(types, variant, val.clone()).get_type(env)?;
+            Self::Union(t, _, val) => {
                 // Get the size of the padded union.
-                let result_size = result_type.get_size(env)?;
+                let result_size = t.get_size(env)?;
                 // Get the size of the value.
                 let val_size = val.get_size(env)?;
                 // Compile the value.
@@ -761,6 +801,38 @@ impl Compile for ConstExpr {
                     SP,
                     Some(result_size as isize - val_size as isize),
                 ));
+            }
+            // Compile a tagged union constant.
+            Self::EnumUnion(t, variant, val) => {
+                // Get the size of the tagged union.
+                let result_size = t.get_size(env)?;
+
+                // Get the inner list of variants and compile the expression using this information.
+                if let Type::EnumUnion(variants) = t.clone().simplify(env)? {
+                    // Get the list of possible variant names.
+                    let variants = variants.into_keys().collect::<Vec<_>>();
+                    // Get the value of the tag associated with this variant.
+                    if let Some(tag_value) = Type::variant_index(&variants, &variant) {
+                        // Get the size of the value we are storing in the union.
+                        let val_size = val.get_size(env)?;
+
+                        // Evaluate the value and push it onto the stack
+                        val.compile_expr(env, output)?;
+
+                        // Increment the stack pointer to pad out the union.
+                        output.op(CoreOp::Next(
+                            SP,
+                            // This size *includes* the tag: it allocates space for it so we
+                            // can immediately set the value under the stack poiner as the tag.
+                            Some(result_size as isize - val_size as isize),
+                        ));
+
+                        output.op(CoreOp::Set(SP.deref(), tag_value as isize));
+                    } else {
+                        // If we could not find the variant return an error.
+                        return Err(Error::VariantNotFound(t, variant));
+                    }
+                }
             }
             // Compile a core builtin.
             Self::CoreBuiltin(builtin) => {

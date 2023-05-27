@@ -4,11 +4,16 @@ use crate::parse::{CoreProgramParser, StandardProgramParser};
 
 grammar;
 Pattern: Pattern = {
-    <mut list: (<PatternAtom> "|")+> <last: PatternAtom> => {
+    <mut list: (<PatternTerm> "|")+> <last: PatternTerm> => {
         list.push(last);
         Pattern::Alt(list)
     },
-    <PatternAtom> => <>,
+    <PatternTerm> => <>,
+}
+
+PatternTerm: Pattern = {
+    <name: Symbol> "of" <pat: PatternTerm> => Pattern::Variant(name, Some(Box::new(pat))),
+    PatternAtom => <>
 }
 
 PatternAtom: Pattern = {
@@ -16,7 +21,7 @@ PatternAtom: Pattern = {
     List<("struct" "{"), (<Symbol> "=" <Pattern>), ",", "}"> => Pattern::Struct(<>.into_iter().collect()),
     Symbol => Pattern::Symbol(<>),
     // ConstAtom => Pattern::ConstExpr(<>), 
-    <variant: Symbol> "of" <t: TypeTerm> => Pattern::ConstExpr(ConstExpr::Of(t, variant)),
+    //<variant: Symbol> "of" <t: TypeTerm> => Pattern::ConstExpr(ConstExpr::Of(t, variant)),
     "true" => Pattern::ConstExpr(ConstExpr::Bool(true)),
     "false" => Pattern::ConstExpr(ConstExpr::Bool(false)),
     "Null" => Pattern::ConstExpr(ConstExpr::Null),
@@ -44,7 +49,16 @@ TypeTerm: Type = {
     "Bool" => Type::Bool,
     "Cell" => Type::Cell,
     "None" => Type::None,
-    "enum" <List<"{", Symbol, ",", "}">> => Type::Enum(<>.into_iter().collect()),
+    "enum" <variants: List<"{", (<Symbol> <("of" <Type>)?>), ",", "}">> => {
+        for (name, ty) in &variants {
+            if ty.is_some() {
+                return Type::EnumUnion(variants.into_iter().map(|(k, v)| (k, v.unwrap_or(Type::None))).collect())
+            }
+        }
+        return Type::Enum(variants.into_iter().map(|(k, _)| k).collect())
+    },
+    //"enum" <List<"{", (<Symbol> "=" <TypeTerm>), ",", "}">> => Type::EnumUnion(<>.into_iter().collect()),
+    //"enum" <Dict<Symbol, Type>> => Type::EnumUnion(<>.into_iter().collect()),
     "union" <Dict<Symbol, Type>> => Type::Union(<>.into_iter().collect()),
     "struct" <Dict<Symbol, Type>> => Type::Struct(<>.into_iter().collect()),
     "unit" <name: Symbol> "=" <t: Type> => Type::Unit(name, Box::new(t)), 
@@ -119,21 +133,24 @@ pub Expr: Expr = {
         Expr::LetProc(name, Procedure::new(args, Type::None, body), Box::new(e))
     },
     "while" <cond: Expr> <body: Block> => Expr::While(Box::new(cond), Box::new(body)),
-    <x: Factor> "=" <val: Expr> => x.refer().deref_mut(val),
-    <x: Factor> "+=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Add), val),
-    <x: Factor> "-=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Subtract), val),
-    <x: Factor> "*=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Multiply), val),
-    <x: Factor> "/=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Divide), val),
-    <x: Factor> "%=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Remainder), val),
-    <x: Factor> "**=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Power), val),
-    "&" <Expr> => <>.refer(),
-    "*" <Expr> => <>.deref(),
+    <x: Pointer> "=" <val: Expr> => x.refer().deref_mut(val),
+    <x: Pointer> "+=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Add), val),
+    <x: Pointer> "-=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Subtract), val),
+    <x: Pointer> "*=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Multiply), val),
+    <x: Pointer> "/=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Divide), val),
+    <x: Pointer> "%=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Remainder), val),
+    <x: Pointer> "**=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Power), val),
     "return" <Expr> => Expr::Return(Box::new(<>)),
     "debug" <Expr> => Expr::UnaryOp(Put::Debug.clone_box(), Box::new(<>)),
     "put" <Expr> => Expr::UnaryOp(Put::Display.clone_box(), Box::new(<>)),
-    Logic => <>
+    Pointer => <>
 }
 
+Pointer: Expr = {
+    "*" <Pointer> => <>.deref(),
+    "&" <Pointer> => <>.refer(),
+    Logic => <>,
+}
 
 Logic: Expr = {
     <a: Logic> "or" <b: LogicFactor> => a.or(b),
@@ -180,6 +197,9 @@ Term: Expr = {
     <x: Term> "->" <field: Symbol> => x.deref().field(ConstExpr::Symbol(field)),
     <x: Term> "[" <idx: Expr> "]" => x.idx(idx),
     <x: Term> "as" <t: Type> => x.as_type(t),
+    <x: Term> "as" <name: Symbol> "of" <t: Type> => {
+        Expr::EnumUnion(t, name, Box::new(x))
+    },
     <f: Term> <args: List<"(", Expr, ",", ")">> => f.app(args),
     "if" <cond: Atom> <then: Atom> <elif: ("else" "if" <Atom> <Atom>)*> <mut e: ("else" <Atom>)?> => {
         for (c, t) in elif.into_iter().rev() {
@@ -196,6 +216,8 @@ Term: Expr = {
     "match" <expr:Atom> <list: NonEmptyList<"{", (<Pattern> "=>" <Expr>), ",", "}">> => {
         Expr::Match(Box::new(expr), list.into_iter().collect())
     },
+    "_tag" <Atom> => <>.unop(Tag),
+    "_data" <Atom> => <>.unop(Data),
     Atom => <>,
 }
 
@@ -218,6 +240,14 @@ Atom: Expr = {
     "union" "{" <name: Symbol> "=" <e: Expr> "," <t: Type> ".." "}" => {
         Expr::Union(t, name, Box::new(e))
     },
+    //"enum" "{" <mut list:(<Symbol> ":" <Type> ",")*> <last: (<Symbol> ":" <Type> "=" <Expr>)> "}" => {
+    //    list.push((last.0.clone(), last.1));
+    //    let t = Type::Union(list.into_iter().collect());
+    //    Expr::EnumUnion(t, last.0, Box::new(last.2))
+    //},
+    //"enum" "{" <name: Symbol> "=" <e: Expr> "," <t: Type> ".." "}" => {
+    //    Expr::EnumUnion(t, name, Box::new(e))
+    //},
 }
 
 Block: Expr = {
