@@ -1,31 +1,17 @@
-const putint = proc(n: Int) -> None = std {
-    put-int [SP]
-    pop
-} in
-const getint = proc() -> Int = std {
-    get-int A
-    push A
-} in
-const putchar = proc(ch: Char) -> None = std {
-    put-char [SP]
-    pop
-} in
-
-type Option = let T = Point in struct {
-    tag: enum {Some, Nothing},
-    data: union { some: T, none: None }
+type Option = let T = Point in enum {
+    of Some T,
+    of Nothing 
 }, Point = struct { x: Int, y: Int } in
 
-proc some(p: Point) -> let T = Point in struct {
-    tag: enum {Some, Nothing},
-    data: union { some: T, none: None }
-} = {struct { tag = Some of enum {Some, Nothing}, data = union {none: None, some: Point = p} }} in
 
-proc none() -> Option = {
-    struct {
-        tag = Nothing of enum {Some, Nothing},
-        data = union { some: Point, none: None = None }
+let val = struct { x = 5, y = 6 } as Option of Some
+    in match val {
+        of Some struct {x=a, y=b} => {
+            put a;
+            put ", ";
+            put b;
+        },
+        of Nothing None => {
+            put "Nothing";
+        }
     }
-} in
-
-putint(some(struct{ x = 5, y = 6}).data.some.y as Int)

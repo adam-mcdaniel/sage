@@ -588,7 +588,6 @@ impl Type {
             //     Some(t) => Ok((t.clone().simplify(env)?, 0)),
             //     None => Err(Error::MemberNotFound(expr.clone(), member.clone())),
             // },
-
             Type::Let(name, t, ret) => {
                 // Create a new scope and define the new type within it
                 let mut new_env = env.clone();

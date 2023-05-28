@@ -593,15 +593,21 @@ impl TypeCheck for Expr {
                                         expr: self.clone(),
                                     });
                                 }
-                                return Ok(())
+                                return Ok(());
                             } else {
-                                return Err(Error::MemberNotFound(self.clone(), ConstExpr::Symbol(field.clone())))
+                                return Err(Error::MemberNotFound(
+                                    self.clone(),
+                                    ConstExpr::Symbol(field.clone()),
+                                ));
                             }
-                        },
-                        Type::Symbol(_) | Type::Let(_, _, _) => {
-                            continue
-                        },
-                        _ => return Err(Error::MemberNotFound(self.clone(), ConstExpr::Symbol(field.clone())))
+                        }
+                        Type::Symbol(_) | Type::Let(_, _, _) => continue,
+                        _ => {
+                            return Err(Error::MemberNotFound(
+                                self.clone(),
+                                ConstExpr::Symbol(field.clone()),
+                            ))
+                        }
                     }
                 }
             }
@@ -627,15 +633,16 @@ impl TypeCheck for Expr {
                                         expr: self.clone(),
                                     });
                                 }
-                                return Ok(())
+                                return Ok(());
                             } else {
-                                return Err(Error::VariantNotFound(Type::EnumUnion(fields), variant.clone()))
+                                return Err(Error::VariantNotFound(
+                                    Type::EnumUnion(fields),
+                                    variant.clone(),
+                                ));
                             }
-                        },
-                        Type::Symbol(_) | Type::Let(_, _, _) => {
-                            continue
-                        },
-                        _ => return Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                        }
+                        Type::Symbol(_) | Type::Let(_, _, _) => continue,
+                        _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
                     }
                 }
             }
@@ -845,15 +852,21 @@ impl TypeCheck for ConstExpr {
                                         expr: Expr::ConstExpr(self.clone()),
                                     });
                                 }
-                                return Ok(())
+                                return Ok(());
                             } else {
-                                return Err(Error::MemberNotFound(Expr::ConstExpr(self.clone()), ConstExpr::Symbol(field.clone())))
+                                return Err(Error::MemberNotFound(
+                                    Expr::ConstExpr(self.clone()),
+                                    ConstExpr::Symbol(field.clone()),
+                                ));
                             }
-                        },
-                        Type::Symbol(_) | Type::Let(_, _, _) => {
-                            continue
-                        },
-                        _ => return Err(Error::MemberNotFound(Expr::ConstExpr(self.clone()), ConstExpr::Symbol(field.clone())))
+                        }
+                        Type::Symbol(_) | Type::Let(_, _, _) => continue,
+                        _ => {
+                            return Err(Error::MemberNotFound(
+                                Expr::ConstExpr(self.clone()),
+                                ConstExpr::Symbol(field.clone()),
+                            ))
+                        }
                     }
                 }
             }
@@ -878,15 +891,16 @@ impl TypeCheck for ConstExpr {
                                         expr: Expr::ConstExpr(self.clone()),
                                     });
                                 }
-                                return Ok(())
+                                return Ok(());
                             } else {
-                                return Err(Error::VariantNotFound(Type::EnumUnion(fields), variant.clone()))
+                                return Err(Error::VariantNotFound(
+                                    Type::EnumUnion(fields),
+                                    variant.clone(),
+                                ));
                             }
-                        },
-                        Type::Symbol(_) | Type::Let(_, _, _) => {
-                            continue
-                        },
-                        _ => return Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                        }
+                        Type::Symbol(_) | Type::Let(_, _, _) => continue,
+                        _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
                     }
                 }
             }

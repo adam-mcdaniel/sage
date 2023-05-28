@@ -21,11 +21,13 @@ impl UnaryOp for Tag {
             match ty {
                 Type::Let(_, _, _) | Type::Symbol(_) => ty = ty.simplify(env)?,
                 Type::EnumUnion(variants) => return Ok(Type::Enum(variants.into_keys().collect())),
-                found => return Err(Error::MismatchedTypes {
-                    expected: Type::EnumUnion(BTreeMap::new()),
-                    found,
-                    expr: expr.clone(),
-                }),
+                found => {
+                    return Err(Error::MismatchedTypes {
+                        expected: Type::EnumUnion(BTreeMap::new()),
+                        found,
+                        expr: expr.clone(),
+                    })
+                }
             }
         }
     }
@@ -48,13 +50,11 @@ impl UnaryOp for Tag {
                     })
                 }
             }
-            found => {
-                Err(Error::MismatchedTypes {
-                    expected: Type::EnumUnion(BTreeMap::new()),
-                    found: found.get_type(env)?,
-                    expr: Expr::ConstExpr(expr.clone()),
-                })
-            },
+            found => Err(Error::MismatchedTypes {
+                expected: Type::EnumUnion(BTreeMap::new()),
+                found: found.get_type(env)?,
+                expr: Expr::ConstExpr(expr.clone()),
+            }),
         }
     }
 
@@ -113,11 +113,13 @@ impl UnaryOp for Data {
             match ty {
                 Type::Let(_, _, _) | Type::Symbol(_) => ty = ty.simplify(env)?,
                 Type::EnumUnion(variants) => return Ok(Type::Union(variants)),
-                found => return Err(Error::MismatchedTypes {
-                    expected: Type::EnumUnion(BTreeMap::new()),
-                    found,
-                    expr: expr.clone(),
-                }),
+                found => {
+                    return Err(Error::MismatchedTypes {
+                        expected: Type::EnumUnion(BTreeMap::new()),
+                        found,
+                        expr: expr.clone(),
+                    })
+                }
             }
         }
     }

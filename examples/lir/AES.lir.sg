@@ -424,7 +424,7 @@ proc key_expansion(key: Key, nr: Int, nk: Int) -> &Int = {
 
 proc aes_256_key(key: [Int * 32]) -> Key = {
     struct {
-        ty = AES256 of AESKeyType,
+        ty = AESKeyType of AES256,
         key = union {
             AES256 = key,
             AESKeyData..
@@ -434,7 +434,7 @@ proc aes_256_key(key: [Int * 32]) -> Key = {
 
 proc aes_192_key(key: [Int * 24]) -> Key = {
     struct {
-        ty = AES192 of AESKeyType,
+        ty = AESKeyType of AES192,
         key = union {
             AES192 = key,
             AESKeyData..
@@ -444,7 +444,7 @@ proc aes_192_key(key: [Int * 24]) -> Key = {
 
 proc aes_128_key(key: [Int * 16]) -> Key = {
     struct {
-        ty = AES128 of AESKeyType,
+        ty = AESKeyType of AES128,
         key = union {
             AES128 = key,
             AESKeyData..

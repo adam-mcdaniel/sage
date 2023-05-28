@@ -1,0 +1,36 @@
+// Define allocator
+proc alloc(size: Int) -> &Int = std {
+    alloc [SP]
+} in
+
+// Linked list using recursive algebraic types
+type List = enum {
+    of Cons struct {
+        next: &List,
+        data: Int
+    },
+    of Nil
+} in
+
+// Construct a list from a bit of data and another list
+proc cons(data: Int, list: List) -> List = {
+    let addr: &List = alloc(sizeof(List)) as &List in {
+        *addr = list;
+        struct {next = addr, data = data} as List of Cons
+    }
+} in
+
+// Print a list
+proc print(list: List) = {
+    match list {
+        of Cons struct {next=a, data=b} => {
+            put b;
+            put ", ";
+            print(*a);
+        },
+        of Nil => {
+            put "(nil)"
+        }
+    }
+} in
+    print(cons(6, cons(5, None as List of Nil)))

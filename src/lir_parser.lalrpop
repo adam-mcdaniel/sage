@@ -12,8 +12,7 @@ Pattern: Pattern = {
 }
 
 PatternTerm: Pattern = {
-    <name: Symbol> "of" <pat: PatternTerm> => Pattern::Variant(name, Some(Box::new(pat))),
-    "of" <name: Symbol> => Pattern::Variant(name, None),
+    "of" <name: Symbol> <pat: PatternTerm?> => Pattern::Variant(name, pat.map(Box::new)),
     PatternAtom => <>
 }
 
@@ -38,33 +37,42 @@ Type: Type = {
     TypeTerm => <>,
 }
 
+EnumVariant: (String, Option<Type>) = {
+    "of" <Symbol> <Type?> => (<>),
+    Symbol => (<>, None),
+}
+
 TypeTerm: Type = {
-    Symbol => Type::Symbol(<>),
     "(" <Type> ")" => <>,
     Tuple<Type> => Type::Tuple(<>),
     "&" <Type> => Type::Pointer(Box::new(<>)),
+    "enum" <variants: List<"{", EnumVariant, ",", "}">> => {
+        for variant in &variants {
+            match variant.1 {
+                Some(Type::None) => {}
+                Some(_) => return Type::EnumUnion(variants.into_iter().map(|(name, t)| (name, t.unwrap_or(Type::None))).collect()),
+                _ => {}
+            }
+        }
+        Type::Enum(variants.into_iter().map(|(name, _)| name).collect())
+    },
     "[" <t: Type> "*" <size: ConstExpr> "]" => Type::Array(Box::new(t), Box::new(size)),
+    //"enum" <List<"{", (<Symbol> "=" <TypeTerm>), ",", "}">> => Type::EnumUnion(<>.into_iter().collect()),
+    //"enum" <Dict<Symbol, Type>> => Type::EnumUnion(<>.into_iter().collect()),
+    "union" <Dict<Symbol, Type>> => Type::Union(<>.into_iter().collect()),
+    "struct" <Dict<Symbol, Type>> => Type::Struct(<>.into_iter().collect()),
+    "unit" <name: Symbol> "=" <t: Type> => Type::Unit(name, Box::new(t)), 
+    TypeAtom => <>
+}
+
+TypeAtom: Type = {
+    Symbol => Type::Symbol(<>),
     "Int" => Type::Int,
     "Float" => Type::Float,
     "Char" => Type::Char,
     "Bool" => Type::Bool,
     "Cell" => Type::Cell,
     "None" => Type::None,
-    "enum" <variants: List<"{", (<Symbol> <("of" <Type>)?>), ",", "}">> => {
-        for (name, ty) in &variants {
-            match ty {
-                Some(Type::None) => {}
-                Some(_) => return Type::EnumUnion(variants.into_iter().map(|(k, v)| (k, v.unwrap_or(Type::None))).collect()),
-                _ => {}
-            }
-        }
-        return Type::Enum(variants.into_iter().map(|(k, _)| k).collect())
-    },
-    //"enum" <List<"{", (<Symbol> "=" <TypeTerm>), ",", "}">> => Type::EnumUnion(<>.into_iter().collect()),
-    //"enum" <Dict<Symbol, Type>> => Type::EnumUnion(<>.into_iter().collect()),
-    "union" <Dict<Symbol, Type>> => Type::Union(<>.into_iter().collect()),
-    "struct" <Dict<Symbol, Type>> => Type::Struct(<>.into_iter().collect()),
-    "unit" <name: Symbol> "=" <t: Type> => Type::Unit(name, Box::new(t)), 
 }
 
 ConstExpr: ConstExpr = {
@@ -88,7 +96,7 @@ ConstExpr: ConstExpr = {
 }
 
 ConstAtom: ConstExpr = {
-    <variant: Symbol> "of" <t: TypeTerm> => ConstExpr::Of(t, variant).into(),
+    <t: TypeAtom> "of" <variant: Symbol> => ConstExpr::Of(t, variant).into(),
     Symbol => ConstExpr::Symbol(<>),
     IntLit => ConstExpr::Int(<> as i32),
     FloatLit => ConstExpr::Float(<>),
@@ -200,7 +208,7 @@ Term: Expr = {
     <x: Term> "->" <field: Symbol> => x.deref().field(ConstExpr::Symbol(field)),
     <x: Term> "[" <idx: Expr> "]" => x.idx(idx),
     <x: Term> "as" <t: Type> => x.as_type(t),
-    <x: Term> "as" <name: Symbol> "of" <t: Type> => {
+    <x: Term> "as" <t: TypeAtom> "of" <name: Symbol> => {
         Expr::EnumUnion(t, name, Box::new(x))
     },
     <f: Term> <args: List<"(", Expr, ",", ")">> => f.app(args),

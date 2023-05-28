@@ -456,10 +456,10 @@ impl Compile for Expr {
                             if let Some(tag_value) = Type::variant_index(&variants, &variant) {
                                 // Get the size of the value we are storing in the union.
                                 let val_size = val.get_size(env)?;
-        
+
                                 // Evaluate the value and push it onto the stack
                                 val.compile_expr(env, output)?;
-        
+
                                 // Increment the stack pointer to pad out the union.
                                 output.op(CoreOp::Next(
                                     SP,
@@ -467,20 +467,19 @@ impl Compile for Expr {
                                     // can immediately set the value under the stack poiner as the tag.
                                     Some(result_size as isize - val_size as isize),
                                 ));
-        
+
                                 output.op(CoreOp::Set(SP.deref(), tag_value as isize));
-                                return Ok(())
+                                return Ok(());
                             } else {
                                 // If we could not find the variant return an error.
-                                return Err(Error::VariantNotFound(Type::EnumUnion(fields), variant));
+                                return Err(Error::VariantNotFound(
+                                    Type::EnumUnion(fields),
+                                    variant,
+                                ));
                             }
-                        },
-                        Type::Symbol(_) | Type::Let(_, _, _) => {
-                            continue
-                        },
-                        _ => {
-                            return Err(Error::VariantNotFound(t.clone(), variant.clone()))
                         }
+                        Type::Symbol(_) | Type::Let(_, _, _) => continue,
+                        _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
                     }
                 }
             }
