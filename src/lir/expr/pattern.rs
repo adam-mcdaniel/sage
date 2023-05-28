@@ -759,7 +759,7 @@ impl Pattern {
             }
 
             // If the pattern is a symbol, then it will match any expression.
-            (Self::Wildcard, _) | (Self::Symbol(_), _) | (Self::ConstExpr(ConstExpr::None), Type::None)=> {
+            (Self::Wildcard, _) | (Self::Symbol(_), _) | (Self::ConstExpr(ConstExpr::None), Type::None) => {
                 // Return true (the symbol will match any expression).
                 Expr::ConstExpr(ConstExpr::Bool(true))
             }

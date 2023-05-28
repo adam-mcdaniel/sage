@@ -573,16 +573,16 @@ impl TypeCheck for Expr {
             }
 
             // Typecheck a union literal.
-            Self::Union(t, variant, val) => {
+            Self::Union(t, field, val) => {
                 // Typecheck the type.
                 t.type_check(env)?;
                 let mut t = t.clone();
                 loop {
                     t = t.clone().simplify(env)?;
                     match t {
-                        Type::EnumUnion(fields) => {
+                        Type::Union(fields) => {
                             // Confirm that the variant is a valid variant.
-                            if let Some(ty) = fields.get(variant) {
+                            if let Some(ty) = fields.get(field) {
                                 // Typecheck the value assigned to the variant.
                                 val.type_check(env)?;
                                 let found = val.get_type(env)?;
@@ -595,13 +595,13 @@ impl TypeCheck for Expr {
                                 }
                                 return Ok(())
                             } else {
-                                return Err(Error::VariantNotFound(Type::EnumUnion(fields), variant.clone()))
+                                return Err(Error::MemberNotFound(self.clone(), ConstExpr::Symbol(field.clone())))
                             }
                         },
                         Type::Symbol(_) | Type::Let(_, _, _) => {
                             continue
                         },
-                        _ => return Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                        _ => return Err(Error::MemberNotFound(self.clone(), ConstExpr::Symbol(field.clone())))
                     }
                 }
             }
@@ -826,15 +826,15 @@ impl TypeCheck for ConstExpr {
             }
 
             // Typecheck a union literal.
-            Self::Union(t, variant, val) => {
+            Self::Union(t, field, val) => {
                 // Confirm the type supplied is a union.
                 let mut t = t.clone();
                 loop {
                     t = t.clone().simplify(env)?;
                     match t {
-                        Type::EnumUnion(fields) => {
+                        Type::Union(fields) => {
                             // Confirm that the variant is a valid variant.
-                            if let Some(ty) = fields.get(variant) {
+                            if let Some(ty) = fields.get(field) {
                                 // Typecheck the value assigned to the variant.
                                 val.type_check(env)?;
                                 let found = val.get_type(env)?;
@@ -847,13 +847,13 @@ impl TypeCheck for ConstExpr {
                                 }
                                 return Ok(())
                             } else {
-                                return Err(Error::VariantNotFound(Type::EnumUnion(fields), variant.clone()))
+                                return Err(Error::MemberNotFound(Expr::ConstExpr(self.clone()), ConstExpr::Symbol(field.clone())))
                             }
                         },
                         Type::Symbol(_) | Type::Let(_, _, _) => {
                             continue
                         },
-                        _ => return Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                        _ => return Err(Error::MemberNotFound(Expr::ConstExpr(self.clone()), ConstExpr::Symbol(field.clone())))
                     }
                 }
             }

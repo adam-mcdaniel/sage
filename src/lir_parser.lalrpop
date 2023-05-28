@@ -13,6 +13,7 @@ Pattern: Pattern = {
 
 PatternTerm: Pattern = {
     <name: Symbol> "of" <pat: PatternTerm> => Pattern::Variant(name, Some(Box::new(pat))),
+    "of" <name: Symbol> => Pattern::Variant(name, None),
     PatternAtom => <>
 }
 
@@ -51,8 +52,10 @@ TypeTerm: Type = {
     "None" => Type::None,
     "enum" <variants: List<"{", (<Symbol> <("of" <Type>)?>), ",", "}">> => {
         for (name, ty) in &variants {
-            if ty.is_some() {
-                return Type::EnumUnion(variants.into_iter().map(|(k, v)| (k, v.unwrap_or(Type::None))).collect())
+            match ty {
+                Some(Type::None) => {}
+                Some(_) => return Type::EnumUnion(variants.into_iter().map(|(k, v)| (k, v.unwrap_or(Type::None))).collect()),
+                _ => {}
             }
         }
         return Type::Enum(variants.into_iter().map(|(k, _)| k).collect())

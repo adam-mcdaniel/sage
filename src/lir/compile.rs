@@ -478,7 +478,9 @@ impl Compile for Expr {
                         Type::Symbol(_) | Type::Let(_, _, _) => {
                             continue
                         },
-                        _ => return Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                        _ => {
+                            return Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                        }
                     }
                 }
             }
