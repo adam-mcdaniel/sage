@@ -3,6 +3,87 @@ proc alloc(size: Int) -> &Int = std {
     alloc [SP]
 } in
 
+type Math = enum {
+    of Add struct { lhs: &Math, rhs: &Math },
+    of Sub struct { lhs: &Math, rhs: &Math },
+    of Mul struct { lhs: &Math, rhs: &Math },
+    of Div struct { lhs: &Math, rhs: &Math },
+    of Num Int
+} in
+
+
+proc print_math(math: Math) = {
+    match math {
+        of Num _ => {},
+        _ => {
+            put "(";
+        }
+    };
+
+    match math {
+        of Add struct {lhs=a, rhs=b} => {
+            print_math(*a);
+            put " + ";
+            print_math(*b);
+        },
+        of Sub struct {lhs=a, rhs=b} => {
+            print_math(*a);
+            put " - ";
+            print_math(*b);
+        },
+        of Mul struct {lhs=a, rhs=b} => {
+            print_math(*a);
+            put " * ";
+            print_math(*b);
+        },
+        of Div struct {lhs=a, rhs=b} => {
+            print_math(*a);
+            put " / ";
+            print_math(*b);
+        },
+        of Num a => {
+            put a;
+        }
+    };
+
+    match math {
+        of Num _ => {},
+        _ => {
+            put ")";
+        }
+    };
+} in
+
+proc eval(math: Math) -> Int = {
+    match math {
+        of Add struct {lhs=a, rhs=b} => {
+            eval(*a) + eval(*b)
+        },
+        of Sub struct {lhs=a, rhs=b} => {
+            eval(*a) - eval(*b)
+        },
+        of Mul struct {lhs=a, rhs=b} => {
+            eval(*a) * eval(*b)
+        },
+        of Div struct {lhs=a, rhs=b} => {
+            eval(*a) / eval(*b)
+        },
+        of Num a => {
+            a
+        }
+    }
+} in
+
+    let a = 5 as Math of Num,
+        b = 6 as Math of Num,
+        c = 7 as Math of Num,
+        d = 8 as Math of Num,
+        add = struct { lhs = &a, rhs = &b } as Math of Add,
+        sub = struct { lhs = &c, rhs = &d } as Math of Sub,
+        mul = struct { lhs = &add, rhs = &sub } as Math of Mul
+    in
+
+
 // Linked list using recursive algebraic types
 type List = enum {
     of Cons struct {
@@ -11,6 +92,12 @@ type List = enum {
     },
     of Nil
 } in
+    let end = None as List of Nil,
+        first = struct { next = &end, data = 5 } as List of Cons,
+        second = struct { next = &first, data = 6 } as List of Cons,
+        third = struct { next = &second, data = 7 } as List of Cons,
+        
+    in 
 
 // Construct a list from a bit of data and another list
 proc cons(data: Int, list: List) -> List = {
@@ -32,5 +119,12 @@ proc print(list: List) = {
             put "(nil)"
         }
     }
-} in
-    print(cons(6, cons(5, None as List of Nil)))
+} in {
+    // print(cons(6, cons(5, None as List of Nil)))
+    // print(third);
+    // put "\n";
+    // put mul;
+    print_math(mul);
+    put "\n";
+    put eval(mul);
+}

@@ -1,0 +1,104 @@
+enum Math {
+    Add(&Math, &Math),
+    Sub(&Math, &Math),
+    Mul(&Math, &Math),
+    Div(&Math, &Math),
+    Num Int
+}
+
+proc eval(m: &Math): Int = match *m {
+    of Add(lhs, rhs) => eval(lhs) + eval(rhs),
+    of Sub(lhs, rhs) => eval(lhs) - eval(rhs),
+    of Mul(lhs, rhs) => eval(lhs) * eval(rhs),
+    of Div(lhs, rhs) => eval(lhs) / eval(rhs),
+    of Num n => n
+};
+
+print(eval(new Math of Add (new Math of Num 5, new Math of Num 6)));
+
+enum List {
+    Nil,
+    Cons {
+        data: Int,
+        next: &List
+    }
+}
+
+proc sum(list: &List): Int {
+    match *list {
+        of Nil => 0,
+        of Cons { data, next } => data + sum(next)
+    }
+}
+
+print("\n", sum(new List of Cons {
+    data = 5,
+    next = new List of Cons {
+        data = 6,
+        next = new List of Cons {
+            data = 7,
+            next = new List of Nil
+        }
+    }
+}), "\n");
+
+
+
+
+enum Option {
+    Some Int,
+    Nothing
+}
+
+let opt = Option of Some 5;
+
+if let of Some x = opt {
+    print("x is ", x, "\n");
+} else {
+    print("x is not set\n");
+}
+
+
+let p = {x = 1, y = 2};
+
+match p {
+    {x = 2, y} => print("x is 2: ", p, "\n"),
+    {x, y = 2} => print("y is 2: ", p, "\n"),
+    otherwise => print("neither x nor y is 2: ", otherwise, "\n")
+}
+
+
+
+
+enum Tree {
+    Leaf Int,
+    Node {
+        left: &Tree,
+        right: &Tree
+    }
+}
+
+proc printTree(tree: &Tree) {
+    match *tree {
+        of Leaf x => print(x, " "),
+        of Node { left, right } => {
+            printTree(left);
+            printTree(right);
+        }
+    }
+}
+
+let tree = new Tree of Node {
+    left = new Tree of Node {
+        left = new Tree of Leaf 1,
+        right = new Tree of Leaf 2
+    },
+    right = new Tree of Node {
+        left = new Tree of Leaf 3,
+        right = new Tree of Leaf 4
+    }
+};
+
+printTree(tree);
+
+

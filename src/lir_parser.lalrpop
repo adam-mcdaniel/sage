@@ -91,12 +91,11 @@ ConstExpr: ConstExpr = {
     "typeof" "(" <Expr> ")" => ConstExpr::TypeOf(Box::new(<>)),
     "sizeof" "(" <Type> ")" => ConstExpr::SizeOfType(<>),
     "sizeofexpr" "(" <Expr> ")" => ConstExpr::SizeOfExpr(Box::new(<>)),
-    "(" ")" => ConstExpr::None,
     <ConstAtom> => <>,
 }
 
 ConstAtom: ConstExpr = {
-    <t: TypeAtom> "of" <variant: Symbol> => ConstExpr::Of(t, variant).into(),
+    // <t: TypeAtom> "of" <variant: Symbol> => ConstExpr::Of(t, variant).into(),
     Symbol => ConstExpr::Symbol(<>),
     IntLit => ConstExpr::Int(<> as i32),
     FloatLit => ConstExpr::Float(<>),
@@ -105,6 +104,7 @@ ConstAtom: ConstExpr = {
     "false" => ConstExpr::Bool(false),
     "Null" => ConstExpr::Null,
     "None" => ConstExpr::None,
+    "(" ")" => ConstExpr::None,
 }
 
 pub Expr: Expr = {
@@ -154,6 +154,7 @@ pub Expr: Expr = {
     "return" <Expr> => Expr::Return(Box::new(<>)),
     "debug" <Expr> => Expr::UnaryOp(Put::Debug.clone_box(), Box::new(<>)),
     "put" <Expr> => Expr::UnaryOp(Put::Display.clone_box(), Box::new(<>)),
+    "new" <Expr> => Expr::UnaryOp(New.clone_box(), Box::new(<>)),
     Pointer => <>
 }
 
@@ -208,9 +209,9 @@ Term: Expr = {
     <x: Term> "->" <field: Symbol> => x.deref().field(ConstExpr::Symbol(field)),
     <x: Term> "[" <idx: Expr> "]" => x.idx(idx),
     <x: Term> "as" <t: Type> => x.as_type(t),
-    <x: Term> "as" <t: TypeAtom> "of" <name: Symbol> => {
-        Expr::EnumUnion(t, name, Box::new(x))
-    },
+    // <x: Term> "as" <t: TypeAtom> "of" <name: Symbol> => {
+    //     Expr::EnumUnion(t, name, Box::new(x))
+    // },
     <f: Term> <args: List<"(", Expr, ",", ")">> => f.app(args),
     "if" <cond: Atom> <then: Atom> <elif: ("else" "if" <Atom> <Atom>)*> <mut e: ("else" <Atom>)?> => {
         for (c, t) in elif.into_iter().rev() {
@@ -227,12 +228,18 @@ Term: Expr = {
     "match" <expr:Atom> <list: NonEmptyList<"{", (<Pattern> "=>" <Expr>), ",", "}">> => {
         Expr::Match(Box::new(expr), list.into_iter().collect())
     },
-    "_tag" <Atom> => <>.unop(Tag),
-    "_data" <Atom> => <>.unop(Data),
+    // "_tag" <Atom> => <>.unop(Tag),
+    // "_data" <Atom> => <>.unop(Data),
     Atom => <>,
 }
 
 Atom: Expr = {
+    <t: TypeAtom> "of" <name: Symbol> "=" <x: Atom> => {
+        Expr::EnumUnion(t, name, Box::new(x))
+    },
+    <t: TypeAtom> "of" <name: Symbol> "(" ")"=> {
+        Expr::ConstExpr(ConstExpr::Of(t, name))
+    },
     <StringLit> => Expr::ConstExpr(ConstExpr::Array(<>.chars().map(|c| ConstExpr::Char(c)).collect())),
     Block => <>,
     "(" <Expr> ")" => <>,

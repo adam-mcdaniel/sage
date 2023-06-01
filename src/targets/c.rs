@@ -79,8 +79,8 @@ impl Architecture for C {
             StandardOp::Rem => "reg.f = fmod(reg.f, ptr->f);".to_string(),
             StandardOp::Pow => "reg.f = pow(reg.f, ptr->f);".to_string(),
             StandardOp::IsNonNegative => "reg.i = reg.f >= 0;".to_string(),
-            StandardOp::Alloc => "reg.p = malloc(ptr->i);".to_string(),
-            StandardOp::Free => "free(ptr->p);".to_string(),
+            StandardOp::Alloc => "reg.p = malloc(reg.i * sizeof(reg));".to_string(),
+            StandardOp::Free => "free(reg.p);".to_string(),
             _ => return Err(format!("Invalid standard op for C target {op:?}")),
         })
     }
@@ -137,10 +137,12 @@ impl Architecture for C {
         }
     }
     fn peek(&self) -> Result<String, String> {
-        Ok("reg.i = *ptr;".to_string())
+        // Ok("reg.i = *ptr;".to_string())
+        todo!()
     }
     fn poke(&self) -> Result<String, String> {
-        Ok("*ptr = reg;".to_string())
+        // Ok("*ptr = reg;".to_string())
+        todo!()
     }
     fn prelude(&self, is_core: bool) -> Option<String> {
         let mut result = r#"#include <stdio.h>

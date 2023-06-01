@@ -867,20 +867,32 @@ impl Compile for ConstExpr {
 
             // Compile a variant of an enum.
             Self::Of(enum_type, variant) => {
-                // Get the enum from the environment.
-                if let Type::Enum(variants) = enum_type.clone().simplify(env)? {
-                    // Get the index of the variant.
-                    if let Some(index) = Type::variant_index(&variants, &variant) {
-                        // Push the index of the variant onto the stack.
-                        output.op(CoreOp::Set(A, index as isize));
-                        output.op(CoreOp::Push(A, 1));
-                    } else {
-                        // If the variant is not found, return an error.
-                        return Err(Error::VariantNotFound(enum_type, variant));
+                // If the type is an enum, and the enum contains the variant,
+                match enum_type.clone().simplify(env)? {
+                    Type::Enum(variants) => {
+                        // Get the index of the variant.
+                        if let Some(index) = Type::variant_index(&variants, &variant) {
+                            // Push the index of the variant onto the stack.
+                            output.op(CoreOp::Set(A, index as isize));
+                            output.op(CoreOp::Push(A, 1));
+                        } else {
+                            // If the variant is not found, return an error.
+                            return Err(Error::VariantNotFound(enum_type, variant));
+                        }
+                    },
+                    Type::EnumUnion(variants) => {
+                        // Get the index of the variant.
+                        if let Some(index) = Type::variant_index(&variants.into_keys().collect(), &variant) {
+                            // Push the index of the variant onto the stack.
+                            output.op(CoreOp::Next(SP, Some(enum_type.get_size(env)? as isize)));
+                            output.op(CoreOp::Set(SP.deref(), index as isize));
+                        } else {
+                            // If the variant is not found, return an error.
+                            return Err(Error::VariantNotFound(enum_type, variant));
+                        }
                     }
-                } else {
-                    // If the type is not an enum, return an error.
-                    return Err(Error::VariantNotFound(enum_type, variant));
+                    // If the type isn't an enum, return an error.
+                    _ => return Err(Error::VariantNotFound(enum_type, variant))
                 }
             }
 

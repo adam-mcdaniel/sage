@@ -226,6 +226,12 @@ impl Expr {
         self.binop(Arithmetic::Remainder, other)
     }
 
+    /// Get the remainder of this expression divided by another.
+    #[allow(clippy::should_implement_trait)]
+    pub fn neg(self) -> Self {
+        self.unop(Negate)
+    }
+
     /// Get a field from a structure, union, or tuple.
     ///
     /// For tuples, use an `Int` constant expression to access the nth field (zero indexed).
@@ -371,6 +377,11 @@ impl Expr {
     /// Perform an AssignOp on this expression.
     pub fn assign_op(self, op: impl AssignOp + 'static, e: impl Into<Self>) -> Self {
         Expr::AssignOp(Box::new(op), Box::new(self.clone()), Box::new(e.into()))
+    }
+
+    /// Perform an AssignOp on this expression.
+    pub fn assign(self, op: Box<dyn AssignOp>, e: impl Into<Self>) -> Self {
+        Expr::AssignOp(op, Box::new(self.clone()), Box::new(e.into()))
     }
 }
 

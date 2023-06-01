@@ -22,11 +22,14 @@ impl Put {
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
         match t.clone().simplify(env)? {
-            Type::Pointer(x) => {
-                for ch in format!("&{x}").chars() {
+            Type::Pointer(_) => {
+                for ch in format!("&(").chars() {
                     output.op(CoreOp::Set(A, ch as u8 as isize));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
+                output.op(CoreOp::Put(addr, Output::stdout_int()));
+                output.op(CoreOp::Set(A, ')' as u8 as isize));
+                output.op(CoreOp::Put(A, Output::stdout_char()));
             }
             Type::Bool => {
                 output.op(CoreOp::If(addr.clone()));
@@ -231,11 +234,11 @@ impl Put {
                             dst: B,
                         });
                         output.op(CoreOp::If(B));
-                        for c in format!("{name} of ").chars() {
+                        Self::debug(data_address.clone(), variant_t, env, output)?;
+                        for c in format!(" of {name}").chars() {
                             output.op(CoreOp::Set(A, c as u8 as isize));
                             output.op(CoreOp::Put(A, Output::stdout_char()));
                         }
-                        Self::debug(data_address.clone(), variant_t, env, output)?;
                         output.op(CoreOp::End);
                     } else {
                         return Err(Error::VariantNotFound(t.clone(), name.clone()));

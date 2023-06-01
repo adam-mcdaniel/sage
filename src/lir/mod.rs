@@ -69,11 +69,13 @@ mod compile;
 mod env;
 mod expr;
 mod types;
+mod parse;
 
 pub use compile::*;
 pub use env::*;
 pub use expr::*;
 pub use types::*;
+pub use parse::*;
 
 /// Simplify an expression while maintaining structural equality.
 pub trait Simplify: Sized {
@@ -162,6 +164,12 @@ pub enum Error {
 
     /// Invalid type casting expression.
     InvalidAs(Expr, Type, Type),
+
+    /// Invalid constant expression.
+    InvalidConstExpr(ConstExpr),
+
+    /// Expression uses an operation unsupported by the target.
+    UnsupportedOperation(Expr),
 }
 
 /// Create an IR error from an assembly error.

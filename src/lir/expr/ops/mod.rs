@@ -8,6 +8,7 @@ mod comparison;
 mod io;
 mod logic;
 mod tagged_union;
+mod memory;
 
 pub use arithmetic::*;
 pub use assign::*;
@@ -15,6 +16,7 @@ pub use comparison::*;
 pub use io::*;
 pub use logic::*;
 pub use tagged_union::*;
+pub use memory::*;
 
 use crate::{asm::AssemblyProgram, lir::*};
 

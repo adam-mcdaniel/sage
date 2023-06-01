@@ -45,6 +45,38 @@ lalrpop_mod!(
     vm_parser
 );
 
+// use crate::lir::*;
+// #[derive(Debug, Clone)]
+// pub enum IfCond {
+//     IfLet(Pattern, Expr),
+//     If(Expr),
+// }
+
+// #[derive(Debug, Clone)]
+// pub enum Stmt {
+//     For(Option<Expr>, Option<Expr>, Option<Expr>, Box<Stmt>),
+//     While(Expr, Box<Stmt>),
+//     If(IfCond, Box<Stmt>, Option<Box<Stmt>>),
+//     When(ConstExpr, Box<Stmt>, Option<Box<Stmt>>),
+//     Return(Option<Expr>),
+//     Let(String, Option<Type>, Expr),
+//     With(Vec<(String, Expr)>, Box<Stmt>),
+//     Expr(Expr),
+//     Match(Expr, Vec<(Pattern, Stmt)>),
+//     Block(Vec<Stmt>),
+//     // AssignOp(Box<dyn AssignOp>, Box<Expr>, Box<Expr>),
+//     Empty,
+// }
+
+// #[derive(Debug, Clone)]
+// pub enum Declaration {
+//     Constants(Vec<(String, ConstExpr)>),
+//     Procedures(Vec<(String, Procedure)>),
+//     Units(Vec<(String, Type)>),
+//     Types(Vec<(String, Type)>),
+//     Statements(Vec<Stmt>),
+// }
+
 pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
 
 /// Parse Core and Standard variants of virtual machine source code.
@@ -98,10 +130,10 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
         .collect::<String>();
 
     let code = code.trim();
-
-    lir_parser::ExprParser::new()
-        .parse(&code)
-        .map_err(|e| format_error(&code, e))
+    let result = crate::lir::parse_lir_file(&code).unwrap();
+    eprintln!("{:?}", result);
+    eprintln!("{}", result);
+    Ok(result)
 }
 
 type SyntaxError<'a, T> = lalrpop_util::ParseError<usize, T, &'a str>;

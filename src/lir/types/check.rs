@@ -766,19 +766,31 @@ impl TypeCheck for ConstExpr {
             // Typecheck a variant of an enum.
             Self::Of(t, variant) => {
                 // If the type is an enum, and the enum contains the variant,
-                if let Type::Enum(variants) = t.clone().simplify(env)? {
-                    // If the enum contains the variant, return success.
-                    if variants.contains(variant) {
-                        // Return success.
-                        Ok(())
-                    } else {
-                        // Otherwise, the variant isn't contained in the enum,
-                        // so return an error.
-                        Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                match t.clone().simplify(env)? {
+                    Type::Enum(variants) => {
+                        // If the enum contains the variant, return success.
+                        if variants.contains(variant) {
+                            // Return success.
+                            Ok(())
+                        } else {
+                            // Otherwise, the variant isn't contained in the enum,
+                            // so return an error.
+                            Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                        }
+                    },
+                    Type::EnumUnion(variants) => {
+                        // If the enum union contains the variant, and the variant is empty, return success.
+                        if variants.contains_key(variant) && variants.get(variant) == Some(&Type::None) {
+                            // Return success.
+                            Ok(())
+                        } else {
+                            // Otherwise, the variant isn't contained in the enum,
+                            // so return an error.
+                            Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                        }
                     }
-                } else {
                     // If the type isn't an enum, return an error.
-                    Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                    _ => Err(Error::VariantNotFound(t.clone(), variant.clone()))
                 }
             }
 
