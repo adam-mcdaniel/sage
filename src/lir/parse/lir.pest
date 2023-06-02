@@ -4,7 +4,7 @@ WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
 keyword = @{
     "for"
     | "in" | "if" | "elif" |"else" | "while" | "break" | "continue"
-    | "return" | "struct" | "enum" | "as" | "of"
+    | "return" | "struct" | "enum" | "as" | "of" | "sizeof"
     | "proc" | "let" | "const" | "type" | "core" | "std"
     | "Int" | "Float" | "Bool" | "Char" | "None" | "Null"
     | "True" | "False" | "new"
@@ -20,13 +20,13 @@ operator = @{
     | ":" | "." | "," | ";" | "->" | "=>"
 }
 
-symbol = @{ !keyword ~ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+symbol = @{ !keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* | keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
 decimal = @{ "0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT* }
 hexadecimal = @{ "0x" ~ ASCII_HEX_DIGIT+ }
 octal = @{ "0o" ~ ASCII_OCT_DIGIT+ }
 binary = @{ "0b" ~ ASCII_BIN_DIGIT+ }
-unsigned_int = @{ decimal | hexadecimal | octal | binary }
+unsigned_int = @{ hexadecimal | octal | binary | decimal }
 signed_int = @{ ("-" | "+")? ~ unsigned_int }
 int = @{ signed_int }
 
@@ -37,7 +37,7 @@ null = { "Null" }
 float = @{
     "-"?
     ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)
-    ~ ("." ~ ASCII_DIGIT*)?
+    ~ ("." ~ ASCII_DIGIT*)
     ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
 }
 
@@ -45,7 +45,7 @@ string = ${ "\"" ~ string_inner ~ "\"" }
 string_inner = @{ string_char* }
 string_char = {
     !("\"" | "\\") ~ ANY
-    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t" | "0")
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
     | "\\" ~ ("x" ~ ASCII_HEX_DIGIT{2})
 }
@@ -53,7 +53,7 @@ string_char = {
 char = ${ "'" ~ char_inner  ~ "'" }
 char_inner = @{
     !("'" | "\\") ~ ANY
-    | "\\" ~ ("\'" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("\'" | "\\" | "/" | "b" | "f" | "n" | "r" | "t" | "0")
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
     | "\\" ~ ("x" ~ ASCII_HEX_DIGIT{2})
 }
@@ -114,22 +114,23 @@ long_stmt = {
     | stmt_when
     | stmt_while
     | stmt_for
-    | stmt_with
+    | stmt_let_in
     | stmt_match) ~ ";"*
 }
 short_stmt = {
     (stmt_let | stmt_return | stmt_assign | expr) ~ ";"+
 }
 stmt_let = {
-    stmt_let_typed
-    | stmt_let_untyped
+    // stmt_let_typed
+    // | stmt_let_untyped
+    "let" ~ (symbol ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ symbol ~ (":" ~ type)? ~ "=" ~ expr
 }
-stmt_let_untyped = {
-    "let" ~ symbol ~ "=" ~ expr
-}
-stmt_let_typed = {
-    "let" ~ symbol ~ ":" ~ type ~ "=" ~ expr
-}
+// stmt_let_untyped = {
+//     "let" ~ symbol ~ "=" ~ expr
+// }
+// stmt_let_typed = {
+//     "let" ~ (symbol ~ (":" ~ type)? ~ "=" ~ expr ",")* ~ symbol ~ (":" ~ type)? ~ "=" ~ expr
+// }
 stmt_assign = { expr ~ stmt_assign_ops ~ expr }
 stmt_assign_ops = @{
     "="
@@ -151,7 +152,7 @@ pattern_term = {
     pattern_variant
     | pattern_atom
 }
-pattern_variant = { "of" ~ symbol ~ pattern? }
+pattern_variant = { "of" ~ symbol ~ pattern_term? }
 pattern_atom = {
     pattern_group
     | pattern_tuple
@@ -171,7 +172,7 @@ pattern_ptr = { "&" ~ pattern }
 pattern_const = { const_atom }
 
 stmt_block = {
-    "{" ~ stmt* ~ "}"
+    "{" ~ decl* ~ "}"
 }
 stmt_when = {
     "when" ~ const ~ stmt_block ~ ("else" ~ stmt_block)?
@@ -192,14 +193,21 @@ stmt_while = {
     "while" ~ expr ~ stmt_block
 }
 stmt_for = {
-    "for" ~ short_stmt ~ ";" ~ short_stmt ~ ";" ~ short_stmt ~ stmt_block
+    "for" ~ short_stmt ~ expr ~ ";" ~ (stmt_assign | expr) ~ stmt_block
 }
-stmt_with = {
-    stmt_with_block
-    | stmt_with_expr
+stmt_let_in = {
+    stmt_let_in_block
+    | stmt_let_in_expr
 }
-stmt_with_block = { "with" ~ (symbol ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ symbol ~ (":" ~ type)? ~ "=" ~ expr ~ "in" ~ stmt_block }
-stmt_with_expr = { "with" ~ (symbol ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ symbol ~ (":" ~ type)? ~ "=" ~ expr ~ "in" ~ expr ~ ";"+ }
+stmt_let_in_block = { "let" ~ (symbol ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ symbol ~ (":" ~ type)? ~ "=" ~ expr ~ "in" ~ stmt_block }
+stmt_let_in_expr = { "let" ~ (symbol ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ symbol ~ (":" ~ type)? ~ "=" ~ expr ~ "in" ~ expr ~ ";"+ }
+
+// stmt_type_in = {
+//     stmt_type_in_block
+//     | stmt_type_in_expr
+// }
+// stmt_type_in_block = { "type" ~ (symbol ~ "=" ~ type ~ ",")* ~ symbol ~ "=" ~ type ~ "in" ~ stmt_block }
+// stmt_type_in_expr = { "type" ~ (symbol ~ "=" ~ type ~ ",")* ~ symbol ~ "=" ~ type ~ "in" ~ expr ~ ";"+ }
 
 
 ////////////////////////////////////////////////////////////////////
@@ -254,12 +262,16 @@ expr_factor_binops = {
 }
 
 expr_term = {
+    expr_keyword_unary_op* ~ expr_term_non_keyword
+}
+expr_term_non_keyword = {
     expr_unary ~ (expr_int_field | expr_symbol_field | expr_int_deref_field | expr_symbol_deref_field | expr_index | expr_as_type | expr_call)*
 }
+expr_keyword_unary_op = @{ ("new" | "del") ~ !symbol }
 expr_unary = {
     expr_unary_op* ~ (expr_variant | expr_atom)
 }
-expr_unary_op = !{ "!" | "-" | "&" | "*" | "new" }
+expr_unary_op = !{ "!" | "-" | "&" | "*" }
 expr_variant = { type_atom ~ "of" ~ symbol ~ expr_atom? }
 
 expr_int_field = { "." ~ decimal }
@@ -290,18 +302,22 @@ expr_group = { "(" ~ expr ~ ")" }
 // These are values that can be used in expressions that evaluate
 // at compile time.
 ////////////////////////////////////////////////////////////////////
-const = { const_term }
+const = {
+    const_term
+}
+const_size_of = { "sizeof" ~ "(" ~ type ~ ")" }
 const_term = {
     const_variant
     | const_atom
 }
 const_variant = { type_atom ~ "of" ~ symbol ~ const_atom? }
 const_atom = {
-    const_tuple
+    const_size_of
+    | const_tuple
     | const_array
     | const_struct
-    | const_int
     | const_float
+    | const_int
     | const_bool
     | const_char
     | const_group
@@ -328,11 +344,23 @@ const_string = @{ string }
 ////////////////////////////////////////////////////////////////////
 type = {
     type_let
+    | type_term
+}
+type_let = { "let" ~ (symbol ~ "=" ~ type ~ ",")* ~ symbol ~ "=" ~ type ~ "in" ~ type }
+type_term = {
+    type_proc
     | type_atom
 }
-type_let = { "let" ~ (symbol ~ "=" ~ type ~ ",")+ ~ symbol ~ "=" ~ type ~ "in" ~ type }
+type_proc = {
+    type_proc_args ~ "->" ~ type
+    | type_atom ~ "->" ~ type
+}
+type_proc_args = {
+    "(" ~ (type ~ ",")* ~ type? ~ ","? ~ ")"
+}
 type_atom = {
     type_symbol
+    | type_enum
     | type_int
     | type_float
     | type_bool
@@ -342,11 +370,13 @@ type_atom = {
     | type_struct
     | type_array
     | type_ptr
+    | "(" ~ type ~ ")"
 }
 type_symbol = { symbol }
 type_tuple = { "(" ~ (type ~ ",")+ ~ type? ~ ")" }
 type_array = { "[" ~ type ~ "*" ~ const ~ "]" }
 type_struct = { "struct"? ~ "{" ~ (symbol ~ ":" ~ type ~ ",")+ ~ (symbol ~ ":" ~ type)? ~ "}" }
+type_enum = { "enum" ~ "{" ~ (decl_enum_variant ~ ",")+ ~ decl_enum_variant? ~ "}" }
 type_ptr = { "&" ~ type }
 type_int = @{ "Int" }
 type_float = @{ "Float" }

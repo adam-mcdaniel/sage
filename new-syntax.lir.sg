@@ -1,3 +1,4 @@
+
 enum Math {
     Add(&Math, &Math),
     Sub(&Math, &Math),
@@ -8,13 +9,38 @@ enum Math {
 
 proc eval(m: &Math): Int = match *m {
     of Add(lhs, rhs) => eval(lhs) + eval(rhs),
+    of Add(lhs, rhs) => eval(lhs) + eval(rhs),
     of Sub(lhs, rhs) => eval(lhs) - eval(rhs),
     of Mul(lhs, rhs) => eval(lhs) * eval(rhs),
     of Div(lhs, rhs) => eval(lhs) / eval(rhs),
     of Num n => n
 };
 
-print(eval(new Math of Add (new Math of Num 5, new Math of Num 6)));
+// 2 * 3 + 6
+let m = new Math of Add (
+    new Math of Mul (
+        new Math of Num 2,
+        new Math of Num 3
+    ),
+    new Math of Num 6
+);
+print(eval(m), "\n");
+
+proc freeMath(m: &Math) {
+    match *m {
+        of Add(lhs, rhs)
+        | of Sub(lhs, rhs)
+        | of Mul(lhs, rhs)
+        | of Div(lhs, rhs) => {
+            freeMath(lhs);
+            freeMath(rhs);
+        },
+        _ => {}
+    }
+    del m;
+}
+
+freeMath(m);
 
 enum List {
     Nil,
@@ -24,14 +50,42 @@ enum List {
     }
 }
 
-proc sum(list: &List): Int {
+proc printList(list: &List) {
     match *list {
-        of Nil => 0,
-        of Cons { data, next } => data + sum(next)
+        of Nil => print("Nil"),
+        of Cons { data, next = &of Nil } => {
+            print("next element is nil");
+            print(data);
+        },
+        of Cons { data, next = &of Cons {data = 5, next} } => {
+            print("idk the next list item is 5 i guess");
+        },
+        of Cons { data, next } => {
+            print(data, " ");
+            printList(next);
+        },
+        _ => {}
     }
 }
 
-print("\n", sum(new List of Cons {
+proc sumList(list: &List): Int {
+    match *list {
+        of Nil => 0,
+        of Cons { data, next } => data + sumList(next)
+    }
+}
+
+proc freeList(list: &List) {
+    match *list {
+        of Nil => {},
+        of Cons { data, next } => {
+            freeList(next);
+        }
+    }
+    del list;
+}
+
+let list = new List of Cons {
     data = 5,
     next = new List of Cons {
         data = 6,
@@ -40,35 +94,18 @@ print("\n", sum(new List of Cons {
             next = new List of Nil
         }
     }
-}), "\n");
+};
 
+printList(list);
+print(" -> ", sumList(list), "\n");
+freeList(list);
 
-
-
-enum Option {
-    Some Int,
-    Nothing
-}
-
-let opt = Option of Some 5;
-
-if let of Some x = opt {
-    print("x is ", x, "\n");
-} else {
-    print("x is not set\n");
-}
-
-
-let p = {x = 1, y = 2};
-
+let p = {x = 2, y = 3};
 match p {
     {x = 2, y} => print("x is 2: ", p, "\n"),
     {x, y = 2} => print("y is 2: ", p, "\n"),
     otherwise => print("neither x nor y is 2: ", otherwise, "\n")
 }
-
-
-
 
 enum Tree {
     Leaf Int,
@@ -82,10 +119,24 @@ proc printTree(tree: &Tree) {
     match *tree {
         of Leaf x => print(x, " "),
         of Node { left, right } => {
+            print("(");
             printTree(left);
+            print(", ");
             printTree(right);
+            print(")");
         }
     }
+}
+
+proc freeTree(tree: &Tree) {
+    match *tree {
+        of Leaf _ => (),
+        of Node { left, right } => {
+            freeTree(left);
+            freeTree(right);
+        }
+    }
+    del tree;
 }
 
 let tree = new Tree of Node {
@@ -100,5 +151,38 @@ let tree = new Tree of Node {
 };
 
 printTree(tree);
+freeTree(tree);
 
 
+const LEN1 = 8,
+    LEN2 = 24;
+
+
+proc array(x: [Char * LEN1]): [Char * LEN2] {
+    let result = [
+        ' ', ' ', ' ', ' ', 
+        ' ', ' ', ' ', ' ', 
+        ' ', ' ', ' ', ' ', 
+        ' ', ' ', ' ', ' ',
+        ' ', ' ', ' ', ' ', 
+        ' ', ' ', ' ', ' ', 
+    ];
+
+    for let i=0; i < LEN2; i+=1 {
+        result[i] = x[i % LEN1];
+    }
+
+    return result;
+}
+
+print(array("test.123"));
+
+let x = 5,
+    y = 6,
+    z = 7 in print(x + y + z);
+
+let w = 5, test = "hmm", z = List of Nil;
+
+let test = new List of Cons { data = 5, next = new List of Nil };
+
+freeList(test);

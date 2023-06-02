@@ -119,6 +119,10 @@ pub enum Expr {
     Index(Box<Self>, Box<Self>),
 }
 
+// impl PartialEq for Expr {
+//     fn parti
+// }
+
 impl From<ConstExpr> for Expr {
     fn from(c: ConstExpr) -> Self {
         Expr::ConstExpr(c)

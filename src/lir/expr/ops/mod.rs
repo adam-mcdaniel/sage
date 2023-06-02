@@ -18,6 +18,7 @@ pub use logic::*;
 pub use tagged_union::*;
 pub use memory::*;
 
+use std::cmp::Ordering;
 use crate::{asm::AssemblyProgram, lir::*};
 
 /// A trait used to implemented an assignment operation.
@@ -333,6 +334,107 @@ impl PartialEq for dyn TernaryOp {
             &Expr::ConstExpr(ConstExpr::Int(0)),
         )
         .eq(&other.display(
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+        ))
+    }
+}
+
+impl PartialOrd for dyn AssignOp {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.display(
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+        )
+        .partial_cmp(&other.display(
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+        ))
+    }
+}
+
+impl PartialOrd for dyn UnaryOp {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.display(&Expr::ConstExpr(ConstExpr::Int(0)))
+            .partial_cmp(&other.display(&Expr::ConstExpr(ConstExpr::Int(0))))
+    }
+}
+
+impl PartialOrd for dyn BinaryOp {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.display(
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+        )
+        .partial_cmp(&other.display(
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+        ))
+    }
+}
+
+impl PartialOrd for dyn TernaryOp {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.display(
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+        )
+        .partial_cmp(&other.display(
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+        ))
+    }
+}
+
+impl Eq for dyn AssignOp {}
+impl Eq for dyn UnaryOp {}
+impl Eq for dyn BinaryOp {}
+impl Eq for dyn TernaryOp {}
+
+impl Ord for dyn AssignOp {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.display(
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+        )
+        .cmp(&other.display(
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+        ))
+    }
+}
+
+impl Ord for dyn UnaryOp {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.display(&Expr::ConstExpr(ConstExpr::Int(0)))
+            .cmp(&other.display(&Expr::ConstExpr(ConstExpr::Int(0))))
+    }
+}
+
+impl Ord for dyn BinaryOp {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.display(
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+        )
+        .cmp(&other.display(
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+        ))
+    }
+}
+
+impl Ord for dyn TernaryOp {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.display(
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+            &Expr::ConstExpr(ConstExpr::Int(0)),
+        )
+        .cmp(&other.display(
             &Expr::ConstExpr(ConstExpr::Int(0)),
             &Expr::ConstExpr(ConstExpr::Int(0)),
             &Expr::ConstExpr(ConstExpr::Int(0)),

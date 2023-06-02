@@ -7,8 +7,71 @@ use crate::{
 };
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
+
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
+pub struct Get;
+
+impl UnaryOp for Get {
+    /// Can this unary operation be applied to the given type?
+    fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
+        ty.equals(&Type::Pointer(Box::new(Type::Char)), env)
+            .or(ty.equals(&Type::Pointer(Box::new(Type::Int)), env))
+            .or(ty.equals(&Type::Pointer(Box::new(Type::Float)), env))
+    }
+
+    /// Get the type of the result of applying this unary operation to the given type.
+    fn return_type(&self, _expr: &Expr, _env: &Env) -> Result<Type, Error> {
+        Ok(Type::None)
+    }
+
+    /// Evaluate this unary operation on the given constant values.
+    fn eval(&self, expr: &ConstExpr, _env: &mut Env) -> Result<ConstExpr, Error> {
+        Err(Error::InvalidConstExpr(expr.clone()))
+    }
+
+    /// Compile the unary operation.
+    fn compile_types(
+        &self,
+        ty: &Type,
+        env: &mut Env,
+        output: &mut dyn AssemblyProgram,
+    ) -> Result<(), Error> {
+
+        if ty.equals(&Type::Pointer(Box::new(Type::Char)), env)? {
+            output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_char()));
+        } else if ty.equals(&Type::Pointer(Box::new(Type::Int)), env)? {
+            output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_int()));
+        } else if ty.equals(&Type::Pointer(Box::new(Type::Float)), env)? {
+            output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_float()));
+        } else {
+            return Err(Error::UnsupportedOperation(Expr::UnaryOp(self.clone_box(), Box::new(Expr::ConstExpr(ConstExpr::None)))));
+        }
+
+        output.op(CoreOp::Pop(None, 1));
+        Ok(())
+    }
+
+    /// Clone this operation into a box.
+    fn clone_box(&self) -> Box<dyn UnaryOp> {
+        Box::new(*self)
+    }
+}
+
+impl Debug for Get {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(f, "get")
+    }
+}
+
+impl Display for Get {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(f, "get")
+    }
+}
+
+
 /// Print a value to a given output.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum Put {
     Debug,
     Display,

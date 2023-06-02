@@ -17,6 +17,7 @@ pub enum Pattern {
     Symbol(String),
     ConstExpr(ConstExpr),
     Alt(Vec<Pattern>),
+    Pointer(Box<Pattern>),
     Wildcard,
 }
 
@@ -52,6 +53,10 @@ impl Pattern {
     /// Construct a new pattern which matches any expression.
     pub fn wildcard() -> Self {
         Self::Wildcard
+    }
+    /// Construct a new pattern which matches a pointer.
+    pub fn pointer(pattern: Pattern) -> Self {
+        Self::Pointer(Box::new(pattern))
     }
 
     /// Get the type of a branch with a given expression matched to this pattern.
@@ -144,11 +149,23 @@ impl Pattern {
                 let mut found = vec![false; variants.len()];
                 for pattern in patterns {
                     match pattern {
-                        Pattern::Variant(name, _) => {
+                        Pattern::Variant(name, None) => {
                             // Find the index of the variant.
                             if let Some(index) = variants.keys().position(|item| *item == *name) {
                                 // Set the corresponding boolean to true.
                                 found[index] = true;
+                            }
+                        }
+                        Pattern::Variant(name, Some(p)) => {
+                            // Find the index of the variant.
+                            if let Some(index) = variants.keys().position(|item| *item == *name) {
+                                // Set the corresponding boolean to true.
+                                found[index] = found[index] || Self::are_patterns_exhaustive(
+                                    expr,
+                                    &[*p.clone()],
+                                    &variants[name],
+                                    env,
+                                )?;
                             }
                         }
 
@@ -391,8 +408,31 @@ impl Pattern {
         // Get the type of the branch as a result of the match.
         let expected = self.get_branch_result_type(matching_expr, branch, env)?;
         // Type-check the expression generated to match the pattern.
-        self.matches(&matching_expr, &matching_ty, env)?
-            .type_check(env)?;
+        match self.matches(&matching_expr, &matching_ty, env).and_then(|x| x.type_check(env)) {
+            Ok(()) => {}
+            // Err(Error::InvalidBinaryOp(_, a, b)) => {
+            //     let expected = a.get_type(env)?;
+            //     let found = b.get_type(env)?;
+            //     return Err(Error::MismatchedTypes {
+            //         expected,
+            //         found,
+            //         expr: matching_expr.clone(),
+            //     });
+            // },
+            // Err(Error::InvalidBinaryOpTypes(_, expected, found)) => {
+            //     return Err(Error::MismatchedTypes {
+            //         expected,
+            //         found,
+            //         expr: matching_expr.clone(),
+            //     })
+            // },
+            // _ => return Err(Error::MismatchedTypes {
+            //     expected,
+            //     found: matching_ty,
+            //     expr: matching_expr.clone(),
+            // })
+            Err(e) => return Err(e),
+        }
         // Generate an expression with the bindings defined for the branch.
         let result_expr = self.bind(&matching_expr, &matching_ty, &branch, env)?;
         // Type-check the expression generated to bind the pattern.
@@ -609,6 +649,10 @@ impl Pattern {
             | (Self::Wildcard, _)
             | (Self::ConstExpr(_), _) => HashMap::new(),
 
+            (Self::Pointer(pattern), Type::Pointer(item_type)) => {
+                pattern.get_bindings(&expr.clone().deref(), item_type, env)?
+            }
+
             // If the pattern is an alternative, then get the bindings for each pattern
             (Self::Alt(patterns), _) => {
                 let mut result = HashMap::new();
@@ -629,13 +673,26 @@ impl Pattern {
                 result
             }
 
-            _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone())),
+            _ => {
+                // If the pattern does not match the type, then return an error.
+                return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
+            },
         })
     }
 
     /// Does this pattern match the given expression?
     /// This function returns an expression which evaluates to true if the expression matches the pattern.
     fn matches(&self, expr: &Expr, ty: &Type, env: &Env) -> Result<Expr, Error> {
+        let mut ty = ty.clone();
+        loop {
+            match ty {
+                Type::Let(_, _, _) | Type::Symbol(_) => {
+                    ty = ty.simplify(env)?;
+                }
+                _ => break,
+            }
+        }
+        let ty = &ty;
         Ok(match (self, ty) {
             // If the pattern is a variant, and the type is a EnumUnion,
             // check if the variant matches the pattern.
@@ -658,7 +715,7 @@ impl Pattern {
                                 .clone()
                                 .unop(super::ops::Data)
                                 .field(ConstExpr::Symbol(name.clone())),
-                            &variants[name],
+                            &variants[name].clone().simplify(env)?,
                             env,
                         )?,
                     )
@@ -712,6 +769,10 @@ impl Pattern {
 
                 // Return the result.
                 result
+            }
+
+            (Self::Pointer(pattern), Type::Pointer(item_type)) => {
+                pattern.matches(&expr.clone().deref(), item_type, env)?
             }
 
             // If the pattern is a struct, and the type is a struct, then
@@ -792,6 +853,16 @@ impl Pattern {
     /// added to the environment, and will be bound to the corresponding value in
     /// the expression which is being matched.
     fn bind(&self, expr: &Expr, ty: &Type, ret: &Expr, env: &Env) -> Result<Expr, Error> {
+        let mut ty = ty.clone();
+        loop {
+            match ty {
+                Type::Let(_, _, _) | Type::Symbol(_) => {
+                    ty = ty.simplify(env)?;
+                }
+                _ => break,
+            }
+        }
+        let ty = &ty;
         Ok(match (self, ty) {
             // If the pattern is a variant, and the type is a tagged union,
             // bind the pattern to the corresponding variant type in the tagged union.
@@ -886,6 +957,10 @@ impl Pattern {
                 Expr::let_var(name.clone(), Some(ty.clone()), expr.clone(), ret.clone())
             }
 
+            (Self::Pointer(pattern), Type::Pointer(item_type)) => {
+                pattern.bind(&expr.clone().deref(), item_type, ret, env)?
+            }
+
             // If the pattern is a wildcard, then it will not add any bindings.
             (Self::Wildcard, _) | (Self::ConstExpr(_), _) => ret.clone(),
 
@@ -902,7 +977,9 @@ impl Pattern {
                 result
             }
 
-            _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone())),
+            _ => {
+                return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
+            },
         })
     }
 }
@@ -937,6 +1014,7 @@ impl Display for Pattern {
                 write!(f, "}}")
             }
 
+            Self::Pointer(ptr) => write!(f, "&{}", ptr),
             Self::Symbol(name) => write!(f, "{}", name),
 
             Self::ConstExpr(const_expr) => write!(f, "{}", const_expr),

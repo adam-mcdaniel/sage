@@ -5,13 +5,20 @@ use crate::asm::{CoreOp, SP};
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 /// Get the Enum value of the tag associated with a tagged union (EnumUnion).
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Tag;
 
 impl UnaryOp for Tag {
     /// Can this unary operation be applied to the given type?
     fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
-        Ok(matches!(ty.clone().simplify(env)?, Type::EnumUnion(_)))
+        let mut ty = ty.clone().simplify(env)?;
+        loop {
+            match ty {
+                Type::Let(_, _, _) | Type::Symbol(_) => ty = ty.simplify(env)?,
+                Type::EnumUnion(_) => return Ok(true),
+                _ => return Ok(false),
+            }
+        }
     }
 
     /// Get the type of the result of applying this unary operation to the given type.
@@ -37,7 +44,7 @@ impl UnaryOp for Tag {
         let expr = expr.clone().eval(env)?;
         match expr.clone() {
             ConstExpr::EnumUnion(t, variant, _) => {
-                if let Type::EnumUnion(variants) = t {
+                if let Type::EnumUnion(variants) = t.clone().simplify(env)? {
                     Ok(ConstExpr::Of(
                         Type::Enum(variants.into_keys().collect()),
                         variant,
@@ -97,13 +104,21 @@ impl Display for Tag {
 }
 
 /// Get the Union data associated with a tagged union (EnumUnion).
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Data;
 
 impl UnaryOp for Data {
     /// Can this unary operation be applied to the given type?
     fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
-        Ok(matches!(ty.clone().simplify(env)?, Type::EnumUnion(_)))
+        let mut ty = ty.clone().simplify(env)?;
+        loop {
+            match ty {
+                Type::Let(_, _, _) | Type::Symbol(_) => ty = ty.simplify(env)?,
+                Type::EnumUnion(_) => return Ok(true),
+                _ => return Ok(false),
+            }
+        }
+        // Ok(matches!(ty.clone().simplify(env)?, Type::EnumUnion(_)))
     }
 
     /// Get the type of the result of applying this unary operation to the given type.

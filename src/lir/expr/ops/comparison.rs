@@ -9,7 +9,7 @@ use crate::{
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 /// A comparison operation between two values.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum Comparison {
     Equal,
     NotEqual,

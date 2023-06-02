@@ -10,15 +10,15 @@ struct LIRParser;
 #[derive(Clone, Debug)]
 pub enum Statement {
     Match(Expr, Vec<(Pattern, Self)>),
-    Let(String, Option<Type>, Expr),
+    Let(Vec<(String, Option<Type>, Expr)>),
     Assign(Expr, Option<Box<dyn AssignOp + 'static>>, Expr),
     If(Expr, Box<Self>, Option<Box<Self>>),
     IfLet(Pattern, Expr, Box<Self>, Option<Box<Self>>),
     While(Expr, Box<Self>),
     For(Box<Self>, Expr, Box<Self>, Box<Self>),
     Return(Expr),
-    Block(Vec<Self>),
-    With(Vec<(String, Option<Type>, Expr)>, Box<Self>),
+    Block(Vec<Declaration>),
+    LetIn(Vec<(String, Option<Type>, Expr)>, Box<Self>),
     Expr(Expr)
 }
 
@@ -34,9 +34,6 @@ impl Statement {
         let stmt = match (self, rest.clone()) {
             (Self::Match(e, arms), _) => {
                 Expr::Match(Box::new(e), arms.into_iter().map(|(a, b)| (a, b.to_expr(None))).collect())
-            }
-            (Self::Let(name, ty, val), _) => {
-                return Expr::LetVar(name, ty, Box::new(val), rest_expr)
             }
             (Self::Assign(lhs, op, rhs), _) => {
                 match op {
@@ -61,6 +58,7 @@ impl Statement {
                 Expr::While(Box::new(cond), Box::new(body.to_expr(None)))
             }
             (Self::For(init, cond, step, body), _) => {
+                // init.to_expr(Some(Expr::While(Box::new(cond), Box::new(Expr::Many(vec![body.to_expr(None), step.to_expr(None)])))))
                 init.to_expr(Some(Expr::While(Box::new(cond), Box::new(body.to_expr(Some(step.to_expr(None)))))))
             }
             (Self::Return(val), _) => {
@@ -76,26 +74,33 @@ impl Statement {
                 for stmt in stmts.into_iter().rev() {
                     result = Some(stmt.to_expr(result));
                 }
-                result.unwrap_or(Expr::ConstExpr(ConstExpr::None))
-                // Expr::Many(stmts.into_iter().map(|s| s.to_expr(None)).collect())
+                return result.unwrap_or(Expr::ConstExpr(ConstExpr::None))
             }
             (Self::Block(stmts), None) => {
                 let mut result = None;
                 for stmt in stmts.into_iter().rev() {
                     result = Some(stmt.to_expr(result));
                 }
-                result.unwrap_or(Expr::ConstExpr(ConstExpr::None))
-                // return Expr::Many(stmts.into_iter().map(|s| s.to_expr(None)).collect())
+                return result.unwrap_or(Expr::ConstExpr(ConstExpr::None));
             }
-            (Self::With(defs, body), Some(Expr::LetVars(mut vars, mut ret))) => {
-                // Expr::LetVars(defs, Box::new(body.to_expr(None)))
+            // (Self::LetIn(defs, body), Some(Expr::LetVars(mut vars, mut ret))) => {
+            //     // Expr::LetVars(defs, Box::new(body.to_expr(None)))
+            //     for (name, ty, val) in defs.into_iter().rev() {
+            //         vars.insert(0, (name, ty, val));
+            //     }
+            //     return Expr::LetVars(vars, Box::new(Expr::Many(vec![body.to_expr(Some(*ret))])))
+            // }
+            (Self::LetIn(defs, body), _) => {
+                Expr::LetVars(defs, Box::new(body.to_expr(None)))
+            }
+            (Self::Let(defs), Some(Expr::LetVars(mut vars, ret))) => {
                 for (name, ty, val) in defs.into_iter().rev() {
                     vars.insert(0, (name, ty, val));
                 }
-                return Expr::LetVars(vars, Box::new(Expr::Many(vec![body.to_expr(Some(*ret))])))
+                return Expr::LetVars(vars, ret)
             }
-            (Self::With(defs, body), _) => {
-                Expr::LetVars(defs, Box::new(body.to_expr(None)))
+            (Self::Let(defs), _) => {
+                return Expr::LetVars(defs, rest_expr)
             }
             (Self::Expr(e), _) => {
                 e
@@ -124,11 +129,7 @@ pub enum Declaration {
 
 impl Declaration {
     fn proc_to_expr(name: String, args: Vec<(String, Type)>, ret: Option<Type>, body: Statement) -> Procedure {
-        let mut params = Vec::new();
-        for (name, ty) in args.into_iter().rev() {
-            params.push((name, ty));
-        }
-        Procedure::new(params, ret.unwrap_or(Type::None), body.to_expr(None))
+        Procedure::new(args, ret.unwrap_or(Type::None), body.to_expr(None))
     }
 
     fn to_expr(self, rest: Option<Expr>) -> Expr {
@@ -174,7 +175,7 @@ impl Declaration {
                 }
                 if simple {
                     // If we're using a simple enum, then we can just use a simple enum
-                    Expr::LetTypes(vec![(name, Type::Enum(variants.into_iter().map(|(a, b)| a).collect()))], rest_expr)
+                    Expr::LetTypes(vec![(name, Type::Enum(variants.into_iter().map(|(a, _)| a).collect()))], rest_expr)
                 } else {
                     // Otherwise, we need to use a tagged union
                     Expr::LetTypes(vec![(name, Type::EnumUnion(variants.into_iter().map(|(a, b)| (a, match b {
@@ -230,7 +231,6 @@ pub struct Program(Vec<Declaration>);
 impl Program {
     fn to_expr(self) -> Expr {
         let mut rest = None;
-        eprintln!("Program: {:?}", self.0);
 
         for expr in self.0.into_iter().rev() {
             rest = Some(expr.to_expr(rest))
@@ -294,7 +294,7 @@ fn parse_decl(pair: Pair<Rule>) -> Declaration {
                     _ => unreachable!()
                 }
             }
-
+            
             Declaration::Proc(name, params, ret, Box::new(stmt))
         }
         Rule::decl_type => {
@@ -365,7 +365,7 @@ fn parse_decl(pair: Pair<Rule>) -> Declaration {
             }
             Declaration::Const(defs)
         }
-        Rule::stmt => Declaration::Statement(parse_stmt(pair)),
+        Rule::stmt | Rule::stmt_block => Declaration::Statement(parse_stmt(pair)),
         Rule::EOI => Declaration::Statement(Statement::Block(vec![])),
         other => panic!("Unexpected rule: {:?}: {:?}", other, pair)
     }
@@ -375,19 +375,16 @@ fn parse_stmt(pair: Pair<Rule>) -> Statement {
     match pair.as_rule() {
         Rule::stmt
         | Rule::long_stmt
-        | Rule::short_stmt 
-        | Rule::stmt_with => pair.into_inner().map(parse_stmt).next().unwrap(),
+        | Rule::short_stmt
+        | Rule::stmt_let_in => pair.into_inner().map(parse_stmt).next().unwrap(),
 
         Rule::stmt_match => Statement::Expr(parse_match(pair)),
-        Rule::stmt_let_typed
-        | Rule::stmt_let_untyped
-        | Rule::stmt_let => parse_let(pair),
 
         Rule::stmt_block => {
             let mut inner_rules = pair.into_inner();
             let mut stmts = Vec::new();
             while let Some(stmt) = inner_rules.next() {
-                stmts.push(parse_stmt(stmt));
+                stmts.push(parse_decl(stmt));
             }
             Statement::Block(stmts)
         }
@@ -461,10 +458,29 @@ fn parse_stmt(pair: Pair<Rule>) -> Statement {
             Statement::For(Box::new(pre), cond, Box::new(post), Box::new(body))
         }
 
-        Rule::stmt_with_block | Rule::stmt_with_expr => {
+        Rule::stmt_let => {
             let mut inner_rules = pair.into_inner();
             let mut defs = vec![];
-            for _ in 0..inner_rules.clone().count() / 2 {
+            while inner_rules.peek().is_some() {
+                let symbol = inner_rules.next().unwrap().as_str().to_string();
+                let ty = inner_rules.next().unwrap();
+                if ty.as_rule() == Rule::expr {
+                    defs.push((symbol, None, parse_expr(ty)));
+                    continue;
+                }
+                if let Some(expr) = inner_rules.next() {
+                    defs.push((symbol, Some(parse_type(ty)), parse_expr(expr)));
+                } else {
+                    defs.push((symbol, None, parse_expr(ty)));
+                }
+            }
+            Statement::Let(defs)
+        }
+
+        Rule::stmt_let_in_expr | Rule::stmt_let_in_block => {
+            let mut inner_rules = pair.into_inner();
+            let mut defs = vec![];
+            while inner_rules.clone().count() > 1 {
                 let symbol = inner_rules.next().unwrap().as_str().to_string();
                 let ty = inner_rules.next().unwrap();
                 if ty.as_rule() == Rule::expr {
@@ -479,9 +495,9 @@ fn parse_stmt(pair: Pair<Rule>) -> Statement {
             }
             let last = inner_rules.next().unwrap();
             match last.as_rule() {
-                Rule::stmt_block => Statement::With(defs, Box::new(parse_stmt(last))),
-                Rule::expr => Statement::With(defs, Box::new(Statement::Expr(parse_expr(last)))),
-                _ => unreachable!()
+                Rule::stmt_block => Statement::LetIn(defs, Box::new(parse_stmt(last))),
+                Rule::expr => Statement::LetIn(defs, Box::new(Statement::Expr(parse_expr(last)))),
+                other => unreachable!("Unexpected rule {:?}", other)
             }
         }
 
@@ -501,34 +517,41 @@ fn parse_stmt(pair: Pair<Rule>) -> Statement {
             }, rhs)
         }
 
+        Rule::stmt_return => {
+            let mut inner_rules = pair.into_inner();
+            let expr = inner_rules.next().map(parse_expr);
+            Statement::Return(expr.unwrap_or(Expr::ConstExpr(ConstExpr::None)))
+        }
+
         Rule::expr => Statement::Expr(parse_expr(pair)),
 
         other => panic!("Unexpected rule: {:?}: {:?}", other, pair)
     }
 }
 
-fn parse_let(pair: Pair<Rule>) -> Statement {
-    match pair.as_rule() {
-        Rule::stmt_let => {
-            let mut inner_rules = pair.into_inner();
-            parse_let(inner_rules.next().unwrap())
-        }
-        Rule::stmt_let_typed => {
-            let mut inner_rules = pair.into_inner();
-            let name = inner_rules.next().unwrap().as_str().to_string();
-            let ty = inner_rules.next().map(parse_type);
-            let expr = parse_expr(inner_rules.next().unwrap());
-            Statement::Let(name, ty, expr)
-        }
-        Rule::stmt_let_untyped => {
-            let mut inner_rules = pair.into_inner();
-            let name = inner_rules.next().unwrap().as_str().to_string();
-            let expr = parse_expr(inner_rules.next().unwrap());
-            Statement::Let(name, None, expr)
-        }
-        _ => unreachable!()
-    }
-}
+// fn parse_let(pair: Pair<Rule>) -> Statement {
+//     match pair.as_rule() {
+        
+//         // Rule::stmt_let => {
+//         //     let mut inner_rules = pair.into_inner();
+//         //     parse_let(inner_rules.next().unwrap())
+//         // }
+//         // Rule::stmt_let_typed => {
+//         //     let mut inner_rules = pair.into_inner();
+//         //     let name = inner_rules.next().unwrap().as_str().to_string();
+//         //     let ty = inner_rules.next().map(parse_type);
+//         //     let expr = parse_expr(inner_rules.next().unwrap());
+//         //     Statement::Let(name, ty, expr)
+//         // }
+//         // Rule::stmt_let_untyped => {
+//         //     let mut inner_rules = pair.into_inner();
+//         //     let name = inner_rules.next().unwrap().as_str().to_string();
+//         //     let expr = parse_expr(inner_rules.next().unwrap());
+//         //     Statement::Let(name, None, expr)
+//         // }
+//         _ => unreachable!()
+//     }
+// }
 
 pub fn parse_expr(pair: Pair<Rule>) -> Expr {
     match pair.as_rule() {
@@ -540,6 +563,7 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
         | Rule::expr_logic_term
         | Rule::expr_comparison
         | Rule::expr_sum
+        | Rule::expr_index
         | Rule::expr_factor => parse_binop(pair),
 
         Rule::expr_variant => {
@@ -552,7 +576,7 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
                 Expr::ConstExpr(ConstExpr::Of(ty, variant.to_string()))
             }
         }
-        Rule::expr_term => parse_expr_term(pair),
+        Rule::expr_term_non_keyword => parse_expr_term(pair),
         Rule::expr_tuple => {
             let inner_rules = pair.into_inner();
             let mut result = vec![];
@@ -580,19 +604,18 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
             Expr::Struct(result.into_iter().collect())
         }
 
-        Rule::expr_unary => {
-            // eprintln!("Unary: {:?}\n", pair);
-
+        Rule::expr_unary | Rule::expr_term => {
             let inner_rules = pair.into_inner();
             let mut result = Expr::ConstExpr(ConstExpr::None);
             for x in inner_rules.rev() {
                 result = match x.as_rule() {
-                    Rule::expr_unary_op => {
+                    Rule::expr_unary_op | Rule::expr_keyword_unary_op => {
                         match x.as_str() {
                             "!" => result.not(),
                             "-" => result.neg(),
                             "&" => result.refer(),
                             "new" => result.unop(New),
+                            "del" => result.unop(Delete),
                             "*" => result.deref(),
                             _ => panic!("Unexpected unary op: {}", x.as_str())
                         }
@@ -615,16 +638,16 @@ fn parse_expr_term(pair: Pair<Rule>) -> Expr {
     for suffix in inner_rules {
         head = match suffix.as_rule() {
             Rule::expr_int_field => {
-                head.field(ConstExpr::Int(suffix.as_str().parse().unwrap()))
+                head.field(ConstExpr::Int(suffix.into_inner().next().unwrap().as_str().parse().unwrap()))
             }
             Rule::expr_symbol_field => {
-                head.field(ConstExpr::Symbol(suffix.as_str().to_string()))
+                head.field(ConstExpr::Symbol(suffix.into_inner().next().unwrap().as_str().to_string()))
             }
             Rule::expr_int_deref_field => {
-                head.deref().field(ConstExpr::Int(suffix.as_str().parse().unwrap()))
+                head.deref().field(ConstExpr::Int(suffix.into_inner().next().unwrap().as_str().parse().unwrap()))
             }
             Rule::expr_symbol_deref_field => {
-                head.deref().field(ConstExpr::Symbol(suffix.as_str().to_string()))
+                head.deref().field(ConstExpr::Symbol(suffix.into_inner().next().unwrap().as_str().to_string()))
             }
             Rule::expr_index => {
                 head.idx(parse_expr(suffix))
@@ -639,12 +662,16 @@ fn parse_expr_term(pair: Pair<Rule>) -> Expr {
                     let mut exprs: Vec<Expr> = args.into_iter().map(|val| val.unop(Put::Display)).collect();
                     exprs.push(Expr::ConstExpr(ConstExpr::None));
                     Expr::Many(exprs)
+                } else if head == Expr::ConstExpr(ConstExpr::Symbol("input".to_string())) {
+                    let mut exprs: Vec<Expr> = args.into_iter().map(|val| val.unop(Get)).collect();
+                    exprs.push(Expr::ConstExpr(ConstExpr::None));
+                    Expr::Many(exprs)
                 } else {
                     head.app(args)
                 }
             }
             Rule::expr_as_type => {
-                head.as_type(parse_type(suffix))
+                head.as_type(parse_type(suffix.into_inner().next().unwrap()))
             }
             _ => unreachable!()
         }
@@ -736,14 +763,15 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
         Rule::const_char => {
             let token = pair.into_inner().next().unwrap().as_str();
             let token = &token[1..token.len() - 1];
-            let result = snailquote::unescape(&format!("\"{token}\"")).unwrap();
+            let result = snailquote::unescape(&format!("\"{token}\"").replace("\\0", "\\\\0")).unwrap().replace("\\0", "\0");
             let ch = result.chars().next().unwrap();
             ConstExpr::Char(ch)
         },
-        Rule::const_bool => ConstExpr::Bool(pair.as_str().parse().unwrap()),
-        Rule::const_string => ConstExpr::Array(snailquote::unescape(pair.into_inner().next().unwrap().as_str()).unwrap().chars().map(|ch| ConstExpr::Char(ch)).collect()),
+        Rule::const_bool => ConstExpr::Bool(pair.as_str().to_lowercase().parse().unwrap()),
+        Rule::const_string => ConstExpr::Array(snailquote::unescape(&pair.into_inner().next().unwrap().as_str().replace("\\0", "\\\\0")).unwrap().replace("\\0", "\0").chars().map(|ch| ConstExpr::Char(ch)).collect()),
         Rule::const_none => ConstExpr::None,
         Rule::const_null => ConstExpr::Null,
+        Rule::const_size_of => ConstExpr::SizeOfType(parse_type(pair.into_inner().next().unwrap())),
         other => panic!("Unexpected rule: {:?}: {:?}", other, pair)
     }
 }
@@ -752,13 +780,14 @@ fn parse_type(pair: Pair<Rule>) -> Type {
     // todo!()
     match pair.as_rule() {
         Rule::r#type
-        | Rule::type_atom => pair.into_inner().map(parse_type).next().unwrap(),
+        | Rule::type_atom
+        | Rule::type_term => pair.into_inner().map(parse_type).next().unwrap(),
 
         Rule::type_let => {
             let mut inner_rules = pair.into_inner();
             // Get all but the last rule
             let mut result = vec![];
-            for _ in 0..inner_rules.clone().count() - 1 {
+            while inner_rules.clone().count() > 2 {
                 let name = inner_rules.next().unwrap().as_str().to_string();
                 let ty = parse_type(inner_rules.next().unwrap());
                 result.push((name, ty));
@@ -801,10 +830,56 @@ fn parse_type(pair: Pair<Rule>) -> Type {
             }
             Type::Struct(fields.into_iter().collect())
         }
+
+        Rule::type_enum => {
+            let inner_rules = pair.into_inner();
+            let mut variants = Vec::new();
+            for pair in inner_rules {
+                let mut inner_rules = pair.into_inner();
+                let variant_name = inner_rules.next().unwrap();
+                if variant_name.as_rule() != Rule::symbol { continue }
+                let variant_name = variant_name.as_str().to_string();
+                
+                let ty = inner_rules.next();
+
+                if let Some(ty) = ty {
+                    if ty.as_rule() == Rule::r#type {
+                        variants.push((variant_name.as_str().to_string(), Some(parse_type(ty))));
+                    } else {
+                        variants.push((variant_name.as_str().to_string(), None));
+                    }
+                } else {
+                    variants.push((variant_name.as_str().to_string(), None));
+                }
+            }
+            let mut is_simple = true;
+            for (_, ty) in &variants {
+                if ty.is_some() {
+                    is_simple = false;
+                    break;
+                }
+            }
+            if is_simple {
+                Type::Enum(variants.into_iter().map(|(name, _)| name).collect())
+            } else {
+                Type::EnumUnion(variants.into_iter().map(|(name, ty)| (name, ty.unwrap_or(Type::None))).collect())
+            }
+        }
         Rule::type_ptr => {
             let mut inner_rules = pair.into_inner();
             let ty = parse_type(inner_rules.next().unwrap());
             Type::Pointer(Box::new(ty))
+        }
+        Rule::type_proc => {
+            let mut inner_rules = pair.into_inner();
+            let mut args_rules = inner_rules.next().unwrap().into_inner();
+            let mut args = Vec::new();
+            while args_rules.peek().is_some() {
+                let ty = parse_type(args_rules.next().unwrap());
+                args.push(ty);
+            }
+            let ret = parse_type(inner_rules.next().unwrap());
+            Type::Proc(args, Box::new(ret))
         }
         
         other => panic!("Unexpected rule: {:?}: {:?}", other, pair)
@@ -840,7 +915,7 @@ fn parse_pattern(pair: Pair<Rule>) -> Pattern {
             Pattern::Variant(symbol, pattern.map(Box::new))
         },
         Rule::pattern_tuple => {
-            let mut inner_rules = pair.into_inner();
+            let inner_rules = pair.into_inner();
             let mut patterns = Vec::new();
             for pair in inner_rules {
                 let pattern = parse_pattern(pair);
@@ -849,7 +924,7 @@ fn parse_pattern(pair: Pair<Rule>) -> Pattern {
             Pattern::Tuple(patterns)
         },
         Rule::pattern_struct => {
-            let mut inner_rules = pair.into_inner();
+            let inner_rules = pair.into_inner();
             let mut fields = Vec::new();
             for pair in inner_rules {
                 let mut inner_rules = pair.into_inner();
@@ -864,11 +939,11 @@ fn parse_pattern(pair: Pair<Rule>) -> Pattern {
             }
             Pattern::Struct(fields.into_iter().collect())
         },
-        // Rule::pattern_ptr => {
-        //     let mut inner_rules = pair.into_inner();
-        //     let pattern = parse_pattern(inner_rules.next().unwrap());
-        //     Pattern::Pointer(Box::new(pattern))
-        // }
+        Rule::pattern_ptr => {
+            let mut inner_rules = pair.into_inner();
+            let pattern = parse_pattern(inner_rules.next().unwrap());
+            Pattern::Pointer(Box::new(pattern))
+        }
         Rule::pattern_wildcard => Pattern::Wildcard,
         Rule::pattern_symbol => Pattern::Symbol(pair.as_str().to_string()),
         Rule::pattern_alt => {

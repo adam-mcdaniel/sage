@@ -75,9 +75,10 @@ impl TypeCheck for Procedure {
         // Create a new scope for the procedure's body, and define the arguments for the scope.
         let mut new_env = env.new_scope();
         new_env.define_args(self.args.clone())?;
+        new_env.set_expected_return_type(self.ret.clone());
 
         // Get the type of the procedure's body, and confirm that it matches the return type.
-        let body_type = self.body.get_type(&new_env)?;
+        let body_type = self.body.get_type(&new_env)?;        
         if !body_type.equals(&self.ret, env)? {
             Err(Error::MismatchedTypes {
                 expected: self.ret.clone(),

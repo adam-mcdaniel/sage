@@ -29,11 +29,12 @@ impl Architecture for C {
     fn op(&self, op: &CoreOp) -> String {
         match op {
             CoreOp::Comment(n) => {
-                let mut comment = String::new();
-                for line in n.split('\n') {
-                    comment += &format!("// {}", line.trim());
-                }
-                comment
+                format!("// {}", n.replace("\n", "\n// ").replace("\r", ""))
+                // let mut comment = String::new();
+                // for line in n.split('\n') {
+                //     comment += &format!("// {}", line.trim());
+                // }
+                // comment
             }
             CoreOp::While => "while (reg.i) {".to_string(),
             CoreOp::If => "if (reg.i) {".to_string(),

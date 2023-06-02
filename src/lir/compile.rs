@@ -479,7 +479,7 @@ impl Compile for Expr {
                             }
                         }
                         Type::Symbol(_) | Type::Let(_, _, _) => continue,
-                        _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
+                        other => return Err(Error::VariantNotFound(other, variant.clone())),
                     }
                 }
             }
@@ -833,6 +833,9 @@ impl Compile for ConstExpr {
                         // If we could not find the variant return an error.
                         return Err(Error::VariantNotFound(t, variant));
                     }
+                } else {
+                    // If we could not find the variant return an error.
+                    return Err(Error::VariantNotFound(t, variant));
                 }
             }
             // Compile a core builtin.
@@ -866,34 +869,50 @@ impl Compile for ConstExpr {
             }
 
             // Compile a variant of an enum.
-            Self::Of(enum_type, variant) => {
-                // If the type is an enum, and the enum contains the variant,
-                match enum_type.clone().simplify(env)? {
-                    Type::Enum(variants) => {
-                        // Get the index of the variant.
-                        if let Some(index) = Type::variant_index(&variants, &variant) {
-                            // Push the index of the variant onto the stack.
-                            output.op(CoreOp::Set(A, index as isize));
-                            output.op(CoreOp::Push(A, 1));
-                        } else {
-                            // If the variant is not found, return an error.
-                            return Err(Error::VariantNotFound(enum_type, variant));
+            Self::Of(mut enum_type, variant) => {
+                // Only try to simplify the type 50 times at most.
+                // This is to prevent infinite loops and to keep recursion under control.
+                for _ in 0..50 {
+                    // Simplify the type.
+                    enum_type = enum_type.simplify(env)?;
+                    // If the type is an enum, we can continue.
+                    match enum_type.clone() {
+                        // If the type is an enum, we can continue.
+                        Type::Enum(variants) => {
+                            // Get the index of the variant.
+                            if let Some(index) = Type::variant_index(&variants, &variant) {
+                                // Push the index of the variant onto the stack.
+                                output.op(CoreOp::Set(A, index as isize));
+                                output.op(CoreOp::Push(A, 1));
+                                return Ok(())
+                            } else {
+                                // If the variant is not found, return an error.
+                                return Err(Error::VariantNotFound(enum_type, variant));
+                            }
+                        },
+                        // If the type is an enum union, we can continue.
+                        Type::EnumUnion(variants) if variants.get(&variant) == Some(&Type::None) => {
+                            // Get the index of the variant.
+                            if let Some(index) = Type::variant_index(&variants.into_keys().collect(), &variant) {
+                                // Push the index of the variant onto the stack.
+                                // Allocate the size of the structure on the stack by 
+                                // incrementing the stack pointer by the size of the structure.
+                                // Then, set the value under the stack pointer to the index of the variant.
+                                output.op(CoreOp::Next(SP, Some(enum_type.get_size(env)? as isize)));
+                                output.op(CoreOp::Set(SP.deref(), index as isize));
+                                return Ok(())
+                            } else {
+                                // If the variant is not found, return an error.
+                                return Err(Error::VariantNotFound(enum_type, variant));
+                            }
                         }
-                    },
-                    Type::EnumUnion(variants) => {
-                        // Get the index of the variant.
-                        if let Some(index) = Type::variant_index(&variants.into_keys().collect(), &variant) {
-                            // Push the index of the variant onto the stack.
-                            output.op(CoreOp::Next(SP, Some(enum_type.get_size(env)? as isize)));
-                            output.op(CoreOp::Set(SP.deref(), index as isize));
-                        } else {
-                            // If the variant is not found, return an error.
-                            return Err(Error::VariantNotFound(enum_type, variant));
-                        }
+                        // If the type is a let expression or a symbol, simplify it again first
+                        Type::Let(_, _, _) | Type::Symbol(_) => continue,
+                        // If the type isn't an enum, return an error.
+                        _ => return Err(Error::VariantNotFound(enum_type, variant))
                     }
-                    // If the type isn't an enum, return an error.
-                    _ => return Err(Error::VariantNotFound(enum_type, variant))
                 }
+                return Err(Error::VariantNotFound(enum_type, variant))
             }
 
             // Compile a symbol.

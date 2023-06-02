@@ -15,7 +15,7 @@ use crate::{
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Negate;
 
 impl UnaryOp for Negate {

@@ -131,9 +131,22 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
 
     let code = code.trim();
     let result = crate::lir::parse_lir_file(&code).unwrap();
-    eprintln!("{:?}", result);
-    eprintln!("{}", result);
-    Ok(result)
+    // eprintln!("{:?}", result);
+    // eprintln!("{}", result);
+
+    let alloc = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
+        name: "alloc".to_string(),
+        args: vec![("size".to_string(), crate::lir::Type::Int)],
+        ret: crate::lir::Type::Pointer(Box::new(crate::lir::Type::Any)),
+        body: vec![crate::asm::StandardOp::Alloc(crate::asm::SP.deref())],
+    });
+
+    Ok(Expr::LetConst(
+        "alloc".to_string(),
+        // crate::lir::Type::Pointer(Box::new(crate::lir::Type::Any)),
+        alloc,
+        Box::new(result),
+    ))
 }
 
 type SyntaxError<'a, T> = lalrpop_util::ParseError<usize, T, &'a str>;

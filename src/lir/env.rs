@@ -28,6 +28,9 @@ pub struct Env {
     /// This is incremented by the size of each argument defined (for a procedure).
     /// This is unaffected by defining *variables* in the scope of the function.
     args_size: usize,
+    /// Expected return type of the current function.
+    /// This is `None` if we are not currently compiling a function.
+    expected_ret: Option<Type>,
 }
 
 impl Default for Env {
@@ -42,6 +45,7 @@ impl Default for Env {
             // The last argument is stored at `[FP]`, so our first variable must be at `[FP + 1]`.
             fp_offset: 1,
             args_size: 0,
+            expected_ret: None,
         }
     }
 }
@@ -166,4 +170,18 @@ impl Env {
         // Return the offset of the variable from the frame pointer.
         Ok(offset)
     }
+
+    /// Get the expected return type of the current function.
+    /// This is used to check if the returned value of a function matches the expected return type.
+    /// This method returns `None` if the current scope is not a function.
+    pub fn get_expected_return_type(&self) -> Option<&Type> {
+        self.expected_ret.as_ref()
+    }
+
+    /// Set the expected return type of the current function.
+    /// If we're in a function, this will be the type of the function.
+    /// If we're not in a function, this will be `None`.
+    pub fn set_expected_return_type(&mut self, t: Type) {
+        self.expected_ret = Some(t);
+    } 
 }

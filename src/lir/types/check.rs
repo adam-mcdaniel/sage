@@ -228,9 +228,19 @@ impl TypeCheck for Expr {
             // Typecheck a block of expressions.
             Self::Many(exprs) => {
                 // Typecheck each expression.
-                for expr in exprs {
+                for (i, expr) in exprs.iter().enumerate() {
                     // Check the inner expression.
                     expr.type_check(env)?;
+                    if i < exprs.len() - 1 {
+                        // If it's not the last expression, confirm that it's of type `None`.
+                        // Otherwise, return an error.
+                        let ty = expr.get_type(env)?;
+                        if !ty.equals(&Type::None, env)? {
+                            eprintln!("Expected type `None`, found type `{}`", ty);
+                            // If it's not, return an error.
+                            return Err(Error::UnexpectedExpr(expr.clone(), ty.clone()))
+                        }
+                    }
                 }
                 // Return success if all the expressions are sound.
                 Ok(())
@@ -298,6 +308,11 @@ impl TypeCheck for Expr {
             Self::LetType(name, t, ret) => {
                 // Create a new environment with the type defined.
                 let mut new_env = env.clone();
+                // Confirm the type hasn't already been defined.
+                if new_env.get_type(name).is_some() {
+                    return Err(Error::TypeRedefined(name.clone()));
+                }
+
                 new_env.define_type(name.clone(), t.clone());
                 // Typecheck the type we're defining.
                 t.type_check(&new_env)?;
@@ -311,6 +326,10 @@ impl TypeCheck for Expr {
                 // Create a new environment with the types defined.
                 let mut new_env = env.clone();
                 for (name, ty) in types {
+                    // Confirm the type hasn't already been defined.
+                    if new_env.get_type(name).is_some() {
+                        return Err(Error::TypeRedefined(name.clone()));
+                    }
                     // Define the type in the environment.
                     new_env.define_type(name, ty.clone());
                 }
@@ -529,7 +548,19 @@ impl TypeCheck for Expr {
             }
 
             // Typecheck a return statement.
-            Self::Return(e) => e.type_check(env),
+            Self::Return(e) => {
+                e.type_check(env)?;
+                let ty = e.get_type(env)?;
+                let expected_ty = env.get_expected_return_type().cloned().unwrap_or(Type::None);
+                if !expected_ty.equals(&ty, env)? {
+                    return Err(Error::MismatchedTypes {
+                        expected: expected_ty,
+                        found: ty,
+                        expr: self.clone(),
+                    });
+                }
+                Ok(())
+            },
 
             // Typecheck an array or tuple literal.
             Self::Array(items) => {
@@ -765,33 +796,45 @@ impl TypeCheck for ConstExpr {
 
             // Typecheck a variant of an enum.
             Self::Of(t, variant) => {
-                // If the type is an enum, and the enum contains the variant,
-                match t.clone().simplify(env)? {
-                    Type::Enum(variants) => {
-                        // If the enum contains the variant, return success.
-                        if variants.contains(variant) {
-                            // Return success.
-                            Ok(())
-                        } else {
-                            // Otherwise, the variant isn't contained in the enum,
-                            // so return an error.
-                            Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                let mut t = t.clone();
+
+                // Check that the variant is contained in the enum.
+                // Only check 50 levels deep to keep recursion under control.
+                for _ in 0..50 {
+                    // Simplify the type.
+                    t = t.simplify(env)?;
+                    // Check if the type is an enum or an enum union.
+                    match t.clone() {
+                        Type::Enum(variants) => {
+                            // If the enum contains the variant, return success.
+                            if variants.contains(variant) {
+                                // Return success.
+                                return Ok(())
+                            } else {
+                                // Otherwise, the variant isn't contained in the enum,
+                                // so return an error.
+                                return Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                            }
+                        },
+                        Type::EnumUnion(variants) if variants.get(variant) == Some(&Type::None) => {
+                            // If the enum union contains the variant, and the variant is empty, return success.
+                            if variants.contains_key(variant) && variants.get(variant) == Some(&Type::None) {
+                                // Return success.
+                                return Ok(())
+                            } else {
+                                // Otherwise, the variant isn't contained in the enum,
+                                // so return an error.
+                                return Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                            }
                         }
-                    },
-                    Type::EnumUnion(variants) => {
-                        // If the enum union contains the variant, and the variant is empty, return success.
-                        if variants.contains_key(variant) && variants.get(variant) == Some(&Type::None) {
-                            // Return success.
-                            Ok(())
-                        } else {
-                            // Otherwise, the variant isn't contained in the enum,
-                            // so return an error.
-                            Err(Error::VariantNotFound(t.clone(), variant.clone()))
-                        }
+                        // If the type is a let binding or a symbol, simplify it again.
+                        Type::Let(_, _, _) | Type::Symbol(_) => continue,
+                        // If the type isn't an enum, return an error.
+                        _ => return Err(Error::VariantNotFound(t.clone(), variant.clone()))
                     }
-                    // If the type isn't an enum, return an error.
-                    _ => Err(Error::VariantNotFound(t.clone(), variant.clone()))
                 }
+                // If we've recursed too deep, return an error.
+                return Err(Error::VariantNotFound(t.clone(), variant.clone()))
             }
 
             // Typecheck a tuple literal.

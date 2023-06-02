@@ -170,6 +170,12 @@ pub enum Error {
 
     /// Expression uses an operation unsupported by the target.
     UnsupportedOperation(Expr),
+
+    /// Tried to define a type that already exists.
+    TypeRedefined(String),
+
+    /// Unexpected expression returned a non-None value.
+    UnexpectedExpr(Expr, Type),
 }
 
 /// Create an IR error from an assembly error.

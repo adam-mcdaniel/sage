@@ -10,7 +10,7 @@ use crate::{
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 /// A boolean "And" operation between two values.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct And;
 
 impl BinaryOp for And {
