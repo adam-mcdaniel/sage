@@ -127,6 +127,32 @@ impl GetSize for Type {
                 // Add 1 for the tag.
                 + 1
             }
+
+            // Get the size of an `Apply` type.
+            Self::Apply(poly, ty_args) => {
+                match poly.clone().simplify(env)? {
+                    Self::Poly(ty_params, template) => {
+                        // Make sure the number of type arguments matches the number of type parameters.
+                        if ty_args.len() != ty_params.len() {
+                            return Err(Error::InvalidTemplateArgs(self.clone()));
+                        }
+                        // Create a new environment with the type parameters defined.
+                        let mut new_env = env.clone();
+                        for (name, ty) in ty_params.iter().zip(ty_args.iter()) {
+                            new_env.define_type(name, ty.clone());
+                        }
+                        // Get the size of the resulting type.
+                        template.get_size_checked(&new_env, i)?
+                    }
+                    _ => {
+                        return Err(Error::ApplyNotTemplate(self.clone()));
+                    }
+                }
+            }
+
+            Self::Poly(_, _) => {
+                return Err(Error::SizeOfTemplate(self.clone()));
+            }
         })
     }
 }

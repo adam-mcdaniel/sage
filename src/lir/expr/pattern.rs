@@ -70,8 +70,11 @@ impl Pattern {
         let mut ty = expr.get_type(env)?;
         loop {
             match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) => {
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
                     ty = ty.simplify(env)?;
+                }
+                Type::Poly(_, template) => {
+                    ty = *template.clone();
                 }
                 _ => break,
             }
@@ -101,8 +104,11 @@ impl Pattern {
         let mut ty = matching_expr_ty.clone();
         loop {
             match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) => {
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
                     ty = ty.simplify(env)?;
+                }
+                Type::Poly(_, template) => {
+                    ty = *template.clone();
                 }
                 _ => break,
             }
@@ -160,12 +166,13 @@ impl Pattern {
                             // Find the index of the variant.
                             if let Some(index) = variants.keys().position(|item| *item == *name) {
                                 // Set the corresponding boolean to true.
-                                found[index] = found[index] || Self::are_patterns_exhaustive(
-                                    expr,
-                                    &[*p.clone()],
-                                    &variants[name],
-                                    env,
-                                )?;
+                                found[index] = found[index]
+                                    || Self::are_patterns_exhaustive(
+                                        expr,
+                                        &[*p.clone()],
+                                        &variants[name],
+                                        env,
+                                    )?;
                             }
                         }
 
@@ -399,8 +406,11 @@ impl Pattern {
         let mut matching_ty = matching_expr.get_type(env)?;
         loop {
             match matching_ty {
-                Type::Let(_, _, _) | Type::Symbol(_) => {
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
                     matching_ty = matching_ty.simplify(env)?;
+                }
+                Type::Poly(_, template) => {
+                    matching_ty = *template.clone();
                 }
                 _ => break,
             }
@@ -408,7 +418,10 @@ impl Pattern {
         // Get the type of the branch as a result of the match.
         let expected = self.get_branch_result_type(matching_expr, branch, env)?;
         // Type-check the expression generated to match the pattern.
-        match self.matches(&matching_expr, &matching_ty, env).and_then(|x| x.type_check(env)) {
+        match self
+            .matches(&matching_expr, &matching_ty, env)
+            .and_then(|x| x.type_check(env))
+        {
             Ok(()) => {}
             // Err(Error::InvalidBinaryOp(_, a, b)) => {
             //     let expected = a.get_type(env)?;
@@ -448,6 +461,9 @@ impl Pattern {
                 expr: matching_expr.clone(),
             });
         }
+
+        // eprintln!("Type checked pattern match: {} => {}", self, branch);
+
         // If no error was returned, the type-checking succeeded.
         Ok(())
     }
@@ -558,8 +574,11 @@ impl Pattern {
         let mut t = ty.clone();
         loop {
             match t {
-                Type::Let(_, _, _) | Type::Symbol(_) => {
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
                     t = t.simplify(env)?;
+                }
+                Type::Poly(ty_params, template) => {
+                    t = *template.clone();
                 }
                 _ => break,
             }
@@ -673,10 +692,12 @@ impl Pattern {
                 result
             }
 
-            _ => {
+            (pat, ty) => {
+                eprintln!("pat: {pat}");
+                eprintln!("ty: {ty}");
                 // If the pattern does not match the type, then return an error.
-                return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
-            },
+                return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
+            }
         })
     }
 
@@ -686,8 +707,11 @@ impl Pattern {
         let mut ty = ty.clone();
         loop {
             match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) => {
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
                     ty = ty.simplify(env)?;
+                }
+                Type::Poly(ty_params, template) => {
+                    ty = *template.clone();
                 }
                 _ => break,
             }
@@ -856,8 +880,11 @@ impl Pattern {
         let mut ty = ty.clone();
         loop {
             match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) => {
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
                     ty = ty.simplify(env)?;
+                }
+                Type::Poly(ty_params, template) => {
+                    ty = *template.clone();
                 }
                 _ => break,
             }
@@ -977,9 +1004,7 @@ impl Pattern {
                 result
             }
 
-            _ => {
-                return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()))
-            },
+            _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone())),
         })
     }
 }

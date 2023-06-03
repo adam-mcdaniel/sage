@@ -130,23 +130,25 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
         .collect::<String>();
 
     let code = code.trim();
-    let result = crate::lir::parse_lir_file(&code).unwrap();
-    // eprintln!("{:?}", result);
-    // eprintln!("{}", result);
+    match crate::lir::parse_lir_file(&code) {
+        Ok(result) => {
+            // eprintln!("Parsed LIR: {:#}", result);
+            let alloc = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
+                name: "alloc".to_string(),
+                args: vec![("size".to_string(), crate::lir::Type::Int)],
+                ret: crate::lir::Type::Pointer(Box::new(crate::lir::Type::Any)),
+                body: vec![crate::asm::StandardOp::Alloc(crate::asm::SP.deref())],
+            });
 
-    let alloc = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
-        name: "alloc".to_string(),
-        args: vec![("size".to_string(), crate::lir::Type::Int)],
-        ret: crate::lir::Type::Pointer(Box::new(crate::lir::Type::Any)),
-        body: vec![crate::asm::StandardOp::Alloc(crate::asm::SP.deref())],
-    });
-
-    Ok(Expr::LetConst(
-        "alloc".to_string(),
-        // crate::lir::Type::Pointer(Box::new(crate::lir::Type::Any)),
-        alloc,
-        Box::new(result),
-    ))
+            Ok(Expr::LetConst(
+                "alloc".to_string(),
+                // crate::lir::Type::Pointer(Box::new(crate::lir::Type::Any)),
+                alloc,
+                Box::new(result),
+            ))
+        }
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 type SyntaxError<'a, T> = lalrpop_util::ParseError<usize, T, &'a str>;

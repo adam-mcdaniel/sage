@@ -7,19 +7,19 @@ mod assign;
 mod comparison;
 mod io;
 mod logic;
-mod tagged_union;
 mod memory;
+mod tagged_union;
 
 pub use arithmetic::*;
 pub use assign::*;
 pub use comparison::*;
 pub use io::*;
 pub use logic::*;
-pub use tagged_union::*;
 pub use memory::*;
+pub use tagged_union::*;
 
-use std::cmp::Ordering;
 use crate::{asm::AssemblyProgram, lir::*};
+use std::cmp::Ordering;
 
 /// A trait used to implemented an assignment operation.
 ///

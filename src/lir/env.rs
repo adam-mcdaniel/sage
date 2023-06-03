@@ -58,6 +58,7 @@ impl Env {
             types: self.types.clone(),
             consts: self.consts.clone(),
             procs: self.procs.clone(),
+            
 
             // The rest are the same as a new environment.
             ..Env::default()
@@ -66,7 +67,9 @@ impl Env {
 
     /// Define a type with a given name under this environment.
     pub fn define_type(&mut self, name: impl ToString, ty: Type) {
-        Rc::make_mut(&mut self.types).insert(name.to_string(), ty);
+        if Type::Symbol(name.to_string()) != ty {
+            Rc::make_mut(&mut self.types).insert(name.to_string(), ty);
+        }
     }
 
     /// Get a type definition from this environment.
@@ -183,5 +186,5 @@ impl Env {
     /// If we're not in a function, this will be `None`.
     pub fn set_expected_return_type(&mut self, t: Type) {
         self.expected_ret = Some(t);
-    } 
+    }
 }

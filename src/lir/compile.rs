@@ -29,9 +29,11 @@ pub trait Compile: TypeCheck {
         Self: Sized + Clone,
     {
         // First, type check the expression.
+        eprintln!("typechecking...");
         self.type_check(&Env::default())?;
         // Then, attempt to compile the expression into a core assembly program.
         let mut core_asm = CoreProgram(vec![]);
+        eprintln!("compiling...");
         if self
             .clone()
             // Compile the expression into the core assembly program.
@@ -134,9 +136,15 @@ impl Compile for Expr {
             }
 
             // Compile a constant declaration.
-            Self::LetConst(name, expr, body) => {
+            Self::LetConst(name, mut expr, body) => {
                 // Declare a new scope for the constant.
                 let mut new_env = env.clone();
+                // If the constant is a procedure,
+                // then set its common name to reflect
+                // the constant name.
+                if let ConstExpr::Proc(p) = &mut expr {
+                    p.set_common_name(&name);
+                }
                 new_env.define_const(name, expr);
                 // Compile under the new scope.
                 body.compile_expr(&mut new_env, output)?;
@@ -146,7 +154,13 @@ impl Compile for Expr {
             Self::LetConsts(constants, body) => {
                 // Declare a new scope for the constants.
                 let mut new_env = env.clone();
-                for (name, c) in constants {
+                for (name, mut c) in constants {
+                    // If the constant is a procedure,
+                    // then set its common name to reflect
+                    // the constant name.
+                    if let ConstExpr::Proc(p) = &mut c {
+                        p.set_common_name(&name);
+                    }
                     // Define the constant in the new scope.
                     new_env.define_const(name, c);
                 }
@@ -478,7 +492,7 @@ impl Compile for Expr {
                                 ));
                             }
                         }
-                        Type::Symbol(_) | Type::Let(_, _, _) => continue,
+                        Type::Symbol(_) | Type::Let(_, _, _) | Type::Apply(_, _) => continue,
                         other => return Err(Error::VariantNotFound(other, variant.clone())),
                     }
                 }
@@ -501,6 +515,17 @@ impl Compile for Expr {
                 match val_type {
                     // If the value being indexed is an array:
                     Type::Array(ref elem, _) => {
+                        // First, lets try to compile the same expression using `Refer`.
+                        // This will be faster than the fallback.
+                        if let Ok(refer) = val
+                            .clone()
+                            .refer()
+                            .idx(*idx.clone())
+                            .compile_expr(env, output)
+                        {
+                            return Ok(refer);
+                        }
+
                         // Get the size of the element we will return.
                         let elem_size = elem.get_size(env)?;
                         // Push the array onto the stack.
@@ -727,6 +752,40 @@ impl Compile for ConstExpr {
 
         // Compile the constant expression.
         match self {
+            Self::LetTypes(bindings, expr) => {
+                let mut new_env = env.clone();
+                for (name, ty) in bindings {
+                    new_env.define_type(name, ty);
+                }
+                expr.compile_expr(&mut new_env, output)?;
+            }
+            Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
+                Self::PolyProc(poly_proc) => {
+                    // First, monomorphize the function
+                    let (proc, symbol) = poly_proc.monomorphize(ty_args.clone(), env)?;
+                    let name = symbol.clone().as_symbol(env)?;
+                    // Then, compile the monomorphized function (if it hasn't already been compiled).
+                    if proc.compiled {
+                        // If the function has already been compiled, just push the symbol to the stack.
+                        // This will work for recursive calls on the polymorphic function.
+                        // This works because `env.define_proc` is called when the function is monomorphized.
+                        symbol.compile_expr(env, output)?;                        
+                    } else {
+                        // Define the new monomorphized function in the environment.
+                        env.define_proc(&name, proc.clone());
+                        // Mark the function as compiled.
+                        poly_proc.mark_monomorph_compiled(&name);
+                        // Typecheck the monomorphized function.
+                        proc.type_check(env)?;
+                        // Compile the monomorphized function.
+                        proc.compile_expr(env, output)?;
+                    }
+                }
+                val => {
+                    return Err(Error::InvalidMonomorphize(val));
+                }
+            },
+
             Self::As(expr, _ty) => {
                 // Compile a compile time type cast expression.
                 expr.compile_expr(env, output)?;
@@ -849,7 +908,7 @@ impl Compile for ConstExpr {
             // Compile a procedure.
             Self::Proc(proc) => {
                 // Get the mangled name of the procedure.
-                let name = proc.get_name().to_string();
+                let name = proc.get_mangled_name().to_string();
 
                 if !env.has_proc(&name) {
                     // If the procedure is not yet defined, define it.
@@ -858,6 +917,10 @@ impl Compile for ConstExpr {
 
                 // Push the procedure onto the stack.
                 env.push_proc(&name, output)?;
+            }
+
+            Self::PolyProc(poly_proc) => {
+                return Err(Error::CompilePolyProc(poly_proc));
             }
 
             Self::TypeOf(expr) => {
@@ -884,35 +947,40 @@ impl Compile for ConstExpr {
                                 // Push the index of the variant onto the stack.
                                 output.op(CoreOp::Set(A, index as isize));
                                 output.op(CoreOp::Push(A, 1));
-                                return Ok(())
+                                return Ok(());
                             } else {
                                 // If the variant is not found, return an error.
                                 return Err(Error::VariantNotFound(enum_type, variant));
                             }
-                        },
+                        }
                         // If the type is an enum union, we can continue.
-                        Type::EnumUnion(variants) if variants.get(&variant) == Some(&Type::None) => {
+                        Type::EnumUnion(variants)
+                            if variants.get(&variant) == Some(&Type::None) =>
+                        {
                             // Get the index of the variant.
-                            if let Some(index) = Type::variant_index(&variants.into_keys().collect(), &variant) {
+                            if let Some(index) =
+                                Type::variant_index(&variants.into_keys().collect(), &variant)
+                            {
                                 // Push the index of the variant onto the stack.
-                                // Allocate the size of the structure on the stack by 
+                                // Allocate the size of the structure on the stack by
                                 // incrementing the stack pointer by the size of the structure.
                                 // Then, set the value under the stack pointer to the index of the variant.
-                                output.op(CoreOp::Next(SP, Some(enum_type.get_size(env)? as isize)));
+                                output
+                                    .op(CoreOp::Next(SP, Some(enum_type.get_size(env)? as isize)));
                                 output.op(CoreOp::Set(SP.deref(), index as isize));
-                                return Ok(())
+                                return Ok(());
                             } else {
                                 // If the variant is not found, return an error.
                                 return Err(Error::VariantNotFound(enum_type, variant));
                             }
                         }
                         // If the type is a let expression or a symbol, simplify it again first
-                        Type::Let(_, _, _) | Type::Symbol(_) => continue,
+                        Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => continue,
                         // If the type isn't an enum, return an error.
-                        _ => return Err(Error::VariantNotFound(enum_type, variant))
+                        _ => return Err(Error::VariantNotFound(enum_type, variant)),
                     }
                 }
-                return Err(Error::VariantNotFound(enum_type, variant))
+                return Err(Error::VariantNotFound(enum_type, variant));
             }
 
             // Compile a symbol.

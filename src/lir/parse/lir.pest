@@ -74,25 +74,29 @@ decl_proc = {
     decl_proc_block
     | decl_proc_expr
 }
-decl_proc_block = { "proc" ~ symbol ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ "="? ~ stmt_block }
-decl_proc_expr = { "proc" ~ symbol ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ "=" ~ expr ~ ";"+ }
+decl_proc_block = { "proc" ~ symbol ~ type_parameters? ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ "="? ~ stmt_block }
+decl_proc_expr = { "proc" ~ symbol ~ type_parameters? ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ "=" ~ expr ~ ";"+ }
 decl_proc_param = {
     symbol ~ ":" ~ type
 }
+type_parameters = {
+    "<" ~ (symbol ~ ",")* ~ symbol ~ ">"
+}
+
 decl_unit = {
     "unit" ~ (symbol ~ "=" ~ type ~ ",")* ~ symbol ~ "=" ~ type ~ ";"+
 }
 decl_type = {
-    "type" ~ (symbol ~ "=" ~ type ~ ",")* ~ symbol ~ "=" ~ type ~ ";"+
+    "type" ~ (symbol ~ type_parameters? ~ "=" ~ type ~ ",")* ~ symbol ~ type_parameters? ~ "=" ~ type ~ ";"+
 }
 decl_struct = {
-    "struct" ~ symbol ~ "{" ~ (decl_struct_field ~ ",")* ~ decl_struct_field? ~ "}"
+    "struct" ~ symbol ~ type_parameters? ~ "{" ~ (decl_struct_field ~ ",")* ~ decl_struct_field? ~ "}"
 }
 decl_struct_field = {
     symbol ~ ":" ~ type
 }
 decl_enum = {
-    "enum" ~ symbol ~ "{" ~ (decl_enum_variant ~ ",")* ~ decl_enum_variant? ~ "}"
+    "enum" ~ symbol ~ type_parameters? ~ "{" ~ (decl_enum_variant ~ ",")* ~ decl_enum_variant? ~ "}"
 }
 decl_enum_variant = {
     "of"? ~ symbol ~ type?
@@ -269,10 +273,10 @@ expr_term_non_keyword = {
 }
 expr_keyword_unary_op = @{ ("new" | "del") ~ !symbol }
 expr_unary = {
-    expr_unary_op* ~ (expr_variant | expr_atom)
+    expr_unary_op* ~ (expr_variant | const_monomorph | expr_atom | const)
 }
 expr_unary_op = !{ "!" | "-" | "&" | "*" }
-expr_variant = { type_atom ~ "of" ~ symbol ~ expr_atom? }
+expr_variant = { type_term ~ "of" ~ symbol ~ expr_atom? }
 
 expr_int_field = { "." ~ decimal }
 expr_symbol_field = { "." ~ symbol }
@@ -292,7 +296,7 @@ expr_atom = {
 }
 expr_tuple = { "(" ~ (expr ~ ",")+ ~ expr? ~ ")" }
 expr_array = { "[" ~ (expr ~ ",")* ~ expr? ~ "]" }
-expr_struct = { "{" ~ (symbol ~ "=" ~ expr ~ ",")* ~ (symbol ~ "=" ~ expr) ~ "}" }
+expr_struct = { "struct"? ~ "{" ~ (symbol ~ "=" ~ expr ~ ",")* ~ (symbol ~ "=" ~ expr) ~ "}" }
 expr_group = { "(" ~ expr ~ ")" }
 
 
@@ -303,7 +307,10 @@ expr_group = { "(" ~ expr ~ ")" }
 // at compile time.
 ////////////////////////////////////////////////////////////////////
 const = {
-    const_term
+    const_monomorph | const_term
+}
+const_monomorph = {
+    const_term ~ type_application_suffix+
 }
 const_size_of = { "sizeof" ~ "(" ~ type ~ ")" }
 const_term = {
@@ -329,7 +336,7 @@ const_atom = {
 const_group = { "(" ~ const ~ ")" }
 const_tuple = { "(" ~ (const ~ ",")+ ~ const? ~ ")" }
 const_array = { "[" ~ (const ~ ",")* ~ const? ~ "]" }
-const_struct = { "{" ~ (symbol ~ "=" ~ const ~ ",")+ ~ (symbol ~ "=" ~ const)? ~ "}" }
+const_struct = { "struct"? ~ "{" ~ (symbol ~ "=" ~ const ~ ",")+ ~ (symbol ~ "=" ~ const)? ~ "}" }
 const_int = @{ int }
 const_float = @{ float }
 const_bool = @{ boolean }
@@ -344,22 +351,28 @@ const_string = @{ string }
 ////////////////////////////////////////////////////////////////////
 type = {
     type_let
+    | type_template
+    | type_proc
     | type_term
 }
 type_let = { "let" ~ (symbol ~ "=" ~ type ~ ",")* ~ symbol ~ "=" ~ type ~ "in" ~ type }
-type_term = {
-    type_proc
-    | type_atom
+type_template = {
+    symbol ~ "=>" ~ type
+    | "(" ~ (symbol ~ ",")* ~ symbol ~ ")" ~ "=>" ~ type
 }
 type_proc = {
     type_proc_args ~ "->" ~ type
     | type_atom ~ "->" ~ type
 }
-type_proc_args = {
-    "(" ~ (type ~ ",")* ~ type? ~ ","? ~ ")"
-}
+type_proc_args = { "(" ~ (type ~ ",")* ~ type? ~ ","? ~ ")" }
+
+type_term = { type_apply | type_atom }
+type_apply = { type_atom ~ type_application_suffix+ }
+type_application_suffix = { "<" ~ (type ~ ",")* ~ type ~ ">" }
+
 type_atom = {
     type_symbol
+    | type_struct
     | type_enum
     | type_int
     | type_float
@@ -367,7 +380,6 @@ type_atom = {
     | type_char
     | type_none
     | type_tuple
-    | type_struct
     | type_array
     | type_ptr
     | "(" ~ type ~ ")"

@@ -71,6 +71,10 @@ struct Args {
     /// The number of cells allocated for the call stack.
     #[clap(short, long, value_parser, default_value = "8192")]
     call_stack_size: usize,
+
+    /// Compile the output code in debug mode.
+    #[clap(short, long, default_value = "false")]
+    debug: bool,
 }
 
 /// The types of errors returned by the CLI.
@@ -208,6 +212,7 @@ fn compile(
     target: TargetType,
     output: String,
     call_stack_size: usize,
+    debug: bool,
 ) -> Result<(), Error> {
     match target {
         // If the target is `Run`, then compile the code and execute it with the interpreter.
@@ -238,6 +243,10 @@ fn compile(
         // If the target is core virtual machine code, then try to compile the source to the core variant.
         // If not possible, throw an error.
         TargetType::CoreVM => match compile_source_to_vm(src, src_type, call_stack_size)? {
+            Ok(vm_code) if debug => write_file(
+                format!("{output}.vm.sg"),
+                format!("{:#}", vm_code.flatten()),
+            ),
             Ok(vm_code) => write_file(format!("{output}.vm.sg"), vm_code.flatten().to_string()),
             Err(_) => Err(Error::InvalidSource(
                 "expected core VM program, got standard VM program".to_string(),
@@ -248,6 +257,8 @@ fn compile(
         TargetType::StdVM => write_file(
             format!("{output}.vm.sg"),
             match compile_source_to_vm(src, src_type, call_stack_size)? {
+                Ok(vm_code) if debug => format!("{:#}", vm_code.flatten()),
+                Err(vm_code) if debug => format!("{:#}", vm_code.flatten()),
                 Ok(vm_code) => vm_code.flatten().to_string(),
                 Err(vm_code) => vm_code.flatten().to_string(),
             },
@@ -255,6 +266,9 @@ fn compile(
         // If the target is core assembly code, then try to compile the source to the core variant.
         // If not possible, throw an error.
         TargetType::CoreASM => match compile_source_to_asm(src, src_type)? {
+            Ok(asm_code) if debug => {
+                write_file(format!("{output}.asm.sg"), format!("{:#}", asm_code))
+            }
             Ok(asm_code) => write_file(format!("{output}.asm.sg"), asm_code.to_string()),
             Err(_) => Err(Error::InvalidSource(
                 "expected core assembly program, got standard assembly program".to_string(),
@@ -265,8 +279,10 @@ fn compile(
         TargetType::StdASM => write_file(
             format!("{output}.asm.sg"),
             match compile_source_to_asm(src, src_type)? {
-                Ok(asm_code) => asm_code.to_string(),
-                Err(asm_code) => asm_code.to_string(),
+                Ok(core_asm_code) if debug => format!("{:#}", core_asm_code),
+                Err(std_asm_code) if debug => format!("{:#}", std_asm_code),
+                Ok(core_asm_code) => core_asm_code.to_string(),
+                Err(std_asm_code) => std_asm_code.to_string(),
             },
         )?,
     }
@@ -294,5 +310,6 @@ fn main() -> Result<(), Error> {
         args.target_type,
         args.output,
         args.call_stack_size,
+        args.debug,
     )
 }

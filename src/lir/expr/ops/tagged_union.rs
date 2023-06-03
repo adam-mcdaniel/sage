@@ -14,7 +14,9 @@ impl UnaryOp for Tag {
         let mut ty = ty.clone().simplify(env)?;
         loop {
             match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) => ty = ty.simplify(env)?,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
+                    ty = ty.simplify(env)?
+                }
                 Type::EnumUnion(_) => return Ok(true),
                 _ => return Ok(false),
             }
@@ -26,7 +28,9 @@ impl UnaryOp for Tag {
         let mut ty = expr.get_type(env)?;
         loop {
             match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) => ty = ty.simplify(env)?,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
+                    ty = ty.simplify(env)?
+                }
                 Type::EnumUnion(variants) => return Ok(Type::Enum(variants.into_keys().collect())),
                 found => {
                     return Err(Error::MismatchedTypes {
@@ -113,7 +117,9 @@ impl UnaryOp for Data {
         let mut ty = ty.clone().simplify(env)?;
         loop {
             match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) => ty = ty.simplify(env)?,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
+                    ty = ty.simplify(env)?
+                }
                 Type::EnumUnion(_) => return Ok(true),
                 _ => return Ok(false),
             }
@@ -126,7 +132,9 @@ impl UnaryOp for Data {
         let mut ty = expr.get_type(env)?;
         loop {
             match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) => ty = ty.simplify(env)?,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
+                    ty = ty.simplify(env)?
+                }
                 Type::EnumUnion(variants) => return Ok(Type::Union(variants)),
                 found => {
                     return Err(Error::MismatchedTypes {

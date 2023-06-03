@@ -89,7 +89,7 @@ impl GetType for Expr {
                 let mut new_env = env.clone();
                 new_env.define_const(name, expr.clone());
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                ret.get_type_checked(&new_env, i)?.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after several constant definitions.
@@ -101,7 +101,7 @@ impl GetType for Expr {
                     new_env.define_const(name, c.clone());
                 }
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                ret.get_type_checked(&new_env, i)?.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after a procedure definition.
@@ -110,7 +110,7 @@ impl GetType for Expr {
                 let mut new_env = env.clone();
                 new_env.define_proc(name, proc.clone());
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                ret.get_type_checked(&new_env, i)?.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after several procedure definitions.
@@ -122,7 +122,7 @@ impl GetType for Expr {
                     new_env.define_proc(name, proc.clone());
                 }
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                ret.get_type_checked(&new_env, i)?.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after a type definition.
@@ -132,7 +132,7 @@ impl GetType for Expr {
                 new_env.define_type(name, t.clone());
                 new_env.define_type(name, t.clone().simplify(&new_env)?);
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                ret.get_type_checked(&new_env, i)?.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after several type definitions.
@@ -145,7 +145,7 @@ impl GetType for Expr {
                     new_env.define_type(name, ty.clone().simplify(&new_env)?);
                 }
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                ret.get_type_checked(&new_env, i)?.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after a variable definition.
@@ -154,7 +154,7 @@ impl GetType for Expr {
                 let mut new_env = env.clone();
                 new_env.define_var(var, t.clone().unwrap_or(val.get_type_checked(env, i)?))?;
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                ret.get_type_checked(&new_env, i)?.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after several variable definitions.
@@ -167,7 +167,7 @@ impl GetType for Expr {
                         .define_var(var, t.clone().unwrap_or(val.get_type_checked(&new_env, i)?))?;
                 }
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                ret.get_type_checked(&new_env, i)?.simplify(&new_env)?
             }
 
             // A while loop returns the None value.
@@ -212,13 +212,37 @@ impl GetType for Expr {
             // Get the type of a procedure call.
             Self::Apply(func, _) => {
                 // Get the type of the function.
-                if let Type::Proc(_, ret) = func.get_type_checked(env, i)?.simplify(env)? {
-                    // Get the return type of the procedure.
-                    *ret
-                } else {
-                    // If the value is not a procedure, we cannot apply it.
-                    return Err(Error::ApplyNonProc(self.clone()));
+
+                match func.get_type_checked(env, i)?.simplify(env)? {
+                    Type::Proc(_, ret) => *ret,
+                    Type::Let(name, t, result) => {
+                        let mut new_env = env.clone();
+                        new_env.define_type(name, *t.clone());
+                        if let Type::Proc(_args, ret) = *result {
+                            *ret
+                        } else {
+                            return Err(Error::ApplyNonProc(self.clone()));
+                        } 
+                    }
+                    // // Get the type of an polymorphic type.
+                    // Type::Apply(poly, ty_args) => {
+                    //     if let Type::Poly(_, ret) = poly {
+                    //         // Get the type of the return type after applying the type arguments.
+                    //         ret.apply_type_args(ty_args, env)?
+                    //     } else {
+                    //         // If the type is not a polymorphic type, we cannot apply it.
+                    //         return Err(Error::ApplyNonProc(self.clone()));
+                    //     }
+                    // }
+                    _ => return Err(Error::ApplyNonProc(self.clone())),
                 }
+                // if let Type::Proc(_, ret) = func.get_type_checked(env, i)?.simplify(env)? {
+                //     // Get the return type of the procedure.
+                //     *ret
+                // } else {
+                //     // If the value is not a procedure, we cannot apply it.
+                //     return Err(Error::ApplyNonProc(self.clone()));
+                // }
             }
 
             // Get the type of a tuple literal.

@@ -98,6 +98,56 @@ impl TypeCheck for Type {
                 ret.type_check(env)
             }
 
+            Self::Poly(ty_params, template) => {
+                // Create a new environment with the type parameters defined.
+                let mut new_env = env.clone();
+                for param in ty_params {
+                    new_env.define_type(param, Type::Unit(param.clone(), Box::new(Type::Any)));
+                }
+                // Check the template type.
+                template.type_check(&new_env)
+            }
+
+            Self::Apply(poly, ty_args) => {
+                // Check the polymorphic type.
+                poly.type_check(env)?;
+
+                // Check each type argument.
+                for t in ty_args {
+                    // Check the type argument.
+                    t.type_check(env)?;
+                }
+
+                // Try to confirm that the polymorphic type is a template.
+                match *poly.clone() {
+                    Type::Symbol(name) => {
+                        // Get the type definition.
+                        let ty = env
+                            .get_type(&name)
+                            .ok_or(Error::TypeNotDefined(name.clone()))?;
+                        // Check that the type is a template.
+                        match ty {
+                            Type::Poly(ty_params, _) => {
+                                // Check that the number of type arguments matches the number of type parameters.
+                                if ty_args.len() != ty_params.len() {
+                                    Err(Error::InvalidTemplateArgs(self.clone()))?;
+                                }
+                            }
+                            _ => Err(Error::ApplyNotTemplate(self.clone()))?,
+                        }
+                    }
+                    Type::Poly(ty_params, _) => {
+                        // Check that the number of type arguments matches the number of type parameters.
+                        if ty_params.len() != ty_args.len() {
+                            Err(Error::InvalidTemplateArgs(self.clone()))?;
+                        }
+                    }
+                    _ => Err(Error::ApplyNotTemplate(self.clone()))?,
+                }
+                // Return success if all the types are sound.
+                Ok(())
+            }
+
             // Pointers are sound if their inner type is sound.
             Self::Pointer(t) => t.type_check(env),
         }
@@ -236,9 +286,8 @@ impl TypeCheck for Expr {
                         // Otherwise, return an error.
                         let ty = expr.get_type(env)?;
                         if !ty.equals(&Type::None, env)? {
-                            eprintln!("Expected type `None`, found type `{}`", ty);
                             // If it's not, return an error.
-                            return Err(Error::UnexpectedExpr(expr.clone(), ty.clone()))
+                            return Err(Error::UnexpectedExpr(expr.clone(), ty.clone()));
                         }
                     }
                 }
@@ -309,8 +358,10 @@ impl TypeCheck for Expr {
                 // Create a new environment with the type defined.
                 let mut new_env = env.clone();
                 // Confirm the type hasn't already been defined.
-                if new_env.get_type(name).is_some() {
-                    return Err(Error::TypeRedefined(name.clone()));
+                if let Some(other_def) = new_env.get_type(name) {
+                    if !other_def.equals(t, &new_env)? {
+                        return Err(Error::TypeRedefined(name.clone()));
+                    }
                 }
 
                 new_env.define_type(name.clone(), t.clone());
@@ -327,8 +378,10 @@ impl TypeCheck for Expr {
                 let mut new_env = env.clone();
                 for (name, ty) in types {
                     // Confirm the type hasn't already been defined.
-                    if new_env.get_type(name).is_some() {
-                        return Err(Error::TypeRedefined(name.clone()));
+                    if let Some(other_def) = new_env.get_type(name) {
+                        if !other_def.equals(ty, &new_env)? {
+                            return Err(Error::TypeRedefined(name.clone()));
+                        }
                     }
                     // Define the type in the environment.
                     new_env.define_type(name, ty.clone());
@@ -515,31 +568,32 @@ impl TypeCheck for Expr {
                 for arg in args {
                     args_inferred.push(arg.get_type(env)?);
                 }
-                if let Type::Proc(args_t, ret_t) = f_type {
-                    // If the number of arguments is incorrect, then return an error.
-                    if args_t.len() != args_inferred.len() {
-                        return Err(Error::MismatchedTypes {
-                            expected: Type::Proc(args_t, ret_t.clone()),
-                            found: Type::Proc(args_inferred, ret_t),
-                            expr: self.clone(),
-                        });
-                    }
-                    // If the function is a procedure, confirm that the type of each
-                    // argument matches the the type of the supplied value.
-                    for (arg_t, arg) in args_t.into_iter().zip(args_inferred.into_iter()) {
-                        // If the types don't match, return an error.
-                        if !arg_t.equals(&arg, env)? {
+                match f_type {
+                    Type::Proc(args_t, ret_t) => {
+                        // If the number of arguments is incorrect, then return an error.
+                        if args_t.len() != args_inferred.len() {
                             return Err(Error::MismatchedTypes {
-                                expected: arg_t,
-                                found: arg,
+                                expected: Type::Proc(args_t, ret_t.clone()),
+                                found: Type::Proc(args_inferred, ret_t),
                                 expr: self.clone(),
                             });
                         }
-                    }
-                    Ok(())
-                } else {
+                        // If the function is a procedure, confirm that the type of each
+                        // argument matches the the type of the supplied value.
+                        for (arg_t, arg) in args_t.into_iter().zip(args_inferred.into_iter()) {
+                            // If the types don't match, return an error.
+                            if !arg_t.equals(&arg, env)? {
+                                return Err(Error::MismatchedTypes {
+                                    expected: arg_t,
+                                    found: arg,
+                                    expr: self.clone(),
+                                });
+                            }
+                        }
+                        Ok(())
+                    },
                     // If the function is not a procedure, return an error.
-                    Err(Error::MismatchedTypes {
+                    _ => Err(Error::MismatchedTypes {
                         expected: Type::Proc(args_inferred, Box::new(Type::Any)),
                         found: f_type,
                         expr: self.clone(),
@@ -551,7 +605,10 @@ impl TypeCheck for Expr {
             Self::Return(e) => {
                 e.type_check(env)?;
                 let ty = e.get_type(env)?;
-                let expected_ty = env.get_expected_return_type().cloned().unwrap_or(Type::None);
+                let expected_ty = env
+                    .get_expected_return_type()
+                    .cloned()
+                    .unwrap_or(Type::None);
                 if !expected_ty.equals(&ty, env)? {
                     return Err(Error::MismatchedTypes {
                         expected: expected_ty,
@@ -560,7 +617,7 @@ impl TypeCheck for Expr {
                     });
                 }
                 Ok(())
-            },
+            }
 
             // Typecheck an array or tuple literal.
             Self::Array(items) => {
@@ -672,7 +729,7 @@ impl TypeCheck for Expr {
                                 ));
                             }
                         }
-                        Type::Symbol(_) | Type::Let(_, _, _) => continue,
+                        Type::Symbol(_) | Type::Let(_, _, _) | Type::Apply(_, _) => continue,
                         _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
                     }
                 }
@@ -701,9 +758,8 @@ impl TypeCheck for Expr {
                 e.type_check(env)?;
                 // Get the type of the expression.
                 let e_type = e.get_type(env)?;
-                // Confirm that the type has the member we want to access
-                // by calculating the offset of the member in the type.
-                e_type.get_member_offset(field, e, env).map(|_| ())
+                // Typecheck the member we want to access.
+                e_type.type_check_member(field, e, env)
             }
 
             // Typecheck an index access.
@@ -750,6 +806,24 @@ impl TypeCheck for ConstExpr {
             | Self::Bool(_)
             | Self::SizeOfType(_) => Ok(()),
 
+            Self::LetTypes(bindings, expr) => {
+                let mut new_env = env.clone();
+                for (name, ty) in bindings {
+                    new_env.define_type(name.clone(), ty.clone());
+                }
+                for (_, ty) in bindings {
+                    ty.type_check(&mut new_env)?;
+                }
+                expr.type_check(&mut new_env)
+            }
+            Self::Monomorphize(expr, ty_args) => {
+                self.get_type(env)?.type_check(env)?;
+                if let Self::PolyProc(poly) = *expr.clone() {
+                    poly.type_check(env)?
+                }
+                Ok(())
+            }
+
             Self::TypeOf(expr) => expr.type_check(env),
 
             // Typecheck a constant type-cast.
@@ -778,6 +852,7 @@ impl TypeCheck for ConstExpr {
             Self::StandardBuiltin(builtin) => builtin.type_check(env),
             // Typecheck a procedure.
             Self::Proc(proc) => proc.type_check(env),
+            Self::PolyProc(proc) => proc.type_check(env),
 
             // Typecheck a symbol.
             Self::Symbol(name) => {
@@ -809,32 +884,34 @@ impl TypeCheck for ConstExpr {
                             // If the enum contains the variant, return success.
                             if variants.contains(variant) {
                                 // Return success.
-                                return Ok(())
+                                return Ok(());
                             } else {
                                 // Otherwise, the variant isn't contained in the enum,
                                 // so return an error.
-                                return Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                                return Err(Error::VariantNotFound(t.clone(), variant.clone()));
                             }
-                        },
+                        }
                         Type::EnumUnion(variants) if variants.get(variant) == Some(&Type::None) => {
                             // If the enum union contains the variant, and the variant is empty, return success.
-                            if variants.contains_key(variant) && variants.get(variant) == Some(&Type::None) {
+                            if variants.contains_key(variant)
+                                && variants.get(variant) == Some(&Type::None)
+                            {
                                 // Return success.
-                                return Ok(())
+                                return Ok(());
                             } else {
                                 // Otherwise, the variant isn't contained in the enum,
                                 // so return an error.
-                                return Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                                return Err(Error::VariantNotFound(t.clone(), variant.clone()));
                             }
                         }
                         // If the type is a let binding or a symbol, simplify it again.
-                        Type::Let(_, _, _) | Type::Symbol(_) => continue,
+                        Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => continue,
                         // If the type isn't an enum, return an error.
-                        _ => return Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                        _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
                     }
                 }
                 // If we've recursed too deep, return an error.
-                return Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                return Err(Error::VariantNotFound(t.clone(), variant.clone()));
             }
 
             // Typecheck a tuple literal.
@@ -954,7 +1031,7 @@ impl TypeCheck for ConstExpr {
                                 ));
                             }
                         }
-                        Type::Symbol(_) | Type::Let(_, _, _) => continue,
+                        Type::Symbol(_) | Type::Let(_, _, _) | Type::Apply(_, _) => continue,
                         _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
                     }
                 }

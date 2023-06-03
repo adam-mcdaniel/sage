@@ -10,7 +10,8 @@
 //! - Enum variants
 
 use crate::lir::{
-    CoreBuiltin, Env, Error, Expr, GetSize, GetType, Procedure, Simplify, StandardBuiltin, Type,
+    CoreBuiltin, Env, Error, Expr, GetSize, GetType, PolyProcedure, Procedure, Simplify,
+    StandardBuiltin, Type,
 };
 
 use core::fmt;
@@ -19,6 +20,9 @@ use std::collections::BTreeMap;
 /// A compiletime expression.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConstExpr {
+    /// Bind a list of types in a constant expression.
+    LetTypes(Vec<(String, Type)>, Box<Self>),
+
     /// The unit, or "void" instance.
     None,
     /// The null pointer constant.
@@ -65,6 +69,10 @@ pub enum ConstExpr {
     StandardBuiltin(StandardBuiltin),
     /// A procedure.
     Proc(Procedure),
+    /// A polymorphic procedure.
+    PolyProc(PolyProcedure),
+    /// Monomorphize a constant expression with some type arguments.
+    Monomorphize(Box<Self>, Vec<Type>),
 
     /// Cast a constant expression to another type.
     As(Box<Self>, Type),
@@ -72,8 +80,13 @@ pub enum ConstExpr {
 
 impl ConstExpr {
     /// Construct a procedure.
-    pub fn proc(args: Vec<(String, Type)>, ret: Type, body: impl Into<Expr>) -> Self {
-        Self::Proc(Procedure::new(args, ret, body))
+    pub fn proc(
+        common_name: Option<String>,
+        args: Vec<(String, Type)>,
+        ret: Type,
+        body: impl Into<Expr>,
+    ) -> Self {
+        Self::Proc(Procedure::new(common_name, args, ret, body))
     }
 
     /// Apply this procedure or builtin to a list of expressions *at runtime*.
@@ -110,7 +123,20 @@ impl ConstExpr {
                 | Self::Of(_, _)
                 | Self::CoreBuiltin(_)
                 | Self::StandardBuiltin(_)
-                | Self::Proc(_) => Ok(self),
+                | Self::Proc(_)
+                | Self::PolyProc(_) => Ok(self),
+
+                Self::LetTypes(bindings, expr) => {
+                    let mut new_env = env.clone();
+                    for (name, ty) in bindings {
+                        new_env.define_type(name, ty);
+                    }
+                    expr.eval_checked(&new_env, i)
+                }
+
+                Self::Monomorphize(expr, ty_args) => {
+                    Ok(Self::Monomorphize(Box::new(expr.eval_checked(env, i)?), ty_args))
+                },
 
                 Self::TypeOf(expr) => Ok(Self::Array(
                     expr.get_type_checked(env, i)?
@@ -167,7 +193,7 @@ impl ConstExpr {
                     variant,
                     Box::new(val.eval_checked(env, i)?),
                 )),
-                Self::EnumUnion(types, variant, val) => Ok(Self::Union(
+                Self::EnumUnion(types, variant, val) => Ok(Self::EnumUnion(
                     types,
                     variant,
                     Box::new(val.eval_checked(env, i)?),
@@ -180,6 +206,15 @@ impl ConstExpr {
     pub fn as_int(self, env: &Env) -> Result<i32, Error> {
         match self.eval_checked(env, 0) {
             Ok(Self::Int(n)) => Ok(n),
+            Ok(other) => Err(Error::NonIntegralConst(other)),
+            Err(err) => Err(err),
+        }
+    }
+
+    /// Try to get this constant expression as a float.
+    pub fn as_float(self, env: &Env) -> Result<f64, Error> {
+        match self.eval_checked(env, 0) {
+            Ok(Self::Float(n)) => Ok(n),
             Ok(other) => Err(Error::NonIntegralConst(other)),
             Err(err) => Err(err),
         }
@@ -229,6 +264,16 @@ impl GetType for ConstExpr {
 
                 cast_ty
             }
+            Self::LetTypes(bindings, expr) => {
+                let mut new_env = env.clone();
+                for (name, ty) in bindings {
+                    new_env.define_type(&name, ty.clone());
+                }
+                expr.get_type_checked(&new_env, i)?
+            }
+            Self::Monomorphize(expr, ty_args) => {
+                Type::Apply(Box::new(expr.get_type(env)?), ty_args).simplify(env)?
+            }
             Self::TypeOf(expr) => {
                 let size = expr.get_type_checked(env, i)?.to_string().len();
                 Type::Array(Box::new(Type::Char), Box::new(Self::Int(size as i32)))
@@ -264,6 +309,7 @@ impl GetType for ConstExpr {
             Self::Union(t, _, _) => t,
             Self::EnumUnion(t, _, _) => t,
 
+            Self::PolyProc(proc) => proc.get_type_checked(env, i)?,
             Self::Proc(proc) => proc.get_type_checked(env, i)?,
             Self::CoreBuiltin(builtin) => builtin.get_type_checked(env, i)?,
             Self::StandardBuiltin(builtin) => builtin.get_type_checked(env, i)?,
@@ -309,6 +355,29 @@ impl fmt::Display for ConstExpr {
             }
             Self::Proc(proc) => {
                 write!(f, "{proc}")
+            }
+            Self::PolyProc(proc) => {
+                write!(f, "{proc}")
+            }
+            Self::LetTypes(bindings, expr) => {
+                write!(f, "type ")?;
+                for (i, (name, ty)) in bindings.iter().enumerate() {
+                    write!(f, "{name} = {ty}")?;
+                    if i < bindings.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, " in {expr}")
+            }
+            Self::Monomorphize(expr, ty_args) => {
+                write!(f, "{expr}<")?;
+                for (i, ty) in ty_args.iter().enumerate() {
+                    write!(f, "{ty}")?;
+                    if i < ty_args.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, ">")
             }
             Self::As(expr, ty) => {
                 write!(f, "{expr} as {ty}")

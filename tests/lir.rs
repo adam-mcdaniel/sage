@@ -56,6 +56,7 @@ fn test_struct_helper() {
                 "put_char",
                 None,
                 ConstExpr::proc(
+                    None,
                     vec![(
                         "x".to_string(),
                         Type::Struct(btreemap! {
@@ -124,6 +125,7 @@ fn test_scopes() {
         "f",
         None,
         ConstExpr::proc(
+            None,
             vec![
                 ("x".to_string(), Type::Int),
                 ("y".to_string(), Type::Int),
@@ -185,6 +187,7 @@ fn test_tuples() {
         "test",
         None,
         ConstExpr::proc(
+            None,
             vec![(
                 "tup".to_string(),
                 Type::Tuple(vec![Type::Char, Type::Tuple(vec![Type::Int, Type::Int])]),
@@ -468,6 +471,7 @@ fn test_union() {
         "test",
         None,
         ConstExpr::proc(
+            None,
             vec![
                 (
                     "a".to_string(),
@@ -554,6 +558,7 @@ fn test_struct2() {
         "putpoint",
         None,
         ConstExpr::proc(
+            None,
             vec![(
                 "p".to_string(),
                 Type::Struct(btreemap! {
@@ -577,6 +582,7 @@ fn test_struct2() {
             "move",
             None,
             ConstExpr::proc(
+                None,
                 vec![
                     (
                         "p".to_string(),
@@ -961,6 +967,7 @@ fn test_recursive_types_helper() {
                     "node",
                     None,
                     ConstExpr::proc(
+                        None,
                         vec![("val".to_string(), Type::Int)],
                         Type::Symbol("Node".to_string()),
                         Expr::structure(btreemap! {
@@ -974,6 +981,7 @@ fn test_recursive_types_helper() {
                     "next",
                     None,
                     ConstExpr::proc(
+                        None,
                         vec![("node".to_string(), Type::Symbol("Node".to_string()))],
                         Type::Symbol("Node".to_string()),
                         Expr::var("node").field(var("next")).deref(),
@@ -984,6 +992,7 @@ fn test_recursive_types_helper() {
                     "cons",
                     None,
                     ConstExpr::proc(
+                        None,
                         vec![
                             ("head".to_string(), Type::Symbol("Node".to_string())),
                             ("tail".to_string(), Type::Symbol("Node".to_string())),
@@ -1079,7 +1088,8 @@ fn test_alloc_and_free_helper() {
         Expr::let_procs(
             btreemap! {
                 "new" => Procedure::new(
-                    vec![(
+                        None,
+                        vec![(
                         "val".to_string(),
                         Type::Int
                     )],
@@ -1090,7 +1100,8 @@ fn test_alloc_and_free_helper() {
                     }),
                 ),
                 "free" => Procedure::new(
-                    vec![(
+                        None,
+                        vec![(
                         "node".to_string(),
                         Type::Symbol("Node".to_string()),
                     )],
@@ -1110,7 +1121,8 @@ fn test_alloc_and_free_helper() {
                     ])
                 ),
                 "cons" => Procedure::new(
-                    vec![
+                        None,
+                        vec![
                         (
                             "head".to_string(),
                             Type::Symbol("Node".to_string()),
@@ -1178,6 +1190,7 @@ fn test_recursion() {
     let expr = put_char.app(vec![Expr::let_proc(
         "factorial",
         Procedure::new(
+            None,
             vec![("n".to_string(), Type::Int)],
             Type::Int,
             Expr::var("n").if_then(
@@ -1215,6 +1228,7 @@ fn test_inline_let_type() {
     let expr = put_char.app(vec![Expr::let_proc(
         "factorial",
         Procedure::new(
+            None,
             vec![("n".to_string(), Type::Int)],
             Type::Let(
                 "a".to_string(),

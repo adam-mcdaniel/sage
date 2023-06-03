@@ -1,5 +1,5 @@
 use super::*;
-use crate::asm::{CoreOp, StandardOp, SP, A};
+use crate::asm::{CoreOp, StandardOp, A, SP};
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -33,7 +33,12 @@ impl UnaryOp for New {
 
         // output.op(CoreOp::Next(SP, None));
         output.op(CoreOp::Set(A, size as isize));
-        output.std_op(StandardOp::Alloc(A)).map_err(|_| Error::UnsupportedOperation(Expr::UnaryOp(self.clone_box(), Box::new(Expr::ConstExpr(ConstExpr::None)))))?;
+        output.std_op(StandardOp::Alloc(A)).map_err(|_| {
+            Error::UnsupportedOperation(Expr::UnaryOp(
+                self.clone_box(),
+                Box::new(Expr::ConstExpr(ConstExpr::None)),
+            ))
+        })?;
         output.op(CoreOp::Copy {
             dst: A.deref(),
             src: SP.deref().offset(1 - size as isize),
@@ -64,8 +69,6 @@ impl Display for New {
     }
 }
 
-
-
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Delete;
 
@@ -92,7 +95,12 @@ impl UnaryOp for Delete {
         _env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        output.std_op(StandardOp::Free(SP.deref())).map_err(|_| Error::UnsupportedOperation(Expr::UnaryOp(self.clone_box(), Box::new(Expr::ConstExpr(ConstExpr::None)))))?;
+        output.std_op(StandardOp::Free(SP.deref())).map_err(|_| {
+            Error::UnsupportedOperation(Expr::UnaryOp(
+                self.clone_box(),
+                Box::new(Expr::ConstExpr(ConstExpr::None)),
+            ))
+        })?;
         output.op(CoreOp::Pop(None, 1));
         Ok(())
     }

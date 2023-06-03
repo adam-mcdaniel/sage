@@ -68,14 +68,14 @@
 mod compile;
 mod env;
 mod expr;
-mod types;
 mod parse;
+mod types;
 
 pub use compile::*;
 pub use env::*;
 pub use expr::*;
-pub use types::*;
 pub use parse::*;
+pub use types::*;
 
 /// Simplify an expression while maintaining structural equality.
 pub trait Simplify: Sized {
@@ -176,6 +176,21 @@ pub enum Error {
 
     /// Unexpected expression returned a non-None value.
     UnexpectedExpr(Expr, Type),
+
+    /// Invalid number of template arguments to a type.
+    InvalidTemplateArgs(Type),
+
+    /// Tried to apply a non-template type to some arguments.
+    ApplyNotTemplate(Type),
+
+    /// Tried to get the size of a template type.
+    SizeOfTemplate(Type),
+
+    /// Tried to  compile a polymorphic procedure without monomorphing it.
+    CompilePolyProc(PolyProcedure),
+
+    /// Cannot monomorphize a constant expression.
+    InvalidMonomorphize(ConstExpr),
 }
 
 /// Create an IR error from an assembly error.

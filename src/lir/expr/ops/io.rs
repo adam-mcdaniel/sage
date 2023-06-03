@@ -7,7 +7,6 @@ use crate::{
 };
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
-
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Get;
 
@@ -36,7 +35,6 @@ impl UnaryOp for Get {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-
         if ty.equals(&Type::Pointer(Box::new(Type::Char)), env)? {
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_char()));
         } else if ty.equals(&Type::Pointer(Box::new(Type::Int)), env)? {
@@ -44,7 +42,10 @@ impl UnaryOp for Get {
         } else if ty.equals(&Type::Pointer(Box::new(Type::Float)), env)? {
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_float()));
         } else {
-            return Err(Error::UnsupportedOperation(Expr::UnaryOp(self.clone_box(), Box::new(Expr::ConstExpr(ConstExpr::None)))));
+            return Err(Error::UnsupportedOperation(Expr::UnaryOp(
+                self.clone_box(),
+                Box::new(Expr::ConstExpr(ConstExpr::None)),
+            )));
         }
 
         output.op(CoreOp::Pop(None, 1));
@@ -68,7 +69,6 @@ impl Display for Get {
         write!(f, "get")
     }
 }
-
 
 /// Print a value to a given output.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -345,9 +345,7 @@ impl Put {
                 output.op(CoreOp::Put(A, Output::stdout_char()));
             }
 
-            Type::Let(_, _, _) => {
-                return Err(Error::InvalidUnaryOpTypes(Box::new(Self::Debug), t.clone()))
-            }
+            _ => return Err(Error::InvalidUnaryOpTypes(Box::new(Self::Debug), t.clone())),
         }
         Ok(())
     }

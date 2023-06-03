@@ -76,8 +76,8 @@ TypeAtom: Type = {
 }
 
 ConstExpr: ConstExpr = {
-    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <body: Block> => ConstExpr::Proc(Procedure::new(args, ret, body)),
-    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "=" <body: Block> => ConstExpr::Proc(Procedure::new(args, Type::None, body)),
+    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <body: Block> => ConstExpr::Proc(Procedure::new(None, args, ret, body)),
+    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "=" <body: Block> => ConstExpr::Proc(Procedure::new(None, args, Type::None, body)),
     "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <mut body: CoreAsm> => {
         body.args = args;
         body.ret = ret;
@@ -118,7 +118,7 @@ pub Expr: Expr = {
         Expr::LetConsts(defs.into_iter().collect(), Box::new(e))
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <body: Block> "in" <e: Expr> => {
-        Expr::LetProc(name, Procedure::new(args, ret, body), Box::new(e))
+        Expr::LetProc(name, Procedure::new(None, args, ret, body), Box::new(e))
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <mut body: CoreAsm> "in" <e: Expr> => {
         body.args = args;
@@ -141,7 +141,7 @@ pub Expr: Expr = {
         Expr::LetConst(name, ConstExpr::StandardBuiltin(body), Box::new(e))
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "=" <body: Block> "in" <e: Expr> => {
-        Expr::LetProc(name, Procedure::new(args, Type::None, body), Box::new(e))
+        Expr::LetProc(name, Procedure::new(None, args, Type::None, body), Box::new(e))
     },
     "while" <cond: Expr> <body: Block> => Expr::While(Box::new(cond), Box::new(body)),
     <x: Pointer> "=" <val: Expr> => x.refer().deref_mut(val),

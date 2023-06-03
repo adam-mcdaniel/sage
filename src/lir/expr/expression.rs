@@ -88,6 +88,7 @@ pub enum Expr {
 
     /// Apply a function with some arguments.
     Apply(Box<Self>, Vec<Self>),
+
     /// Return a value from a function.
     Return(Box<Self>),
 
@@ -118,10 +119,6 @@ pub enum Expr {
     /// Index an array or pointer with an expression that evaluates to an `Int` at runtime.
     Index(Box<Self>, Box<Self>),
 }
-
-// impl PartialEq for Expr {
-//     fn parti
-// }
 
 impl From<ConstExpr> for Expr {
     fn from(c: ConstExpr) -> Self {
@@ -203,7 +200,7 @@ impl Expr {
     /// Add this expression to another.
     #[allow(clippy::should_implement_trait)]
     pub fn add(self, other: impl Into<Self>) -> Self {
-        self.binop(Arithmetic::Add, other)
+        self.binop(Add, other)
     }
 
     /// Subtract an expression from this expression.
