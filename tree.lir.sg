@@ -5,7 +5,7 @@ enum Option<T> {
     Nothing
 }
 
-proc print_option<T>(opt: Option<T>, printer: T -> None) {
+def print_option<T>(opt: Option<T>, printer: T -> None) {
 	match opt {
         of Some(x) => {
             print("Some(");
@@ -21,7 +21,7 @@ enum List<T> {
     Nil
 }
 
-proc print_list<T>(list: &List<T>): Option<T> {
+def print_list<T>(list: &List<T>): Option<T> {
     match *list {
         of Cons(x, &of Nil) => {
             print(x);
@@ -41,7 +41,7 @@ enum Tree<T> {
     Leaf(T),
 }
 
-proc print_tree_list<T>(list: &List<Tree<T>>): Option<T> {
+def print_tree_list<T>(list: &List<Tree<T>>): Option<T> {
     match *list {
         of Cons(x, &of Nil) => {
             return print_tree<T>(&x);
@@ -55,7 +55,7 @@ proc print_tree_list<T>(list: &List<Tree<T>>): Option<T> {
     }
 }
 
-proc print_tree<T>(tree: &Tree<T>): Option<T> {
+def print_tree<T>(tree: &Tree<T>): Option<T> {
     match *tree {
         of Node(x, &of Nil) => {
             print(x);
@@ -72,7 +72,7 @@ proc print_tree<T>(tree: &Tree<T>): Option<T> {
     }
 }
 
-proc test<T>(tree: &Tree<T>, printer: T -> None) {
+def test<T>(tree: &Tree<T>, printer: T -> None) {
     print_option<T>(print_tree<T>(tree), printer);
 }
 
@@ -98,8 +98,8 @@ let y = Tree<Char> of Node(
     )
 );
 
-proc print_int(x: Int) = print(x);
-proc print_char(x: Char) = print(x);
+def print_int(x: Int) = print(x);
+def print_char(x: Char) = print(x);
 test<Int>(&x, print_int);
 test<Char>(&y, print_char);
 

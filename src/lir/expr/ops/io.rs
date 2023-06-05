@@ -13,16 +13,19 @@ pub struct Get;
 impl UnaryOp for Get {
     /// Can this unary operation be applied to the given type?
     fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
-        Ok(ty.clone().simplify_until_matches(env, Type::Any, |t, env| {
-            if let Type::Pointer(x) = t.clone() {
-                match *x {
-                    Type::Char | Type::Int | Type::Float => Ok(true),
-                    _ => Ok(false),
+        Ok(ty
+            .clone()
+            .simplify_until_matches(env, Type::Any, |t, env| {
+                if let Type::Pointer(x) = t.clone() {
+                    match *x {
+                        Type::Char | Type::Int | Type::Float => Ok(true),
+                        _ => Ok(false),
+                    }
+                } else {
+                    Ok(false)
                 }
-            } else {
-                Ok(false)
-            }
-        }).is_ok())
+            })
+            .is_ok())
     }
 
     /// Get the type of the result of applying this unary operation to the given type.
@@ -114,7 +117,10 @@ impl Put {
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
         let t = t.clone().simplify_until_matches(env, Type::Any, |t, env| {
-            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
         })?;
         match t.clone() {
             Type::Pointer(_) => {
@@ -389,7 +395,10 @@ impl Put {
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
         let t = &t.clone().simplify_until_matches(env, Type::Any, |t, env| {
-            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
         })?;
         match t.clone() {
             Type::Cell => {
@@ -485,7 +494,10 @@ impl UnaryOp for Put {
 
         let mut ty = ty.clone();
         ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
-            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
         })?;
         let ty = &ty;
 

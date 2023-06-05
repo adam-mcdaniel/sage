@@ -1050,6 +1050,17 @@
 <a href="#1050" id="1050">1050</a>
 <a href="#1051" id="1051">1051</a>
 <a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compile
 //!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
@@ -1065,8 +1076,8 @@
 <span class="kw">use </span><span class="kw">crate</span>::asm::{
     AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
 };
-<span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span><span class="kw">crate</span>::NULL;
+<span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="doccomment">/// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
@@ -1512,7 +1523,12 @@
             </span><span class="self">Self</span>::EnumUnion(<span class="kw-2">mut </span>t, variant, val) =&gt; {
                 <span class="comment">// Get the size of the tagged union.
                 </span><span class="kw">let </span>result_size = t.get_size(env)<span class="question-mark">?</span>;
-                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(t, Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>))))<span class="question-mark">?</span>;
+                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                    <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
+                        t,
+                        Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
+                    ))
+                })<span class="question-mark">?</span>;
                 <span class="kw">if let </span>Type::EnumUnion(fields) = t {
                     <span class="comment">// Get the list of possible variant names.
                     </span><span class="kw">let </span>variants = fields.clone().into_keys().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
@@ -1536,13 +1552,10 @@
                         <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                     } <span class="kw">else </span>{
                         <span class="comment">// If we could not find the variant return an error.
-                        </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(
-                            Type::EnumUnion(fields),
-                            variant,
-                        ));
+                        </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(Type::EnumUnion(fields), variant));
                     }
                 } <span class="kw">else </span>{
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(t.clone(), variant.clone()))
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(t.clone(), variant.clone()));
                 }
                 <span class="comment">// for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
                 //     t = t.clone().simplify(env)?;
@@ -1573,13 +1586,19 @@
                 </span><span class="kw">match </span>val_type {
                     <span class="comment">// If the value being indexed is an array:
                     </span>Type::Array(<span class="kw-2">ref </span>elem, <span class="kw">_</span>) =&gt; {
-                        <span class="comment">// First, lets try to compile the same expression using `Refer`.
-                        // This will be faster than the fallback.
+                        <span class="comment">// First, lets try to compile the same index expression using pointer
+                        // arithmetic. This will be faster than pushing the entire array
+                        // onto the stack and indexing it.
                         </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(refer) = val
                             .clone()
-                            .refer()
-                            .idx(<span class="kw-2">*</span>idx.clone())
-                            .compile_expr(env, output)
+                            <span class="comment">// Reference the current
+                            </span>.refer()
+                            <span class="comment">// Make the type a pointer to the inner element type
+                            </span>.as_type(Type::Pointer(elem.clone()))
+                            <span class="comment">// Index the new pointer
+                            </span>.idx(<span class="kw-2">*</span>idx.clone())
+                            <span class="comment">// Push to the stack
+                            </span>.compile_expr(env, output)
                         {
                             <span class="kw">return </span><span class="prelude-val">Ok</span>(refer);
                         }
@@ -1810,7 +1829,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>comment = <span class="macro">format!</span>(<span class="string">&quot;{self}&quot;</span>);
         comment.truncate(<span class="number">70</span>);
         output.comment(<span class="macro">format!</span>(<span class="string">&quot;compiling constant `{comment}`&quot;</span>));
-        
+
         <span class="comment">// Compile the constant expression.
         </span><span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::LetTypes(bindings, expr) =&gt; {
@@ -1854,6 +1873,11 @@
             </span><span class="self">Self</span>::Bool(x) =&gt; {
                 output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
                 output.op(CoreOp::Set(SP.deref(), x <span class="kw">as </span>i64));
+            }
+            <span class="comment">// Compile a cell value.
+            </span><span class="self">Self</span>::Cell(n) =&gt; {
+                output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
+                output.op(CoreOp::Set(SP.deref(), n <span class="kw">as </span>i64));
             }
             <span class="comment">// Compile an integer constant.
             </span><span class="self">Self</span>::Int(n) =&gt; {
@@ -1914,10 +1938,10 @@
             </span><span class="self">Self</span>::EnumUnion(t, variant, val) =&gt; {
                 <span class="comment">// Get the size of the tagged union.
                 </span><span class="kw">let </span>result_size = t.get_size(env)<span class="question-mark">?</span>;
-                <span class="kw">let </span>t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(
-                    t,
-                    Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>)
-                )))<span class="question-mark">?</span>;
+                <span class="kw">let </span>t =
+                    t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                        <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>)))
+                    })<span class="question-mark">?</span>;
 
                 <span class="comment">// Get the inner list of variants and compile the expression using this information.
                 </span><span class="kw">if let </span>Type::EnumUnion(variants) = t.clone().simplify(env)<span class="question-mark">? </span>{
@@ -1987,10 +2011,11 @@
             </span><span class="self">Self</span>::Of(<span class="kw-2">mut </span>enum_type, variant) =&gt; {
                 <span class="comment">// Only try to simplify the type 50 times at most.
                 // This is to prevent infinite loops and to keep recursion under control.
-                </span>enum_type = enum_type.simplify_until_matches(env, Type::Enum(<span class="macro">vec!</span>[variant.clone()]), |t, env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(
-                    t,
-                    Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>)
-                )))<span class="question-mark">?</span>;
+                </span>enum_type = enum_type.simplify_until_matches(
+                    env,
+                    Type::Enum(<span class="macro">vec!</span>[variant.clone()]),
+                    |t, env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>))),
+                )<span class="question-mark">?</span>;
 
                 <span class="kw">match </span>enum_type.clone() {
                     <span class="comment">// If the type is an enum, we can continue.
@@ -2007,9 +2032,7 @@
                         }
                     }
                     <span class="comment">// If the type is an enum union, we can continue.
-                    </span>Type::EnumUnion(variants)
-                        <span class="kw">if </span>variants.get(<span class="kw-2">&amp;</span>variant) == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>Type::None) =&gt;
-                    {
+                    </span>Type::EnumUnion(variants) <span class="kw">if </span>variants.get(<span class="kw-2">&amp;</span>variant) == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>Type::None) =&gt; {
                         <span class="comment">// Get the index of the variant.
                         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(index) =
                             Type::variant_index(<span class="kw-2">&amp;</span>variants.into_keys().collect(), <span class="kw-2">&amp;</span>variant)
@@ -2018,8 +2041,7 @@
                             // Allocate the size of the structure on the stack by
                             // incrementing the stack pointer by the size of the structure.
                             // Then, set the value under the stack pointer to the index of the variant.
-                            </span>output
-                                .op(CoreOp::Next(SP, <span class="prelude-val">Some</span>(enum_type.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>isize)));
+                            </span>output.op(CoreOp::Next(SP, <span class="prelude-val">Some</span>(enum_type.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>isize)));
                             output.op(CoreOp::Set(SP.deref(), index <span class="kw">as </span>i64));
                             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                         } <span class="kw">else </span>{

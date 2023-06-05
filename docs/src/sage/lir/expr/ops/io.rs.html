@@ -531,6 +531,18 @@
 <a href="#531" id="531">531</a>
 <a href="#532" id="532">532</a>
 <a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use crate</span>::{
@@ -546,16 +558,19 @@
 <span class="kw">impl </span>UnaryOp <span class="kw">for </span>Get {
     <span class="doccomment">/// Can this unary operation be applied to the given type?
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
-        <span class="prelude-val">Ok</span>(ty.clone().simplify_until_matches(env, Type::Any, |t, env| {
-            <span class="kw">if let </span>Type::Pointer(x) = t.clone() {
-                <span class="kw">match </span><span class="kw-2">*</span>x {
-                    Type::Char | Type::Int | Type::Float =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
-                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
+        <span class="prelude-val">Ok</span>(ty
+            .clone()
+            .simplify_until_matches(env, Type::Any, |t, env| {
+                <span class="kw">if let </span>Type::Pointer(x) = t.clone() {
+                    <span class="kw">match </span><span class="kw-2">*</span>x {
+                        Type::Char | Type::Int | Type::Float =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
+                        <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
+                    }
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
                 }
-            } <span class="kw">else </span>{
-                <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
-            }
-        }).is_ok())
+            })
+            .is_ok())
     }
 
     <span class="doccomment">/// Get the type of the result of applying this unary operation to the given type.
@@ -647,7 +662,10 @@
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span>t = t.clone().simplify_until_matches(env, Type::Any, |t, env| {
-            <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(t, Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)))
+            <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
+                t,
+                Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
+            ))
         })<span class="question-mark">?</span>;
         <span class="kw">match </span>t.clone() {
             Type::Pointer(<span class="kw">_</span>) =&gt; {
@@ -922,7 +940,10 @@
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span>t = <span class="kw-2">&amp;</span>t.clone().simplify_until_matches(env, Type::Any, |t, env| {
-            <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(t, Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)))
+            <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
+                t,
+                Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
+            ))
         })<span class="question-mark">?</span>;
         <span class="kw">match </span>t.clone() {
             Type::Cell =&gt; {
@@ -1018,7 +1039,10 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>ty = ty.clone();
         ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
-            <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(t, Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)))
+            <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
+                t,
+                Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
+            ))
         })<span class="question-mark">?</span>;
         <span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty;
 

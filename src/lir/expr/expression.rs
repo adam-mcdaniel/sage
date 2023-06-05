@@ -147,6 +147,36 @@ impl Expr {
         self.unop(Not)
     }
 
+    /// Bitwise this expression with another.
+    pub fn bitxor(self, other: impl Into<Self>) -> Self {
+        self.binop(BitwiseXor, other)
+    }
+
+    /// BitwiseOr this expression with another.
+    pub fn bitor(self, other: impl Into<Self>) -> Self {
+        self.binop(BitwiseOr, other)
+    }
+
+    /// BitwiseOr this expression with another.
+    pub fn bitnand(self, other: impl Into<Self>) -> Self {
+        self.binop(BitwiseNand, other)
+    }
+
+    /// BitwiseAnd this expression with another.
+    pub fn bitand(self, other: impl Into<Self>) -> Self {
+        self.binop(BitwiseAnd, other)
+    }
+
+    /// BitwiseAnd this expression with another.
+    pub fn bitnor(self, other: impl Into<Self>) -> Self {
+        self.binop(BitwiseNor, other)
+    }
+
+    /// BitwiseAnd this expression with another.
+    pub fn bitnot(self) -> Self {
+        self.unop(BitwiseNot)
+    }
+
     /// Is this expression less than another?
     pub fn lt(self, other: impl Into<Self>) -> Self {
         self.binop(Comparison::LessThan, other)

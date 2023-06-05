@@ -465,12 +465,15 @@
 <a href="#465" id="465">465</a>
 <a href="#466" id="466">466</a>
 <a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Operations
 //!
 //! This module contains implementations of various
 //! tertiary, binary, and unary operations on LIR expressions.
 </span><span class="kw">mod </span>arithmetic;
 <span class="kw">mod </span>assign;
+<span class="kw">mod </span>bitwise;
 <span class="kw">mod </span>comparison;
 <span class="kw">mod </span>io;
 <span class="kw">mod </span>logic;
@@ -479,6 +482,7 @@
 
 <span class="kw">pub use </span>arithmetic::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>assign::<span class="kw-2">*</span>;
+<span class="kw">pub use </span>bitwise::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>comparison::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>io::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>logic::<span class="kw-2">*</span>;

@@ -73,7 +73,7 @@ impl Env {
             if let Some(size) = ty.get_size(self).ok() {
                 self.type_sizes.insert(ty.clone(), size);
             }
-            
+
             Rc::make_mut(&mut self.types).insert(name.to_string(), ty);
         }
     }

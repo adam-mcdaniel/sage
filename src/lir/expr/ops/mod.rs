@@ -4,6 +4,7 @@
 //! tertiary, binary, and unary operations on LIR expressions.
 mod arithmetic;
 mod assign;
+mod bitwise;
 mod comparison;
 mod io;
 mod logic;
@@ -12,6 +13,7 @@ mod tagged_union;
 
 pub use arithmetic::*;
 pub use assign::*;
+pub use bitwise::*;
 pub use comparison::*;
 pub use io::*;
 pub use logic::*;

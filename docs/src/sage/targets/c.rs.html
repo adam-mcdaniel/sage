@@ -182,6 +182,15 @@
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # C Target
 //!
 //! An implementation of the virtual machine for the C language.
@@ -207,10 +216,19 @@
 
 <span class="doccomment">/// The type for the C target which implements the `Target` trait.
 /// This allows the compiler to target the C language.
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>C;
 
 <span class="kw">impl </span>Architecture <span class="kw">for </span>C {
-    <span class="kw">fn </span>op(<span class="kw-2">&amp;</span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>CoreOp) -&gt; String {
+    <span class="kw">fn </span>supports_input(<span class="kw-2">&amp;</span><span class="self">self</span>, i: <span class="kw-2">&amp;</span>Input) -&gt; bool {
+        <span class="macro">matches!</span>(i.mode, InputMode::StdinChar | InputMode::StdinFloat | InputMode::StdinInt)
+    }
+
+    <span class="kw">fn </span>supports_output(<span class="kw-2">&amp;</span><span class="self">self</span>, o: <span class="kw-2">&amp;</span>Output) -&gt; bool {
+        <span class="macro">matches!</span>(o.mode, OutputMode::StdoutChar | OutputMode::StdoutFloat | OutputMode::StdoutInt)
+    }
+
+    <span class="kw">fn </span>op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>CoreOp) -&gt; String {
         <span class="kw">match </span>op {
             CoreOp::Comment(n) =&gt; {
                 <span class="macro">format!</span>(<span class="string">&quot;// {}&quot;</span>, n.replace(<span class="string">&quot;\n&quot;</span>, <span class="string">&quot;\n// &quot;</span>).replace(<span class="string">&quot;\r&quot;</span>, <span class="string">&quot;&quot;</span>))
@@ -244,7 +262,7 @@
         }
     }
 
-    <span class="kw">fn </span>std_op(<span class="kw-2">&amp;</span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>StandardOp) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
+    <span class="kw">fn </span>std_op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>StandardOp) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>op {
             StandardOp::Peek =&gt; <span class="self">self</span>.peek()<span class="question-mark">?</span>,
             StandardOp::Poke =&gt; <span class="self">self</span>.poke()<span class="question-mark">?</span>,
@@ -270,14 +288,14 @@
         })
     }
 
-    <span class="kw">fn </span>end(<span class="kw-2">&amp;</span><span class="self">self</span>, matching: <span class="kw-2">&amp;</span>CoreOp, fun: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; String {
+    <span class="kw">fn </span>end(<span class="kw-2">&amp;mut </span><span class="self">self</span>, matching: <span class="kw-2">&amp;</span>CoreOp, fun: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; String {
         <span class="kw">match </span>(matching, fun) {
             (CoreOp::Function | CoreOp::While | CoreOp::If | CoreOp::Else, <span class="kw">_</span>) =&gt; <span class="string">&quot;}&quot;</span>.to_string(),
             <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">&quot;Invalid matching op for end&quot;</span>),
         }
     }
 
-    <span class="kw">fn </span>declare_proc(<span class="kw-2">&amp;</span><span class="self">self</span>, label_id: usize) -&gt; String {
+    <span class="kw">fn </span>declare_proc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, label_id: usize) -&gt; String {
         <span class="macro">format!</span>(<span class="string">&quot;void f{label_id}() {{&quot;</span>)
     }
 
@@ -292,7 +310,7 @@
         <span class="bool-val">true
     </span>}
 
-    <span class="kw">fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, src: <span class="kw-2">&amp;</span>Input) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
+    <span class="kw">fn </span>get(<span class="kw-2">&amp;mut </span><span class="self">self</span>, src: <span class="kw-2">&amp;</span>Input) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="kw">let </span>ch = src.channel.<span class="number">0</span>;
         <span class="kw">match </span>src.mode {
             InputMode::StdinChar =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;reg.i = getchar();&quot;</span>.to_string()),
@@ -308,7 +326,7 @@
         }
     }
 
-    <span class="kw">fn </span>put(<span class="kw-2">&amp;</span><span class="self">self</span>, dst: <span class="kw-2">&amp;</span>Output) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
+    <span class="kw">fn </span>put(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dst: <span class="kw-2">&amp;</span>Output) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="kw">match </span>dst.mode {
             OutputMode::StdoutChar =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;putchar(reg.i);&quot;</span>.to_string()),
             OutputMode::StdoutInt =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;printf(\&quot;%lld\&quot;, reg.i);&quot;</span>.to_string()),
@@ -321,11 +339,11 @@
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Output not supported by this target&quot;</span>.to_string()),
         }
     }
-    <span class="kw">fn </span>peek(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
+    <span class="kw">fn </span>peek(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="comment">// Ok(&quot;reg.i = *ptr;&quot;.to_string())
         </span><span class="macro">todo!</span>()
     }
-    <span class="kw">fn </span>poke(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
+    <span class="kw">fn </span>poke(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="comment">// Ok(&quot;*ptr = reg;&quot;.to_string())
         </span><span class="macro">todo!</span>()
     }

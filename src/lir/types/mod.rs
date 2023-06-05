@@ -102,10 +102,7 @@ impl Type {
     /// does not require an immediate lookup to use some of its type information.
     pub fn is_simple(&self) -> bool {
         match self {
-            Self::Poly(_, _)
-            | Self::Symbol(_)
-            | Self::Apply(_, _)
-            | Self::Let(_, _, _) => false,
+            Self::Poly(_, _) | Self::Symbol(_) | Self::Apply(_, _) | Self::Let(_, _, _) => false,
             Self::None
             | Self::Int
             | Self::Float
@@ -138,7 +135,7 @@ impl Type {
             | Self::Any
             | Self::Never
             | Self::Enum(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -158,7 +155,11 @@ impl Type {
             if f(&simplified, env)? || simplified.is_atomic() {
                 return Ok(simplified);
             }
-            simplified = simplified.simplify(env)?.perform_template_applications(env, &mut HashMap::new(), 0)?
+            simplified = simplified.simplify(env)?.perform_template_applications(
+                env,
+                &mut HashMap::new(),
+                0,
+            )?
         }
         Err(Error::CouldntSimplify(simplified, expected))
     }
@@ -261,15 +262,13 @@ impl Type {
                     template.substitute(name, substitution).into()
                 }
             }
-            Self::Apply(poly, ty_args) => {
-                Self::Apply(
-                    Box::new(poly.substitute(name, substitution)),
-                    ty_args
-                        .iter()
-                        .map(|t| t.substitute(name, substitution))
-                        .collect(),
-                )
-            },
+            Self::Apply(poly, ty_args) => Self::Apply(
+                Box::new(poly.substitute(name, substitution)),
+                ty_args
+                    .iter()
+                    .map(|t| t.substitute(name, substitution))
+                    .collect(),
+            ),
             Self::Symbol(typename) => {
                 if typename == name {
                     return substitution.clone();
@@ -472,13 +471,24 @@ impl Type {
     }
 
     /// Perform type applications if possible.
-    pub fn perform_template_applications(&self, env: &Env, previous_applications: &mut HashMap<(Type, Vec<Type>), Type>, i: usize) -> Result<Self, Error> {
+    pub fn perform_template_applications(
+        &self,
+        env: &Env,
+        previous_applications: &mut HashMap<(Type, Vec<Type>), Type>,
+        i: usize,
+    ) -> Result<Self, Error> {
         // If the type is an Apply on a Poly, then we can perform the application.
         // First, perform the applications on the type arguments.
         // We can use memoization with the previous_applications HashMap to avoid infinite recursion.
         match self.clone().simplify(env)? {
             Self::Apply(poly, ty_args) => {
-                let pair = (*poly, ty_args.into_iter().map(|t| t.clone().simplify(env)).collect::<Result<Vec<_>, _>>()?);
+                let pair = (
+                    *poly,
+                    ty_args
+                        .into_iter()
+                        .map(|t| t.clone().simplify(env))
+                        .collect::<Result<Vec<_>, _>>()?,
+                );
                 if let Some(t) = previous_applications.get(&pair) {
                     return Ok(t.clone());
                 }
@@ -507,17 +517,11 @@ impl Type {
                                 // previous_applications.insert((Self::Poly(params, save), ty_args), template.clone());
                                 Ok(template)
                             }
-                            Some(other) => {
-                                Ok(Self::Apply(Box::new(other), ty_args))
-                            }
-                            None => {
-                                Ok(self.clone())
-                            }
+                            Some(other) => Ok(Self::Apply(Box::new(other), ty_args)),
+                            None => Ok(self.clone()),
                         }
                     }
-                    _ => {
-                        Ok(self.clone())
-                    }
+                    _ => Ok(self.clone()),
                 }
             }
             other => {
@@ -768,11 +772,13 @@ impl Type {
             (Self::Apply(poly, ty_args), b) | (b, Self::Apply(poly, ty_args)) => {
                 let a = Self::Apply(poly.clone(), ty_args.clone());
                 // If the type is a polymorphic type, then we need to simplify it first.
-                let f = poly.clone().simplify_until_matches(env, Type::Poly(vec![], Box::new(Type::Any)), |t, env| {
-                    Ok(matches!(t, Type::Poly(_, _)))
-                })?;
+                let f = poly.clone().simplify_until_matches(
+                    env,
+                    Type::Poly(vec![], Box::new(Type::Any)),
+                    |t, env| Ok(matches!(t, Type::Poly(_, _))),
+                )?;
                 // let a = a.simplify_until_matches(env, Type::Any, |t, env| Ok(t.is_simple()))?;
-                
+
                 match f {
                     Self::Poly(ty_params, mut template) => {
                         // let mut new_env = env.clone();
@@ -782,12 +788,12 @@ impl Type {
                         }
                         template.equals_checked(b, compared_symbols, env, i)?
                     }
-                //     // Self::Symbol(_) => {
-                //     //     // If the type is not a polymorphic type, then we can compare it to the
-                //     //     // other type.
-                //     //     // return a.equals_checked(b, compared_symbols, env, i);
-                //     //     false
-                //     // }
+                    //     // Self::Symbol(_) => {
+                    //     //     // If the type is not a polymorphic type, then we can compare it to the
+                    //     //     // other type.
+                    //     //     // return a.equals_checked(b, compared_symbols, env, i);
+                    //     //     false
+                    //     // }
                     _ => {
                         // If the type is not a polymorphic type, then we can compare it to the
                         // other type.
@@ -827,7 +833,7 @@ impl Type {
                 let mut offset = 0;
                 for (i, t) in items.iter().enumerate() {
                     // If this element is the requested member
-                    if &ConstExpr::Int(i as i32) == member {
+                    if &ConstExpr::Int(i as i64) == member {
                         // Simplify the type under the environment
                         let result = t.clone().simplify(env)?;
                         // Return the member's type and its offset in memory
@@ -863,6 +869,11 @@ impl Type {
 
             Type::Unit(_unit_name, t) => t.get_member_offset(member, expr, env),
 
+            Type::Apply(_, _) | Type::Poly(_, _) => {
+                let t = self.clone().simplify_until_matches(env, Type::Any, |t, env| Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _))))?;
+                t.get_member_offset(member, expr, env)
+            }
+            
             Type::Symbol(name) => {
                 if let Some(t) = env.get_type(name) {
                     t.get_member_offset(member, expr, env)
@@ -896,7 +907,7 @@ impl Type {
             Type::Tuple(items) => {
                 for (i, _) in items.iter().enumerate() {
                     // If this element is the requested member
-                    if &ConstExpr::Int(i as i32) == member {
+                    if &ConstExpr::Int(i as i64) == member {
                         // Return the member's type and its offset in memory
                         // from the value's address.
                         return Ok(());
@@ -931,6 +942,11 @@ impl Type {
                 } else {
                     Err(Error::TypeNotDefined(name.clone()))
                 }
+            }
+
+            Type::Apply(_, _) | Type::Poly(_, _) => {
+                let t = self.clone().simplify_until_matches(env, Type::Any, |t, env| Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _))))?;
+                t.type_check_member(member, expr, env)
             }
 
             Type::Any => {
@@ -1041,26 +1057,26 @@ impl Simplify for Type {
                 //     .collect::<Result<Vec<Type>, Error>>()?;
 
                 //match *poly.clone() {
-                    // Self::Symbol(name) => {
-                    //     if let Some(Self::Poly(ty_params, template)) = env.get_type(&name) {
-                    //         if ty_params.len() != ty_args.len() {
-                    //             return Err(Error::InvalidTemplateArgs(Self::Apply(poly, ty_args)));
-                    //         }
-                    //         let mut result = *template.clone();
-                    //         for (name, ty) in ty_params.into_iter().zip(ty_args.iter()) {
-                    //             // result = Self::let_bind(&name, ty.clone(), result);
-                    //             if ty != &Self::Symbol(name.clone()) {
-                    //                 result = Self::let_bind(&name, ty.clone(), result);
-                    //             }
-                    //         }
-                    //         result
-                    //     } else {
-                    //         Self::Apply(poly, ty_args)
-                    //     }
-                    // }
-                    // Self::Let(name, t, ret) => {
-                    //     Self::Apply(Box::new(Self::Let(name, t, ret).simplify_checked(env, i)?), ty_args)
-                    // }
+                // Self::Symbol(name) => {
+                //     if let Some(Self::Poly(ty_params, template)) = env.get_type(&name) {
+                //         if ty_params.len() != ty_args.len() {
+                //             return Err(Error::InvalidTemplateArgs(Self::Apply(poly, ty_args)));
+                //         }
+                //         let mut result = *template.clone();
+                //         for (name, ty) in ty_params.into_iter().zip(ty_args.iter()) {
+                //             // result = Self::let_bind(&name, ty.clone(), result);
+                //             if ty != &Self::Symbol(name.clone()) {
+                //                 result = Self::let_bind(&name, ty.clone(), result);
+                //             }
+                //         }
+                //         result
+                //     } else {
+                //         Self::Apply(poly, ty_args)
+                //     }
+                // }
+                // Self::Let(name, t, ret) => {
+                //     Self::Apply(Box::new(Self::Let(name, t, ret).simplify_checked(env, i)?), ty_args)
+                // }
                 // match *poly.clone() {
                 //     Self::Symbol(name) => {
                 //         if let Some(Self::Poly(ty_params, template)) = env.get_type(&name).map(|t| t.clone()) {
@@ -1217,7 +1233,6 @@ impl fmt::Display for Type {
         }
     }
 }
-
 
 impl Eq for Type {}
 impl std::hash::Hash for Type {

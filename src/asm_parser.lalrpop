@@ -35,6 +35,7 @@ CoreOp: CoreOp = {
     "bitwise-and" <src: Location> "," <dst: Location> => CoreOp::BitwiseAnd { src, dst },
     "bitwise-xor" <src: Location> "," <dst: Location> => CoreOp::BitwiseXor { src, dst },
     "bitwise-or" <src: Location> "," <dst: Location> => CoreOp::BitwiseOr { src, dst },
+    "bitwise-nor" <src: Location> "," <dst: Location> => CoreOp::BitwiseNor { src, dst },
     "bitwise-not" <Location> => CoreOp::BitwiseNot(<>),
 
     "next" <loc:Location> <size:("," <IntLit>)?> => CoreOp::Next(loc, size.map(|x| x as isize)),

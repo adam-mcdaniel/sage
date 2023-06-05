@@ -7,7 +7,7 @@ enum List<T> {
     }
 }
 
-proc print_list<T>(l: &List<T>) {
+def print_list<T>(l: &List<T>) {
     match *l {
         of Nil => {},
         of Cons {data, next=&of Nil} => {
@@ -21,7 +21,7 @@ proc print_list<T>(l: &List<T>) {
     }
 }
 
-proc make_list<T, U>(cons: Int -> T, len: Int): List<T> {
+def make_list<T, U>(cons: Int -> T, len: Int): List<T> {
     if len == 0 {
         return List<T> of Nil;
     } else {
@@ -32,7 +32,7 @@ proc make_list<T, U>(cons: Int -> T, len: Int): List<T> {
     }
 }
 
-proc identity<T>(t: T): T = t;
+def identity<T>(t: T): T = t;
 
 let list1 = make_list<Int, Int>(identity<Int>, 100);
 print_list<Int>(&list1);
@@ -81,44 +81,44 @@ enum Result<T, E> {
     Err(E)
 }
 
-proc print_result<T, E>(res: Result<T, E>) {
+def print_result<T, E>(res: Result<T, E>) {
     match res {
         of Ok(x) => print("okay: ", x, "\n"),
         of Err(e) => print("error: ", e, "\n")
     }
 }
 
-proc map<T, U, E>(f: T -> U, res: Result<T, E>): Result<U, E> {
+def map<T, U, E>(f: T -> U, res: Result<T, E>): Result<U, E> {
     match res {
         of Ok(x) => Result<U, E> of Ok(f(x)),
         of Err(e) => Result<U, E> of Err(e)
     }
 }
 
-proc map_err<T, E, F>(f: E -> F, res: Result<T, E>): Result<T, F> {
+def map_err<T, E, F>(f: E -> F, res: Result<T, E>): Result<T, F> {
     match res {
         of Ok(x) => Result<T, F> of Ok(x),
         of Err(e) => Result<T, F> of Err(f(e))
     }
 }
 
-proc and_then<T, U, E>(f: T -> Result<U, E>, res: Result<T, E>): Result<U, E> {
+def and_then<T, U, E>(f: T -> Result<U, E>, res: Result<T, E>): Result<U, E> {
     match res {
         of Ok(x) => f(x),
         of Err(e) => Result<U, E> of Err(e)
     }
 }
 
-proc or_else<T, E, F>(f: E -> Result<T, F>, res: Result<T, E>): Result<T, F> {
+def or_else<T, E, F>(f: E -> Result<T, F>, res: Result<T, E>): Result<T, F> {
     match res {
         of Ok(x) => Result<T, F> of Ok(x),
         of Err(e) => f(e)
     }
 }
 
-proc inc(x: Int): Int = x + 1;
+def inc(x: Int): Int = x + 1;
 
-proc test<T>(text: &Char): Result<T, Float> = Result<T, Float> of Err 5.0; 
+def test<T>(text: &Char): Result<T, Float> = Result<T, Float> of Err 5.0; 
 print_result<Int, Float>(
     or_else<Int, &Char, Float>(
         test<Int>,
@@ -129,14 +129,14 @@ print_result<Int, Float>(
 let x = test<Int>;
 print(x(&text as &Char), "\n");
 
-proc second<A, B>(tup: (A, B)): B = tup.1;
-proc first<A, B>(tup: (A, B)): A = tup.0;
+def second<A, B>(tup: (A, B)): B = tup.1;
+def first<A, B>(tup: (A, B)): A = tup.0;
 let test = second<Int, Char>;
 print(test((5, 'a')));
 
 // type X<T> = (T, &X<X<T>>);
 
-// proc print_list(l: &List<Int>) {
+// def print_list(l: &List<Int>) {
 //     match *l {
 //         of Nil => (),
 //         of Cons (x, &of Nil) => {

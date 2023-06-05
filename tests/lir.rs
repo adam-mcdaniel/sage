@@ -26,7 +26,7 @@ fn test_struct() {
 
 fn test_struct_helper() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -94,7 +94,7 @@ fn test_struct_helper() {
 #[test]
 fn test_scopes() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let add = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "add".to_string(),
@@ -156,7 +156,7 @@ fn test_scopes() {
 #[test]
 fn test_tuples() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let add = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "add".to_string(),
@@ -224,7 +224,7 @@ fn test_tuples() {
 #[test]
 fn test_array() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let add = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "add".to_string(),
@@ -285,7 +285,7 @@ fn test_array() {
 #[test]
 fn test_nested_arrays() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -357,7 +357,7 @@ fn test_nested_arrays() {
 #[test]
 fn test_nested_structs() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -454,7 +454,7 @@ fn test_nested_structs() {
 #[test]
 fn test_union() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -527,7 +527,7 @@ fn test_union() {
 #[test]
 fn test_struct2() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -638,7 +638,7 @@ fn test_struct2() {
 #[test]
 fn test_mixed_types() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -684,7 +684,7 @@ fn test_mixed_types() {
 #[test]
 fn test_loop() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -735,7 +735,7 @@ fn test_loop() {
 #[test]
 fn test_if() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -770,7 +770,7 @@ fn test_if() {
 #[test]
 fn test_int_arithmetic() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -812,7 +812,7 @@ fn test_int_arithmetic() {
 #[test]
 fn test_float_arithmetic() {
     let mut env = Env::default();
-    let mut program = StandardProgram(vec![]);
+    let mut program = StandardProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -853,7 +853,7 @@ fn test_float_arithmetic() {
 #[test]
 fn test_as() {
     let mut env = Env::default();
-    let mut program = StandardProgram(vec![]);
+    let mut program = StandardProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),

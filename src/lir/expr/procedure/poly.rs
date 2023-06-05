@@ -3,7 +3,7 @@
 //! A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 //! This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 //! A procedure is compiled down to a label in the assembly code.
-use crate::lir::{ConstExpr, Env, Error, Expr, GetType, GetSize, Simplify, Type, TypeCheck};
+use crate::lir::{ConstExpr, Env, Error, Expr, GetSize, GetType, Simplify, Type, TypeCheck};
 use core::fmt;
 use std::{collections::HashMap, rc::Rc, sync::Mutex};
 
@@ -64,14 +64,17 @@ impl PolyProcedure {
     pub fn monomorphize(&self, ty_args: Vec<Type>, env: &Env) -> Result<Procedure, Error> {
         // This is a helper function to distribute the defined type
         // arguments over the body and arguments of the function.
-        
-        let simplified_ty_args = ty_args.clone()
+
+        let simplified_ty_args = ty_args
+            .clone()
             .into_iter()
             .map(|ty| {
-                ty.simplify_until_matches(env, Type::Any, |t, env| t.get_size(env).map(|_| t.is_simple()))
+                ty.simplify_until_matches(env, Type::Any, |t, env| {
+                    t.get_size(env).map(|_| t.is_simple())
+                })
             })
             .collect::<Result<Vec<_>, Error>>()?;
-        
+
         let bind_type_args = |mut ty: Type| -> Result<Type, Error> {
             // for (name, arg) in self.ty_params.iter().zip(ty_args.iter()) {
             //     // ty = Type::let_bind(name, if arg == &Type::Symbol(name.clone()) {
@@ -89,8 +92,13 @@ impl PolyProcedure {
 
             // Type::Apply(Box::new(Type::Poly(self.ty_params.clone(), Box::new(ty))), ty_args.clone()).simplify(env)?.perform_template_applications(env, &mut HashMap::new(), 0)
 
-            let ty = Type::Apply(Box::new(Type::Poly(self.ty_params.clone(), Box::new(ty))), simplified_ty_args.clone());
-            ty.simplify_until_matches(env, Type::Any, |t, env| t.get_size(env).map(|_| t.is_simple()))
+            let ty = Type::Apply(
+                Box::new(Type::Poly(self.ty_params.clone(), Box::new(ty))),
+                simplified_ty_args.clone(),
+            );
+            ty.simplify_until_matches(env, Type::Any, |t, env| {
+                t.get_size(env).map(|_| t.is_simple())
+            })
         };
 
         // Distribute the type parameters over the body and arguments of the function.
@@ -143,7 +151,9 @@ impl GetType for PolyProcedure {
         if self.ty_params.contains(&name.to_string()) {
             return;
         }
-        self.args.iter_mut().for_each(|(_, t)| *t = t.substitute(name, ty));
+        self.args
+            .iter_mut()
+            .for_each(|(_, t)| *t = t.substitute(name, ty));
         self.ret = self.ret.substitute(name, ty);
     }
 }

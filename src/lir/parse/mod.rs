@@ -710,6 +710,9 @@ fn parse_stmt(pair: Pair<Rule>) -> Statement {
                     "*=" => Some(Box::new(Assign::new(Arithmetic::Multiply))),
                     "/=" => Some(Box::new(Assign::new(Arithmetic::Divide))),
                     "%=" => Some(Box::new(Assign::new(Arithmetic::Remainder))),
+                    "&=" => Some(Box::new(Assign::new(BitwiseAnd))),
+                    "^=" => Some(Box::new(Assign::new(BitwiseXor))),
+                    "|=" => Some(Box::new(Assign::new(BitwiseOr))),
                     _ => unreachable!(),
                 },
                 rhs,
@@ -763,8 +766,17 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
         | Rule::expr_comparison
         | Rule::expr_sum
         | Rule::expr_index
-        | Rule::expr_factor => parse_binop(pair),
-
+        | Rule::expr_factor
+        | Rule::expr_bitwise_factor
+        | Rule::expr_bitwise_term
+        | Rule::expr_bitwise_atom => parse_binop(pair),
+        Rule::expr_ternary => {
+            let mut inner_rules = pair.into_inner();
+            let cond = parse_expr(inner_rules.next().unwrap());
+            let if_true = parse_expr(inner_rules.next().unwrap());
+            let if_false = parse_expr(inner_rules.next().unwrap());
+            Expr::If(Box::new(cond), Box::new(if_true), Box::new(if_false))
+        }
         Rule::expr_variant => {
             let mut inner_rules = pair.into_inner();
             let ty = parse_type(inner_rules.next().unwrap());
@@ -811,6 +823,7 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
                     Rule::expr_unary_op | Rule::expr_keyword_unary_op => match x.as_str() {
                         "!" => result.not(),
                         "-" => result.neg(),
+                        "~" => result.bitnot(),
                         "&" => result.refer(),
                         "new" => result.unop(New),
                         "del" => result.unop(Delete),
@@ -910,6 +923,11 @@ fn parse_binop(pair: Pair<Rule>) -> Expr {
             "<=" => head.le(tail),
             ">" => head.gt(tail),
             ">=" => head.ge(tail),
+            "&" => head.bitand(tail),
+            "|" => head.bitor(tail),
+            "^" => head.bitxor(tail),
+            "~&" => head.bitnand(tail),
+            "~|" => head.bitor(tail),
             _ => unreachable!(),
         };
     }
@@ -973,7 +991,20 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
             }
         }
         Rule::const_symbol => ConstExpr::Symbol(pair.as_str().to_string()),
-        Rule::const_int => ConstExpr::Int(pair.as_str().parse().unwrap()),
+        Rule::const_int => {
+            let s = pair.as_str();
+            ConstExpr::Int(if s.len() > 2 && &s[..2] == "0b" {
+                i64::from_str_radix(&s[2..], 2).unwrap() as i64
+            } else if s.len() > 2 && &s[..2] == "0o" {
+                i64::from_str_radix(&s[2..], 8).unwrap() as i64
+            } else if s.len() > 2 && &s[..2] == "0x" {
+                i64::from_str_radix(&s[2..], 16).unwrap() as i64
+            } else if s.len() > 0 {
+                i64::from_str_radix(s, 10).unwrap() as i64
+            } else {
+                0
+            })
+        }
         Rule::const_float => ConstExpr::Float(pair.as_str().parse().unwrap()),
         Rule::const_char => {
             let token = pair.into_inner().next().unwrap().as_str();

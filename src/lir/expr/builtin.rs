@@ -36,7 +36,9 @@ impl GetType for CoreBuiltin {
     }
 
     fn substitute(&mut self, name: &str, ty: &Type) {
-        self.args.iter_mut().for_each(|(_, t)| *t = t.substitute(name, ty));
+        self.args
+            .iter_mut()
+            .for_each(|(_, t)| *t = t.substitute(name, ty));
         self.ret = self.ret.substitute(name, ty);
     }
 }
@@ -90,7 +92,9 @@ impl GetType for StandardBuiltin {
     }
 
     fn substitute(&mut self, name: &str, ty: &Type) {
-        self.args.iter_mut().for_each(|(_, t)| *t = t.substitute(name, ty));
+        self.args
+            .iter_mut()
+            .for_each(|(_, t)| *t = t.substitute(name, ty));
         self.ret = self.ret.substitute(name, ty);
     }
 }

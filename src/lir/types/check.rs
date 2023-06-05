@@ -119,14 +119,22 @@ impl TypeCheck for Type {
                 }
 
                 // Try to confirm that the polymorphic type is a template.
-                match poly.clone().simplify_until_matches(env, Type::Poly(vec![], Box::new(Type::Any)), |t, env| Ok(matches!(t, Type::Poly(_, _))))? {
+                match poly.clone().simplify_until_matches(
+                    env,
+                    Type::Poly(vec![], Box::new(Type::Any)),
+                    |t, env| Ok(matches!(t, Type::Poly(_, _))),
+                )? {
                     Type::Symbol(name) => {
                         // Get the type definition.
                         let ty = env
                             .get_type(&name)
                             .ok_or(Error::TypeNotDefined(name.clone()))?;
                         // Check that the type is a template.
-                        match ty.clone().simplify_until_matches(env, Type::Poly(vec![], Box::new(Type::Any)), |t, env| Ok(matches!(t, Type::Poly(_, _))))? {
+                        match ty.clone().simplify_until_matches(
+                            env,
+                            Type::Poly(vec![], Box::new(Type::Any)),
+                            |t, env| Ok(matches!(t, Type::Poly(_, _))),
+                        )? {
                             Type::Poly(ty_params, _) => {
                                 // Check that the number of type arguments matches the number of type parameters.
                                 if ty_args.len() != ty_params.len() {
@@ -550,7 +558,8 @@ impl TypeCheck for Expr {
                 }
                 // Get the type of the function.
                 let mut f_type = f.get_type(env)?;
-                f_type = f_type.simplify_until_matches(env, Type::Any, |t, env| Ok(t.is_simple()))?;
+                f_type =
+                    f_type.simplify_until_matches(env, Type::Any, |t, env| Ok(t.is_simple()))?;
                 // Infer the types of the supplied arguments.
                 let mut args_inferred = vec![];
                 for arg in args {
@@ -854,6 +863,7 @@ impl TypeCheck for ConstExpr {
             // to fail at compile time.
             Self::None
             | Self::Null
+            | Self::Cell(_)
             | Self::Int(_)
             | Self::Float(_)
             | Self::Char(_)
@@ -930,9 +940,10 @@ impl TypeCheck for ConstExpr {
             Self::Of(t, variant) => {
                 let mut t = t.clone();
 
-                t = t.simplify_until_matches(env, Type::Enum(vec![variant.clone()]), |t, env| {
-                    Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_)))
-                })?;
+                t =
+                    t.simplify_until_matches(env, Type::Enum(vec![variant.clone()]), |t, env| {
+                        Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_)))
+                    })?;
 
                 match t {
                     Type::Enum(variants) => {
@@ -943,7 +954,10 @@ impl TypeCheck for ConstExpr {
                         } else {
                             // Otherwise, the variant isn't contained in the enum,
                             // so return an error.
-                            return Err(Error::VariantNotFound(Type::Enum(variants), variant.clone()));
+                            return Err(Error::VariantNotFound(
+                                Type::Enum(variants),
+                                variant.clone(),
+                            ));
                         }
                     }
                     Type::EnumUnion(variants) if variants.get(variant) == Some(&Type::None) => {
@@ -956,7 +970,10 @@ impl TypeCheck for ConstExpr {
                         } else {
                             // Otherwise, the variant isn't contained in the enum,
                             // so return an error.
-                            return Err(Error::VariantNotFound(Type::EnumUnion(variants), variant.clone()));
+                            return Err(Error::VariantNotFound(
+                                Type::EnumUnion(variants),
+                                variant.clone(),
+                            ));
                         }
                     }
                     _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
@@ -1096,9 +1113,10 @@ impl TypeCheck for ConstExpr {
             Self::EnumUnion(t, variant, val) => {
                 // Confirm the type supplied is a union.
                 let mut t = t.clone();
-                t = t.simplify_until_matches(env, Type::Enum(vec![variant.clone()]), |t, env| {
-                    Ok(matches!(t, Type::EnumUnion(_) | Type::Enum(_)))
-                })?;
+                t =
+                    t.simplify_until_matches(env, Type::Enum(vec![variant.clone()]), |t, env| {
+                        Ok(matches!(t, Type::EnumUnion(_) | Type::Enum(_)))
+                    })?;
                 match t {
                     Type::EnumUnion(fields) => {
                         // Confirm that the variant is a valid variant.

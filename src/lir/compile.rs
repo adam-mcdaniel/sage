@@ -13,8 +13,8 @@ use super::*;
 use crate::asm::{
     AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
 };
-use std::collections::BTreeMap;
 use crate::NULL;
+use std::collections::BTreeMap;
 
 /// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
@@ -460,7 +460,12 @@ impl Compile for Expr {
             Self::EnumUnion(mut t, variant, val) => {
                 // Get the size of the tagged union.
                 let result_size = t.get_size(env)?;
-                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _))))?;
+                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                    Ok(!matches!(
+                        t,
+                        Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+                    ))
+                })?;
                 if let Type::EnumUnion(fields) = t {
                     // Get the list of possible variant names.
                     let variants = fields.clone().into_keys().collect::<Vec<_>>();
@@ -484,13 +489,10 @@ impl Compile for Expr {
                         return Ok(());
                     } else {
                         // If we could not find the variant return an error.
-                        return Err(Error::VariantNotFound(
-                            Type::EnumUnion(fields),
-                            variant,
-                        ));
+                        return Err(Error::VariantNotFound(Type::EnumUnion(fields), variant));
                     }
                 } else {
-                    return Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                    return Err(Error::VariantNotFound(t.clone(), variant.clone()));
                 }
                 // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
                 //     t = t.clone().simplify(env)?;
@@ -521,12 +523,18 @@ impl Compile for Expr {
                 match val_type {
                     // If the value being indexed is an array:
                     Type::Array(ref elem, _) => {
-                        // First, lets try to compile the same expression using `Refer`.
-                        // This will be faster than the fallback.
+                        // First, lets try to compile the same index expression using pointer
+                        // arithmetic. This will be faster than pushing the entire array
+                        // onto the stack and indexing it.
                         if let Ok(refer) = val
                             .clone()
+                            // Reference the current
                             .refer()
+                            // Make the type a pointer to the inner element type
+                            .as_type(Type::Pointer(elem.clone()))
+                            // Index the new pointer
                             .idx(*idx.clone())
+                            // Push to the stack
                             .compile_expr(env, output)
                         {
                             return Ok(refer);
@@ -758,7 +766,7 @@ impl Compile for ConstExpr {
         let mut comment = format!("{self}");
         comment.truncate(70);
         output.comment(format!("compiling constant `{comment}`"));
-        
+
         // Compile the constant expression.
         match self {
             Self::LetTypes(bindings, expr) => {
@@ -802,6 +810,11 @@ impl Compile for ConstExpr {
             Self::Bool(x) => {
                 output.op(CoreOp::Next(SP, None));
                 output.op(CoreOp::Set(SP.deref(), x as i64));
+            }
+            // Compile a cell value.
+            Self::Cell(n) => {
+                output.op(CoreOp::Next(SP, None));
+                output.op(CoreOp::Set(SP.deref(), n as i64));
             }
             // Compile an integer constant.
             Self::Int(n) => {
@@ -862,10 +875,10 @@ impl Compile for ConstExpr {
             Self::EnumUnion(t, variant, val) => {
                 // Get the size of the tagged union.
                 let result_size = t.get_size(env)?;
-                let t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| Ok(matches!(
-                    t,
-                    Type::Enum(_) | Type::EnumUnion(_)
-                )))?;
+                let t =
+                    t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                        Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_)))
+                    })?;
 
                 // Get the inner list of variants and compile the expression using this information.
                 if let Type::EnumUnion(variants) = t.clone().simplify(env)? {
@@ -935,10 +948,11 @@ impl Compile for ConstExpr {
             Self::Of(mut enum_type, variant) => {
                 // Only try to simplify the type 50 times at most.
                 // This is to prevent infinite loops and to keep recursion under control.
-                enum_type = enum_type.simplify_until_matches(env, Type::Enum(vec![variant.clone()]), |t, env| Ok(matches!(
-                    t,
-                    Type::Enum(_) | Type::EnumUnion(_)
-                )))?;
+                enum_type = enum_type.simplify_until_matches(
+                    env,
+                    Type::Enum(vec![variant.clone()]),
+                    |t, env| Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_))),
+                )?;
 
                 match enum_type.clone() {
                     // If the type is an enum, we can continue.
@@ -955,9 +969,7 @@ impl Compile for ConstExpr {
                         }
                     }
                     // If the type is an enum union, we can continue.
-                    Type::EnumUnion(variants)
-                        if variants.get(&variant) == Some(&Type::None) =>
-                    {
+                    Type::EnumUnion(variants) if variants.get(&variant) == Some(&Type::None) => {
                         // Get the index of the variant.
                         if let Some(index) =
                             Type::variant_index(&variants.into_keys().collect(), &variant)
@@ -966,8 +978,7 @@ impl Compile for ConstExpr {
                             // Allocate the size of the structure on the stack by
                             // incrementing the stack pointer by the size of the structure.
                             // Then, set the value under the stack pointer to the index of the variant.
-                            output
-                                .op(CoreOp::Next(SP, Some(enum_type.get_size(env)? as isize)));
+                            output.op(CoreOp::Next(SP, Some(enum_type.get_size(env)? as isize)));
                             output.op(CoreOp::Set(SP.deref(), index as i64));
                             return Ok(());
                         } else {

@@ -98,7 +98,7 @@ impl GetType for Expr {
                 let mut new_env = env.clone();
                 new_env.define_const(name, expr.clone());
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?//.simplify(&new_env)?
+                ret.get_type_checked(&new_env, i)? //.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after several constant definitions.
@@ -110,7 +110,7 @@ impl GetType for Expr {
                     new_env.define_const(name, c.clone());
                 }
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?//.simplify(&new_env)?
+                ret.get_type_checked(&new_env, i)? //.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after a procedure definition.
@@ -119,7 +119,7 @@ impl GetType for Expr {
                 let mut new_env = env.clone();
                 new_env.define_proc(name, proc.clone());
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?//.simplify(&new_env)?
+                ret.get_type_checked(&new_env, i)? //.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after several procedure definitions.
@@ -131,7 +131,7 @@ impl GetType for Expr {
                     new_env.define_proc(name, proc.clone());
                 }
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?//.simplify(&new_env)?
+                ret.get_type_checked(&new_env, i)? //.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after a type definition.
@@ -141,9 +141,11 @@ impl GetType for Expr {
                 new_env.define_type(name, t.clone());
                 new_env.define_type(name, t.clone().simplify(&new_env)?);
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?.simplify_until_matches(env, Type::Any, |t, env| {
-                    t.type_check(env).map(|()| true)
-                })?
+                ret.get_type_checked(&new_env, i)?.simplify_until_matches(
+                    env,
+                    Type::Any,
+                    |t, env| t.type_check(env).map(|()| true),
+                )?
             }
 
             // Get the type of a resulting expression after several type definitions.
@@ -156,9 +158,11 @@ impl GetType for Expr {
                     new_env.define_type(name, ty.clone().simplify(&new_env)?);
                 }
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?.simplify_until_matches(env, Type::Any, |t, env| {
-                    t.type_check(env).map(|()| true)
-                })?
+                ret.get_type_checked(&new_env, i)?.simplify_until_matches(
+                    env,
+                    Type::Any,
+                    |t, env| t.type_check(env).map(|()| true),
+                )?
             }
 
             // Get the type of a resulting expression after a variable definition.
@@ -226,7 +230,11 @@ impl GetType for Expr {
             Self::Apply(func, _) => {
                 // Get the type of the function.
                 let mut ty = func.get_type_checked(env, i)?;
-                ty = ty.simplify_until_matches(env, Type::Proc(vec![], Box::new(Type::Any)), |t, env| Ok(t.is_simple()))?;
+                ty = ty.simplify_until_matches(
+                    env,
+                    Type::Proc(vec![], Box::new(Type::Any)),
+                    |t, env| Ok(t.is_simple()),
+                )?;
                 match ty {
                     Type::Proc(_, ret) => *ret,
                     Type::Let(name, t, result) => {
@@ -282,7 +290,7 @@ impl GetType for Expr {
                     Type::Any
                 }),
                 // Get the length of the array.
-                Box::new(ConstExpr::Int(items.len() as i32)),
+                Box::new(ConstExpr::Int(items.len() as i64)),
             ),
             // Get the type of a struct literal.
             Self::Struct(fields) => Type::Struct(
@@ -310,7 +318,16 @@ impl GetType for Expr {
                 // Get the field to access (as an integer)
                 let as_int = field.clone().as_int(env);
                 // Get the type of the value to get the member of.
-                match val.get_type_checked(env, i)?.simplify_until_matches(env, Type::Struct(BTreeMap::new()), |t, env| Ok(matches!(t, Type::Tuple(_) | Type::Struct(_) | Type::Union(_)))) {
+                match val.get_type_checked(env, i)?.simplify_until_matches(
+                    env,
+                    Type::Struct(BTreeMap::new()),
+                    |t, env| {
+                        Ok(matches!(
+                            t,
+                            Type::Tuple(_) | Type::Struct(_) | Type::Union(_)
+                        ))
+                    },
+                ) {
                     // If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
                     // This is because tuples are accesed by integer index.
@@ -506,8 +523,7 @@ impl GetType for Expr {
 
             Self::Return(expr) => expr.substitute(name, ty),
 
-            Self::Array(exprs)
-            | Self::Tuple(exprs) => {
+            Self::Array(exprs) | Self::Tuple(exprs) => {
                 for expr in exprs.iter_mut() {
                     expr.substitute(name, ty);
                 }
@@ -516,12 +532,12 @@ impl GetType for Expr {
             Self::Union(t, _, expr) => {
                 *t = t.substitute(name, ty);
                 expr.substitute(name, ty)
-            },
+            }
 
             Self::EnumUnion(t, _, expr) => {
                 *t = t.substitute(name, ty);
                 expr.substitute(name, ty)
-            },
+            }
 
             Self::Struct(fields) => {
                 for (_, expr) in fields.iter_mut() {

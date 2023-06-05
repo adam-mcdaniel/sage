@@ -53,7 +53,7 @@ fn test_lir_examples_helper() {
             let correct_output = correct_output_text
                 .as_bytes()
                 .into_iter()
-                .map(|byte| *byte as isize)
+                .map(|byte| *byte as i64)
                 .collect::<Vec<_>>();
 
             let lir_src = read_to_string(&path)
@@ -135,7 +135,7 @@ fn test_asm_examples_helper() {
             let correct_output = correct_output_text
                 .as_bytes()
                 .into_iter()
-                .map(|byte| *byte as isize)
+                .map(|byte| *byte as i64)
                 .collect::<Vec<_>>();
 
             let asm_src = read_to_string(&path)

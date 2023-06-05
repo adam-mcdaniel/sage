@@ -367,6 +367,10 @@ pub enum CoreOp {
         src: Location,
         dst: Location,
     },
+    BitwiseNor {
+        src: Location,
+        dst: Location,
+    },
     BitwiseAnd {
         src: Location,
         dst: Location,
@@ -626,6 +630,23 @@ impl CoreOp {
                 result.save();
                 dst.from(result);
             }
+            Self::BitwiseNor { src, dst } => {
+                dst.to(result);
+                result.restore();
+                result.bitwise_nand();
+                result.save();
+                dst.from(result);
+                src.to(result);
+                result.restore();
+                result.bitwise_nand();
+                src.from(result);
+                dst.to(result);
+                result.bitwise_nand();
+                result.save();
+                result.bitwise_nand();
+                result.save();
+                dst.from(result);
+            }
             Self::BitwiseAnd { src, dst } => {
                 src.restore_from(result);
                 dst.to(result);
@@ -808,6 +829,7 @@ impl fmt::Display for CoreOp {
             Self::BitwiseAnd { src, dst } => write!(f, "bitwise-and {src}, {dst}"),
             Self::BitwiseXor { src, dst } => write!(f, "bitwise-xor {src}, {dst}"),
             Self::BitwiseOr { src, dst } => write!(f, "bitwise-or {src}, {dst}"),
+            Self::BitwiseNor { src, dst } => write!(f, "bitwise-nor {src}, {dst}"),
             Self::BitwiseNot(loc) => write!(f, "bitwise-not {loc}"),
 
             Self::And { src, dst } => write!(f, "and {src}, {dst}"),

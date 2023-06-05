@@ -23,10 +23,19 @@ use crate::{
 
 /// The type for the C target which implements the `Target` trait.
 /// This allows the compiler to target the C language.
+#[derive(Default)]
 pub struct C;
 
 impl Architecture for C {
-    fn op(&self, op: &CoreOp) -> String {
+    fn supports_input(&self, i: &Input) -> bool {
+        matches!(i.mode, InputMode::StdinChar | InputMode::StdinFloat | InputMode::StdinInt)
+    }
+
+    fn supports_output(&self, o: &Output) -> bool {
+        matches!(o.mode, OutputMode::StdoutChar | OutputMode::StdoutFloat | OutputMode::StdoutInt)
+    }
+
+    fn op(&mut self, op: &CoreOp) -> String {
         match op {
             CoreOp::Comment(n) => {
                 format!("// {}", n.replace("\n", "\n// ").replace("\r", ""))
@@ -60,7 +69,7 @@ impl Architecture for C {
         }
     }
 
-    fn std_op(&self, op: &StandardOp) -> Result<String, String> {
+    fn std_op(&mut self, op: &StandardOp) -> Result<String, String> {
         Ok(match op {
             StandardOp::Peek => self.peek()?,
             StandardOp::Poke => self.poke()?,
@@ -86,14 +95,14 @@ impl Architecture for C {
         })
     }
 
-    fn end(&self, matching: &CoreOp, fun: Option<usize>) -> String {
+    fn end(&mut self, matching: &CoreOp, fun: Option<usize>) -> String {
         match (matching, fun) {
             (CoreOp::Function | CoreOp::While | CoreOp::If | CoreOp::Else, _) => "}".to_string(),
             _ => unreachable!("Invalid matching op for end"),
         }
     }
 
-    fn declare_proc(&self, label_id: usize) -> String {
+    fn declare_proc(&mut self, label_id: usize) -> String {
         format!("void f{label_id}() {{")
     }
 
@@ -108,7 +117,7 @@ impl Architecture for C {
         true
     }
 
-    fn get(&self, src: &Input) -> Result<String, String> {
+    fn get(&mut self, src: &Input) -> Result<String, String> {
         let ch = src.channel.0;
         match src.mode {
             InputMode::StdinChar => Ok("reg.i = getchar();".to_string()),
@@ -124,7 +133,7 @@ impl Architecture for C {
         }
     }
 
-    fn put(&self, dst: &Output) -> Result<String, String> {
+    fn put(&mut self, dst: &Output) -> Result<String, String> {
         match dst.mode {
             OutputMode::StdoutChar => Ok("putchar(reg.i);".to_string()),
             OutputMode::StdoutInt => Ok("printf(\"%lld\", reg.i);".to_string()),
@@ -137,11 +146,11 @@ impl Architecture for C {
             _ => Err("Output not supported by this target".to_string()),
         }
     }
-    fn peek(&self) -> Result<String, String> {
+    fn peek(&mut self) -> Result<String, String> {
         // Ok("reg.i = *ptr;".to_string())
         todo!()
     }
-    fn poke(&self) -> Result<String, String> {
+    fn poke(&mut self) -> Result<String, String> {
         // Ok("*ptr = reg;".to_string())
         todo!()
     }

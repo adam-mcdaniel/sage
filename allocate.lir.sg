@@ -1,0 +1,36 @@
+
+enum Option<T> {
+    Some(T),
+    Nothing
+}
+
+def allocate<T>(count: Int): Option<&T> {
+    if (count <= 0) {
+        return Option<&T> of Nothing;
+    }
+    let ptr = alloc(count * sizeof(T)) as &T;
+    if (ptr == Null) {
+        return Option<&T> of Nothing;
+    } else {
+        return Option<&T> of Some(ptr);
+    }
+}
+
+struct Point<T> {
+    x: T,
+    y: T
+}
+
+match allocate<Point<Int>>(5) {
+    of Some(val) => {
+        for let i=0; i<5; i+=1 {
+            val[i].x = i;
+            val[i].y = i * 2;
+        }
+        print("Allocated 5 items: ", *(val as &[{x: Int, y: Int} * 5]), "\n");
+        print("                 : ", *(val as &[Int * 10]), "\n");
+    },
+    of Nothing => {
+        print("Failed to allocate memory");
+    }
+}

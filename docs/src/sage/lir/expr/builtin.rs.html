@@ -145,6 +145,10 @@
 <a href="#145" id="145">145</a>
 <a href="#146" id="146">146</a>
 <a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Builtin Procedures
 //!
 //! `CoreBuiltin` and `StandardBuiltin` procedures which are implemented in core or standard assembly respectively.
@@ -183,7 +187,9 @@
     }
 
     <span class="kw">fn </span>substitute(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str, ty: <span class="kw-2">&amp;</span>Type) {
-        <span class="self">self</span>.args.iter_mut().for_each(|(<span class="kw">_</span>, t)| <span class="kw-2">*</span>t = t.substitute(name, ty));
+        <span class="self">self</span>.args
+            .iter_mut()
+            .for_each(|(<span class="kw">_</span>, t)| <span class="kw-2">*</span>t = t.substitute(name, ty));
         <span class="self">self</span>.ret = <span class="self">self</span>.ret.substitute(name, ty);
     }
 }
@@ -237,7 +243,9 @@
     }
 
     <span class="kw">fn </span>substitute(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str, ty: <span class="kw-2">&amp;</span>Type) {
-        <span class="self">self</span>.args.iter_mut().for_each(|(<span class="kw">_</span>, t)| <span class="kw-2">*</span>t = t.substitute(name, ty));
+        <span class="self">self</span>.args
+            .iter_mut()
+            .for_each(|(<span class="kw">_</span>, t)| <span class="kw-2">*</span>t = t.substitute(name, ty));
         <span class="self">self</span>.ret = <span class="self">self</span>.ret.substitute(name, ty);
     }
 }

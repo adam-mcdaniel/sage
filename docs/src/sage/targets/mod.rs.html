@@ -298,7 +298,6 @@
 <a href="#298" id="298">298</a>
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Targets Module
 //!
 //! This module contains the code dealing with building the virtual
@@ -340,6 +339,9 @@
 </span><span class="kw">pub mod </span>c;
 <span class="kw">pub use </span>c::<span class="kw-2">*</span>;
 
+<span class="kw">pub mod </span>x86;
+<span class="kw">pub use </span>x86::<span class="kw-2">*</span>;
+
 <span class="kw">use crate</span>::{
     io::{Input, Output},
     vm::{<span class="self">self</span>, <span class="kw-2">*</span>},
@@ -355,22 +357,18 @@
     <span class="doccomment">/// Whether or not the target architecture supports floating point.
     </span><span class="kw">fn </span>supports_floats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool;
     <span class="doccomment">/// Whether or not the target architecture supports the given input (mode + channel).
-    </span><span class="kw">fn </span>supports_input(<span class="kw-2">&amp;</span><span class="self">self</span>, src: <span class="kw-2">&amp;</span>Input) -&gt; bool {
-        <span class="self">self</span>.get(src).is_ok()
-    }
+    </span><span class="kw">fn </span>supports_input(<span class="kw-2">&amp;</span><span class="self">self</span>, src: <span class="kw-2">&amp;</span>Input) -&gt; bool;
     <span class="doccomment">/// Whether or not the target architecture supports the given output (mode + channel).
-    </span><span class="kw">fn </span>supports_output(<span class="kw-2">&amp;</span><span class="self">self</span>, dst: <span class="kw-2">&amp;</span>Output) -&gt; bool {
-        <span class="self">self</span>.put(dst).is_ok()
-    }
+    </span><span class="kw">fn </span>supports_output(<span class="kw-2">&amp;</span><span class="self">self</span>, dst: <span class="kw-2">&amp;</span>Output) -&gt; bool;
 
     <span class="doccomment">/// Get a value from the given input stream (mode + channel).
-    </span><span class="kw">fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, src: <span class="kw-2">&amp;</span>Input) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt;;
+    </span><span class="kw">fn </span>get(<span class="kw-2">&amp;mut </span><span class="self">self</span>, src: <span class="kw-2">&amp;</span>Input) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt;;
     <span class="doccomment">/// Put a value to the given output stream (mode + channel).
-    </span><span class="kw">fn </span>put(<span class="kw-2">&amp;</span><span class="self">self</span>, dst: <span class="kw-2">&amp;</span>Output) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt;;
+    </span><span class="kw">fn </span>put(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dst: <span class="kw-2">&amp;</span>Output) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt;;
     <span class="doccomment">/// Peek a value from the device connected to the program.
-    </span><span class="kw">fn </span>peek(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt;;
+    </span><span class="kw">fn </span>peek(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt;;
     <span class="doccomment">/// Poke a value to the device connected to the program.
-    </span><span class="kw">fn </span>poke(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt;;
+    </span><span class="kw">fn </span>poke(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt;;
 
     <span class="doccomment">/// The code before the program starts.
     </span><span class="kw">fn </span>prelude(<span class="kw-2">&amp;</span><span class="self">self</span>, _is_core: bool) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
@@ -403,19 +401,19 @@
     }
 
     <span class="doccomment">/// Compile the declaration of a procedure.
-    </span><span class="kw">fn </span>declare_proc(<span class="kw-2">&amp;</span><span class="self">self</span>, label_id: usize) -&gt; String;
+    </span><span class="kw">fn </span>declare_proc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, label_id: usize) -&gt; String;
     <span class="doccomment">/// Compile an `End` instruction (with the matching `If` or `While` or `Function`)
-    </span><span class="kw">fn </span>end(<span class="kw-2">&amp;</span><span class="self">self</span>, matching: <span class="kw-2">&amp;</span>CoreOp, fun: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; String;
+    </span><span class="kw">fn </span>end(<span class="kw-2">&amp;mut </span><span class="self">self</span>, matching: <span class="kw-2">&amp;</span>CoreOp, fun: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; String;
     <span class="doccomment">/// Compile a `CoreOp` instruction.
-    </span><span class="kw">fn </span>op(<span class="kw-2">&amp;</span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>vm::CoreOp) -&gt; String;
+    </span><span class="kw">fn </span>op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>vm::CoreOp) -&gt; String;
     <span class="doccomment">/// Compile a `StandardOp` instruction.
-    </span><span class="kw">fn </span>std_op(<span class="kw-2">&amp;</span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>vm::StandardOp) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt;;
+    </span><span class="kw">fn </span>std_op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>vm::StandardOp) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt;;
 }
 
 <span class="doccomment">/// Implement a compiler for the given target.
 </span><span class="kw">pub trait </span>CompiledTarget: Architecture {
     <span class="kw">fn </span>build_op(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         op: <span class="kw-2">&amp;</span>vm::CoreOp,
         matching_ops: <span class="kw-2">&amp;mut </span>Vec&lt;vm::CoreOp&gt;,
         matching_funs: <span class="kw-2">&amp;mut </span>Vec&lt;usize&gt;,
@@ -488,7 +486,7 @@
     }
 
     <span class="kw">fn </span>build_std_op(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         std_op: <span class="kw-2">&amp;</span>vm::StandardOp,
         matching_ops: <span class="kw-2">&amp;mut </span>Vec&lt;vm::CoreOp&gt;,
         matching_funs: <span class="kw-2">&amp;mut </span>Vec&lt;usize&gt;,
@@ -504,7 +502,7 @@
     }
 
     <span class="doccomment">/// Compile the core variant of the machine code (must be implemented for every target).
-    </span><span class="kw">fn </span>build_core(<span class="kw-2">&amp;</span><span class="self">self</span>, program: <span class="kw-2">&amp;</span>vm::CoreProgram) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
+    </span><span class="kw">fn </span>build_core(<span class="kw-2">&amp;mut </span><span class="self">self</span>, program: <span class="kw-2">&amp;</span>vm::CoreProgram) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="kw">let </span>(main_ops, function_defs) = program.clone().get_main_and_functions();
         <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="self">self</span>.prelude(<span class="bool-val">true</span>).unwrap_or(<span class="string">&quot;&quot;</span>.to_string());
 
@@ -553,7 +551,7 @@
     }
 
     <span class="doccomment">/// Compile the standard variant of the machine code (should be implemented for every target possible).
-    </span><span class="kw">fn </span>build_std(<span class="kw-2">&amp;</span><span class="self">self</span>, program: <span class="kw-2">&amp;</span>vm::StandardProgram) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
+    </span><span class="kw">fn </span>build_std(<span class="kw-2">&amp;mut </span><span class="self">self</span>, program: <span class="kw-2">&amp;</span>vm::StandardProgram) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="kw">let </span>(main_ops, function_defs) = program.clone().get_main_and_functions();
         <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="self">self</span>.prelude(<span class="bool-val">false</span>).unwrap_or(<span class="string">&quot;&quot;</span>.to_string());
 

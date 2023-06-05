@@ -205,6 +205,14 @@
 <a href="#205" id="205">205</a>
 <a href="#206" id="206">206</a>
 <a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -219,13 +227,19 @@
     <span class="doccomment">/// Can this unary operation be applied to the given type?
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
         <span class="kw">let </span>ty = ty.clone().simplify(env)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(ty.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>)))).is_ok())
+        <span class="prelude-val">Ok</span>(ty
+            .simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>)))
+            })
+            .is_ok())
     }
 
     <span class="doccomment">/// Get the type of the result of applying this unary operation to the given type.
     </span><span class="kw">fn </span>return_type(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
-        ty = ty.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>))))<span class="question-mark">?</span>;
+        ty = ty.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+            <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>)))
+        })<span class="question-mark">?</span>;
         <span class="comment">// for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
         //     match ty {
         //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) =&gt; {
@@ -243,13 +257,11 @@
         // }
         </span><span class="kw">match </span>ty {
             Type::EnumUnion(variants) =&gt; <span class="prelude-val">Ok</span>(Type::Enum(variants.into_keys().collect())),
-            found =&gt; {
-                <span class="prelude-val">Err</span>(Error::MismatchedTypes {
-                    expected: Type::EnumUnion(BTreeMap::new()),
-                    found,
-                    expr: expr.clone(),
-                })
-            }
+            found =&gt; <span class="prelude-val">Err</span>(Error::MismatchedTypes {
+                expected: Type::EnumUnion(BTreeMap::new()),
+                found,
+                expr: expr.clone(),
+            }),
         }
     }
 
@@ -325,13 +337,19 @@
     <span class="doccomment">/// Can this unary operation be applied to the given type?
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
         <span class="kw">let </span>ty = ty.clone().simplify(env)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(ty.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::EnumUnion(<span class="kw">_</span>) | Type::Enum(<span class="kw">_</span>)))).is_ok())
+        <span class="prelude-val">Ok</span>(ty
+            .simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::EnumUnion(<span class="kw">_</span>) | Type::Enum(<span class="kw">_</span>)))
+            })
+            .is_ok())
     }
 
     <span class="doccomment">/// Get the type of the result of applying this unary operation to the given type.
     </span><span class="kw">fn </span>return_type(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
-        ty = ty.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::EnumUnion(<span class="kw">_</span>) | Type::Enum(<span class="kw">_</span>))))<span class="question-mark">?</span>;
+        ty = ty.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+            <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::EnumUnion(<span class="kw">_</span>) | Type::Enum(<span class="kw">_</span>)))
+        })<span class="question-mark">?</span>;
         <span class="comment">// for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
         //     match ty {
         //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) =&gt; {
@@ -349,13 +367,11 @@
         // }
         </span><span class="kw">match </span>ty {
             Type::EnumUnion(variants) =&gt; <span class="prelude-val">Ok</span>(Type::Union(variants)),
-            found =&gt; {
-                <span class="prelude-val">Err</span>(Error::MismatchedTypes {
-                    expected: Type::EnumUnion(BTreeMap::new()),
-                    found,
-                    expr: expr.clone(),
-                })
-            }
+            found =&gt; <span class="prelude-val">Err</span>(Error::MismatchedTypes {
+                expected: Type::EnumUnion(BTreeMap::new()),
+                found,
+                expr: expr.clone(),
+            }),
         }
     }
 

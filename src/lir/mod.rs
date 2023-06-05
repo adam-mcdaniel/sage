@@ -163,7 +163,10 @@ pub enum Error {
     InvalidMatchExpr(Expr),
 
     /// Invalid pattern for a match expression.
-    NonExhaustivePatterns { patterns: Vec<Pattern>, expr: Expr },
+    NonExhaustivePatterns {
+        patterns: Vec<Pattern>,
+        expr: Expr,
+    },
 
     /// Invalid type casting expression.
     InvalidAs(Expr, Type, Type),
@@ -204,10 +207,18 @@ impl From<crate::asm::Error> for Error {
 }
 
 impl Display for Error {
-    fn fmt(&self, f:  &mut Formatter) -> FmtResult {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            Self::MismatchedTypes { expected, found, expr } => {
-                write!(f, "mismatched types: expected {}, found {} in {}", expected, found, expr)
+            Self::MismatchedTypes {
+                expected,
+                found,
+                expr,
+            } => {
+                write!(
+                    f,
+                    "mismatched types: expected {}, found {} in {}",
+                    expected, found, expr
+                )
             }
             Self::VariantNotFound(ty, variant) => {
                 write!(f, "variant {} not found in {}", variant, ty)
@@ -216,13 +227,21 @@ impl Display for Error {
                 write!(f, "member {} not found in {}", member, expr)
             }
             Self::RecursionDepthConst(expr) => {
-                write!(f, "recursion depth exceeded when trying to evaluate {}", expr)
+                write!(
+                    f,
+                    "recursion depth exceeded when trying to evaluate {}",
+                    expr
+                )
             }
             Self::CouldntSimplify(ty1, ty2) => {
                 write!(f, "couldn't simplify {} to {}", ty1, ty2)
             }
             Self::RecursionDepthTypeEquality(ty1, ty2) => {
-                write!(f, "recursion depth exceeded when trying to confirm {} == {}", ty1, ty2)
+                write!(
+                    f,
+                    "recursion depth exceeded when trying to confirm {} == {}",
+                    ty1, ty2
+                )
             }
             Self::NonIntegralConst(expr) => {
                 write!(f, "got non-integral constant expression {}", expr)
@@ -255,19 +274,35 @@ impl Display for Error {
                 write!(f, "invalid binary operation {} {} {}", op, expr1, expr2)
             }
             Self::InvalidBinaryOpTypes(op, ty1, ty2) => {
-                write!(f, "invalid binary operation {} for types {} and {}", op, ty1, ty2)
+                write!(
+                    f,
+                    "invalid binary operation {} for types {} and {}",
+                    op, ty1, ty2
+                )
             }
             Self::InvalidTernaryOp(op, expr1, expr2, expr3) => {
-                write!(f, "invalid ternary operation {} {} {} {}", op, expr1, expr2, expr3)
+                write!(
+                    f,
+                    "invalid ternary operation {} {} {} {}",
+                    op, expr1, expr2, expr3
+                )
             }
             Self::InvalidTernaryOpTypes(op, ty1, ty2, ty3) => {
-                write!(f, "invalid ternary operation {} for types {}, {}, and {}", op, ty1, ty2, ty3)
+                write!(
+                    f,
+                    "invalid ternary operation {} for types {}, {}, and {}",
+                    op, ty1, ty2, ty3
+                )
             }
             Self::InvalidAssignOp(op, expr1, expr2) => {
                 write!(f, "invalid assignment operation {} {} {}", op, expr1, expr2)
             }
             Self::InvalidAssignOpTypes(op, ty1, ty2) => {
-                write!(f, "invalid assignment operation {} for types {} and {}", op, ty1, ty2)
+                write!(
+                    f,
+                    "invalid assignment operation {} for types {} and {}",
+                    op, ty1, ty2
+                )
             }
             Self::SymbolNotDefined(sym) => {
                 write!(f, "symbol {} not defined", sym)
@@ -288,10 +323,18 @@ impl Display for Error {
                 write!(f, "invalid match expression {}", expr)
             }
             Self::NonExhaustivePatterns { patterns, expr } => {
-                write!(f, "non-exhaustive patterns {:?} for expression {}", patterns, expr)
+                write!(
+                    f,
+                    "non-exhaustive patterns {:?} for expression {}",
+                    patterns, expr
+                )
             }
             Self::InvalidAs(expr, ty1, ty2) => {
-                write!(f, "invalid as expression {} for types {} and {}", expr, ty1, ty2)
+                write!(
+                    f,
+                    "invalid as expression {} for types {} and {}",
+                    expr, ty1, ty2
+                )
             }
             Self::InvalidConstExpr(expr) => {
                 write!(f, "invalid constant expression {}", expr)
@@ -321,7 +364,11 @@ impl Display for Error {
                 write!(f, "assembly error: {:?}", e)
             }
             Self::InvalidMonomorphize(expr) => {
-                write!(f, "invalid monomorphization of constant expression {}", expr)
+                write!(
+                    f,
+                    "invalid monomorphization of constant expression {}",
+                    expr
+                )
             }
         }
     }

@@ -5,7 +5,7 @@ keyword = @{
     "for"
     | "in" | "if" | "elif" |"else" | "while" | "break" | "continue"
     | "return" | "struct" | "enum" | "as" | "of" | "sizeof"
-    | "proc" | "let" | "const" | "type" | "core" | "std"
+    | "def" | "let" | "const" | "type" | "core" | "std"
     | "Int" | "Float" | "Bool" | "Char" | "None" | "Null"
     | "True" | "False" | "new"
 }
@@ -74,8 +74,8 @@ decl_proc = {
     decl_proc_block
     | decl_proc_expr
 }
-decl_proc_block = { "proc" ~ symbol ~ type_parameters? ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ "="? ~ stmt_block }
-decl_proc_expr = { "proc" ~ symbol ~ type_parameters? ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ "=" ~ expr ~ ";"+ }
+decl_proc_block = { "def" ~ symbol ~ type_parameters? ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ "="? ~ stmt_block }
+decl_proc_expr = { "def" ~ symbol ~ type_parameters? ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ "=" ~ expr ~ ";"+ }
 decl_proc_param = {
     symbol ~ ":" ~ type
 }
@@ -111,10 +111,10 @@ stmt = {
 }
 
 long_stmt = {
-    (stmt_if_let
-    | stmt_if_elif_let
-    | stmt_if
+    (stmt_if_elif_let
+    | stmt_if_let
     | stmt_if_elif
+    | stmt_if
     | stmt_when
     | stmt_while
     | stmt_for
@@ -139,13 +139,13 @@ stmt_assign = { expr ~ stmt_assign_ops ~ expr }
 stmt_assign_ops = @{
     "="
     | "+=" | "-=" | "*=" | "/="
-    | "%="
+    | "%=" | "&=" | "|=" | "^="
 }
 stmt_return = {
     "return" ~ expr
 }
 stmt_match = {
-    "match" ~ expr ~ "{" ~ (stmt_match_case ~ ",")* ~ stmt_match_case ~ "}"
+    "match" ~ expr ~ "{" ~ (stmt_match_case ~ ","?)+ ~ stmt_match_case? ~ "}"
 }
 stmt_match_case = {
     pattern ~ "=>" ~ expr
@@ -223,7 +223,11 @@ stmt_let_in_expr = { "let" ~ (symbol ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ symb
 ////////////////////////////////////////////////////////////////////
 expr = {
     stmt_match
+    | expr_ternary
     | expr_logic_factor
+}
+expr_ternary = {
+    expr_logic_factor ~ "?" ~ expr ~ ":" ~ expr
 }
 expr_logic_factor = {
     expr_logic_term ~ expr_logic_factor_binops*
@@ -232,10 +236,31 @@ expr_logic_factor_binops = {
     "||" ~ expr_logic_term
 }
 expr_logic_term = {
-    expr_comparison ~ expr_logic_term_binops*
+    expr_bitwise_factor ~ expr_logic_term_binops*
 }
 expr_logic_term_binops = {
-    "&&" ~ expr_comparison
+    "&&" ~ expr_bitwise_factor
+}
+
+expr_bitwise_factor = {
+    expr_bitwise_term ~ expr_bitwise_factor_binops*
+}
+expr_bitwise_factor_binops = {
+    "~|" ~ expr_bitwise_term
+    | !"||" ~ "|" ~ expr_bitwise_term
+}
+expr_bitwise_term = {
+    expr_bitwise_atom ~ expr_bitwise_term_binops*
+}
+expr_bitwise_term_binops = {
+    "^" ~ expr_bitwise_atom
+}
+expr_bitwise_atom = {
+    expr_comparison ~ expr_bitwise_atom_binops*
+}
+expr_bitwise_atom_binops = {
+    "~&" ~ expr_comparison
+    | !"&&" ~ "&" ~ expr_comparison
 }
 
 expr_comparison = {
@@ -275,7 +300,7 @@ expr_keyword_unary_op = @{ ("new" | "del") ~ !symbol }
 expr_unary = {
     expr_unary_op* ~ (expr_variant | const_monomorph | expr_atom | const)
 }
-expr_unary_op = !{ "!" | "-" | "&" | "*" }
+expr_unary_op = !{ "!" | "-" | "&" | "~" | "*" }
 expr_variant = { type_term ~ "of" ~ symbol ~ expr_atom? }
 
 expr_int_field = { "." ~ decimal }

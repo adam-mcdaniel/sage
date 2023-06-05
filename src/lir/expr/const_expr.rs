@@ -30,7 +30,9 @@ pub enum ConstExpr {
     /// A named constant.
     Symbol(String),
     /// A constant integer value.
-    Int(i32),
+    Int(i64),
+    /// A constant integer value representing a cell on the tape.
+    Cell(i64),
     /// A constant floating point value.
     ///
     /// These can be used at compile time even when compiling to core,
@@ -116,6 +118,7 @@ impl ConstExpr {
             match self {
                 Self::None
                 | Self::Null
+                | Self::Cell(_)
                 | Self::Int(_)
                 | Self::Float(_)
                 | Self::Char(_)
@@ -160,8 +163,8 @@ impl ConstExpr {
                     expr.eval_checked(env, i)
                 }
 
-                Self::SizeOfType(t) => Ok(Self::Int(t.get_size(env)? as i32)),
-                Self::SizeOfExpr(e) => Ok(Self::Int(e.get_size(env)? as i32)),
+                Self::SizeOfType(t) => Ok(Self::Int(t.get_size(env)? as i64)),
+                Self::SizeOfExpr(e) => Ok(Self::Int(e.get_size(env)? as i64)),
 
                 Self::Symbol(name) => {
                     if let Some(c) = env.get_const(&name) {
@@ -204,7 +207,7 @@ impl ConstExpr {
     }
 
     /// Try to get this constant expression as an integer.
-    pub fn as_int(self, env: &Env) -> Result<i32, Error> {
+    pub fn as_int(self, env: &Env) -> Result<i64, Error> {
         match self.eval_checked(env, 0) {
             Ok(Self::Int(n)) => Ok(n),
             Ok(other) => Err(Error::NonIntegralConst(other)),
@@ -270,7 +273,11 @@ impl GetType for ConstExpr {
                 for (name, ty) in bindings {
                     new_env.define_type(&name, ty);
                 }
-                expr.get_type_checked(&new_env, i)?.simplify_until_matches(env, Type::Any, |t, env| t.type_check(env).map(|_| true))?
+                expr.get_type_checked(&new_env, i)?.simplify_until_matches(
+                    env,
+                    Type::Any,
+                    |t, env| t.type_check(env).map(|_| true),
+                )?
             }
             Self::Monomorphize(expr, ty_args) => {
                 // Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::<Result<Vec<Type>, Error>>()?).perform_template_applications(env, &mut HashMap::new(), 0)?
@@ -278,13 +285,14 @@ impl GetType for ConstExpr {
             }
             Self::TypeOf(expr) => {
                 let size = expr.get_type_checked(env, i)?.to_string().len();
-                Type::Array(Box::new(Type::Char), Box::new(Self::Int(size as i32)))
+                Type::Array(Box::new(Type::Char), Box::new(Self::Int(size as i64)))
             }
             Self::Null => Type::Pointer(Box::new(Type::Any)),
             Self::None => Type::None,
             Self::SizeOfType(_) | Self::SizeOfExpr(_) | Self::Int(_) => Type::Int,
             Self::Float(_) => Type::Float,
             Self::Char(_) => Type::Char,
+            Self::Cell(_) => Type::Cell,
             Self::Bool(_) => Type::Bool,
             Self::Of(enum_type, _) => enum_type,
             Self::Tuple(items) => Type::Tuple(
@@ -299,7 +307,7 @@ impl GetType for ConstExpr {
                 } else {
                     Type::Any
                 }),
-                Box::new(Self::Int(items.len() as i32)),
+                Box::new(Self::Int(items.len() as i64)),
             ),
             Self::Struct(fields) => Type::Struct(
                 fields
@@ -374,6 +382,7 @@ impl GetType for ConstExpr {
             Self::SizeOfExpr(expr) => {
                 expr.substitute(name, ty);
             }
+            Self::Cell(_) => {}
             Self::Int(_) => {}
             Self::Float(_) => {}
             Self::Char(_) => {}
@@ -500,6 +509,7 @@ impl fmt::Display for ConstExpr {
             }
             Self::Bool(x) => write!(f, "{}", if *x { "true" } else { "false" }),
             Self::Char(ch) => write!(f, "{ch}"),
+            Self::Cell(n) => write!(f, "{n:x}"),
             Self::Int(n) => write!(f, "{n}"),
             Self::Float(n) => write!(f, "{n}"),
             Self::None => write!(f, "None"),

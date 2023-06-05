@@ -114,7 +114,8 @@ impl GetSize for Type {
                 // Get the size of each field.
                 .map(|(_, t)| t.get_size_checked(env, i))
                 // Catch any errors.
-                .collect::<Result<Vec<_>, _>>()?.into_iter()
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
                 // Sum the sizes of all the fields.
                 .sum(),
             // Union types are the size of the largest field. (All other fields are padded to this size.)
@@ -124,7 +125,8 @@ impl GetSize for Type {
                 // Get the size of each field.
                 .map(|(_, t)| t.get_size_checked(env, i))
                 // Catch any errors.
-                .collect::<Result<Vec<_>, _>>()?.into_iter()
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
                 // Get the largest size.
                 .max()
                 // If there are no fields, just return 0.
@@ -153,9 +155,11 @@ impl GetSize for Type {
                     return Ok(size);
                 }
 
-                let result = self.clone().simplify_until_matches(env, Type::Poly(vec![], Box::new(Type::Any)), |t, env| {
-                    Ok(t.is_simple())
-                })?;
+                let result = self.clone().simplify_until_matches(
+                    env,
+                    Type::Poly(vec![], Box::new(Type::Any)),
+                    |t, env| Ok(t.is_simple()),
+                )?;
 
                 result.get_size_checked(env, i)?
 
@@ -189,7 +193,6 @@ impl GetSize for Type {
                 //     .perform_template_applications(env, &mut HashMap::new(), i)?
                 //     .get_size_checked(env, i)?
 
-                
                 // match poly.clone().simplify(env)? {
                 //     Self::Poly(ty_params, template) => {
                 //         // Make sure the number of type arguments matches the number of type parameters.

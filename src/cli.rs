@@ -31,6 +31,8 @@ enum TargetType {
     StdVM,
     /// Compile to C source code (GCC only).
     C,
+    /// Compile to x86 assembly code.
+    X86,
 }
 
 /// The source language options to compile.
@@ -235,8 +237,18 @@ fn compile(
         TargetType::C => write_file(
             format!("{output}.c"),
             match compile_source_to_vm(src, src_type, call_stack_size)? {
-                Ok(vm_code) => targets::C.build_core(&vm_code.flatten()),
-                Err(vm_code) => targets::C.build_std(&vm_code.flatten()),
+                Ok(vm_code) => targets::C::default().build_core(&vm_code.flatten()),
+                Err(vm_code) => targets::C::default().build_std(&vm_code.flatten()),
+            }
+            .map_err(Error::BuildError)?,
+        )?,
+        // If the target is x86 assembly code, then compile the code to virtual machine code,
+        // and then use the x86 target implementation to build the output source code.
+        TargetType::X86 => write_file(
+            format!("{output}.s"),
+            match compile_source_to_vm(src, src_type, call_stack_size)? {
+                Ok(vm_code) => targets::X86::default().build_core(&vm_code.flatten()),
+                Err(vm_code) => targets::X86::default().build_std(&vm_code.flatten()),
             }
             .map_err(Error::BuildError)?,
         )?,

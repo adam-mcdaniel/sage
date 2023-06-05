@@ -256,6 +256,9 @@
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Size
 //!
 //! This module contains the `GetSize` trait, which is used to calculate the size
@@ -372,7 +375,8 @@
                 <span class="comment">// Get the size of each field.
                 </span>.map(|(<span class="kw">_</span>, t)| t.get_size_checked(env, i))
                 <span class="comment">// Catch any errors.
-                </span>.collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>.into_iter()
+                </span>.collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?
+                </span>.into_iter()
                 <span class="comment">// Sum the sizes of all the fields.
                 </span>.sum(),
             <span class="comment">// Union types are the size of the largest field. (All other fields are padded to this size.)
@@ -382,7 +386,8 @@
                 <span class="comment">// Get the size of each field.
                 </span>.map(|(<span class="kw">_</span>, t)| t.get_size_checked(env, i))
                 <span class="comment">// Catch any errors.
-                </span>.collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>.into_iter()
+                </span>.collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?
+                </span>.into_iter()
                 <span class="comment">// Get the largest size.
                 </span>.max()
                 <span class="comment">// If there are no fields, just return 0.
@@ -411,9 +416,11 @@
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(size);
                 }
 
-                <span class="kw">let </span>result = <span class="self">self</span>.clone().simplify_until_matches(env, Type::Poly(<span class="macro">vec!</span>[], Box::new(Type::Any)), |t, env| {
-                    <span class="prelude-val">Ok</span>(t.is_simple())
-                })<span class="question-mark">?</span>;
+                <span class="kw">let </span>result = <span class="self">self</span>.clone().simplify_until_matches(
+                    env,
+                    Type::Poly(<span class="macro">vec!</span>[], Box::new(Type::Any)),
+                    |t, env| <span class="prelude-val">Ok</span>(t.is_simple()),
+                )<span class="question-mark">?</span>;
 
                 result.get_size_checked(env, i)<span class="question-mark">?
 
@@ -447,7 +454,6 @@
                 //     .perform_template_applications(env, &amp;mut HashMap::new(), i)?
                 //     .get_size_checked(env, i)?
 
-                
                 // match poly.clone().simplify(env)? {
                 //     Self::Poly(ty_params, template) =&gt; {
                 //         // Make sure the number of type arguments matches the number of type parameters.

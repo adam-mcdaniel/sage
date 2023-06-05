@@ -10,7 +10,7 @@ enum Expr {
     Group &Expr,
 }
 
-proc eval(expr: &Expr): Float = match *expr {
+def eval(expr: &Expr): Float = match *expr {
     of Add (lhs, rhs) => eval(lhs) + eval(rhs),
     of Sub (lhs, rhs) => eval(lhs) - eval(rhs),
     of Mul (lhs, rhs) => eval(lhs) * eval(rhs),
@@ -19,7 +19,7 @@ proc eval(expr: &Expr): Float = match *expr {
     of Group inner => eval(inner)
 };
 
-proc free_expr(expr: &Expr) {
+def free_expr(expr: &Expr) {
     match *expr {
         of Add (lhs, rhs)
         | of Sub (lhs, rhs)
@@ -34,7 +34,7 @@ proc free_expr(expr: &Expr) {
     del expr;
 }
 
-proc print_expr(expr: &Expr) {
+def print_expr(expr: &Expr) {
     match *expr {
         of Add(lhs, rhs) => {
             print_expr(lhs);
@@ -65,7 +65,7 @@ proc print_expr(expr: &Expr) {
     }
 }
 
-proc is_between_inclusive(ch: Char, start: Char, end: Char): Bool {
+def is_between_inclusive(ch: Char, start: Char, end: Char): Bool {
     let start = start as Int,
         end = end as Int,
         ch = ch as Int;
@@ -79,7 +79,7 @@ struct Input {
     length: Int
 }
 
-proc free_input(input: Input) {
+def free_input(input: Input) {
     del input.start;
 }
 
@@ -88,7 +88,7 @@ enum ParseResult {
     Err Int
 }
 
-proc parse_float(input: Input): ParseResult {
+def parse_float(input: Input): ParseResult {
     let save = input;
     let n = 0.0;
 
@@ -116,7 +116,7 @@ proc parse_float(input: Input): ParseResult {
     return ParseResult of Ok (input, new Expr of Num n);
 }
 
-proc binop(
+def binop(
     lhs: &Expr,
     input: Input,
     op: Char,
@@ -144,17 +144,17 @@ proc binop(
     }
 }
 
-proc parse_expr(input: Input): ParseResult {
+def parse_expr(input: Input): ParseResult {
     let save = input;
 
     if (input.loc == input.length) {
         return ParseResult of Err (input.loc);
     }
 
-    proc add_cons(lhs: &Expr, rhs: &Expr): &Expr {
+    def add_cons(lhs: &Expr, rhs: &Expr): &Expr {
         return new Expr of Add(lhs, rhs);
     } 
-    proc sub_cons(lhs: &Expr, rhs: &Expr): &Expr {
+    def sub_cons(lhs: &Expr, rhs: &Expr): &Expr {
         return new Expr of Sub(lhs, rhs);
     }
 
@@ -184,17 +184,17 @@ proc parse_expr(input: Input): ParseResult {
     }
 }
 
-proc parse_term(input: Input): ParseResult {
+def parse_term(input: Input): ParseResult {
     let save = input;
 
     if (input.loc == input.length) {
         return ParseResult of Err (input.loc);
     }
 
-    proc mul_cons(lhs: &Expr, rhs: &Expr): &Expr {
+    def mul_cons(lhs: &Expr, rhs: &Expr): &Expr {
         return new Expr of Mul(lhs, rhs);
     } 
-    proc div_cons(lhs: &Expr, rhs: &Expr): &Expr {
+    def div_cons(lhs: &Expr, rhs: &Expr): &Expr {
         return new Expr of Div(lhs, rhs);
     }
 
@@ -225,7 +225,7 @@ proc parse_term(input: Input): ParseResult {
 }
 
 
-proc parse_atom(input: Input): ParseResult {
+def parse_atom(input: Input): ParseResult {
     let save = input;
 
     if (input.loc == input.length) {
@@ -239,7 +239,7 @@ proc parse_atom(input: Input): ParseResult {
     return result;
 }
 
-proc parse_group(input: Input): ParseResult {
+def parse_group(input: Input): ParseResult {
     let save = input;
 
     if (input.loc == input.length) {
@@ -266,7 +266,7 @@ proc parse_group(input: Input): ParseResult {
     };
 }
 
-proc parse_whitespaces(input: Input): Input {
+def parse_whitespaces(input: Input): Input {
     let save = input;
 
     if (input.loc == input.length) {
@@ -278,21 +278,21 @@ proc parse_whitespaces(input: Input): Input {
     return input;
 }
 
-proc is_done(input: Input): Bool = input.loc >= input.length;
+def is_done(input: Input): Bool = input.loc >= input.length;
 
-proc strlen(ch: &Char): Int {
+def strlen(ch: &Char): Int {
     let i = 0;
     for (); ch[i] != '\0'; i+=1 {}
     return i;
 }
 
-proc getchar(): Char {
+def getchar(): Char {
     let ch = ' ';
     input(&ch);
     return ch;
 }
 
-proc readline(ch: &Char, len: Int): Int {
+def readline(ch: &Char, len: Int): Int {
     let i = len;
 
     let c = getchar();
@@ -303,7 +303,7 @@ proc readline(ch: &Char, len: Int): Int {
     return i;
 }
 
-proc read(): Input {
+def read(): Input {
     let buf = alloc(sizeof(Char) * 1024) as &Char;
 
     print("? ");

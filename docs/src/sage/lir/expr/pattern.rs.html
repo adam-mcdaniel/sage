@@ -1072,6 +1072,27 @@
 <a href="#1072" id="1072">1072</a>
 <a href="#1073" id="1073">1073</a>
 <a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
+<a href="#1083" id="1083">1083</a>
+<a href="#1084" id="1084">1084</a>
+<a href="#1085" id="1085">1085</a>
+<a href="#1086" id="1086">1086</a>
+<a href="#1087" id="1087">1087</a>
+<a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::lir::<span class="kw-2">*</span>;
 <span class="kw">use </span>core::fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 <span class="kw">use </span>std::{collections::HashMap, hash::Hash};
@@ -1109,7 +1130,7 @@
         <span class="self">Self</span>::Symbol(name.to_string())
     }
     <span class="doccomment">/// Construct a new pattern which matches a constant integer.
-    </span><span class="kw">pub fn </span>int(n: i32) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>int(n: i64) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::ConstExpr(ConstExpr::Int(n))
     }
     <span class="doccomment">/// Construct a new pattern which matches a constant float.
@@ -1144,7 +1165,10 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
         ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
             <span class="comment">// Ok(t.is_simple())
-            </span><span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(t, Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)))
+            </span><span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
+                t,
+                Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
+            ))
             <span class="comment">// Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
         </span>})<span class="question-mark">?</span>;
         <span class="comment">// Get the bindings for the pattern.
@@ -1172,7 +1196,10 @@
         <span class="kw">let </span><span class="kw-2">mut </span>ty = matching_expr_ty.clone();
         ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
             <span class="comment">// Ok(t.is_simple())
-            </span><span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(t, Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)))
+            </span><span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
+                t,
+                Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
+            ))
             <span class="comment">// Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
         </span>})<span class="question-mark">?</span>;
         <span class="kw">let </span>matching_expr_ty = <span class="kw-2">&amp;</span>ty;
@@ -1479,7 +1506,10 @@
         // }
 
         </span>matching_ty = matching_ty.simplify_until_matches(env, Type::Any, |t, env| {
-            <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(t, Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)))
+            <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
+                t,
+                Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
+            ))
         })<span class="question-mark">?</span>;
         <span class="comment">// Get the type of the branch as a result of the match.
         </span><span class="kw">let </span>expected = <span class="self">self</span>.get_branch_result_type(matching_expr, branch, env)<span class="question-mark">?</span>;
@@ -1589,7 +1619,10 @@
         //     }
         // }
         </span>match_type = match_type.simplify_until_matches(env, Type::Any, |t, env| {
-            <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(t, Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)))
+            <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
+                t,
+                Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
+            ))
         })<span class="question-mark">?</span>;
         new_env.define_var(var_name.clone(), match_type.clone())<span class="question-mark">?</span>;
         <span class="comment">// Generate the expression which evaluates the `match` expression.
@@ -1654,7 +1687,10 @@
         // }
         </span>ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
             <span class="comment">// Ok(t.is_simple())
-            </span><span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(t, Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)))
+            </span><span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
+                t,
+                Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
+            ))
             <span class="comment">// Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
             // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _)))
         </span>})<span class="question-mark">?</span>;
@@ -1671,7 +1707,7 @@
                     </span>result.extend(
                         pattern
                             .get_bindings(
-                                <span class="kw-2">&amp;</span>expr.clone().field(ConstExpr::Int(i <span class="kw">as </span>i32)),
+                                <span class="kw-2">&amp;</span>expr.clone().field(ConstExpr::Int(i <span class="kw">as </span>i64)),
                                 item_type,
                                 env,
                             )<span class="question-mark">?
@@ -1795,7 +1831,10 @@
         </span>ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
             <span class="comment">// Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
             // Ok(t.is_simple())
-            </span><span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(t, Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)))
+            </span><span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
+                t,
+                Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
+            ))
         })<span class="question-mark">?</span>;
         <span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty;
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>(<span class="self">self</span>, ty) {
@@ -1866,7 +1905,7 @@
                 {
                     <span class="comment">// Check if the pattern matches the element of the tuple.
                     </span>result = result.and(pattern.matches(
-                        <span class="kw-2">&amp;</span>expr.clone().field(ConstExpr::Int(i <span class="kw">as </span>i32)),
+                        <span class="kw-2">&amp;</span>expr.clone().field(ConstExpr::Int(i <span class="kw">as </span>i64)),
                         item_type,
                         env,
                     )<span class="question-mark">?</span>);
@@ -1974,7 +2013,10 @@
             <span class="comment">// Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
             // Ok(matches!(t, Type::Any | Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _)))
             // Ok(t.is_simple())
-            </span><span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(t, Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)))
+            </span><span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
+                t,
+                Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
+            ))
         })<span class="question-mark">?</span>;
         <span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty;
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>(<span class="self">self</span>, ty) {
@@ -2028,7 +2070,7 @@
                 {
                     <span class="comment">// Bind the sub-pattern to the element of the tuple.
                     </span>result = pattern.bind(
-                        <span class="kw-2">&amp;</span>expr.clone().field(ConstExpr::Int(i <span class="kw">as </span>i32)),
+                        <span class="kw-2">&amp;</span>expr.clone().field(ConstExpr::Int(i <span class="kw">as </span>i64)),
                         item_type,
                         <span class="kw-2">&amp;</span>result,
                         env,

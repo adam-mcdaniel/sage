@@ -35,7 +35,7 @@ impl Pattern {
         Self::Symbol(name.to_string())
     }
     /// Construct a new pattern which matches a constant integer.
-    pub fn int(n: i32) -> Self {
+    pub fn int(n: i64) -> Self {
         Self::ConstExpr(ConstExpr::Int(n))
     }
     /// Construct a new pattern which matches a constant float.
@@ -70,7 +70,10 @@ impl Pattern {
         let mut ty = expr.get_type(env)?;
         ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
             // Ok(t.is_simple())
-            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
             // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
         })?;
         // Get the bindings for the pattern.
@@ -98,7 +101,10 @@ impl Pattern {
         let mut ty = matching_expr_ty.clone();
         ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
             // Ok(t.is_simple())
-            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
             // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
         })?;
         let matching_expr_ty = &ty;
@@ -405,7 +411,10 @@ impl Pattern {
         // }
 
         matching_ty = matching_ty.simplify_until_matches(env, Type::Any, |t, env| {
-            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
         })?;
         // Get the type of the branch as a result of the match.
         let expected = self.get_branch_result_type(matching_expr, branch, env)?;
@@ -515,7 +524,10 @@ impl Pattern {
         //     }
         // }
         match_type = match_type.simplify_until_matches(env, Type::Any, |t, env| {
-            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
         })?;
         new_env.define_var(var_name.clone(), match_type.clone())?;
         // Generate the expression which evaluates the `match` expression.
@@ -580,7 +592,10 @@ impl Pattern {
         // }
         ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
             // Ok(t.is_simple())
-            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
             // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
             // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _)))
         })?;
@@ -597,7 +612,7 @@ impl Pattern {
                     result.extend(
                         pattern
                             .get_bindings(
-                                &expr.clone().field(ConstExpr::Int(i as i32)),
+                                &expr.clone().field(ConstExpr::Int(i as i64)),
                                 item_type,
                                 env,
                             )?
@@ -721,7 +736,10 @@ impl Pattern {
         ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
             // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
             // Ok(t.is_simple())
-            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
         })?;
         let ty = &ty;
         Ok(match (self, ty) {
@@ -792,7 +810,7 @@ impl Pattern {
                 {
                     // Check if the pattern matches the element of the tuple.
                     result = result.and(pattern.matches(
-                        &expr.clone().field(ConstExpr::Int(i as i32)),
+                        &expr.clone().field(ConstExpr::Int(i as i64)),
                         item_type,
                         env,
                     )?);
@@ -900,7 +918,10 @@ impl Pattern {
             // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
             // Ok(matches!(t, Type::Any | Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _)))
             // Ok(t.is_simple())
-            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
         })?;
         let ty = &ty;
         Ok(match (self, ty) {
@@ -954,7 +975,7 @@ impl Pattern {
                 {
                     // Bind the sub-pattern to the element of the tuple.
                     result = pattern.bind(
-                        &expr.clone().field(ConstExpr::Int(i as i32)),
+                        &expr.clone().field(ConstExpr::Int(i as i64)),
                         item_type,
                         &result,
                         env,

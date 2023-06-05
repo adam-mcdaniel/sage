@@ -512,6 +512,16 @@
 <a href="#512" id="512">512</a>
 <a href="#513" id="513">513</a>
 <a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Constant Expressions
 //!
 //! Constant expressions are expressions that can be evaluated at compile time.
@@ -544,7 +554,9 @@
     <span class="doccomment">/// A named constant.
     </span>Symbol(String),
     <span class="doccomment">/// A constant integer value.
-    </span>Int(i32),
+    </span>Int(i64),
+    <span class="doccomment">/// A constant integer value representing a cell on the tape.
+    </span>Cell(i64),
     <span class="doccomment">/// A constant floating point value.
     ///
     /// These can be used at compile time even when compiling to core,
@@ -630,6 +642,7 @@
             <span class="kw">match </span><span class="self">self </span>{
                 <span class="self">Self</span>::None
                 | <span class="self">Self</span>::Null
+                | <span class="self">Self</span>::Cell(<span class="kw">_</span>)
                 | <span class="self">Self</span>::Int(<span class="kw">_</span>)
                 | <span class="self">Self</span>::Float(<span class="kw">_</span>)
                 | <span class="self">Self</span>::Char(<span class="kw">_</span>)
@@ -674,8 +687,8 @@
                     expr.eval_checked(env, i)
                 }
 
-                <span class="self">Self</span>::SizeOfType(t) =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Int(t.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>i32)),
-                <span class="self">Self</span>::SizeOfExpr(e) =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Int(e.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>i32)),
+                <span class="self">Self</span>::SizeOfType(t) =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Int(t.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>i64)),
+                <span class="self">Self</span>::SizeOfExpr(e) =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Int(e.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>i64)),
 
                 <span class="self">Self</span>::Symbol(name) =&gt; {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(c) = env.get_const(<span class="kw-2">&amp;</span>name) {
@@ -718,7 +731,7 @@
     }
 
     <span class="doccomment">/// Try to get this constant expression as an integer.
-    </span><span class="kw">pub fn </span>as_int(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;i32, Error&gt; {
+    </span><span class="kw">pub fn </span>as_int(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;i64, Error&gt; {
         <span class="kw">match </span><span class="self">self</span>.eval_checked(env, <span class="number">0</span>) {
             <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Int(n)) =&gt; <span class="prelude-val">Ok</span>(n),
             <span class="prelude-val">Ok</span>(other) =&gt; <span class="prelude-val">Err</span>(Error::NonIntegralConst(other)),
@@ -784,7 +797,11 @@
                 <span class="kw">for </span>(name, ty) <span class="kw">in </span>bindings {
                     new_env.define_type(<span class="kw-2">&amp;</span>name, ty);
                 }
-                expr.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?</span>.simplify_until_matches(env, Type::Any, |t, env| t.type_check(env).map(|<span class="kw">_</span>| <span class="bool-val">true</span>))<span class="question-mark">?
+                expr.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?</span>.simplify_until_matches(
+                    env,
+                    Type::Any,
+                    |t, env| t.type_check(env).map(|<span class="kw">_</span>| <span class="bool-val">true</span>),
+                )<span class="question-mark">?
             </span>}
             <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; {
                 <span class="comment">// Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::&lt;Result&lt;Vec&lt;Type&gt;, Error&gt;&gt;()?).perform_template_applications(env, &amp;mut HashMap::new(), 0)?
@@ -792,13 +809,14 @@
             }
             <span class="self">Self</span>::TypeOf(expr) =&gt; {
                 <span class="kw">let </span>size = expr.get_type_checked(env, i)<span class="question-mark">?</span>.to_string().len();
-                Type::Array(Box::new(Type::Char), Box::new(<span class="self">Self</span>::Int(size <span class="kw">as </span>i32)))
+                Type::Array(Box::new(Type::Char), Box::new(<span class="self">Self</span>::Int(size <span class="kw">as </span>i64)))
             }
             <span class="self">Self</span>::Null =&gt; Type::Pointer(Box::new(Type::Any)),
             <span class="self">Self</span>::None =&gt; Type::None,
             <span class="self">Self</span>::SizeOfType(<span class="kw">_</span>) | <span class="self">Self</span>::SizeOfExpr(<span class="kw">_</span>) | <span class="self">Self</span>::Int(<span class="kw">_</span>) =&gt; Type::Int,
             <span class="self">Self</span>::Float(<span class="kw">_</span>) =&gt; Type::Float,
             <span class="self">Self</span>::Char(<span class="kw">_</span>) =&gt; Type::Char,
+            <span class="self">Self</span>::Cell(<span class="kw">_</span>) =&gt; Type::Cell,
             <span class="self">Self</span>::Bool(<span class="kw">_</span>) =&gt; Type::Bool,
             <span class="self">Self</span>::Of(enum_type, <span class="kw">_</span>) =&gt; enum_type,
             <span class="self">Self</span>::Tuple(items) =&gt; Type::Tuple(
@@ -813,7 +831,7 @@
                 </span>} <span class="kw">else </span>{
                     Type::Any
                 }),
-                Box::new(<span class="self">Self</span>::Int(items.len() <span class="kw">as </span>i32)),
+                Box::new(<span class="self">Self</span>::Int(items.len() <span class="kw">as </span>i64)),
             ),
             <span class="self">Self</span>::Struct(fields) =&gt; Type::Struct(
                 fields
@@ -888,6 +906,7 @@
             <span class="self">Self</span>::SizeOfExpr(expr) =&gt; {
                 expr.substitute(name, ty);
             }
+            <span class="self">Self</span>::Cell(<span class="kw">_</span>) =&gt; {}
             <span class="self">Self</span>::Int(<span class="kw">_</span>) =&gt; {}
             <span class="self">Self</span>::Float(<span class="kw">_</span>) =&gt; {}
             <span class="self">Self</span>::Char(<span class="kw">_</span>) =&gt; {}
@@ -1014,6 +1033,7 @@
             }
             <span class="self">Self</span>::Bool(x) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="kw">if </span><span class="kw-2">*</span>x { <span class="string">&quot;true&quot; </span>} <span class="kw">else </span>{ <span class="string">&quot;false&quot; </span>}),
             <span class="self">Self</span>::Char(ch) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{ch}&quot;</span>),
+            <span class="self">Self</span>::Cell(n) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{n:x}&quot;</span>),
             <span class="self">Self</span>::Int(n) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{n}&quot;</span>),
             <span class="self">Self</span>::Float(n) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{n}&quot;</span>),
             <span class="self">Self</span>::None =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;None&quot;</span>),
