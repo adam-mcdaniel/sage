@@ -7,12 +7,12 @@ use crate::{
 grammar;
 
 
-pub CoreProgram: CoreProgram = CoreOp* => CoreProgram(<>);
-pub StandardProgram: StandardProgram = StandardOp* => StandardProgram(<>);
+pub CoreProgram: CoreProgram = CoreOp* => CoreProgram::new(<>);
+pub StandardProgram: StandardProgram = StandardOp* => StandardProgram::new(<>);
 
 CoreOp: CoreOp = {
     "set" <Location> "," <IntLit> => CoreOp::Set(<>),
-    "set" <loc: Location> "," <ch: CharLit> => CoreOp::Set(loc, ch as isize),
+    "set" <loc: Location> "," <ch: CharLit> => CoreOp::Set(loc, ch as i64),
     "set" <Location> "," <Symbol> => CoreOp::SetLabel(<>),
 
     "lea" <addr: Location> "," <dst: Location> => CoreOp::GetAddress { addr, dst },
@@ -37,8 +37,8 @@ CoreOp: CoreOp = {
     "bitwise-or" <src: Location> "," <dst: Location> => CoreOp::BitwiseOr { src, dst },
     "bitwise-not" <Location> => CoreOp::BitwiseNot(<>),
 
-    "next" <Location> <("," <IntLit>)?> => CoreOp::Next(<>),
-    "prev" <Location> <("," <IntLit>)?> => CoreOp::Prev(<>),
+    "next" <loc:Location> <size:("," <IntLit>)?> => CoreOp::Next(loc, size.map(|x| x as isize)),
+    "prev" <loc:Location> <size:("," <IntLit>)?> => CoreOp::Prev(loc, size.map(|x| x as isize)),
 
     "index" <src: Location> "," <offset: Location> "," <dst: Location> => CoreOp::Index { src, offset, dst },
     "inc" <Location> => CoreOp::Inc(<>),
@@ -91,7 +91,7 @@ CoreOp: CoreOp = {
         src, dst, vals
     },
     "array" <src: Location> "," <vals: StringLit> "," <dst: Location> => {
-        let mut vals: Vec<isize> = vals.chars().map(|c| c as isize).collect();
+        let mut vals: Vec<i64> = vals.chars().map(|c| c as i64).collect();
         vals.push(0);
         CoreOp::Array { src, dst, vals }
     }
@@ -131,8 +131,8 @@ StandardOp: StandardOp = {
 }
 
 Location: Location = {
-    "[" <deref: Location> "+" <offset: IntLit> "]" => deref.deref().offset(offset),
-    "[" <deref: Location> "-" <offset: IntLit> "]" => deref.deref().offset(-offset),
+    "[" <deref: Location> "+" <offset: IntLit> "]" => deref.deref().offset(offset as isize),
+    "[" <deref: Location> "-" <offset: IntLit> "]" => deref.deref().offset(-offset as isize),
     "[" <Location> "]" => <>.deref(),
 
     "A" => A,
@@ -436,7 +436,7 @@ Channel: usize = "#" <IntLit> => <> as usize;
 
 StringLit: String = <s:r#""(\\.|[^"])*""#> => String::from(&s[1..s.len()-1]).replace("\\\"", "\"").replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t").replace("\\0", "\0");
 CharLit: char = <s:r#"'(\\.|[^'])'"#> => s.replace("\\'", "'").replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t").replace("\\0", "\0").chars().nth(1).unwrap() as char;
-IntLit: isize = <s:r"-?(0|[1-9][0-9]*)"> => isize::from_str(s).unwrap();
+IntLit: i64 = <s:r"-?(0|[1-9][0-9]*)"> => i64::from_str(s).unwrap();
 FloatLit: f64 = {
     r"-?([1-9][0-9]*|[0])[.]([0-9]+)?" => <>.to_string().parse::<f64>().unwrap(),
 }

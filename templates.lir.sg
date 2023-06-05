@@ -7,7 +7,6 @@ enum List<T> {
     }
 }
 
-
 proc print_list<T>(l: &List<T>) {
     match *l {
         of Nil => {},
@@ -21,6 +20,26 @@ proc print_list<T>(l: &List<T>) {
         _ => {}
     }
 }
+
+proc make_list<T, U>(cons: Int -> T, len: Int): List<T> {
+    if len == 0 {
+        return List<T> of Nil;
+    } else {
+        return List<T> of Cons {
+            data = cons(len),
+            next = new make_list<T, U>(cons, len - 1)
+        };
+    }
+}
+
+proc identity<T>(t: T): T = t;
+
+let list1 = make_list<Int, Int>(identity<Int>, 100);
+print_list<Int>(&list1);
+
+print("\n");
+
+
 
 print_list<Int>(new List<Int> of Cons {
     data = 1,
@@ -115,7 +134,7 @@ proc first<A, B>(tup: (A, B)): A = tup.0;
 let test = second<Int, Char>;
 print(test((5, 'a')));
 
-type X<T> = (T, &X<X<T>>);
+// type X<T> = (T, &X<X<T>>);
 
 // proc print_list(l: &List<Int>) {
 //     match *l {

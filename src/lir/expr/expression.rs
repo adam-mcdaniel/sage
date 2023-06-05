@@ -527,7 +527,7 @@ impl fmt::Display for Expr {
             Self::TernaryOp(op, x, y, z) => write!(f, "{}", op.display(x, y, z)),
             Self::AssignOp(op, x, y) => write!(f, "{}", op.display(x, y)),
 
-            Self::Member(val, field) => write!(f, "{val}.{field}"),
+            Self::Member(val, field) => write!(f, "({val}).{field}"),
             Self::Index(val, idx) => write!(f, "{val}[{idx}]"),
 
             Self::Return(val) => write!(f, "return {val}"),

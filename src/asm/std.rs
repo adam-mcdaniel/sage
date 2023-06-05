@@ -10,12 +10,40 @@ use super::{
     location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP,
 };
 use crate::vm::{self, VirtualMachineProgram};
-use core::fmt;
+use std::{collections::BTreeSet, fmt};
 
+/// A program composed of standard instructions, which can be assembled
+/// into the standard virtual machine instructions.
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct StandardProgram(pub Vec<StandardOp>);
+pub struct StandardProgram {
+    /// The list of standard assembly instructions in the program.
+    pub code: Vec<StandardOp>,
+    /// A set containining the labels for each function in the program
+    /// that has been defined so far. This helps the LIR compiler
+    /// determine if a function has been compiled yet or not.
+    labels: BTreeSet<String>,
+}
+
+/// A default program is an empty program.
+impl Default for StandardProgram {
+    fn default() -> Self {
+        Self::new(vec![])
+    }
+}
 
 impl StandardProgram {
+    /// Create a new program of core assembly instructions.
+    pub fn new(code: Vec<StandardOp>) -> Self {
+        let mut labels = BTreeSet::new();
+        for op in &code {
+            // If the operation is a function label, add its label to the set of defined labels.
+            if let StandardOp::CoreOp(CoreOp::Fn(label)) = op {
+                labels.insert(label.clone());
+            }
+        }
+        Self { code, labels }
+    }
+
     pub fn assemble(&self, allowed_recursion_depth: usize) -> Result<vm::StandardProgram, Error> {
         let mut result = vm::StandardProgram(vec![]);
         let mut env = Env::default();
@@ -28,11 +56,11 @@ impl StandardProgram {
             .copy_address_to(&SP, &mut result);
 
         SP.copy_to(&FP, &mut result);
-        for (i, op) in self.0.iter().enumerate() {
+        for (i, op) in self.code.iter().enumerate() {
             op.assemble(i, &mut env, &mut result)?
         }
 
-        if let Ok((unmatched, last_instruction)) = env.pop_matching(self.0.len()) {
+        if let Ok((unmatched, last_instruction)) = env.pop_matching(self.code.len()) {
             return Err(Error::Unmatched(unmatched, last_instruction));
         }
 
@@ -44,7 +72,7 @@ impl fmt::Display for StandardProgram {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut indent = 0;
         let mut comment_count = 0;
-        for (i, op) in self.0.iter().enumerate() {
+        for (i, op) in self.code.iter().enumerate() {
             if f.alternate() {
                 if let StandardOp::CoreOp(CoreOp::Comment(comment)) = op {
                     if f.alternate() {
@@ -88,12 +116,24 @@ impl fmt::Display for StandardProgram {
 
 impl AssemblyProgram for StandardProgram {
     fn op(&mut self, op: CoreOp) {
-        self.0.push(StandardOp::CoreOp(op))
+        // If the operation is a function label, add its label to the set of defined labels.
+        if let CoreOp::Fn(label) = &op {
+            self.labels.insert(label.clone());
+        }
+        self.code.push(StandardOp::CoreOp(op))
     }
 
     fn std_op(&mut self, op: super::StandardOp) -> Result<(), Error> {
-        self.0.push(op);
+        // If the operation is a function label, add its label to the set of defined labels.
+        if let StandardOp::CoreOp(CoreOp::Fn(label)) = &op {
+            self.labels.insert(label.clone());
+        }
+        self.code.push(op);
         Ok(())
+    }
+
+    fn is_defined(&self, label: &str) -> bool {
+        self.labels.contains(label)
     }
 }
 
@@ -106,63 +146,105 @@ pub enum StandardOp {
     /// Execute a core instruction.
     CoreOp(CoreOp),
 
+    /// Set the value of a cell to a constant float.
     Set(Location, f64),
-
+    /// Take the integer value stored in a cell and store the equivalent float
+    /// value in the same cell.
     ToFloat(Location),
+    /// Take the float value stored in a cell and store the equivalent integer
+    /// value in the same cell.
     ToInt(Location),
 
+    /// Raise a cell (float) to the power of another cell (float).
     Pow {
+        /// The source cell.
         src: Location,
+        /// The destination cell.
         dst: Location,
     },
+    /// Take the square root of a cell (float).
     Sqrt(Location),
 
+    /// Add the source cell (float) to the destination cell (float).
     Add {
+        /// The source cell.
         src: Location,
+        /// The destination cell.
         dst: Location,
     },
+    /// Subtract the source cell (float) from the destination cell (float).
     Sub {
+        /// The source cell.
         src: Location,
+        /// The destination cell.
         dst: Location,
     },
+    /// Multiply the source cell (float) by the destination cell (float).
     Mul {
+        /// The source cell.
         src: Location,
+        /// The destination cell.
         dst: Location,
     },
+    /// Divide the destination cell (float) by the source cell (float).
     Div {
+        /// The source cell.
         src: Location,
+        /// The destination cell.
         dst: Location,
     },
+    /// Perform the modulo operation on the destination cell (float) by the
+    /// source cell (float).
     Rem {
+        /// The source cell.
         src: Location,
+        /// The destination cell.
         dst: Location,
     },
+    /// Negate the value of a cell (float) and store the result in the same cell.
     Neg(Location),
 
+    /// Perform Sin on a cell (float) and store the result in the same cell.
     Sin(Location),
+    /// Perform Cos on a cell (float) and store the result in the same cell.
     Cos(Location),
+    /// Perform Tan on a cell (float) and store the result in the same cell.
     Tan(Location),
+    /// Perform inverse Sin on a cell (float) and store the result in the same cell.
     ASin(Location),
+    /// Perform inverse Cos on a cell (float) and store the result in the same cell.
     ACos(Location),
+    /// Perform inverse Tan on a cell (float) and store the result in the same cell.
     ATan(Location),
 
     /// Perform dst = a > b.
     IsGreater {
+        /// The first cell in the comparison (left hand side).
         a: Location,
+        /// The second cell in the comparison (right hand side).
         b: Location,
+        /// The destination cell.
         dst: Location,
     },
     /// Perform dst = a < b.
     IsLess {
+        /// The first cell in the comparison (left hand side).
         a: Location,
+        /// The second cell in the comparison (right hand side).
         b: Location,
+        /// The destination cell.
         dst: Location,
     },
 
+    /// Take the value in the operand cell. Allocate that number of cells.
+    /// The address of the first cell is stored in the operand cell.
     Alloc(Location),
+    /// Free the memory allocated at the address stored in the operand cell.
     Free(Location),
 
+    /// Read from the runtime's interface into the operand cell.
     Peek(Location),
+    /// Write from the operand cell into the runtime's interface.
     Poke(Location),
 }
 
@@ -336,6 +418,6 @@ impl fmt::Display for StandardOp {
 
 impl From<CoreProgram> for StandardProgram {
     fn from(core: CoreProgram) -> Self {
-        Self(core.0.into_iter().map(StandardOp::CoreOp).collect())
+        Self::new(core.code.into_iter().map(StandardOp::CoreOp).collect())
     }
 }

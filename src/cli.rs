@@ -101,7 +101,7 @@ impl fmt::Debug for Error {
             Error::IO(e) => write!(f, "IO error: {:?}", e),
             Error::Parse(e) => write!(f, "Parse error: {}", e),
             Error::AsmError(e) => write!(f, "Assembly error: {:?}", e),
-            Error::LirError(e) => write!(f, "LIR error: {:?}", e),
+            Error::LirError(e) => write!(f, "LIR error: {}", e),
             Error::InterpreterError(e) => write!(f, "Interpreter error: {}", e),
             Error::BuildError(e) => write!(f, "Build error: {}", e),
             Error::InvalidSource(e) => write!(f, "Invalid source: {}", e),
@@ -299,17 +299,47 @@ fn read_file(name: &str) -> Result<String, Error> {
     read_to_string(name).map_err(Error::IO)
 }
 
-fn main() -> Result<(), Error> {
+/// Run the CLI.
+fn cli() {
     // Parse the arguments to the CLI.
     let args = Args::parse();
 
-    // Compile the source code according to the supplied arguments.
-    compile(
-        read_file(&args.input)?,
-        args.source_type,
-        args.target_type,
-        args.output,
-        args.call_stack_size,
-        args.debug,
-    )
+    match read_file(&args.input) {
+        Ok(file_contents) => {
+            match compile(
+                file_contents,
+                args.source_type,
+                args.target_type,
+                args.output,
+                args.call_stack_size,
+                args.debug,
+            ) {
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!("Error compiling file: {:#?}", e);
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Error reading file: {:?}", e);
+        }
+    }
+}
+
+fn main() {
+    // If we're in debug mode, start the compilation in a separate thread.
+    // This is to allow the process to have more stack space.
+    if !cfg!(debug_assertions) {
+        cli()
+    } else {
+        const DEBUG_STACK_SIZE_MB: usize = 24;
+
+        let child = std::thread::Builder::new()
+            .stack_size(DEBUG_STACK_SIZE_MB * 1024 * 1024)
+            .spawn(cli)
+            .unwrap();
+
+        // Wait for the thread to finish.
+        child.join().unwrap()
+    }
 }

@@ -30,12 +30,8 @@ use super::lir::Expr;
 use super::vm;
 
 use lalrpop_util::lalrpop_mod;
-use no_comment::{languages, IntoWithoutComments as _};
+use no_comment::{languages, IntoWithoutComments};
 
-lalrpop_mod!(
-    #[allow(clippy::all)]
-    lir_parser
-);
 lalrpop_mod!(
     #[allow(clippy::all)]
     asm_parser
@@ -45,39 +41,13 @@ lalrpop_mod!(
     vm_parser
 );
 
-// use crate::lir::*;
-// #[derive(Debug, Clone)]
-// pub enum IfCond {
-//     IfLet(Pattern, Expr),
-//     If(Expr),
-// }
-
-// #[derive(Debug, Clone)]
-// pub enum Stmt {
-//     For(Option<Expr>, Option<Expr>, Option<Expr>, Box<Stmt>),
-//     While(Expr, Box<Stmt>),
-//     If(IfCond, Box<Stmt>, Option<Box<Stmt>>),
-//     When(ConstExpr, Box<Stmt>, Option<Box<Stmt>>),
-//     Return(Option<Expr>),
-//     Let(String, Option<Type>, Expr),
-//     With(Vec<(String, Expr)>, Box<Stmt>),
-//     Expr(Expr),
-//     Match(Expr, Vec<(Pattern, Stmt)>),
-//     Block(Vec<Stmt>),
-//     // AssignOp(Box<dyn AssignOp>, Box<Expr>, Box<Expr>),
-//     Empty,
-// }
-
-// #[derive(Debug, Clone)]
-// pub enum Declaration {
-//     Constants(Vec<(String, ConstExpr)>),
-//     Procedures(Vec<(String, Procedure)>),
-//     Units(Vec<(String, Type)>),
-//     Types(Vec<(String, Type)>),
-//     Statements(Vec<Stmt>),
-// }
-
-pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
+// This line is used expose the assembly parsers,
+// which are used to allow the LIR parser to parse inline assembly.
+// pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
+// lalrpop_mod!(
+//     #[allow(clippy::all)]
+//     lir_parser
+// );
 
 /// Parse Core and Standard variants of virtual machine source code.
 /// This will return core code by default, but will fallback on standard.
@@ -129,7 +99,7 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
         .without_comments(languages::rust())
         .collect::<String>();
 
-    let code = code.trim();
+    // let code = code.trim();
     match crate::lir::parse_lir_file(&code) {
         Ok(result) => {
             // eprintln!("Parsed LIR: {:#}", result);
@@ -140,12 +110,7 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
                 body: vec![crate::asm::StandardOp::Alloc(crate::asm::SP.deref())],
             });
 
-            Ok(Expr::LetConst(
-                "alloc".to_string(),
-                // crate::lir::Type::Pointer(Box::new(crate::lir::Type::Any)),
-                alloc,
-                Box::new(result),
-            ))
+            Ok(Expr::LetConst("alloc".to_string(), alloc, Box::new(result)))
         }
         Err(e) => Err(e.to_string()),
     }

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" disabled href="../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-be46fdc453a55015.css"><script src="../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../sage/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ba5701c5741a7b69.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0 (90c541806 2023-05-31)" data-search-js="search-e077946657036a58.js" data-settings-js="settings-298e1ea74db45b39.js" data-settings-css="settings-7bfb4c59cc6bc502.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../static.files/source-script-905937fbbdc8e9ea.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-f61008743c98d196.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../sage/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -170,7 +170,163 @@
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
-</pre><pre class="rust"><code><span class="doccomment">//! # LIR (Low Intermediate Representation) Module
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! # LIR (Low Intermediate Representation) Module
 //!
 //! This module contains a decently sized typechecked intermediate representation for the virtual machine.
 //! The LIR, unlike the VM and the assembly language, is *not* split into two variants: there is only one variant.
@@ -240,12 +396,16 @@
 </span><span class="kw">mod </span>compile;
 <span class="kw">mod </span>env;
 <span class="kw">mod </span>expr;
+<span class="kw">mod </span>parse;
 <span class="kw">mod </span>types;
 
 <span class="kw">pub use </span>compile::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>env::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>expr::<span class="kw-2">*</span>;
+<span class="kw">pub use </span>parse::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>types::<span class="kw-2">*</span>;
+
+<span class="kw">use </span>core::fmt::{Debug, Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 
 <span class="doccomment">/// Simplify an expression while maintaining structural equality.
 </span><span class="kw">pub trait </span>Simplify: Sized {
@@ -274,7 +434,8 @@
     <span class="doccomment">/// Recursion depth exceeded when trying to evaluate a constant expression.
     </span>RecursionDepthConst(ConstExpr),
     <span class="doccomment">/// Recursion depth exceeded when trying to confirm a type&#39;s equality to another type.
-    </span>RecursionDepthTypeEquality(Type, Type),
+    </span>CouldntSimplify(Type, Type),
+    RecursionDepthTypeEquality(Type, Type),
     <span class="doccomment">/// Got another type when expecting an integer, bool, or char.
     </span>NonIntegralConst(ConstExpr),
     <span class="doccomment">/// Tried to instantiate a type that cannot be sized.
@@ -334,6 +495,33 @@
 
     <span class="doccomment">/// Invalid type casting expression.
     </span>InvalidAs(Expr, Type, Type),
+
+    <span class="doccomment">/// Invalid constant expression.
+    </span>InvalidConstExpr(ConstExpr),
+
+    <span class="doccomment">/// Expression uses an operation unsupported by the target.
+    </span>UnsupportedOperation(Expr),
+
+    <span class="doccomment">/// Tried to define a type that already exists.
+    </span>TypeRedefined(String),
+
+    <span class="doccomment">/// Unused expression returned a non-None value.
+    </span>UnusedExpr(Expr, Type),
+
+    <span class="doccomment">/// Invalid number of template arguments to a type.
+    </span>InvalidTemplateArgs(Type),
+
+    <span class="doccomment">/// Tried to apply a non-template type to some arguments.
+    </span>ApplyNonTemplate(Type),
+
+    <span class="doccomment">/// Tried to get the size of a template type.
+    </span>SizeOfTemplate(Type),
+
+    <span class="doccomment">/// Tried to  compile a polymorphic procedure without monomorphing it.
+    </span>CompilePolyProc(PolyProcedure),
+
+    <span class="doccomment">/// Cannot monomorphize a constant expression.
+    </span>InvalidMonomorphize(ConstExpr),
 }
 
 <span class="doccomment">/// Create an IR error from an assembly error.
@@ -342,5 +530,127 @@
         <span class="self">Self</span>::AssemblyError(e)
     }
 }
-</code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0 (84c898d65 2023-04-16)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
+
+<span class="kw">impl </span>Display <span class="kw">for </span>Error {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f:  <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::MismatchedTypes { expected, found, expr } =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;mismatched types: expected {}, found {} in {}&quot;</span>, expected, found, expr)
+            }
+            <span class="self">Self</span>::VariantNotFound(ty, variant) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;variant {} not found in {}&quot;</span>, variant, ty)
+            }
+            <span class="self">Self</span>::MemberNotFound(expr, member) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;member {} not found in {}&quot;</span>, member, expr)
+            }
+            <span class="self">Self</span>::RecursionDepthConst(expr) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;recursion depth exceeded when trying to evaluate {}&quot;</span>, expr)
+            }
+            <span class="self">Self</span>::CouldntSimplify(ty1, ty2) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;couldn&#39;t simplify {} to {}&quot;</span>, ty1, ty2)
+            }
+            <span class="self">Self</span>::RecursionDepthTypeEquality(ty1, ty2) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;recursion depth exceeded when trying to confirm {} == {}&quot;</span>, ty1, ty2)
+            }
+            <span class="self">Self</span>::NonIntegralConst(expr) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;got non-integral constant expression {}&quot;</span>, expr)
+            }
+            <span class="self">Self</span>::UnsizedType(ty) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;tried to instantiate unsized type {}&quot;</span>, ty)
+            }
+            <span class="self">Self</span>::DerefNonPointer(expr) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;tried to dereference non-pointer {}&quot;</span>, expr)
+            }
+            <span class="self">Self</span>::ApplyNonProc(expr) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;tried to apply non-procedure {}&quot;</span>, expr)
+            }
+            <span class="self">Self</span>::NonSymbol(expr) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;expected symbol, found {}&quot;</span>, expr)
+            }
+            <span class="self">Self</span>::InvalidIndex(expr) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid index expression {}&quot;</span>, expr)
+            }
+            <span class="self">Self</span>::InvalidRefer(expr) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid refer expression {}&quot;</span>, expr)
+            }
+            <span class="self">Self</span>::InvalidUnaryOp(op, expr) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid unary operation {} {}&quot;</span>, op, expr)
+            }
+            <span class="self">Self</span>::InvalidUnaryOpTypes(op, ty) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid unary operation {} for type {}&quot;</span>, op, ty)
+            }
+            <span class="self">Self</span>::InvalidBinaryOp(op, expr1, expr2) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid binary operation {} {} {}&quot;</span>, op, expr1, expr2)
+            }
+            <span class="self">Self</span>::InvalidBinaryOpTypes(op, ty1, ty2) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid binary operation {} for types {} and {}&quot;</span>, op, ty1, ty2)
+            }
+            <span class="self">Self</span>::InvalidTernaryOp(op, expr1, expr2, expr3) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid ternary operation {} {} {} {}&quot;</span>, op, expr1, expr2, expr3)
+            }
+            <span class="self">Self</span>::InvalidTernaryOpTypes(op, ty1, ty2, ty3) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid ternary operation {} for types {}, {}, and {}&quot;</span>, op, ty1, ty2, ty3)
+            }
+            <span class="self">Self</span>::InvalidAssignOp(op, expr1, expr2) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid assignment operation {} {} {}&quot;</span>, op, expr1, expr2)
+            }
+            <span class="self">Self</span>::InvalidAssignOpTypes(op, ty1, ty2) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid assignment operation {} for types {} and {}&quot;</span>, op, ty1, ty2)
+            }
+            <span class="self">Self</span>::SymbolNotDefined(sym) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;symbol {} not defined&quot;</span>, sym)
+            }
+            <span class="self">Self</span>::TypeNotDefined(ty) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;type {} not defined&quot;</span>, ty)
+            }
+            <span class="self">Self</span>::NegativeArrayLength(expr) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;negative array length {}&quot;</span>, expr)
+            }
+            <span class="self">Self</span>::InvalidPatternForType(ty, pat) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid pattern {} for type {}&quot;</span>, pat, ty)
+            }
+            <span class="self">Self</span>::InvalidPatternForExpr(expr, pat) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid pattern {} for expression {}&quot;</span>, pat, expr)
+            }
+            <span class="self">Self</span>::InvalidMatchExpr(expr) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid match expression {}&quot;</span>, expr)
+            }
+            <span class="self">Self</span>::NonExhaustivePatterns { patterns, expr } =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;non-exhaustive patterns {:?} for expression {}&quot;</span>, patterns, expr)
+            }
+            <span class="self">Self</span>::InvalidAs(expr, ty1, ty2) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid as expression {} for types {} and {}&quot;</span>, expr, ty1, ty2)
+            }
+            <span class="self">Self</span>::InvalidConstExpr(expr) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid constant expression {}&quot;</span>, expr)
+            }
+            <span class="self">Self</span>::UnsupportedOperation(expr) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;unsupported operation {}&quot;</span>, expr)
+            }
+            <span class="self">Self</span>::TypeRedefined(ty) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;type {} redefined&quot;</span>, ty)
+            }
+            <span class="self">Self</span>::UnusedExpr(expr, ty) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;unused expression {} of type {}&quot;</span>, expr, ty)
+            }
+            <span class="self">Self</span>::InvalidTemplateArgs(ty) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid template arguments for type {}&quot;</span>, ty)
+            }
+            <span class="self">Self</span>::ApplyNonTemplate(ty) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;tried to apply non-template type {}&quot;</span>, ty)
+            }
+            <span class="self">Self</span>::SizeOfTemplate(ty) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;tried to get size of template type {}&quot;</span>, ty)
+            }
+            <span class="self">Self</span>::CompilePolyProc(proc) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;tried to compile polymorphic procedure {}&quot;</span>, proc)
+            }
+            <span class="self">Self</span>::AssemblyError(e) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;assembly error: {:?}&quot;</span>, e)
+            }
+            <span class="self">Self</span>::InvalidMonomorphize(expr) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;invalid monomorphization of constant expression {}&quot;</span>, expr)
+            }
+        }
+    }
+}</code></pre></div></section></main></body></html>

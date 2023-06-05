@@ -296,7 +296,7 @@ proc readline(ch: &Char, len: Int): Int {
     let i = len;
 
     let c = getchar();
-    for (); c != '\n'; i+=1 {
+    for (); c != '\n' && c != '\0'; i+=1 {
         ch[i] = c;
         c = getchar();
     }
@@ -317,12 +317,13 @@ proc read(): Input {
     };
 }
 
-match parse_expr(read()) {
+let input = read();
+match parse_expr(input) {
     of Ok (input, n) => {
         print_expr(n);
         print("\n => ", eval(n), "\n");
         free_expr(n);
         free_input(input);
     },
-    of Err n => print("error while parsing at: \n", n, "\n")
+    of Err n => print("\nCalculator: error while parsing at character: \n", input.start[n], "\n")
 }

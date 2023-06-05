@@ -6,13 +6,13 @@
 use crate::vm::{CoreOp, Device, StandardDevice, StandardOp, StandardProgram};
 
 /// A function to reinterpret the bits of an integer as a float.
-pub fn as_float(n: isize) -> f64 {
+pub fn as_float(n: i64) -> f64 {
     f64::from_bits(n as u64)
 }
 
 /// A function to reinterpret the bits of a float as an integer.
-pub fn as_int(n: f64) -> isize {
-    n.to_bits() as isize
+pub fn as_int(n: f64) -> i64 {
+    n.to_bits() as i64
 }
 
 impl Default for StandardInterpreter<StandardDevice> {
@@ -31,9 +31,9 @@ where
     /// The current pointer on the turing tape.
     pointer: usize,
     /// The register (which contains a single cell of data).
-    register: isize,
+    register: i64,
     /// The turing tape (composed of integer cells)
-    cells: Vec<isize>,
+    cells: Vec<i64>,
     /// The addresses of defined functions. `functions[N]` is the
     /// instruction pointer for the Nth function's code.
     functions: Vec<usize>,
@@ -236,7 +236,7 @@ where
     }
 
     /// Get the current cell pointed to on the turing tape.
-    fn get_cell(&mut self) -> &mut isize {
+    fn get_cell(&mut self) -> &mut i64 {
         while self.pointer >= self.cells.len() {
             self.cells.extend(vec![0; 1000]);
         }
@@ -304,7 +304,7 @@ where
                         }
                     }
 
-                    CoreOp::Where => self.register = self.pointer as isize,
+                    CoreOp::Where => self.register = self.pointer as i64,
                     CoreOp::Deref => self.deref(),
                     CoreOp::Refer => self.refer()?,
 
@@ -328,22 +328,22 @@ where
                         }
                     }
 
-                    CoreOp::IsNonNegative => self.register = isize::from(self.register >= 0),
+                    CoreOp::IsNonNegative => self.register = i64::from(self.register >= 0),
                     CoreOp::Get(i) => self.register = self.device.get(i.clone())?,
                     CoreOp::Put(o) => self.device.put(self.register, o.clone())?,
                 },
 
                 StandardOp::Set(n) => self.register = as_int(*n),
                 StandardOp::ToInt => {
-                    // self.register = f64::from_bits(self.register as u64) as isize
-                    self.register = as_float(self.register) as isize;
+                    // self.register = f64::from_bits(self.register as u64) as i64
+                    self.register = as_float(self.register) as i64;
                 }
                 StandardOp::ToFloat => {
-                    // self.register = (self.register as f64).to_bits() as isize
+                    // self.register = (self.register as f64).to_bits() as i64
                     self.register = as_int(self.register as f64);
                 }
                 // let cell = f64::from_bits(*self.get_cell() as u64);
-                // self.register = (f64::from_bits(self.register as u64) + cell).to_bits() as isize;
+                // self.register = (f64::from_bits(self.register as u64) + cell).to_bits() as i64;
                 StandardOp::Add => {
                     let a = as_float(self.register);
                     let b = as_float(*self.get_cell());
@@ -369,7 +369,7 @@ where
                     let b = as_float(*self.get_cell());
                     self.register = as_int(a % b)
                 }
-                StandardOp::IsNonNegative => self.register = isize::from(self.register >= 0),
+                StandardOp::IsNonNegative => self.register = i64::from(self.register >= 0),
                 StandardOp::Sin => self.register = as_int(as_float(self.register).sin()),
                 StandardOp::Cos => self.register = as_int(as_float(self.register).cos()),
                 StandardOp::Tan => self.register = as_int(as_float(self.register).tan()),
@@ -398,7 +398,7 @@ where
                     // Allocate new space at the end of the type.
                     self.cells.extend(vec![0; self.register as usize]);
                     // Store the address of the new space in the register.
-                    self.register = result as isize;
+                    self.register = result as i64;
                 }
                 StandardOp::Free => {}
             }

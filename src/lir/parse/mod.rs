@@ -364,7 +364,9 @@ fn parse_decl(pair: Pair<Rule>) -> Declaration {
 
             let mut ty_params = vec![];
             if let Some(ty_params_pair) = inner_rules.peek() {
-                if ty_params_pair.as_rule() == Rule::type_parameters && ty_params_pair.into_inner().count() > 0 {
+                if ty_params_pair.as_rule() == Rule::type_parameters
+                    && ty_params_pair.into_inner().count() > 0
+                {
                     let ty_params_pair = inner_rules.next().unwrap();
                     for ty_param_pair in ty_params_pair.into_inner() {
                         ty_params.push(ty_param_pair.as_str().to_string());
@@ -392,7 +394,7 @@ fn parse_decl(pair: Pair<Rule>) -> Declaration {
                     Rule::expr => {
                         stmt = Statement::Expr(parse_expr(pair));
                     }
-                    other => panic!("unexpected rule {:?}", other)
+                    other => panic!("unexpected rule {:?}", other),
                 }
             }
             if ty_params.is_empty() {
@@ -409,14 +411,16 @@ fn parse_decl(pair: Pair<Rule>) -> Declaration {
 
                 let mut ty_params = vec![];
                 if let Some(ty_params_pair) = inner_rules.peek() {
-                    if ty_params_pair.as_rule() == Rule::type_parameters && ty_params_pair.into_inner().count() > 0 {
+                    if ty_params_pair.as_rule() == Rule::type_parameters
+                        && ty_params_pair.into_inner().count() > 0
+                    {
                         let ty_params_pair = inner_rules.next().unwrap();
                         for ty_param_pair in ty_params_pair.into_inner() {
                             ty_params.push(ty_param_pair.as_str().to_string());
                         }
                     }
-                }    
-    
+                }
+
                 let ty = parse_type(inner_rules.next().unwrap());
                 if ty_params.is_empty() {
                     types.push((name, ty));
@@ -444,14 +448,15 @@ fn parse_decl(pair: Pair<Rule>) -> Declaration {
 
             let mut ty_params = vec![];
             if let Some(ty_params_pair) = inner_rules.peek() {
-                if ty_params_pair.as_rule() == Rule::type_parameters && ty_params_pair.into_inner().count() > 0 {
+                if ty_params_pair.as_rule() == Rule::type_parameters
+                    && ty_params_pair.into_inner().count() > 0
+                {
                     let ty_params_pair = inner_rules.next().unwrap();
                     for ty_param_pair in ty_params_pair.into_inner() {
                         ty_params.push(ty_param_pair.as_str().to_string());
                     }
                 }
             }
-
 
             let mut fields = Vec::new();
             while inner_rules.peek().is_some() {
@@ -478,7 +483,9 @@ fn parse_decl(pair: Pair<Rule>) -> Declaration {
 
             let mut ty_params = vec![];
             if let Some(ty_params_pair) = inner_rules.peek() {
-                if ty_params_pair.as_rule() == Rule::type_parameters && ty_params_pair.into_inner().count() > 0 {
+                if ty_params_pair.as_rule() == Rule::type_parameters
+                    && ty_params_pair.into_inner().count() > 0
+                {
                     let ty_params_pair = inner_rules.next().unwrap();
                     for ty_param_pair in ty_params_pair.into_inner() {
                         ty_params.push(ty_param_pair.as_str().to_string());
@@ -816,10 +823,9 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
             result
         }
 
-        Rule::r#const
-        | Rule::const_term
-        | Rule::const_monomorph
-        | Rule::const_atom => Expr::ConstExpr(parse_const(pair)),
+        Rule::r#const | Rule::const_term | Rule::const_monomorph | Rule::const_atom => {
+            Expr::ConstExpr(parse_const(pair))
+        }
         Rule::stmt_block => parse_stmt(pair).to_expr(None),
         other => panic!("Unexpected rule: {:?}: {:?}", other, pair),
     }

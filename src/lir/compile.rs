@@ -13,6 +13,7 @@ use super::*;
 use crate::asm::{
     AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
 };
+use std::collections::BTreeMap;
 use crate::NULL;
 
 /// A trait which allows an LIR expression to be compiled to one of the
@@ -32,7 +33,7 @@ pub trait Compile: TypeCheck {
         eprintln!("typechecking...");
         self.type_check(&Env::default())?;
         // Then, attempt to compile the expression into a core assembly program.
-        let mut core_asm = CoreProgram(vec![]);
+        let mut core_asm = CoreProgram::default();
         eprintln!("compiling...");
         if self
             .clone()
@@ -42,7 +43,7 @@ pub trait Compile: TypeCheck {
             .is_err()
         {
             // then compile it into a standard assembly program.
-            let mut std_asm = StandardProgram(vec![]);
+            let mut std_asm = StandardProgram::default();
             // Compile the expression into the standard assembly program.
             self.compile_expr(&mut Env::default(), &mut std_asm)?;
             // Return the fallback standard assembly program.
@@ -459,43 +460,48 @@ impl Compile for Expr {
             Self::EnumUnion(mut t, variant, val) => {
                 // Get the size of the tagged union.
                 let result_size = t.get_size(env)?;
-                loop {
-                    t = t.clone().simplify(env)?;
-                    match t {
-                        // Get the inner list of variants and compile the expression using this information.
-                        Type::EnumUnion(fields) => {
-                            // Get the list of possible variant names.
-                            let variants = fields.clone().into_keys().collect::<Vec<_>>();
-                            // Get the value of the tag associated with this variant.
-                            if let Some(tag_value) = Type::variant_index(&variants, &variant) {
-                                // Get the size of the value we are storing in the union.
-                                let val_size = val.get_size(env)?;
+                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _))))?;
+                if let Type::EnumUnion(fields) = t {
+                    // Get the list of possible variant names.
+                    let variants = fields.clone().into_keys().collect::<Vec<_>>();
+                    // Get the value of the tag associated with this variant.
+                    if let Some(tag_value) = Type::variant_index(&variants, &variant) {
+                        // Get the size of the value we are storing in the union.
+                        let val_size = val.get_size(env)?;
 
-                                // Evaluate the value and push it onto the stack
-                                val.compile_expr(env, output)?;
+                        // Evaluate the value and push it onto the stack
+                        val.compile_expr(env, output)?;
 
-                                // Increment the stack pointer to pad out the union.
-                                output.op(CoreOp::Next(
-                                    SP,
-                                    // This size *includes* the tag: it allocates space for it so we
-                                    // can immediately set the value under the stack poiner as the tag.
-                                    Some(result_size as isize - val_size as isize),
-                                ));
+                        // Increment the stack pointer to pad out the union.
+                        output.op(CoreOp::Next(
+                            SP,
+                            // This size *includes* the tag: it allocates space for it so we
+                            // can immediately set the value under the stack poiner as the tag.
+                            Some(result_size as isize - val_size as isize),
+                        ));
 
-                                output.op(CoreOp::Set(SP.deref(), tag_value as isize));
-                                return Ok(());
-                            } else {
-                                // If we could not find the variant return an error.
-                                return Err(Error::VariantNotFound(
-                                    Type::EnumUnion(fields),
-                                    variant,
-                                ));
-                            }
-                        }
-                        Type::Symbol(_) | Type::Let(_, _, _) | Type::Apply(_, _) => continue,
-                        other => return Err(Error::VariantNotFound(other, variant.clone())),
+                        output.op(CoreOp::Set(SP.deref(), tag_value as i64));
+                        return Ok(());
+                    } else {
+                        // If we could not find the variant return an error.
+                        return Err(Error::VariantNotFound(
+                            Type::EnumUnion(fields),
+                            variant,
+                        ));
                     }
+                } else {
+                    return Err(Error::VariantNotFound(t.clone(), variant.clone()))
                 }
+                // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+                //     t = t.clone().simplify(env)?;
+                //     match t {
+                //         // Get the inner list of variants and compile the expression using this information.
+                //         Type::EnumUnion(fields) => {
+                //         }
+                //         Type::Symbol(_) | Type::Let(_, _, _) | Type::Apply(_, _) => continue,
+                //         other => return Err(Error::VariantNotFound(other, variant.clone())),
+                //     }
+                // }
             }
 
             // Compile an indexing operation.
@@ -536,7 +542,7 @@ impl Compile for Expr {
                         // Calculate the offset of the element we want to return
                         // (the index times the size of the element), and store it in `B`.
                         output.op(CoreOp::Pop(Some(B), 1));
-                        output.op(CoreOp::Set(A, elem_size as isize));
+                        output.op(CoreOp::Set(A, elem_size as i64));
                         output.op(CoreOp::Mul { dst: B, src: A });
 
                         // Get the address of the array's first element, and store it in `A`.
@@ -576,7 +582,7 @@ impl Compile for Expr {
                         // Store the index in `B`.
                         output.op(CoreOp::Pop(Some(B), 1));
                         // Store the size of the element in `C`.
-                        output.op(CoreOp::Set(C, elem_size as isize));
+                        output.op(CoreOp::Set(C, elem_size as i64));
                         // Store the offset of the element from the pointer in `B`
                         // (the index times the size of the element).
                         output.op(CoreOp::Mul { dst: B, src: C });
@@ -612,6 +618,9 @@ impl Compile for Expr {
                     dst: SP.deref().offset(1 - val_size as isize),
                     size,
                 });
+                // eprintln!("\n\nval_size: {val_size}\n => {val_type}");
+                // eprintln!("size: {size}\n => {}", self.get_type(env)?);
+                // eprintln!("{self}");
                 // Pop the remaining elements off the stack, so the field remains.
                 output.op(CoreOp::Pop(None, val_size - size));
             }
@@ -625,7 +634,7 @@ impl Compile for Expr {
                         // Calulate the address of the variable from the offset
                         output.op(CoreOp::Many(vec![
                             CoreOp::Move { src: FP, dst: A },
-                            CoreOp::Set(B, *offset),
+                            CoreOp::Set(B, *offset as i64),
                             // Index the frame pointer with the offset of the variable.
                             // This is the address of the variable.
                             CoreOp::Index {
@@ -656,7 +665,7 @@ impl Compile for Expr {
                     let (_, offset) = val_type.get_member_offset(&name, &val, env)?;
 
                     output.op(CoreOp::Pop(Some(A), 1));
-                    output.op(CoreOp::Set(B, offset as isize));
+                    output.op(CoreOp::Set(B, offset as i64));
                     // Index the address of the struct, tuple, or union with the offset of the field.
                     // This is the address of the field.
                     output.op(CoreOp::Index {
@@ -686,7 +695,7 @@ impl Compile for Expr {
                             // Store the address of the array in `A`.
                             output.op(CoreOp::Pop(Some(A), 1));
                             // Store the size of the element in `C`.
-                            output.op(CoreOp::Set(C, elem_size as isize));
+                            output.op(CoreOp::Set(C, elem_size as i64));
 
                             // Calculate the offset of the element from the address of the array.
                             // (the index times the size of the element).
@@ -716,7 +725,7 @@ impl Compile for Expr {
                             // Store the index in `B`.
                             output.op(CoreOp::Pop(Some(B), 1));
                             // Store the size of the element in `C`.
-                            output.op(CoreOp::Set(C, elem_size as isize));
+                            output.op(CoreOp::Set(C, elem_size as i64));
 
                             // Calculate the offset of the element from the pointer.
                             // (the index times the size of the element).
@@ -749,7 +758,7 @@ impl Compile for ConstExpr {
         let mut comment = format!("{self}");
         comment.truncate(70);
         output.comment(format!("compiling constant `{comment}`"));
-
+        
         // Compile the constant expression.
         match self {
             Self::LetTypes(bindings, expr) => {
@@ -762,24 +771,11 @@ impl Compile for ConstExpr {
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
                 Self::PolyProc(poly_proc) => {
                     // First, monomorphize the function
-                    let (proc, symbol) = poly_proc.monomorphize(ty_args.clone(), env)?;
-                    let name = symbol.clone().as_symbol(env)?;
-                    // Then, compile the monomorphized function (if it hasn't already been compiled).
-                    if proc.compiled {
-                        // If the function has already been compiled, just push the symbol to the stack.
-                        // This will work for recursive calls on the polymorphic function.
-                        // This works because `env.define_proc` is called when the function is monomorphized.
-                        symbol.compile_expr(env, output)?;                        
-                    } else {
-                        // Define the new monomorphized function in the environment.
-                        env.define_proc(&name, proc.clone());
-                        // Mark the function as compiled.
-                        poly_proc.mark_monomorph_compiled(&name);
-                        // Typecheck the monomorphized function.
-                        proc.type_check(env)?;
-                        // Compile the monomorphized function.
-                        proc.compile_expr(env, output)?;
-                    }
+                    let proc = poly_proc.monomorphize(ty_args.clone(), env)?;
+                    // Typecheck the monomorphized function.
+                    proc.type_check(env)?;
+                    // Compile the monomorphized function.
+                    proc.compile_expr(env, output)?;
                 }
                 val => {
                     return Err(Error::InvalidMonomorphize(val));
@@ -800,17 +796,17 @@ impl Compile for ConstExpr {
             // Compile a char constant.
             Self::Char(ch) => {
                 output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), ch as usize as isize));
+                output.op(CoreOp::Set(SP.deref(), ch as usize as i64));
             }
             // Compile a bool constant.
             Self::Bool(x) => {
                 output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), x as isize));
+                output.op(CoreOp::Set(SP.deref(), x as i64));
             }
             // Compile an integer constant.
             Self::Int(n) => {
                 output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), n as isize));
+                output.op(CoreOp::Set(SP.deref(), n as i64));
             }
             // Compile a float constant.
             Self::Float(f) => {
@@ -820,12 +816,12 @@ impl Compile for ConstExpr {
             // Calculate the size of a type.
             Self::SizeOfType(t) => {
                 output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), t.get_size(env)? as isize));
+                output.op(CoreOp::Set(SP.deref(), t.get_size(env)? as i64));
             }
             // Calculate the size of an expression.
             Self::SizeOfExpr(e) => {
                 output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), e.get_size(env)? as isize));
+                output.op(CoreOp::Set(SP.deref(), e.get_size(env)? as i64));
             }
             // Compile a tuple constant.
             Self::Tuple(items) => {
@@ -866,6 +862,10 @@ impl Compile for ConstExpr {
             Self::EnumUnion(t, variant, val) => {
                 // Get the size of the tagged union.
                 let result_size = t.get_size(env)?;
+                let t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| Ok(matches!(
+                    t,
+                    Type::Enum(_) | Type::EnumUnion(_)
+                )))?;
 
                 // Get the inner list of variants and compile the expression using this information.
                 if let Type::EnumUnion(variants) = t.clone().simplify(env)? {
@@ -887,7 +887,7 @@ impl Compile for ConstExpr {
                             Some(result_size as isize - val_size as isize),
                         ));
 
-                        output.op(CoreOp::Set(SP.deref(), tag_value as isize));
+                        output.op(CoreOp::Set(SP.deref(), tag_value as i64));
                     } else {
                         // If we could not find the variant return an error.
                         return Err(Error::VariantNotFound(t, variant));
@@ -935,52 +935,97 @@ impl Compile for ConstExpr {
             Self::Of(mut enum_type, variant) => {
                 // Only try to simplify the type 50 times at most.
                 // This is to prevent infinite loops and to keep recursion under control.
-                for _ in 0..50 {
-                    // Simplify the type.
-                    enum_type = enum_type.simplify(env)?;
+                enum_type = enum_type.simplify_until_matches(env, Type::Enum(vec![variant.clone()]), |t, env| Ok(matches!(
+                    t,
+                    Type::Enum(_) | Type::EnumUnion(_)
+                )))?;
+
+                match enum_type.clone() {
                     // If the type is an enum, we can continue.
-                    match enum_type.clone() {
-                        // If the type is an enum, we can continue.
-                        Type::Enum(variants) => {
-                            // Get the index of the variant.
-                            if let Some(index) = Type::variant_index(&variants, &variant) {
-                                // Push the index of the variant onto the stack.
-                                output.op(CoreOp::Set(A, index as isize));
-                                output.op(CoreOp::Push(A, 1));
-                                return Ok(());
-                            } else {
-                                // If the variant is not found, return an error.
-                                return Err(Error::VariantNotFound(enum_type, variant));
-                            }
+                    Type::Enum(variants) => {
+                        // Get the index of the variant.
+                        if let Some(index) = Type::variant_index(&variants, &variant) {
+                            // Push the index of the variant onto the stack.
+                            output.op(CoreOp::Set(A, index as i64));
+                            output.op(CoreOp::Push(A, 1));
+                            return Ok(());
+                        } else {
+                            // If the variant is not found, return an error.
+                            return Err(Error::VariantNotFound(enum_type, variant));
                         }
-                        // If the type is an enum union, we can continue.
-                        Type::EnumUnion(variants)
-                            if variants.get(&variant) == Some(&Type::None) =>
+                    }
+                    // If the type is an enum union, we can continue.
+                    Type::EnumUnion(variants)
+                        if variants.get(&variant) == Some(&Type::None) =>
+                    {
+                        // Get the index of the variant.
+                        if let Some(index) =
+                            Type::variant_index(&variants.into_keys().collect(), &variant)
                         {
-                            // Get the index of the variant.
-                            if let Some(index) =
-                                Type::variant_index(&variants.into_keys().collect(), &variant)
-                            {
-                                // Push the index of the variant onto the stack.
-                                // Allocate the size of the structure on the stack by
-                                // incrementing the stack pointer by the size of the structure.
-                                // Then, set the value under the stack pointer to the index of the variant.
-                                output
-                                    .op(CoreOp::Next(SP, Some(enum_type.get_size(env)? as isize)));
-                                output.op(CoreOp::Set(SP.deref(), index as isize));
-                                return Ok(());
-                            } else {
-                                // If the variant is not found, return an error.
-                                return Err(Error::VariantNotFound(enum_type, variant));
-                            }
+                            // Push the index of the variant onto the stack.
+                            // Allocate the size of the structure on the stack by
+                            // incrementing the stack pointer by the size of the structure.
+                            // Then, set the value under the stack pointer to the index of the variant.
+                            output
+                                .op(CoreOp::Next(SP, Some(enum_type.get_size(env)? as isize)));
+                            output.op(CoreOp::Set(SP.deref(), index as i64));
+                            return Ok(());
+                        } else {
+                            // If the variant is not found, return an error.
+                            return Err(Error::VariantNotFound(enum_type, variant));
                         }
-                        // If the type is a let expression or a symbol, simplify it again first
-                        Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => continue,
-                        // If the type isn't an enum, return an error.
-                        _ => return Err(Error::VariantNotFound(enum_type, variant)),
+                    }
+                    _ => {
+                        // If the type is not an enum, return an error.
+                        return Err(Error::VariantNotFound(enum_type, variant));
                     }
                 }
-                return Err(Error::VariantNotFound(enum_type, variant));
+                // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+                //     // Simplify the type.
+                //     enum_type = enum_type.simplify(env)?;
+                //     // If the type is an enum, we can continue.
+                //     match enum_type.clone() {
+                //         // If the type is an enum, we can continue.
+                //         Type::Enum(variants) => {
+                //             // Get the index of the variant.
+                //             if let Some(index) = Type::variant_index(&variants, &variant) {
+                //                 // Push the index of the variant onto the stack.
+                //                 output.op(CoreOp::Set(A, index as i64));
+                //                 output.op(CoreOp::Push(A, 1));
+                //                 return Ok(());
+                //             } else {
+                //                 // If the variant is not found, return an error.
+                //                 return Err(Error::VariantNotFound(enum_type, variant));
+                //             }
+                //         }
+                //         // If the type is an enum union, we can continue.
+                //         Type::EnumUnion(variants)
+                //             if variants.get(&variant) == Some(&Type::None) =>
+                //         {
+                //             // Get the index of the variant.
+                //             if let Some(index) =
+                //                 Type::variant_index(&variants.into_keys().collect(), &variant)
+                //             {
+                //                 // Push the index of the variant onto the stack.
+                //                 // Allocate the size of the structure on the stack by
+                //                 // incrementing the stack pointer by the size of the structure.
+                //                 // Then, set the value under the stack pointer to the index of the variant.
+                //                 output
+                //                     .op(CoreOp::Next(SP, Some(enum_type.get_size(env)? as isize)));
+                //                 output.op(CoreOp::Set(SP.deref(), index as i64));
+                //                 return Ok(());
+                //             } else {
+                //                 // If the variant is not found, return an error.
+                //                 return Err(Error::VariantNotFound(enum_type, variant));
+                //             }
+                //         }
+                //         // If the type is a let expression or a symbol, simplify it again first
+                //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => continue,
+                //         // If the type isn't an enum, return an error.
+                //         _ => return Err(Error::VariantNotFound(enum_type, variant)),
+                //     }
+                // }
+                // return Err(Error::VariantNotFound(enum_type, variant));
             }
 
             // Compile a symbol.

@@ -4,16 +4,15 @@
 //! defined in a given scope. It also stores the variables defined in the scope, and the their offsets
 //! with respect to the frame pointer.
 
-use crate::asm::AssemblyProgram;
-
 use super::{Compile, ConstExpr, Error, GetSize, Procedure, Type};
+use crate::asm::AssemblyProgram;
 use std::{collections::HashMap, rc::Rc};
 
 /// An environment under which expressions and types are compiled and typechecked.
 /// This is essentially the scope of an expression.
 #[derive(Clone, Debug)]
 pub struct Env {
-    /// The types defined under the environment.
+    /// The types (and also their sizes) defined under the environment.
     types: Rc<HashMap<String, Type>>,
     /// The constants defined under the environment.
     consts: Rc<HashMap<String, ConstExpr>>,
@@ -31,6 +30,8 @@ pub struct Env {
     /// Expected return type of the current function.
     /// This is `None` if we are not currently compiling a function.
     expected_ret: Option<Type>,
+
+    type_sizes: HashMap<Type, usize>,
 }
 
 impl Default for Env {
@@ -42,6 +43,7 @@ impl Default for Env {
             consts: Rc::new(HashMap::new()),
             procs: Rc::new(HashMap::new()),
             vars: Rc::new(HashMap::new()),
+            type_sizes: HashMap::new(),
             // The last argument is stored at `[FP]`, so our first variable must be at `[FP + 1]`.
             fp_offset: 1,
             args_size: 0,
@@ -58,7 +60,7 @@ impl Env {
             types: self.types.clone(),
             consts: self.consts.clone(),
             procs: self.procs.clone(),
-            
+            type_sizes: self.type_sizes.clone(),
 
             // The rest are the same as a new environment.
             ..Env::default()
@@ -68,6 +70,10 @@ impl Env {
     /// Define a type with a given name under this environment.
     pub fn define_type(&mut self, name: impl ToString, ty: Type) {
         if Type::Symbol(name.to_string()) != ty {
+            if let Some(size) = ty.get_size(self).ok() {
+                self.type_sizes.insert(ty.clone(), size);
+            }
+            
             Rc::make_mut(&mut self.types).insert(name.to_string(), ty);
         }
     }
@@ -106,16 +112,8 @@ impl Env {
     pub fn push_proc(&mut self, name: &str, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         // Check if the procedure is defined.
         if let Some(proc) = Rc::make_mut(&mut self.procs).get_mut(name) {
-            // Has the procedure been compiled yet?
-            if proc.compiled {
-                // If so, push the procedure label address onto the stack.
-                proc.push_label(output);
-            } else {
-                // If not, compile the procedure.
-                proc.compiled = true;
-                proc.clone().compile_expr(self, output)?;
-            }
-            Ok(())
+            // Compile the procedure.
+            proc.clone().compile_expr(self, output)
         } else {
             // If not, the symbol isn't defined.
             Err(Error::SymbolNotDefined(name.to_string()))
@@ -186,5 +184,13 @@ impl Env {
     /// If we're not in a function, this will be `None`.
     pub fn set_expected_return_type(&mut self, t: Type) {
         self.expected_ret = Some(t);
+    }
+
+    pub fn define_type_size(&mut self, ty: Type, size: usize) {
+        self.type_sizes.insert(ty, size);
+    }
+
+    pub fn get_type_size(&self, ty: &Type) -> Option<usize> {
+        self.type_sizes.get(ty).copied()
     }
 }

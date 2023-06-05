@@ -34,6 +34,11 @@ impl GetType for CoreBuiltin {
             Box::new(self.ret.clone()),
         ))
     }
+
+    fn substitute(&mut self, name: &str, ty: &Type) {
+        self.args.iter_mut().for_each(|(_, t)| *t = t.substitute(name, ty));
+        self.ret = self.ret.substitute(name, ty);
+    }
 }
 
 impl TypeCheck for CoreBuiltin {
@@ -82,6 +87,11 @@ impl GetType for StandardBuiltin {
             self.args.iter().map(|(_, t)| t.clone()).collect(),
             Box::new(self.ret.clone()),
         ))
+    }
+
+    fn substitute(&mut self, name: &str, ty: &Type) {
+        self.args.iter_mut().for_each(|(_, t)| *t = t.substitute(name, ty));
+        self.ret = self.ret.substitute(name, ty);
     }
 }
 

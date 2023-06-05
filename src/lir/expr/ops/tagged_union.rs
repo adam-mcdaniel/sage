@@ -11,34 +11,37 @@ pub struct Tag;
 impl UnaryOp for Tag {
     /// Can this unary operation be applied to the given type?
     fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
-        let mut ty = ty.clone().simplify(env)?;
-        loop {
-            match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
-                    ty = ty.simplify(env)?
-                }
-                Type::EnumUnion(_) => return Ok(true),
-                _ => return Ok(false),
-            }
-        }
+        let ty = ty.clone().simplify(env)?;
+        Ok(ty.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_)))).is_ok())
     }
 
     /// Get the type of the result of applying this unary operation to the given type.
     fn return_type(&self, expr: &Expr, env: &Env) -> Result<Type, Error> {
         let mut ty = expr.get_type(env)?;
-        loop {
-            match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
-                    ty = ty.simplify(env)?
-                }
-                Type::EnumUnion(variants) => return Ok(Type::Enum(variants.into_keys().collect())),
-                found => {
-                    return Err(Error::MismatchedTypes {
-                        expected: Type::EnumUnion(BTreeMap::new()),
-                        found,
-                        expr: expr.clone(),
-                    })
-                }
+        ty = ty.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_))))?;
+        // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+        //     match ty {
+        //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
+        //             ty = ty.simplify(env)?
+        //         }
+        //         Type::EnumUnion(variants) => return Ok(Type::Enum(variants.into_keys().collect())),
+        //         found => {
+        //             return Err(Error::MismatchedTypes {
+        //                 expected: Type::EnumUnion(BTreeMap::new()),
+        //                 found,
+        //                 expr: expr.clone(),
+        //             })
+        //         }
+        //     }
+        // }
+        match ty {
+            Type::EnumUnion(variants) => Ok(Type::Enum(variants.into_keys().collect())),
+            found => {
+                Err(Error::MismatchedTypes {
+                    expected: Type::EnumUnion(BTreeMap::new()),
+                    found,
+                    expr: expr.clone(),
+                })
             }
         }
     }
@@ -114,35 +117,37 @@ pub struct Data;
 impl UnaryOp for Data {
     /// Can this unary operation be applied to the given type?
     fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
-        let mut ty = ty.clone().simplify(env)?;
-        loop {
-            match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
-                    ty = ty.simplify(env)?
-                }
-                Type::EnumUnion(_) => return Ok(true),
-                _ => return Ok(false),
-            }
-        }
-        // Ok(matches!(ty.clone().simplify(env)?, Type::EnumUnion(_)))
+        let ty = ty.clone().simplify(env)?;
+        Ok(ty.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| Ok(matches!(t, Type::EnumUnion(_) | Type::Enum(_)))).is_ok())
     }
 
     /// Get the type of the result of applying this unary operation to the given type.
     fn return_type(&self, expr: &Expr, env: &Env) -> Result<Type, Error> {
         let mut ty = expr.get_type(env)?;
-        loop {
-            match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
-                    ty = ty.simplify(env)?
-                }
-                Type::EnumUnion(variants) => return Ok(Type::Union(variants)),
-                found => {
-                    return Err(Error::MismatchedTypes {
-                        expected: Type::EnumUnion(BTreeMap::new()),
-                        found,
-                        expr: expr.clone(),
-                    })
-                }
+        ty = ty.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| Ok(matches!(t, Type::EnumUnion(_) | Type::Enum(_))))?;
+        // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+        //     match ty {
+        //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
+        //             ty = ty.simplify(env)?
+        //         }
+        //         Type::EnumUnion(variants) => return Ok(Type::Union(variants)),
+        //         found => {
+        //             return Err(Error::MismatchedTypes {
+        //                 expected: Type::EnumUnion(BTreeMap::new()),
+        //                 found,
+        //                 expr: expr.clone(),
+        //             })
+        //         }
+        //     }
+        // }
+        match ty {
+            Type::EnumUnion(variants) => Ok(Type::Union(variants)),
+            found => {
+                Err(Error::MismatchedTypes {
+                    expected: Type::EnumUnion(BTreeMap::new()),
+                    found,
+                    expr: expr.clone(),
+                })
             }
         }
     }

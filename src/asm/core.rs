@@ -34,14 +34,39 @@ use crate::{
     io::{Input, InputMode, Output, OutputMode},
     vm::{self, VirtualMachineProgram},
 };
-use core::fmt;
+use std::{collections::BTreeSet, fmt};
 
-/// A program composed of core instructions, which can be assembled
+/// An assembly program composed of core instructions, which can be assembled
 /// into the core virtual machine instructions.
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct CoreProgram(pub Vec<CoreOp>);
+pub struct CoreProgram {
+    /// The list of core assembly instructions in the program.
+    pub code: Vec<CoreOp>,
+    /// A set containining the labels for each function in the program
+    /// that has been defined so far. This helps the LIR compiler
+    /// determine if a function has been compiled yet or not.
+    labels: BTreeSet<String>,
+}
+
+/// A default program is an empty program.
+impl Default for CoreProgram {
+    fn default() -> Self {
+        Self::new(vec![])
+    }
+}
 
 impl CoreProgram {
+    /// Create a new program of core assembly instructions.
+    pub fn new(code: Vec<CoreOp>) -> Self {
+        let mut labels = BTreeSet::new();
+        for op in &code {
+            if let CoreOp::Fn(label) = op {
+                labels.insert(label.clone());
+            }
+        }
+        Self { code, labels }
+    }
+
     /// Assemble a program of core assembly instructions into the
     /// core virtual machine instructions.
     pub fn assemble(&self, allowed_recursion_depth: usize) -> Result<vm::CoreProgram, Error> {
@@ -56,11 +81,11 @@ impl CoreProgram {
             .copy_address_to(&SP, &mut result);
 
         SP.copy_to(&FP, &mut result);
-        for (i, op) in self.0.iter().enumerate() {
+        for (i, op) in self.code.iter().enumerate() {
             op.assemble(i, &mut env, &mut result)?
         }
 
-        if let Ok((unmatched, last_instruction)) = env.pop_matching(self.0.len()) {
+        if let Ok((unmatched, last_instruction)) = env.pop_matching(self.code.len()) {
             return Err(Error::Unmatched(unmatched, last_instruction));
         }
 
@@ -72,7 +97,7 @@ impl fmt::Display for CoreProgram {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut indent = 0;
         let mut comment_count = 0;
-        for (i, op) in self.0.iter().enumerate() {
+        for (i, op) in self.code.iter().enumerate() {
             if f.alternate() {
                 if let CoreOp::Comment(comment) = op {
                     if f.alternate() {
@@ -113,11 +138,19 @@ impl fmt::Display for CoreProgram {
 
 impl AssemblyProgram for CoreProgram {
     fn op(&mut self, op: CoreOp) {
-        self.0.push(op)
+        // If the operation is a function label, add its label to the set of defined labels.
+        if let CoreOp::Fn(name) = &op {
+            self.labels.insert(name.clone());
+        }
+        self.code.push(op)
     }
 
     fn std_op(&mut self, op: super::StandardOp) -> Result<(), Error> {
         Err(Error::UnsupportedInstruction(op))
+    }
+
+    fn is_defined(&self, label: &str) -> bool {
+        self.labels.contains(label)
     }
 }
 
@@ -129,7 +162,7 @@ pub enum CoreOp {
     Many(Vec<CoreOp>),
 
     /// Set the value of a register, or any location in memory, to a given constant.
-    Set(Location, isize),
+    Set(Location, i64),
     /// Set the value of a register, or any location in memory, to the value of a label's ID.
     SetLabel(Location, String),
     /// Get the address of a location, and store it in a destination
@@ -319,7 +352,7 @@ pub enum CoreOp {
     Array {
         src: Location,
         dst: Location,
-        vals: Vec<isize>,
+        vals: Vec<i64>,
     },
 
     BitwiseNand {
@@ -350,18 +383,13 @@ impl CoreOp {
                 .chars()
                 // Set the TMP register to the character,
                 // and Put the TMP register.
-                .map(|ch| {
-                    Self::Many(vec![
-                        Self::Set(TMP, ch as isize),
-                        Self::Put(TMP, dst.clone()),
-                    ])
-                })
+                .map(|ch| Self::Many(vec![Self::Set(TMP, ch as i64), Self::Put(TMP, dst.clone())]))
                 .collect(),
         )
     }
 
     pub fn push_string(msg: impl ToString) -> Self {
-        let mut vals: Vec<isize> = msg.to_string().chars().map(|c| c as isize).collect();
+        let mut vals: Vec<i64> = msg.to_string().chars().map(|c| c as i64).collect();
         vals.push(0);
         Self::Many(vec![
             Self::Array {
@@ -373,7 +401,7 @@ impl CoreOp {
         ])
     }
 
-    pub fn stack_alloc_cells(dst: Location, vals: Vec<isize>) -> Self {
+    pub fn stack_alloc_cells(dst: Location, vals: Vec<i64>) -> Self {
         Self::Many(vec![
             Self::GetAddress {
                 addr: SP.deref().offset(1),
@@ -389,7 +417,7 @@ impl CoreOp {
     }
 
     pub fn stack_alloc_string(dst: Location, text: impl ToString) -> Self {
-        let mut vals: Vec<isize> = text.to_string().chars().map(|c| c as isize).collect();
+        let mut vals: Vec<i64> = text.to_string().chars().map(|c| c as i64).collect();
         vals.push(0);
         Self::Many(vec![
             Self::GetAddress {
@@ -459,7 +487,7 @@ impl CoreOp {
 
             CoreOp::Set(dst, value) => dst.set(*value, result),
             CoreOp::SetLabel(dst, name) => {
-                dst.set(env.get(name, current_instruction)? as isize, result)
+                dst.set(env.get(name, current_instruction)? as i64, result)
             }
 
             CoreOp::Call(src) => {
@@ -468,7 +496,7 @@ impl CoreOp {
             }
 
             CoreOp::CallLabel(name) => {
-                result.set_register(env.get(name, current_instruction)? as isize);
+                result.set_register(env.get(name, current_instruction)? as i64);
                 result.call();
             }
 
@@ -674,12 +702,14 @@ impl CoreOp {
             }
 
             CoreOp::Get(dst, input) => {
-                result.get(input.clone());
-                dst.save_to(result)
+                // result.get(input.clone());
+                // dst.save_to(result)
+                dst.get(input.clone(), result)
             }
             CoreOp::Put(dst, output) => {
-                dst.restore_from(result);
-                result.put(output.clone())
+                // dst.restore_from(result);
+                // result.put(output.clone())
+                dst.put(output.clone(), result)
             }
 
             CoreOp::Copy { src, dst, size } => {

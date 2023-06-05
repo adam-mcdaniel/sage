@@ -235,7 +235,7 @@ impl BinaryOp for Add {
             (Expr::ConstExpr(lhs), rhs) => match (lhs.eval(env)?, &rhs_type) {
                 (ConstExpr::Int(lhs), Type::Int | Type::Cell) => {
                     rhs.compile_expr(env, output)?;
-                    output.op(CoreOp::Set(A, lhs as isize));
+                    output.op(CoreOp::Set(A, lhs as i64));
                     output.op(CoreOp::Add {
                         src: A,
                         dst: SP.deref(),
@@ -275,7 +275,7 @@ impl BinaryOp for Add {
             (lhs, Expr::ConstExpr(rhs)) => match (&lhs_type, rhs.eval(env)?) {
                 (Type::Int | Type::Cell, ConstExpr::Int(rhs)) => {
                     lhs.compile_expr(env, output)?;
-                    output.op(CoreOp::Set(A, rhs as isize));
+                    output.op(CoreOp::Set(A, rhs as i64));
                     output.op(CoreOp::Add {
                         src: A,
                         dst: SP.deref(),

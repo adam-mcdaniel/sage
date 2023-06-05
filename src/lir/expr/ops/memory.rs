@@ -32,7 +32,7 @@ impl UnaryOp for New {
         let size = ty.get_size(env)?;
 
         // output.op(CoreOp::Next(SP, None));
-        output.op(CoreOp::Set(A, size as isize));
+        output.op(CoreOp::Set(A, size as i64));
         output.std_op(StandardOp::Alloc(A)).map_err(|_| {
             Error::UnsupportedOperation(Expr::UnaryOp(
                 self.clone_box(),

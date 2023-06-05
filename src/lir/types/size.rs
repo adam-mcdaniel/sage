@@ -22,6 +22,8 @@
 //! |`union {a: A, b: B, ... i: Int = 5}`|The max size of any type of `A`, `B`, ...|
 //! |`proc(A, B, ...) -> T`|1|
 //! |`enum {A, B, ...}`|1|
+use std::hash::Hash;
+
 use super::*;
 
 /// Get the size of something in memory (number of cells).
@@ -41,6 +43,16 @@ pub trait GetSize {
 impl GetSize for Type {
     fn get_size_checked(&self, env: &Env, i: usize) -> Result<usize, Error> {
         let i = i + 1;
+        if i > Type::SIMPLIFY_RECURSION_LIMIT {
+            return Err(Error::UnsizedType(self.clone()));
+        }
+        // eprintln!("GetSize::get_size_checked: i = {i} {self}");
+
+        if let Some(precalculated_type) = env.get_type_size(self) {
+            // eprintln!("GetSize::get_size_checked: precalculated_type {self} = {precalculated_type}");
+            return Ok(precalculated_type);
+        }
+
         Ok(match self {
             // None or Never are not real types, so they have no size.
             // They are not represented with data. They have zero size.
@@ -57,6 +69,7 @@ impl GetSize for Type {
                 // We need to create a new environment with the type defined in
                 // it, so that we can get the size of the resulting type.
                 let mut new_env = env.clone();
+                // new_env.define_type_size(*t.clone(), t.get_size_checked(env, i)?);
                 new_env.define_type(name, *t.clone());
                 // Get the size of the resulting type.
                 ret.get_size_checked(&new_env, i)?
@@ -99,7 +112,9 @@ impl GetSize for Type {
                 // Make an iterator over the fields.
                 .iter()
                 // Get the size of each field.
-                .flat_map(|(_, t)| t.get_size_checked(env, i))
+                .map(|(_, t)| t.get_size_checked(env, i))
+                // Catch any errors.
+                .collect::<Result<Vec<_>, _>>()?.into_iter()
                 // Sum the sizes of all the fields.
                 .sum(),
             // Union types are the size of the largest field. (All other fields are padded to this size.)
@@ -107,7 +122,9 @@ impl GetSize for Type {
                 // Make an iterator over the fields.
                 .iter()
                 // Get the size of each field.
-                .flat_map(|(_, t)| t.get_size_checked(env, i))
+                .map(|(_, t)| t.get_size_checked(env, i))
+                // Catch any errors.
+                .collect::<Result<Vec<_>, _>>()?.into_iter()
                 // Get the largest size.
                 .max()
                 // If there are no fields, just return 0.
@@ -119,7 +136,9 @@ impl GetSize for Type {
                 // Make an iterator over the fields.
                 .iter()
                 // Get the size of each field.
-                .flat_map(|(_, t)| t.get_size_checked(env, i))
+                .map(|(_, t)| t.get_size_checked(env, i))
+                // Catch any errors.
+                .collect::<Result<Vec<_>, _>>()?.into_iter()
                 // Get the largest size.
                 .max()
                 // If there are no fields, just return 0.
@@ -130,27 +149,95 @@ impl GetSize for Type {
 
             // Get the size of an `Apply` type.
             Self::Apply(poly, ty_args) => {
-                match poly.clone().simplify(env)? {
-                    Self::Poly(ty_params, template) => {
-                        // Make sure the number of type arguments matches the number of type parameters.
-                        if ty_args.len() != ty_params.len() {
-                            return Err(Error::InvalidTemplateArgs(self.clone()));
-                        }
-                        // Create a new environment with the type parameters defined.
-                        let mut new_env = env.clone();
-                        for (name, ty) in ty_params.iter().zip(ty_args.iter()) {
-                            new_env.define_type(name, ty.clone());
-                        }
-                        // Get the size of the resulting type.
-                        template.get_size_checked(&new_env, i)?
-                    }
-                    _ => {
-                        return Err(Error::ApplyNotTemplate(self.clone()));
-                    }
+                if let Ok(size) = poly.get_size_checked(env, i) {
+                    return Ok(size);
                 }
+
+                let result = self.clone().simplify_until_matches(env, Type::Poly(vec![], Box::new(Type::Any)), |t, env| {
+                    Ok(t.is_simple())
+                })?;
+
+                result.get_size_checked(env, i)?
+
+                // match *poly.clone() {
+                //     Self::Poly(ty_params, template) => {
+                //         // If all the arguments are atomic, we can substitute them into the template
+                //         // and get the size of the result.
+                //         if ty_args.iter().all(|t| t.is_atomic()) {
+                //             // Create a new environment with the type parameters defined.
+                //             let mut result = *poly.clone();
+                //             for (name, ty) in ty_params.iter().zip(ty_args.iter()) {
+                //                 result = result.substitute(name, ty);
+                //             }
+                //             // Get the size of the resulting type.
+                //             result.get_size_checked(env, i)?
+                //         } else {
+                //             // If any of the arguments are not atomic, we can't substitute them into the template.
+                //             // So we return an error.
+                //             return Err(Error::UnsizedType(self.clone()));
+                //         }
+                //     }
+                //     _ => {
+                //         return Err(Error::ApplyNonTemplate(self.clone()))
+                //     }
+                // }
+                // return Err(Error::UnsizedType(self.clone()))
+
+                // self
+                //     .clone()
+                //     .simplify(env)?
+                //     .perform_template_applications(env, &mut HashMap::new(), i)?
+                //     .get_size_checked(env, i)?
+
+                
+                // match poly.clone().simplify(env)? {
+                //     Self::Poly(ty_params, template) => {
+                //         // Make sure the number of type arguments matches the number of type parameters.
+                //         if ty_args.len() != ty_params.len() {
+                //             return Err(Error::InvalidTemplateArgs(self.clone()));
+                //         }
+                //         // Create a new environment with the type parameters defined.
+                //         let mut result = *template.clone();
+                //         for (name, ty) in ty_params.iter().zip(ty_args.iter()) {
+                //             // result = result.substitute(name, ty);
+                //             result = Type::let_bind(name, if Type::Symbol(name.clone()) == *ty {
+                //                 Type::Unit(name.clone(), Box::new(Type::Any))
+                //             } else {
+                //                 ty.clone()
+                //             }, result);
+                //         }
+                //         // Get the size of the resulting type.
+                //         result.get_size_checked(&env, i)?
+                //     }
+                //     Self::Let(name, t, ret) => {
+                //         // We need to create a new environment with the type defined in
+                //         // it, so that we can get the size of the resulting type.
+                //         let mut new_env = env.clone();
+                //         // new_env.define_type_size(*t.clone(), t.get_size_checked(env, i)?);
+                //         // new_env.define_type(name.clone(), *t.clone());
+                //         new_env.define_type(name, t.simplify_checked(env, i)?);
+                //         // Get the size of the resulting type.
+                //         ret.get_size_checked(&new_env, i)?
+                //     }
+                //     _ => {
+                //         return Err(Error::ApplyNonTemplate(self.clone()));
+                //     }
+                // }
             }
 
-            Self::Poly(_, _) => {
+            Self::Poly(ty_params, template) => {
+                // let mut template = *template.clone();
+                // for ty_param in ty_params {
+                //     // template = template.substitute(ty_param, &Type::Unit(ty_param.clone(), Box::new(Type::Any)));
+                //     template = Type::let_bind(ty_param, Type::Unit(ty_param.clone(), Box::new(Type::Any)), template);
+                // }
+                // let mut new_env = env.clone();
+                // for ty_param in ty_params {
+                //     new_env.define_type(ty_param, Type::Unit(ty_param.clone(), Box::new(Type::Any)));
+                // }
+                // if let Ok(size) = template.get_size_checked(&new_env, i) {
+                //     return Ok(size);
+                // }
                 return Err(Error::SizeOfTemplate(self.clone()));
             }
         })

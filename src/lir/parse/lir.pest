@@ -1,5 +1,5 @@
-WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
-// comment = ${ "#" ~ (!"\n" ~ ANY)* }
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" | "\r\n" | "\u{000C}" }
+COMMENT = _{ "#" ~ (!"\n" ~ ANY)* }
 
 keyword = @{
     "for"

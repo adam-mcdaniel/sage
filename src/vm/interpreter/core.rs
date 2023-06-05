@@ -30,9 +30,9 @@ where
     /// The current pointer on the turing tape.
     pointer: usize,
     /// The register (which contains a single cell of data).
-    register: isize,
+    register: i64,
     /// The turing tape (composed of integer cells)
-    cells: Vec<isize>,
+    cells: Vec<i64>,
     /// The addresses of defined functions. `functions[N]` is the
     /// instruction pointer for the Nth function's code.
     functions: Vec<usize>,
@@ -227,7 +227,7 @@ where
     }
 
     /// Get the current cell pointed to on the turing tape.
-    fn get_cell(&mut self) -> &mut isize {
+    fn get_cell(&mut self) -> &mut i64 {
         while self.pointer >= self.cells.len() {
             self.cells.extend(vec![0; 1000]);
         }
@@ -294,7 +294,7 @@ where
                     }
                 }
 
-                CoreOp::Where => self.register = self.pointer as isize,
+                CoreOp::Where => self.register = self.pointer as i64,
                 CoreOp::Deref => self.deref(),
                 CoreOp::Refer => self.refer()?,
 
@@ -318,7 +318,7 @@ where
                     }
                 }
 
-                CoreOp::IsNonNegative => self.register = isize::from(self.register >= 0),
+                CoreOp::IsNonNegative => self.register = i64::from(self.register >= 0),
                 CoreOp::Get(i) => self.register = self.device.get(i.clone())?,
                 CoreOp::Put(o) => self.device.put(self.register, o.clone())?,
             }

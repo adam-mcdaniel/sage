@@ -262,10 +262,9 @@ print("  map(increment): ");
 let result = expr_map(expr, &env, inc);
 expr_println(&result);
 
-for let i=0; i<1000; i+=1 {
+for let i=0; i<500; i+=1 {
     let range = range(1, i);
     expr_println(&range);
-    expr_free(range);
 }
 
 let text = "woo!!!\0";

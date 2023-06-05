@@ -13,9 +13,16 @@ pub struct Get;
 impl UnaryOp for Get {
     /// Can this unary operation be applied to the given type?
     fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
-        ty.equals(&Type::Pointer(Box::new(Type::Char)), env)
-            .or(ty.equals(&Type::Pointer(Box::new(Type::Int)), env))
-            .or(ty.equals(&Type::Pointer(Box::new(Type::Float)), env))
+        Ok(ty.clone().simplify_until_matches(env, Type::Any, |t, env| {
+            if let Type::Pointer(x) = t.clone() {
+                match *x {
+                    Type::Char | Type::Int | Type::Float => Ok(true),
+                    _ => Ok(false),
+                }
+            } else {
+                Ok(false)
+            }
+        }).is_ok())
     }
 
     /// Get the type of the result of applying this unary operation to the given type.
@@ -47,6 +54,28 @@ impl UnaryOp for Get {
                 Box::new(Expr::ConstExpr(ConstExpr::None)),
             )));
         }
+
+        // let ty = ty.clone().simplify_until_matches(env, Type::Any, |t, env| {
+        //     if let Type::Pointer(x) = t.clone() {
+        //         match *x {
+        //             Type::Char | Type::Int | Type::Float => Ok(true),
+        //             _ => Ok(false),
+        //         }
+        //     } else {
+        //         Ok(false)
+        //     }
+        // })?;
+        // match ty {
+        //     Type::Char => output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_char())),
+        //     Type::Int => output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_int())),
+        //     Type::Float => output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_float())),
+        //     _ => {
+        //         return Err(Error::UnsupportedOperation(Expr::UnaryOp(
+        //             self.clone_box(),
+        //             Box::new(Expr::ConstExpr(ConstExpr::None)),
+        //         )))
+        //     }
+        // }
 
         output.op(CoreOp::Pop(None, 1));
         Ok(())
@@ -84,45 +113,48 @@ impl Put {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        match t.clone().simplify(env)? {
+        let t = t.clone().simplify_until_matches(env, Type::Any, |t, env| {
+            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+        })?;
+        match t.clone() {
             Type::Pointer(_) => {
                 for ch in format!("&(").chars() {
-                    output.op(CoreOp::Set(A, ch as u8 as isize));
+                    output.op(CoreOp::Set(A, ch as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
                 output.op(CoreOp::Put(addr, Output::stdout_int()));
-                output.op(CoreOp::Set(A, ')' as u8 as isize));
+                output.op(CoreOp::Set(A, ')' as u8 as i64));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
             }
             Type::Bool => {
                 output.op(CoreOp::If(addr.clone()));
                 for c in "true".chars() {
-                    output.op(CoreOp::Set(A, c as u8 as isize));
+                    output.op(CoreOp::Set(A, c as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
                 output.op(CoreOp::Else);
                 for c in "false".chars() {
-                    output.op(CoreOp::Set(A, c as u8 as isize));
+                    output.op(CoreOp::Set(A, c as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
                 output.op(CoreOp::End);
             }
             Type::None => {
                 for c in "None".chars() {
-                    output.op(CoreOp::Set(A, c as u8 as isize));
+                    output.op(CoreOp::Set(A, c as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
             Type::Any => {
                 for c in "Any".chars() {
-                    output.op(CoreOp::Set(A, c as u8 as isize));
+                    output.op(CoreOp::Set(A, c as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
             Type::Cell => {
                 output.op(CoreOp::Put(addr.clone(), Output::stdout_int()));
                 for ch in " (Cell)".to_string().chars() {
-                    output.op(CoreOp::Set(A, ch as u8 as isize));
+                    output.op(CoreOp::Set(A, ch as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
@@ -133,15 +165,15 @@ impl Put {
                 output.op(CoreOp::Put(addr.clone(), Output::stdout_float()));
             }
             Type::Char => {
-                output.op(CoreOp::Set(A, '\'' as u8 as isize));
+                output.op(CoreOp::Set(A, '\'' as u8 as i64));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
                 output.op(CoreOp::Put(addr.clone(), Output::stdout_char()));
-                output.op(CoreOp::Set(A, '\'' as u8 as isize));
+                output.op(CoreOp::Set(A, '\'' as u8 as i64));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
             }
             Type::Never => {
                 for c in format!("Never").chars() {
-                    output.op(CoreOp::Set(A, c as u8 as isize));
+                    output.op(CoreOp::Set(A, c as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
@@ -154,17 +186,17 @@ impl Put {
                         src: addr.clone(),
                         dst: A,
                     });
-                    output.op(CoreOp::Set(B, variant_id as isize));
+                    output.op(CoreOp::Set(B, variant_id as i64));
                     // Check if the value is the same as the variant ID
                     output.op(CoreOp::IsEqual { a: A, b: B, dst: C });
                     output.op(CoreOp::If(C));
                     for c in variant.chars() {
-                        output.op(CoreOp::Set(A, c as u8 as isize));
+                        output.op(CoreOp::Set(A, c as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
 
                     for c in format!(" of {t}").chars() {
-                        output.op(CoreOp::Set(A, c as u8 as isize));
+                        output.op(CoreOp::Set(A, c as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
 
@@ -177,89 +209,89 @@ impl Put {
 
                 let ty_size = ty.get_size(env)? as isize;
 
-                output.op(CoreOp::Set(A, '[' as u8 as isize));
+                output.op(CoreOp::Set(A, '[' as u8 as i64));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
                 for i in 0..array_len as isize {
                     Self::debug(addr.offset(i * ty_size), &ty, env, output)?;
                     if i < array_len as isize - 1 {
-                        output.op(CoreOp::Set(A, ',' as u8 as isize));
+                        output.op(CoreOp::Set(A, ',' as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
-                        output.op(CoreOp::Set(A, ' ' as u8 as isize));
+                        output.op(CoreOp::Set(A, ' ' as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
                 }
-                output.op(CoreOp::Set(A, ']' as u8 as isize));
+                output.op(CoreOp::Set(A, ']' as u8 as i64));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
             }
 
             Type::Struct(fields) => {
                 for c in "struct {".chars() {
-                    output.op(CoreOp::Set(A, c as u8 as isize));
+                    output.op(CoreOp::Set(A, c as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
                 let mut offset = 0;
                 for (i, (field_name, field_type)) in fields.iter().enumerate() {
                     for c in field_name.chars() {
-                        output.op(CoreOp::Set(A, c as u8 as isize));
+                        output.op(CoreOp::Set(A, c as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
-                    output.op(CoreOp::Set(A, '=' as u8 as isize));
+                    output.op(CoreOp::Set(A, '=' as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                     Self::debug(addr.offset(offset), field_type, env, output)?;
                     if i < fields.len() - 1 {
-                        output.op(CoreOp::Set(A, ',' as u8 as isize));
+                        output.op(CoreOp::Set(A, ',' as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
-                        output.op(CoreOp::Set(A, ' ' as u8 as isize));
+                        output.op(CoreOp::Set(A, ' ' as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                         offset += field_type.get_size(env)? as isize;
                     }
                 }
-                output.op(CoreOp::Set(A, '}' as u8 as isize));
+                output.op(CoreOp::Set(A, '}' as u8 as i64));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
             }
 
             Type::Tuple(types) => {
-                output.op(CoreOp::Set(A, '(' as u8 as isize));
+                output.op(CoreOp::Set(A, '(' as u8 as i64));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
                 let mut offset = 0;
                 for (i, ty) in types.iter().enumerate() {
                     Self::debug(addr.offset(offset), ty, env, output)?;
                     if i < types.len() - 1 {
-                        output.op(CoreOp::Set(A, ',' as u8 as isize));
+                        output.op(CoreOp::Set(A, ',' as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
-                        output.op(CoreOp::Set(A, ' ' as u8 as isize));
+                        output.op(CoreOp::Set(A, ' ' as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                         offset += ty.get_size(env)? as isize;
                     }
                 }
-                output.op(CoreOp::Set(A, ')' as u8 as isize));
+                output.op(CoreOp::Set(A, ')' as u8 as i64));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
             }
 
             Type::Proc(args, ret) => {
                 for c in "proc(".chars() {
-                    output.op(CoreOp::Set(A, c as u8 as isize));
+                    output.op(CoreOp::Set(A, c as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
                 for (i, ty) in args.iter().enumerate() {
                     for ch in ty.to_string().chars() {
-                        output.op(CoreOp::Set(A, ch as u8 as isize));
+                        output.op(CoreOp::Set(A, ch as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
                     if i < args.len() - 1 {
-                        output.op(CoreOp::Set(A, ',' as u8 as isize));
+                        output.op(CoreOp::Set(A, ',' as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
-                        output.op(CoreOp::Set(A, ' ' as u8 as isize));
+                        output.op(CoreOp::Set(A, ' ' as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
                 }
                 for ch in ") -> ".to_string().chars() {
-                    output.op(CoreOp::Set(A, ch as u8 as isize));
+                    output.op(CoreOp::Set(A, ch as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
 
                 for ch in ret.to_string().chars() {
-                    output.op(CoreOp::Set(A, ch as u8 as isize));
+                    output.op(CoreOp::Set(A, ch as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
@@ -267,7 +299,7 @@ impl Put {
             Type::Unit(name, ty) => {
                 Self::debug(addr, &ty, env, output)?;
                 for ch in format!(" ({})", name).chars() {
-                    output.op(CoreOp::Set(A, ch as u8 as isize));
+                    output.op(CoreOp::Set(A, ch as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
@@ -275,7 +307,7 @@ impl Put {
             Type::Symbol(name) => {
                 t.type_check(env)?;
                 for ch in name.chars() {
-                    output.op(CoreOp::Set(A, ch as u8 as isize));
+                    output.op(CoreOp::Set(A, ch as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
@@ -290,7 +322,7 @@ impl Put {
                 for (name, variant_t) in fields.iter() {
                     if let Some(tag_value) = Type::variant_index(&variants, name) {
                         // Check if the value's tag is equal to tag for the name
-                        output.op(CoreOp::Set(A, tag_value as isize));
+                        output.op(CoreOp::Set(A, tag_value as i64));
                         output.op(CoreOp::IsEqual {
                             a: tag_address.clone(),
                             b: A,
@@ -299,7 +331,7 @@ impl Put {
                         output.op(CoreOp::If(B));
                         Self::debug(data_address.clone(), variant_t, env, output)?;
                         for c in format!(" of {name}").chars() {
-                            output.op(CoreOp::Set(A, c as u8 as isize));
+                            output.op(CoreOp::Set(A, c as u8 as i64));
                             output.op(CoreOp::Put(A, Output::stdout_char()));
                         }
                         output.op(CoreOp::End);
@@ -311,37 +343,37 @@ impl Put {
 
             Type::Union(fields) => {
                 for c in "union {".chars() {
-                    output.op(CoreOp::Set(A, c as u8 as isize));
+                    output.op(CoreOp::Set(A, c as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
                 for (i, (field_name, field_type)) in fields.iter().enumerate() {
                     for c in field_name.chars() {
-                        output.op(CoreOp::Set(A, c as u8 as isize));
+                        output.op(CoreOp::Set(A, c as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
-                    output.op(CoreOp::Set(A, ':' as u8 as isize));
+                    output.op(CoreOp::Set(A, ':' as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
-                    output.op(CoreOp::Set(A, ' ' as u8 as isize));
+                    output.op(CoreOp::Set(A, ' ' as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                     for ch in field_type.to_string().chars() {
-                        output.op(CoreOp::Set(A, ch as u8 as isize));
+                        output.op(CoreOp::Set(A, ch as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
-                    output.op(CoreOp::Set(A, ' ' as u8 as isize));
+                    output.op(CoreOp::Set(A, ' ' as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
-                    output.op(CoreOp::Set(A, '=' as u8 as isize));
+                    output.op(CoreOp::Set(A, '=' as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
-                    output.op(CoreOp::Set(A, ' ' as u8 as isize));
+                    output.op(CoreOp::Set(A, ' ' as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                     Self::debug(addr.clone(), field_type, env, output)?;
                     if i < fields.len() - 1 {
-                        output.op(CoreOp::Set(A, ',' as u8 as isize));
+                        output.op(CoreOp::Set(A, ',' as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
-                        output.op(CoreOp::Set(A, ' ' as u8 as isize));
+                        output.op(CoreOp::Set(A, ' ' as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
                 }
-                output.op(CoreOp::Set(A, '}' as u8 as isize));
+                output.op(CoreOp::Set(A, '}' as u8 as i64));
                 output.op(CoreOp::Put(A, Output::stdout_char()));
             }
 
@@ -356,7 +388,10 @@ impl Put {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        match t.clone().simplify(env)? {
+        let t = &t.clone().simplify_until_matches(env, Type::Any, |t, env| {
+            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+        })?;
+        match t.clone() {
             Type::Cell => {
                 output.op(CoreOp::Put(addr, Output::stdout_int()));
             }
@@ -372,19 +407,19 @@ impl Put {
                         src: addr.clone(),
                         dst: A,
                     });
-                    output.op(CoreOp::Set(B, variant_id as isize));
+                    output.op(CoreOp::Set(B, variant_id as i64));
                     // Check if the value is the same as the variant ID
                     output.op(CoreOp::IsEqual { a: A, b: B, dst: C });
                     output.op(CoreOp::If(C));
                     for c in variant.chars() {
-                        output.op(CoreOp::Set(A, c as u8 as isize));
+                        output.op(CoreOp::Set(A, c as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
                     output.op(CoreOp::End);
                 }
 
                 for c in format!(" of {t}").chars() {
-                    output.op(CoreOp::Set(A, c as u8 as isize));
+                    output.op(CoreOp::Set(A, c as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
@@ -398,18 +433,18 @@ impl Put {
                         output.op(CoreOp::Put(addr.offset(i), Output::stdout_char()));
                     }
                 } else {
-                    output.op(CoreOp::Set(A, '[' as u8 as isize));
+                    output.op(CoreOp::Set(A, '[' as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                     for i in 0..array_len as isize {
                         Self::debug(addr.offset(i * ty_size), &ty, env, output)?;
                         if i < array_len as isize - 1 {
-                            output.op(CoreOp::Set(A, ',' as u8 as isize));
+                            output.op(CoreOp::Set(A, ',' as u8 as i64));
                             output.op(CoreOp::Put(A, Output::stdout_char()));
-                            output.op(CoreOp::Set(A, ' ' as u8 as isize));
+                            output.op(CoreOp::Set(A, ' ' as u8 as i64));
                             output.op(CoreOp::Put(A, Output::stdout_char()));
                         }
                     }
-                    output.op(CoreOp::Set(A, ']' as u8 as isize));
+                    output.op(CoreOp::Set(A, ']' as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
             }
@@ -447,6 +482,12 @@ impl UnaryOp for Put {
     ) -> Result<(), Error> {
         // Get the size of the type.
         let size = ty.get_size(env)? as isize;
+
+        let mut ty = ty.clone();
+        ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+        })?;
+        let ty = &ty;
 
         // Calculate the address of the expression on the stack.
         let addr = SP.deref().offset(-size + 1);

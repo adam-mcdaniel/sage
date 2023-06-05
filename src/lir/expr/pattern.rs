@@ -1,6 +1,6 @@
 use crate::lir::*;
 use core::fmt::{Display, Formatter, Result as FmtResult};
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 /// A pattern which can be matched against an expression.
 ///
@@ -68,17 +68,11 @@ impl Pattern {
     ) -> Result<Type, Error> {
         // Get the type of the expression being matched.
         let mut ty = expr.get_type(env)?;
-        loop {
-            match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
-                    ty = ty.simplify(env)?;
-                }
-                Type::Poly(_, template) => {
-                    ty = *template.clone();
-                }
-                _ => break,
-            }
-        }
+        ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+            // Ok(t.is_simple())
+            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+            // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
+        })?;
         // Get the bindings for the pattern.
         let bindings = self.get_bindings(expr, &ty, env)?;
         // Create a new environment with the bindings.
@@ -102,17 +96,11 @@ impl Pattern {
         env: &Env,
     ) -> Result<bool, Error> {
         let mut ty = matching_expr_ty.clone();
-        loop {
-            match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
-                    ty = ty.simplify(env)?;
-                }
-                Type::Poly(_, template) => {
-                    ty = *template.clone();
-                }
-                _ => break,
-            }
-        }
+        ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+            // Ok(t.is_simple())
+            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+            // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
+        })?;
         let matching_expr_ty = &ty;
         match matching_expr_ty {
             Type::Bool => {
@@ -404,17 +392,21 @@ impl Pattern {
     pub fn type_check(&self, matching_expr: &Expr, branch: &Expr, env: &Env) -> Result<(), Error> {
         // Get the type of the expression being matched.
         let mut matching_ty = matching_expr.get_type(env)?;
-        loop {
-            match matching_ty {
-                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
-                    matching_ty = matching_ty.simplify(env)?;
-                }
-                Type::Poly(_, template) => {
-                    matching_ty = *template.clone();
-                }
-                _ => break,
-            }
-        }
+        // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+        //     match matching_ty {
+        //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
+        //             matching_ty = matching_ty.simplify(env)?;
+        //         }
+        //         Type::Poly(_, template) => {
+        //             matching_ty = *template.clone();
+        //         }
+        //         _ => break,
+        //     }
+        // }
+
+        matching_ty = matching_ty.simplify_until_matches(env, Type::Any, |t, env| {
+            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+        })?;
         // Get the type of the branch as a result of the match.
         let expected = self.get_branch_result_type(matching_expr, branch, env)?;
         // Type-check the expression generated to match the pattern.
@@ -514,14 +506,17 @@ impl Pattern {
         // Get the type of the expression being matched
         let mut match_type = expr.get_type(env)?;
         // Define the variable in the new environment.
-        loop {
-            match match_type {
-                Type::Let(_, _, _) | Type::Symbol(_) => {
-                    match_type = match_type.simplify(env)?;
-                }
-                _ => break,
-            }
-        }
+        // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+        //     match match_type {
+        //         Type::Let(_, _, _) | Type::Symbol(_) => {
+        //             match_type = match_type.simplify(env)?;
+        //         }
+        //         _ => break,
+        //     }
+        // }
+        match_type = match_type.simplify_until_matches(env, Type::Any, |t, env| {
+            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+        })?;
         new_env.define_var(var_name.clone(), match_type.clone())?;
         // Generate the expression which evaluates the `match` expression.
         let match_expr = Pattern::match_pattern_helper(&Expr::var(&var_name), &branches, &new_env)?;
@@ -571,19 +566,25 @@ impl Pattern {
         ty: &Type,
         env: &Env,
     ) -> Result<HashMap<String, Type>, Error> {
-        let mut t = ty.clone();
-        loop {
-            match t {
-                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
-                    t = t.simplify(env)?;
-                }
-                Type::Poly(ty_params, template) => {
-                    t = *template.clone();
-                }
-                _ => break,
-            }
-        }
-        let ty = &t;
+        let mut ty = ty.clone();
+        // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+        //     match t {
+        //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
+        //             t = t.simplify(env)?;
+        //         }
+        //         Type::Poly(_, template) => {
+        //             t = *template.clone();
+        //         }
+        //         _ => break,
+        //     }
+        // }
+        ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+            // Ok(t.is_simple())
+            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+            // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
+            // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _)))
+        })?;
+        let ty = &ty;
         Ok(match (self, ty) {
             // If the pattern is a tuple, and the type is a tuple, then
             // get the bindings for each element of the tuple.
@@ -693,8 +694,8 @@ impl Pattern {
             }
 
             (pat, ty) => {
-                eprintln!("pat: {pat}");
-                eprintln!("ty: {ty}");
+                // eprintln!("pat: {pat}");
+                // eprintln!("ty: {ty}");
                 // If the pattern does not match the type, then return an error.
                 return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
             }
@@ -705,17 +706,23 @@ impl Pattern {
     /// This function returns an expression which evaluates to true if the expression matches the pattern.
     fn matches(&self, expr: &Expr, ty: &Type, env: &Env) -> Result<Expr, Error> {
         let mut ty = ty.clone();
-        loop {
-            match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
-                    ty = ty.simplify(env)?;
-                }
-                Type::Poly(ty_params, template) => {
-                    ty = *template.clone();
-                }
-                _ => break,
-            }
-        }
+        // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+        //     match ty {
+        //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
+        //             ty = ty.simplify(env)?;
+        //         }
+        //         Type::Poly(_, template) => {
+        //             ty = *template.clone();
+        //         }
+        //         _ => break,
+        //     }
+        // }
+
+        ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+            // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
+            // Ok(t.is_simple())
+            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+        })?;
         let ty = &ty;
         Ok(match (self, ty) {
             // If the pattern is a variant, and the type is a EnumUnion,
@@ -878,17 +885,23 @@ impl Pattern {
     /// the expression which is being matched.
     fn bind(&self, expr: &Expr, ty: &Type, ret: &Expr, env: &Env) -> Result<Expr, Error> {
         let mut ty = ty.clone();
-        loop {
-            match ty {
-                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
-                    ty = ty.simplify(env)?;
-                }
-                Type::Poly(ty_params, template) => {
-                    ty = *template.clone();
-                }
-                _ => break,
-            }
-        }
+        // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+        //     match ty {
+        //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
+        //             ty = ty.simplify(env)?;
+        //         }
+        //         Type::Poly(_, template) => {
+        //             ty = *template.clone();
+        //         }
+        //         _ => break,
+        //     }
+        // }
+        ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+            // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
+            // Ok(matches!(t, Type::Any | Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _)))
+            // Ok(t.is_simple())
+            Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)))
+        })?;
         let ty = &ty;
         Ok(match (self, ty) {
             // If the pattern is a variant, and the type is a tagged union,

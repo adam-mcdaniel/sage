@@ -11,11 +11,11 @@
 
 use crate::lir::{
     CoreBuiltin, Env, Error, Expr, GetSize, GetType, PolyProcedure, Procedure, Simplify,
-    StandardBuiltin, Type,
+    StandardBuiltin, Type, TypeCheck,
 };
 
 use core::fmt;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// A compiletime expression.
 #[derive(Clone, Debug, PartialEq)]
@@ -134,9 +134,10 @@ impl ConstExpr {
                     expr.eval_checked(&new_env, i)
                 }
 
-                Self::Monomorphize(expr, ty_args) => {
-                    Ok(Self::Monomorphize(Box::new(expr.eval_checked(env, i)?), ty_args))
-                },
+                Self::Monomorphize(expr, ty_args) => Ok(Self::Monomorphize(
+                    Box::new(expr.eval_checked(env, i)?),
+                    ty_args,
+                )),
 
                 Self::TypeOf(expr) => Ok(Self::Array(
                     expr.get_type_checked(env, i)?
@@ -267,12 +268,13 @@ impl GetType for ConstExpr {
             Self::LetTypes(bindings, expr) => {
                 let mut new_env = env.clone();
                 for (name, ty) in bindings {
-                    new_env.define_type(&name, ty.clone());
+                    new_env.define_type(&name, ty);
                 }
-                expr.get_type_checked(&new_env, i)?
+                expr.get_type_checked(&new_env, i)?.simplify_until_matches(env, Type::Any, |t, env| t.type_check(env).map(|_| true))?
             }
             Self::Monomorphize(expr, ty_args) => {
-                Type::Apply(Box::new(expr.get_type(env)?), ty_args).simplify(env)?
+                // Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::<Result<Vec<Type>, Error>>()?).perform_template_applications(env, &mut HashMap::new(), 0)?
+                Type::Apply(Box::new(expr.get_type_checked(env, i)?), ty_args)
             }
             Self::TypeOf(expr) => {
                 let size = expr.get_type_checked(env, i)?.to_string().len();
@@ -338,6 +340,84 @@ impl GetType for ConstExpr {
                 }
             }
         })
+    }
+
+    fn substitute(&mut self, name: &str, ty: &Type) {
+        match self {
+            Self::As(expr, cast_ty) => {
+                expr.substitute(name, ty);
+                *cast_ty = cast_ty.substitute(name, ty);
+            }
+            Self::LetTypes(bindings, expr) => {
+                // if bindings.iter().map(|(n, _)| n).any(|n| n == name) {
+                //     return;
+                // }
+                for (_, ty) in bindings {
+                    *ty = ty.substitute(name, ty);
+                }
+                expr.substitute(name, ty);
+            }
+            Self::Monomorphize(expr, ty_args) => {
+                expr.substitute(name, ty);
+                for ty in ty_args {
+                    *ty = ty.substitute(name, ty);
+                }
+            }
+            Self::TypeOf(expr) => {
+                expr.substitute(name, ty);
+            }
+            Self::Null => {}
+            Self::None => {}
+            Self::SizeOfType(ty) => {
+                *ty = ty.substitute(name, ty);
+            }
+            Self::SizeOfExpr(expr) => {
+                expr.substitute(name, ty);
+            }
+            Self::Int(_) => {}
+            Self::Float(_) => {}
+            Self::Char(_) => {}
+            Self::Bool(_) => {}
+            Self::Of(enum_type, _) => {
+                *enum_type = enum_type.substitute(name, ty);
+            }
+            Self::Tuple(items) => {
+                for item in items {
+                    item.substitute(name, ty);
+                }
+            }
+            Self::Array(items) => {
+                for item in items {
+                    item.substitute(name, ty);
+                }
+            }
+            Self::Struct(fields) => {
+                for (_, item) in fields {
+                    item.substitute(name, ty);
+                }
+            }
+            Self::Union(t, _, expr) => {
+                *t = t.substitute(name, ty);
+                expr.substitute(name, ty);
+            }
+            Self::EnumUnion(t, _, expr) => {
+                *t = t.substitute(name, ty);
+                expr.substitute(name, ty);
+            }
+            Self::PolyProc(proc) => {
+                proc.substitute(name, ty);
+            }
+            Self::Proc(proc) => {
+                proc.substitute(name, ty);
+            }
+            Self::CoreBuiltin(builtin) => {
+                builtin.substitute(name, ty);
+            }
+            Self::StandardBuiltin(builtin) => {
+                builtin.substitute(name, ty);
+            }
+            Self::Symbol(_) => {}
+        }
     }
 }
 
