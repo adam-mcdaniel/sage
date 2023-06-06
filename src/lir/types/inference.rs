@@ -21,6 +21,15 @@ pub trait GetType {
     /// Get the type of a value under a given environment and check
     /// recursion depth to prevent a possible stack overflow.
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error>;
+
+    /// Substitute a type for a given name in the environment.
+    fn substitute(&mut self, name: &str, ty: &Type);
+
+    fn substitute_types(&mut self, names: &[String], types: &[Type]) {
+        for (name, ty) in names.iter().zip(types.iter()) {
+            self.substitute(name, ty)
+        }
+    }
 }
 
 /// Infer the type associated with an expression under a given environment.
@@ -89,7 +98,7 @@ impl GetType for Expr {
                 let mut new_env = env.clone();
                 new_env.define_const(name, expr.clone());
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                ret.get_type_checked(&new_env, i)? //.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after several constant definitions.
@@ -101,7 +110,7 @@ impl GetType for Expr {
                     new_env.define_const(name, c.clone());
                 }
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                ret.get_type_checked(&new_env, i)? //.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after a procedure definition.
@@ -110,7 +119,7 @@ impl GetType for Expr {
                 let mut new_env = env.clone();
                 new_env.define_proc(name, proc.clone());
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                ret.get_type_checked(&new_env, i)? //.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after several procedure definitions.
@@ -122,7 +131,7 @@ impl GetType for Expr {
                     new_env.define_proc(name, proc.clone());
                 }
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                ret.get_type_checked(&new_env, i)? //.simplify(&new_env)?
             }
 
             // Get the type of a resulting expression after a type definition.
@@ -130,8 +139,13 @@ impl GetType for Expr {
                 // Create a new environment with the type
                 let mut new_env = env.clone();
                 new_env.define_type(name, t.clone());
+                new_env.define_type(name, t.clone().simplify(&new_env)?);
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                ret.get_type_checked(&new_env, i)?.simplify_until_matches(
+                    env,
+                    Type::Any,
+                    |t, env| t.type_check(env).map(|()| true),
+                )?
             }
 
             // Get the type of a resulting expression after several type definitions.
@@ -141,9 +155,14 @@ impl GetType for Expr {
                 for (name, ty) in types {
                     // Define the type in the new environment.
                     new_env.define_type(name, ty.clone());
+                    new_env.define_type(name, ty.clone().simplify(&new_env)?);
                 }
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                ret.get_type_checked(&new_env, i)?.simplify_until_matches(
+                    env,
+                    Type::Any,
+                    |t, env| t.type_check(env).map(|()| true),
+                )?
             }
 
             // Get the type of a resulting expression after a variable definition.
@@ -210,13 +229,42 @@ impl GetType for Expr {
             // Get the type of a procedure call.
             Self::Apply(func, _) => {
                 // Get the type of the function.
-                if let Type::Proc(_, ret) = func.get_type_checked(env, i)?.simplify(env)? {
-                    // Get the return type of the procedure.
-                    *ret
-                } else {
-                    // If the value is not a procedure, we cannot apply it.
-                    return Err(Error::ApplyNonProc(self.clone()));
+                let mut ty = func.get_type_checked(env, i)?;
+                ty = ty.simplify_until_matches(
+                    env,
+                    Type::Proc(vec![], Box::new(Type::Any)),
+                    |t, env| Ok(t.is_simple()),
+                )?;
+                match ty {
+                    Type::Proc(_, ret) => *ret,
+                    Type::Let(name, t, result) => {
+                        let mut new_env = env.clone();
+                        new_env.define_type(name, *t.clone());
+                        if let Type::Proc(_args, ret) = *result {
+                            *ret
+                        } else {
+                            return Err(Error::ApplyNonProc(self.clone()));
+                        }
+                    }
+                    // // Get the type of an polymorphic type.
+                    // Type::Apply(poly, ty_args) => {
+                    //     if let Type::Poly(_, ret) = poly {
+                    //         // Get the type of the return type after applying the type arguments.
+                    //         ret.apply_type_args(ty_args, env)?
+                    //     } else {
+                    //         // If the type is not a polymorphic type, we cannot apply it.
+                    //         return Err(Error::ApplyNonProc(self.clone()));
+                    //     }
+                    // }
+                    _ => return Err(Error::ApplyNonProc(self.clone())),
                 }
+                // if let Type::Proc(_, ret) = func.get_type_checked(env, i)?.simplify(env)? {
+                //     // Get the return type of the procedure.
+                //     *ret
+                // } else {
+                //     // If the value is not a procedure, we cannot apply it.
+                //     return Err(Error::ApplyNonProc(self.clone()));
+                // }
             }
 
             // Get the type of a tuple literal.
@@ -242,7 +290,7 @@ impl GetType for Expr {
                     Type::Any
                 }),
                 // Get the length of the array.
-                Box::new(ConstExpr::Int(items.len() as i32)),
+                Box::new(ConstExpr::Int(items.len() as i64)),
             ),
             // Get the type of a struct literal.
             Self::Struct(fields) => Type::Struct(
@@ -260,6 +308,9 @@ impl GetType for Expr {
             // Get the type of a union literal.
             Self::Union(t, _, _) => t.clone(),
 
+            // Get the type of a tagged union literal.
+            Self::EnumUnion(t, _, _) => t.clone(),
+
             // Get the type of a member access.
             Self::Member(val, field) => {
                 // Get the field to access (as a symbol)
@@ -267,11 +318,20 @@ impl GetType for Expr {
                 // Get the field to access (as an integer)
                 let as_int = field.clone().as_int(env);
                 // Get the type of the value to get the member of.
-                match val.get_type_checked(env, i)?.simplify(env)? {
+                match val.get_type_checked(env, i)?.simplify_until_matches(
+                    env,
+                    Type::Struct(BTreeMap::new()),
+                    |t, env| {
+                        Ok(matches!(
+                            t,
+                            Type::Tuple(_) | Type::Struct(_) | Type::Union(_)
+                        ))
+                    },
+                ) {
                     // If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
                     // This is because tuples are accesed by integer index.
-                    Type::Tuple(items) => {
+                    Ok(Type::Tuple(items)) => {
                         // Get the index of the field.
                         let n = as_int? as usize;
                         // If the index is in range, return the type of the field.
@@ -286,7 +346,7 @@ impl GetType for Expr {
                     // If we're accessing a member of a struct,
                     // we use the `as_symbol` interpretation of the field.
                     // This is because struct members are accessed by name.
-                    Type::Struct(fields) => {
+                    Ok(Type::Struct(fields)) => {
                         // Get the type of the field.
                         if let Some(t) = fields.get(&as_symbol?) {
                             // Return the type of the field.
@@ -299,7 +359,7 @@ impl GetType for Expr {
                     // If we're accessing a member of a union,
                     // we use the `as_symbol` interpretation of the field.
                     // This is because union members are accessed by name.
-                    Type::Union(types) => {
+                    Ok(Type::Union(types)) => {
                         // Get the type of the field.
                         if let Some(t) = types.get(&as_symbol?) {
                             // Return the type of the field.
@@ -309,16 +369,16 @@ impl GetType for Expr {
                             return Err(Error::MemberNotFound(*val.clone(), field.clone()));
                         }
                     }
-                    // If we're accessing a member whose type is a more complex
-                    // let-binding, we need to look up the type of the member using
-                    // another environment.
-                    Type::Let(name, t, ret) => {
-                        // Create a new environment with the type of the let-binding
-                        let mut new_env = env.clone();
-                        new_env.define_type(name, *t);
-                        // Get the type of the member in the new environment.
-                        ret.get_member_offset(field, val, &new_env)?.0
-                    }
+                    // // If we're accessing a member whose type is a more complex
+                    // // let-binding, we need to look up the type of the member using
+                    // // another environment.
+                    // Type::Let(name, t, ret) => {
+                    //     // Create a new environment with the type of the let-binding
+                    //     let mut new_env = env.clone();
+                    //     new_env.define_type(name, *t);
+                    //     // Get the type of the member in the new environment.
+                    //     ret.get_member_offset(field, val, &new_env)?.0
+                    // }
 
                     // If we're accessing a member of a type that is not a tuple,
                     // struct, or union, we cannot access a member.
@@ -337,5 +397,168 @@ impl GetType for Expr {
                 _ => return Err(Error::InvalidIndex(self.clone())),
             },
         })
+    }
+
+    /// Substitute a type in a given expression.
+    fn substitute(&mut self, name: &str, ty: &Type) {
+        match self {
+            Self::ConstExpr(cexpr) => cexpr.substitute(name, ty),
+            Self::LetConst(name, cexpr, expr) => {
+                cexpr.substitute(name, ty);
+                expr.substitute(name, ty)
+            }
+            Self::LetConsts(cexprs, expr) => {
+                for cexpr in cexprs.values_mut() {
+                    cexpr.substitute(name, ty);
+                }
+                expr.substitute(name, ty)
+            }
+            Self::LetProc(name, proc, expr) => {
+                proc.substitute(name, ty);
+                expr.substitute(name, ty)
+            }
+            Self::LetProcs(procs, expr) => {
+                for (_, proc) in procs.iter_mut() {
+                    proc.substitute(name, ty);
+                }
+                expr.substitute(name, ty)
+            }
+            Self::LetVar(var, t, val, ret) => {
+                if let Some(t) = t {
+                    *t = t.substitute(name, ty);
+                }
+                val.substitute(name, ty);
+                ret.substitute(name, ty)
+            }
+            Self::LetVars(vars, ret) => {
+                for (_, t, val) in vars.iter_mut() {
+                    if let Some(t) = t {
+                        *t = t.substitute(name, ty);
+                    }
+                    val.substitute(name, ty);
+                }
+                ret.substitute(name, ty)
+            }
+
+            Self::If(cond, then, els) => {
+                cond.substitute(name, ty);
+                then.substitute(name, ty);
+                els.substitute(name, ty)
+            }
+            Self::While(cond, body) => {
+                cond.substitute(name, ty);
+                body.substitute(name, ty)
+            }
+            Self::LetType(type_name, t, expr) => {
+                if type_name != name {
+                    *t = t.substitute(name, ty);
+                    expr.substitute(name, ty)
+                }
+            }
+            Self::LetTypes(types, expr) => {
+                if !types.iter().map(|(a, _)| a == name).any(|i| i) {
+                    for (_, t) in types.iter_mut() {
+                        *t = t.substitute(name, ty);
+                    }
+                    expr.substitute(name, ty)
+                }
+            }
+            Self::Many(exprs) => {
+                for expr in exprs.iter_mut() {
+                    expr.substitute(name, ty);
+                }
+            }
+            Self::When(cond, then_body, else_body) => {
+                cond.substitute(name, ty);
+                then_body.substitute(name, ty);
+                else_body.substitute(name, ty)
+            }
+
+            Self::Match(expr, arms) => {
+                expr.substitute(name, ty);
+                for (_, arm) in arms.iter_mut() {
+                    arm.substitute(name, ty);
+                }
+            }
+
+            Self::IfLet(pat, expr, then_body, else_body) => {
+                expr.substitute(name, ty);
+                then_body.substitute(name, ty);
+                else_body.substitute(name, ty)
+            }
+
+            Self::UnaryOp(op, expr) => expr.substitute(name, ty),
+
+            Self::BinaryOp(op, lhs, rhs) => {
+                lhs.substitute(name, ty);
+                rhs.substitute(name, ty)
+            }
+
+            Self::TernaryOp(op, cond, then, els) => {
+                cond.substitute(name, ty);
+                then.substitute(name, ty);
+                els.substitute(name, ty)
+            }
+
+            Self::AssignOp(op, lhs, rhs) => {
+                lhs.substitute(name, ty);
+                rhs.substitute(name, ty)
+            }
+
+            Self::Refer(expr) => expr.substitute(name, ty),
+
+            Self::Deref(expr) => expr.substitute(name, ty),
+
+            Self::DerefMut(expr, val) => {
+                expr.substitute(name, ty);
+                val.substitute(name, ty)
+            }
+
+            Self::Apply(expr, args) => {
+                expr.substitute(name, ty);
+                for arg in args.iter_mut() {
+                    arg.substitute(name, ty);
+                }
+            }
+
+            Self::Return(expr) => expr.substitute(name, ty),
+
+            Self::Array(exprs) | Self::Tuple(exprs) => {
+                for expr in exprs.iter_mut() {
+                    expr.substitute(name, ty);
+                }
+            }
+
+            Self::Union(t, _, expr) => {
+                *t = t.substitute(name, ty);
+                expr.substitute(name, ty)
+            }
+
+            Self::EnumUnion(t, _, expr) => {
+                *t = t.substitute(name, ty);
+                expr.substitute(name, ty)
+            }
+
+            Self::Struct(fields) => {
+                for (_, expr) in fields.iter_mut() {
+                    expr.substitute(name, ty);
+                }
+            }
+
+            Self::As(expr, t) => {
+                expr.substitute(name, ty);
+                *t = t.substitute(name, ty)
+            }
+
+            Self::Member(expr, cexpr) => {
+                expr.substitute(name, ty);
+                cexpr.substitute(name, ty)
+            }
+
+            Self::Index(expr, cexpr) => {
+                expr.substitute(name, ty);
+                cexpr.substitute(name, ty)
+            }
+        }
     }
 }

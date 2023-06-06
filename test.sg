@@ -1,0 +1,37 @@
+enum Direction {
+    North, South, East, West
+}
+
+match (Direction of South, 2, struct {x = 5, y = -6}) {
+    (of North, _, _)
+    | (of East, _, _)
+    | (of West, _, _)
+    | (of South, 3, _) => print("Incorrect!\n"),
+    (of South, 2, {x, y}) => {
+        if (x == 5 && y == -6) {
+            print("Correct!\n");
+        } else {
+            print("Incorrect!\n");
+        }
+    },
+    _ => print("Incorrect!\n")
+}
+
+enum Option<T> {
+    Some(T),
+    Nothing
+}
+
+def divide(n: Int, d: Int): Option<Int> {
+    if (d == 0) {
+        return Option<Int> of Nothing;
+    } else {
+        return Option<Int> of Some(n / d);
+    }
+}
+
+if let of Some(n) = divide(5, 0) {
+    print("5 / 0 = ", n, "\n");
+} else {
+    print("5 / 0 = undefined\n");
+}

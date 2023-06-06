@@ -197,7 +197,7 @@ pub enum CoreOp {
     Comment(String),
 
     /// Set the register equal to a constant value.
-    Set(isize),
+    Set(i64),
 
     /// Create a new function.
     Function,

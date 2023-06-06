@@ -116,7 +116,7 @@ pub trait VirtualMachineProgram {
         }
     }
 
-    fn set_register(&mut self, val: isize) {
+    fn set_register(&mut self, val: i64) {
         self.op(CoreOp::Set(val))
     }
 

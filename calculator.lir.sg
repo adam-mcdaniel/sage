@@ -1,0 +1,344 @@
+enum Expr {
+    Add (&Expr, &Expr),
+    Sub (&Expr, &Expr),
+    Mul (&Expr, &Expr),
+    Div (&Expr, &Expr),
+    Rem (&Expr, &Expr),
+    Num Float,
+    Group &Expr,
+}
+
+def eval(expr: &Expr): Float = match *expr {
+    of Add (lhs, rhs) => eval(lhs) + eval(rhs),
+    of Sub (lhs, rhs) => eval(lhs) - eval(rhs),
+    of Mul (lhs, rhs) => eval(lhs) * eval(rhs),
+    of Div (lhs, rhs) => eval(lhs) / eval(rhs),
+    of Rem (lhs, rhs) => eval(lhs) % eval(rhs),
+    of Num n => n,
+    of Group inner => eval(inner)
+};
+
+def free_expr(expr: &Expr) {
+    match *expr {
+        of Add (lhs, rhs)
+        | of Sub (lhs, rhs)
+        | of Mul (lhs, rhs)
+        | of Div (lhs, rhs)
+        | of Rem (lhs, rhs) => {
+            free_expr(lhs);
+            free_expr(rhs);
+        },
+        of Group inner => free_expr(inner),
+        _ => {}
+    }
+    del expr;
+}
+
+def print_expr(expr: &Expr) {
+    match *expr {
+        of Add(lhs, rhs) => {
+            print_expr(lhs);
+            print(" + ");
+            print_expr(rhs);
+        },
+        of Sub(lhs, rhs) => {
+            print_expr(lhs);
+            print(" - ");
+            print_expr(rhs);
+        },
+        of Mul(lhs, rhs) => {
+            print_expr(lhs);
+            print(" * ");
+            print_expr(rhs);
+        },
+        of Div(lhs, rhs) => {
+            print_expr(lhs);
+            print(" / ");
+            print_expr(rhs);
+        },
+        of Rem(lhs, rhs) => {
+            print_expr(lhs);
+            print(" % ");
+            print_expr(rhs);
+        },
+        of Num n => print(n),
+        of Group expr => {
+            print("(");
+            print_expr(expr);
+            print(")");
+        }
+    }
+}
+
+def is_between_inclusive(ch: Char, start: Char, end: Char): Bool {
+    let start = start as Int,
+        end = end as Int,
+        ch = ch as Int;
+
+    return start <= ch && ch <= end;
+}
+
+struct Input {
+    start: &Char,
+    loc: Int,
+    length: Int
+}
+
+def free_input(input: Input) {
+    del input.start;
+}
+
+enum ParseResult {
+    Ok (Input, &Expr),
+    Err Int
+}
+
+def parse_float(input: Input): ParseResult {
+    let save = input;
+    let n = 0.0;
+
+    if (input.loc == input.length) {
+        return ParseResult of Err (input.loc);
+    }
+
+    if !(is_between_inclusive(input.start[input.loc], '0', '9')) {
+        return ParseResult of Err (input.loc);
+    }
+
+    for (); input.loc < input.length && is_between_inclusive(input.start[input.loc], '0', '9'); input.loc += 1 {
+        n *= 10.0;
+        n += (input.start[input.loc] as Int - '0' as Int) as Float;
+    }
+
+    if (input.loc < input.length && input.start[input.loc] == '.') {
+        input.loc += 1;
+        let m = 0.1;
+        for (); input.loc < input.length && is_between_inclusive(input.start[input.loc], '0', '9'); input.loc += 1 {
+            n += (input.start[input.loc] as Int - '0' as Int) as Float * m;
+            m *= 0.1;
+        }
+    }
+    return ParseResult of Ok (input, new Expr of Num n);
+}
+
+def binop(
+    lhs: &Expr,
+    input: Input,
+    op: Char,
+    factor: Input -> ParseResult,
+    cons: (&Expr, &Expr) -> &Expr): ParseResult {
+
+    input = parse_whitespaces(input);
+    if (input.loc == input.length) {
+        return ParseResult of Err (input.loc);
+    }
+
+    if input.start[input.loc] == op {
+        input.loc += 1;
+        input = parse_whitespaces(input);
+        match parse_term(input) {
+            of Ok (input, rhs) => {
+                return ParseResult of Ok (input, cons(lhs, rhs));
+            },
+            of Err _ => {
+                return ParseResult of Err (input.loc);
+            }
+        }
+    } else {
+        return ParseResult of Err (input.loc);
+    }
+}
+
+def parse_expr(input: Input): ParseResult {
+    let save = input;
+
+    if (input.loc == input.length) {
+        return ParseResult of Err (input.loc);
+    }
+
+    def add_cons(lhs: &Expr, rhs: &Expr): &Expr {
+        return new Expr of Add(lhs, rhs);
+    } 
+    def sub_cons(lhs: &Expr, rhs: &Expr): &Expr {
+        return new Expr of Sub(lhs, rhs);
+    }
+
+    match parse_term(input) {
+        of Ok (new_input, lhs) => {
+            input = new_input;
+            while True {
+                lhs = match binop(lhs, input, '+', parse_term, add_cons) {
+                    of Ok (new_input, new_lhs) => {
+                        input = new_input;
+                        new_lhs;
+                    },
+                    of Err _ => match binop(lhs, input, '-', parse_term, sub_cons) {
+                        of Ok (new_input, new_lhs) => {
+                            input = new_input;
+                            new_lhs;
+                        },
+                        of Err _ => {
+                            return ParseResult of Ok (input, lhs);
+                        }
+                    }
+                };
+            }
+            return ParseResult of Ok (input, lhs);
+        },
+        of Err _ => {return ParseResult of Err (input.loc);}
+    }
+}
+
+def parse_term(input: Input): ParseResult {
+    let save = input;
+
+    if (input.loc == input.length) {
+        return ParseResult of Err (input.loc);
+    }
+
+    def mul_cons(lhs: &Expr, rhs: &Expr): &Expr {
+        return new Expr of Mul(lhs, rhs);
+    } 
+    def div_cons(lhs: &Expr, rhs: &Expr): &Expr {
+        return new Expr of Div(lhs, rhs);
+    }
+    def rem_cons(lhs: &Expr, rhs: &Expr): &Expr {
+        return new Expr of Rem(lhs, rhs);
+    }
+
+    match parse_atom(input) {
+        of Ok (new_input, lhs) => {
+            input = new_input;
+            while True {
+                lhs = match binop(lhs, input, '*', parse_atom, mul_cons) {
+                    of Ok (new_input, new_lhs) => {
+                        input = new_input;
+                        new_lhs;
+                    },
+                    of Err _ => match binop(lhs, input, '/', parse_atom, div_cons) {
+                        of Ok (new_input, new_lhs) => {
+                            input = new_input;
+                            new_lhs;
+                        },
+                        of Err _ => match binop(lhs, input, '%', parse_atom, rem_cons) {
+                            of Ok (new_input, new_lhs) => {
+                                input = new_input;
+                                new_lhs;
+                            },
+                            of Err _ => {
+                                return ParseResult of Ok (input, lhs);
+                            }
+                        }
+                    }
+                };
+            }
+            return ParseResult of Ok (input, lhs);
+        },
+        of Err _ => {return ParseResult of Err (input.loc);}
+    }
+}
+
+
+def parse_atom(input: Input): ParseResult {
+    let save = input;
+
+    if (input.loc == input.length) {
+        return ParseResult of Err (input.loc);
+    }
+
+    let result = parse_float(input);
+    if let of Err _ = result {
+        return parse_group(input);
+    }
+    return result;
+}
+
+def parse_group(input: Input): ParseResult {
+    let save = input;
+
+    if (input.loc == input.length) {
+        return ParseResult of Err (input.loc);
+    }
+
+    if (input.start[input.loc] != '(') {
+        return ParseResult of Err (input.loc);
+    }
+
+    input.loc += 1;
+    let input = parse_whitespaces(input);
+
+    return match parse_expr(input) {
+        of Ok (input, expr) => {
+            input = parse_whitespaces(input);
+            if (input.start[input.loc] != ')') {
+                return ParseResult of Err (input.loc);
+            }
+            input.loc += 1;
+            ParseResult of Ok (input, new Expr of Group(expr));
+        },
+        of Err _ => ParseResult of Err (input.loc)
+    };
+}
+
+def parse_whitespaces(input: Input): Input {
+    let save = input;
+
+    if (input.loc == input.length) {
+        return input;
+    }
+
+    for (); input.loc < input.length && (input.start[input.loc] == ' ' || input.start[input.loc] == '
+' || input.start[input.loc] == '\n'); input.loc += 1 {}
+
+    return input;
+}
+
+def is_done(input: Input): Bool = input.loc >= input.length;
+
+def strlen(ch: &Char): Int {
+    let i = 0;
+    for (); ch[i] != '\0'; i+=1 {}
+    return i;
+}
+
+def getchar(): Char {
+    let ch = ' ';
+    input(&ch);
+    return ch;
+}
+
+def readline(ch: &Char, len: Int): Int {
+    let i = len;
+
+    let c = getchar();
+    for (); c != '\n' && c != '\0'; i+=1 {
+        ch[i] = c;
+        c = getchar();
+    }
+    return i;
+}
+
+def read(): Input {
+    let buf = alloc(sizeof(Char) * 1024) as &Char;
+
+    print("? ");
+    let len = readline(buf, 0);
+    buf[len] = '\0';
+
+    return {
+        start = buf as &Char,
+        length = strlen(buf as &Char),
+        loc = 0
+    };
+}
+
+let input = read();
+match parse_expr(input) {
+    of Ok (input, n) => {
+        print_expr(n);
+        print("\n => ", eval(n), "\n");
+        free_expr(n);
+        free_input(input);
+    },
+    of Err n => print("\nCalculator: error while parsing at character: \n", input.start[n], "\n")
+}

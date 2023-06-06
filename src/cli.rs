@@ -31,11 +31,15 @@ enum TargetType {
     StdVM,
     /// Compile to C source code (GCC only).
     C,
+    /// Compile to x86 assembly code.
+    X86,
 }
 
 /// The source language options to compile.
 #[derive(clap::ValueEnum, Clone, Copy, Debug)]
 enum SourceType {
+    /// Compile Sage Frontend code.
+    Sage,
     /// Compile LIR code.
     LowIR,
     /// Compile core variant assembly code.
@@ -61,7 +65,7 @@ struct Args {
     output: String,
 
     /// The source language to compile.
-    #[clap(short, value_parser, default_value = "low-ir")]
+    #[clap(short, value_parser, default_value = "sage")]
     source_type: SourceType,
 
     /// The target language to compile to.
@@ -71,6 +75,10 @@ struct Args {
     /// The number of cells allocated for the call stack.
     #[clap(short, long, value_parser, default_value = "8192")]
     call_stack_size: usize,
+
+    /// Compile the output code in debug mode.
+    #[clap(short, long, default_value = "false")]
+    debug: bool,
 }
 
 /// The types of errors returned by the CLI.
@@ -97,7 +105,7 @@ impl fmt::Debug for Error {
             Error::IO(e) => write!(f, "IO error: {:?}", e),
             Error::Parse(e) => write!(f, "Parse error: {}", e),
             Error::AsmError(e) => write!(f, "Assembly error: {:?}", e),
-            Error::LirError(e) => write!(f, "LIR error: {:?}", e),
+            Error::LirError(e) => write!(f, "LIR error: {}", e),
             Error::InterpreterError(e) => write!(f, "Interpreter error: {}", e),
             Error::BuildError(e) => write!(f, "Build error: {}", e),
             Error::InvalidSource(e) => write!(f, "Invalid source: {}", e),
@@ -169,6 +177,21 @@ fn compile_source_to_vm(
                     .map_err(Error::AsmError)?)),
             }
         }
+        SourceType::Sage => {
+            match parse_frontend(src)
+                .map_err(Error::Parse)?
+                .compile()
+                .map_err(Error::LirError)?
+            {
+                // If we got back a valid program, assemble it and return the result.
+                Ok(asm_code) => Ok(Ok(asm_code
+                    .assemble(call_stack_size)
+                    .map_err(Error::AsmError)?)),
+                Err(asm_code) => Ok(Err(asm_code
+                    .assemble(call_stack_size)
+                    .map_err(Error::AsmError)?)),
+            }
+        }
     }
 }
 
@@ -193,6 +216,12 @@ fn compile_source_to_asm(
             .map_err(Error::Parse)?
             .compile()
             .map_err(Error::LirError),
+        
+        // If the source language is Sage, parse it and compile it to assembly code.
+        SourceType::Sage => parse_frontend(src)
+            .map_err(Error::Parse)?
+            .compile()
+            .map_err(Error::LirError),
         // If the source language is a virtual machine program,
         // then we cannot compile it to assembly. Throw an error.
         SourceType::CoreVM | SourceType::StdVM => Err(Error::InvalidSource(
@@ -208,6 +237,7 @@ fn compile(
     target: TargetType,
     output: String,
     call_stack_size: usize,
+    debug: bool,
 ) -> Result<(), Error> {
     match target {
         // If the target is `Run`, then compile the code and execute it with the interpreter.
@@ -230,14 +260,28 @@ fn compile(
         TargetType::C => write_file(
             format!("{output}.c"),
             match compile_source_to_vm(src, src_type, call_stack_size)? {
-                Ok(vm_code) => targets::C.build_core(&vm_code.flatten()),
-                Err(vm_code) => targets::C.build_std(&vm_code.flatten()),
+                Ok(vm_code) => targets::C::default().build_core(&vm_code.flatten()),
+                Err(vm_code) => targets::C::default().build_std(&vm_code.flatten()),
+            }
+            .map_err(Error::BuildError)?,
+        )?,
+        // If the target is x86 assembly code, then compile the code to virtual machine code,
+        // and then use the x86 target implementation to build the output source code.
+        TargetType::X86 => write_file(
+            format!("{output}.s"),
+            match compile_source_to_vm(src, src_type, call_stack_size)? {
+                Ok(vm_code) => targets::X86::default().build_core(&vm_code.flatten()),
+                Err(vm_code) => targets::X86::default().build_std(&vm_code.flatten()),
             }
             .map_err(Error::BuildError)?,
         )?,
         // If the target is core virtual machine code, then try to compile the source to the core variant.
         // If not possible, throw an error.
         TargetType::CoreVM => match compile_source_to_vm(src, src_type, call_stack_size)? {
+            Ok(vm_code) if debug => write_file(
+                format!("{output}.vm.sg"),
+                format!("{:#}", vm_code.flatten()),
+            ),
             Ok(vm_code) => write_file(format!("{output}.vm.sg"), vm_code.flatten().to_string()),
             Err(_) => Err(Error::InvalidSource(
                 "expected core VM program, got standard VM program".to_string(),
@@ -248,6 +292,8 @@ fn compile(
         TargetType::StdVM => write_file(
             format!("{output}.vm.sg"),
             match compile_source_to_vm(src, src_type, call_stack_size)? {
+                Ok(vm_code) if debug => format!("{:#}", vm_code.flatten()),
+                Err(vm_code) if debug => format!("{:#}", vm_code.flatten()),
                 Ok(vm_code) => vm_code.flatten().to_string(),
                 Err(vm_code) => vm_code.flatten().to_string(),
             },
@@ -255,6 +301,9 @@ fn compile(
         // If the target is core assembly code, then try to compile the source to the core variant.
         // If not possible, throw an error.
         TargetType::CoreASM => match compile_source_to_asm(src, src_type)? {
+            Ok(asm_code) if debug => {
+                write_file(format!("{output}.asm.sg"), format!("{:#}", asm_code))
+            }
             Ok(asm_code) => write_file(format!("{output}.asm.sg"), asm_code.to_string()),
             Err(_) => Err(Error::InvalidSource(
                 "expected core assembly program, got standard assembly program".to_string(),
@@ -265,8 +314,10 @@ fn compile(
         TargetType::StdASM => write_file(
             format!("{output}.asm.sg"),
             match compile_source_to_asm(src, src_type)? {
-                Ok(asm_code) => asm_code.to_string(),
-                Err(asm_code) => asm_code.to_string(),
+                Ok(core_asm_code) if debug => format!("{:#}", core_asm_code),
+                Err(std_asm_code) if debug => format!("{:#}", std_asm_code),
+                Ok(core_asm_code) => core_asm_code.to_string(),
+                Err(std_asm_code) => std_asm_code.to_string(),
             },
         )?,
     }
@@ -283,16 +334,47 @@ fn read_file(name: &str) -> Result<String, Error> {
     read_to_string(name).map_err(Error::IO)
 }
 
-fn main() -> Result<(), Error> {
+/// Run the CLI.
+fn cli() {
     // Parse the arguments to the CLI.
     let args = Args::parse();
 
-    // Compile the source code according to the supplied arguments.
-    compile(
-        read_file(&args.input)?,
-        args.source_type,
-        args.target_type,
-        args.output,
-        args.call_stack_size,
-    )
+    match read_file(&args.input) {
+        Ok(file_contents) => {
+            match compile(
+                file_contents,
+                args.source_type,
+                args.target_type,
+                args.output,
+                args.call_stack_size,
+                args.debug,
+            ) {
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!("Error compiling file: {:#?}", e);
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Error reading file: {:?}", e);
+        }
+    }
+}
+
+fn main() {
+    // If we're in debug mode, start the compilation in a separate thread.
+    // This is to allow the process to have more stack space.
+    if !cfg!(debug_assertions) {
+        cli()
+    } else {
+        const DEBUG_STACK_SIZE_MB: usize = 24;
+
+        let child = std::thread::Builder::new()
+            .stack_size(DEBUG_STACK_SIZE_MB * 1024 * 1024)
+            .spawn(cli)
+            .unwrap();
+
+        // Wait for the thread to finish.
+        child.join().unwrap()
+    }
 }

@@ -165,19 +165,19 @@ impl Location {
     }
 
     /// Push the value of this location to a given stack.
-    pub fn push_to(&self, sp: &Location, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn push_to(&self, sp: &Location, result: &mut dyn VirtualMachineProgram) {
         sp.deref().offset(1).copy_address_to(sp, result);
         self.copy_to(&sp.deref(), result)
     }
 
     /// Pop the top item off a given stack and store it in this location.
-    pub fn pop_from(&self, sp: &Location, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn pop_from(&self, sp: &Location, result: &mut dyn VirtualMachineProgram) {
         sp.deref().copy_to(self, result);
         sp.deref().offset(-1).copy_address_to(sp, result)
     }
 
     /// Copy the address of this location to another location.
-    pub fn copy_address_to(&self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn copy_address_to(&self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.where_is_pointer();
         self.from(result);
@@ -185,7 +185,7 @@ impl Location {
     }
 
     /// Move the pointer to this location.
-    pub fn to(&self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn to(&self, result: &mut dyn VirtualMachineProgram) {
         match self {
             Location::Address(addr) => result.move_pointer(*addr as isize),
             Location::Indirect(loc) => {
@@ -200,7 +200,7 @@ impl Location {
     }
 
     /// Move the pointer from this location.
-    pub fn from(&self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn from(&self, result: &mut dyn VirtualMachineProgram) {
         match self {
             Location::Address(addr) => result.move_pointer(-(*addr as isize)),
             Location::Indirect(loc) => {
@@ -217,19 +217,19 @@ impl Location {
 
     /// Take the pointer value of this location, and make it point
     /// `count` number of cells to the right of its original position.
-    pub fn next(&self, count: isize, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn next(&self, count: isize, result: &mut dyn VirtualMachineProgram) {
         self.deref().offset(count).copy_address_to(self, result);
     }
 
     /// Take the pointer value of this location, and make it point
     /// `count` number of cells to the left of its original position.
-    pub fn prev(&self, count: isize, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn prev(&self, count: isize, result: &mut dyn VirtualMachineProgram) {
         self.deref().offset(-count).copy_address_to(self, result);
     }
 
     /// Take the value at this location. If it is a whole number (>= 0),
     /// then the value of this location is now 1. Otherwise, the value is 0.
-    pub fn whole_int(&self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn whole_int(&self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.restore();
         result.is_non_negative();
@@ -238,21 +238,21 @@ impl Location {
     }
 
     /// Save the value of the virtual machine's register to this location.
-    pub fn save_to(&self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn save_to(&self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.save();
         self.from(result);
     }
 
     /// Restore the value from this location into the virtual machine's register.
-    pub fn restore_from(&self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn restore_from(&self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.restore();
         self.from(result);
     }
 
     /// Increment the value of this location.
-    pub fn inc(&self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn inc(&self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.set_register(1);
         result.op(vm::CoreOp::Add);
@@ -261,7 +261,7 @@ impl Location {
     }
 
     /// Decrement the value of this location.
-    pub fn dec(&self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn dec(&self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.set_register(-1);
         result.op(vm::CoreOp::Add);
@@ -300,7 +300,7 @@ impl Location {
     }
 
     /// Perform bitwise-nand on this cell and a source cell.
-    pub fn bitwise_nand(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn bitwise_nand(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.binop(vm::CoreOp::BitwiseNand, src, result);
     }
 
@@ -308,7 +308,7 @@ impl Location {
     /// Otherwise, the value of this location is now 1.
     ///
     /// Perform boolean not on the value of this cell
-    pub fn not(&self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn not(&self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.restore();
         result.begin_if();
@@ -321,7 +321,7 @@ impl Location {
     }
 
     /// Perform boolean and on the value of this cell and a source cell.
-    pub fn and(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn and(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.restore();
         result.begin_if();
@@ -336,7 +336,7 @@ impl Location {
     }
 
     /// Perform boolean or on the value of this cell and a source cell.
-    pub fn or(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn or(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.restore();
         result.begin_if();
@@ -351,13 +351,18 @@ impl Location {
     }
 
     /// dst = this cell > source cell.
-    pub fn is_greater_than(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn is_greater_than(
+        &self,
+        src: &Self,
+        dst: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) {
         self.is_less_or_equal_to(src, dst, result);
         dst.not(result)
     }
 
     /// dst = this cell >= source cell.
-    pub fn is_greater_than_float(
+    pub(crate) fn is_greater_than_float(
         &self,
         src: &Self,
         dst: &Self,
@@ -369,7 +374,7 @@ impl Location {
     }
 
     /// dst = this cell >= source cell.
-    pub fn is_greater_or_equal_to(
+    pub(crate) fn is_greater_or_equal_to(
         &self,
         src: &Self,
         dst: &Self,
@@ -383,7 +388,12 @@ impl Location {
     }
 
     /// dst = this cell < source cell.
-    pub fn is_less_than(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn is_less_than(
+        &self,
+        src: &Self,
+        dst: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) {
         src.copy_to(dst, result);
         dst.sub(self, result);
         dst.dec(result);
@@ -391,7 +401,7 @@ impl Location {
     }
 
     /// dst = this cell < source cell.
-    pub fn is_less_than_float(
+    pub(crate) fn is_less_than_float(
         &self,
         src: &Self,
         dst: &Self,
@@ -402,7 +412,7 @@ impl Location {
         dst.std_op(vm::StandardOp::IsNonNegative, result)
     }
     /// dst = this cell <= source cell.
-    pub fn is_less_or_equal_to(
+    pub(crate) fn is_less_or_equal_to(
         &self,
         src: &Self,
         dst: &Self,
@@ -413,43 +423,48 @@ impl Location {
         dst.whole_int(result);
     }
 
-    pub fn is_not_equal(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn is_not_equal(
+        &self,
+        src: &Self,
+        dst: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) {
         src.copy_to(dst, result);
         dst.sub(self, result);
     }
 
-    pub fn is_equal(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn is_equal(&self, src: &Self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
         self.is_not_equal(src, dst, result);
         dst.not(result);
     }
 
     /// This cell += source cell.
-    pub fn add(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn add(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.binop(vm::CoreOp::Add, src, result);
     }
 
     /// This cell -= source cell.
-    pub fn sub(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn sub(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.binop(vm::CoreOp::Sub, src, result);
     }
 
     /// This cell *= source cell.
-    pub fn mul(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn mul(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.binop(vm::CoreOp::Mul, src, result);
     }
 
     /// This cell /= source cell.
-    pub fn div(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn div(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.binop(vm::CoreOp::Div, src, result);
     }
 
     /// This cell %= source cell.
-    pub fn rem(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn rem(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.binop(vm::CoreOp::Rem, src, result);
     }
 
     /// This cell += source cell.
-    pub fn add_float(
+    pub(crate) fn add_float(
         &self,
         src: &Self,
         result: &mut dyn VirtualMachineProgram,
@@ -458,7 +473,7 @@ impl Location {
     }
 
     /// This cell -= source cell.
-    pub fn sub_float(
+    pub(crate) fn sub_float(
         &self,
         src: &Self,
         result: &mut dyn VirtualMachineProgram,
@@ -467,7 +482,7 @@ impl Location {
     }
 
     /// This cell *= source cell.
-    pub fn mul_float(
+    pub(crate) fn mul_float(
         &self,
         src: &Self,
         result: &mut dyn VirtualMachineProgram,
@@ -476,7 +491,7 @@ impl Location {
     }
 
     /// This cell /= source cell.
-    pub fn div_float(
+    pub(crate) fn div_float(
         &self,
         src: &Self,
         result: &mut dyn VirtualMachineProgram,
@@ -485,7 +500,7 @@ impl Location {
     }
 
     /// This cell %= source cell.
-    pub fn rem_float(
+    pub(crate) fn rem_float(
         &self,
         src: &Self,
         result: &mut dyn VirtualMachineProgram,
@@ -494,7 +509,7 @@ impl Location {
     }
 
     /// This cell **= source cell.
-    pub fn pow_float(
+    pub(crate) fn pow_float(
         &self,
         src: &Self,
         result: &mut dyn VirtualMachineProgram,
@@ -503,14 +518,18 @@ impl Location {
     }
 
     /// This cell = a constant value.
-    pub fn set(&self, val: isize, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn set(&self, val: i64, result: &mut dyn VirtualMachineProgram) {
         result.set_register(val);
         self.save_to(result)
     }
 
     /// This cell = a constant floating point value. This requires
     /// the standard  instruction.
-    pub fn set_float(&self, val: f64, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub(crate) fn set_float(
+        &self,
+        val: f64,
+        result: &mut dyn VirtualMachineProgram,
+    ) -> Result<(), Error> {
         result.std_op(vm::StandardOp::Set(val))?;
         self.save_to(result);
         Ok(())
@@ -531,13 +550,13 @@ impl Location {
 
     /// Read the value of this cell, allocate that number of cells, store the address
     /// of the first cell in this cell.
-    pub fn alloc(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub(crate) fn alloc(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.std_op(vm::StandardOp::Alloc, result)
     }
 
     /// Free the pointer stored in this cell, and set the value to -1000 (to prevent)
     /// accidental use of the freed memory.
-    pub fn free(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub(crate) fn free(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.to(result);
         result.restore();
         result.std_op(vm::StandardOp::Free)?;
@@ -547,49 +566,50 @@ impl Location {
         Ok(())
     }
 
-    pub fn sin(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub(crate) fn sin(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.std_op(vm::StandardOp::Sin, result)
     }
-    pub fn cos(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub(crate) fn cos(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.std_op(vm::StandardOp::Cos, result)
     }
-    pub fn tan(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub(crate) fn tan(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.std_op(vm::StandardOp::Tan, result)
     }
 
-    pub fn asin(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub(crate) fn asin(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.std_op(vm::StandardOp::ASin, result)
     }
-    pub fn acos(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub(crate) fn acos(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.std_op(vm::StandardOp::ACos, result)
     }
-    pub fn atan(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub(crate) fn atan(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.std_op(vm::StandardOp::ATan, result)
     }
 
-    pub fn to_float(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub(crate) fn to_float(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.std_op(vm::StandardOp::ToFloat, result)
     }
 
-    pub fn to_int(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    pub(crate) fn to_int(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.std_op(vm::StandardOp::ToInt, result)
     }
 
-    pub fn get(&self, src: Input, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn get(&self, src: Input, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.op(vm::CoreOp::Get(src));
         result.save();
         self.from(result);
     }
 
-    pub fn put(&self, dst: Output, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn put(&self, dst: Output, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.restore();
         result.op(vm::CoreOp::Put(dst));
         self.from(result);
     }
 
-    pub fn peek(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    #[allow(dead_code)]
+    pub(crate) fn peek(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.to(result);
         result.std_op(vm::StandardOp::Peek)?;
         result.save();
@@ -597,7 +617,8 @@ impl Location {
         Ok(())
     }
 
-    pub fn poke(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
+    #[allow(dead_code)]
+    pub(crate) fn poke(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
         self.to(result);
         result.restore();
         result.std_op(vm::StandardOp::Poke)?;
@@ -606,7 +627,7 @@ impl Location {
     }
 
     /// Store the value of this cell into another cell.
-    pub fn copy_to(&self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn copy_to(&self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
         self.restore_from(result);
         dst.save_to(result);
     }

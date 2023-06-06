@@ -1,0 +1,190 @@
+
+const MAX_SYMBOL_LENGTH = 8,
+    MAX_STRUCT_FIELDS = 8,
+    MAX_UNION_FIELDS = MAX_STRUCT_FIELDS,
+    MAX_ENUM_VARIANTS = MAX_STRUCT_FIELDS,
+    MAX_TUPLE_FIELDS = MAX_STRUCT_FIELDS,
+    MAX_FUNCTION_ARGS = MAX_STRUCT_FIELDS in
+
+type String = &Char in
+
+type TypeList = enum {
+        of Nil,
+        of Cons (&Type, &TypeList),
+    },
+    TypeDict = enum {
+        of Nil,
+        of Cons (String, &Type, &TypeDict),
+    },
+    StringList = enum {
+        of Nil,
+        of Cons (String, &StringList),
+    },
+    Type = enum {
+        of Integer,
+        of FloatingPoint,
+        of Boolean,
+        of String,
+        of Unit,
+        of Symbol String,
+        of Struct TypeDict,
+        of Union TypeDict,
+        of EnumUnion TypeDict,
+        of Enum StringList,
+        of Tuple TypeList,
+        of Function (TypeList, &Type),
+        of Pointer &Type,
+        of Array (&Type, Int),
+        of Let (String, &Type, &Type),
+    },
+in
+
+const print_type_list = proc(list: &TypeList) = {
+    match (*list) {
+        of Nil => {},
+        of Cons (ty, rest) => {
+            print(ty);
+            if (rest != Null) {
+                if let of Cons _ = (*rest) {
+                    put ", ";
+                };
+                print_type_list(rest);
+            }
+        }
+    }
+},
+print_string_list = proc(list: &StringList) = {
+    match (*list) {
+        of Nil => {},
+        of Cons (ty, rest) => {
+            put ty;
+            if (rest != Null) {
+                if let of Cons _ = (*rest) {
+                    put ", ";
+                };
+                print_string_list(rest);
+            }
+        }
+    }
+},
+
+print_type_dict = proc(dict: &TypeDict) = {
+    match (*dict) {
+        of Nil => {},
+        of Cons (name, ty, rest) => {
+            put name;
+            put ": ";
+            print(ty);
+            if (rest != Null) {
+                if let of Cons _ = (*rest) {
+                    put ", ";
+                };
+                print_type_dict(rest);
+            }
+        }
+    }
+},
+
+print_enumunion_dict = proc(dict: &TypeDict) = {
+    match (*dict) {
+        of Nil => {},
+        of Cons (name, ty, rest) => {
+            put "of ";
+            put name;
+            put " ";
+            print(ty);
+            if (rest != Null) {
+                if let of Cons _ = (*rest) {
+                    put ", ";
+                };
+                print_type_dict(rest);
+            }
+        }
+    }
+},
+print = proc(ty: &Type) = {
+    match (*ty) {
+        of Integer => put "Int",
+        of FloatingPoint => put "Float",
+        of Boolean => put "Bool",
+        of String => put "String",
+        of Unit => put "Unit",
+        of Symbol s => {
+            put s;
+        },
+        of Struct fields => {
+            put "struct {";
+            print_type_dict(&fields);
+            put "}";
+        },
+        of Union fields => {
+            put "union {";
+            print_type_dict(&fields);
+            put "}";
+        },
+        of EnumUnion fields => {
+            put "enum {";
+            print_enumunion_dict(&fields);
+            put "}";
+        },
+        of Enum fields => {
+            put "enum {";
+            print_string_list(&fields);
+            put "}";
+        },
+        of Tuple fields => {
+            put "(";
+            print_type_list(&fields);
+            put ")";
+        },
+        of Function (args, ret) => {
+            put "proc(";
+            print_type_list(&args);
+            put ") -> ";
+            print(ret);
+        },
+        of Pointer ty => {
+            put "&";
+            print(ty);
+        },
+        of Array (ty, len) => {
+            put "[";
+            print(ty);
+            put " * ";
+            put len;
+            put "]";
+        },
+        of Let (name, ty, body) => {
+            put "let ";
+            put name;
+            put " = ";
+            print(ty);
+            put " in ";
+            print(body);
+        },
+    }
+} in {
+let ty = (
+new Type of Function(
+    TypeList of Cons(
+        new Type of String(),
+        new TypeList of Cons(
+            new Type of Integer(),
+            new TypeList of Cons(
+                new Type of Function(
+                    TypeList of Cons(
+                        new Type of String(),
+                        new TypeList of Nil ()
+                    ),
+                    new Type of Integer()
+                ),
+                new TypeList of Nil()
+            )
+        )
+    ),
+    new Type of Integer()
+)
+) in print(ty);
+
+put "\n";
+}

@@ -26,7 +26,7 @@ fn test_struct() {
 
 fn test_struct_helper() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -56,6 +56,7 @@ fn test_struct_helper() {
                 "put_char",
                 None,
                 ConstExpr::proc(
+                    None,
                     vec![(
                         "x".to_string(),
                         Type::Struct(btreemap! {
@@ -93,7 +94,7 @@ fn test_struct_helper() {
 #[test]
 fn test_scopes() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let add = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "add".to_string(),
@@ -124,6 +125,7 @@ fn test_scopes() {
         "f",
         None,
         ConstExpr::proc(
+            None,
             vec![
                 ("x".to_string(), Type::Int),
                 ("y".to_string(), Type::Int),
@@ -154,7 +156,7 @@ fn test_scopes() {
 #[test]
 fn test_tuples() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let add = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "add".to_string(),
@@ -185,6 +187,7 @@ fn test_tuples() {
         "test",
         None,
         ConstExpr::proc(
+            None,
             vec![(
                 "tup".to_string(),
                 Type::Tuple(vec![Type::Char, Type::Tuple(vec![Type::Int, Type::Int])]),
@@ -221,7 +224,7 @@ fn test_tuples() {
 #[test]
 fn test_array() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let add = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "add".to_string(),
@@ -273,7 +276,7 @@ fn test_array() {
     expr.compile_expr(&mut env, &mut program).unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new("testing\n"));
-    let vm_code = program.assemble(16).unwrap();
+    let vm_code = program.assemble(256).unwrap();
     let device = i.run(&vm_code).unwrap();
 
     assert_eq!(device.output_str(), "d");
@@ -282,7 +285,7 @@ fn test_array() {
 #[test]
 fn test_nested_arrays() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -354,7 +357,7 @@ fn test_nested_arrays() {
 #[test]
 fn test_nested_structs() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -451,7 +454,7 @@ fn test_nested_structs() {
 #[test]
 fn test_union() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -468,6 +471,7 @@ fn test_union() {
         "test",
         None,
         ConstExpr::proc(
+            None,
             vec![
                 (
                     "a".to_string(),
@@ -523,7 +527,7 @@ fn test_union() {
 #[test]
 fn test_struct2() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -554,6 +558,7 @@ fn test_struct2() {
         "putpoint",
         None,
         ConstExpr::proc(
+            None,
             vec![(
                 "p".to_string(),
                 Type::Struct(btreemap! {
@@ -577,6 +582,7 @@ fn test_struct2() {
             "move",
             None,
             ConstExpr::proc(
+                None,
                 vec![
                     (
                         "p".to_string(),
@@ -632,7 +638,7 @@ fn test_struct2() {
 #[test]
 fn test_mixed_types() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -678,7 +684,7 @@ fn test_mixed_types() {
 #[test]
 fn test_loop() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -729,7 +735,7 @@ fn test_loop() {
 #[test]
 fn test_if() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -764,7 +770,7 @@ fn test_if() {
 #[test]
 fn test_int_arithmetic() {
     let mut env = Env::default();
-    let mut program = CoreProgram(vec![]);
+    let mut program = CoreProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -806,7 +812,7 @@ fn test_int_arithmetic() {
 #[test]
 fn test_float_arithmetic() {
     let mut env = Env::default();
-    let mut program = StandardProgram(vec![]);
+    let mut program = StandardProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -847,7 +853,7 @@ fn test_float_arithmetic() {
 #[test]
 fn test_as() {
     let mut env = Env::default();
-    let mut program = StandardProgram(vec![]);
+    let mut program = StandardProgram::new(vec![]);
 
     let put_char = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "put_char".to_string(),
@@ -903,6 +909,7 @@ fn test_typecheck() {
     assert!(matches!(
         expr.type_check(&env),
         Err(Error::InvalidBinaryOp(_, _, _))
+        | Err(Error::InvalidBinaryOpTypes(_, _, _))
     ));
 
     let expr = Expr::let_var(
@@ -961,6 +968,7 @@ fn test_recursive_types_helper() {
                     "node",
                     None,
                     ConstExpr::proc(
+                        None,
                         vec![("val".to_string(), Type::Int)],
                         Type::Symbol("Node".to_string()),
                         Expr::structure(btreemap! {
@@ -974,6 +982,7 @@ fn test_recursive_types_helper() {
                     "next",
                     None,
                     ConstExpr::proc(
+                        None,
                         vec![("node".to_string(), Type::Symbol("Node".to_string()))],
                         Type::Symbol("Node".to_string()),
                         Expr::var("node").field(var("next")).deref(),
@@ -984,6 +993,7 @@ fn test_recursive_types_helper() {
                     "cons",
                     None,
                     ConstExpr::proc(
+                        None,
                         vec![
                             ("head".to_string(), Type::Symbol("Node".to_string())),
                             ("tail".to_string(), Type::Symbol("Node".to_string())),
@@ -1079,7 +1089,8 @@ fn test_alloc_and_free_helper() {
         Expr::let_procs(
             btreemap! {
                 "new" => Procedure::new(
-                    vec![(
+                        None,
+                        vec![(
                         "val".to_string(),
                         Type::Int
                     )],
@@ -1090,7 +1101,8 @@ fn test_alloc_and_free_helper() {
                     }),
                 ),
                 "free" => Procedure::new(
-                    vec![(
+                        None,
+                        vec![(
                         "node".to_string(),
                         Type::Symbol("Node".to_string()),
                     )],
@@ -1110,7 +1122,8 @@ fn test_alloc_and_free_helper() {
                     ])
                 ),
                 "cons" => Procedure::new(
-                    vec![
+                        None,
+                        vec![
                         (
                             "head".to_string(),
                             Type::Symbol("Node".to_string()),
@@ -1178,6 +1191,7 @@ fn test_recursion() {
     let expr = put_char.app(vec![Expr::let_proc(
         "factorial",
         Procedure::new(
+            None,
             vec![("n".to_string(), Type::Int)],
             Type::Int,
             Expr::var("n").if_then(
@@ -1215,6 +1229,7 @@ fn test_inline_let_type() {
     let expr = put_char.app(vec![Expr::let_proc(
         "factorial",
         Procedure::new(
+            None,
             vec![("n".to_string(), Type::Int)],
             Type::Let(
                 "a".to_string(),

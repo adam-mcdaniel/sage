@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/compile.rs`."><title>compile.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" disabled href="../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-be46fdc453a55015.css"><script src="../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../sage/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/compile.rs`."><title>compile.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ba5701c5741a7b69.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0 (90c541806 2023-05-31)" data-search-js="search-e077946657036a58.js" data-settings-js="settings-298e1ea74db45b39.js" data-settings-css="settings-7bfb4c59cc6bc502.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../static.files/source-script-905937fbbdc8e9ea.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-f61008743c98d196.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../sage/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -833,7 +833,222 @@
 <a href="#833" id="833">833</a>
 <a href="#834" id="834">834</a>
 <a href="#835" id="835">835</a>
-</pre><pre class="rust"><code><span class="doccomment">//! # Compile
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
+<a href="#968" id="968">968</a>
+<a href="#969" id="969">969</a>
+<a href="#970" id="970">970</a>
+<a href="#971" id="971">971</a>
+<a href="#972" id="972">972</a>
+<a href="#973" id="973">973</a>
+<a href="#974" id="974">974</a>
+<a href="#975" id="975">975</a>
+<a href="#976" id="976">976</a>
+<a href="#977" id="977">977</a>
+<a href="#978" id="978">978</a>
+<a href="#979" id="979">979</a>
+<a href="#980" id="980">980</a>
+<a href="#981" id="981">981</a>
+<a href="#982" id="982">982</a>
+<a href="#983" id="983">983</a>
+<a href="#984" id="984">984</a>
+<a href="#985" id="985">985</a>
+<a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
+<a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
+<a href="#994" id="994">994</a>
+<a href="#995" id="995">995</a>
+<a href="#996" id="996">996</a>
+<a href="#997" id="997">997</a>
+<a href="#998" id="998">998</a>
+<a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
+<a href="#1003" id="1003">1003</a>
+<a href="#1004" id="1004">1004</a>
+<a href="#1005" id="1005">1005</a>
+<a href="#1006" id="1006">1006</a>
+<a href="#1007" id="1007">1007</a>
+<a href="#1008" id="1008">1008</a>
+<a href="#1009" id="1009">1009</a>
+<a href="#1010" id="1010">1010</a>
+<a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
+<a href="#1014" id="1014">1014</a>
+<a href="#1015" id="1015">1015</a>
+<a href="#1016" id="1016">1016</a>
+<a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a>
+<a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a>
+<a href="#1027" id="1027">1027</a>
+<a href="#1028" id="1028">1028</a>
+<a href="#1029" id="1029">1029</a>
+<a href="#1030" id="1030">1030</a>
+<a href="#1031" id="1031">1031</a>
+<a href="#1032" id="1032">1032</a>
+<a href="#1033" id="1033">1033</a>
+<a href="#1034" id="1034">1034</a>
+<a href="#1035" id="1035">1035</a>
+<a href="#1036" id="1036">1036</a>
+<a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! # Compile
 //!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
 //!
@@ -849,6 +1064,7 @@
     AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
 };
 <span class="kw">use </span><span class="kw">crate</span>::NULL;
+<span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="doccomment">/// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
@@ -866,7 +1082,7 @@
         <span class="comment">// First, type check the expression.
         </span><span class="self">self</span>.type_check(<span class="kw-2">&amp;</span>Env::default())<span class="question-mark">?</span>;
         <span class="comment">// Then, attempt to compile the expression into a core assembly program.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>core_asm = CoreProgram(<span class="macro">vec!</span>[]);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>core_asm = CoreProgram::default();
         <span class="kw">if </span><span class="self">self
             </span>.clone()
             <span class="comment">// Compile the expression into the core assembly program.
@@ -875,7 +1091,7 @@
             </span>.is_err()
         {
             <span class="comment">// then compile it into a standard assembly program.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>std_asm = StandardProgram(<span class="macro">vec!</span>[]);
+            </span><span class="kw">let </span><span class="kw-2">mut </span>std_asm = StandardProgram::default();
             <span class="comment">// Compile the expression into the standard assembly program.
             </span><span class="self">self</span>.compile_expr(<span class="kw-2">&amp;mut </span>Env::default(), <span class="kw-2">&amp;mut </span>std_asm)<span class="question-mark">?</span>;
             <span class="comment">// Return the fallback standard assembly program.
@@ -969,9 +1185,15 @@
             }
 
             <span class="comment">// Compile a constant declaration.
-            </span><span class="self">Self</span>::LetConst(name, expr, body) =&gt; {
+            </span><span class="self">Self</span>::LetConst(name, <span class="kw-2">mut </span>expr, body) =&gt; {
                 <span class="comment">// Declare a new scope for the constant.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
+                <span class="comment">// If the constant is a procedure,
+                // then set its common name to reflect
+                // the constant name.
+                </span><span class="kw">if let </span>ConstExpr::Proc(p) = <span class="kw-2">&amp;mut </span>expr {
+                    p.set_common_name(<span class="kw-2">&amp;</span>name);
+                }
                 new_env.define_const(name, expr);
                 <span class="comment">// Compile under the new scope.
                 </span>body.compile_expr(<span class="kw-2">&amp;mut </span>new_env, output)<span class="question-mark">?</span>;
@@ -981,7 +1203,13 @@
             </span><span class="self">Self</span>::LetConsts(constants, body) =&gt; {
                 <span class="comment">// Declare a new scope for the constants.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                <span class="kw">for </span>(name, c) <span class="kw">in </span>constants {
+                <span class="kw">for </span>(name, <span class="kw-2">mut </span>c) <span class="kw">in </span>constants {
+                    <span class="comment">// If the constant is a procedure,
+                    // then set its common name to reflect
+                    // the constant name.
+                    </span><span class="kw">if let </span>ConstExpr::Proc(p) = <span class="kw-2">&amp;mut </span>c {
+                        p.set_common_name(<span class="kw-2">&amp;</span>name);
+                    }
                     <span class="comment">// Define the constant in the new scope.
                     </span>new_env.define_const(name, c);
                 }
@@ -1276,6 +1504,46 @@
                 ));
             }
 
+            <span class="comment">// Compile a tagged union literal.
+            </span><span class="self">Self</span>::EnumUnion(<span class="kw-2">mut </span>t, variant, val) =&gt; {
+                <span class="comment">// Get the size of the tagged union.
+                </span><span class="kw">let </span>result_size = t.get_size(env)<span class="question-mark">?</span>;
+                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                    <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
+                        t,
+                        Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
+                    ))
+                })<span class="question-mark">?</span>;
+                <span class="kw">if let </span>Type::EnumUnion(fields) = t {
+                    <span class="comment">// Get the list of possible variant names.
+                    </span><span class="kw">let </span>variants = fields.clone().into_keys().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+                    <span class="comment">// Get the value of the tag associated with this variant.
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(tag_value) = Type::variant_index(<span class="kw-2">&amp;</span>variants, <span class="kw-2">&amp;</span>variant) {
+                        <span class="comment">// Get the size of the value we are storing in the union.
+                        </span><span class="kw">let </span>val_size = val.get_size(env)<span class="question-mark">?</span>;
+
+                        <span class="comment">// Evaluate the value and push it onto the stack
+                        </span>val.compile_expr(env, output)<span class="question-mark">?</span>;
+
+                        <span class="comment">// Increment the stack pointer to pad out the union.
+                        </span>output.op(CoreOp::Next(
+                            SP,
+                            <span class="comment">// This size *includes* the tag: it allocates space for it so we
+                            // can immediately set the value under the stack poiner as the tag.
+                            </span><span class="prelude-val">Some</span>(result_size <span class="kw">as </span>isize - val_size <span class="kw">as </span>isize),
+                        ));
+
+                        output.op(CoreOp::Set(SP.deref(), tag_value <span class="kw">as </span>i64));
+                        <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                    } <span class="kw">else </span>{
+                        <span class="comment">// If we could not find the variant return an error.
+                        </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(Type::EnumUnion(fields), variant));
+                    }
+                } <span class="kw">else </span>{
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(t.clone(), variant.clone()));
+                }
+            }
+
             <span class="comment">// Compile an indexing operation.
             </span><span class="self">Self</span>::Index(val, idx) =&gt; {
                 <span class="comment">// TODO: optimize this by using `Refer` when possible
@@ -1293,7 +1561,23 @@
                 </span><span class="kw">match </span>val_type {
                     <span class="comment">// If the value being indexed is an array:
                     </span>Type::Array(<span class="kw-2">ref </span>elem, <span class="kw">_</span>) =&gt; {
-                        <span class="comment">// Get the size of the element we will return.
+                        <span class="comment">// First, lets try to compile the same index expression using pointer
+                        // arithmetic. This will be faster than pushing the entire array
+                        // onto the stack and indexing it.
+                        </span><span class="kw">let </span>optimized_idx = val
+                            .clone()
+                            <span class="comment">// Reference the current
+                            </span>.refer()
+                            <span class="comment">// Make the type a pointer to the inner element type
+                            </span>.as_type(Type::Pointer(elem.clone()))
+                            <span class="comment">// Index the new pointer
+                            </span>.idx(<span class="kw-2">*</span>idx.clone());
+                            <span class="comment">// Push to the stack
+                        // if optimized_idx.type_check(env).is_ok() {
+                        //     return optimized_idx.compile_expr(env, output);
+                        // }
+
+                        // Get the size of the element we will return.
                         </span><span class="kw">let </span>elem_size = elem.get_size(env)<span class="question-mark">?</span>;
                         <span class="comment">// Push the array onto the stack.
                         </span>val.compile_expr(env, output)<span class="question-mark">?</span>;
@@ -1303,7 +1587,7 @@
                         <span class="comment">// Calculate the offset of the element we want to return
                         // (the index times the size of the element), and store it in `B`.
                         </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(B), <span class="number">1</span>));
-                        output.op(CoreOp::Set(A, elem_size <span class="kw">as </span>isize));
+                        output.op(CoreOp::Set(A, elem_size <span class="kw">as </span>i64));
                         output.op(CoreOp::Mul { dst: B, src: A });
 
                         <span class="comment">// Get the address of the array&#39;s first element, and store it in `A`.
@@ -1343,7 +1627,7 @@
                         <span class="comment">// Store the index in `B`.
                         </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(B), <span class="number">1</span>));
                         <span class="comment">// Store the size of the element in `C`.
-                        </span>output.op(CoreOp::Set(C, elem_size <span class="kw">as </span>isize));
+                        </span>output.op(CoreOp::Set(C, elem_size <span class="kw">as </span>i64));
                         <span class="comment">// Store the offset of the element from the pointer in `B`
                         // (the index times the size of the element).
                         </span>output.op(CoreOp::Mul { dst: B, src: C });
@@ -1379,7 +1663,10 @@
                     dst: SP.deref().offset(<span class="number">1 </span>- val_size <span class="kw">as </span>isize),
                     size,
                 });
-                <span class="comment">// Pop the remaining elements off the stack, so the field remains.
+                <span class="comment">// eprintln!(&quot;\n\nval_size: {val_size}\n =&gt; {val_type}&quot;);
+                // eprintln!(&quot;size: {size}\n =&gt; {}&quot;, self.get_type(env)?);
+                // eprintln!(&quot;{self}&quot;);
+                // Pop the remaining elements off the stack, so the field remains.
                 </span>output.op(CoreOp::Pop(<span class="prelude-val">None</span>, val_size - size));
             }
 
@@ -1392,7 +1679,7 @@
                         <span class="comment">// Calulate the address of the variable from the offset
                         </span>output.op(CoreOp::Many(<span class="macro">vec!</span>[
                             CoreOp::Move { src: FP, dst: A },
-                            CoreOp::Set(B, <span class="kw-2">*</span>offset),
+                            CoreOp::Set(B, <span class="kw-2">*</span>offset <span class="kw">as </span>i64),
                             <span class="comment">// Index the frame pointer with the offset of the variable.
                             // This is the address of the variable.
                             </span>CoreOp::Index {
@@ -1423,7 +1710,7 @@
                     </span><span class="kw">let </span>(<span class="kw">_</span>, offset) = val_type.get_member_offset(<span class="kw-2">&amp;</span>name, <span class="kw-2">&amp;</span>val, env)<span class="question-mark">?</span>;
 
                     output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(A), <span class="number">1</span>));
-                    output.op(CoreOp::Set(B, offset <span class="kw">as </span>isize));
+                    output.op(CoreOp::Set(B, offset <span class="kw">as </span>i64));
                     <span class="comment">// Index the address of the struct, tuple, or union with the offset of the field.
                     // This is the address of the field.
                     </span>output.op(CoreOp::Index {
@@ -1453,7 +1740,7 @@
                             <span class="comment">// Store the address of the array in `A`.
                             </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(A), <span class="number">1</span>));
                             <span class="comment">// Store the size of the element in `C`.
-                            </span>output.op(CoreOp::Set(C, elem_size <span class="kw">as </span>isize));
+                            </span>output.op(CoreOp::Set(C, elem_size <span class="kw">as </span>i64));
 
                             <span class="comment">// Calculate the offset of the element from the address of the array.
                             // (the index times the size of the element).
@@ -1483,7 +1770,7 @@
                             <span class="comment">// Store the index in `B`.
                             </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(B), <span class="number">1</span>));
                             <span class="comment">// Store the size of the element in `C`.
-                            </span>output.op(CoreOp::Set(C, elem_size <span class="kw">as </span>isize));
+                            </span>output.op(CoreOp::Set(C, elem_size <span class="kw">as </span>i64));
 
                             <span class="comment">// Calculate the offset of the element from the pointer.
                             // (the index times the size of the element).
@@ -1519,6 +1806,27 @@
 
         <span class="comment">// Compile the constant expression.
         </span><span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::LetTypes(bindings, expr) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
+                <span class="kw">for </span>(name, ty) <span class="kw">in </span>bindings {
+                    new_env.define_type(name, ty);
+                }
+                expr.compile_expr(<span class="kw-2">&amp;mut </span>new_env, output)<span class="question-mark">?</span>;
+            }
+            <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; <span class="kw">match </span>expr.eval(env)<span class="question-mark">? </span>{
+                <span class="self">Self</span>::PolyProc(poly_proc) =&gt; {
+                    <span class="comment">// First, monomorphize the function
+                    </span><span class="kw">let </span>proc = poly_proc.monomorphize(ty_args.clone(), env)<span class="question-mark">?</span>;
+                    <span class="comment">// Typecheck the monomorphized function.
+                    </span>proc.type_check(env)<span class="question-mark">?</span>;
+                    <span class="comment">// Compile the monomorphized function.
+                    </span>proc.compile_expr(env, output)<span class="question-mark">?</span>;
+                }
+                val =&gt; {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidMonomorphize(val));
+                }
+            },
+
             <span class="self">Self</span>::As(expr, _ty) =&gt; {
                 <span class="comment">// Compile a compile time type cast expression.
                 </span>expr.compile_expr(env, output)<span class="question-mark">?</span>;
@@ -1533,17 +1841,22 @@
             <span class="comment">// Compile a char constant.
             </span><span class="self">Self</span>::Char(ch) =&gt; {
                 output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.op(CoreOp::Set(SP.deref(), ch <span class="kw">as </span>usize <span class="kw">as </span>isize));
+                output.op(CoreOp::Set(SP.deref(), ch <span class="kw">as </span>usize <span class="kw">as </span>i64));
             }
             <span class="comment">// Compile a bool constant.
             </span><span class="self">Self</span>::Bool(x) =&gt; {
                 output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.op(CoreOp::Set(SP.deref(), x <span class="kw">as </span>isize));
+                output.op(CoreOp::Set(SP.deref(), x <span class="kw">as </span>i64));
+            }
+            <span class="comment">// Compile a cell value.
+            </span><span class="self">Self</span>::Cell(n) =&gt; {
+                output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
+                output.op(CoreOp::Set(SP.deref(), n <span class="kw">as </span>i64));
             }
             <span class="comment">// Compile an integer constant.
             </span><span class="self">Self</span>::Int(n) =&gt; {
                 output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.op(CoreOp::Set(SP.deref(), n <span class="kw">as </span>isize));
+                output.op(CoreOp::Set(SP.deref(), n <span class="kw">as </span>i64));
             }
             <span class="comment">// Compile a float constant.
             </span><span class="self">Self</span>::Float(f) =&gt; {
@@ -1553,12 +1866,12 @@
             <span class="comment">// Calculate the size of a type.
             </span><span class="self">Self</span>::SizeOfType(t) =&gt; {
                 output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.op(CoreOp::Set(SP.deref(), t.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>isize));
+                output.op(CoreOp::Set(SP.deref(), t.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>i64));
             }
             <span class="comment">// Calculate the size of an expression.
             </span><span class="self">Self</span>::SizeOfExpr(e) =&gt; {
                 output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.op(CoreOp::Set(SP.deref(), e.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>isize));
+                output.op(CoreOp::Set(SP.deref(), e.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>i64));
             }
             <span class="comment">// Compile a tuple constant.
             </span><span class="self">Self</span>::Tuple(items) =&gt; {
@@ -1582,11 +1895,9 @@
                 }
             }
             <span class="comment">// Compile a union constant.
-            </span><span class="self">Self</span>::Union(types, variant, val) =&gt; {
-                <span class="comment">// Get the type of the union.
-                </span><span class="kw">let </span>result_type = <span class="self">Self</span>::Union(types, variant, val.clone()).get_type(env)<span class="question-mark">?</span>;
+            </span><span class="self">Self</span>::Union(t, <span class="kw">_</span>, val) =&gt; {
                 <span class="comment">// Get the size of the padded union.
-                </span><span class="kw">let </span>result_size = result_type.get_size(env)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>result_size = t.get_size(env)<span class="question-mark">?</span>;
                 <span class="comment">// Get the size of the value.
                 </span><span class="kw">let </span>val_size = val.get_size(env)<span class="question-mark">?</span>;
                 <span class="comment">// Compile the value.
@@ -1596,6 +1907,45 @@
                     SP,
                     <span class="prelude-val">Some</span>(result_size <span class="kw">as </span>isize - val_size <span class="kw">as </span>isize),
                 ));
+            }
+            <span class="comment">// Compile a tagged union constant.
+            </span><span class="self">Self</span>::EnumUnion(t, variant, val) =&gt; {
+                <span class="comment">// Get the size of the tagged union.
+                </span><span class="kw">let </span>result_size = t.get_size(env)<span class="question-mark">?</span>;
+                <span class="kw">let </span>t =
+                    t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                        <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>)))
+                    })<span class="question-mark">?</span>;
+
+                <span class="comment">// Get the inner list of variants and compile the expression using this information.
+                </span><span class="kw">if let </span>Type::EnumUnion(variants) = t.clone().simplify(env)<span class="question-mark">? </span>{
+                    <span class="comment">// Get the list of possible variant names.
+                    </span><span class="kw">let </span>variants = variants.into_keys().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+                    <span class="comment">// Get the value of the tag associated with this variant.
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(tag_value) = Type::variant_index(<span class="kw-2">&amp;</span>variants, <span class="kw-2">&amp;</span>variant) {
+                        <span class="comment">// Get the size of the value we are storing in the union.
+                        </span><span class="kw">let </span>val_size = val.get_size(env)<span class="question-mark">?</span>;
+
+                        <span class="comment">// Evaluate the value and push it onto the stack
+                        </span>val.compile_expr(env, output)<span class="question-mark">?</span>;
+
+                        <span class="comment">// Increment the stack pointer to pad out the union.
+                        </span>output.op(CoreOp::Next(
+                            SP,
+                            <span class="comment">// This size *includes* the tag: it allocates space for it so we
+                            // can immediately set the value under the stack poiner as the tag.
+                            </span><span class="prelude-val">Some</span>(result_size <span class="kw">as </span>isize - val_size <span class="kw">as </span>isize),
+                        ));
+
+                        output.op(CoreOp::Set(SP.deref(), tag_value <span class="kw">as </span>i64));
+                    } <span class="kw">else </span>{
+                        <span class="comment">// If we could not find the variant return an error.
+                        </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(t, variant));
+                    }
+                } <span class="kw">else </span>{
+                    <span class="comment">// If we could not find the variant return an error.
+                    </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(t, variant));
+                }
             }
             <span class="comment">// Compile a core builtin.
             </span><span class="self">Self</span>::CoreBuiltin(builtin) =&gt; {
@@ -1608,7 +1958,7 @@
             <span class="comment">// Compile a procedure.
             </span><span class="self">Self</span>::Proc(proc) =&gt; {
                 <span class="comment">// Get the mangled name of the procedure.
-                </span><span class="kw">let </span>name = proc.get_name().to_string();
+                </span><span class="kw">let </span>name = proc.get_mangled_name().to_string();
 
                 <span class="kw">if </span>!env.has_proc(<span class="kw-2">&amp;</span>name) {
                     <span class="comment">// If the procedure is not yet defined, define it.
@@ -1617,6 +1967,10 @@
 
                 <span class="comment">// Push the procedure onto the stack.
                 </span>env.push_proc(<span class="kw-2">&amp;</span>name, output)<span class="question-mark">?</span>;
+            }
+
+            <span class="self">Self</span>::PolyProc(poly_proc) =&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::CompilePolyProc(poly_proc));
             }
 
             <span class="self">Self</span>::TypeOf(expr) =&gt; {
@@ -1628,23 +1982,99 @@
             </span>}
 
             <span class="comment">// Compile a variant of an enum.
-            </span><span class="self">Self</span>::Of(enum_type, variant) =&gt; {
-                <span class="comment">// Get the enum from the environment.
-                </span><span class="kw">if let </span>Type::Enum(variants) = enum_type.clone().simplify(env)<span class="question-mark">? </span>{
-                    <span class="comment">// Get the index of the variant.
-                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(index) = Type::variant_index(<span class="kw-2">&amp;</span>variants, <span class="kw-2">&amp;</span>variant) {
-                        <span class="comment">// Push the index of the variant onto the stack.
-                        </span>output.op(CoreOp::Set(A, index <span class="kw">as </span>isize));
-                        output.op(CoreOp::Push(A, <span class="number">1</span>));
-                    } <span class="kw">else </span>{
-                        <span class="comment">// If the variant is not found, return an error.
+            </span><span class="self">Self</span>::Of(<span class="kw-2">mut </span>enum_type, variant) =&gt; {
+                <span class="comment">// Only try to simplify the type 50 times at most.
+                // This is to prevent infinite loops and to keep recursion under control.
+                </span>enum_type = enum_type.simplify_until_matches(
+                    env,
+                    Type::Enum(<span class="macro">vec!</span>[variant.clone()]),
+                    |t, env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>))),
+                )<span class="question-mark">?</span>;
+
+                <span class="kw">match </span>enum_type.clone() {
+                    <span class="comment">// If the type is an enum, we can continue.
+                    </span>Type::Enum(variants) =&gt; {
+                        <span class="comment">// Get the index of the variant.
+                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(index) = Type::variant_index(<span class="kw-2">&amp;</span>variants, <span class="kw-2">&amp;</span>variant) {
+                            <span class="comment">// Push the index of the variant onto the stack.
+                            </span>output.op(CoreOp::Set(A, index <span class="kw">as </span>i64));
+                            output.op(CoreOp::Push(A, <span class="number">1</span>));
+                            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                        } <span class="kw">else </span>{
+                            <span class="comment">// If the variant is not found, return an error.
+                            </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(enum_type, variant));
+                        }
+                    }
+                    <span class="comment">// If the type is an enum union, we can continue.
+                    </span>Type::EnumUnion(variants) <span class="kw">if </span>variants.get(<span class="kw-2">&amp;</span>variant) == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>Type::None) =&gt; {
+                        <span class="comment">// Get the index of the variant.
+                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(index) =
+                            Type::variant_index(<span class="kw-2">&amp;</span>variants.into_keys().collect(), <span class="kw-2">&amp;</span>variant)
+                        {
+                            <span class="comment">// Push the index of the variant onto the stack.
+                            // Allocate the size of the structure on the stack by
+                            // incrementing the stack pointer by the size of the structure.
+                            // Then, set the value under the stack pointer to the index of the variant.
+                            </span>output.op(CoreOp::Next(SP, <span class="prelude-val">Some</span>(enum_type.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>isize)));
+                            output.op(CoreOp::Set(SP.deref(), index <span class="kw">as </span>i64));
+                            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                        } <span class="kw">else </span>{
+                            <span class="comment">// If the variant is not found, return an error.
+                            </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(enum_type, variant));
+                        }
+                    }
+                    <span class="kw">_ </span>=&gt; {
+                        <span class="comment">// If the type is not an enum, return an error.
                         </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(enum_type, variant));
                     }
-                } <span class="kw">else </span>{
-                    <span class="comment">// If the type is not an enum, return an error.
-                    </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(enum_type, variant));
                 }
-            }
+                <span class="comment">// for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+                //     // Simplify the type.
+                //     enum_type = enum_type.simplify(env)?;
+                //     // If the type is an enum, we can continue.
+                //     match enum_type.clone() {
+                //         // If the type is an enum, we can continue.
+                //         Type::Enum(variants) =&gt; {
+                //             // Get the index of the variant.
+                //             if let Some(index) = Type::variant_index(&amp;variants, &amp;variant) {
+                //                 // Push the index of the variant onto the stack.
+                //                 output.op(CoreOp::Set(A, index as i64));
+                //                 output.op(CoreOp::Push(A, 1));
+                //                 return Ok(());
+                //             } else {
+                //                 // If the variant is not found, return an error.
+                //                 return Err(Error::VariantNotFound(enum_type, variant));
+                //             }
+                //         }
+                //         // If the type is an enum union, we can continue.
+                //         Type::EnumUnion(variants)
+                //             if variants.get(&amp;variant) == Some(&amp;Type::None) =&gt;
+                //         {
+                //             // Get the index of the variant.
+                //             if let Some(index) =
+                //                 Type::variant_index(&amp;variants.into_keys().collect(), &amp;variant)
+                //             {
+                //                 // Push the index of the variant onto the stack.
+                //                 // Allocate the size of the structure on the stack by
+                //                 // incrementing the stack pointer by the size of the structure.
+                //                 // Then, set the value under the stack pointer to the index of the variant.
+                //                 output
+                //                     .op(CoreOp::Next(SP, Some(enum_type.get_size(env)? as isize)));
+                //                 output.op(CoreOp::Set(SP.deref(), index as i64));
+                //                 return Ok(());
+                //             } else {
+                //                 // If the variant is not found, return an error.
+                //                 return Err(Error::VariantNotFound(enum_type, variant));
+                //             }
+                //         }
+                //         // If the type is a let expression or a symbol, simplify it again first
+                //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) =&gt; continue,
+                //         // If the type isn&#39;t an enum, return an error.
+                //         _ =&gt; return Err(Error::VariantNotFound(enum_type, variant)),
+                //     }
+                // }
+                // return Err(Error::VariantNotFound(enum_type, variant));
+            </span>}
 
             <span class="comment">// Compile a symbol.
             </span><span class="self">Self</span>::Symbol(name) =&gt; {
@@ -1668,5 +2098,4 @@
         <span class="prelude-val">Ok</span>(())
     }
 }
-</code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0 (84c898d65 2023-04-16)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
+</code></pre></div></section></main></body></html>

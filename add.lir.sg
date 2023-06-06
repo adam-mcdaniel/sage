@@ -1,0 +1,21 @@
+
+
+
+print({y = 3} + {x = 4});
+
+
+print((3, 4) + (5,));
+print("test" + "ing");
+
+let x = "test" + "ing";
+
+
+print({x = 5, y = 2} + {z = 3});
+
+
+
+
+struct Point {
+    x: Int,
+    y: Int
+}

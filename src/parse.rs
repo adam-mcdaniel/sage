@@ -28,14 +28,11 @@
 use super::asm::{CoreProgram, StandardProgram};
 use super::lir::Expr;
 use super::vm;
+use super::frontend;
 
 use lalrpop_util::lalrpop_mod;
-use no_comment::{languages, IntoWithoutComments as _};
+use no_comment::{languages, IntoWithoutComments};
 
-lalrpop_mod!(
-    #[allow(clippy::all)]
-    lir_parser
-);
 lalrpop_mod!(
     #[allow(clippy::all)]
     asm_parser
@@ -44,8 +41,14 @@ lalrpop_mod!(
     #[allow(clippy::all)]
     vm_parser
 );
-
+// This line is used expose the assembly parsers,
+// which are used to allow the LIR parser to parse inline assembly.
 pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
+lalrpop_mod!(
+    #[allow(clippy::all)]
+    lir_parser
+);
+
 
 /// Parse Core and Standard variants of virtual machine source code.
 /// This will return core code by default, but will fallback on standard.
@@ -98,10 +101,15 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
         .collect::<String>();
 
     let code = code.trim();
+    match lir_parser::ExprParser::new().parse(&code.to_string()) {
+        Ok(parsed) => Ok(parsed),
+        Err(e) => Err(format_error(&code, e))
+    }
+}
 
-    lir_parser::ExprParser::new()
-        .parse(&code)
-        .map_err(|e| format_error(&code, e))
+/// Parse frontend sage code into an LIR expression.
+pub fn parse_frontend(input: impl ToString) -> Result<Expr, String> {
+    frontend::parse(input)
 }
 
 type SyntaxError<'a, T> = lalrpop_util::ParseError<usize, T, &'a str>;

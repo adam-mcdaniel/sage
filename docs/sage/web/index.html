@@ -65,1170 +65,1351 @@
             console.log(document.getElementById("example").value);
             switch (document.getElementById("example").value) {
                 case "aes":
-                    source.setValue(`proc bitxor(a: Int, b: Int) -> Int = core {
-    bitwise-xor [SP], [SP - 1] pop
-} in
-
-proc bitor(a: Int, b: Int) -> Int = core {
-    bitwise-or [SP], [SP - 1] pop
-} in
-
-proc bitnand(a: Int, b: Int) -> Int = core {
-    bitwise-nand [SP], [SP - 1] pop
-} in
-
-proc bitand(a: Int, b: Int) -> Int = core {
-    bitwise-and [SP], [SP - 1] pop
-} in
-
-proc bitnot(x: Int) -> Int = core {
-    bitwise-not [SP]
-} in
-
-proc puthex(n: Int, lower: Bool) = {
-    if (n < 16) {
-        put (n + if (n < 10) {
-            48
-        } else if lower {
-            87
-        } else {
-            55
-        }) as Char
+                    source.setValue(`def print_hex(n: Int, lower: Bool) {
+    if n < 10 {
+        print((n + '0' as Int) as Char);
+    } elif n < 16 {
+        print((n - 10 + (lower? 'a' : 'A') as Int) as Char);
     } else {
-        puthex(n / 16, lower);
-        puthex(n % 16, lower)
+        print_hex(n / 16, lower);
+        print_hex(n % 16, lower);
     }
-} in
+}
 
-proc putbyte(n: Int, lower: Bool) = {
-    puthex(n / 16, lower);
-    puthex(n % 16, lower)
-} in
+def print_byte(n: Int, lower: Bool) {
+    n &= 0xFF;
+    print_hex(n / 16, lower);
+    print_hex(n % 16, lower);
+}
 
-const getchar = proc() -> Char = core {
-    next SP
-    get-char [SP]
-} in
-
-proc ln() = {
-    put '\\n'
-} in
-
-proc lsh(a: Int, b: Int) -> Int = {
+def left_shift(a: Int, b: Int): Int = {
     while b {
-        a = a * 2;
-        b = b - 1;
-    };
-    a
-} in
-
-proc rsh(a: Int, b: Int) -> Int = {
-    let added = -2147483648, i = 0, negative = a < 0 in {
-        while (i < b - 1) {
-            added /= 2;
-            i += 1;
-        };
-        if negative { a = bitnot(a) };
-        while b {
-            a /= 2;
-            b -= 1;
-        };
-        if negative { a = bitxor(bitnot(a), added) };
-    };
-    a
-} in
-
-proc xtime(n: Int) -> Int = {
-    n = bitand(n, 255) * 2;
-    if (n < 256) n
-    else (bitxor(n, 27))
-} in
-
-proc mul(a: Int, b: Int) -> Int = {
-    a = bitand(a, 255);
-    b = bitand(b, 255);
-    let result = 0,
-        next_term = a,
-        i = 0 in {
-        while (i < 8) {
-            if (bitand(rsh(b, i), 1)) {
-                result = bitxor(result, next_term);
-            };
-            next_term = xtime(next_term);
-            i += 1;
-        };
-        bitand(result, 255)
+        a *= 2;
+        b -= 1;
     }
-} in
+    return a;
+}
 
-type State = [Int * 16] in
+const MIN_INT = -2147483648;
 
-proc row_major(c0r0: Int, c1r0: Int, c2r0: Int, c3r0: Int,
+def right_shift(a: Int, b: Int): Int = {
+    let offset = MIN_INT, was_negative = a < 0;
+    for let i=0; i < b - 1; i += 1 {
+        offset /= 2;
+    }
+
+    if was_negative { a = ~a; }
+    
+    while b {
+        a /= 2;
+        b -= 1;
+    }
+
+    if was_negative { a = ~a ^ offset; }
+
+    return a;
+}
+
+def print_hexln(n: Int, lower: Bool) {
+    print_hex(n, lower);
+    print("\\n");
+}
+
+def print_byteln(n: Int, lower: Bool) {
+    print_byte(n, lower);
+    print("\\n");
+}
+
+def xtime(n: Int): Int {
+    n &= 0xFF;
+    n *= 2;
+
+    return n < 0x100? n : n ^ 0x1B;
+}
+
+def multiply(a: Int, b: Int): Int {
+    a &= 0xFF;
+    b &= 0xFF;
+    let result = 0;
+    let next_term = a;
+    for let i=0; i < 8; i += 1 {
+        if b & 1 {
+            result ^= next_term;
+        }
+        next_term = xtime(next_term);
+        b /= 2;
+    }
+
+    return result & 0xFF;
+}
+
+let x = 0xFFFFFFFF;
+print_hexln(x, True);
+print_hexln(right_shift(x, 1), True);
+
+print_hexln(multiply(0x53, 0xCA), True);
+
+
+type State = [Int * 16];
+
+def row_major(c0r0: Int, c1r0: Int, c2r0: Int, c3r0: Int,
     c0r1: Int, c1r1: Int, c2r1: Int, c3r1: Int,
     c0r2: Int, c1r2: Int, c2r2: Int, c3r2: Int,
-    c0r3: Int, c1r3: Int, c2r3: Int, c3r3: Int
-) -> State = {[
-    c0r0,
-    c0r1,
-    c0r2,
-    c0r3,
+    c0r3: Int, c1r3: Int, c2r3: Int, c3r3: Int): State = [
+    c0r0, c0r1, c0r2, c0r3,
+    c1r0, c1r1, c1r2, c1r3,
+    c2r0, c2r1, c2r2, c2r3,
+    c3r0, c3r1, c3r2, c3r3
+];
 
-    c1r0,
-    c1r1,
-    c1r2,
-    c1r3,
-
-    c2r0,
-    c2r1,
-    c2r2,
-    c2r3,
-
-    c3r0,
-    c3r1,
-    c3r2,
-    c3r3,
-]} in
-
-proc col_major(c0r0: Int, c0r1: Int, c0r2: Int, c0r3: Int,
+def col_major(c0r0: Int, c0r1: Int, c0r2: Int, c0r3: Int,
     c1r0: Int, c1r1: Int, c1r2: Int, c1r3: Int,
     c2r0: Int, c2r1: Int, c2r2: Int, c2r3: Int,
-    c3r0: Int, c3r1: Int, c3r2: Int, c3r3: Int,
-) -> State = {[
-    c0r0,
-    c0r1,
-    c0r2,
-    c0r3,
+    c3r0: Int, c3r1: Int, c3r2: Int, c3r3: Int): State = [
+    c0r0, c0r1, c0r2, c0r3,
+    c1r0, c1r1, c1r2, c1r3,
+    c2r0, c2r1, c2r2, c2r3,
+    c3r0, c3r1, c3r2, c3r3
+];
 
-    c1r0,
-    c1r1,
-    c1r2,
-    c1r3,
+def get(state: &State, row: Int, col: Int): Int {
+    return (state as &Int)[row * 4 + col];
+}
 
-    c2r0,
-    c2r1,
-    c2r2,
-    c2r3,
+def set(state: &State, row: Int, col: Int, value: Int) {
+    (state as &Int)[row * 4 + col] = value;
+}
 
-    c3r0,
-    c3r1,
-    c3r2,
-    c3r3,
-]} in
+def print_state(self: &State) {
+    for let i=0; i < 4; i += 1 {
+        for let j=0; j < 4; j += 1 {
+            print_byte(get(self, i, j), False); print(" ");
+        }
+        print("\\n");
+    }
+}
 
-proc get(self: &State, x: Int, y: Int) -> Int = {
-    self[0][x + y * 4]
-} in
+def rotate_row(self: &State, row: Int, steps: Int) {
+    for let i=0; i<steps; i += 1 {
+        let temp = get(self, row, 0);
+        set(self, row, 0, get(self, row, 1));
+        set(self, row, 1, get(self, row, 2));
+        set(self, row, 2, get(self, row, 3));
+        set(self, row, 3, temp);
+    }
+}
 
-proc set(self: &State, x: Int, y: Int, val: Int) = {
-    self[0][x + y * 4] = val;
-} in
+def shift_rows(self: &State) {
+    rotate_row(self, 1, 1);
+    rotate_row(self, 2, 2);
+    rotate_row(self, 3, 3);
+}
 
-proc putstate(self: State) = {
-    let i = 0, j = 0 in {
-        while i < 4 {
-            while j < 4 {
-                putbyte(get(&self, j, i), false);
-                put ' ';
-                j += 1;
-            };
-            ln();
-            j = 0;
-            i += 1;
+def inverse_shift_rows(self: &State) {
+    rotate_row(self, 1, 3);
+    rotate_row(self, 2, 2);
+    rotate_row(self, 3, 1);
+}
+
+def add_round_key(self: &State, round_key: &State) {
+    let round_key_ptr = round_key as &Int;
+    let self_ptr = self as &Int;
+    for let i=0; i < 16; i += 1 {
+        self_ptr[i] ^= round_key_ptr[i];
+    }
+}
+
+def mix_columns(self: &State) {
+    for let j=0; j < 4; j += 1 {
+        let s0 = get(self, 0, j);
+        let s1 = get(self, 1, j);
+        let s2 = get(self, 2, j);
+        let s3 = get(self, 3, j);
+
+        set(self, 0, j, multiply(0x02, s0) ^ multiply(0x03, s1) ^ s2 ^ s3);
+        set(self, 1, j, s0 ^ multiply(0x02, s1) ^ multiply(0x03, s2) ^ s3);
+        set(self, 2, j, s0 ^ s1 ^ multiply(0x02, s2) ^ multiply(0x03, s3));
+        set(self, 3, j, multiply(0x03, s0) ^ s1 ^ s2 ^ multiply(0x02, s3));
+    }
+}
+
+def inverse_mix_columns(self: &State) {
+    for let j=0; j < 4; j += 1 {
+        let s0 = get(self, 0, j);
+        let s1 = get(self, 1, j);
+        let s2 = get(self, 2, j);
+        let s3 = get(self, 3, j);
+
+        set(self, 0, j, multiply(0x0e, s0) ^ multiply(0x0b, s1) ^ multiply(0x0d, s2) ^ multiply(0x09, s3));
+        set(self, 1, j, multiply(0x09, s0) ^ multiply(0x0e, s1) ^ multiply(0x0b, s2) ^ multiply(0x0d, s3));
+        set(self, 2, j, multiply(0x0d, s0) ^ multiply(0x09, s1) ^ multiply(0x0e, s2) ^ multiply(0x0b, s3));
+        set(self, 3, j, multiply(0x0b, s0) ^ multiply(0x0d, s1) ^ multiply(0x09, s2) ^ multiply(0x0e, s3));
+    }
+}
+
+
+def substitute_byte(byte: Int): Int {
+    let S_BOX = [[99, 124, 119, 123, 242, 107, 111, 197, 48, 1, 103, 43, 254, 215, 171, 118], [202, 130, 201, 125, 250, 89, 71, 240, 173, 212, 162, 175, 156, 164, 114, 192], [183, 253, 147, 38, 54, 63, 247, 204, 52, 165, 229, 241, 113, 216, 49, 21], [4, 199, 35, 195, 24, 150, 5, 154, 7, 18, 128, 226, 235, 39, 178, 117], [9, 131, 44, 26, 27, 110, 90, 160, 82, 59, 214, 179, 41, 227, 47, 132], [83, 209, 0, 237, 32, 252, 177, 91, 106, 203, 190, 57, 74, 76, 88, 207], [208, 239, 170, 251, 67, 77, 51, 133, 69, 249, 2, 127, 80, 60, 159, 168], [81, 163, 64, 143, 146, 157, 56, 245, 188, 182, 218, 33, 16, 255, 243, 210], [205, 12, 19, 236, 95, 151, 68, 23, 196, 167, 126, 61, 100, 93, 25, 115], [96, 129, 79, 220, 34, 42, 144, 136, 70, 238, 184, 20, 222, 94, 11, 219], [224, 50, 58, 10, 73, 6, 36, 92, 194, 211, 172, 98, 145, 149, 228, 121], [231, 200, 55, 109, 141, 213, 78, 169, 108, 86, 244, 234, 101, 122, 174, 8], [186, 120, 37, 46, 28, 166, 180, 198, 232, 221, 116, 31, 75, 189, 139, 138], [112, 62, 181, 102, 72, 3, 246, 14, 97, 53, 87, 185, 134, 193, 29, 158], [225, 248, 152, 17, 105, 217, 142, 148, 155, 30, 135, 233, 206, 85, 40, 223], [140, 161, 137, 13, 191, 230, 66, 104, 65, 153, 45, 15, 176, 84, 187, 22]];
+    byte &= 0xFF;
+    let row = right_shift(byte, 4) & 0xF;
+    let col = byte & 0xF;
+    return S_BOX[row][col];
+}
+
+def inverse_substitute_byte(byte: Int): Int {
+    let INVERSE_S_BOX = [[82, 9, 106, 213, 48, 54, 165, 56, 191, 64, 163, 158, 129, 243, 215, 251], [124, 227, 57, 130, 155, 47, 255, 135, 52, 142, 67, 68, 196, 222, 233, 203], [84, 123, 148, 50, 166, 194, 35, 61, 238, 76, 149, 11, 66, 250, 195, 78], [8, 46, 161, 102, 40, 217, 36, 178, 118, 91, 162, 73, 109, 139, 209, 37], [114, 248, 246, 100, 134, 104, 152, 22, 212, 164, 92, 204, 93, 101, 182, 146], [108, 112, 72, 80, 253, 237, 185, 218, 94, 21, 70, 87, 167, 141, 157, 132], [144, 216, 171, 0, 140, 188, 211, 10, 247, 228, 88, 5, 184, 179, 69, 6], [208, 44, 30, 143, 202, 63, 15, 2, 193, 175, 189, 3, 1, 19, 138, 107], [58, 145, 17, 65, 79, 103, 220, 234, 151, 242, 207, 206, 240, 180, 230, 115], [150, 172, 116, 34, 231, 173, 53, 133, 226, 249, 55, 232, 28, 117, 223, 110], [71, 241, 26, 113, 29, 41, 197, 137, 111, 183, 98, 14, 170, 24, 190, 27], [252, 86, 62, 75, 198, 210, 121, 32, 154, 219, 192, 254, 120, 205, 90, 244], [31, 221, 168, 51, 136, 7, 199, 49, 177, 18, 16, 89, 39, 128, 236, 95], [96, 81, 127, 169, 25, 181, 74, 13, 45, 229, 122, 159, 147, 201, 156, 239], [160, 224, 59, 77, 174, 42, 245, 176, 200, 235, 187, 60, 131, 83, 153, 97], [23, 43, 4, 126, 186, 119, 214, 38, 225, 105, 20, 99, 85, 33, 12, 125]];
+    byte &= 0xFF;
+    let row = right_shift(byte, 4) & 0xF;
+    let col = byte & 0xF;
+    return INVERSE_S_BOX[row][col];
+}
+
+def substitute_bytes(self: &State) {
+    for let i=0; i < 4; i += 1 {
+        for let j=0; j < 4; j += 1 {
+            set(self, i, j, substitute_byte(get(self, i, j)));
         }
     }
-} in
+}
 
-proc rot_row(self: State, y: Int, n: Int) -> State = {
-    while n {
-        let a = get(&self, 0, y),
-            b = get(&self, 1, y),
-            c = get(&self, 2, y),
-            d = get(&self, 3, y) in {
-            set(&self, 0, y, b);
-            set(&self, 1, y, c);
-            set(&self, 2, y, d);
-            set(&self, 3, y, a);
-        };
-        n -= 1;
-    };
-    self
-} in
-
-proc shift_rows(self: State) -> State = {
-    rot_row(rot_row(rot_row(self, 1, 1), 2, 2), 3, 3)
-} in
-
-proc inverse_shift_rows(self: State) -> State = {
-    rot_row(rot_row(rot_row(self, 1, 3), 2, 2), 3, 1)
-} in
-
-proc add_round_key(self: State, round_key: State) -> State = {
-    let i = 0,
-        self_int_ptr = (&self) as &Int,
-        round_key_int_ptr = (&round_key) as &Int in {
-        while i < 16 {
-            self_int_ptr[i] = bitxor(self_int_ptr[i], round_key_int_ptr[i]);
-            i += 1;
-        };
-        self
-    }
-} in
-
-proc mix_columns(self: State) -> State = {
-    let j = 0 in while j < 4 {
-        let s0 = bitxor(bitxor(bitxor(mul(get(&self, j, 0), 2), mul(get(&self, j, 1), 3)), get(&self, j, 2)), get(&self, j, 3)),
-            s1 = bitxor(bitxor(bitxor(get(&self, j, 0), mul(get(&self, j, 1), 2)), mul(get(&self, j, 2), 3)), get(&self, j, 3)),
-            s2 = bitxor(bitxor(bitxor(get(&self, j, 0), get(&self, j, 1)), mul(get(&self, j, 2), 2)), mul(get(&self, j, 3), 3)),
-            s3 = bitxor(bitxor(bitxor(mul(get(&self, j, 0), 3), get(&self, j, 1)), get(&self, j, 2)), mul(get(&self, j, 3), 2)) in {
-            
-            set(&self, j, 0, s0);
-            set(&self, j, 1, s1);
-            set(&self, j, 2, s2);
-            set(&self, j, 3, s3);
-        };
-        j += 1;
-    };
-    self
-} in
-
-proc inverse_mix_columns(self: State) -> State = {
-    let j = 0 in while j < 4 {
-        let s0 = bitxor(bitxor(bitxor(mul(get(&self, j, 0), 14), mul(get(&self, j, 1), 11)), mul(get(&self, j, 2), 13)), mul(get(&self, j, 3), 9)),
-            s1 = bitxor(bitxor(bitxor(mul(get(&self, j, 0), 9),  mul(get(&self, j, 1), 14)), mul(get(&self, j, 2), 11)), mul(get(&self, j, 3), 13)),
-            s2 = bitxor(bitxor(bitxor(mul(get(&self, j, 0), 13), mul(get(&self, j, 1), 9)),  mul(get(&self, j, 2), 14)), mul(get(&self, j, 3), 11)),
-            s3 = bitxor(bitxor(bitxor(mul(get(&self, j, 0), 11), mul(get(&self, j, 1), 13)), mul(get(&self, j, 2), 9)),  mul(get(&self, j, 3), 14)) in {
-            
-            set(&self, j, 0, s0);
-            set(&self, j, 1, s1);
-            set(&self, j, 2, s2);
-            set(&self, j, 3, s3);
-        };
-        j += 1;
-    };
-    self
-} in
-
-proc sub_byte(byte: Int) -> Int = {
-    let S_BOX = [[99, 124, 119, 123, 242, 107, 111, 197, 48, 1, 103, 43, 254, 215, 171, 118], [202, 130, 201, 125, 250, 89, 71, 240, 173, 212, 162, 175, 156, 164, 114, 192], [183, 253, 147, 38, 54, 63, 247, 204, 52, 165, 229, 241, 113, 216, 49, 21], [4, 199, 35, 195, 24, 150, 5, 154, 7, 18, 128, 226, 235, 39, 178, 117], [9, 131, 44, 26, 27, 110, 90, 160, 82, 59, 214, 179, 41, 227, 47, 132], [83, 209, 0, 237, 32, 252, 177, 91, 106, 203, 190, 57, 74, 76, 88, 207], [208, 239, 170, 251, 67, 77, 51, 133, 69, 249, 2, 127, 80, 60, 159, 168], [81, 163, 64, 143, 146, 157, 56, 245, 188, 182, 218, 33, 16, 255, 243, 210], [205, 12, 19, 236, 95, 151, 68, 23, 196, 167, 126, 61, 100, 93, 25, 115], [96, 129, 79, 220, 34, 42, 144, 136, 70, 238, 184, 20, 222, 94, 11, 219], [224, 50, 58, 10, 73, 6, 36, 92, 194, 211, 172, 98, 145, 149, 228, 121], [231, 200, 55, 109, 141, 213, 78, 169, 108, 86, 244, 234, 101, 122, 174, 8], [186, 120, 37, 46, 28, 166, 180, 198, 232, 221, 116, 31, 75, 189, 139, 138], [112, 62, 181, 102, 72, 3, 246, 14, 97, 53, 87, 185, 134, 193, 29, 158], [225, 248, 152, 17, 105, 217, 142, 148, 155, 30, 135, 233, 206, 85, 40, 223], [140, 161, 137, 13, 191, 230, 66, 104, 65, 153, 45, 15, 176, 84, 187, 22]] in {
-        byte = bitand(byte, 255);
-        let row = bitand(rsh(byte, 4), 15),
-            col = bitand(byte, 15) in
-            S_BOX[row][col]
-    }
-} in
-
-proc inverse_sub_byte(byte: Int) -> Int = {
-    let INVERSE_S_BOX = [[82, 9, 106, 213, 48, 54, 165, 56, 191, 64, 163, 158, 129, 243, 215, 251], [124, 227, 57, 130, 155, 47, 255, 135, 52, 142, 67, 68, 196, 222, 233, 203], [84, 123, 148, 50, 166, 194, 35, 61, 238, 76, 149, 11, 66, 250, 195, 78], [8, 46, 161, 102, 40, 217, 36, 178, 118, 91, 162, 73, 109, 139, 209, 37], [114, 248, 246, 100, 134, 104, 152, 22, 212, 164, 92, 204, 93, 101, 182, 146], [108, 112, 72, 80, 253, 237, 185, 218, 94, 21, 70, 87, 167, 141, 157, 132], [144, 216, 171, 0, 140, 188, 211, 10, 247, 228, 88, 5, 184, 179, 69, 6], [208, 44, 30, 143, 202, 63, 15, 2, 193, 175, 189, 3, 1, 19, 138, 107], [58, 145, 17, 65, 79, 103, 220, 234, 151, 242, 207, 206, 240, 180, 230, 115], [150, 172, 116, 34, 231, 173, 53, 133, 226, 249, 55, 232, 28, 117, 223, 110], [71, 241, 26, 113, 29, 41, 197, 137, 111, 183, 98, 14, 170, 24, 190, 27], [252, 86, 62, 75, 198, 210, 121, 32, 154, 219, 192, 254, 120, 205, 90, 244], [31, 221, 168, 51, 136, 7, 199, 49, 177, 18, 16, 89, 39, 128, 236, 95], [96, 81, 127, 169, 25, 181, 74, 13, 45, 229, 122, 159, 147, 201, 156, 239], [160, 224, 59, 77, 174, 42, 245, 176, 200, 235, 187, 60, 131, 83, 153, 97], [23, 43, 4, 126, 186, 119, 214, 38, 225, 105, 20, 99, 85, 33, 12, 125]] in {
-        byte = bitand(byte, 255);
-        let row = bitand(rsh(byte, 4), 15),
-            col = bitand(byte, 15) in
-            INVERSE_S_BOX[row][col]
-    }
-} in
-
-
-proc sub_bytes(self: State) -> State = {
-    let i = 0, j = 0 in {
-        while i < 4 {
-            while j < 4 {
-                set(&self, j, i, sub_byte(get(&self, j, i)));
-                j += 1;
-            };
-            j = 0;
-            i += 1;
-        };
-    };
-    self
-} in
-
-proc inverse_sub_bytes(self: State) -> State = {
-    let i = 0, j = 0 in {
-        while i < 4 {
-            while j < 4 {
-                set(&self, j, i, inverse_sub_byte(get(&self, j, i)));
-                j += 1;
-            };
-            j = 0;
-            i += 1;
-        };
-    };
-    self
-} in
-
-type AESKeyType = enum {AES256, AES192, AES128} in
-type AESKeyData = union {
-    AES256: [Int * 32],
-    AES192: [Int * 24],
-    AES128: [Int * 16]
-} in
-type Key = struct {
-    ty: AESKeyType,
-    key: AESKeyData
-} in
-
-proc get_key_len(key: Key) -> Int = {
-    match (key.ty) {
-        AES256 of AESKeyType => 8,
-        AES192 of AESKeyType => 6,
-        AES128 of AESKeyType => 4
-    }
-} in
-
-proc get_key_rounds(key: Key) -> Int = {
-    match (key.ty) {
-        AES256 of AESKeyType => 14,
-        AES192 of AESKeyType => 12,
-        AES128 of AESKeyType => 10
-    }
-} in
-
-proc get_key_size(key: Key) -> Int = {
-    match (key.ty) {
-        AES256 of AESKeyType => 32,
-        AES192 of AESKeyType => 24,
-        AES128 of AESKeyType => 16
-    }
-} in
-
-proc get_key_data(key: &Key) -> &Int = {
-    (&key->key) as &Int
-} in
-
-proc putkey(key: Key) -> None = {
-    match (key.ty) {
-        AES256 of AESKeyType => put "AES256",
-        AES192 of AESKeyType => put "AES192",
-        AES128 of AESKeyType => put "AES128"
-    };
-    put " ";
-    let i = 0, size = get_key_size(key), data = get_key_data(&key) in 
-        while i < size {
-            putbyte(data[i], false);
-            i += 1;
+def inverse_substitute_bytes(self: &State) {
+    for let i=0; i < 4; i += 1 {
+        for let j=0; j < 4; j += 1 {
+            set(self, i, j, inverse_substitute_byte(get(self, i, j)));
         }
-} in
+    }
+}
 
-proc sub_word(word: Int) -> Int = {
-    let byte0 = sub_byte(bitand(rsh(word, 24), 255)),
-        byte1 = sub_byte(bitand(rsh(word, 16), 255)),
-        byte2 = sub_byte(bitand(rsh(word, 8), 255)),
-        byte3 = sub_byte(bitand(word, 255)) in
-        (lsh(byte0, 24) + lsh(byte1, 16) + lsh(byte2, 8) + byte3)
-} in
+enum Key {
+    Key128([Int * 16]),
+    Key192([Int * 24]),
+    Key256([Int * 32]),
+}
 
-proc rot_word(word: Int) -> Int = {
-    let byte0 = bitand(rsh(word, 24), 255),
-        byte1 = bitand(rsh(word, 16), 255),
-        byte2 = bitand(rsh(word, 8), 255),
-        byte3 = bitand(word, 255) in
-        (lsh(byte1, 24) + lsh(byte2, 16) + lsh(byte3, 8) + byte0)
-} in
+def get_key_rounds(self: &Key): Int {
+    match self {
+        &of Key128(_) => 10,
+        &of Key192(_) => 12,
+        &of Key256(_) => 14,
+        _ => 0
+    }
+}
 
-proc word(byte3: Int, byte2: Int, byte1: Int, byte0: Int) -> Int = {
-    (lsh(byte3, 24) + lsh(byte2, 16) + lsh(byte1, 8) + byte0)
-} in
+def get_key_length(self: &Key): Int {
+    match self {
+        &of Key128(_) => 4,
+        &of Key192(_) => 6,
+        &of Key256(_) => 8,
+        _ => 0
+    }
+}
 
-proc bytes(word: Int) -> [Int * 4] = {
-    let byte0 = bitand(rsh(word, 24), 255),
-        byte1 = bitand(rsh(word, 16), 255),
-        byte2 = bitand(rsh(word, 8), 255),
-        byte3 = bitand(word, 255) in
-        [byte0, byte1, byte2, byte3]
-} in
+def get_key_size(self: &Key): Int {
+    return get_key_length(self) * 4;
+}
 
-proc round_key(word0: Int, word1: Int, word2: Int, word3: Int) -> State = {
-    let bytes0 = bytes(word0),
-        bytes1 = bytes(word1),
-        bytes2 = bytes(word2),
-        bytes3 = bytes(word3) in
-            col_major(bytes0[0], bytes1[0], bytes2[0], bytes3[0],
-            bytes0[1], bytes1[1], bytes2[1], bytes3[1],
-            bytes0[2], bytes1[2], bytes2[2], bytes3[2],
-            bytes0[3], bytes1[3], bytes2[3], bytes3[3])
-} in
+def get_key_data(key: &Key): &Int = key as &Int;
 
-proc alloc(size: Int) -> &Int = std {
-    alloc [SP]
-} in
+def print_key(self: &Key) {
+    match self {
+        &of Key128(key) => print("Key128: "),
+        &of Key192(key) => print("Key192: "),
+        &of Key256(key) => print("Key256: "),
+        _ => print("Unknown key type: "),
+    }
+    let size = get_key_size(self);
+    let data = get_key_data(self);
+    for let i=0; i < size; i+=1 {
+        print_byte(data[i], False);
+    }
+}
 
-proc free(ptr: &Int) = std { free[SP] pop } in
+def print_keyln(self: &Key) {
+    print_key(self);
+    print("\\n");
+}
 
-proc key_expansion(key: Key, nr: Int, nk: Int) -> &Int = {
-    let key_data = get_key_data(&key),
-        w: &Int = alloc(4 * (nr + 1) * sizeof(Int)),
-        i = 0 in {
-        while i < nk {
-            (w[i]) = word(
-                key_data[4 * i],
-                key_data[4 * i + 1],
-                key_data[4 * i + 2],
-                key_data[4 * i + 3],
-            );
-            i = i + 1;
+
+def substitute_word(word: Int): Int {
+    let byte0 = substitute_byte(right_shift(word, 24) & 0xFF);
+    let byte1 = substitute_byte(right_shift(word, 16) & 0xFF);
+    let byte2 = substitute_byte(right_shift(word, 8) & 0xFF);
+    let byte3 = substitute_byte(word & 0xFF);
+    return left_shift(byte0, 24) + left_shift(byte1, 16) + left_shift(byte2, 8) + byte3;
+}
+
+def rotate_word(word: Int): Int {
+    let byte0 = right_shift(word, 24) & 0xFF;
+    let byte1 = right_shift(word, 16) & 0xFF;
+    let byte2 = right_shift(word, 8) & 0xFF;
+    let byte3 = word & 0xFF;
+    return left_shift(byte1, 24) + left_shift(byte2, 16) + left_shift(byte3, 8) + byte0;
+}
+
+def word(byte3: Int, byte2: Int, byte1: Int, byte0: Int): Int {
+    return left_shift(byte3, 24) + left_shift(byte2, 16) + left_shift(byte1, 8) + byte0;
+}
+
+def bytes(word: Int): [Int * 4] {
+    let byte0 = right_shift(word, 24) & 0xFF;
+    let byte1 = right_shift(word, 16) & 0xFF;
+    let byte2 = right_shift(word, 8) & 0xFF;
+    let byte3 = word & 0xFF;
+    return [byte0, byte1, byte2, byte3];
+}
+
+def round_key(word0: Int, word1: Int, word2: Int, word3: Int): State {
+    let bytes0 = bytes(word0);
+    let bytes1 = bytes(word1);
+    let bytes2 = bytes(word2);
+    let bytes3 = bytes(word3);
+    return col_major(bytes0[0], bytes1[0], bytes2[0], bytes3[0],
+              bytes0[1], bytes1[1], bytes2[1], bytes3[1],
+              bytes0[2], bytes1[2], bytes2[2], bytes3[2],
+              bytes0[3], bytes1[3], bytes2[3], bytes3[3]);
+}
+
+def key_expansion(key: &Key, nr: Int, nk: Int): &Int = {
+    let key_data = key as &Int;
+    let w = alloc(4 * (nr + 1) * sizeof(Int)) as &Int;
+    for let i=0; i < nk; i+=1 {
+        w[i] = word(key_data[4*i], key_data[4*i+1], key_data[4*i+2], key_data[4*i+3]);
+    }
+
+    let rcon = [1, 2, 4, 8, 16, 32, 64, 128, 27, 54];
+    for let i=nk; i < 4 * (nr + 1); i += 1 {
+        let temp = w[i-1];
+        if i % nk == 0 {
+            temp = substitute_word(rotate_word(temp)) ^ word(rcon[i / nk - 1], 0, 0, 0);
+        } elif nk == 8 && i % nk == 4 {
+            temp = substitute_word(temp);
+        }
+
+        w[i] = w[i-nk] ^ temp;
+    }
+
+    return w;
+}
+
+def cipher(self: &State, key: &Key) {
+    let len = get_key_length(key);
+    let nr = get_key_rounds(key);
+    let k = key_expansion(key, nr, len);
+    let rk = round_key(k[0], k[1], k[2], k[3]);
+    add_round_key(self, &rk);
+    for let i=4; i < 4 * (nr + 1); i+=4 {
+        rk = round_key(k[i], k[i+1], k[i+2], k[i+3]);
+        substitute_bytes(self);
+        shift_rows(self);
+        if i < 4 * nr {
+            mix_columns(self);
+        }
+        add_round_key(self, &rk);
+    }
+
+    del k;
+}
+
+def inverse_cipher(self: &State, key: &Key) {
+    let len = get_key_length(key);
+    let nr = get_key_rounds(key);
+    let k = key_expansion(key, nr, len);
+
+    let rk = round_key(k[4*nr], k[4*nr+1], k[4*nr+2], k[4*nr+3]);
+    add_round_key(self, &rk);
+    for let i=4*nr-4; i >= 0; i-=4 {
+        rk = round_key(k[i], k[i+1], k[i+2], k[i+3]);
+        inverse_shift_rows(self);
+        inverse_substitute_bytes(self);
+        add_round_key(self, &rk);
+        if i > 0 {
+            inverse_mix_columns(self);
+        }
+    }
+
+    del k;
+}
+let key = Key of Key128 [
+    0x00, 0x01, 0x02, 0x03,
+    0x04, 0x05, 0x06, 0x07,
+    0x08, 0x09, 0x0A, 0x0B,
+    0x0C, 0x0D, 0x0E, 0x0F
+];
+
+
+let state: State = row_major(
+    0x00, 0x01, 0x02, 0x03,
+    0x04, 0x05, 0x06, 0x07,
+    0x08, 0x09, 0x0A, 0x0B,
+    0x0C, 0x0D, 0x0E, 0x0F
+);
+
+print_keyln(&key);
+print_state(&state);
+print("\\n");
+cipher(&state, &key);
+print_state(&state);
+print("\\n");
+inverse_cipher(&state, &key);
+print_state(&state);
+print("\\n");
+`);
+                    break;
+                case "list":
+                    source.setValue(`enum List<T> {
+    Nil,
+    Cons {
+        data: T,
+        next: &List<T>
+    }
+}
+
+def print_list<T>(l: &List<T>) {
+    match *l {
+        of Nil => {},
+        of Cons {data, next=&of Nil} => {
+            print(data);
+        },
+        of Cons {data, next} => {
+            print(data, ", ");
+            print_list<T>(next);
+        },
+        _ => {}
+    }
+}
+
+def make_list<T, U>(cons: Int -> T, len: Int): List<T> {
+    if len == 0 {
+        return List<T> of Nil;
+    } else {
+        return List<T> of Cons {
+            data = cons(len),
+            next = new make_list<T, U>(cons, len - 1)
         };
+    }
+}
 
-        i = nk;
-        let rcon = [1, 2, 4, 8, 16, 32, 64, 128, 27, 54] in {
-            while i < 4 * (nr + 1) {
-                let tmp = w[i - 1] in {
-                    if (i % nk == 0) {
-                        tmp = bitxor(sub_word(rot_word(tmp)), word(rcon[i / nk - 1], 0, 0, 0));
-                    } else {
-                        if (nk == 8 and i % nk == 4) {
-                            tmp = sub_word(tmp);
-                        }
-                    };
-                    w[i] = bitxor(w[i - nk], tmp);
-                };
-                i = i + 1;
+def identity<T>(t: T): T = t;
+
+let list1 = make_list<Int, Int>(identity<Int>, 100);
+print_list<Int>(&list1);
+print("\\n");
+
+print_list<Int>(new List<Int> of Cons {
+    data = 1,
+    next = new List<Int> of Cons {
+        data = 2,
+        next = new List<Int> of Cons {
+            data = 3,
+            next = new List<Int> of Cons {
+                data = 4,
+                next = new List<Int> of Nil
             }
-        };
-        w
-    }
-} in
-
-proc aes_256_key(key: [Int * 32]) -> Key = {
-    struct {
-        ty = AES256 of AESKeyType,
-        key = union {
-            AES256 = key,
-            AESKeyData..
         }
     }
-} in
+});
+print("\\n");
 
-proc aes_192_key(key: [Int * 24]) -> Key = {
-    struct {
-        ty = AES192 of AESKeyType,
-        key = union {
-            AES192 = key,
-            AESKeyData..
+let x = new List<Char> of Cons {
+    data = 'a',
+    next = new List<Char> of Cons {
+        data = 'b',
+        next = new List<Char> of Cons {
+            data = 'c',
+            next = new List<Char> of Cons {
+                data = 'd',
+                next = new List<Char> of Nil
+            }
         }
     }
-} in
+};
 
-proc aes_128_key(key: [Int * 16]) -> Key = {
-    struct {
-        ty = AES128 of AESKeyType,
-        key = union {
-            AES128 = key,
-            AESKeyData..
-        }
-    }
-} in
-
-proc cipher(self: State, key: Key) -> State = {
-    let result = self,
-        i = 4,
-        len = get_key_len(key),
-        rounds = get_key_rounds(key),
-        k = key_expansion(key, rounds, len)
-        in {
-
-        result = add_round_key(result, round_key(k[0], k[1], k[2], k[3]));
-        while (i < 4 * (rounds + 1)) {
-            let rk = round_key(k[i], k[i + 1], k[i + 2], k[i + 3]) in {
-                result = shift_rows(sub_bytes(result));
-                if (i / 4 != rounds) {
-                    result = mix_columns(result);
-                };
-                result = add_round_key(result, rk);
-            };
-            i += 4;
-        };
-        free(k);
-        result
-    }
-} in
-
-proc inverse_cipher(self: State, key: Key) -> State = {
-    let result = self,
-        len = get_key_len(key),
-        rounds = get_key_rounds(key),
-        i = 4 * rounds,
-        k = key_expansion(key, rounds, len)
-        in {
-
-        while i > 0 {
-            let rk = round_key(k[i], k[i + 1], k[i + 2], k[i + 3]) in {
-                result = add_round_key(result, rk);
-                if (i / 4 != rounds) {
-                    result = inverse_mix_columns(result);
-                };
-                result = inverse_sub_bytes(inverse_shift_rows(result));
-            };
-            i -= 4;
-        };
-        result = add_round_key(result, round_key(k[0], k[1], k[2], k[3]));
-        free(k);
-        result
-    }
-} in
-
-proc between(lower: Int, n: Int, upper: Int) -> Bool = {
-    if (n < lower) {
-        return false
-    };
-
-    if (n > upper) {
-        return false
-    };
-
-    true
-} in
-
-proc gethexdigit() -> Int = {
-    let digit = getchar() as Int in
-        if (between(48, digit, 57)) {
-            digit - 48
-        } else if (between(65, digit, 70)) {
-            digit - 55
-        } else if (between(97, digit, 102)) {
-            digit - 87
-        } else {
-            0
-        }
-} in
-
-proc getbyte() -> Int = {
-    gethexdigit() * 16 + gethexdigit()
-} in
-
-let state = row_major(
-    0, 1, 2, 3,
-    4, 5, 6, 7,
-    8, 9, 10, 11,
-    12, 13, 14, 15
-) in {
-    let key = aes_128_key([
-        0, 1, 2, 3, 4, 5, 6, 7,
-        8, 9, 10, 11, 12, 13, 14, 15,
-    ]) in {
-        put "key: \\n";
-        putkey(key);
-        put "\\ninput:\\n";
-        putstate(state);
-
-        state = cipher(state, key);
-        put "output:\\n";
-        putstate(state);
-        state = inverse_cipher(state, key);
-        
-        put "inverse:\\n";
-        putstate(state);
-    };
-}`);
+print_list<Char>(x);
+print("\\n");
+`)
                     break;
-                case "quicksort":
-                    source.setValue(`proc bitxor(a: Int, b: Int) -> Int = core {
-    bitwise-xor [SP], [SP - 1]
-    pop
-} in
+                case "result":
+                    source.setValue(`enum Result<T, E> {
+    Ok(T),
+    Err(E)
+}
 
-proc bitor(a: Int, b: Int) -> Int = core {
-    bitwise-or [SP], [SP - 1]
-    pop
-} in
-
-proc bitnand(a: Int, b: Int) -> Int = core {
-    bitwise-nand [SP], [SP - 1]
-    pop
-} in
-
-proc bitand(a: Int, b: Int) -> Int = core {
-    bitwise-and [SP], [SP - 1]
-    pop
-} in
-
-proc bitnot(x: Int) -> Int = core {
-    bitwise-not [SP]
-} in
-
-proc alloc(size: Int) -> &Cell = std {
-    alloc [SP]
-} in
-
-proc free(ptr: &Int) = std {
-    free [SP]
-    pop
-} in
-
-proc puthex(n: Int, lower: Bool) -> None = {
-    if (n < 16) {
-        put (n + if (n < 10) {
-            48
-        } else if lower {
-            87
-        } else {
-            55
-        }) as Char
-    } else {
-        puthex(n / 16, lower);
-        puthex(n % 16, lower)
+def print_result<T, E>(res: Result<T, E>) {
+    match res {
+        of Ok(x) => print("okay: ", x, "\\n"),
+        of Err(e) => print("error: ", e, "\\n")
     }
-} in
+}
 
-proc putbyte(n: Int, lower: Bool) -> None = {
-    puthex(n / 16, lower);
-    puthex(n % 16, lower)
-} in
-
-
-proc ln() -> None = {
-    put '\\n'
-} in
-
-proc min(x: Int, y: Int) -> Int = {
-    if (x < y) x else y
-} in
-proc max(x: Int, y: Int) -> Int = {
-    if (x > y) x else y
-} in
-
-
-type List = struct { data: Int, next: &List } in
-
-proc sort(node: &List) -> None = {
-    if (node->next != Null) {
-        sort(node->next);
-        let a = min(node->data, node->next->data),
-            b = max(node->data, node->next->data)
-            in {
-            if (b != node->data) {
-                sort(node->next);
-            };
-            node->data = a;
-            node->next->data = b;
-        };
+def map<T, U, E>(f: T -> U, res: Result<T, E>): Result<U, E> {
+    match res {
+        of Ok(x) => Result<U, E> of Ok(f(x)),
+        of Err(e) => Result<U, E> of Err(e)
     }
-} in
+}
 
-proc len(node: &List) -> Int = {
-    if (node != Null) {
-        len(node->next) + 1
-    } else {
-        0
+def map_err<T, E, F>(f: E -> F, res: Result<T, E>): Result<T, F> {
+    match res {
+        of Ok(x) => Result<T, F> of Ok(x),
+        of Err(e) => Result<T, F> of Err(f(e))
     }
-} in
+}
 
-
-proc index(node: &List, n: Int) -> &List = {
-    while n {
-        node = node->next;
-        n -= 1;
-    };
-    node
-} in
-
-proc swapi(a: &Int, b: &Int) = {
-    let tmp = (*a) in {
-        (*a) = *b;
-        (*b) = tmp;
+def and_then<T, U, E>(f: T -> Result<U, E>, res: Result<T, E>): Result<U, E> {
+    match res {
+        of Ok(x) => f(x),
+        of Err(e) => Result<U, E> of Err(e)
     }
-} in
+}
 
-proc partition_arr(arr: &Int, low: Int, high: Int) -> Int = {
-    let pivot = arr[high],
-        i = low - 1,
-        j = low in {
-        while j < high {
-            if (arr[j] <= pivot) {
-                i += 1;
-                swapi(&arr[j], &arr[i]);
-            };
-            j += 1
-        };
-        swapi(&arr[i + 1], &arr[high]);
-        i + 1
+def or_else<T, E, F>(f: E -> Result<T, F>, res: Result<T, E>): Result<T, F> {
+    match res {
+        of Ok(x) => Result<T, F> of Ok(x),
+        of Err(e) => f(e)
     }
-} in
+}
 
-proc quicksort_arr(arr: &Int, low: Int, high: Int) = {
-    if (low < high) {
-        let pi = partition_arr(arr, low, high) in {
-            quicksort_arr(arr, low, pi - 1);
-            quicksort_arr(arr, pi + 1, high);
-        }
-    }
-} in
+def inc(x: Int): Int = x + 1;
 
-const SIZE = 100 in
-let arr: &Int = alloc(SIZE * 2) as &Int, i = 0, a = 5, b = 6 in {
-    put "unsorted: [";
-    while i < SIZE {
-        arr[i] = SIZE - i;
-        put arr[i];
-        if (i < SIZE - 1) {
-            put ", ";
-        };
-        i += 1;
-    };
-    put "]\\n";
-    quicksort_arr(arr, 0, SIZE - 1);
-    put "sorted: [";
-    i = 0;
-    while i < SIZE {
-        put arr[i];
-        if (i < SIZE - 1) {
-            put ", ";
-        };
-        i += 1;
-    };
-    put "]\\n";
-}`);
+def test<T>(text: &Char): Result<T, Float> = Result<T, Float> of Err 5.0; 
+    
+let text = "hello";
+print_result<Int, Float>(
+    or_else<Int, &Char, Float>(
+        test<Int>,
+        map<Int, Int, &Char>(inc, Result<Int, &Char> of Err (&text as &Char))
+    )
+);
+let x = test<Int>;
+print(x(&text as &Char), "\\n");
+`);
                     break;
-                case "lambda-sim":
-                    source.setValue(`type Op = struct {
-    apply: proc(struct {x: Int}, Int) -> Int,
-    state: struct {x: Int}
-} in
+                case "calculator":
+                    document.getElementById("input").value = "(4 + 6) * ((8 - 3) / 2) + (9 % 5)";
+                    source.setValue(`enum Expr {
+    Add (&Expr, &Expr),
+    Sub (&Expr, &Expr),
+    Mul (&Expr, &Expr),
+    Div (&Expr, &Expr),
+    Rem (&Expr, &Expr),
+    Num Float,
+    Group &Expr,
+}
 
-proc mul(n: Int) -> Op = {
-    struct {
-        apply = proc(state: struct{x: Int}, y: Int) -> Int = {
-            state.x * y
+def eval(expr: &Expr): Float = match *expr {
+    of Add (lhs, rhs) => eval(lhs) + eval(rhs),
+    of Sub (lhs, rhs) => eval(lhs) - eval(rhs),
+    of Mul (lhs, rhs) => eval(lhs) * eval(rhs),
+    of Div (lhs, rhs) => eval(lhs) / eval(rhs),
+    of Rem (lhs, rhs) => eval(lhs) % eval(rhs),
+    of Num n => n,
+    of Group inner => eval(inner)
+};
+
+def free_expr(expr: &Expr) {
+    match *expr {
+        of Add (lhs, rhs)
+        | of Sub (lhs, rhs)
+        | of Mul (lhs, rhs)
+        | of Div (lhs, rhs)
+        | of Rem (lhs, rhs) => {
+            free_expr(lhs);
+            free_expr(rhs);
         },
-        state = struct {x=n}
+        of Group inner => free_expr(inner),
+        _ => {}
     }
-} in
+    del expr;
+}
 
-proc add(n: Int) -> Op = {
-    struct {
-        apply = proc(state: struct{x: Int}, y: Int) -> Int = {
-            state.x + y
+def print_expr(expr: &Expr) {
+    match *expr {
+        of Add(lhs, rhs) => {
+            print_expr(lhs);
+            print(" + ");
+            print_expr(rhs);
         },
-        state = struct {x=n}
+        of Sub(lhs, rhs) => {
+            print_expr(lhs);
+            print(" - ");
+            print_expr(rhs);
+        },
+        of Mul(lhs, rhs) => {
+            print_expr(lhs);
+            print(" * ");
+            print_expr(rhs);
+        },
+        of Div(lhs, rhs) => {
+            print_expr(lhs);
+            print(" / ");
+            print_expr(rhs);
+        },
+        of Rem(lhs, rhs) => {
+            print_expr(lhs);
+            print(" % ");
+            print_expr(rhs);
+        },
+        of Num n => print(n),
+        of Group expr => {
+            print("(");
+            print_expr(expr);
+            print(")");
+        }
     }
-} in
+}
 
-proc app(op: Op, y: Int) -> Int = {
-    op.apply(op.state, y)
-} in
+def is_between_inclusive(ch: Char, start: Char, end: Char): Bool {
+    let start = start as Int,
+        end = end as Int,
+        ch = ch as Int;
 
-proc putdec(n: Int) = {
-    if (n < 10) {
-        put (n + 48) as Char
+    return start <= ch && ch <= end;
+}
+
+struct Input {
+    start: &Char,
+    loc: Int,
+    length: Int
+}
+
+def free_input(input: Input) {
+    del input.start;
+}
+
+enum ParseResult {
+    Ok (Input, &Expr),
+    Err Int
+}
+
+def parse_float(input: Input): ParseResult {
+    let save = input;
+    let n = 0.0;
+
+    if (input.loc == input.length) {
+        return ParseResult of Err (input.loc);
+    }
+
+    if !(is_between_inclusive(input.start[input.loc], '0', '9')) {
+        return ParseResult of Err (input.loc);
+    }
+
+    for (); input.loc < input.length && is_between_inclusive(input.start[input.loc], '0', '9'); input.loc += 1 {
+        n *= 10.0;
+        n += (input.start[input.loc] as Int - '0' as Int) as Float;
+    }
+
+    if (input.loc < input.length && input.start[input.loc] == '.') {
+        input.loc += 1;
+        let m = 0.1;
+        for (); input.loc < input.length && is_between_inclusive(input.start[input.loc], '0', '9'); input.loc += 1 {
+            n += (input.start[input.loc] as Int - '0' as Int) as Float * m;
+            m *= 0.1;
+        }
+    }
+    return ParseResult of Ok (input, new Expr of Num n);
+}
+
+def binop(
+    lhs: &Expr,
+    input: Input,
+    op: Char,
+    factor: Input -> ParseResult,
+    cons: (&Expr, &Expr) -> &Expr): ParseResult {
+
+    input = parse_whitespaces(input);
+    if (input.loc == input.length) {
+        return ParseResult of Err (input.loc);
+    }
+
+    if input.start[input.loc] == op {
+        input.loc += 1;
+        input = parse_whitespaces(input);
+        match parse_term(input) {
+            of Ok (input, rhs) => {
+                return ParseResult of Ok (input, cons(lhs, rhs));
+            },
+            of Err _ => {
+                return ParseResult of Err (input.loc);
+            }
+        }
     } else {
-        putdec(n / 10);
-        put (n % 10 + 48) as Char
+        return ParseResult of Err (input.loc);
     }
-} in
+}
 
-proc puthex(n: Int, lower: Bool) = {
-    if (n < 16) {
-        put (n + if (n < 10) {
-            48
-        } else if lower {
-            87
-        } else {
-            55
-        }) as Char
-    } else {
-        puthex(n / 16, lower);
-        puthex(n % 16, lower)
+def parse_expr(input: Input): ParseResult {
+    let save = input;
+
+    if (input.loc == input.length) {
+        return ParseResult of Err (input.loc);
     }
-} in
 
-proc putbyte(n: Int, lower: Bool) = {
-    puthex(n / 16, lower);
-    puthex(n % 16, lower)
-} in
+    def add_cons(lhs: &Expr, rhs: &Expr): &Expr {
+        return new Expr of Add(lhs, rhs);
+    } 
+    def sub_cons(lhs: &Expr, rhs: &Expr): &Expr {
+        return new Expr of Sub(lhs, rhs);
+    }
 
-proc ln() = {
-    put '\\n'
-} in
+    match parse_term(input) {
+        of Ok (new_input, lhs) => {
+            input = new_input;
+            while True {
+                lhs = match binop(lhs, input, '+', parse_term, add_cons) {
+                    of Ok (new_input, new_lhs) => {
+                        input = new_input;
+                        new_lhs;
+                    },
+                    of Err _ => match binop(lhs, input, '-', parse_term, sub_cons) {
+                        of Ok (new_input, new_lhs) => {
+                            input = new_input;
+                            new_lhs;
+                        },
+                        of Err _ => {
+                            return ParseResult of Ok (input, lhs);
+                        }
+                    }
+                };
+            }
+            return ParseResult of Ok (input, lhs);
+        },
+        of Err _ => {return ParseResult of Err (input.loc);}
+    }
+}
 
-let double = mul(2),
-    triple = mul(3) in {
-    putdec(
-        app(add(10), app(triple, app(double, 5)))
-    );
-    ln();
+def parse_term(input: Input): ParseResult {
+    let save = input;
 
-    putbyte(255, false);
-}`);
+    if (input.loc == input.length) {
+        return ParseResult of Err (input.loc);
+    }
+
+    def mul_cons(lhs: &Expr, rhs: &Expr): &Expr {
+        return new Expr of Mul(lhs, rhs);
+    } 
+    def div_cons(lhs: &Expr, rhs: &Expr): &Expr {
+        return new Expr of Div(lhs, rhs);
+    }
+    def rem_cons(lhs: &Expr, rhs: &Expr): &Expr {
+        return new Expr of Rem(lhs, rhs);
+    }
+
+    match parse_atom(input) {
+        of Ok (new_input, lhs) => {
+            input = new_input;
+            while True {
+                lhs = match binop(lhs, input, '*', parse_atom, mul_cons) {
+                    of Ok (new_input, new_lhs) => {
+                        input = new_input;
+                        new_lhs;
+                    },
+                    of Err _ => match binop(lhs, input, '/', parse_atom, div_cons) {
+                        of Ok (new_input, new_lhs) => {
+                            input = new_input;
+                            new_lhs;
+                        },
+                        of Err _ => match binop(lhs, input, '%', parse_atom, rem_cons) {
+                            of Ok (new_input, new_lhs) => {
+                                input = new_input;
+                                new_lhs;
+                            },
+                            of Err _ => {
+                                return ParseResult of Ok (input, lhs);
+                            }
+                        }
+                    }
+                };
+            }
+            return ParseResult of Ok (input, lhs);
+        },
+        of Err _ => {return ParseResult of Err (input.loc);}
+    }
+}
+
+
+def parse_atom(input: Input): ParseResult {
+    let save = input;
+
+    if (input.loc == input.length) {
+        return ParseResult of Err (input.loc);
+    }
+
+    let result = parse_float(input);
+    if let of Err _ = result {
+        return parse_group(input);
+    }
+    return result;
+}
+
+def parse_group(input: Input): ParseResult {
+    let save = input;
+
+    if (input.loc == input.length) {
+        return ParseResult of Err (input.loc);
+    }
+
+    if (input.start[input.loc] != '(') {
+        return ParseResult of Err (input.loc);
+    }
+
+    input.loc += 1;
+    let input = parse_whitespaces(input);
+
+    return match parse_expr(input) {
+        of Ok (input, expr) => {
+            input = parse_whitespaces(input);
+            if (input.start[input.loc] != ')') {
+                return ParseResult of Err (input.loc);
+            }
+            input.loc += 1;
+            ParseResult of Ok (input, new Expr of Group(expr));
+        },
+        of Err _ => ParseResult of Err (input.loc)
+    };
+}
+
+def parse_whitespaces(input: Input): Input {
+    let save = input;
+
+    if (input.loc == input.length) {
+        return input;
+    }
+
+    for (); input.loc < input.length && (input.start[input.loc] == ' ' || input.start[input.loc] == '\r' || input.start[input.loc] == '\\n'); input.loc += 1 {}
+
+    return input;
+}
+
+def is_done(input: Input): Bool = input.loc >= input.length;
+
+def strlen(ch: &Char): Int {
+    let i = 0;
+    for (); ch[i] != '\\0'; i+=1 {}
+    return i;
+}
+
+def getchar(): Char {
+    let ch = ' ';
+    input(&ch);
+    return ch;
+}
+
+def readline(ch: &Char, len: Int): Int {
+    let i = len;
+
+    let c = getchar();
+    for (); c != '\\n' && c != '\\0'; i+=1 {
+        ch[i] = c;
+        c = getchar();
+    }
+    return i;
+}
+
+def read(): Input {
+    let buf = alloc(sizeof(Char) * 1024) as &Char;
+
+    print("? ");
+    let len = readline(buf, 0);
+    buf[len] = '\\0';
+
+    return {
+        start = buf as &Char,
+        length = strlen(buf as &Char),
+        loc = 0
+    };
+}
+
+let input = read();
+match parse_expr(input) {
+    of Ok (input, n) => {
+        print_expr(n);
+        print("\\n => ", eval(n), "\\n");
+        free_expr(n);
+        free_input(input);
+    },
+    of Err n => print("\\nCalculator: error while parsing at character: \\n", input.start[n], "\\n")
+}
+`);
                     break;
-                case "if-let":
-                    source.setValue(`type Dir = enum { North, South, East, West } in
+                case "tree":
+                    source.setValue(`enum Option<T> {
+    Some(T),
+    Nothing
+}
 
-let expr = (South of Dir, 2, struct {x=5, y=-6}) in
-    if let (South of Dir, b, c) = expr {
-        put "Matched!\\n";
-        put expr;
+def print_option<T>(opt: Option<T>, printer: T -> None) {
+	match opt {
+        of Some(x) => {
+            print("Some(");
+            printer(x);
+            print(")");
+        },
+        of Nothing => { print("Nothing"); }
+    }
+}
+
+enum List<T> {
+    Cons(T, &List<T>),
+    Nil
+}
+
+def print_list<T>(list: &List<T>): Option<T> {
+    match *list {
+        of Cons(x, &of Nil) => {
+            print(x);
+            return Option<T> of Some(x);
+        },
+        of Cons(x, xs) => {
+            print(x, ", ");
+            let _ = print_list<T>(xs);
+            return Option<T> of Some(x);
+        },
+        of Nil => Option<T> of Nothing
+    }
+}
+
+enum Tree<T> {
+    Node(T, &List<Tree<T>>),
+    Leaf(T),
+}
+
+def print_tree_list<T>(list: &List<Tree<T>>): Option<T> {
+    match *list {
+        of Cons(x, &of Nil) => {
+            return print_tree<T>(&x);
+        },
+        of Cons(x, xs) => {
+            let _ = print_tree<T>(&x);
+            print(", ");
+            return print_tree_list<T>(xs);
+        },
+        of Nil => Option<T> of Nothing
+    }
+}
+
+def print_tree<T>(tree: &Tree<T>): Option<T> {
+    match *tree {
+        of Node(x, &of Nil) => {
+            print(x);
+            return Option<T> of Some(x);
+        },
+        of Node(x, xs) => {
+            print(x, ", ");
+            return print_tree_list<T>(xs);
+        },
+        of Leaf n => {
+            print(n);
+            return Option<T> of Some(n);
+        }
+    }
+}
+
+def test<T>(tree: &Tree<T>, printer: T -> None) {
+    let result = print_tree<T>(tree);
+    print("\\n");
+    print_option<T>(result, printer);
+}
+
+let x = Tree<Int> of Node(
+    1,
+    new List<Tree<Int>> of Cons(
+        Tree<Int> of Leaf(2),
+        new List<Tree<Int>> of Cons(
+            Tree<Int> of Leaf(3),
+            new List<Tree<Int>> of Nil
+        )
+    )
+);
+
+let y = Tree<Char> of Node(
+    'a',
+    new List<Tree<Char>> of Cons(
+        Tree<Char> of Leaf('b'),
+        new List<Tree<Char>> of Cons(
+            Tree<Char> of Leaf('c'),
+            new List<Tree<Char>> of Nil
+        )
+    )
+);
+def print_int(x: Int) = print(x);
+def print_char(x: Char) = print(x);
+test<Int>(&x, print_int);
+print("\\n");
+test<Char>(&y, print_char);
+print("\\n");`);
+                    break;
+                case "lisp":
+                    source.setValue(`def strlen(ch: &Char): Int {
+    let len = 0;
+    while ch[len] != '\\0' {
+        len += 1;
+    }
+    return len;
+}
+
+def strcpy(dst: &Char, src: &Char) {
+    let i = 0;
+    for (); src[i] != '\\0'; i+=1 {
+        dst[i] = src[i];
+    }
+    dst[i] = '\\0';
+}
+
+struct String {
+    data: &Char,
+    len: Int,
+}
+
+def string_new(s: &Char): String {
+    let len = 0;
+    while s[len] != '\\0' {
+        len += 1;
+    }
+
+    let buffer = alloc(sizeof(Char) * len) as &Char;
+    strcpy(buffer, s);
+
+    return {
+        data = buffer,
+        len = len
+    };
+}
+
+def string_print(s: String) {
+    for let i=0; i < s.len; i+=1 {
+        print(s.data[i]);
+    }
+}
+
+enum Expr {
+    Boolean Bool,
+    Decimal Float,
+    Integer Int,
+    Complex {
+        real: Float,
+        imag: Float,
+    },
+    Symbol String,
+    String String,
+    Pair {
+        car: &Expr,
+        cdr: &Expr,
+    },
+    Nil,
+    defedure {
+        params: &Expr,
+        body: &Expr,
+        env: &Env,
+    },
+    Closure {
+        params: &Expr,
+        body: &Expr,
+        env: &Env,
+    },
+    Builtin(String, (&Expr, &Env) -> Expr),
+    Continuation {
+        env: &Env,
+    },
+}
+
+struct Env {
+    bindings: Expr,
+    parent: &Env,
+}
+
+def root_env(): Env = {
+    bindings = Expr of Nil,
+    parent = Null
+};
+
+def env_free(env: Env) {
+    expr_free(env.bindings);
+}
+
+def expr_free(expr: Expr) {
+    match expr {
+        of Pair { car, cdr } => {
+            expr_free(*car);
+            expr_free(*cdr);
+            del car;
+            del cdr;
+        },
+        of defedure { params, body, env } => {
+            expr_free(*params);
+            expr_free(*body);
+            env_free(*env);
+            del params;
+            del body;
+            del env;
+        },
+        of Closure { params, body, env } => {
+            expr_free(*params);
+            expr_free(*body);
+            env_free(*env);
+            del params;
+            del body;
+            del env;
+        },
+        of Continuation { env } => {
+            env_free(*env);
+            del env;
+        },
+        _ => {}
+    }
+}
+
+def cons(car: Expr, cdr: Expr): Expr {
+    return Expr of Pair {
+        car = new car,
+        cdr = new cdr
+    };
+}
+
+def expr_print(expr: &Expr) {
+    match *expr {
+        of Boolean b => print(b),
+        of Integer i => print(i),
+        of Symbol s => print(s),
+        of String s => print(s),
+        of Pair { car, cdr } => {
+            print("(");
+            expr_print(car);
+            print(" . ");
+            expr_print(cdr);
+            print(")");
+        },
+        of Nil => print("()"),
+        of defedure { params, body, env } => {
+            print("#<defedure>");
+        },
+        of Closure { params, body, env } => {
+            print("#<closure>");
+        },
+        of Builtin b => {
+            print("#<builtin>");
+        },
+        of Continuation { env } => {
+            print("#<continuation>");
+        },
+        _ => {}
+    }
+}
+
+def expr_println(expr: &Expr) {
+    expr_print(expr);
+    print("\\n");
+}
+
+def expr_reduce(acc: Expr, x: Expr, env: &Env, fun: (Expr, Expr, &Env) -> Expr): Expr {
+    match x {
+        of Pair { car, cdr } => {
+            acc = fun(acc, *car, env);
+            expr_reduce(acc, *cdr, env, fun);
+        },
+        of Nil => acc,
+        _ => fun(acc, x, env)
+    }
+}
+
+def expr_map(x: Expr, env: &Env, fun: (Expr, &Env) -> Expr): Expr {
+    match x {
+        of Pair { car, cdr } => cons(fun(*car, env), expr_map(*cdr, env, fun)),
+        of Nil => Expr of Nil,
+        _ => fun(x, env)
+    }
+}
+
+def sum(acc: Expr, x: Expr, env: &Env): Expr {
+    match acc {
+        of Integer i => {
+            match x {
+                of Integer j => Expr of Integer (i + j),
+                of Decimal j => Expr of Decimal (i as Float + j),
+                _ => acc
+            }
+        },
+        of Decimal i => {
+            match x {
+                of Integer j => Expr of Decimal (i + j as Float),
+                of Decimal j => Expr of Decimal (i + j),
+                _ => acc
+            }
+        },
+        _ => acc
+    }
+}
+
+def prod(acc: Expr, x: Expr, env: &Env): Expr {
+    match acc {
+        of Integer i => {
+            match x {
+                of Integer j => Expr of Integer (i * j),
+                of Decimal j => Expr of Decimal (i as Float * j),
+                _ => acc
+            }
+        },
+        of Decimal i => {
+            match x {
+                of Integer j => Expr of Decimal (i * j as Float),
+                of Decimal j => Expr of Decimal (i * j),
+                _ => acc
+            }
+        },
+        _ => acc
+    }
+}
+
+def inc(x: Expr, env: &Env): Expr {
+    match x {
+        of Integer i => Expr of Integer (i + 1),
+        of Decimal i => Expr of Decimal (i + 1.0),
+        _ => x
+    }
+}
+
+def dec(x: Expr, env: &Env): Expr {
+    match x {
+        of Integer i => Expr of Integer (i - 1),
+        of Decimal i => Expr of Decimal (i - 1.0),
+        _ => x
+    }
+}
+
+
+def range(start: Int, end: Int): Expr {
+    if start > end {
+        return Expr of Nil;
     } else {
-        put "No match!"
-    }`);
-                    document.getElementById("input").value = "";
+        return cons(Expr of Integer start, range(start + 1, end));
+    }
+}
+
+let expr = cons(Expr of Integer 1, cons(Expr of Integer 2, cons(Expr of Integer 3, cons(Expr of Integer 4, Expr of Nil))));
+let env = root_env();
+
+print("expr: ");
+expr_println(&expr);
+
+print("  reduce(sum): ");
+let result = expr_reduce(Expr of Integer 0, expr, &env, sum);
+expr_println(&result);
+
+print("  reduce(product): ");
+let result = expr_reduce(Expr of Integer 1, expr, &env, prod);
+expr_println(&result);
+
+print("  map(increment): ");
+let result = expr_map(expr, &env, inc);
+expr_println(&result);
+
+for let i=0; i<10; i+=1 {
+    let range = range(1, i);
+    expr_println(&range);
+}
+
+let text = "woo!!!\\0";
+let s = string_new(&text as &Char);
+string_print(s);
+`);
+                    break;
+                case "alloc":
+                    source.setValue(`enum Option<T> {
+    Some(T),
+    Nothing
+}
+
+def allocate<T>(count: Int): Option<&T> {
+    if (count <= 0) {
+        return Option<&T> of Nothing;
+    }
+    let ptr = alloc(count * sizeof(T)) as &T;
+    if (ptr == Null) {
+        return Option<&T> of Nothing;
+    } else {
+        return Option<&T> of Some(ptr);
+    }
+}
+
+struct Point<T> {
+    x: T,
+    y: T
+}
+
+match allocate<Point<Int>>(5) {
+    of Some(val) => {
+        for let i=0; i<5; i+=1 {
+            val[i].x = i;
+            val[i].y = i * 2;
+        }
+        print("Allocated 5 items: ", *(val as &[{x: Int, y: Int} * 5]), "\\n");
+        print("                 : ", *(val as &[Int * 10]), "\\n");
+    },
+    of Nothing => {
+        print("Failed to allocate memory");
+    }
+}
+`);
                     break;
                 case "match":
-                    source.setValue(`type Dir = enum { North, South, East, West } in
+                    source.setValue(`enum Direction {
+    North, South, East, West
+}
 
-let expr = (South of Dir, 2, struct {x=5, y=-6}) in
-    match expr {
-        (North of Dir, _, _)
-        | (East of Dir, _, _)
-        | (West of Dir, _, _)
-        | (South of Dir, 3, _) => put "Incorrect!\\n",
-        (South of Dir, 2, struct {x=a, y=b}) => {
-            if (a == 5 and b == -6) {
-                put "Correct!\\n"
-            } else {
-                put "Incorrect!\\n"
-            }
-        },
-        _ => put "Default! (incorrect)\\n"
-    }`);
-                    document.getElementById("input").value = "";
-                    break;
-                case "thermostat":
-                    source.setValue(`type State = enum {
-    Heating,
-    Cooling,
-    Idle
-} in
+match (Direction of South, 2, struct {x = 5, y = -6}) {
+    (of North, _, _)
+    | (of East, _, _)
+    | (of West, _, _)
+    | (of South, 3, _) => print("Incorrect!\\n"),
+    (of South, 2, {x = 5, y = -6}) => {
+        print("Correct!\\n");
+    },
+    _ => print("Incorrect!\\n")
+}
 
-type Kelvin = unit Kelvin = Float in
-type Celcius = unit Celcius = Float in
-type Fahrenheit = unit Fahrenheit = Float in
+enum Option<T> {
+    Some(T),
+    Nothing
+}
 
-proc get_temperature() -> Kelvin = core {
-    next SP
-    get [SP], thermometer #0
-} in
+def divide(n: Int, d: Int): Option<Int> {
+    if (d == 0) {
+        return Option<Int> of Nothing;
+    } else {
+        return Option<Int> of Some(n / d);
+    }
+}
 
-proc turn_on_heater() = core {
-    set A, 1
-    put A, heater #0
-    put-str "[Heater on]\\n", stderr.char
-} in
-
-proc turn_off_heater() = core {
-    set A, 0
-    put A, heater #0
-    put-str "[Heater off]\\n", stderr.char
-} in
-
-proc turn_on_cooler() = core {
-    set A, 1
-    put A, cooler #0
-    put-str "[Cooler on]\\n", stderr.char
-} in
-
-proc turn_off_cooler() = core {
-    set A, 0
-    put A, cooler #0
-    put-str "[Cooler off]\\n", stderr.char
-} in
-
-proc read_power_button() -> Bool = core {
-    next SP
-    get [SP], button #0
-} in
-
-proc read_up_button() -> Bool = core {
-    next SP
-    get [SP], button #1
-} in
-
-proc read_down_button() -> Bool = core {
-    next SP
-    get [SP], button #2
-} in
-
-proc putint(n: Int) = core {
-    put-int [SP]
-} in
-
-proc putchar(c: Char) = core {
-    put-char [SP]
-} in
-
-proc putfloat(c: Float) = core {
-    put-float [SP]
-} in
-
-proc f_to_c(f: Fahrenheit) -> Celcius = {
-    ((f as Float - 32.0) * 5.0 / 9.0) as Celcius
-} in
-
-proc c_to_f(c: Celcius) -> Fahrenheit = {
-    ((c as Float * 9.0 / 5.0) + 32.0) as Fahrenheit
-} in
-
-proc k_to_c(k: Kelvin) -> Celcius = {
-    (k as Float - 273.15) as Celcius
-} in 
-
-proc c_to_k(c: Celcius) -> Kelvin = {
-    (c as Float + 273.15) as Kelvin
-} in
-
-proc f_to_k(f: Fahrenheit) -> Kelvin = {
-    c_to_k(f_to_c(f))
-} in
-
-proc k_to_f(k: Kelvin) -> Fahrenheit = {
-    c_to_f(k_to_c(k))
-} in
-
-proc putf(temp: Fahrenheit) = {
-    putfloat(temp as Float);
-    putchar('°');
-    putchar('F')
-} in
-
-proc putc(temp: Celcius) = {
-    putfloat(temp as Float);
-    putchar('°');
-    putchar('C')
-} in
-
-proc putk(temp: Kelvin) = {
-    putfloat(temp as Float);
-    putchar('°');
-    putchar('K')
-} in
-
-
-proc main() = {
-    let state = Idle of State,
-        desired_temp = 20.0 as Celcius,
-        current_temp = k_to_c(get_temperature()),
-        up_button = read_up_button(),
-        down_button = read_down_button(),
-        power_button = read_power_button(),
-        i = 0
-    in while (not power_button and i < 100) {
-        if (up_button) {
-            desired_temp = desired_temp + 0.1 as Celcius
-        };
-
-        if (down_button) {
-            desired_temp = desired_temp - 0.1 as Celcius
-        };
-
-        put "Current temp: ";
-        put current_temp;
-        put "\\nDesired temp: ";
-        put desired_temp;
-        put "\\nCurrent state: ";
-        put state;
-        put "\\n";
-        
-        if (current_temp > desired_temp) {
-            put "Too hot\\n"
-        } else if (current_temp < desired_temp) {
-            put "Too cold\\n"
-        } else {
-            put "Just right\\n"
-        };
-
-        match (state) {
-            Heating of State => {
-                put "Heating\\n";
-                if (current_temp > desired_temp) {
-                    turn_off_heater();
-                    state = Idle of State
-                }
-            },
-            Cooling of State => {
-                put "Cooling\\n";
-                if (current_temp < desired_temp) {
-                    turn_off_cooler();
-                    state = Idle of State
-                }
-            },
-            Idle of State => {
-                put "Idle\\n";
-                if (current_temp > desired_temp) {
-                    turn_on_cooler();
-                    state = Cooling of State
-                } else if (current_temp < desired_temp) {
-                    turn_on_heater();
-                    state = Heating of State
-                }
-            }
-        };
-
-        up_button = read_up_button();
-        down_button = read_down_button();
-        power_button = read_power_button();
-        current_temp = k_to_c(get_temperature());
-        i += 1
-    };
-    put "Goodbye!\\n"
-} in main()`);
+if let of Some(n) = divide(5, 0) {
+    print("5 / 0 = ", n, "\\n");
+} else {
+    print("5 / 0 = undefined\\n");
+}`);
                     document.getElementById("input").value = "";
                     break;
                 case "cat":
-                    source.setValue(`proc getchar() -> Char = core {
-    next SP
-    get-char [SP]
-} in
-
-let ch = getchar() in while ch {
-    put ch;
-    ch = getchar();
+                    source.setValue(`let ch = ' ';
+while (ch != '\\0') {
+    input(&ch);
+    print(ch);
 }`);
                     document.getElementById("input").value = "this is a cat program!";
                     break;
                 case "factorial":
-                    source.setValue(`proc getint() -> Int = core {
-    next SP
-	get-int [SP]
-} in
+                    source.setValue(`def fact(n: Int): Int {
+    match n {
+        0 | 1 => 1,
+        _ => n * fact(n - 1)
+    }
+}
 
-proc fact(n: Int) -> Int = {
-    if n
-        (n * fact(n - 1))
-        else 1
-} in
+let n = 0;
+input(&n);
 
-put fact(getint())`);
+print(fact(n));`);
                     document.getElementById("input").value = "5";
                     break;
-                case "units":
-                    source.setValue(`type
-    Kilometer = unit Kilometer = Int,
-    Meter = unit Meter = Int,
-    Second = unit Second = Int,
-    MetersPerSecond = unit MetersPerSec = Meter,
-    MetersPerSecondPerSecond = unit MetersPerSecondPerSecond = MetersPerSecond
-in
-
-proc shift_pos_by_dist(x0: Meter, dx: Meter) -> Meter = {
-    (x0 as Int + dx as Int) as Meter
-} in
-
-proc shift_pos_with_vel(x0: Meter, v: MetersPerSecond, t: Second) -> Meter = {
-    (x0 as Int + (v as Int * t as Int)) as Meter
-} in
-
-proc shift_pos_with_accel(x0: Meter, a: MetersPerSecondPerSecond, t: Second) -> Meter = {
-    (x0 as Int + a as Int * t as Int * t as Int / 2) as Meter
-} in
-
-proc km_to_m(km: Kilometer) -> Meter = {
-    (km as Int * 1000) as Meter
-} in
-
-proc shift_pos_with_vel_and_accel(x0: Meter, v0: MetersPerSecond, a: MetersPerSecondPerSecond, t: Second) -> Meter = {
-    shift_pos_with_vel(shift_pos_with_accel(x0, a, t), v0, t)
-} in
-
-let x0: Meter = km_to_m(1 as Kilometer),
-    v0: MetersPerSecond = 5 as MetersPerSecond,
-    accel: MetersPerSecondPerSecond = 2 as MetersPerSecondPerSecond,
-    t: Second = 10 as Second,
-    in put shift_pos_with_vel_and_accel(x0, v0, accel, t)`);
-                    break;
-                case "collatz":
-                    source.setValue(`proc getint() -> Int = core {
-    next SP
-    get-int [SP]
-} in
-
-proc step(n: Int) -> Int = {if (n % 2) (3 * n + 1) else n / 2} in
-proc collatz(n: Int) -> Int = {
-    let i = 0 in
-        while n - 1 {
-            i = i + 1;
-            put i;
-            put ": ";
-            put n;
-            put '\\n';
-            n = step(n);
-        };
-    return n
-} in collatz(getint())`);
-                    document.getElementById("input").value = "129";
-                    break;
-                case "inline-asm":
-                    source.setValue(`proc asm_init() = core {
-    fun FACT
-        set A, 0
-        gt [SP], A, B
-        if B
-            push [SP]
-            dec [SP]
-            call FACT
-            mul [SP], [SP - 1]
-            pop
-        else
-            set [SP], 1
-        end
-    end
-} in
-
-proc fact(n: Int) -> Int = core {
-    call FACT
-} in {
-    asm_init();
-
-    put fact(5); put '\\n';
-    put fact(10); put '\\n';
-}`);
-                    break;
-                case "type-demo-1":
-                    source.setValue(`const getchar = proc() -> Char = core {
-    next SP
-    get-char [SP]
-} in
-
-const alloc = proc(n: Int) -> &Int = std {
-    alloc [SP]
-} in
-
-type List = let B = let T = Int in (T, &B) in B in
-
-proc hmm() -> List = {
-    ('~' as Int, Null)
-} in
-
-proc hmm2() -> List = {
-    let ptr = alloc(sizeof(List)) as &List in {
-        (*ptr) = hmm();
-        (':' as Int, ptr)
-    }
-} in
-
-proc hmm3() -> List = {
-    let ptr = alloc(sizeof(List)) as &List in {
-        (*ptr) = hmm2();
-        ('!' as Int, ptr)
-    }
-} in
-
-let x: let A = (Int, &A) in A
-    = hmm3()
-    in {
-    put x.1->0 as Char;
-    put ')'
-}`);
-                    break;
-                case "type-demo-2":
-                    source.setValue(`type A = Int,
-    B = (Int, Int),
-    C = ((Int, Int), Int),
-    Test = proc(A, proc(A) -> B, proc(B) -> C) -> C
-    in const
-        a = 5,
-        b = proc(x: Int) -> (Int, Int) = { (x, 6) },
-        c = proc(x: (Int, Int)) -> ((Int, Int), Int) = { (x, 7) },
-        test = proc(a: A, b: proc(A) -> B, c: proc(B) -> C) -> C = {
-            c(b(a))
-        }, hmm = proc(f: Test, x: Int) -> ((Int, Int), Int) = {
-            f(x, b, c)
-        } in {
-            let result = hmm(test, a) in {
-                put result.0.0;
-                put result.0.1;
-                put result.1;
-            }
-        }`);
-                    break;
                 case "hello world":
-                    source.setValue(`{\n    put "Hello world!\\n";\n    put 1 + 2\n}\n`);
+                    source.setValue("print(\"Hello, world!\\n\");");
                     break;
                 default:
                     console.log("Unknown example: " + example);
@@ -1250,19 +1431,16 @@ let x: let A = (Int, &A) in A
         document.getElementById("run").addEventListener("click", compile_and_run, false);
         </script>
         <select id="example" style="height: 3em; float: left;">
-            <option value="aes">AES</option>
-            <option value="quicksort">Quicksort</option>
-            <option value="thermostat">Thermostat</option>
-            <option value="if-let">Pattern Matching If-Let</option>
-            <option value="match">Pattern Matching Case</option>
+            <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
+            <option value="alloc">Allocator</option>
+            <option value="list">Linked List Enum (Generics)</option>
+            <option value="result">Result Enum (Generics)</option>
+            <option value="tree">Tree (Generics)</option>
+            <option value="calculator">Calculator (Parser)</option>
+            <option value="lisp">S-Expressions</option>
+            <option value="match">Pattern Matching</option>
             <option value="cat">Cat</option>
-            <option value="units">Units</option>
-            <option value="lambda-sim">Simulate Lambda Functions</option>
             <option value="factorial">Factorial</option>
-            <option value="collatz">Collatz</option>
-            <option value="inline-asm">Inline Assembly Demo</option>
-            <option value="type-demo-1">Type System Demo 1</option>
-            <option value="type-demo-2">Type System Demo 2</option>
         </select>
         <div class="row">
             <div class="col"><textarea id="source"></textarea></div>
@@ -1278,6 +1456,7 @@ let x: let A = (Int, &A) in A
                 <option value="asm">Assembly</option>
                 <option value="vm">Virtual Machine Code</option>
                 <option value="c">C Source</option>
+                <option value="x86">x86 Assembly</option>
             </select>
             <button id="run" style="height: 3em; float: left;">Compile</button>
         </div>

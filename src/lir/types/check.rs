@@ -78,7 +78,7 @@ impl TypeCheck for Type {
                 // Return success if all the types are sound.
                 Ok(())
             }
-            Self::Struct(fields) | Self::Union(fields) => {
+            Self::Struct(fields) | Self::Union(fields) | Self::EnumUnion(fields) => {
                 // Check each inner type.
                 for t in fields.values() {
                     // Check the inner type.
@@ -96,6 +96,64 @@ impl TypeCheck for Type {
                 }
                 // Check the return type.
                 ret.type_check(env)
+            }
+
+            Self::Poly(ty_params, template) => {
+                // Create a new environment with the type parameters defined.
+                let mut new_env = env.clone();
+                for param in ty_params {
+                    new_env.define_type(param, Type::Unit(param.clone(), Box::new(Type::Any)));
+                }
+                // Check the template type.
+                template.type_check(&new_env)
+            }
+
+            Self::Apply(poly, ty_args) => {
+                // Check the polymorphic type.
+                poly.type_check(env)?;
+
+                // Check each type argument.
+                for t in ty_args {
+                    // Check the type argument.
+                    t.type_check(env)?;
+                }
+
+                // Try to confirm that the polymorphic type is a template.
+                match poly.clone().simplify_until_matches(
+                    env,
+                    Type::Poly(vec![], Box::new(Type::Any)),
+                    |t, env| Ok(matches!(t, Type::Poly(_, _))),
+                )? {
+                    Type::Symbol(name) => {
+                        // Get the type definition.
+                        let ty = env
+                            .get_type(&name)
+                            .ok_or(Error::TypeNotDefined(name.clone()))?;
+                        // Check that the type is a template.
+                        match ty.clone().simplify_until_matches(
+                            env,
+                            Type::Poly(vec![], Box::new(Type::Any)),
+                            |t, env| Ok(matches!(t, Type::Poly(_, _))),
+                        )? {
+                            Type::Poly(ty_params, _) => {
+                                // Check that the number of type arguments matches the number of type parameters.
+                                if ty_args.len() != ty_params.len() {
+                                    Err(Error::InvalidTemplateArgs(self.clone()))?;
+                                }
+                            }
+                            _ => Err(Error::ApplyNonTemplate(self.clone()))?,
+                        }
+                    }
+                    Type::Poly(ty_params, _) => {
+                        // Check that the number of type arguments matches the number of type parameters.
+                        if ty_params.len() != ty_args.len() {
+                            Err(Error::InvalidTemplateArgs(self.clone()))?;
+                        }
+                    }
+                    _ => Err(Error::ApplyNonTemplate(self.clone()))?,
+                }
+                // Return success if all the types are sound.
+                Ok(())
             }
 
             // Pointers are sound if their inner type is sound.
@@ -228,9 +286,18 @@ impl TypeCheck for Expr {
             // Typecheck a block of expressions.
             Self::Many(exprs) => {
                 // Typecheck each expression.
-                for expr in exprs {
+                for (i, expr) in exprs.iter().enumerate() {
                     // Check the inner expression.
                     expr.type_check(env)?;
+                    if i < exprs.len() - 1 {
+                        // If it's not the last expression, confirm that it's of type `None`.
+                        // Otherwise, return an error.
+                        let ty = expr.get_type(env)?;
+                        if !ty.equals(&Type::None, env)? {
+                            // If it's not, return an error.
+                            return Err(Error::UnusedExpr(expr.clone(), ty.clone()));
+                        }
+                    }
                 }
                 // Return success if all the expressions are sound.
                 Ok(())
@@ -423,7 +490,15 @@ impl TypeCheck for Expr {
             }
 
             // Typecheck a reference to a value.
-            Self::Refer(e) => e.type_check(env),
+            Self::Refer(e) => {
+                match *e.clone() {
+                    Expr::ConstExpr(ConstExpr::Symbol(_)) 
+                    | Expr::Deref(_)
+                    | Expr::Member(_, _)
+                    | Expr::Index(_, _) => e.type_check(env),
+                    other => Err(Error::InvalidRefer(other.clone())),
+                }
+            },
             // Typecheck a dereference of a pointer.
             Self::Deref(e) => {
                 // Typecheck the expression which evaluates
@@ -490,47 +565,64 @@ impl TypeCheck for Expr {
                     arg.type_check(env)?;
                 }
                 // Get the type of the function.
-                let f_type = f.get_type(env)?;
+                let mut f_type = f.get_type(env)?;
+                f_type =
+                    f_type.simplify_until_matches(env, Type::Any, |t, env| Ok(t.is_simple()))?;
                 // Infer the types of the supplied arguments.
                 let mut args_inferred = vec![];
                 for arg in args {
                     args_inferred.push(arg.get_type(env)?);
                 }
-                if let Type::Proc(args_t, ret_t) = f_type {
-                    // If the number of arguments is incorrect, then return an error.
-                    if args_t.len() != args_inferred.len() {
-                        return Err(Error::MismatchedTypes {
-                            expected: Type::Proc(args_t, ret_t.clone()),
-                            found: Type::Proc(args_inferred, ret_t),
-                            expr: self.clone(),
-                        });
-                    }
-                    // eprintln!("f: {f:?}\nsupplied args: {args:?}\ninferred: {args_inferred:?}\nexpected: {args_t:?}");
-                    // If the function is a procedure, confirm that the type of each
-                    // argument matches the the type of the supplied value.
-                    for (arg_t, arg) in args_t.into_iter().zip(args_inferred.into_iter()) {
-                        // If the types don't match, return an error.
-                        if !arg_t.equals(&arg, env)? {
+                match f_type {
+                    Type::Proc(args_t, ret_t) => {
+                        // If the number of arguments is incorrect, then return an error.
+                        if args_t.len() != args_inferred.len() {
                             return Err(Error::MismatchedTypes {
-                                expected: arg_t,
-                                found: arg,
+                                expected: Type::Proc(args_t, ret_t.clone()),
+                                found: Type::Proc(args_inferred, ret_t),
                                 expr: self.clone(),
                             });
                         }
+                        // If the function is a procedure, confirm that the type of each
+                        // argument matches the the type of the supplied value.
+                        for (arg_t, arg) in args_t.into_iter().zip(args_inferred.into_iter()) {
+                            // If the types don't match, return an error.
+                            if !arg_t.equals(&arg, env)? {
+                                return Err(Error::MismatchedTypes {
+                                    expected: arg_t,
+                                    found: arg,
+                                    expr: self.clone(),
+                                });
+                            }
+                        }
+                        Ok(())
                     }
-                    Ok(())
-                } else {
                     // If the function is not a procedure, return an error.
-                    Err(Error::MismatchedTypes {
+                    _ => Err(Error::MismatchedTypes {
                         expected: Type::Proc(args_inferred, Box::new(Type::Any)),
                         found: f_type,
                         expr: self.clone(),
-                    })
+                    }),
                 }
             }
 
             // Typecheck a return statement.
-            Self::Return(e) => e.type_check(env),
+            Self::Return(e) => {
+                e.type_check(env)?;
+                let ty = e.get_type(env)?;
+                let expected_ty = env
+                    .get_expected_return_type()
+                    .cloned()
+                    .unwrap_or(Type::None);
+                if !expected_ty.equals(&ty, env)? {
+                    return Err(Error::MismatchedTypes {
+                        expected: expected_ty,
+                        found: ty,
+                        expr: self.clone(),
+                    });
+                }
+                Ok(())
+            }
 
             // Typecheck an array or tuple literal.
             Self::Array(items) => {
@@ -574,29 +666,144 @@ impl TypeCheck for Expr {
             }
 
             // Typecheck a union literal.
-            Self::Union(t, variant, val) => {
+            Self::Union(t, field, val) => {
                 // Typecheck the type.
                 t.type_check(env)?;
-                if let Type::Union(fields) = t.clone().simplify(env)? {
-                    // Confirm that the variant is a valid variant.
-                    if let Some(ty) = fields.get(variant) {
-                        // Typecheck the value assigned to the variant.
-                        val.type_check(env)?;
-                        let found = val.get_type(env)?;
-                        if !ty.equals(&found, env)? {
-                            return Err(Error::MismatchedTypes {
-                                expected: ty.clone(),
-                                found,
-                                expr: self.clone(),
-                            });
+                let mut t = t.clone();
+                t = t.simplify_until_matches(env, Type::Union(BTreeMap::new()), |t, env| {
+                    Ok(matches!(t, Type::Union(_)))
+                })?;
+                match t {
+                    Type::Union(fields) => {
+                        // Confirm that the variant is a valid variant.
+                        if let Some(ty) = fields.get(field) {
+                            // Typecheck the value assigned to the variant.
+                            val.type_check(env)?;
+                            let found = val.get_type(env)?;
+                            if !ty.equals(&found, env)? {
+                                return Err(Error::MismatchedTypes {
+                                    expected: ty.clone(),
+                                    found,
+                                    expr: self.clone(),
+                                });
+                            }
+                            return Ok(());
+                        } else {
+                            return Err(Error::MemberNotFound(
+                                self.clone(),
+                                ConstExpr::Symbol(field.clone()),
+                            ));
                         }
-                        Ok(())
-                    } else {
-                        Err(Error::VariantNotFound(t.clone(), variant.clone()))
                     }
-                } else {
-                    Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                    _ => {
+                        return Err(Error::MemberNotFound(
+                            self.clone(),
+                            ConstExpr::Symbol(field.clone()),
+                        ))
+                    }
                 }
+                // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+                //     t = t.clone().simplify(env)?;
+                //     match t {
+                //         Type::Union(fields) => {
+                //             // Confirm that the variant is a valid variant.
+                //             if let Some(ty) = fields.get(field) {
+                //                 // Typecheck the value assigned to the variant.
+                //                 val.type_check(env)?;
+                //                 let found = val.get_type(env)?;
+                //                 if !ty.equals(&found, env)? {
+                //                     return Err(Error::MismatchedTypes {
+                //                         expected: ty.clone(),
+                //                         found,
+                //                         expr: self.clone(),
+                //                     });
+                //                 }
+                //                 return Ok(());
+                //             } else {
+                //                 return Err(Error::MemberNotFound(
+                //                     self.clone(),
+                //                     ConstExpr::Symbol(field.clone()),
+                //                 ));
+                //             }
+                //         }
+                //         Type::Symbol(_) | Type::Let(_, _, _) | Type::Apply(_, _) => continue,
+                //         _ => {
+                //             return Err(Error::MemberNotFound(
+                //                 self.clone(),
+                //                 ConstExpr::Symbol(field.clone()),
+                //             ))
+                //         }
+                //     }
+                // }
+                // Err(Error::MemberNotFound(
+                //     self.clone(),
+                //     ConstExpr::Symbol(field.clone()),
+                // ))
+            }
+
+            // Typecheck a tagged union literal.
+            Self::EnumUnion(t, variant, val) => {
+                // Typecheck the type
+                t.type_check(env)?;
+                let mut t = t.clone();
+                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                    Ok(matches!(t, Type::EnumUnion(_)))
+                })?;
+
+                match t {
+                    Type::EnumUnion(fields) => {
+                        // Confirm that the variant is a valid variant.
+                        if let Some(ty) = fields.get(variant) {
+                            // Typecheck the value assigned to the variant.
+                            val.type_check(env)?;
+                            let found = val.get_type(env)?;
+                            if !ty.equals(&found, env)? {
+                                return Err(Error::MismatchedTypes {
+                                    expected: ty.clone(),
+                                    found,
+                                    expr: self.clone(),
+                                });
+                            }
+                            return Ok(());
+                        } else {
+                            return Err(Error::VariantNotFound(
+                                Type::EnumUnion(fields),
+                                variant.clone(),
+                            ));
+                        }
+                    }
+                    t => return Err(Error::VariantNotFound(t, variant.clone())),
+                }
+
+                // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+                //     t = t.clone().simplify(env)?;
+                //     match t {
+                //         Type::EnumUnion(fields) => {
+                //             // Confirm that the variant is a valid variant.
+                //             if let Some(ty) = fields.get(variant) {
+                //                 // Typecheck the value assigned to the variant.
+                //                 val.type_check(env)?;
+                //                 let found = val.get_type(env)?;
+                //                 if !ty.equals(&found, env)? {
+                //                     return Err(Error::MismatchedTypes {
+                //                         expected: ty.clone(),
+                //                         found,
+                //                         expr: self.clone(),
+                //                     });
+                //                 }
+                //                 return Ok(());
+                //             } else {
+                //                 return Err(Error::VariantNotFound(
+                //                     Type::EnumUnion(fields),
+                //                     variant.clone(),
+                //                 ));
+                //             }
+                //         }
+                //         Type::Symbol(_) | Type::Let(_, _, _) | Type::Apply(_, _) => continue,
+                //         _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
+                //     }
+                // }
+                // Err(Error::VariantNotFound(t.clone(), variant.clone()))
             }
 
             // Typecheck a type-cast.
@@ -622,9 +829,8 @@ impl TypeCheck for Expr {
                 e.type_check(env)?;
                 // Get the type of the expression.
                 let e_type = e.get_type(env)?;
-                // Confirm that the type has the member we want to access
-                // by calculating the offset of the member in the type.
-                e_type.get_member_offset(field, e, env).map(|_| ())
+                // Typecheck the member we want to access.
+                e_type.type_check_member(field, e, env)
             }
 
             // Typecheck an index access.
@@ -665,11 +871,33 @@ impl TypeCheck for ConstExpr {
             // to fail at compile time.
             Self::None
             | Self::Null
+            | Self::Cell(_)
             | Self::Int(_)
             | Self::Float(_)
             | Self::Char(_)
             | Self::Bool(_)
             | Self::SizeOfType(_) => Ok(()),
+
+            Self::LetTypes(bindings, expr) => {
+                let mut new_env = env.clone();
+                for (name, ty) in bindings {
+                    new_env.define_type(name.clone(), ty.clone());
+                }
+                for (_, ty) in bindings {
+                    ty.type_check(&mut new_env)?;
+                }
+                expr.type_check(&mut new_env)
+            }
+            Self::Monomorphize(expr, ty_args) => {
+                self.get_type(env)?.type_check(env)?;
+                if let Self::PolyProc(poly) = *expr.clone() {
+                    poly.type_check(env)?
+                }
+                for ty in ty_args {
+                    ty.type_check(env)?;
+                }
+                Ok(())
+            }
 
             Self::TypeOf(expr) => expr.type_check(env),
 
@@ -699,6 +927,7 @@ impl TypeCheck for ConstExpr {
             Self::StandardBuiltin(builtin) => builtin.type_check(env),
             // Typecheck a procedure.
             Self::Proc(proc) => proc.type_check(env),
+            Self::PolyProc(proc) => proc.type_check(env),
 
             // Typecheck a symbol.
             Self::Symbol(name) => {
@@ -717,21 +946,85 @@ impl TypeCheck for ConstExpr {
 
             // Typecheck a variant of an enum.
             Self::Of(t, variant) => {
-                // If the type is an enum, and the enum contains the variant,
-                if let Type::Enum(variants) = t.clone().simplify(env)? {
-                    // If the enum contains the variant, return success.
-                    if variants.contains(variant) {
-                        // Return success.
-                        Ok(())
-                    } else {
-                        // Otherwise, the variant isn't contained in the enum,
-                        // so return an error.
-                        Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                let mut t = t.clone();
+
+                t =
+                    t.simplify_until_matches(env, Type::Enum(vec![variant.clone()]), |t, env| {
+                        Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_)))
+                    })?;
+
+                match t {
+                    Type::Enum(variants) => {
+                        // If the enum contains the variant, return success.
+                        if variants.contains(variant) {
+                            // Return success.
+                            return Ok(());
+                        } else {
+                            // Otherwise, the variant isn't contained in the enum,
+                            // so return an error.
+                            return Err(Error::VariantNotFound(
+                                Type::Enum(variants),
+                                variant.clone(),
+                            ));
+                        }
                     }
-                } else {
-                    // If the type isn't an enum, return an error.
-                    Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                    Type::EnumUnion(variants) if variants.get(variant) == Some(&Type::None) => {
+                        // If the enum union contains the variant, and the variant is empty, return success.
+                        if variants.contains_key(variant)
+                            && variants.get(variant) == Some(&Type::None)
+                        {
+                            // Return success.
+                            return Ok(());
+                        } else {
+                            // Otherwise, the variant isn't contained in the enum,
+                            // so return an error.
+                            return Err(Error::VariantNotFound(
+                                Type::EnumUnion(variants),
+                                variant.clone(),
+                            ));
+                        }
+                    }
+                    _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
                 }
+                // // Check that the variant is contained in the enum.
+                // // Only check 50 levels deep to keep recursion under control.
+                // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+                //     // Simplify the type.
+                //     t = t.simplify(env)?;
+                //     // Check if the type is an enum or an enum union.
+                //     match t.clone() {
+                //         Type::Enum(variants) => {
+                //             // If the enum contains the variant, return success.
+                //             if variants.contains(variant) {
+                //                 // Return success.
+                //                 return Ok(());
+                //             } else {
+                //                 // Otherwise, the variant isn't contained in the enum,
+                //                 // so return an error.
+                //                 return Err(Error::VariantNotFound(t.clone(), variant.clone()));
+                //             }
+                //         }
+                //         Type::EnumUnion(variants) if variants.get(variant) == Some(&Type::None) => {
+                //             // If the enum union contains the variant, and the variant is empty, return success.
+                //             if variants.contains_key(variant)
+                //                 && variants.get(variant) == Some(&Type::None)
+                //             {
+                //                 // Return success.
+                //                 return Ok(());
+                //             } else {
+                //                 // Otherwise, the variant isn't contained in the enum,
+                //                 // so return an error.
+                //                 return Err(Error::VariantNotFound(t.clone(), variant.clone()));
+                //             }
+                //         }
+                //         // If the type is a let binding or a symbol, simplify it again.
+                //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => continue,
+                //         // If the type isn't an enum, return an error.
+                //         _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
+                //     }
+                // }
+                // If we've recursed too deep, return an error.
+                // return Err(Error::VariantNotFound(t.clone(), variant.clone()));
             }
 
             // Typecheck a tuple literal.
@@ -785,27 +1078,76 @@ impl TypeCheck for ConstExpr {
             }
 
             // Typecheck a union literal.
-            Self::Union(t, variant, val) => {
+            Self::Union(t, field, val) => {
                 // Confirm the type supplied is a union.
-                if let Type::Union(fields) = t.clone().simplify(env)? {
-                    // Confirm that the variant is contained within the union.
-                    if let Some(ty) = fields.get(variant) {
-                        // Typecheck the value assigned to the variant.
-                        val.type_check(env)?;
-                        let found = val.get_type(env)?;
-                        if !ty.equals(&found, env)? {
-                            return Err(Error::MismatchedTypes {
-                                expected: ty.clone(),
-                                found,
-                                expr: Expr::ConstExpr(self.clone()),
-                            });
+                let mut t = t.clone();
+
+                t = t.simplify_until_matches(env, Type::Union(BTreeMap::new()), |t, env| {
+                    Ok(matches!(t, Type::Union(_)))
+                })?;
+
+                match t {
+                    Type::Union(fields) => {
+                        // Confirm that the variant is a valid variant.
+                        if let Some(ty) = fields.get(field) {
+                            // Typecheck the value assigned to the variant.
+                            val.type_check(env)?;
+                            let found = val.get_type(env)?;
+                            if !ty.equals(&found, env)? {
+                                return Err(Error::MismatchedTypes {
+                                    expected: ty.clone(),
+                                    found,
+                                    expr: Expr::ConstExpr(self.clone()),
+                                });
+                            }
+                            return Ok(());
+                        } else {
+                            return Err(Error::MemberNotFound(
+                                Expr::ConstExpr(self.clone()),
+                                ConstExpr::Symbol(field.clone()),
+                            ));
                         }
-                        Ok(())
-                    } else {
-                        Err(Error::VariantNotFound(t.clone(), variant.clone()))
                     }
-                } else {
-                    Err(Error::VariantNotFound(t.clone(), variant.clone()))
+                    _ => {
+                        return Err(Error::MemberNotFound(
+                            Expr::ConstExpr(self.clone()),
+                            ConstExpr::Symbol(field.clone()),
+                        ))
+                    }
+                }
+            }
+
+            // Typecheck a tagged union literal.
+            Self::EnumUnion(t, variant, val) => {
+                // Confirm the type supplied is a union.
+                let mut t = t.clone();
+                t =
+                    t.simplify_until_matches(env, Type::Enum(vec![variant.clone()]), |t, env| {
+                        Ok(matches!(t, Type::EnumUnion(_) | Type::Enum(_)))
+                    })?;
+                match t {
+                    Type::EnumUnion(fields) => {
+                        // Confirm that the variant is a valid variant.
+                        if let Some(ty) = fields.get(variant) {
+                            // Typecheck the value assigned to the variant.
+                            val.type_check(env)?;
+                            let found = val.get_type(env)?;
+                            if !ty.equals(&found, env)? {
+                                return Err(Error::MismatchedTypes {
+                                    expected: ty.clone(),
+                                    found,
+                                    expr: Expr::ConstExpr(self.clone()),
+                                });
+                            }
+                            return Ok(());
+                        } else {
+                            return Err(Error::VariantNotFound(
+                                Type::EnumUnion(fields),
+                                variant.clone(),
+                            ));
+                        }
+                    }
+                    _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
                 }
             }
         }

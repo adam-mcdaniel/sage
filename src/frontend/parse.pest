@@ -1,0 +1,422 @@
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" | "\r\n" | "\u{000C}" }
+COMMENT = _{ "#" ~ (!"\n" ~ ANY)* }
+
+keyword = @{
+    "for"
+    | "in" | "if" | "elif" |"else" | "while" | "break" | "continue"
+    | "return" | "struct" | "enum" | "as" | "of" | "sizeof"
+    | "def" | "let" | "const" | "type" | "core" | "std"
+    | "Int" | "Float" | "Bool" | "Char" | "None" | "Null"
+    | "True" | "False" | "new"
+}
+
+operator = @{
+    "+" | "-" | "*" | "/" | "%" | "**" | "++" | "--"
+    | "==" | "!=" | "<" | "<=" | ">" | ">="
+    | "&&" | "||" | "!" | "&" | "|" | "^" | "~"
+    | "=" | "+=" | "-=" | "*=" | "/=" | "%="
+    // | "**=" | "&=" | "|=" | "^=" | "<<=" | ">>="
+    // | "<<" | ">>" | "..." | ".." 
+    | ":" | "." | "," | ";" | "->" | "=>"
+}
+
+symbol = @{ !keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* | keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+
+decimal = @{ "0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT* }
+hexadecimal = @{ "0x" ~ ASCII_HEX_DIGIT+ }
+octal = @{ "0o" ~ ASCII_OCT_DIGIT+ }
+binary = @{ "0b" ~ ASCII_BIN_DIGIT+ }
+unsigned_int = @{ hexadecimal | octal | binary | decimal }
+signed_int = @{ ("-" | "+")? ~ unsigned_int }
+int = @{ signed_int }
+
+
+boolean = { "True" | "False" }
+none = { "None" | "(" ~ ")" }
+null = { "Null" }
+float = @{
+    "-"?
+    ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)
+    ~ ("." ~ ASCII_DIGIT*)
+    ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
+}
+
+string = ${ "\"" ~ string_inner ~ "\"" }
+string_inner = @{ string_char* }
+string_char = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t" | "0")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+    | "\\" ~ ("x" ~ ASCII_HEX_DIGIT{2})
+}
+
+char = ${ "'" ~ char_inner  ~ "'" }
+char_inner = @{
+    !("'" | "\\") ~ ANY
+    | "\\" ~ ("\'" | "\\" | "/" | "b" | "f" | "n" | "r" | "t" | "0")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+    | "\\" ~ ("x" ~ ASCII_HEX_DIGIT{2})
+}
+
+
+program = { SOI ~ decl* ~ EOI }
+
+decl = {
+    decl_proc
+    | decl_unit
+    | decl_type
+    | decl_struct
+    | decl_enum
+    | decl_const
+    | stmt
+}
+decl_proc = {
+    decl_proc_block
+    | decl_proc_expr
+}
+decl_proc_block = { "def" ~ symbol ~ type_parameters? ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ "="? ~ stmt_block }
+decl_proc_expr = { "def" ~ symbol ~ type_parameters? ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ "=" ~ expr ~ ";"+ }
+decl_proc_param = {
+    symbol ~ ":" ~ type
+}
+type_parameters = {
+    "<" ~ (symbol ~ ",")* ~ symbol ~ ">"
+}
+
+decl_unit = {
+    "unit" ~ (symbol ~ "=" ~ type ~ ",")* ~ symbol ~ "=" ~ type ~ ";"+
+}
+decl_type = {
+    "type" ~ (symbol ~ type_parameters? ~ "=" ~ type ~ ",")* ~ symbol ~ type_parameters? ~ "=" ~ type ~ ";"+
+}
+decl_struct = {
+    "struct" ~ symbol ~ type_parameters? ~ "{" ~ (decl_struct_field ~ ",")* ~ decl_struct_field? ~ "}"
+}
+decl_struct_field = {
+    symbol ~ ":" ~ type
+}
+decl_enum = {
+    "enum" ~ symbol ~ type_parameters? ~ "{" ~ (decl_enum_variant ~ ",")* ~ decl_enum_variant? ~ "}"
+}
+decl_enum_variant = {
+    "of"? ~ symbol ~ type?
+}
+decl_const = {
+    "const" ~ (symbol ~ "=" ~ const ~ ",")* ~ symbol ~ "=" ~ const ~ ";"+
+}
+
+stmt = {
+    long_stmt
+    | short_stmt
+}
+
+long_stmt = {
+    (stmt_if_elif_let
+    | stmt_if_let
+    | stmt_if_elif
+    | stmt_if
+    | stmt_when
+    | stmt_while
+    | stmt_for
+    | stmt_let_in
+    | stmt_match) ~ ";"*
+}
+short_stmt = {
+    (stmt_let | stmt_return | stmt_assign | expr) ~ ";"+
+}
+stmt_let = {
+    // stmt_let_typed
+    // | stmt_let_untyped
+    "let" ~ (symbol ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ symbol ~ (":" ~ type)? ~ "=" ~ expr
+}
+// stmt_let_untyped = {
+//     "let" ~ symbol ~ "=" ~ expr
+// }
+// stmt_let_typed = {
+//     "let" ~ (symbol ~ (":" ~ type)? ~ "=" ~ expr ",")* ~ symbol ~ (":" ~ type)? ~ "=" ~ expr
+// }
+stmt_assign = { expr ~ stmt_assign_ops ~ expr }
+stmt_assign_ops = @{
+    "="
+    | "+=" | "-=" | "*=" | "/="
+    | "%=" | "&=" | "|=" | "^="
+}
+stmt_return = {
+    "return" ~ expr
+}
+stmt_match = {
+    "match" ~ expr ~ "{" ~ (stmt_match_case ~ ",")+ ~ stmt_match_case? ~ "}"
+}
+stmt_match_case = {
+    pattern ~ "=>" ~ expr
+}
+pattern = { pattern_alt | pattern_term }
+pattern_alt = { pattern_term ~ ("|" ~ pattern_term)+ }
+pattern_term = {
+    pattern_variant
+    | pattern_atom
+}
+pattern_variant = { "of" ~ symbol ~ pattern_term? }
+pattern_atom = {
+    pattern_group
+    | pattern_struct
+    | pattern_tuple
+    | pattern_ptr
+    | pattern_wildcard
+    | pattern_symbol
+    | pattern_const
+}
+pattern_group = { "(" ~ pattern ~ ")" }
+pattern_tuple = { "(" ~ (pattern ~ ",")+ ~ pattern? ~ ")" }
+pattern_struct = { "struct"? ~ "{" ~ (pattern_field ~ ",")* ~ pattern_field? ~ "}" }
+pattern_field = { symbol ~ "=" ~ pattern | symbol }
+pattern_symbol = { symbol }
+pattern_wildcard = { "_" }
+pattern_ptr = { "&" ~ pattern }
+pattern_const = { const }
+
+stmt_block = {
+    "{" ~ decl* ~ "}"
+}
+stmt_when = {
+    "when" ~ const ~ stmt_block ~ ("else" ~ stmt_block)?
+}
+stmt_if = {
+    "if" ~ expr ~ stmt_block ~ ("else" ~ stmt_block)?
+}
+stmt_if_let = {
+    "if" ~ "let" ~ pattern ~ "=" ~ expr ~ stmt_block ~ ("else" ~ stmt_block)?
+}
+stmt_if_elif = {
+    "if" ~ expr ~ stmt_block ~ ("elif" ~ expr ~ stmt_block)+ ~ ("else" ~ stmt_block)?
+}
+stmt_if_elif_let = {
+    "if" ~ "let" ~ pattern ~ "=" ~ expr ~ stmt_block ~ ("elif" ~ "let" ~ pattern ~ "=" ~ expr ~ stmt_block)+ ~ ("else" ~ stmt_block)?
+}
+stmt_while = {
+    "while" ~ expr ~ stmt_block
+}
+stmt_for = {
+    "for" ~ short_stmt ~ expr ~ ";" ~ (stmt_assign | expr) ~ stmt_block
+}
+stmt_let_in = {
+    stmt_let_in_block
+    | stmt_let_in_expr
+}
+stmt_let_in_block = { "let" ~ (symbol ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ symbol ~ (":" ~ type)? ~ "=" ~ expr ~ "in" ~ stmt_block }
+stmt_let_in_expr = { "let" ~ (symbol ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ symbol ~ (":" ~ type)? ~ "=" ~ expr ~ "in" ~ expr ~ ";"+ }
+
+// stmt_type_in = {
+//     stmt_type_in_block
+//     | stmt_type_in_expr
+// }
+// stmt_type_in_block = { "type" ~ (symbol ~ "=" ~ type ~ ",")* ~ symbol ~ "=" ~ type ~ "in" ~ stmt_block }
+// stmt_type_in_expr = { "type" ~ (symbol ~ "=" ~ type ~ ",")* ~ symbol ~ "=" ~ type ~ "in" ~ expr ~ ";"+ }
+
+
+////////////////////////////////////////////////////////////////////
+// EXPRESSIONS
+////////////////////////////////////////////////////////////////////
+// These are values that can be used in expressions that evaluate
+// at runtime. They are not necessarily constant, but they are
+// not statements.
+////////////////////////////////////////////////////////////////////
+expr = {
+    stmt_match
+    | expr_ternary
+    | expr_logic_factor
+}
+expr_ternary = {
+    expr_logic_factor ~ "?" ~ expr ~ ":" ~ expr
+}
+expr_logic_factor = {
+    expr_logic_term ~ expr_logic_factor_binops*
+}
+expr_logic_factor_binops = {
+    "||" ~ expr_logic_term
+}
+expr_logic_term = {
+    expr_bitwise_factor ~ expr_logic_term_binops*
+}
+expr_logic_term_binops = {
+    "&&" ~ expr_bitwise_factor
+}
+
+expr_bitwise_factor = {
+    expr_bitwise_term ~ expr_bitwise_factor_binops*
+}
+expr_bitwise_factor_binops = {
+    "~|" ~ expr_bitwise_term
+    | !"||" ~ "|" ~ expr_bitwise_term
+}
+expr_bitwise_term = {
+    expr_bitwise_atom ~ expr_bitwise_term_binops*
+}
+expr_bitwise_term_binops = {
+    "^" ~ expr_bitwise_atom
+}
+expr_bitwise_atom = {
+    expr_comparison ~ expr_bitwise_atom_binops*
+}
+expr_bitwise_atom_binops = {
+    "~&" ~ expr_comparison
+    | !"&&" ~ "&" ~ expr_comparison
+}
+
+expr_comparison = {
+    expr_sum ~ expr_comparison_binops?
+}
+expr_comparison_binops = {
+    "==" ~ expr_sum
+    | "!=" ~ expr_sum
+    | "<" ~ expr_sum
+    | "<=" ~ expr_sum
+    | ">" ~ expr_sum
+    | ">=" ~ expr_sum
+}
+expr_sum = {
+    expr_factor ~ expr_sum_binops*
+}
+expr_sum_binops = {
+    "+" ~ expr_factor
+    | "-" ~ expr_factor
+}
+expr_factor = {
+    expr_term ~ expr_factor_binops*
+}
+expr_factor_binops = {
+    "*" ~ expr_term
+    | "/" ~ expr_term
+    | "%" ~ expr_term
+}
+
+expr_term = {
+    expr_keyword_unary_op* ~ expr_term_non_keyword
+}
+expr_term_non_keyword = {
+    expr_unary ~ (expr_int_field | expr_symbol_field | expr_int_deref_field | expr_symbol_deref_field | expr_index | expr_as_type | expr_call)*
+}
+expr_keyword_unary_op = @{ ("new" | "del") ~ !symbol }
+expr_unary = {
+    expr_unary_op* ~ (expr_variant | const_monomorph | expr_atom | const)
+}
+expr_unary_op = !{ "!" | "-" | "&" | "~" | "*" }
+expr_variant = { type_term ~ "of" ~ symbol ~ expr_atom? }
+
+expr_int_field = { "." ~ decimal }
+expr_symbol_field = { "." ~ symbol }
+expr_int_deref_field = { "->" ~ decimal }
+expr_symbol_deref_field = { "->" ~ symbol }
+expr_index = { "[" ~ expr ~ "]" }
+expr_as_type = { "as" ~ type_atom }
+expr_call = { "(" ~ (expr ~ ",")* ~ expr? ~ ")" }
+
+expr_atom = {
+    expr_tuple
+    | expr_array
+    | expr_struct
+    | expr_group
+    | const_atom
+    | stmt_block
+}
+expr_tuple = { "(" ~ (expr ~ ",")+ ~ expr? ~ ")" }
+expr_array = { "[" ~ (expr ~ ",")* ~ expr? ~ "]" }
+expr_struct = { "struct"? ~ "{" ~ (symbol ~ "=" ~ expr ~ ",")* ~ (symbol ~ "=" ~ expr) ~ "}" }
+expr_group = { "(" ~ expr ~ ")" }
+
+
+////////////////////////////////////////////////////////////////////
+// CONSTANTS
+////////////////////////////////////////////////////////////////////
+// These are values that can be used in expressions that evaluate
+// at compile time.
+////////////////////////////////////////////////////////////////////
+const = {
+    const_monomorph | const_term
+}
+const_monomorph = {
+    const_term ~ type_application_suffix+
+}
+const_size_of = { "sizeof" ~ "(" ~ type ~ ")" }
+const_term = {
+    const_variant
+    | const_atom
+}
+const_variant = { type_atom ~ "of" ~ symbol ~ const_atom? }
+const_atom = {
+    const_size_of
+    | const_tuple
+    | const_array
+    | const_struct
+    | const_float
+    | const_int
+    | const_bool
+    | const_char
+    | const_group
+    | const_none
+    | const_null
+    | const_string
+    | const_symbol
+}
+const_group = { "(" ~ const ~ ")" }
+const_tuple = { "(" ~ (const ~ ",")+ ~ const? ~ ")" }
+const_array = { "[" ~ (const ~ ",")* ~ const? ~ "]" }
+const_struct = { "struct"? ~ "{" ~ (symbol ~ "=" ~ const ~ ",")+ ~ (symbol ~ "=" ~ const)? ~ "}" }
+const_int = @{ int }
+const_float = @{ float }
+const_bool = @{ boolean }
+const_char = @{ char }
+const_none = @{ none }
+const_null = @{ null }
+const_symbol = @{ symbol }
+const_string = @{ string }
+
+////////////////////////////////////////////////////////////////////
+// TYPES
+////////////////////////////////////////////////////////////////////
+type = {
+    type_let
+    | type_template
+    | type_proc
+    | type_term
+}
+type_let = { "let" ~ (symbol ~ "=" ~ type ~ ",")* ~ symbol ~ "=" ~ type ~ "in" ~ type }
+type_template = {
+    symbol ~ "=>" ~ type
+    | "(" ~ (symbol ~ ",")* ~ symbol ~ ")" ~ "=>" ~ type
+}
+type_proc = {
+    type_proc_args ~ "->" ~ type
+    | type_atom ~ "->" ~ type
+}
+type_proc_args = { "(" ~ (type ~ ",")* ~ type? ~ ","? ~ ")" }
+
+type_term = { type_apply | type_atom }
+type_apply = { type_atom ~ type_application_suffix+ }
+type_application_suffix = { "<" ~ (type ~ ",")* ~ type ~ ">" }
+
+type_atom = {
+    type_struct
+    | type_enum
+    | type_tuple
+    | type_array
+    | type_ptr
+    | "(" ~ type ~ ")"
+    | type_symbol
+    | type_int
+    | type_float
+    | type_bool
+    | type_char
+    | type_none
+}
+type_symbol = { symbol }
+type_tuple = { "(" ~ (type ~ ",")+ ~ type? ~ ")" }
+type_array = { "[" ~ type ~ "*" ~ const ~ "]" }
+type_struct = { "struct"? ~ "{" ~ (symbol ~ ":" ~ type ~ ",")+ ~ (symbol ~ ":" ~ type)? ~ "}" }
+type_enum = { "enum" ~ "{" ~ (decl_enum_variant ~ ",")+ ~ decl_enum_variant? ~ "}" }
+type_ptr = { "&" ~ type }
+type_int = @{ "Int" }
+type_float = @{ "Float" }
+type_bool = @{ "Bool" }
+type_char = @{ "Char" }
+type_none = @{ none }

@@ -41,11 +41,20 @@ pub use location::{Location, A, B, C, D, E, F, FP, SP};
 /// *attempt* to compile a `StandardOp`, which *may* fail depending
 /// on the target's support for the instruction.
 pub trait AssemblyProgram {
+    /// Insert a core operation into the program.
     fn op(&mut self, op: CoreOp);
+    /// Attempt to insert a standard operation into the program.
+    /// This could fail depending on the backend's support for the
+    /// instruction.
     fn std_op(&mut self, op: StandardOp) -> Result<(), Error>;
+    /// Insert a comment into the program.
     fn comment(&mut self, comment: String) {
         self.op(CoreOp::Comment(comment))
     }
+    /// Is the given label defined yet in the operations?
+    /// I.E., has a `CoreOp::Fn` with this label been inserted
+    /// into the program code yet?
+    fn is_defined(&self, label: &str) -> bool;
 }
 
 /// An environment used to assemble a program.

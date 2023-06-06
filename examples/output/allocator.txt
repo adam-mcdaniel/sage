@@ -1,0 +1,2 @@
+Allocated 5 items: [struct {x=0, y=0}, struct {x=1, y=2}, struct {x=2, y=4}, struct {x=3, y=6}, struct {x=4, y=8}]
+                 : [0, 0, 1, 2, 2, 4, 3, 6, 4, 8]

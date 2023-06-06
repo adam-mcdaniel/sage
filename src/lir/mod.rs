@@ -75,6 +75,8 @@ pub use env::*;
 pub use expr::*;
 pub use types::*;
 
+use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
+
 /// Simplify an expression while maintaining structural equality.
 pub trait Simplify: Sized {
     /// Simplify an expression while maintaining structural equality.
@@ -102,6 +104,7 @@ pub enum Error {
     /// Recursion depth exceeded when trying to evaluate a constant expression.
     RecursionDepthConst(ConstExpr),
     /// Recursion depth exceeded when trying to confirm a type's equality to another type.
+    CouldntSimplify(Type, Type),
     RecursionDepthTypeEquality(Type, Type),
     /// Got another type when expecting an integer, bool, or char.
     NonIntegralConst(ConstExpr),
@@ -158,15 +161,213 @@ pub enum Error {
     InvalidMatchExpr(Expr),
 
     /// Invalid pattern for a match expression.
-    NonExhaustivePatterns { patterns: Vec<Pattern>, expr: Expr },
+    NonExhaustivePatterns {
+        patterns: Vec<Pattern>,
+        expr: Expr,
+    },
 
     /// Invalid type casting expression.
     InvalidAs(Expr, Type, Type),
+
+    /// Invalid constant expression.
+    InvalidConstExpr(ConstExpr),
+
+    /// Expression uses an operation unsupported by the target.
+    UnsupportedOperation(Expr),
+
+    /// Tried to define a type that already exists.
+    TypeRedefined(String),
+
+    /// Unused expression returned a non-None value.
+    UnusedExpr(Expr, Type),
+
+    /// Invalid number of template arguments to a type.
+    InvalidTemplateArgs(Type),
+
+    /// Tried to apply a non-template type to some arguments.
+    ApplyNonTemplate(Type),
+
+    /// Tried to get the size of a template type.
+    SizeOfTemplate(Type),
+
+    /// Tried to  compile a polymorphic procedure without monomorphing it.
+    CompilePolyProc(PolyProcedure),
+
+    /// Cannot monomorphize a constant expression.
+    InvalidMonomorphize(ConstExpr),
 }
 
 /// Create an IR error from an assembly error.
 impl From<crate::asm::Error> for Error {
     fn from(e: crate::asm::Error) -> Self {
         Self::AssemblyError(e)
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match self {
+            Self::MismatchedTypes {
+                expected,
+                found,
+                expr,
+            } => {
+                write!(
+                    f,
+                    "mismatched types: expected {}, found {} in {}",
+                    expected, found, expr
+                )
+            }
+            Self::VariantNotFound(ty, variant) => {
+                write!(f, "variant {} not found in {}", variant, ty)
+            }
+            Self::MemberNotFound(expr, member) => {
+                write!(f, "member {} not found in {}", member, expr)
+            }
+            Self::RecursionDepthConst(expr) => {
+                write!(
+                    f,
+                    "recursion depth exceeded when trying to evaluate {}",
+                    expr
+                )
+            }
+            Self::CouldntSimplify(ty1, ty2) => {
+                write!(f, "couldn't simplify {} to {}", ty1, ty2)
+            }
+            Self::RecursionDepthTypeEquality(ty1, ty2) => {
+                write!(
+                    f,
+                    "recursion depth exceeded when trying to confirm {} == {}",
+                    ty1, ty2
+                )
+            }
+            Self::NonIntegralConst(expr) => {
+                write!(f, "got non-integral constant expression {}", expr)
+            }
+            Self::UnsizedType(ty) => {
+                write!(f, "tried to instantiate unsized type {}", ty)
+            }
+            Self::DerefNonPointer(expr) => {
+                write!(f, "tried to dereference non-pointer {}", expr)
+            }
+            Self::ApplyNonProc(expr) => {
+                write!(f, "tried to apply non-procedure {}", expr)
+            }
+            Self::NonSymbol(expr) => {
+                write!(f, "expected symbol, found {}", expr)
+            }
+            Self::InvalidIndex(expr) => {
+                write!(f, "invalid index expression {}", expr)
+            }
+            Self::InvalidRefer(expr) => {
+                write!(f, "invalid refer expression {}", expr)
+            }
+            Self::InvalidUnaryOp(op, expr) => {
+                write!(f, "invalid unary operation {} {}", op, expr)
+            }
+            Self::InvalidUnaryOpTypes(op, ty) => {
+                write!(f, "invalid unary operation {} for type {}", op, ty)
+            }
+            Self::InvalidBinaryOp(op, expr1, expr2) => {
+                write!(f, "invalid binary operation {} {} {}", op, expr1, expr2)
+            }
+            Self::InvalidBinaryOpTypes(op, ty1, ty2) => {
+                write!(
+                    f,
+                    "invalid binary operation {} for types {} and {}",
+                    op, ty1, ty2
+                )
+            }
+            Self::InvalidTernaryOp(op, expr1, expr2, expr3) => {
+                write!(
+                    f,
+                    "invalid ternary operation {} {} {} {}",
+                    op, expr1, expr2, expr3
+                )
+            }
+            Self::InvalidTernaryOpTypes(op, ty1, ty2, ty3) => {
+                write!(
+                    f,
+                    "invalid ternary operation {} for types {}, {}, and {}",
+                    op, ty1, ty2, ty3
+                )
+            }
+            Self::InvalidAssignOp(op, expr1, expr2) => {
+                write!(f, "invalid assignment operation {} {} {}", op, expr1, expr2)
+            }
+            Self::InvalidAssignOpTypes(op, ty1, ty2) => {
+                write!(
+                    f,
+                    "invalid assignment operation {} for types {} and {}",
+                    op, ty1, ty2
+                )
+            }
+            Self::SymbolNotDefined(sym) => {
+                write!(f, "symbol {} not defined", sym)
+            }
+            Self::TypeNotDefined(ty) => {
+                write!(f, "type {} not defined", ty)
+            }
+            Self::NegativeArrayLength(expr) => {
+                write!(f, "negative array length {}", expr)
+            }
+            Self::InvalidPatternForType(ty, pat) => {
+                write!(f, "invalid pattern {} for type {}", pat, ty)
+            }
+            Self::InvalidPatternForExpr(expr, pat) => {
+                write!(f, "invalid pattern {} for expression {}", pat, expr)
+            }
+            Self::InvalidMatchExpr(expr) => {
+                write!(f, "invalid match expression {}", expr)
+            }
+            Self::NonExhaustivePatterns { patterns, expr } => {
+                write!(
+                    f,
+                    "non-exhaustive patterns {:?} for expression {}",
+                    patterns, expr
+                )
+            }
+            Self::InvalidAs(expr, ty1, ty2) => {
+                write!(
+                    f,
+                    "invalid as expression {} for types {} and {}",
+                    expr, ty1, ty2
+                )
+            }
+            Self::InvalidConstExpr(expr) => {
+                write!(f, "invalid constant expression {}", expr)
+            }
+            Self::UnsupportedOperation(expr) => {
+                write!(f, "unsupported operation {}", expr)
+            }
+            Self::TypeRedefined(ty) => {
+                write!(f, "type {} redefined", ty)
+            }
+            Self::UnusedExpr(expr, ty) => {
+                write!(f, "unused expression {} of type {}", expr, ty)
+            }
+            Self::InvalidTemplateArgs(ty) => {
+                write!(f, "invalid template arguments for type {}", ty)
+            }
+            Self::ApplyNonTemplate(ty) => {
+                write!(f, "tried to apply non-template type {}", ty)
+            }
+            Self::SizeOfTemplate(ty) => {
+                write!(f, "tried to get size of template type {}", ty)
+            }
+            Self::CompilePolyProc(proc) => {
+                write!(f, "tried to compile polymorphic procedure {}", proc)
+            }
+            Self::AssemblyError(e) => {
+                write!(f, "assembly error: {:?}", e)
+            }
+            Self::InvalidMonomorphize(expr) => {
+                write!(
+                    f,
+                    "invalid monomorphization of constant expression {}",
+                    expr
+                )
+            }
+        }
     }
 }

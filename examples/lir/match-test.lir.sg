@@ -49,21 +49,21 @@ proc putlist(l: &List) -> None = {
 
 let i = 0,
     pos = struct { x = 16, y = -17 },
-    dir = South of Dir,
-    g = (North of Dir, 2, 3, pos),
+    dir = Dir of South(),
+    g = (Dir of North(), 2, 3, pos),
     x = match (dir, (6, 'a', pos)) {
-    (North of Dir, (6, 'b', _)) => put "Wow, north 1!\n",
-    (South of Dir, (5, 'a', _)) => put "Wow, north 2!\n",
-    (North of Dir, (6, 'a', _)) => put "Wow, north 3!\n",
-    (North of Dir, (5, 'b', _)) => put "Wow, north 4!\n",
-    (North of Dir, (5, 'a', _)) => put "Wow, north 5!\n",
-    (South of Dir, (6, 'a', struct { x = 16, y = -16})) => put "Wow, north 6!\n",
-    (South of Dir, (6, 'a', struct { x = 16, y = h})) => {
-        put h;
-        put "Wow, north 7!\n";
-    },
-    _ => put "default!\n"
-} in {
+        (of North, (6, 'b', _)) => put "Wow, north 1!\n",
+        (of South, (5, 'a', _)) => put "Wow, north 2!\n",
+        (of North, (6, 'a', _)) => put "Wow, north 3!\n",
+        (of North, (5, 'b', _)) => put "Wow, north 4!\n",
+        (of North, (5, 'a', _)) => put "Wow, north 5!\n",
+        (of South, (6, 'a', struct { x = 16, y = -16})) => put "Wow, north 6!\n",
+        (of South, (6, 'a', struct { x = 16, y = h})) => {
+            put h;
+            put "Wow, north 7!\n";
+        },
+        _ => put "default!\n"
+    } in {
     while i < 10 {
         put test(i);
         i += 1
@@ -74,7 +74,7 @@ let i = 0,
         write((&str) as &Char, 13)
     };
 
-    if let (North of Dir, b, c, struct {x=d, y=e}) = g {
+    if let (of North, b, c, struct {x=d, y=e}) = g {
         put b;
         put c;
         put d;
@@ -94,10 +94,10 @@ let i = 0,
         a: Int,
         b: Float,
         c: Bool
-    } in match (C of Tag, union {a = 5, Union..}) {
-        (A of Tag, u) => { put "\na\n"; put u },
-        (B of Tag, u) => { put "\na\n"; put u },
-        (C of Tag, u) => { put "\na\n"; put u },
+    } in match (Tag of C(), union {a = 5, Union..}) {
+        (of A, u) => { put "\na\n"; put u },
+        (of B, u) => { put "\na\n"; put u },
+        (of C, u) => { put "\na\n"; put u },
         _ => put "Nope!"
     };
     put '\n';

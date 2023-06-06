@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/asm/std.rs`."><title>std.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" disabled href="../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-be46fdc453a55015.css"><script src="../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../sage/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/asm/std.rs`."><title>std.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ba5701c5741a7b69.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0 (90c541806 2023-05-31)" data-search-js="search-e077946657036a58.js" data-settings-js="settings-298e1ea74db45b39.js" data-settings-css="settings-7bfb4c59cc6bc502.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../static.files/source-script-905937fbbdc8e9ea.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-f61008743c98d196.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../sage/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -339,7 +339,89 @@
 <a href="#339" id="339">339</a>
 <a href="#340" id="340">340</a>
 <a href="#341" id="341">341</a>
-</pre><pre class="rust"><code><span class="doccomment">//! # Standard Assembly Variant
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! # Standard Assembly Variant
 //!
 //! This variant of the assembly language is intended to be used
 //! with the standard variant of the virtual machine. It is very
@@ -351,12 +433,40 @@
     location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP,
 };
 <span class="kw">use </span><span class="kw">crate</span>::vm::{<span class="self">self</span>, VirtualMachineProgram};
-<span class="kw">use </span>core::fmt;
+<span class="kw">use </span>std::{collections::BTreeSet, fmt};
 
-<span class="attr">#[derive(Clone, Debug, PartialEq, PartialOrd)]
-</span><span class="kw">pub struct </span>StandardProgram(<span class="kw">pub </span>Vec&lt;StandardOp&gt;);
+<span class="doccomment">/// A program composed of standard instructions, which can be assembled
+/// into the standard virtual machine instructions.
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, PartialOrd)]
+</span><span class="kw">pub struct </span>StandardProgram {
+    <span class="doccomment">/// The list of standard assembly instructions in the program.
+    </span><span class="kw">pub </span>code: Vec&lt;StandardOp&gt;,
+    <span class="doccomment">/// A set containining the labels for each function in the program
+    /// that has been defined so far. This helps the LIR compiler
+    /// determine if a function has been compiled yet or not.
+    </span>labels: BTreeSet&lt;String&gt;,
+}
+
+<span class="doccomment">/// A default program is an empty program.
+</span><span class="kw">impl </span>Default <span class="kw">for </span>StandardProgram {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new(<span class="macro">vec!</span>[])
+    }
+}
 
 <span class="kw">impl </span>StandardProgram {
+    <span class="doccomment">/// Create a new program of core assembly instructions.
+    </span><span class="kw">pub fn </span>new(code: Vec&lt;StandardOp&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>labels = BTreeSet::new();
+        <span class="kw">for </span>op <span class="kw">in </span><span class="kw-2">&amp;</span>code {
+            <span class="comment">// If the operation is a function label, add its label to the set of defined labels.
+            </span><span class="kw">if let </span>StandardOp::CoreOp(CoreOp::Fn(label)) = op {
+                labels.insert(label.clone());
+            }
+        }
+        <span class="self">Self </span>{ code, labels }
+    }
+
     <span class="kw">pub fn </span>assemble(<span class="kw-2">&amp;</span><span class="self">self</span>, allowed_recursion_depth: usize) -&gt; <span class="prelude-ty">Result</span>&lt;vm::StandardProgram, Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>result = vm::StandardProgram(<span class="macro">vec!</span>[]);
         <span class="kw">let </span><span class="kw-2">mut </span>env = Env::default();
@@ -369,11 +479,11 @@
             .copy_address_to(<span class="kw-2">&amp;</span>SP, <span class="kw-2">&amp;mut </span>result);
 
         SP.copy_to(<span class="kw-2">&amp;</span>FP, <span class="kw-2">&amp;mut </span>result);
-        <span class="kw">for </span>(i, op) <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter().enumerate() {
+        <span class="kw">for </span>(i, op) <span class="kw">in </span><span class="self">self</span>.code.iter().enumerate() {
             op.assemble(i, <span class="kw-2">&amp;mut </span>env, <span class="kw-2">&amp;mut </span>result)<span class="question-mark">?
         </span>}
 
-        <span class="kw">if let </span><span class="prelude-val">Ok</span>((unmatched, last_instruction)) = env.pop_matching(<span class="self">self</span>.<span class="number">0</span>.len()) {
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>((unmatched, last_instruction)) = env.pop_matching(<span class="self">self</span>.code.len()) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::Unmatched(unmatched, last_instruction));
         }
 
@@ -385,7 +495,7 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="kw">let </span><span class="kw-2">mut </span>indent = <span class="number">0</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>comment_count = <span class="number">0</span>;
-        <span class="kw">for </span>(i, op) <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter().enumerate() {
+        <span class="kw">for </span>(i, op) <span class="kw">in </span><span class="self">self</span>.code.iter().enumerate() {
             <span class="kw">if </span>f.alternate() {
                 <span class="kw">if let </span>StandardOp::CoreOp(CoreOp::Comment(comment)) = op {
                     <span class="kw">if </span>f.alternate() {
@@ -429,12 +539,24 @@
 
 <span class="kw">impl </span>AssemblyProgram <span class="kw">for </span>StandardProgram {
     <span class="kw">fn </span>op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: CoreOp) {
-        <span class="self">self</span>.<span class="number">0</span>.push(StandardOp::CoreOp(op))
+        <span class="comment">// If the operation is a function label, add its label to the set of defined labels.
+        </span><span class="kw">if let </span>CoreOp::Fn(label) = <span class="kw-2">&amp;</span>op {
+            <span class="self">self</span>.labels.insert(label.clone());
+        }
+        <span class="self">self</span>.code.push(StandardOp::CoreOp(op))
     }
 
     <span class="kw">fn </span>std_op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: <span class="kw">super</span>::StandardOp) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="self">self</span>.<span class="number">0</span>.push(op);
+        <span class="comment">// If the operation is a function label, add its label to the set of defined labels.
+        </span><span class="kw">if let </span>StandardOp::CoreOp(CoreOp::Fn(label)) = <span class="kw-2">&amp;</span>op {
+            <span class="self">self</span>.labels.insert(label.clone());
+        }
+        <span class="self">self</span>.code.push(op);
         <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>is_defined(<span class="kw-2">&amp;</span><span class="self">self</span>, label: <span class="kw-2">&amp;</span>str) -&gt; bool {
+        <span class="self">self</span>.labels.contains(label)
     }
 }
 
@@ -447,64 +569,106 @@
     <span class="doccomment">/// Execute a core instruction.
     </span>CoreOp(CoreOp),
 
-    Set(Location, f64),
+    <span class="doccomment">/// Set the value of a cell to a constant float.
+    </span>Set(Location, f64),
+    <span class="doccomment">/// Take the integer value stored in a cell and store the equivalent float
+    /// value in the same cell.
+    </span>ToFloat(Location),
+    <span class="doccomment">/// Take the float value stored in a cell and store the equivalent integer
+    /// value in the same cell.
+    </span>ToInt(Location),
 
-    ToFloat(Location),
-    ToInt(Location),
+    <span class="doccomment">/// Raise a cell (float) to the power of another cell (float).
+    </span>Pow {
+        <span class="doccomment">/// The source cell.
+        </span>src: Location,
+        <span class="doccomment">/// The destination cell.
+        </span>dst: Location,
+    },
+    <span class="doccomment">/// Take the square root of a cell (float).
+    </span>Sqrt(Location),
 
-    Pow {
-        src: Location,
-        dst: Location,
+    <span class="doccomment">/// Add the source cell (float) to the destination cell (float).
+    </span>Add {
+        <span class="doccomment">/// The source cell.
+        </span>src: Location,
+        <span class="doccomment">/// The destination cell.
+        </span>dst: Location,
     },
-    Sqrt(Location),
+    <span class="doccomment">/// Subtract the source cell (float) from the destination cell (float).
+    </span>Sub {
+        <span class="doccomment">/// The source cell.
+        </span>src: Location,
+        <span class="doccomment">/// The destination cell.
+        </span>dst: Location,
+    },
+    <span class="doccomment">/// Multiply the source cell (float) by the destination cell (float).
+    </span>Mul {
+        <span class="doccomment">/// The source cell.
+        </span>src: Location,
+        <span class="doccomment">/// The destination cell.
+        </span>dst: Location,
+    },
+    <span class="doccomment">/// Divide the destination cell (float) by the source cell (float).
+    </span>Div {
+        <span class="doccomment">/// The source cell.
+        </span>src: Location,
+        <span class="doccomment">/// The destination cell.
+        </span>dst: Location,
+    },
+    <span class="doccomment">/// Perform the modulo operation on the destination cell (float) by the
+    /// source cell (float).
+    </span>Rem {
+        <span class="doccomment">/// The source cell.
+        </span>src: Location,
+        <span class="doccomment">/// The destination cell.
+        </span>dst: Location,
+    },
+    <span class="doccomment">/// Negate the value of a cell (float) and store the result in the same cell.
+    </span>Neg(Location),
 
-    Add {
-        src: Location,
-        dst: Location,
-    },
-    Sub {
-        src: Location,
-        dst: Location,
-    },
-    Mul {
-        src: Location,
-        dst: Location,
-    },
-    Div {
-        src: Location,
-        dst: Location,
-    },
-    Rem {
-        src: Location,
-        dst: Location,
-    },
-    Neg(Location),
-
-    Sin(Location),
-    Cos(Location),
-    Tan(Location),
-    ASin(Location),
-    ACos(Location),
-    ATan(Location),
+    <span class="doccomment">/// Perform Sin on a cell (float) and store the result in the same cell.
+    </span>Sin(Location),
+    <span class="doccomment">/// Perform Cos on a cell (float) and store the result in the same cell.
+    </span>Cos(Location),
+    <span class="doccomment">/// Perform Tan on a cell (float) and store the result in the same cell.
+    </span>Tan(Location),
+    <span class="doccomment">/// Perform inverse Sin on a cell (float) and store the result in the same cell.
+    </span>ASin(Location),
+    <span class="doccomment">/// Perform inverse Cos on a cell (float) and store the result in the same cell.
+    </span>ACos(Location),
+    <span class="doccomment">/// Perform inverse Tan on a cell (float) and store the result in the same cell.
+    </span>ATan(Location),
 
     <span class="doccomment">/// Perform dst = a &gt; b.
     </span>IsGreater {
-        a: Location,
-        b: Location,
-        dst: Location,
+        <span class="doccomment">/// The first cell in the comparison (left hand side).
+        </span>a: Location,
+        <span class="doccomment">/// The second cell in the comparison (right hand side).
+        </span>b: Location,
+        <span class="doccomment">/// The destination cell.
+        </span>dst: Location,
     },
     <span class="doccomment">/// Perform dst = a &lt; b.
     </span>IsLess {
-        a: Location,
-        b: Location,
-        dst: Location,
+        <span class="doccomment">/// The first cell in the comparison (left hand side).
+        </span>a: Location,
+        <span class="doccomment">/// The second cell in the comparison (right hand side).
+        </span>b: Location,
+        <span class="doccomment">/// The destination cell.
+        </span>dst: Location,
     },
 
-    Alloc(Location),
-    Free(Location),
+    <span class="doccomment">/// Take the value in the operand cell. Allocate that number of cells.
+    /// The address of the first cell is stored in the operand cell.
+    </span>Alloc(Location),
+    <span class="doccomment">/// Free the memory allocated at the address stored in the operand cell.
+    </span>Free(Location),
 
-    Peek(Location),
-    Poke(Location),
+    <span class="doccomment">/// Read from the runtime&#39;s interface into the operand cell.
+    </span>Peek(Location),
+    <span class="doccomment">/// Write from the operand cell into the runtime&#39;s interface.
+    </span>Poke(Location),
 }
 
 <span class="kw">fn </span>unsupported(op: StandardOp) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
@@ -677,8 +841,7 @@
 
 <span class="kw">impl </span>From&lt;CoreProgram&gt; <span class="kw">for </span>StandardProgram {
     <span class="kw">fn </span>from(core: CoreProgram) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>(core.<span class="number">0</span>.into_iter().map(StandardOp::CoreOp).collect())
+        <span class="self">Self</span>::new(core.code.into_iter().map(StandardOp::CoreOp).collect())
     }
 }
-</code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0 (84c898d65 2023-04-16)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
+</code></pre></div></section></main></body></html>

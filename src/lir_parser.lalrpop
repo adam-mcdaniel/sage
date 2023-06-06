@@ -4,11 +4,16 @@ use crate::parse::{CoreProgramParser, StandardProgramParser};
 
 grammar;
 Pattern: Pattern = {
-    <mut list: (<PatternAtom> "|")+> <last: PatternAtom> => {
+    <mut list: (<PatternTerm> "|")+> <last: PatternTerm> => {
         list.push(last);
         Pattern::Alt(list)
     },
-    <PatternAtom> => <>,
+    <PatternTerm> => <>,
+}
+
+PatternTerm: Pattern = {
+    "of" <name: Symbol> <pat: PatternTerm?> => Pattern::Variant(name, pat.map(Box::new)),
+    PatternAtom => <>
 }
 
 PatternAtom: Pattern = {
@@ -16,12 +21,12 @@ PatternAtom: Pattern = {
     List<("struct" "{"), (<Symbol> "=" <Pattern>), ",", "}"> => Pattern::Struct(<>.into_iter().collect()),
     Symbol => Pattern::Symbol(<>),
     // ConstAtom => Pattern::ConstExpr(<>), 
-    <variant: Symbol> "of" <t: TypeTerm> => Pattern::ConstExpr(ConstExpr::Of(t, variant)),
+    //<variant: Symbol> "of" <t: TypeTerm> => Pattern::ConstExpr(ConstExpr::Of(t, variant)),
     "true" => Pattern::ConstExpr(ConstExpr::Bool(true)),
     "false" => Pattern::ConstExpr(ConstExpr::Bool(false)),
     "Null" => Pattern::ConstExpr(ConstExpr::Null),
     "None" => Pattern::ConstExpr(ConstExpr::None),
-    <IntLit> => Pattern::ConstExpr(ConstExpr::Int(<> as i32)),
+    <IntLit> => Pattern::ConstExpr(ConstExpr::Int(<> as i64)),
     <CharLit> => Pattern::ConstExpr(ConstExpr::Char(<>)),
     "_" => Pattern::Wildcard,
 }
@@ -32,27 +37,47 @@ Type: Type = {
     TypeTerm => <>,
 }
 
+EnumVariant: (String, Option<Type>) = {
+    "of" <Symbol> <Type?> => (<>),
+    Symbol => (<>, None),
+}
+
 TypeTerm: Type = {
-    Symbol => Type::Symbol(<>),
     "(" <Type> ")" => <>,
     Tuple<Type> => Type::Tuple(<>),
     "&" <Type> => Type::Pointer(Box::new(<>)),
+    "enum" <variants: List<"{", EnumVariant, ",", "}">> => {
+        for variant in &variants {
+            match variant.1 {
+                Some(Type::None) => {}
+                Some(_) => return Type::EnumUnion(variants.into_iter().map(|(name, t)| (name, t.unwrap_or(Type::None))).collect()),
+                _ => {}
+            }
+        }
+        Type::Enum(variants.into_iter().map(|(name, _)| name).collect())
+    },
     "[" <t: Type> "*" <size: ConstExpr> "]" => Type::Array(Box::new(t), Box::new(size)),
+    //"enum" <List<"{", (<Symbol> "=" <TypeTerm>), ",", "}">> => Type::EnumUnion(<>.into_iter().collect()),
+    //"enum" <Dict<Symbol, Type>> => Type::EnumUnion(<>.into_iter().collect()),
+    "union" <Dict<Symbol, Type>> => Type::Union(<>.into_iter().collect()),
+    "struct" <Dict<Symbol, Type>> => Type::Struct(<>.into_iter().collect()),
+    "unit" <name: Symbol> "=" <t: Type> => Type::Unit(name, Box::new(t)), 
+    TypeAtom => <>
+}
+
+TypeAtom: Type = {
+    Symbol => Type::Symbol(<>),
     "Int" => Type::Int,
     "Float" => Type::Float,
     "Char" => Type::Char,
     "Bool" => Type::Bool,
     "Cell" => Type::Cell,
     "None" => Type::None,
-    "enum" <List<"{", Symbol, ",", "}">> => Type::Enum(<>.into_iter().collect()),
-    "union" <Dict<Symbol, Type>> => Type::Union(<>.into_iter().collect()),
-    "struct" <Dict<Symbol, Type>> => Type::Struct(<>.into_iter().collect()),
-    "unit" <name: Symbol> "=" <t: Type> => Type::Unit(name, Box::new(t)), 
 }
 
 ConstExpr: ConstExpr = {
-    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <body: Block> => ConstExpr::Proc(Procedure::new(args, ret, body)),
-    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "=" <body: Block> => ConstExpr::Proc(Procedure::new(args, Type::None, body)),
+    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <body: Block> => ConstExpr::Proc(Procedure::new(None, args, ret, body)),
+    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "=" <body: Block> => ConstExpr::Proc(Procedure::new(None, args, Type::None, body)),
     "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <mut body: CoreAsm> => {
         body.args = args;
         body.ret = ret;
@@ -66,20 +91,20 @@ ConstExpr: ConstExpr = {
     "typeof" "(" <Expr> ")" => ConstExpr::TypeOf(Box::new(<>)),
     "sizeof" "(" <Type> ")" => ConstExpr::SizeOfType(<>),
     "sizeofexpr" "(" <Expr> ")" => ConstExpr::SizeOfExpr(Box::new(<>)),
-    "(" ")" => ConstExpr::None,
     <ConstAtom> => <>,
 }
 
 ConstAtom: ConstExpr = {
-    <variant: Symbol> "of" <t: TypeTerm> => ConstExpr::Of(t, variant).into(),
+    // <t: TypeAtom> "of" <variant: Symbol> => ConstExpr::Of(t, variant).into(),
     Symbol => ConstExpr::Symbol(<>),
-    IntLit => ConstExpr::Int(<> as i32),
+    IntLit => ConstExpr::Int(<> as i64),
     FloatLit => ConstExpr::Float(<>),
     CharLit => ConstExpr::Char(<>),
     "true" => ConstExpr::Bool(true),
     "false" => ConstExpr::Bool(false),
     "Null" => ConstExpr::Null,
     "None" => ConstExpr::None,
+    "(" ")" => ConstExpr::None,
 }
 
 pub Expr: Expr = {
@@ -93,7 +118,7 @@ pub Expr: Expr = {
         Expr::LetConsts(defs.into_iter().collect(), Box::new(e))
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <body: Block> "in" <e: Expr> => {
-        Expr::LetProc(name, Procedure::new(args, ret, body), Box::new(e))
+        Expr::LetProc(name, Procedure::new(None, args, ret, body), Box::new(e))
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <mut body: CoreAsm> "in" <e: Expr> => {
         body.args = args;
@@ -116,24 +141,28 @@ pub Expr: Expr = {
         Expr::LetConst(name, ConstExpr::StandardBuiltin(body), Box::new(e))
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "=" <body: Block> "in" <e: Expr> => {
-        Expr::LetProc(name, Procedure::new(args, Type::None, body), Box::new(e))
+        Expr::LetProc(name, Procedure::new(None, args, Type::None, body), Box::new(e))
     },
     "while" <cond: Expr> <body: Block> => Expr::While(Box::new(cond), Box::new(body)),
-    <x: Factor> "=" <val: Expr> => x.refer().deref_mut(val),
-    <x: Factor> "+=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Add), val),
-    <x: Factor> "-=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Subtract), val),
-    <x: Factor> "*=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Multiply), val),
-    <x: Factor> "/=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Divide), val),
-    <x: Factor> "%=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Remainder), val),
-    <x: Factor> "**=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Power), val),
-    "&" <Expr> => <>.refer(),
-    "*" <Expr> => <>.deref(),
+    <x: Pointer> "=" <val: Expr> => x.refer().deref_mut(val),
+    <x: Pointer> "+=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Add), val),
+    <x: Pointer> "-=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Subtract), val),
+    <x: Pointer> "*=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Multiply), val),
+    <x: Pointer> "/=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Divide), val),
+    <x: Pointer> "%=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Remainder), val),
+    <x: Pointer> "**=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Power), val),
     "return" <Expr> => Expr::Return(Box::new(<>)),
     "debug" <Expr> => Expr::UnaryOp(Put::Debug.clone_box(), Box::new(<>)),
     "put" <Expr> => Expr::UnaryOp(Put::Display.clone_box(), Box::new(<>)),
-    Logic => <>
+    "new" <Expr> => Expr::UnaryOp(New.clone_box(), Box::new(<>)),
+    Pointer => <>
 }
 
+Pointer: Expr = {
+    "*" <Pointer> => <>.deref(),
+    "&" <Pointer> => <>.refer(),
+    Logic => <>,
+}
 
 Logic: Expr = {
     <a: Logic> "or" <b: LogicFactor> => a.or(b),
@@ -174,12 +203,15 @@ Factor: Expr = {
 }
 
 Term: Expr = {
-    <x: Term> "." <field: IntLit> => x.field(ConstExpr::Int(field as i32)),
+    <x: Term> "." <field: IntLit> => x.field(ConstExpr::Int(field as i64)),
     <x: Term> "." <field: Symbol> => x.field(ConstExpr::Symbol(field)),
-    <x: Term> "->" <field: IntLit> => x.deref().field(ConstExpr::Int(field as i32)),
+    <x: Term> "->" <field: IntLit> => x.deref().field(ConstExpr::Int(field as i64)),
     <x: Term> "->" <field: Symbol> => x.deref().field(ConstExpr::Symbol(field)),
     <x: Term> "[" <idx: Expr> "]" => x.idx(idx),
     <x: Term> "as" <t: Type> => x.as_type(t),
+    // <x: Term> "as" <t: TypeAtom> "of" <name: Symbol> => {
+    //     Expr::EnumUnion(t, name, Box::new(x))
+    // },
     <f: Term> <args: List<"(", Expr, ",", ")">> => f.app(args),
     "if" <cond: Atom> <then: Atom> <elif: ("else" "if" <Atom> <Atom>)*> <mut e: ("else" <Atom>)?> => {
         for (c, t) in elif.into_iter().rev() {
@@ -196,10 +228,18 @@ Term: Expr = {
     "match" <expr:Atom> <list: NonEmptyList<"{", (<Pattern> "=>" <Expr>), ",", "}">> => {
         Expr::Match(Box::new(expr), list.into_iter().collect())
     },
+    // "_tag" <Atom> => <>.unop(Tag),
+    // "_data" <Atom> => <>.unop(Data),
     Atom => <>,
 }
 
 Atom: Expr = {
+    <t: TypeAtom> "of" <name: Symbol> "=" <x: Atom> => {
+        Expr::EnumUnion(t, name, Box::new(x))
+    },
+    <t: TypeAtom> "of" <name: Symbol> "(" ")"=> {
+        Expr::ConstExpr(ConstExpr::Of(t, name))
+    },
     <StringLit> => Expr::ConstExpr(ConstExpr::Array(<>.chars().map(|c| ConstExpr::Char(c)).collect())),
     Block => <>,
     "(" <Expr> ")" => <>,
@@ -218,6 +258,14 @@ Atom: Expr = {
     "union" "{" <name: Symbol> "=" <e: Expr> "," <t: Type> ".." "}" => {
         Expr::Union(t, name, Box::new(e))
     },
+    //"enum" "{" <mut list:(<Symbol> ":" <Type> ",")*> <last: (<Symbol> ":" <Type> "=" <Expr>)> "}" => {
+    //    list.push((last.0.clone(), last.1));
+    //    let t = Type::Union(list.into_iter().collect());
+    //    Expr::EnumUnion(t, last.0, Box::new(last.2))
+    //},
+    //"enum" "{" <name: Symbol> "=" <e: Expr> "," <t: Type> ".." "}" => {
+    //    Expr::EnumUnion(t, name, Box::new(e))
+    //},
 }
 
 Block: Expr = {
@@ -282,7 +330,7 @@ CoreAsm: CoreBuiltin = {
             name: String::new(),
             args: vec![],
             ret: Type::None,
-            body: prog.0,
+            body: prog.code,
         }),
         Err(e) => Err(e.map_location(|loc| offset + body.find("{").unwrap() + 1 + loc)),
     },
@@ -294,7 +342,7 @@ StandardAsm: StandardBuiltin = {
             name: String::new(),
             args: vec![],
             ret: Type::None,
-            body: prog.0,
+            body: prog.code,
         }),
         Err(e) => Err(e.map_location(|loc| offset + body.find("{").unwrap() + 1 + loc)),
     },

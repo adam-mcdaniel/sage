@@ -23,17 +23,27 @@ use crate::{
 
 /// The type for the C target which implements the `Target` trait.
 /// This allows the compiler to target the C language.
+#[derive(Default)]
 pub struct C;
 
 impl Architecture for C {
-    fn op(&self, op: &CoreOp) -> String {
+    fn supports_input(&self, i: &Input) -> bool {
+        matches!(i.mode, InputMode::StdinChar | InputMode::StdinFloat | InputMode::StdinInt)
+    }
+
+    fn supports_output(&self, o: &Output) -> bool {
+        matches!(o.mode, OutputMode::StdoutChar | OutputMode::StdoutFloat | OutputMode::StdoutInt)
+    }
+
+    fn op(&mut self, op: &CoreOp) -> String {
         match op {
             CoreOp::Comment(n) => {
-                let mut comment = String::new();
-                for line in n.split('\n') {
-                    comment += &format!("// {}", line.trim());
-                }
-                comment
+                format!("// {}", n.replace("\n", "\n// ").replace("\r", ""))
+                // let mut comment = String::new();
+                // for line in n.split('\n') {
+                //     comment += &format!("// {}", line.trim());
+                // }
+                // comment
             }
             CoreOp::While => "while (reg.i) {".to_string(),
             CoreOp::If => "if (reg.i) {".to_string(),
@@ -59,7 +69,7 @@ impl Architecture for C {
         }
     }
 
-    fn std_op(&self, op: &StandardOp) -> Result<String, String> {
+    fn std_op(&mut self, op: &StandardOp) -> Result<String, String> {
         Ok(match op {
             StandardOp::Peek => self.peek()?,
             StandardOp::Poke => self.poke()?,
@@ -79,20 +89,20 @@ impl Architecture for C {
             StandardOp::Rem => "reg.f = fmod(reg.f, ptr->f);".to_string(),
             StandardOp::Pow => "reg.f = pow(reg.f, ptr->f);".to_string(),
             StandardOp::IsNonNegative => "reg.i = reg.f >= 0;".to_string(),
-            StandardOp::Alloc => "reg.p = malloc(ptr->i);".to_string(),
-            StandardOp::Free => "free(ptr->p);".to_string(),
+            StandardOp::Alloc => "reg.p = malloc(reg.i * sizeof(reg));".to_string(),
+            StandardOp::Free => "free(reg.p);".to_string(),
             _ => return Err(format!("Invalid standard op for C target {op:?}")),
         })
     }
 
-    fn end(&self, matching: &CoreOp, fun: Option<usize>) -> String {
+    fn end(&mut self, matching: &CoreOp, fun: Option<usize>) -> String {
         match (matching, fun) {
             (CoreOp::Function | CoreOp::While | CoreOp::If | CoreOp::Else, _) => "}".to_string(),
             _ => unreachable!("Invalid matching op for end"),
         }
     }
 
-    fn declare_proc(&self, label_id: usize) -> String {
+    fn declare_proc(&mut self, label_id: usize) -> String {
         format!("void f{label_id}() {{")
     }
 
@@ -107,7 +117,7 @@ impl Architecture for C {
         true
     }
 
-    fn get(&self, src: &Input) -> Result<String, String> {
+    fn get(&mut self, src: &Input) -> Result<String, String> {
         let ch = src.channel.0;
         match src.mode {
             InputMode::StdinChar => Ok("reg.i = getchar();".to_string()),
@@ -123,7 +133,7 @@ impl Architecture for C {
         }
     }
 
-    fn put(&self, dst: &Output) -> Result<String, String> {
+    fn put(&mut self, dst: &Output) -> Result<String, String> {
         match dst.mode {
             OutputMode::StdoutChar => Ok("putchar(reg.i);".to_string()),
             OutputMode::StdoutInt => Ok("printf(\"%lld\", reg.i);".to_string()),
@@ -136,11 +146,13 @@ impl Architecture for C {
             _ => Err("Output not supported by this target".to_string()),
         }
     }
-    fn peek(&self) -> Result<String, String> {
-        Ok("reg.i = *ptr;".to_string())
+    fn peek(&mut self) -> Result<String, String> {
+        // Ok("reg.i = *ptr;".to_string())
+        todo!()
     }
-    fn poke(&self) -> Result<String, String> {
-        Ok("*ptr = reg;".to_string())
+    fn poke(&mut self) -> Result<String, String> {
+        // Ok("*ptr = reg;".to_string())
+        todo!()
     }
     fn prelude(&self, is_core: bool) -> Option<String> {
         let mut result = r#"#include <stdio.h>

@@ -1,6 +1,6 @@
 use crate::lir::*;
 use core::fmt::{Display, Formatter, Result as FmtResult};
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 /// A pattern which can be matched against an expression.
 ///
@@ -13,9 +13,11 @@ use std::collections::HashMap;
 pub enum Pattern {
     Tuple(Vec<Pattern>),
     Struct(HashMap<String, Pattern>),
+    Variant(String, Option<Box<Pattern>>),
     Symbol(String),
     ConstExpr(ConstExpr),
     Alt(Vec<Pattern>),
+    Pointer(Box<Pattern>),
     Wildcard,
 }
 
@@ -33,7 +35,7 @@ impl Pattern {
         Self::Symbol(name.to_string())
     }
     /// Construct a new pattern which matches a constant integer.
-    pub fn int(n: i32) -> Self {
+    pub fn int(n: i64) -> Self {
         Self::ConstExpr(ConstExpr::Int(n))
     }
     /// Construct a new pattern which matches a constant float.
@@ -52,6 +54,10 @@ impl Pattern {
     pub fn wildcard() -> Self {
         Self::Wildcard
     }
+    /// Construct a new pattern which matches a pointer.
+    pub fn pointer(pattern: Pattern) -> Self {
+        Self::Pointer(Box::new(pattern))
+    }
 
     /// Get the type of a branch with a given expression matched to this pattern.
     pub fn get_branch_result_type(
@@ -61,7 +67,15 @@ impl Pattern {
         env: &Env,
     ) -> Result<Type, Error> {
         // Get the type of the expression being matched.
-        let ty = expr.get_type(env)?;
+        let mut ty = expr.get_type(env)?;
+        ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+            // Ok(t.is_simple())
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
+            // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
+        })?;
         // Get the bindings for the pattern.
         let bindings = self.get_bindings(expr, &ty, env)?;
         // Create a new environment with the bindings.
@@ -84,6 +98,16 @@ impl Pattern {
         matching_expr_ty: &Type,
         env: &Env,
     ) -> Result<bool, Error> {
+        let mut ty = matching_expr_ty.clone();
+        ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+            // Ok(t.is_simple())
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
+            // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
+        })?;
+        let matching_expr_ty = &ty;
         match matching_expr_ty {
             Type::Bool => {
                 // If the type is a boolean, the patterns are exhaustive if they match both `true` and `false`.
@@ -120,6 +144,56 @@ impl Pattern {
                 Ok(true_found && false_found)
             }
 
+            // Confirm all the variants of a tagged enum are matched.
+            Type::EnumUnion(variants) => {
+                let mut found = vec![false; variants.len()];
+                for pattern in patterns {
+                    match pattern {
+                        Pattern::Variant(name, None) => {
+                            // Find the index of the variant.
+                            if let Some(index) = variants.keys().position(|item| *item == *name) {
+                                // Set the corresponding boolean to true.
+                                found[index] = true;
+                            }
+                        }
+                        Pattern::Variant(name, Some(p)) => {
+                            // Find the index of the variant.
+                            if let Some(index) = variants.keys().position(|item| *item == *name) {
+                                // Set the corresponding boolean to true.
+                                found[index] = found[index]
+                                    || Self::are_patterns_exhaustive(
+                                        expr,
+                                        &[*p.clone()],
+                                        &variants[name],
+                                        env,
+                                    )?;
+                            }
+                        }
+
+                        // If this pattern matches a wildcard or a symbol, set all the booleans to true.
+                        Pattern::Symbol(_) | Pattern::Wildcard => {
+                            for i in 0..variants.len() {
+                                found[i] = true;
+                            }
+                        }
+                        // Check if the alternate pattern branches are exhaustive.
+                        Pattern::Alt(branches) => {
+                            // If there's an alternate pattern, check if it's exhaustive.
+                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)?
+                            {
+                                // If it is exhaustive, set all the booleans to true.
+                                for i in 0..variants.len() {
+                                    found[i] = true;
+                                }
+                            }
+                        }
+
+                        _ => {}
+                    }
+                }
+                Ok(found.iter().all(|b| *b))
+            }
+
             // Confirm all the variants of an enum are matched.
             Type::Enum(items) => {
                 // Create a vector of booleans, one for each variant.
@@ -127,6 +201,14 @@ impl Pattern {
                 // Iterate over the patterns.
                 for pattern in patterns {
                     match pattern {
+                        Pattern::Variant(name, _) => {
+                            // Find the index of the variant.
+                            if let Some(index) = items.iter().position(|item| *item == *name) {
+                                // Set the corresponding boolean to true.
+                                found[index] = true;
+                            }
+                        }
+
                         // If this pattern matches a variant, set the corresponding boolean to true.
                         Pattern::ConstExpr(ConstExpr::Of(ty, name)) => {
                             // Confirm the type of the expression matches the type of the enum.
@@ -315,12 +397,56 @@ impl Pattern {
     /// and type-check the branch where the expression is bound to the pattern.
     pub fn type_check(&self, matching_expr: &Expr, branch: &Expr, env: &Env) -> Result<(), Error> {
         // Get the type of the expression being matched.
-        let matching_ty = matching_expr.get_type(env)?;
+        let mut matching_ty = matching_expr.get_type(env)?;
+        // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+        //     match matching_ty {
+        //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
+        //             matching_ty = matching_ty.simplify(env)?;
+        //         }
+        //         Type::Poly(_, template) => {
+        //             matching_ty = *template.clone();
+        //         }
+        //         _ => break,
+        //     }
+        // }
+
+        matching_ty = matching_ty.simplify_until_matches(env, Type::Any, |t, env| {
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
+        })?;
         // Get the type of the branch as a result of the match.
         let expected = self.get_branch_result_type(matching_expr, branch, env)?;
         // Type-check the expression generated to match the pattern.
-        self.matches(&matching_expr, &matching_ty, env)?
-            .type_check(env)?;
+        match self
+            .matches(&matching_expr, &matching_ty, env)
+            .and_then(|x| x.type_check(env))
+        {
+            Ok(()) => {}
+            // Err(Error::InvalidBinaryOp(_, a, b)) => {
+            //     let expected = a.get_type(env)?;
+            //     let found = b.get_type(env)?;
+            //     return Err(Error::MismatchedTypes {
+            //         expected,
+            //         found,
+            //         expr: matching_expr.clone(),
+            //     });
+            // },
+            // Err(Error::InvalidBinaryOpTypes(_, expected, found)) => {
+            //     return Err(Error::MismatchedTypes {
+            //         expected,
+            //         found,
+            //         expr: matching_expr.clone(),
+            //     })
+            // },
+            // _ => return Err(Error::MismatchedTypes {
+            //     expected,
+            //     found: matching_ty,
+            //     expr: matching_expr.clone(),
+            // })
+            Err(e) => return Err(e),
+        }
         // Generate an expression with the bindings defined for the branch.
         let result_expr = self.bind(&matching_expr, &matching_ty, &branch, env)?;
         // Type-check the expression generated to bind the pattern.
@@ -336,6 +462,9 @@ impl Pattern {
                 expr: matching_expr.clone(),
             });
         }
+
+        // eprintln!("Type checked pattern match: {} => {}", self, branch);
+
         // If no error was returned, the type-checking succeeded.
         Ok(())
     }
@@ -383,12 +512,30 @@ impl Pattern {
         let var_name = expr.to_string() + "__PATTERN_MATCH";
         // Create a new environment with the bindings
         let mut new_env = env.clone();
+        // Get the type of the expression being matched
+        let mut match_type = expr.get_type(env)?;
         // Define the variable in the new environment.
-        new_env.define_var(var_name.clone(), expr.get_type(env)?)?;
+        // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+        //     match match_type {
+        //         Type::Let(_, _, _) | Type::Symbol(_) => {
+        //             match_type = match_type.simplify(env)?;
+        //         }
+        //         _ => break,
+        //     }
+        // }
+        match_type = match_type.simplify_until_matches(env, Type::Any, |t, env| {
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
+        })?;
+        new_env.define_var(var_name.clone(), match_type.clone())?;
         // Generate the expression which evaluates the `match` expression.
         let match_expr = Pattern::match_pattern_helper(&Expr::var(&var_name), &branches, &new_env)?;
+
         // Define the variable in the generated expression.
-        Ok(Expr::let_var(var_name, None, expr.clone(), match_expr))
+        let result = Expr::let_var(var_name, Some(match_type), expr.clone(), match_expr);
+        Ok(result)
     }
 
     /// A helper function for generating a `match` expression.
@@ -431,6 +578,28 @@ impl Pattern {
         ty: &Type,
         env: &Env,
     ) -> Result<HashMap<String, Type>, Error> {
+        let mut ty = ty.clone();
+        // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+        //     match t {
+        //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
+        //             t = t.simplify(env)?;
+        //         }
+        //         Type::Poly(_, template) => {
+        //             t = *template.clone();
+        //         }
+        //         _ => break,
+        //     }
+        // }
+        ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+            // Ok(t.is_simple())
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
+            // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
+            // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _)))
+        })?;
+        let ty = &ty;
         Ok(match (self, ty) {
             // If the pattern is a tuple, and the type is a tuple, then
             // get the bindings for each element of the tuple.
@@ -443,7 +612,7 @@ impl Pattern {
                     result.extend(
                         pattern
                             .get_bindings(
-                                &expr.clone().field(ConstExpr::Int(i as i32)),
+                                &expr.clone().field(ConstExpr::Int(i as i64)),
                                 item_type,
                                 env,
                             )?
@@ -452,6 +621,25 @@ impl Pattern {
                 }
                 // Return the result.
                 result
+            }
+
+            // If the pattern is a variant, and the type is a EnumUnion,
+            // get the bindings for the variant.
+            (Self::Variant(name, Some(pattern)), Type::EnumUnion(variants)) => {
+                // If the variant is not found in the type, throw an error
+                if !variants.contains_key(name) {
+                    return Err(Error::VariantNotFound(ty.clone(), name.clone()));
+                }
+                // If no error was thrown, the variant is an option which can be matched.
+                // Now, check if the tag matches the variant.
+                pattern.get_bindings(
+                    &expr
+                        .clone()
+                        .unop(super::ops::Data)
+                        .field(ConstExpr::Symbol(name.clone())),
+                    &variants[name],
+                    env,
+                )?
             }
 
             // If the pattern is a struct, and the type is a struct, then
@@ -491,7 +679,14 @@ impl Pattern {
             }
 
             // If the pattern is a wildcard, then return an empty map (no bindings).
-            (Self::Wildcard, _) | (Self::ConstExpr(_), _) => HashMap::new(),
+            (Self::Variant(_, None), Type::Enum(_))
+            | (Self::Variant(_, None), Type::EnumUnion(_))
+            | (Self::Wildcard, _)
+            | (Self::ConstExpr(_), _) => HashMap::new(),
+
+            (Self::Pointer(pattern), Type::Pointer(item_type)) => {
+                pattern.get_bindings(&expr.clone().deref(), item_type, env)?
+            }
 
             // If the pattern is an alternative, then get the bindings for each pattern
             (Self::Alt(patterns), _) => {
@@ -513,18 +708,95 @@ impl Pattern {
                 result
             }
 
-            _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone())),
+            (pat, ty) => {
+                // eprintln!("pat: {pat}");
+                // eprintln!("ty: {ty}");
+                // If the pattern does not match the type, then return an error.
+                return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
+            }
         })
     }
 
     /// Does this pattern match the given expression?
     /// This function returns an expression which evaluates to true if the expression matches the pattern.
     fn matches(&self, expr: &Expr, ty: &Type, env: &Env) -> Result<Expr, Error> {
+        let mut ty = ty.clone();
+        // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+        //     match ty {
+        //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
+        //             ty = ty.simplify(env)?;
+        //         }
+        //         Type::Poly(_, template) => {
+        //             ty = *template.clone();
+        //         }
+        //         _ => break,
+        //     }
+        // }
+
+        ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+            // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
+            // Ok(t.is_simple())
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
+        })?;
+        let ty = &ty;
         Ok(match (self, ty) {
+            // If the pattern is a variant, and the type is a EnumUnion,
+            // check if the variant matches the pattern.
+            (Self::Variant(name, Some(pattern)), Type::EnumUnion(variants)) => {
+                // If the variant is not found in the type, throw an error
+                if !variants.contains_key(name) {
+                    return Err(Error::VariantNotFound(ty.clone(), name.clone()));
+                }
+                // If no error was thrown, the variant is an option which can be matched.
+                // Now, check if the tag matches the variant.
+                expr.clone()
+                    .unop(super::ops::Tag)
+                    .eq(ConstExpr::Of(
+                        Type::Enum(variants.clone().into_keys().collect()),
+                        name.clone(),
+                    ))
+                    .and(
+                        pattern.matches(
+                            &expr
+                                .clone()
+                                .unop(super::ops::Data)
+                                .field(ConstExpr::Symbol(name.clone())),
+                            &variants[name].clone().simplify(env)?,
+                            env,
+                        )?,
+                    )
+            }
+
+            (Self::Variant(name, None), Type::EnumUnion(variants)) => {
+                // If the variant is not found in the type, throw an error
+                if !variants.contains_key(name) {
+                    return Err(Error::VariantNotFound(ty.clone(), name.clone()));
+                }
+                // If no error was thrown, the variant is an option which can be matched.
+                // Now, check if the tag matches the variant.
+                expr.clone().unop(super::ops::Tag).eq(ConstExpr::Of(
+                    Type::Enum(variants.clone().into_keys().collect()),
+                    name.clone(),
+                ))
+            }
+
+            (Self::Variant(name, None), Type::Enum(items)) => {
+                // If the variant is not found in the type, throw an error
+                if !items.contains(name) {
+                    return Err(Error::VariantNotFound(ty.clone(), name.clone()));
+                }
+                // If no error was thrown, the variant is an option which can be matched.
+                // Now, check if the tag matches the variant.
+                expr.clone().eq(ConstExpr::Of(ty.clone(), name.clone()))
+            }
+
             // If the pattern is a tuple, and the type is a tuple, then
             // check if each element of the tuple matches the pattern.
             (Self::Tuple(patterns), Type::Tuple(item_types)) => {
-                // The result of the match expression.
+                // The result of whether or not this expression matches
                 let mut result = Expr::ConstExpr(ConstExpr::Bool(true));
 
                 // If the number of patterns does not match the number of members,
@@ -538,7 +810,7 @@ impl Pattern {
                 {
                     // Check if the pattern matches the element of the tuple.
                     result = result.and(pattern.matches(
-                        &expr.clone().field(ConstExpr::Int(i as i32)),
+                        &expr.clone().field(ConstExpr::Int(i as i64)),
                         item_type,
                         env,
                     )?);
@@ -546,6 +818,10 @@ impl Pattern {
 
                 // Return the result.
                 result
+            }
+
+            (Self::Pointer(pattern), Type::Pointer(item_type)) => {
+                pattern.matches(&expr.clone().deref(), item_type, env)?
             }
 
             // If the pattern is a struct, and the type is a struct, then
@@ -583,7 +859,9 @@ impl Pattern {
             }
 
             // If the pattern is a symbol, then it will match any expression.
-            (Self::Wildcard, _) | (Self::Symbol(_), _) => {
+            (Self::Wildcard, _)
+            | (Self::Symbol(_), _)
+            | (Self::ConstExpr(ConstExpr::None), Type::None) => {
                 // Return true (the symbol will match any expression).
                 Expr::ConstExpr(ConstExpr::Bool(true))
             }
@@ -624,7 +902,69 @@ impl Pattern {
     /// added to the environment, and will be bound to the corresponding value in
     /// the expression which is being matched.
     fn bind(&self, expr: &Expr, ty: &Type, ret: &Expr, env: &Env) -> Result<Expr, Error> {
+        let mut ty = ty.clone();
+        // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
+        //     match ty {
+        //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => {
+        //             ty = ty.simplify(env)?;
+        //         }
+        //         Type::Poly(_, template) => {
+        //             ty = *template.clone();
+        //         }
+        //         _ => break,
+        //     }
+        // }
+        ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+            // Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
+            // Ok(matches!(t, Type::Any | Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _)))
+            // Ok(t.is_simple())
+            Ok(!matches!(
+                t,
+                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
+            ))
+        })?;
+        let ty = &ty;
         Ok(match (self, ty) {
+            // If the pattern is a variant, and the type is a tagged union,
+            // bind the pattern to the corresponding variant type in the tagged union.
+            (Self::Variant(name, Some(pattern)), Type::EnumUnion(variants)) => {
+                // Get the inner variant type from the tagged union
+                if let Some(variant_ty) = variants.get(name) {
+                    // Bind the inner expression of the tagged union
+                    pattern.bind(
+                        &expr
+                            .clone()
+                            .unop(super::ops::Data)
+                            .field(ConstExpr::Symbol(name.clone())),
+                        variant_ty,
+                        ret,
+                        env,
+                    )?
+                } else {
+                    return Err(Error::VariantNotFound(ty.clone(), name.clone()));
+                }
+            }
+
+            // If the pattern is a variant, and the type is a tagged union,
+            // but there is no pattern to bind, simply error check.
+            (Self::Variant(name, None), Type::EnumUnion(variants)) => {
+                // Get the inner variant type from the tagged union
+                if let None = variants.get(name) {
+                    return Err(Error::VariantNotFound(ty.clone(), name.clone()));
+                }
+                ret.clone()
+            }
+
+            // If the pattern is a variant, and the type is an enum,
+            // simply error check (there is no pattern to bind).
+            (Self::Variant(name, None), Type::Enum(items)) => {
+                // Get the inner variant type from the tagged union
+                if !items.contains(name) {
+                    return Err(Error::VariantNotFound(ty.clone(), name.clone()));
+                }
+                ret.clone()
+            }
+
             // If the pattern is a tuple and the type is a tuple, then
             // bind each pattern to the corresponding element of the tuple.
             (Self::Tuple(patterns), Type::Tuple(item_types)) => {
@@ -635,7 +975,7 @@ impl Pattern {
                 {
                     // Bind the sub-pattern to the element of the tuple.
                     result = pattern.bind(
-                        &expr.clone().field(ConstExpr::Int(i as i32)),
+                        &expr.clone().field(ConstExpr::Int(i as i64)),
                         item_type,
                         &result,
                         env,
@@ -678,6 +1018,10 @@ impl Pattern {
                 Expr::let_var(name.clone(), Some(ty.clone()), expr.clone(), ret.clone())
             }
 
+            (Self::Pointer(pattern), Type::Pointer(item_type)) => {
+                pattern.bind(&expr.clone().deref(), item_type, ret, env)?
+            }
+
             // If the pattern is a wildcard, then it will not add any bindings.
             (Self::Wildcard, _) | (Self::ConstExpr(_), _) => ret.clone(),
 
@@ -713,6 +1057,11 @@ impl Display for Pattern {
                 write!(f, ")")
             }
 
+            Self::Variant(name, pattern) => match pattern {
+                Some(p) => write!(f, "{name} {p}"),
+                None => write!(f, "{name}"),
+            },
+
             Self::Struct(patterns) => {
                 write!(f, "{{")?;
                 for (i, (name, pattern)) in patterns.iter().enumerate() {
@@ -724,6 +1073,7 @@ impl Display for Pattern {
                 write!(f, "}}")
             }
 
+            Self::Pointer(ptr) => write!(f, "&{}", ptr),
             Self::Symbol(name) => write!(f, "{}", name),
 
             Self::ConstExpr(const_expr) => write!(f, "{}", const_expr),

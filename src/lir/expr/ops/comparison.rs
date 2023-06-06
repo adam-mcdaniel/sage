@@ -9,7 +9,7 @@ use crate::{
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 /// A comparison operation between two values.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum Comparison {
     Equal,
     NotEqual,
@@ -91,6 +91,7 @@ impl BinaryOp for Comparison {
             (ConstExpr::Int(a), Self::GreaterThan, ConstExpr::Float(b)) => {
                 Ok(ConstExpr::Bool((a as f64) > b))
             }
+
             _ => Err(Error::InvalidBinaryOp(
                 self.clone_box(),
                 Expr::ConstExpr(lhs.clone()),

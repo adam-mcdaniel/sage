@@ -88,6 +88,7 @@ pub enum Expr {
 
     /// Apply a function with some arguments.
     Apply(Box<Self>, Vec<Self>),
+
     /// Return a value from a function.
     Return(Box<Self>),
 
@@ -100,6 +101,11 @@ pub enum Expr {
     /// The `String` field is the field the union is being initialized with.
     /// The `Box<Self>` field is the value of the field we want to initialize.
     Union(Type, String, Box<Self>),
+    /// A tagged union: a typechecked union of different variants.
+    /// The `Type` value is the type of the tagged union.
+    /// The `String` field is the variant the tagged union is being initialized with.
+    /// The `Box<Self>` field is the value of the union's data we want to initialize.
+    EnumUnion(Type, String, Box<Self>),
     /// A structure of fields to expressions.
     Struct(BTreeMap<String, Self>),
 
@@ -139,6 +145,36 @@ impl Expr {
     #[allow(clippy::should_implement_trait)]
     pub fn not(self) -> Self {
         self.unop(Not)
+    }
+
+    /// Bitwise this expression with another.
+    pub fn bitxor(self, other: impl Into<Self>) -> Self {
+        self.binop(BitwiseXor, other)
+    }
+
+    /// BitwiseOr this expression with another.
+    pub fn bitor(self, other: impl Into<Self>) -> Self {
+        self.binop(BitwiseOr, other)
+    }
+
+    /// BitwiseOr this expression with another.
+    pub fn bitnand(self, other: impl Into<Self>) -> Self {
+        self.binop(BitwiseNand, other)
+    }
+
+    /// BitwiseAnd this expression with another.
+    pub fn bitand(self, other: impl Into<Self>) -> Self {
+        self.binop(BitwiseAnd, other)
+    }
+
+    /// BitwiseAnd this expression with another.
+    pub fn bitnor(self, other: impl Into<Self>) -> Self {
+        self.binop(BitwiseNor, other)
+    }
+
+    /// BitwiseAnd this expression with another.
+    pub fn bitnot(self) -> Self {
+        self.unop(BitwiseNot)
     }
 
     /// Is this expression less than another?
@@ -194,7 +230,7 @@ impl Expr {
     /// Add this expression to another.
     #[allow(clippy::should_implement_trait)]
     pub fn add(self, other: impl Into<Self>) -> Self {
-        self.binop(Arithmetic::Add, other)
+        self.binop(Add, other)
     }
 
     /// Subtract an expression from this expression.
@@ -219,6 +255,12 @@ impl Expr {
     #[allow(clippy::should_implement_trait)]
     pub fn rem(self, other: impl Into<Self>) -> Self {
         self.binop(Arithmetic::Remainder, other)
+    }
+
+    /// Get the remainder of this expression divided by another.
+    #[allow(clippy::should_implement_trait)]
+    pub fn neg(self) -> Self {
+        self.unop(Negate)
     }
 
     /// Get a field from a structure, union, or tuple.
@@ -367,6 +409,11 @@ impl Expr {
     pub fn assign_op(self, op: impl AssignOp + 'static, e: impl Into<Self>) -> Self {
         Expr::AssignOp(Box::new(op), Box::new(self.clone()), Box::new(e.into()))
     }
+
+    /// Perform an AssignOp on this expression.
+    pub fn assign(self, op: Box<dyn AssignOp>, e: impl Into<Self>) -> Self {
+        Expr::AssignOp(op, Box::new(self.clone()), Box::new(e.into()))
+    }
 }
 
 impl fmt::Display for Expr {
@@ -501,13 +548,16 @@ impl fmt::Display for Expr {
             Self::Union(ty, variant, val) => {
                 write!(f, "union {{ {variant} = {val}, {ty}.. }}")
             }
+            Self::EnumUnion(ty, variant, val) => {
+                write!(f, "enum {{ {variant} = {val}, {ty}.. }}")
+            }
 
             Self::UnaryOp(op, x) => write!(f, "{}", op.display(x)),
             Self::BinaryOp(op, x, y) => write!(f, "{}", op.display(x, y)),
             Self::TernaryOp(op, x, y, z) => write!(f, "{}", op.display(x, y, z)),
             Self::AssignOp(op, x, y) => write!(f, "{}", op.display(x, y)),
 
-            Self::Member(val, field) => write!(f, "{val}.{field}"),
+            Self::Member(val, field) => write!(f, "({val}).{field}"),
             Self::Index(val, idx) => write!(f, "{val}[{idx}]"),
 
             Self::Return(val) => write!(f, "return {val}"),
@@ -629,6 +679,13 @@ impl PartialEq for Expr {
             // The `String` field is the field the union is being initialized with.
             // The `Box<Self>` field is the value of the field we want to initialize.
             (Union(ty1, field1, val1), Union(ty2, field2, val2)) => {
+                ty1 == ty2 && field1 == field2 && val1 == val2
+            }
+            // A tagged union: a typechecked union of different variants.
+            // The `Type` value is the type of the tagged union.
+            // The `String` field is the variant the tagged union is being initialized with.
+            // The `Box<Self>` field is the value of the union's data we want to initialize.
+            (EnumUnion(ty1, field1, val1), EnumUnion(ty2, field2, val2)) => {
                 ty1 == ty2 && field1 == field2 && val1 == val2
             }
             // A structure of fields to expressions.

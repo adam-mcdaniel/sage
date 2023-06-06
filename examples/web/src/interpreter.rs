@@ -4,16 +4,8 @@
 //! variant.
 
 use sage::vm::{CoreOp, Device, StandardDevice, StandardOp, StandardProgram};
+use super::{as_float, as_int};
 
-/// A function to reinterpret the bits of an integer as a float.
-pub fn as_float(n: i64) -> f32 {
-    f32::from_bits(n as u32)
-}
-
-/// A function to reinterpret the bits of a float as an integer.
-pub fn as_int(n: f32) -> i64 {
-    n.to_bits() as i64
-}
 
 impl Default for WasmInterpreter<StandardDevice> {
     fn default() -> Self {
@@ -327,7 +319,23 @@ where
 
                     CoreOp::IsNonNegative => self.register = if self.register >= 0 { 1 } else { 0 },
                     CoreOp::Get(i) => self.register = self.device.get(i.clone())? as i64,
-                    CoreOp::Put(o) => self.device.put(self.register as isize, o.clone())?,
+                    CoreOp::Put(o) => {
+                        // match o.mode {
+                        //     OutputMode::StdoutFloat => {
+                        //         self.device.put_float(as_float(self.register))
+                        //     }
+                        //     OutputMode::StdoutInt => {
+                        //         self.device.put_int(self.register)
+                        //     }
+                        //     OutputMode::StdoutChar => {
+                        //         self.device.put_char(self.register as u8 as char)
+                        //     }
+                        //     _ => {
+                        //         self.device.put(self.register, o.clone())?
+                        //     }
+                        // }
+                        self.device.put(self.register, o.clone())?
+                    },
                 },
 
                 StandardOp::Peek => {
@@ -337,7 +345,7 @@ where
                     }
                 },
                 StandardOp::Poke => {
-                    if let Err(e) = self.device.poke(self.register as isize) {
+                    if let Err(e) = self.device.poke(self.register) {
                         eprintln!("Error: {}", e)
                     }
                 },

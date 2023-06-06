@@ -10,15 +10,19 @@
 //! - Enum variants
 
 use crate::lir::{
-    CoreBuiltin, Env, Error, Expr, GetSize, GetType, Procedure, Simplify, StandardBuiltin, Type,
+    CoreBuiltin, Env, Error, Expr, GetSize, GetType, PolyProcedure, Procedure, Simplify,
+    StandardBuiltin, Type, TypeCheck,
 };
 
 use core::fmt;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// A compiletime expression.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConstExpr {
+    /// Bind a list of types in a constant expression.
+    LetTypes(Vec<(String, Type)>, Box<Self>),
+
     /// The unit, or "void" instance.
     None,
     /// The null pointer constant.
@@ -26,7 +30,9 @@ pub enum ConstExpr {
     /// A named constant.
     Symbol(String),
     /// A constant integer value.
-    Int(i32),
+    Int(i64),
+    /// A constant integer value representing a cell on the tape.
+    Cell(i64),
     /// A constant floating point value.
     ///
     /// These can be used at compile time even when compiling to core,
@@ -56,6 +62,8 @@ pub enum ConstExpr {
     Struct(BTreeMap<String, Self>),
     /// A union of constant values.
     Union(Type, String, Box<Self>),
+    /// A tagged union of constant values.
+    EnumUnion(Type, String, Box<Self>),
 
     /// A builtin implemented in handwritten core assembly.
     CoreBuiltin(CoreBuiltin),
@@ -63,6 +71,10 @@ pub enum ConstExpr {
     StandardBuiltin(StandardBuiltin),
     /// A procedure.
     Proc(Procedure),
+    /// A polymorphic procedure.
+    PolyProc(PolyProcedure),
+    /// Monomorphize a constant expression with some type arguments.
+    Monomorphize(Box<Self>, Vec<Type>),
 
     /// Cast a constant expression to another type.
     As(Box<Self>, Type),
@@ -70,8 +82,13 @@ pub enum ConstExpr {
 
 impl ConstExpr {
     /// Construct a procedure.
-    pub fn proc(args: Vec<(String, Type)>, ret: Type, body: impl Into<Expr>) -> Self {
-        Self::Proc(Procedure::new(args, ret, body))
+    pub fn proc(
+        common_name: Option<String>,
+        args: Vec<(String, Type)>,
+        ret: Type,
+        body: impl Into<Expr>,
+    ) -> Self {
+        Self::Proc(Procedure::new(common_name, args, ret, body))
     }
 
     /// Apply this procedure or builtin to a list of expressions *at runtime*.
@@ -101,6 +118,7 @@ impl ConstExpr {
             match self {
                 Self::None
                 | Self::Null
+                | Self::Cell(_)
                 | Self::Int(_)
                 | Self::Float(_)
                 | Self::Char(_)
@@ -108,7 +126,21 @@ impl ConstExpr {
                 | Self::Of(_, _)
                 | Self::CoreBuiltin(_)
                 | Self::StandardBuiltin(_)
-                | Self::Proc(_) => Ok(self),
+                | Self::Proc(_)
+                | Self::PolyProc(_) => Ok(self),
+
+                Self::LetTypes(bindings, expr) => {
+                    let mut new_env = env.clone();
+                    for (name, ty) in bindings {
+                        new_env.define_type(name, ty);
+                    }
+                    expr.eval_checked(&new_env, i)
+                }
+
+                Self::Monomorphize(expr, ty_args) => Ok(Self::Monomorphize(
+                    Box::new(expr.eval_checked(env, i)?),
+                    ty_args,
+                )),
 
                 Self::TypeOf(expr) => Ok(Self::Array(
                     expr.get_type_checked(env, i)?
@@ -131,8 +163,8 @@ impl ConstExpr {
                     expr.eval_checked(env, i)
                 }
 
-                Self::SizeOfType(t) => Ok(Self::Int(t.get_size(env)? as i32)),
-                Self::SizeOfExpr(e) => Ok(Self::Int(e.get_size(env)? as i32)),
+                Self::SizeOfType(t) => Ok(Self::Int(t.get_size(env)? as i64)),
+                Self::SizeOfExpr(e) => Ok(Self::Int(e.get_size(env)? as i64)),
 
                 Self::Symbol(name) => {
                     if let Some(c) = env.get_const(&name) {
@@ -165,14 +197,28 @@ impl ConstExpr {
                     variant,
                     Box::new(val.eval_checked(env, i)?),
                 )),
+                Self::EnumUnion(types, variant, val) => Ok(Self::EnumUnion(
+                    types,
+                    variant,
+                    Box::new(val.eval_checked(env, i)?),
+                )),
             }
         }
     }
 
     /// Try to get this constant expression as an integer.
-    pub fn as_int(self, env: &Env) -> Result<i32, Error> {
+    pub fn as_int(self, env: &Env) -> Result<i64, Error> {
         match self.eval_checked(env, 0) {
             Ok(Self::Int(n)) => Ok(n),
+            Ok(other) => Err(Error::NonIntegralConst(other)),
+            Err(err) => Err(err),
+        }
+    }
+
+    /// Try to get this constant expression as a float.
+    pub fn as_float(self, env: &Env) -> Result<f64, Error> {
+        match self.eval_checked(env, 0) {
+            Ok(Self::Float(n)) => Ok(n),
             Ok(other) => Err(Error::NonIntegralConst(other)),
             Err(err) => Err(err),
         }
@@ -222,15 +268,31 @@ impl GetType for ConstExpr {
 
                 cast_ty
             }
+            Self::LetTypes(bindings, expr) => {
+                let mut new_env = env.clone();
+                for (name, ty) in bindings {
+                    new_env.define_type(&name, ty);
+                }
+                expr.get_type_checked(&new_env, i)?.simplify_until_matches(
+                    env,
+                    Type::Any,
+                    |t, env| t.type_check(env).map(|_| true),
+                )?
+            }
+            Self::Monomorphize(expr, ty_args) => {
+                // Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::<Result<Vec<Type>, Error>>()?).perform_template_applications(env, &mut HashMap::new(), 0)?
+                Type::Apply(Box::new(expr.get_type_checked(env, i)?), ty_args)
+            }
             Self::TypeOf(expr) => {
                 let size = expr.get_type_checked(env, i)?.to_string().len();
-                Type::Array(Box::new(Type::Char), Box::new(Self::Int(size as i32)))
+                Type::Array(Box::new(Type::Char), Box::new(Self::Int(size as i64)))
             }
             Self::Null => Type::Pointer(Box::new(Type::Any)),
             Self::None => Type::None,
             Self::SizeOfType(_) | Self::SizeOfExpr(_) | Self::Int(_) => Type::Int,
             Self::Float(_) => Type::Float,
             Self::Char(_) => Type::Char,
+            Self::Cell(_) => Type::Cell,
             Self::Bool(_) => Type::Bool,
             Self::Of(enum_type, _) => enum_type,
             Self::Tuple(items) => Type::Tuple(
@@ -245,7 +307,7 @@ impl GetType for ConstExpr {
                 } else {
                     Type::Any
                 }),
-                Box::new(Self::Int(items.len() as i32)),
+                Box::new(Self::Int(items.len() as i64)),
             ),
             Self::Struct(fields) => Type::Struct(
                 fields
@@ -255,7 +317,9 @@ impl GetType for ConstExpr {
             ),
 
             Self::Union(t, _, _) => t,
+            Self::EnumUnion(t, _, _) => t,
 
+            Self::PolyProc(proc) => proc.get_type_checked(env, i)?,
             Self::Proc(proc) => proc.get_type_checked(env, i)?,
             Self::CoreBuiltin(builtin) => builtin.get_type_checked(env, i)?,
             Self::StandardBuiltin(builtin) => builtin.get_type_checked(env, i)?,
@@ -285,6 +349,85 @@ impl GetType for ConstExpr {
             }
         })
     }
+
+    fn substitute(&mut self, name: &str, ty: &Type) {
+        match self {
+            Self::As(expr, cast_ty) => {
+                expr.substitute(name, ty);
+                *cast_ty = cast_ty.substitute(name, ty);
+            }
+            Self::LetTypes(bindings, expr) => {
+                // if bindings.iter().map(|(n, _)| n).any(|n| n == name) {
+                //     return;
+                // }
+                for (_, ty) in bindings {
+                    *ty = ty.substitute(name, ty);
+                }
+                expr.substitute(name, ty);
+            }
+            Self::Monomorphize(expr, ty_args) => {
+                expr.substitute(name, ty);
+                for ty in ty_args {
+                    *ty = ty.substitute(name, ty);
+                }
+            }
+            Self::TypeOf(expr) => {
+                expr.substitute(name, ty);
+            }
+            Self::Null => {}
+            Self::None => {}
+            Self::SizeOfType(ty) => {
+                *ty = ty.substitute(name, ty);
+            }
+            Self::SizeOfExpr(expr) => {
+                expr.substitute(name, ty);
+            }
+            Self::Cell(_) => {}
+            Self::Int(_) => {}
+            Self::Float(_) => {}
+            Self::Char(_) => {}
+            Self::Bool(_) => {}
+            Self::Of(enum_type, _) => {
+                *enum_type = enum_type.substitute(name, ty);
+            }
+            Self::Tuple(items) => {
+                for item in items {
+                    item.substitute(name, ty);
+                }
+            }
+            Self::Array(items) => {
+                for item in items {
+                    item.substitute(name, ty);
+                }
+            }
+            Self::Struct(fields) => {
+                for (_, item) in fields {
+                    item.substitute(name, ty);
+                }
+            }
+            Self::Union(t, _, expr) => {
+                *t = t.substitute(name, ty);
+                expr.substitute(name, ty);
+            }
+            Self::EnumUnion(t, _, expr) => {
+                *t = t.substitute(name, ty);
+                expr.substitute(name, ty);
+            }
+            Self::PolyProc(proc) => {
+                proc.substitute(name, ty);
+            }
+            Self::Proc(proc) => {
+                proc.substitute(name, ty);
+            }
+            Self::CoreBuiltin(builtin) => {
+                builtin.substitute(name, ty);
+            }
+            Self::StandardBuiltin(builtin) => {
+                builtin.substitute(name, ty);
+            }
+            Self::Symbol(_) => {}
+        }
+    }
 }
 
 impl fmt::Display for ConstExpr {
@@ -301,6 +444,29 @@ impl fmt::Display for ConstExpr {
             }
             Self::Proc(proc) => {
                 write!(f, "{proc}")
+            }
+            Self::PolyProc(proc) => {
+                write!(f, "{proc}")
+            }
+            Self::LetTypes(bindings, expr) => {
+                write!(f, "type ")?;
+                for (i, (name, ty)) in bindings.iter().enumerate() {
+                    write!(f, "{name} = {ty}")?;
+                    if i < bindings.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, " in {expr}")
+            }
+            Self::Monomorphize(expr, ty_args) => {
+                write!(f, "{expr}<")?;
+                for (i, ty) in ty_args.iter().enumerate() {
+                    write!(f, "{ty}")?;
+                    if i < ty_args.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, ">")
             }
             Self::As(expr, ty) => {
                 write!(f, "{expr} as {ty}")
@@ -328,6 +494,9 @@ impl fmt::Display for ConstExpr {
             Self::Union(ty, variant, val) => {
                 write!(f, "union {{ {variant} = {val}, {ty}.. }}")
             }
+            Self::EnumUnion(ty, variant, val) => {
+                write!(f, "union {{ {variant} = {val}, {ty}.. }}")
+            }
             Self::Array(items) => {
                 write!(f, "[")?;
                 for (i, val) in items.iter().enumerate() {
@@ -340,6 +509,7 @@ impl fmt::Display for ConstExpr {
             }
             Self::Bool(x) => write!(f, "{}", if *x { "true" } else { "false" }),
             Self::Char(ch) => write!(f, "{ch}"),
+            Self::Cell(n) => write!(f, "{n:x}"),
             Self::Int(n) => write!(f, "{n}"),
             Self::Float(n) => write!(f, "{n}"),
             Self::None => write!(f, "None"),

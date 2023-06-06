@@ -26,16 +26,16 @@ use ::std::{
 /// `get_char`, `put_char`, `get_int`, `put_int`, `get_float`, and `put_float` methods.
 pub trait Device {
     /// Get the next input (from a given input source).
-    fn get(&mut self, src: Input) -> Result<isize, String>;
+    fn get(&mut self, src: Input) -> Result<i64, String>;
     /// Put the given value to the given output destination.
-    fn put(&mut self, val: isize, dst: Output) -> Result<(), String>;
+    fn put(&mut self, val: i64, dst: Output) -> Result<(), String>;
 
     /// Peek a value from the side-effecting device wrapping
     /// the virtual machine.
-    fn peek(&mut self) -> Result<isize, String>;
+    fn peek(&mut self) -> Result<i64, String>;
     /// Poke a value into the side-effecting device wrapping
     /// the virtual machine.
-    fn poke(&mut self, val: isize) -> Result<(), String>;
+    fn poke(&mut self, val: i64) -> Result<(), String>;
 }
 
 /// A device used for testing the compiler. This simply keeps a buffer
@@ -46,8 +46,8 @@ pub trait Device {
 /// Then, we check the devices output against the correct output.
 #[derive(Debug, Default)]
 pub struct TestingDevice {
-    pub input: VecDeque<isize>,
-    pub output: Vec<(isize, Output)>,
+    pub input: VecDeque<i64>,
+    pub output: Vec<(i64, Output)>,
 }
 
 impl TestingDevice {
@@ -57,13 +57,13 @@ impl TestingDevice {
             input: sample_input
                 .to_string()
                 .chars()
-                .map(|ch| ch as isize)
+                .map(|ch| ch as i64)
                 .collect(),
             output: vec![],
         }
     }
 
-    pub fn new_raw(input: Vec<isize>) -> Self {
+    pub fn new_raw(input: Vec<i64>) -> Self {
         Self {
             input: input.into(),
             output: vec![],
@@ -71,12 +71,11 @@ impl TestingDevice {
     }
 
     fn put_char(&mut self, ch: char) -> Result<(), String> {
-        self.output
-            .push((ch as usize as isize, Output::stdout_char()));
+        self.output.push((ch as u64 as i64, Output::stdout_char()));
         Ok(())
     }
 
-    fn put_int(&mut self, val: isize) -> Result<(), String> {
+    fn put_int(&mut self, val: i64) -> Result<(), String> {
         for ch in val.to_string().chars() {
             self.put_char(ch)?
         }
@@ -94,8 +93,8 @@ impl TestingDevice {
         self.get(Input::stdin_char()).map(|n| n as u8 as char)
     }
 
-    fn get_int(&mut self) -> Result<isize, String> {
-        let mut result: isize = 0;
+    fn get_int(&mut self) -> Result<i64, String> {
+        let mut result: i64 = 0;
         loop {
             if self.input.is_empty() {
                 break;
@@ -116,7 +115,7 @@ impl TestingDevice {
             let ch = n as char;
             if ch.is_ascii_digit() {
                 result *= 10;
-                result += (n - b'0') as isize;
+                result += (n - b'0') as i64;
                 self.input.pop_front();
             } else {
                 break;
@@ -154,19 +153,19 @@ impl TestingDevice {
     pub fn output_str(&self) -> String {
         let mut result = String::new();
         for (ch, _) in &self.output {
-            result.push(*ch as u8 as char)
+            result.push(*ch as i8 as u8 as char)
         }
         result
     }
 
-    pub fn output_vals(&self) -> Vec<isize> {
+    pub fn output_vals(&self) -> Vec<i64> {
         self.output.iter().map(|(val, _)| *val).collect()
     }
 }
 
 /// Make the testing device work with the interpreter.
 impl Device for TestingDevice {
-    fn get(&mut self, src: Input) -> Result<isize, String> {
+    fn get(&mut self, src: Input) -> Result<i64, String> {
         match src.mode {
             InputMode::StdinChar => {
                 if let Some(n) = self.input.pop_front() {
@@ -184,7 +183,7 @@ impl Device for TestingDevice {
         }
     }
 
-    fn put(&mut self, val: isize, dst: Output) -> Result<(), String> {
+    fn put(&mut self, val: i64, dst: Output) -> Result<(), String> {
         match dst.mode {
             OutputMode::StdoutChar => {
                 self.output.push((val, dst));
@@ -199,12 +198,12 @@ impl Device for TestingDevice {
         }
     }
 
-    fn peek(&mut self) -> Result<isize, String> {
+    fn peek(&mut self) -> Result<i64, String> {
         println!("peeking");
         Ok(0)
     }
 
-    fn poke(&mut self, val: isize) -> Result<(), String> {
+    fn poke(&mut self, val: i64) -> Result<(), String> {
         println!("poking {}", val);
         Ok(())
     }
@@ -227,7 +226,7 @@ impl StandardDevice {
         Ok(buf[0] as char)
     }
 
-    fn get_int(&mut self) -> Result<isize, String> {
+    fn get_int(&mut self) -> Result<i64, String> {
         let mut buf = [0];
         if stdout().flush().is_err() {
             return Err("Could not flush output".to_string());
@@ -236,7 +235,7 @@ impl StandardDevice {
         while stdin().read(&mut buf).is_ok() && (buf[0] as char).is_whitespace() {}
 
         let mut result = if buf[0].is_ascii_digit() {
-            (buf[0] - b'0') as isize
+            (buf[0] - b'0') as i64
         } else {
             0
         };
@@ -244,7 +243,7 @@ impl StandardDevice {
         while stdin().read(&mut buf).is_ok() {
             if buf[0].is_ascii_digit() {
                 result *= 10;
-                result += (buf[0] - b'0') as isize
+                result += (buf[0] - b'0') as i64
             } else {
                 break;
             }
@@ -266,10 +265,10 @@ impl StandardDevice {
 }
 
 impl Device for StandardDevice {
-    fn get(&mut self, src: Input) -> Result<isize, String> {
+    fn get(&mut self, src: Input) -> Result<i64, String> {
         Ok(match src.mode {
-            InputMode::StdinChar => self.get_char()? as isize,
-            InputMode::StdinInt => self.get_int()? as isize,
+            InputMode::StdinChar => self.get_char()? as i64,
+            InputMode::StdinInt => self.get_int()? as i64,
             InputMode::StdinFloat => as_int(self.get_float()?),
             InputMode::Thermometer => as_int(295.15),
             _ => {
@@ -282,7 +281,7 @@ impl Device for StandardDevice {
         })
     }
 
-    fn put(&mut self, val: isize, dst: Output) -> Result<(), String> {
+    fn put(&mut self, val: i64, dst: Output) -> Result<(), String> {
         // Print the character without a newline
         match dst.mode {
             OutputMode::StdoutChar => print!("{}", val as u8 as char),
@@ -305,12 +304,12 @@ impl Device for StandardDevice {
         }
     }
 
-    fn peek(&mut self) -> Result<isize, String> {
+    fn peek(&mut self) -> Result<i64, String> {
         println!("peeking");
         Ok(0)
     }
 
-    fn poke(&mut self, val: isize) -> Result<(), String> {
+    fn poke(&mut self, val: i64) -> Result<(), String> {
         println!("poking {}", val);
         Ok(())
     }

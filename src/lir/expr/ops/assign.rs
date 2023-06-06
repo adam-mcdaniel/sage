@@ -33,16 +33,8 @@ impl AssignOp for Assign {
     }
 
     /// Get the type of the result of applying this binary operation to the given types.
-    fn return_type(&self, lhs: &Expr, rhs: &Expr, env: &Env) -> Result<Type, Error> {
-        if let Type::Pointer(_t) = lhs.get_type(env)? {
-            self.0.return_type(lhs, rhs, env)
-        } else {
-            Err(Error::InvalidAssignOp(
-                self.clone_box(),
-                lhs.clone(),
-                rhs.clone(),
-            ))
-        }
+    fn return_type(&self, _lhs: &Expr, _rhs: &Expr, _env: &Env) -> Result<Type, Error> {
+        Ok(Type::None)
     }
 
     /// Evaluate this binary operation on the given constant values.

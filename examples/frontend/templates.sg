@@ -1,0 +1,172 @@
+
+enum List<T> {
+    Nil,
+    Cons {
+        data: T,
+        next: &List<T>
+    }
+}
+
+def print_list<T>(l: &List<T>) {
+    match *l {
+        of Nil => {},
+        of Cons {data, next=&of Nil} => {
+            print(data);
+        },
+        of Cons {data, next} => {
+            print(data, ", ");
+            print_list<T>(next);
+        },
+        _ => {}
+    }
+}
+
+def make_list<T, U>(cons: Int -> T, len: Int): List<T> {
+    if len == 0 {
+        return List<T> of Nil;
+    } else {
+        return List<T> of Cons {
+            data = cons(len),
+            next = new make_list<T, U>(cons, len - 1)
+        };
+    }
+}
+
+def identity<T>(t: T): T = t;
+
+let list1 = make_list<Int, Int>(identity<Int>, 100);
+print_list<Int>(&list1);
+
+print("\n");
+
+
+
+print_list<Int>(new List<Int> of Cons {
+    data = 1,
+    next = new List<Int> of Cons {
+        data = 2,
+        next = new List<Int> of Cons {
+            data = 3,
+            next = new List<Int> of Cons {
+                data = 4,
+                next = new List<Int> of Nil
+            }
+        }
+    }
+});
+
+let x = new List<Char> of Cons {
+    data = 'a',
+    next = new List<Char> of Cons {
+        data = 'b',
+        next = new List<Char> of Cons {
+            data = 'c',
+            next = new List<Char> of Cons {
+                data = 'd',
+                next = new List<Char> of Nil
+            }
+        }
+    }
+};
+
+print_list<Char>(x);
+
+
+
+let text = "hello";
+
+
+enum Result<T, E> {
+    Ok(T),
+    Err(E)
+}
+
+def print_result<T, E>(res: Result<T, E>) {
+    match res {
+        of Ok(x) => print("okay: ", x, "\n"),
+        of Err(e) => print("error: ", e, "\n")
+    }
+}
+
+def map<T, U, E>(f: T -> U, res: Result<T, E>): Result<U, E> {
+    match res {
+        of Ok(x) => Result<U, E> of Ok(f(x)),
+        of Err(e) => Result<U, E> of Err(e)
+    }
+}
+
+def map_err<T, E, F>(f: E -> F, res: Result<T, E>): Result<T, F> {
+    match res {
+        of Ok(x) => Result<T, F> of Ok(x),
+        of Err(e) => Result<T, F> of Err(f(e))
+    }
+}
+
+def and_then<T, U, E>(f: T -> Result<U, E>, res: Result<T, E>): Result<U, E> {
+    match res {
+        of Ok(x) => f(x),
+        of Err(e) => Result<U, E> of Err(e)
+    }
+}
+
+def or_else<T, E, F>(f: E -> Result<T, F>, res: Result<T, E>): Result<T, F> {
+    match res {
+        of Ok(x) => Result<T, F> of Ok(x),
+        of Err(e) => f(e)
+    }
+}
+
+def inc(x: Int): Int = x + 1;
+
+def test<T>(text: &Char): Result<T, Float> = Result<T, Float> of Err 5.0; 
+print_result<Int, Float>(
+    or_else<Int, &Char, Float>(
+        test<Int>,
+        map<Int, Int, &Char>(inc, Result<Int, &Char> of Err (&text as &Char))
+    )
+);
+
+let x = test<Int>;
+print(x(&text as &Char), "\n");
+
+def second<A, B>(tup: (A, B)): B = tup.1;
+def first<A, B>(tup: (A, B)): A = tup.0;
+let test = second<Int, Char>;
+print(test((5, 'a')));
+
+// type X<T> = (T, &X<X<T>>);
+
+// def print_list(l: &List<Int>) {
+//     match *l {
+//         of Nil => (),
+//         of Cons (x, &of Nil) => {
+//             print(x);
+//         },
+//         of Cons (x, xs) => {
+//             print(x, ", ");
+//             print_list(xs);
+//         }
+//     }
+// }
+
+// let x = List<Int> of Cons (
+//     1,
+//     new List<Int> of Cons (
+//         2,
+//         new List<Int> of Cons (
+//             3,
+//             new List<Int> of Cons (
+//                 4,
+//                 new List<Int> of Nil
+//             )
+//         )
+//     )
+// );
+
+// print_list(&x);
+
+type A = T => (T, &A<T>);
+
+let x: A<Int> = (5, Null),
+    y: A<Char> = ('6', Null),
+    z: A<Char> = ('a', &y);

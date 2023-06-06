@@ -1,0 +1,42 @@
+type Math = enum {
+    of Add (&Math, &Math),
+    of Sub (&Math, &Math),
+    of Mul (&Math, &Math),
+    of Div (&Math, &Math),
+    of Num Float,
+} in
+
+proc print(m: &Math) = {
+    match (*m) {
+        of Add (lhs, rhs) => {put "("; print(lhs); put " + "; print(rhs); put ")"; },
+        of Sub (lhs, rhs) => {put "("; print(lhs); put " - "; print(rhs); put ")"; },
+        of Mul (lhs, rhs) => {put "("; print(lhs); put " * "; print(rhs); put ")"; },
+        of Div (lhs, rhs) => {put "("; print(lhs); put " / "; print(rhs); put ")"; },
+        of Num n => put n,
+    };
+} in
+
+proc eval(m: &Math) -> Float = {
+    match (*m) {
+        of Add (lhs, rhs) => eval(lhs) + eval(rhs),
+        of Sub (lhs, rhs) => eval(lhs) - eval(rhs),
+        of Mul (lhs, rhs) => eval(lhs) * eval(rhs),
+        of Div (lhs, rhs) => eval(lhs) / eval(rhs),
+        of Num n => n,
+    }
+} in
+
+let expr = (new Math of Mul (
+    new Math of Add (
+        new Math of Num 5.0,
+        new Math of Num 6.0
+    ),
+    new Math of Div (
+        new Math of Num 10.0,
+        new Math of Num 2.0
+    )
+)) in {
+    print(expr);
+    put "\n => ";
+    put eval(expr);
+}

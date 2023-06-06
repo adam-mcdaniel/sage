@@ -303,25 +303,25 @@ type Key = struct {
 
 proc get_key_len(key: Key) -> Int = {
     match (key.ty) {
-        AES256 of AESKeyType => 8,
-        AES192 of AESKeyType => 6,
-        AES128 of AESKeyType => 4
+        of AES256 => 8,
+        of AES192 => 6,
+        of AES128 => 4
     }
 } in
 
 proc get_key_rounds(key: Key) -> Int = {
     match (key.ty) {
-        AES256 of AESKeyType => 14,
-        AES192 of AESKeyType => 12,
-        AES128 of AESKeyType => 10
+        of AES256 => 14,
+        of AES192 => 12,
+        of AES128 => 10
     }
 } in
 
 proc get_key_size(key: Key) -> Int = {
     match (key.ty) {
-        AES256 of AESKeyType => 32,
-        AES192 of AESKeyType => 24,
-        AES128 of AESKeyType => 16
+        of AES256 => 32,
+        of AES192 => 24,
+        of AES128 => 16
     }
 } in
 
@@ -331,9 +331,9 @@ proc get_key_data(key: &Key) -> &Int = {
 
 proc putkey(key: Key) -> None = {
     match (key.ty) {
-        AES256 of AESKeyType => put "AES256",
-        AES192 of AESKeyType => put "AES192",
-        AES128 of AESKeyType => put "AES128"
+        of AES256 => put "AES256",
+        of AES192 => put "AES192",
+        of AES128 => put "AES128"
     };
     put " ";
     let i = 0, size = get_key_size(key), data = get_key_data(&key) in 
@@ -424,7 +424,7 @@ proc key_expansion(key: Key, nr: Int, nk: Int) -> &Int = {
 
 proc aes_256_key(key: [Int * 32]) -> Key = {
     struct {
-        ty = AES256 of AESKeyType,
+        ty = AESKeyType of AES256(),
         key = union {
             AES256 = key,
             AESKeyData..
@@ -434,7 +434,7 @@ proc aes_256_key(key: [Int * 32]) -> Key = {
 
 proc aes_192_key(key: [Int * 24]) -> Key = {
     struct {
-        ty = AES192 of AESKeyType,
+        ty = AESKeyType of AES192(),
         key = union {
             AES192 = key,
             AESKeyData..
@@ -444,7 +444,7 @@ proc aes_192_key(key: [Int * 24]) -> Key = {
 
 proc aes_128_key(key: [Int * 16]) -> Key = {
     struct {
-        ty = AES128 of AESKeyType,
+        ty = AESKeyType of AES128(),
         key = union {
             AES128 = key,
             AESKeyData..
