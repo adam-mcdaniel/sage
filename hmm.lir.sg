@@ -1,8 +1,0 @@
-
-enum Test {
-    hmm (Test, Test),
-    n Int
-}
-
-let x = Test of n 5;
-print(x);
