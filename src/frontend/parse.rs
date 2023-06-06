@@ -8,8 +8,8 @@ use pest_derive::Parser;
 use std::collections::BTreeMap;
 
 #[derive(Parser)]
-#[grammar = "lir/parse/lir.pest"] // relative to src
-struct LIRParser;
+#[grammar = "frontend/parse.pest"] // relative to src
+struct FrontendParser;
 
 #[derive(Clone, Debug)]
 pub enum Statement {
@@ -346,8 +346,8 @@ impl Program {
     }
 }
 
-pub fn parse_lir_file(file: &str) -> Result<Expr, Error<Rule>> {
-    let x = LIRParser::parse(Rule::program, file)?;
+pub fn parse_frontend(code: &str) -> Result<Expr, Error<Rule>> {
+    let x = FrontendParser::parse(Rule::program, code)?;
     Ok(parse_program(x.into_iter().next().unwrap()).to_expr())
 }
 
@@ -927,7 +927,7 @@ fn parse_binop(pair: Pair<Rule>) -> Expr {
             "|" => head.bitor(tail),
             "^" => head.bitxor(tail),
             "~&" => head.bitnand(tail),
-            "~|" => head.bitor(tail),
+            "~|" => head.bitnor(tail),
             _ => unreachable!(),
         };
     }
@@ -1253,7 +1253,14 @@ fn parse_pattern(pair: Pair<Rule>) -> Pattern {
             Pattern::Pointer(Box::new(pattern))
         }
         Rule::pattern_wildcard => Pattern::Wildcard,
-        Rule::pattern_symbol => Pattern::Symbol(pair.as_str().to_string()),
+        Rule::pattern_symbol => {
+            let symbol = pair.as_str().to_string();
+            if symbol == "_" {
+                Pattern::Wildcard
+            } else {
+                Pattern::Symbol(symbol)
+            }
+        },
         Rule::pattern_alt => {
             let inner_rules = pair.into_inner();
             let mut patterns = Vec::new();
@@ -1265,77 +1272,5 @@ fn parse_pattern(pair: Pair<Rule>) -> Pattern {
         }
         other => panic!("Unexpected rule: {:?}: {:?}", other, pair),
     }
-    // pattern = { pattern_alt | pattern_term }
-    // pattern_alt = { pattern_term ~ ("|" ~ pattern_term)+ }
-    // pattern_term = {
-    //     pattern_variant
-    //     | pattern_atom
-    // }
-    // pattern_variant = { "of" ~ symbol ~ pattern? }
-    // pattern_atom = {
-    //     pattern_group
-    //     | pattern_tuple
-    //     | pattern_struct
-    //     | pattern_ptr
-    //     | pattern_wildcard
-    //     | pattern_symbol
-    //     | pattern_const
-    // }
-    // pattern_group = { "(" ~ pattern ~ ")" }
-    // pattern_tuple = { "(" ~ (pattern ~ ",")+ ~ pattern? ~ ")" }
-    // pattern_struct = { "struct"? ~ "{" ~ (pattern_field ~ ",")* ~ pattern_field? ~ "}" }
-    // pattern_field = { symbol ~ "=" ~ pattern }
-    // pattern_symbol = { symbol }
-    // pattern_wildcard = { "_" }
-    // pattern_ptr = { "&" ~ pattern }
-    // pattern_const = { const_atom }
 }
 
-pub fn print(pairs: &Pairs<Rule>) {
-    // ...
-    let pairs = pairs.clone();
-    for pair in pairs.into_iter() {
-        println!("Rule:    {:?}", pair.as_rule());
-        println!("Span:    {:?}", pair.as_span());
-        // println!("Tokens:    {:?}", pair.clone.tokens());
-        print(&pair.into_inner());
-    }
-}
-
-// fn parse_lir_file(file: &str) -> Result<JSONValue, Error<Rule>> {
-//     // ...
-//     use pest::iterators::Pair;
-//     fn parse_value(pair: Pair<Rule>) -> JSONValue {
-//         match pair.as_rule() {
-//             Rule::object => JSONValue::Object(
-//                 pair.into_inner()
-//                     .map(|pair| {
-//                         let mut inner_rules = pair.into_inner();
-//                         let name = inner_rules
-//                             .next()
-//                             .unwrap()
-//                             .into_inner()
-//                             .next()
-//                             .unwrap()
-//                             .as_str();
-//                         let value = parse_value(inner_rules.next().unwrap());
-//                         (name, value)
-//                     })
-//                     .collect(),
-//             ),
-//             Rule::array => JSONValue::Array(pair.into_inner().map(parse_value).collect()),
-//             Rule::string => JSONValue::String(pair.into_inner().next().unwrap().as_str()),
-//             Rule::number => JSONValue::Number(pair.as_str().parse().unwrap()),
-//             Rule::boolean => JSONValue::Boolean(pair.as_str().parse().unwrap()),
-//             Rule::null => JSONValue::Null,
-//             Rule::json
-//             | Rule::EOI
-//             | Rule::pair
-//             | Rule::value
-//             | Rule::inner
-//             | Rule::char
-//             | Rule::WHITESPACE => unreachable!(),
-//         }
-//     }
-//     // ...
-// }

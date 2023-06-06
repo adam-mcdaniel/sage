@@ -196,16 +196,10 @@ impl Put {
                     // Check if the value is the same as the variant ID
                     output.op(CoreOp::IsEqual { a: A, b: B, dst: C });
                     output.op(CoreOp::If(C));
-                    for c in variant.chars() {
+                    for c in format!("{t} of {variant}").chars() {
                         output.op(CoreOp::Set(A, c as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
-
-                    for c in format!(" of {t}").chars() {
-                        output.op(CoreOp::Set(A, c as u8 as i64));
-                        output.op(CoreOp::Put(A, Output::stdout_char()));
-                    }
-
                     output.op(CoreOp::End);
                 }
             }
@@ -231,7 +225,7 @@ impl Put {
             }
 
             Type::Struct(fields) => {
-                for c in "struct {".chars() {
+                for c in "{".chars() {
                     output.op(CoreOp::Set(A, c as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
@@ -275,9 +269,11 @@ impl Put {
             }
 
             Type::Proc(args, ret) => {
-                for c in "proc(".chars() {
-                    output.op(CoreOp::Set(A, c as u8 as i64));
-                    output.op(CoreOp::Put(A, Output::stdout_char()));
+                if args.len() != 1 {
+                    for c in "(".chars() {
+                        output.op(CoreOp::Set(A, c as u8 as i64));
+                        output.op(CoreOp::Put(A, Output::stdout_char()));
+                    }
                 }
                 for (i, ty) in args.iter().enumerate() {
                     for ch in ty.to_string().chars() {
@@ -291,12 +287,11 @@ impl Put {
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
                 }
-                for ch in ") -> ".to_string().chars() {
-                    output.op(CoreOp::Set(A, ch as u8 as i64));
+                if args.len() != 1 {
+                    output.op(CoreOp::Set(A, ')' as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
-
-                for ch in ret.to_string().chars() {
+                for ch in format!(" -> {ret}").chars() {
                     output.op(CoreOp::Set(A, ch as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
@@ -335,11 +330,11 @@ impl Put {
                             dst: B,
                         });
                         output.op(CoreOp::If(B));
-                        Self::debug(data_address.clone(), variant_t, env, output)?;
-                        for c in format!(" of {name}").chars() {
+                        for c in format!("{t} of {name} ").chars() {
                             output.op(CoreOp::Set(A, c as u8 as i64));
                             output.op(CoreOp::Put(A, Output::stdout_char()));
                         }
+                        Self::debug(data_address.clone(), variant_t, env, output)?;
                         output.op(CoreOp::End);
                     } else {
                         return Err(Error::VariantNotFound(t.clone(), name.clone()));

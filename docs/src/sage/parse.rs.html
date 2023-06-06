@@ -227,10 +227,6 @@
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
 <a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Parsing Module
 //!
 //! This module contains all the related functions for parsing
@@ -261,6 +257,7 @@
 </span><span class="kw">use </span><span class="kw">super</span>::asm::{CoreProgram, StandardProgram};
 <span class="kw">use </span><span class="kw">super</span>::lir::Expr;
 <span class="kw">use </span><span class="kw">super</span>::vm;
+<span class="kw">use </span><span class="kw">super</span>::frontend;
 
 <span class="kw">use </span>lalrpop_util::lalrpop_mod;
 <span class="kw">use </span>no_comment::{languages, IntoWithoutComments};
@@ -273,16 +270,16 @@
     <span class="attr">#[allow(clippy::all)]
     </span>vm_parser
 );
-
 <span class="comment">// This line is used expose the assembly parsers,
 // which are used to allow the LIR parser to parse inline assembly.
-// pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
-// lalrpop_mod!(
-//     #[allow(clippy::all)]
-//     lir_parser
-// );
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>asm_parser::{CoreProgramParser, StandardProgramParser};
+<span class="macro">lalrpop_mod!</span>(
+    <span class="attr">#[allow(clippy::all)]
+    </span>lir_parser
+);
 
-</span><span class="doccomment">/// Parse Core and Standard variants of virtual machine source code.
+
+<span class="doccomment">/// Parse Core and Standard variants of virtual machine source code.
 /// This will return core code by default, but will fallback on standard.
 </span><span class="kw">pub fn </span>parse_vm(
     input: <span class="kw">impl </span>ToString,
@@ -332,21 +329,16 @@
         .without_comments(languages::rust())
         .collect::&lt;String&gt;();
 
-    <span class="comment">// let code = code.trim();
-    </span><span class="kw">match </span><span class="kw">crate</span>::lir::parse_lir_file(<span class="kw-2">&amp;</span>code) {
-        <span class="prelude-val">Ok</span>(result) =&gt; {
-            <span class="comment">// eprintln!(&quot;Parsed LIR: {:#}&quot;, result);
-            </span><span class="kw">let </span>alloc = <span class="kw">crate</span>::lir::ConstExpr::StandardBuiltin(<span class="kw">crate</span>::lir::StandardBuiltin {
-                name: <span class="string">&quot;alloc&quot;</span>.to_string(),
-                args: <span class="macro">vec!</span>[(<span class="string">&quot;size&quot;</span>.to_string(), <span class="kw">crate</span>::lir::Type::Int)],
-                ret: <span class="kw">crate</span>::lir::Type::Pointer(Box::new(<span class="kw">crate</span>::lir::Type::Any)),
-                body: <span class="macro">vec!</span>[<span class="kw">crate</span>::asm::StandardOp::Alloc(<span class="kw">crate</span>::asm::SP.deref())],
-            });
-
-            <span class="prelude-val">Ok</span>(Expr::LetConst(<span class="string">&quot;alloc&quot;</span>.to_string(), alloc, Box::new(result)))
-        }
-        <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e.to_string()),
+    <span class="kw">let </span>code = code.trim();
+    <span class="kw">match </span>lir_parser::ExprParser::new().parse(<span class="kw-2">&amp;</span>code.to_string()) {
+        <span class="prelude-val">Ok</span>(parsed) =&gt; <span class="prelude-val">Ok</span>(parsed),
+        <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(format_error(<span class="kw-2">&amp;</span>code, e))
     }
+}
+
+<span class="doccomment">/// Parse frontend sage code into an LIR expression.
+</span><span class="kw">pub fn </span>parse_frontend(input: <span class="kw">impl </span>ToString) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, String&gt; {
+    frontend::parse(input)
 }
 
 <span class="kw">type </span>SyntaxError&lt;<span class="lifetime">&#39;a</span>, T&gt; = lalrpop_util::ParseError&lt;usize, T, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>str&gt;;

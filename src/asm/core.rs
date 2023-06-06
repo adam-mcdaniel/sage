@@ -641,9 +641,6 @@ impl CoreOp {
                 result.bitwise_nand();
                 src.from(result);
                 dst.to(result);
-                result.bitwise_nand();
-                result.save();
-                result.bitwise_nand();
                 result.save();
                 dst.from(result);
             }

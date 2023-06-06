@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["parse_asm","parse_lir","parse_vm"]};
+window.SIDEBAR_ITEMS = {"fn":["parse_asm","parse_frontend","parse_lir","parse_vm"]};

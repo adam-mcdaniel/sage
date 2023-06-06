@@ -538,11 +538,6 @@
 <a href="#538" id="538">538</a>
 <a href="#539" id="539">539</a>
 <a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
-<a href="#544" id="544">544</a>
-<a href="#545" id="545">545</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use crate</span>::{
@@ -741,16 +736,10 @@
                     <span class="comment">// Check if the value is the same as the variant ID
                     </span>output.op(CoreOp::IsEqual { a: A, b: B, dst: C });
                     output.op(CoreOp::If(C));
-                    <span class="kw">for </span>c <span class="kw">in </span>variant.chars() {
+                    <span class="kw">for </span>c <span class="kw">in </span><span class="macro">format!</span>(<span class="string">&quot;{t} of {variant}&quot;</span>).chars() {
                         output.op(CoreOp::Set(A, c <span class="kw">as </span>u8 <span class="kw">as </span>i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
-
-                    <span class="kw">for </span>c <span class="kw">in </span><span class="macro">format!</span>(<span class="string">&quot; of {t}&quot;</span>).chars() {
-                        output.op(CoreOp::Set(A, c <span class="kw">as </span>u8 <span class="kw">as </span>i64));
-                        output.op(CoreOp::Put(A, Output::stdout_char()));
-                    }
-
                     output.op(CoreOp::End);
                 }
             }
@@ -776,7 +765,7 @@
             }
 
             Type::Struct(fields) =&gt; {
-                <span class="kw">for </span>c <span class="kw">in </span><span class="string">&quot;struct {&quot;</span>.chars() {
+                <span class="kw">for </span>c <span class="kw">in </span><span class="string">&quot;{&quot;</span>.chars() {
                     output.op(CoreOp::Set(A, c <span class="kw">as </span>u8 <span class="kw">as </span>i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
@@ -820,9 +809,11 @@
             }
 
             Type::Proc(args, ret) =&gt; {
-                <span class="kw">for </span>c <span class="kw">in </span><span class="string">&quot;proc(&quot;</span>.chars() {
-                    output.op(CoreOp::Set(A, c <span class="kw">as </span>u8 <span class="kw">as </span>i64));
-                    output.op(CoreOp::Put(A, Output::stdout_char()));
+                <span class="kw">if </span>args.len() != <span class="number">1 </span>{
+                    <span class="kw">for </span>c <span class="kw">in </span><span class="string">&quot;(&quot;</span>.chars() {
+                        output.op(CoreOp::Set(A, c <span class="kw">as </span>u8 <span class="kw">as </span>i64));
+                        output.op(CoreOp::Put(A, Output::stdout_char()));
+                    }
                 }
                 <span class="kw">for </span>(i, ty) <span class="kw">in </span>args.iter().enumerate() {
                     <span class="kw">for </span>ch <span class="kw">in </span>ty.to_string().chars() {
@@ -836,12 +827,11 @@
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
                 }
-                <span class="kw">for </span>ch <span class="kw">in </span><span class="string">&quot;) -&gt; &quot;</span>.to_string().chars() {
-                    output.op(CoreOp::Set(A, ch <span class="kw">as </span>u8 <span class="kw">as </span>i64));
+                <span class="kw">if </span>args.len() != <span class="number">1 </span>{
+                    output.op(CoreOp::Set(A, <span class="string">&#39;)&#39; </span><span class="kw">as </span>u8 <span class="kw">as </span>i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
-
-                <span class="kw">for </span>ch <span class="kw">in </span>ret.to_string().chars() {
+                <span class="kw">for </span>ch <span class="kw">in </span><span class="macro">format!</span>(<span class="string">&quot; -&gt; {ret}&quot;</span>).chars() {
                     output.op(CoreOp::Set(A, ch <span class="kw">as </span>u8 <span class="kw">as </span>i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
@@ -880,11 +870,11 @@
                             dst: B,
                         });
                         output.op(CoreOp::If(B));
-                        <span class="self">Self</span>::debug(data_address.clone(), variant_t, env, output)<span class="question-mark">?</span>;
-                        <span class="kw">for </span>c <span class="kw">in </span><span class="macro">format!</span>(<span class="string">&quot; of {name}&quot;</span>).chars() {
+                        <span class="kw">for </span>c <span class="kw">in </span><span class="macro">format!</span>(<span class="string">&quot;{t} of {name} &quot;</span>).chars() {
                             output.op(CoreOp::Set(A, c <span class="kw">as </span>u8 <span class="kw">as </span>i64));
                             output.op(CoreOp::Put(A, Output::stdout_char()));
                         }
+                        <span class="self">Self</span>::debug(data_address.clone(), variant_t, env, output)<span class="question-mark">?</span>;
                         output.op(CoreOp::End);
                     } <span class="kw">else </span>{
                         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(t.clone(), name.clone()));

@@ -80,6 +80,7 @@
 pub mod asm;
 pub mod io;
 pub mod lir;
+pub mod frontend;
 pub mod parse;
 pub mod targets;
 pub mod vm;

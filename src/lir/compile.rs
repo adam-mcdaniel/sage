@@ -30,11 +30,9 @@ pub trait Compile: TypeCheck {
         Self: Sized + Clone,
     {
         // First, type check the expression.
-        eprintln!("typechecking...");
         self.type_check(&Env::default())?;
         // Then, attempt to compile the expression into a core assembly program.
         let mut core_asm = CoreProgram::default();
-        eprintln!("compiling...");
         if self
             .clone()
             // Compile the expression into the core assembly program.
@@ -494,16 +492,6 @@ impl Compile for Expr {
                 } else {
                     return Err(Error::VariantNotFound(t.clone(), variant.clone()));
                 }
-                // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
-                //     t = t.clone().simplify(env)?;
-                //     match t {
-                //         // Get the inner list of variants and compile the expression using this information.
-                //         Type::EnumUnion(fields) => {
-                //         }
-                //         Type::Symbol(_) | Type::Let(_, _, _) | Type::Apply(_, _) => continue,
-                //         other => return Err(Error::VariantNotFound(other, variant.clone())),
-                //     }
-                // }
             }
 
             // Compile an indexing operation.
@@ -526,19 +514,18 @@ impl Compile for Expr {
                         // First, lets try to compile the same index expression using pointer
                         // arithmetic. This will be faster than pushing the entire array
                         // onto the stack and indexing it.
-                        if let Ok(refer) = val
+                        let optimized_idx = val
                             .clone()
                             // Reference the current
                             .refer()
                             // Make the type a pointer to the inner element type
                             .as_type(Type::Pointer(elem.clone()))
                             // Index the new pointer
-                            .idx(*idx.clone())
+                            .idx(*idx.clone());
                             // Push to the stack
-                            .compile_expr(env, output)
-                        {
-                            return Ok(refer);
-                        }
+                        // if optimized_idx.type_check(env).is_ok() {
+                        //     return optimized_idx.compile_expr(env, output);
+                        // }
 
                         // Get the size of the element we will return.
                         let elem_size = elem.get_size(env)?;

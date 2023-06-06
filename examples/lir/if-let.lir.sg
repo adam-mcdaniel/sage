@@ -1,6 +1,6 @@
 type Dir = enum { North, South, East, West } in
 
-let expr = (Dir of South, 2, struct {x=5, y=-6}) in
+let expr = (Dir of South(), 2, struct {x=5, y=-6}) in
     if let (of South, b, c) = expr {
         put "Matched!\n";
         put expr;

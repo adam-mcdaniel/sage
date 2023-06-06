@@ -898,9 +898,6 @@
 <a href="#898" id="898">898</a>
 <a href="#899" id="899">899</a>
 <a href="#900" id="900">900</a>
-<a href="#901" id="901">901</a>
-<a href="#902" id="902">902</a>
-<a href="#903" id="903">903</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Core Assembly Variant
 //!
 //! This variant of the assembly language is intended to be used
@@ -1544,9 +1541,6 @@
                 result.bitwise_nand();
                 src.from(result);
                 dst.to(result);
-                result.bitwise_nand();
-                result.save();
-                result.bitwise_nand();
                 result.save();
                 dst.from(result);
             }

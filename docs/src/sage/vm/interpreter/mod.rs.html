@@ -469,7 +469,7 @@
     </span><span class="kw">pub fn </span>output_str(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="kw">let </span><span class="kw-2">mut </span>result = String::new();
         <span class="kw">for </span>(ch, <span class="kw">_</span>) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.output {
-            result.push(<span class="kw-2">*</span>ch <span class="kw">as </span>u8 <span class="kw">as </span>char)
+            result.push(<span class="kw-2">*</span>ch <span class="kw">as </span>i8 <span class="kw">as </span>u8 <span class="kw">as </span>char)
         }
         result
     }

@@ -1,11 +1,9 @@
-
-
-
 enum Expr {
     Add (&Expr, &Expr),
     Sub (&Expr, &Expr),
     Mul (&Expr, &Expr),
     Div (&Expr, &Expr),
+    Rem (&Expr, &Expr),
     Num Float,
     Group &Expr,
 }
@@ -15,6 +13,7 @@ def eval(expr: &Expr): Float = match *expr {
     of Sub (lhs, rhs) => eval(lhs) - eval(rhs),
     of Mul (lhs, rhs) => eval(lhs) * eval(rhs),
     of Div (lhs, rhs) => eval(lhs) / eval(rhs),
+    of Rem (lhs, rhs) => eval(lhs) % eval(rhs),
     of Num n => n,
     of Group inner => eval(inner)
 };
@@ -24,7 +23,8 @@ def free_expr(expr: &Expr) {
         of Add (lhs, rhs)
         | of Sub (lhs, rhs)
         | of Mul (lhs, rhs)
-        | of Div (lhs, rhs) => {
+        | of Div (lhs, rhs)
+        | of Rem (lhs, rhs) => {
             free_expr(lhs);
             free_expr(rhs);
         },
@@ -54,6 +54,11 @@ def print_expr(expr: &Expr) {
         of Div(lhs, rhs) => {
             print_expr(lhs);
             print(" / ");
+            print_expr(rhs);
+        },
+        of Rem(lhs, rhs) => {
+            print_expr(lhs);
+            print(" % ");
             print_expr(rhs);
         },
         of Num n => print(n),
@@ -197,6 +202,9 @@ def parse_term(input: Input): ParseResult {
     def div_cons(lhs: &Expr, rhs: &Expr): &Expr {
         return new Expr of Div(lhs, rhs);
     }
+    def rem_cons(lhs: &Expr, rhs: &Expr): &Expr {
+        return new Expr of Rem(lhs, rhs);
+    }
 
     match parse_atom(input) {
         of Ok (new_input, lhs) => {
@@ -212,8 +220,14 @@ def parse_term(input: Input): ParseResult {
                             input = new_input;
                             new_lhs;
                         },
-                        of Err _ => {
-                            return ParseResult of Ok (input, lhs);
+                        of Err _ => match binop(lhs, input, '%', parse_atom, rem_cons) {
+                            of Ok (new_input, new_lhs) => {
+                                input = new_input;
+                                new_lhs;
+                            },
+                            of Err _ => {
+                                return ParseResult of Ok (input, lhs);
+                            }
                         }
                     }
                 };
@@ -273,7 +287,8 @@ def parse_whitespaces(input: Input): Input {
         return input;
     }
 
-    for (); input.loc < input.length && (input.start[input.loc] == ' ' || input.start[input.loc] == '\r' || input.start[input.loc] == '\n'); input.loc += 1 {}
+    for (); input.loc < input.length && (input.start[input.loc] == ' ' || input.start[input.loc] == '
+' || input.start[input.loc] == '\n'); input.loc += 1 {}
 
     return input;
 }

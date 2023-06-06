@@ -74,13 +74,13 @@ proc eval(math: Math) -> Int = {
     }
 } in
 
-    let a = 5 as Math of Num,
-        b = 6 as Math of Num,
-        c = 7 as Math of Num,
-        d = 8 as Math of Num,
-        add = struct { lhs = &a, rhs = &b } as Math of Add,
-        sub = struct { lhs = &c, rhs = &d } as Math of Sub,
-        mul = struct { lhs = &add, rhs = &sub } as Math of Mul
+    let a = Math of Num = 5,
+        b = Math of Num = 6,
+        c = Math of Num = 7,
+        d = Math of Num = 8,
+        add = Math of Add = struct { lhs = &a, rhs = &b },
+        sub = Math of Sub = struct { lhs = &c, rhs = &d },
+        mul = Math of Mul = struct { lhs = &add, rhs = &sub }
     in
 
 
@@ -92,18 +92,16 @@ type List = enum {
     },
     of Nil
 } in
-    let end = None as List of Nil,
-        first = struct { next = &end, data = 5 } as List of Cons,
-        second = struct { next = &first, data = 6 } as List of Cons,
-        third = struct { next = &second, data = 7 } as List of Cons,
-        
-    in 
+    let end = List of Nil(),
+        first = List of Cons = struct { next = &end, data = 5 },
+        second = List of Cons = struct { next = &first, data = 6 },
+        third = List of Cons = struct { next = &second, data = 7 } in 
 
 // Construct a list from a bit of data and another list
 proc cons(data: Int, list: List) -> List = {
     let addr: &List = alloc(sizeof(List)) as &List in {
         *addr = list;
-        struct {next = addr, data = data} as List of Cons
+        List of Cons = struct {next = addr, data = data}
     }
 } in
 
@@ -120,7 +118,7 @@ proc print(list: List) = {
         }
     }
 } in {
-    // print(cons(6, cons(5, None as List of Nil)))
+    // print(cons(6, cons(5, List of Nil())))
     // print(third);
     // put "\n";
     // put mul;

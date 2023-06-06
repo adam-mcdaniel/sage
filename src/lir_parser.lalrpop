@@ -26,7 +26,7 @@ PatternAtom: Pattern = {
     "false" => Pattern::ConstExpr(ConstExpr::Bool(false)),
     "Null" => Pattern::ConstExpr(ConstExpr::Null),
     "None" => Pattern::ConstExpr(ConstExpr::None),
-    <IntLit> => Pattern::ConstExpr(ConstExpr::Int(<> as i32)),
+    <IntLit> => Pattern::ConstExpr(ConstExpr::Int(<> as i64)),
     <CharLit> => Pattern::ConstExpr(ConstExpr::Char(<>)),
     "_" => Pattern::Wildcard,
 }
@@ -97,7 +97,7 @@ ConstExpr: ConstExpr = {
 ConstAtom: ConstExpr = {
     // <t: TypeAtom> "of" <variant: Symbol> => ConstExpr::Of(t, variant).into(),
     Symbol => ConstExpr::Symbol(<>),
-    IntLit => ConstExpr::Int(<> as i32),
+    IntLit => ConstExpr::Int(<> as i64),
     FloatLit => ConstExpr::Float(<>),
     CharLit => ConstExpr::Char(<>),
     "true" => ConstExpr::Bool(true),
@@ -203,9 +203,9 @@ Factor: Expr = {
 }
 
 Term: Expr = {
-    <x: Term> "." <field: IntLit> => x.field(ConstExpr::Int(field as i32)),
+    <x: Term> "." <field: IntLit> => x.field(ConstExpr::Int(field as i64)),
     <x: Term> "." <field: Symbol> => x.field(ConstExpr::Symbol(field)),
-    <x: Term> "->" <field: IntLit> => x.deref().field(ConstExpr::Int(field as i32)),
+    <x: Term> "->" <field: IntLit> => x.deref().field(ConstExpr::Int(field as i64)),
     <x: Term> "->" <field: Symbol> => x.deref().field(ConstExpr::Symbol(field)),
     <x: Term> "[" <idx: Expr> "]" => x.idx(idx),
     <x: Term> "as" <t: Type> => x.as_type(t),

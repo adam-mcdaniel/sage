@@ -68,13 +68,11 @@
 mod compile;
 mod env;
 mod expr;
-mod parse;
 mod types;
 
 pub use compile::*;
 pub use env::*;
 pub use expr::*;
-pub use parse::*;
 pub use types::*;
 
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};

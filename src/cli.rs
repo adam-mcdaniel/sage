@@ -38,6 +38,8 @@ enum TargetType {
 /// The source language options to compile.
 #[derive(clap::ValueEnum, Clone, Copy, Debug)]
 enum SourceType {
+    /// Compile Sage Frontend code.
+    Sage,
     /// Compile LIR code.
     LowIR,
     /// Compile core variant assembly code.
@@ -63,7 +65,7 @@ struct Args {
     output: String,
 
     /// The source language to compile.
-    #[clap(short, value_parser, default_value = "low-ir")]
+    #[clap(short, value_parser, default_value = "sage")]
     source_type: SourceType,
 
     /// The target language to compile to.
@@ -175,6 +177,21 @@ fn compile_source_to_vm(
                     .map_err(Error::AsmError)?)),
             }
         }
+        SourceType::Sage => {
+            match parse_frontend(src)
+                .map_err(Error::Parse)?
+                .compile()
+                .map_err(Error::LirError)?
+            {
+                // If we got back a valid program, assemble it and return the result.
+                Ok(asm_code) => Ok(Ok(asm_code
+                    .assemble(call_stack_size)
+                    .map_err(Error::AsmError)?)),
+                Err(asm_code) => Ok(Err(asm_code
+                    .assemble(call_stack_size)
+                    .map_err(Error::AsmError)?)),
+            }
+        }
     }
 }
 
@@ -196,6 +213,12 @@ fn compile_source_to_asm(
         },
         // If the source language is LIR, parse it and compile it to assembly code.
         SourceType::LowIR => parse_lir(src)
+            .map_err(Error::Parse)?
+            .compile()
+            .map_err(Error::LirError),
+        
+        // If the source language is Sage, parse it and compile it to assembly code.
+        SourceType::Sage => parse_frontend(src)
             .map_err(Error::Parse)?
             .compile()
             .map_err(Error::LirError),

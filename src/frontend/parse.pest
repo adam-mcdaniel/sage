@@ -145,7 +145,7 @@ stmt_return = {
     "return" ~ expr
 }
 stmt_match = {
-    "match" ~ expr ~ "{" ~ (stmt_match_case ~ ","?)+ ~ stmt_match_case? ~ "}"
+    "match" ~ expr ~ "{" ~ (stmt_match_case ~ ",")+ ~ stmt_match_case? ~ "}"
 }
 stmt_match_case = {
     pattern ~ "=>" ~ expr
@@ -159,8 +159,8 @@ pattern_term = {
 pattern_variant = { "of" ~ symbol ~ pattern_term? }
 pattern_atom = {
     pattern_group
-    | pattern_tuple
     | pattern_struct
+    | pattern_tuple
     | pattern_ptr
     | pattern_wildcard
     | pattern_symbol
@@ -173,7 +173,7 @@ pattern_field = { symbol ~ "=" ~ pattern | symbol }
 pattern_symbol = { symbol }
 pattern_wildcard = { "_" }
 pattern_ptr = { "&" ~ pattern }
-pattern_const = { const_atom }
+pattern_const = { const }
 
 stmt_block = {
     "{" ~ decl* ~ "}"
@@ -396,18 +396,18 @@ type_apply = { type_atom ~ type_application_suffix+ }
 type_application_suffix = { "<" ~ (type ~ ",")* ~ type ~ ">" }
 
 type_atom = {
-    type_symbol
-    | type_struct
+    type_struct
     | type_enum
+    | type_tuple
+    | type_array
+    | type_ptr
+    | "(" ~ type ~ ")"
+    | type_symbol
     | type_int
     | type_float
     | type_bool
     | type_char
     | type_none
-    | type_tuple
-    | type_array
-    | type_ptr
-    | "(" ~ type ~ ")"
 }
 type_symbol = { symbol }
 type_tuple = { "(" ~ (type ~ ",")+ ~ type? ~ ")" }

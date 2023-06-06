@@ -153,7 +153,7 @@ impl TestingDevice {
     pub fn output_str(&self) -> String {
         let mut result = String::new();
         for (ch, _) in &self.output {
-            result.push(*ch as u8 as char)
+            result.push(*ch as i8 as u8 as char)
         }
         result
     }

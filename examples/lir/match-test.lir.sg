@@ -49,21 +49,21 @@ proc putlist(l: &List) -> None = {
 
 let i = 0,
     pos = struct { x = 16, y = -17 },
-    dir = Dir of South,
-    g = (Dir of North, 2, 3, pos),
+    dir = Dir of South(),
+    g = (Dir of North(), 2, 3, pos),
     x = match (dir, (6, 'a', pos)) {
-    (of North, (6, 'b', _)) => put "Wow, north 1!\n",
-    (of South, (5, 'a', _)) => put "Wow, north 2!\n",
-    (of North, (6, 'a', _)) => put "Wow, north 3!\n",
-    (of North, (5, 'b', _)) => put "Wow, north 4!\n",
-    (of North, (5, 'a', _)) => put "Wow, north 5!\n",
-    (of South, (6, 'a', struct { x = 16, y = -16})) => put "Wow, north 6!\n",
-    (of South, (6, 'a', struct { x = 16, y = h})) => {
-        put h;
-        put "Wow, north 7!\n";
-    },
-    _ => put "default!\n"
-} in {
+        (of North, (6, 'b', _)) => put "Wow, north 1!\n",
+        (of South, (5, 'a', _)) => put "Wow, north 2!\n",
+        (of North, (6, 'a', _)) => put "Wow, north 3!\n",
+        (of North, (5, 'b', _)) => put "Wow, north 4!\n",
+        (of North, (5, 'a', _)) => put "Wow, north 5!\n",
+        (of South, (6, 'a', struct { x = 16, y = -16})) => put "Wow, north 6!\n",
+        (of South, (6, 'a', struct { x = 16, y = h})) => {
+            put h;
+            put "Wow, north 7!\n";
+        },
+        _ => put "default!\n"
+    } in {
     while i < 10 {
         put test(i);
         i += 1
@@ -94,7 +94,7 @@ let i = 0,
         a: Int,
         b: Float,
         c: Bool
-    } in match (Tag of C, union {a = 5, Union..}) {
+    } in match (Tag of C(), union {a = 5, Union..}) {
         (of A, u) => { put "\na\n"; put u },
         (of B, u) => { put "\na\n"; put u },
         (of C, u) => { put "\na\n"; put u },

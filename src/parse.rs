@@ -28,6 +28,7 @@
 use super::asm::{CoreProgram, StandardProgram};
 use super::lir::Expr;
 use super::vm;
+use super::frontend;
 
 use lalrpop_util::lalrpop_mod;
 use no_comment::{languages, IntoWithoutComments};
@@ -40,14 +41,14 @@ lalrpop_mod!(
     #[allow(clippy::all)]
     vm_parser
 );
-
 // This line is used expose the assembly parsers,
 // which are used to allow the LIR parser to parse inline assembly.
-// pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
-// lalrpop_mod!(
-//     #[allow(clippy::all)]
-//     lir_parser
-// );
+pub(crate) use asm_parser::{CoreProgramParser, StandardProgramParser};
+lalrpop_mod!(
+    #[allow(clippy::all)]
+    lir_parser
+);
+
 
 /// Parse Core and Standard variants of virtual machine source code.
 /// This will return core code by default, but will fallback on standard.
@@ -99,21 +100,16 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
         .without_comments(languages::rust())
         .collect::<String>();
 
-    // let code = code.trim();
-    match crate::lir::parse_lir_file(&code) {
-        Ok(result) => {
-            // eprintln!("Parsed LIR: {:#}", result);
-            let alloc = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
-                name: "alloc".to_string(),
-                args: vec![("size".to_string(), crate::lir::Type::Int)],
-                ret: crate::lir::Type::Pointer(Box::new(crate::lir::Type::Any)),
-                body: vec![crate::asm::StandardOp::Alloc(crate::asm::SP.deref())],
-            });
-
-            Ok(Expr::LetConst("alloc".to_string(), alloc, Box::new(result)))
-        }
-        Err(e) => Err(e.to_string()),
+    let code = code.trim();
+    match lir_parser::ExprParser::new().parse(&code.to_string()) {
+        Ok(parsed) => Ok(parsed),
+        Err(e) => Err(format_error(&code, e))
     }
+}
+
+/// Parse frontend sage code into an LIR expression.
+pub fn parse_frontend(input: impl ToString) -> Result<Expr, String> {
+    frontend::parse(input)
 }
 
 type SyntaxError<'a, T> = lalrpop_util::ParseError<usize, T, &'a str>;

@@ -1049,86 +1049,8 @@ impl Simplify for Type {
 
             Self::Apply(poly, ty_args) => {
                 Self::Apply(Box::new(poly.simplify_checked(env, i)?), ty_args)
-                // Simplify the type arguments supplied to the polymorphic type
-                // let ty_args = ty_args
-                //     .clone()
-                //     .into_iter()
-                //     .map(|t| t.simplify_checked(env, i))
-                //     .collect::<Result<Vec<Type>, Error>>()?;
-
-                //match *poly.clone() {
-                // Self::Symbol(name) => {
-                //     if let Some(Self::Poly(ty_params, template)) = env.get_type(&name) {
-                //         if ty_params.len() != ty_args.len() {
-                //             return Err(Error::InvalidTemplateArgs(Self::Apply(poly, ty_args)));
-                //         }
-                //         let mut result = *template.clone();
-                //         for (name, ty) in ty_params.into_iter().zip(ty_args.iter()) {
-                //             // result = Self::let_bind(&name, ty.clone(), result);
-                //             if ty != &Self::Symbol(name.clone()) {
-                //                 result = Self::let_bind(&name, ty.clone(), result);
-                //             }
-                //         }
-                //         result
-                //     } else {
-                //         Self::Apply(poly, ty_args)
-                //     }
-                // }
-                // Self::Let(name, t, ret) => {
-                //     Self::Apply(Box::new(Self::Let(name, t, ret).simplify_checked(env, i)?), ty_args)
-                // }
-                // match *poly.clone() {
-                //     Self::Symbol(name) => {
-                //         if let Some(Self::Poly(ty_params, template)) = env.get_type(&name).map(|t| t.clone()) {
-                //             // if ty_params.len() != ty_args.len() {
-                //             //     return Err(Error::InvalidTemplateArgs(Self::Apply(poly, ty_args)));
-                //             // }
-                //             // let mut result = *template.clone();
-                //             // for (name, ty) in ty_params.into_iter().zip(ty_args.iter()) {
-                //             //     // result = Self::let_bind(&name, ty.clone(), result);
-                //             //     result = result.substitute(&name, ty);
-                //             //     // result = Self::let_bind(&name, if ty == &Self::Symbol(name.clone()) {
-                //             //     //     continue;
-                //             //     // } else {
-                //             //     //     ty.clone()
-                //             //     // }, result);
-                //             // }
-                //             // result//.simplify_checked(env, i)?
-                //             Self::Apply(Box::new(Self::Poly(ty_params, template)), ty_args)
-                //         } else {
-                //             Self::Apply(poly, ty_args)
-                //         }
-                //     }
-                //     // Self::Poly(ty_params, template) => {
-                //     //     // Confirm that the number of type arguments matches the number of type parameters.
-                //     //     // If not, return an error.
-                //     //     if ty_params.len() != ty_args.len() {
-                //     //         return Err(Error::InvalidTemplateArgs(Self::Apply(poly, ty_args)));
-                //     //     }
-
-                //     //     // Substitute the type arguments for the type parameters in the template.
-                //     //     let mut result = *template.clone();
-                //     //     for (name, ty) in ty_params.into_iter().zip(ty_args.iter()) {
-                //     //         result = result.substitute(&name, ty);
-                //     //             // result = result.substitute(&name, &ty.clone().simplify_checked(env, i)?);
-                //     //         // result = Self::let_bind(&name, if ty == &Self::Symbol(name.clone()) {
-                //     //         //     continue;
-                //     //         // } else {
-                //     //         //     ty.clone()
-                //     //         // }, result);
-                //     //         // // Otherwise, add the binding.
-                //     //         // result = Self::let_bind(&name, ty.clone(), result);
-                //     //     }
-
-                //     //     // result.simplify_checked(env, i)?
-                //     //     result
-                //     // }
-                //     other => Self::Apply(Box::new(other), ty_args),
-                // }
             }
         };
-        // eprintln!("{s} {i}");
-        // eprintln!("simplified: {result}");
         Ok(result)
     }
 }
@@ -1157,14 +1079,14 @@ impl fmt::Display for Type {
                 write!(f, ") => {template}")
             }
             Self::Apply(poly, ty_args) => {
-                write!(f, "({poly})[")?;
+                write!(f, "({poly})<")?;
                 for (i, arg) in ty_args.iter().enumerate() {
                     write!(f, "{arg}")?;
                     if i < ty_args.len() - 1 {
                         write!(f, ", ")?
                     }
                 }
-                write!(f, "]")
+                write!(f, ">")
             }
             Self::Enum(variants) => {
                 write!(f, "enum {{")?;
@@ -1209,7 +1131,7 @@ impl fmt::Display for Type {
             Self::EnumUnion(fields) => {
                 write!(f, "enum {{")?;
                 for (i, (name, ty)) in fields.iter().enumerate() {
-                    write!(f, "{name} = {ty}")?;
+                    write!(f, "{name} {ty}")?;
                     if i < fields.len() - 1 {
                         write!(f, ", ")?
                     }
@@ -1217,7 +1139,15 @@ impl fmt::Display for Type {
                 write!(f, "}}")
             }
             Self::Proc(args, ret) => {
-                write!(f, "proc(")?;
+                if args.is_empty() {
+                    write!(f, "() -> {ret}")?;
+                    return Ok(());
+                }
+                if args.len() == 1 {
+                    write!(f, "{arg} -> {ret}", arg=args[0])?;
+                    return Ok(());
+                }
+                write!(f, "(")?;
                 for (i, ty) in args.iter().enumerate() {
                     write!(f, "{ty}")?;
                     if i < args.len() - 1 {
@@ -1228,7 +1158,7 @@ impl fmt::Display for Type {
             }
 
             Self::Symbol(name) => write!(f, "{name}"),
-            Self::Unit(unit_name, ty) => write!(f, "unit {unit_name} = {ty}"),
+            Self::Unit(unit_name, ty) => write!(f, "unit {unit_name}"),
             Self::Let(name, ty, ret) => write!(f, "let {name} = {ty} in {ret}"),
         }
     }

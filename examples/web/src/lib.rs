@@ -64,7 +64,7 @@ pub fn compile_and_run() -> Result<(), JsValue> {
     console_log!("input device `{device:?}`...");
 
     let target = document.get_element_by_id("target").unwrap().dyn_into::<web_sys::HtmlSelectElement>().unwrap().value();
-    let contents = match sage::parse::parse_lir(source_code) {
+    let contents = match sage::parse::parse_frontend(source_code) {
         Ok(asm_code) => {
             match asm_code.compile() {
                 Ok(asm_code) => {

@@ -371,8 +371,6 @@
 <a href="#371" id="371">371</a>
 <a href="#372" id="372">372</a>
 <a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # LIR (Low Intermediate Representation) Module
 //!
 //! This module contains a decently sized typechecked intermediate representation for the virtual machine.
@@ -443,13 +441,11 @@
 </span><span class="kw">mod </span>compile;
 <span class="kw">mod </span>env;
 <span class="kw">mod </span>expr;
-<span class="kw">mod </span>parse;
 <span class="kw">mod </span>types;
 
 <span class="kw">pub use </span>compile::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>env::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>expr::<span class="kw-2">*</span>;
-<span class="kw">pub use </span>parse::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>types::<span class="kw-2">*</span>;
 
 <span class="kw">use </span>core::fmt::{Debug, Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};

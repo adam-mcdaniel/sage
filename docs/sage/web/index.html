@@ -932,9 +932,7 @@ match parse_expr(input) {
 `);
                     break;
                 case "tree":
-                    source.setValue(`
-
-enum Option<T> {
+                    source.setValue(`enum Option<T> {
     Some(T),
     Nothing
 }
@@ -1304,7 +1302,7 @@ print("  map(increment): ");
 let result = expr_map(expr, &env, inc);
 expr_println(&result);
 
-for let i=0; i<500; i+=1 {
+for let i=0; i<10; i+=1 {
     let range = range(1, i);
     expr_println(&range);
 }
@@ -1313,9 +1311,9 @@ let text = "woo!!!\\0";
 let s = string_new(&text as &Char);
 string_print(s);
 `);
+                    break;
                 case "alloc":
-                    source.setValue(`
-enum Option<T> {
+                    source.setValue(`enum Option<T> {
     Some(T),
     Nothing
 }
@@ -1352,458 +1350,66 @@ match allocate<Point<Int>>(5) {
 }
 `);
                     break;
-                case "lambda-sim":
-                    source.setValue(`type Op = struct {
-    apply: proc(struct {x: Int}, Int) -> Int,
-    state: struct {x: Int}
-} in
-
-proc mul(n: Int) -> Op = {
-    struct {
-        apply = proc(state: struct{x: Int}, y: Int) -> Int = {
-            state.x * y
-        },
-        state = struct {x=n}
-    }
-} in
-
-proc add(n: Int) -> Op = {
-    struct {
-        apply = proc(state: struct{x: Int}, y: Int) -> Int = {
-            state.x + y
-        },
-        state = struct {x=n}
-    }
-} in
-
-proc app(op: Op, y: Int) -> Int = {
-    op.apply(op.state, y)
-} in
-
-proc putdec(n: Int) = {
-    if (n < 10) {
-        put (n + 48) as Char
-    } else {
-        putdec(n / 10);
-        put (n % 10 + 48) as Char
-    }
-} in
-
-proc puthex(n: Int, lower: Bool) = {
-    if (n < 16) {
-        put (n + if (n < 10) {
-            48
-        } else if lower {
-            87
-        } else {
-            55
-        }) as Char
-    } else {
-        puthex(n / 16, lower);
-        puthex(n % 16, lower)
-    }
-} in
-
-proc putbyte(n: Int, lower: Bool) = {
-    puthex(n / 16, lower);
-    puthex(n % 16, lower)
-} in
-
-proc ln() = {
-    put '\\n'
-} in
-
-let double = mul(2),
-    triple = mul(3) in {
-    putdec(
-        app(add(10), app(triple, app(double, 5)))
-    );
-    ln();
-
-    putbyte(255, false);
-}`);
-                    break;
-                case "if-let":
-                    source.setValue(`type Dir = enum { North, South, East, West } in
-
-let expr = (South of Dir, 2, struct {x=5, y=-6}) in
-    if let (South of Dir, b, c) = expr {
-        put "Matched!\\n";
-        put expr;
-    } else {
-        put "No match!"
-    }`);
-                    document.getElementById("input").value = "";
-                    break;
                 case "match":
-                    source.setValue(`type Dir = enum { North, South, East, West } in
+                    source.setValue(`enum Direction {
+    North, South, East, West
+}
 
-let expr = (South of Dir, 2, struct {x=5, y=-6}) in
-    match expr {
-        (North of Dir, _, _)
-        | (East of Dir, _, _)
-        | (West of Dir, _, _)
-        | (South of Dir, 3, _) => put "Incorrect!\\n",
-        (South of Dir, 2, struct {x=a, y=b}) => {
-            if (a == 5 and b == -6) {
-                put "Correct!\\n"
-            } else {
-                put "Incorrect!\\n"
-            }
-        },
-        _ => put "Default! (incorrect)\\n"
-    }`);
-                    document.getElementById("input").value = "";
-                    break;
-                case "thermostat":
-                    source.setValue(`type State = enum {
-    Heating,
-    Cooling,
-    Idle
-} in
+match (Direction of South, 2, struct {x = 5, y = -6}) {
+    (of North, _, _)
+    | (of East, _, _)
+    | (of West, _, _)
+    | (of South, 3, _) => print("Incorrect!\\n"),
+    (of South, 2, {x = 5, y = -6}) => {
+        print("Correct!\\n");
+    },
+    _ => print("Incorrect!\\n")
+}
 
-type Kelvin = unit Kelvin = Float in
-type Celcius = unit Celcius = Float in
-type Fahrenheit = unit Fahrenheit = Float in
+enum Option<T> {
+    Some(T),
+    Nothing
+}
 
-proc get_temperature() -> Kelvin = core {
-    next SP
-    get [SP], thermometer #0
-} in
+def divide(n: Int, d: Int): Option<Int> {
+    if (d == 0) {
+        return Option<Int> of Nothing;
+    } else {
+        return Option<Int> of Some(n / d);
+    }
+}
 
-proc turn_on_heater() = core {
-    set A, 1
-    put A, heater #0
-    put-str "[Heater on]\\n", stderr.char
-} in
-
-proc turn_off_heater() = core {
-    set A, 0
-    put A, heater #0
-    put-str "[Heater off]\\n", stderr.char
-} in
-
-proc turn_on_cooler() = core {
-    set A, 1
-    put A, cooler #0
-    put-str "[Cooler on]\\n", stderr.char
-} in
-
-proc turn_off_cooler() = core {
-    set A, 0
-    put A, cooler #0
-    put-str "[Cooler off]\\n", stderr.char
-} in
-
-proc read_power_button() -> Bool = core {
-    next SP
-    get [SP], button #0
-} in
-
-proc read_up_button() -> Bool = core {
-    next SP
-    get [SP], button #1
-} in
-
-proc read_down_button() -> Bool = core {
-    next SP
-    get [SP], button #2
-} in
-
-proc putint(n: Int) = core {
-    put-int [SP]
-} in
-
-proc putchar(c: Char) = core {
-    put-char [SP]
-} in
-
-proc putfloat(c: Float) = core {
-    put-float [SP]
-} in
-
-proc f_to_c(f: Fahrenheit) -> Celcius = {
-    ((f as Float - 32.0) * 5.0 / 9.0) as Celcius
-} in
-
-proc c_to_f(c: Celcius) -> Fahrenheit = {
-    ((c as Float * 9.0 / 5.0) + 32.0) as Fahrenheit
-} in
-
-proc k_to_c(k: Kelvin) -> Celcius = {
-    (k as Float - 273.15) as Celcius
-} in 
-
-proc c_to_k(c: Celcius) -> Kelvin = {
-    (c as Float + 273.15) as Kelvin
-} in
-
-proc f_to_k(f: Fahrenheit) -> Kelvin = {
-    c_to_k(f_to_c(f))
-} in
-
-proc k_to_f(k: Kelvin) -> Fahrenheit = {
-    c_to_f(k_to_c(k))
-} in
-
-proc putf(temp: Fahrenheit) = {
-    putfloat(temp as Float);
-    putchar('°');
-    putchar('F')
-} in
-
-proc putc(temp: Celcius) = {
-    putfloat(temp as Float);
-    putchar('°');
-    putchar('C')
-} in
-
-proc putk(temp: Kelvin) = {
-    putfloat(temp as Float);
-    putchar('°');
-    putchar('K')
-} in
-
-
-proc main() = {
-    let state = Idle of State,
-        desired_temp = 20.0 as Celcius,
-        current_temp = k_to_c(get_temperature()),
-        up_button = read_up_button(),
-        down_button = read_down_button(),
-        power_button = read_power_button(),
-        i = 0
-    in while (not power_button and i < 100) {
-        if (up_button) {
-            desired_temp = desired_temp + 0.1 as Celcius
-        };
-
-        if (down_button) {
-            desired_temp = desired_temp - 0.1 as Celcius
-        };
-
-        put "Current temp: ";
-        put current_temp;
-        put "\\nDesired temp: ";
-        put desired_temp;
-        put "\\nCurrent state: ";
-        put state;
-        put "\\n";
-        
-        if (current_temp > desired_temp) {
-            put "Too hot\\n"
-        } else if (current_temp < desired_temp) {
-            put "Too cold\\n"
-        } else {
-            put "Just right\\n"
-        };
-
-        match (state) {
-            Heating of State => {
-                put "Heating\\n";
-                if (current_temp > desired_temp) {
-                    turn_off_heater();
-                    state = Idle of State
-                }
-            },
-            Cooling of State => {
-                put "Cooling\\n";
-                if (current_temp < desired_temp) {
-                    turn_off_cooler();
-                    state = Idle of State
-                }
-            },
-            Idle of State => {
-                put "Idle\\n";
-                if (current_temp > desired_temp) {
-                    turn_on_cooler();
-                    state = Cooling of State
-                } else if (current_temp < desired_temp) {
-                    turn_on_heater();
-                    state = Heating of State
-                }
-            }
-        };
-
-        up_button = read_up_button();
-        down_button = read_down_button();
-        power_button = read_power_button();
-        current_temp = k_to_c(get_temperature());
-        i += 1
-    };
-    put "Goodbye!\\n"
-} in main()`);
+if let of Some(n) = divide(5, 0) {
+    print("5 / 0 = ", n, "\\n");
+} else {
+    print("5 / 0 = undefined\\n");
+}`);
                     document.getElementById("input").value = "";
                     break;
                 case "cat":
-                    source.setValue(`proc getchar() -> Char = core {
-    next SP
-    get-char [SP]
-} in
-
-let ch = getchar() in while ch {
-    put ch;
-    ch = getchar();
+                    source.setValue(`let ch = ' ';
+while (ch != '\\0') {
+    input(&ch);
+    print(ch);
 }`);
                     document.getElementById("input").value = "this is a cat program!";
                     break;
                 case "factorial":
-                    source.setValue(`proc getint() -> Int = core {
-    next SP
-	get-int [SP]
-} in
+                    source.setValue(`def fact(n: Int): Int {
+    match n {
+        0 | 1 => 1,
+        _ => n * fact(n - 1)
+    }
+}
 
-proc fact(n: Int) -> Int = {
-    if n
-        (n * fact(n - 1))
-        else 1
-} in
+let n = 0;
+input(&n);
 
-put fact(getint())`);
+print(fact(n));`);
                     document.getElementById("input").value = "5";
                     break;
-                case "units":
-                    source.setValue(`type
-    Kilometer = unit Kilometer = Int,
-    Meter = unit Meter = Int,
-    Second = unit Second = Int,
-    MetersPerSecond = unit MetersPerSec = Meter,
-    MetersPerSecondPerSecond = unit MetersPerSecondPerSecond = MetersPerSecond
-in
-
-proc shift_pos_by_dist(x0: Meter, dx: Meter) -> Meter = {
-    (x0 as Int + dx as Int) as Meter
-} in
-
-proc shift_pos_with_vel(x0: Meter, v: MetersPerSecond, t: Second) -> Meter = {
-    (x0 as Int + (v as Int * t as Int)) as Meter
-} in
-
-proc shift_pos_with_accel(x0: Meter, a: MetersPerSecondPerSecond, t: Second) -> Meter = {
-    (x0 as Int + a as Int * t as Int * t as Int / 2) as Meter
-} in
-
-proc km_to_m(km: Kilometer) -> Meter = {
-    (km as Int * 1000) as Meter
-} in
-
-proc shift_pos_with_vel_and_accel(x0: Meter, v0: MetersPerSecond, a: MetersPerSecondPerSecond, t: Second) -> Meter = {
-    shift_pos_with_vel(shift_pos_with_accel(x0, a, t), v0, t)
-} in
-
-let x0: Meter = km_to_m(1 as Kilometer),
-    v0: MetersPerSecond = 5 as MetersPerSecond,
-    accel: MetersPerSecondPerSecond = 2 as MetersPerSecondPerSecond,
-    t: Second = 10 as Second,
-    in put shift_pos_with_vel_and_accel(x0, v0, accel, t)`);
-                    break;
-                case "collatz":
-                    source.setValue(`proc getint() -> Int = core {
-    next SP
-    get-int [SP]
-} in
-
-proc step(n: Int) -> Int = {if (n % 2) (3 * n + 1) else n / 2} in
-proc collatz(n: Int) -> Int = {
-    let i = 0 in
-        while n - 1 {
-            i = i + 1;
-            put i;
-            put ": ";
-            put n;
-            put '\\n';
-            n = step(n);
-        };
-    return n
-} in collatz(getint())`);
-                    document.getElementById("input").value = "129";
-                    break;
-                case "inline-asm":
-                    source.setValue(`proc asm_init() = core {
-    fun FACT
-        set A, 0
-        gt [SP], A, B
-        if B
-            push [SP]
-            dec [SP]
-            call FACT
-            mul [SP], [SP - 1]
-            pop
-        else
-            set [SP], 1
-        end
-    end
-} in
-
-proc fact(n: Int) -> Int = core {
-    call FACT
-} in {
-    asm_init();
-
-    put fact(5); put '\\n';
-    put fact(10); put '\\n';
-}`);
-                    break;
-                case "type-demo-1":
-                    source.setValue(`const getchar = proc() -> Char = core {
-    next SP
-    get-char [SP]
-} in
-
-const alloc = proc(n: Int) -> &Int = std {
-    alloc [SP]
-} in
-
-type List = let B = let T = Int in (T, &B) in B in
-
-proc hmm() -> List = {
-    ('~' as Int, Null)
-} in
-
-proc hmm2() -> List = {
-    let ptr = alloc(sizeof(List)) as &List in {
-        (*ptr) = hmm();
-        (':' as Int, ptr)
-    }
-} in
-
-proc hmm3() -> List = {
-    let ptr = alloc(sizeof(List)) as &List in {
-        (*ptr) = hmm2();
-        ('!' as Int, ptr)
-    }
-} in
-
-let x: let A = (Int, &A) in A
-    = hmm3()
-    in {
-    put x.1->0 as Char;
-    put ')'
-}`);
-                    break;
-                case "type-demo-2":
-                    source.setValue(`type A = Int,
-    B = (Int, Int),
-    C = ((Int, Int), Int),
-    Test = proc(A, proc(A) -> B, proc(B) -> C) -> C
-    in const
-        a = 5,
-        b = proc(x: Int) -> (Int, Int) = { (x, 6) },
-        c = proc(x: (Int, Int)) -> ((Int, Int), Int) = { (x, 7) },
-        test = proc(a: A, b: proc(A) -> B, c: proc(B) -> C) -> C = {
-            c(b(a))
-        }, hmm = proc(f: Test, x: Int) -> ((Int, Int), Int) = {
-            f(x, b, c)
-        } in {
-            let result = hmm(test, a) in {
-                put result.0.0;
-                put result.0.1;
-                put result.1;
-            }
-        }`);
-                    break;
                 case "hello world":
-                    source.setValue(`{\n    put "Hello world!\\n";\n    put 1 + 2\n}\n`);
+                    source.setValue("print(\"Hello, world!\\n\");");
                     break;
                 default:
                     console.log("Unknown example: " + example);
@@ -1825,25 +1431,16 @@ let x: let A = (Int, &A) in A
         document.getElementById("run").addEventListener("click", compile_and_run, false);
         </script>
         <select id="example" style="height: 3em; float: left;">
-            <option value="aes">AES</option>
+            <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
             <option value="alloc">Allocator</option>
-            <option value="list">Linked List</option>
-            <option value="result">Result</option>
-            <option value="tree">Tree</option>
-            <option value="calculator">Calculator</option>
+            <option value="list">Linked List Enum (Generics)</option>
+            <option value="result">Result Enum (Generics)</option>
+            <option value="tree">Tree (Generics)</option>
+            <option value="calculator">Calculator (Parser)</option>
             <option value="lisp">S-Expressions</option>
-            <option value="quicksort">Quicksort</option>
-            <option value="thermostat">Thermostat</option>
-            <option value="if-let">Pattern Matching If-Let</option>
-            <option value="match">Pattern Matching Case</option>
+            <option value="match">Pattern Matching</option>
             <option value="cat">Cat</option>
-            <option value="units">Units</option>
-            <option value="lambda-sim">Simulate Lambda Functions</option>
             <option value="factorial">Factorial</option>
-            <option value="collatz">Collatz</option>
-            <option value="inline-asm">Inline Assembly Demo</option>
-            <option value="type-demo-1">Type System Demo 1</option>
-            <option value="type-demo-2">Type System Demo 2</option>
         </select>
         <div class="row">
             <div class="col"><textarea id="source"></textarea></div>

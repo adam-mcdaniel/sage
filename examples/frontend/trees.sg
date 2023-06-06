@@ -1,0 +1,106 @@
+
+
+enum Option<T> {
+    Some(T),
+    Nothing
+}
+
+def print_option<T>(opt: Option<T>, printer: T -> None) {
+	match opt {
+        of Some(x) => {
+            print("Some(");
+            printer(x);
+            print(")");
+        },
+        of Nothing => { print("Nothing"); }
+    }
+}
+
+enum List<T> {
+    Cons(T, &List<T>),
+    Nil
+}
+
+def print_list<T>(list: &List<T>): Option<T> {
+    match *list {
+        of Cons(x, &of Nil) => {
+            print(x);
+            return Option<T> of Some(x);
+        },
+        of Cons(x, xs) => {
+            print(x, ", ");
+            let _ = print_list<T>(xs);
+            return Option<T> of Some(x);
+        },
+        of Nil => Option<T> of Nothing
+    }
+}
+
+enum Tree<T> {
+    Node(T, &List<Tree<T>>),
+    Leaf(T),
+}
+
+def print_tree_list<T>(list: &List<Tree<T>>): Option<T> {
+    match *list {
+        of Cons(x, &of Nil) => {
+            return print_tree<T>(&x);
+        },
+        of Cons(x, xs) => {
+            let _ = print_tree<T>(&x);
+            print(", ");
+            return print_tree_list<T>(xs);
+        },
+        of Nil => Option<T> of Nothing
+    }
+}
+
+def print_tree<T>(tree: &Tree<T>): Option<T> {
+    match *tree {
+        of Node(x, &of Nil) => {
+            print(x);
+            return Option<T> of Some(x);
+        },
+        of Node(x, xs) => {
+            print(x, ", ");
+            return print_tree_list<T>(xs);
+        },
+        of Leaf n => {
+            print(n);
+            return Option<T> of Some(n);
+        }
+    }
+}
+
+def test<T>(tree: &Tree<T>, printer: T -> None) {
+    print_option<T>(print_tree<T>(tree), printer);
+}
+
+let x = Tree<Int> of Node(
+    1,
+    new List<Tree<Int>> of Cons(
+        Tree<Int> of Leaf(2),
+        new List<Tree<Int>> of Cons(
+            Tree<Int> of Leaf(3),
+            new List<Tree<Int>> of Nil
+        )
+    )
+);
+
+let y = Tree<Char> of Node(
+    'a',
+    new List<Tree<Char>> of Cons(
+        Tree<Char> of Leaf('b'),
+        new List<Tree<Char>> of Cons(
+            Tree<Char> of Leaf('c'),
+            new List<Tree<Char>> of Nil
+        )
+    )
+);
+
+def print_int(x: Int) = print(x);
+def print_char(x: Char) = print(x);
+test<Int>(&x, print_int);
+test<Char>(&y, print_char);
+
+print("\n");
