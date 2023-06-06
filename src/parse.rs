@@ -26,9 +26,9 @@
 //! error enums in the future.
 
 use super::asm::{CoreProgram, StandardProgram};
+use super::frontend;
 use super::lir::Expr;
 use super::vm;
-use super::frontend;
 
 use lalrpop_util::lalrpop_mod;
 use no_comment::{languages, IntoWithoutComments};
@@ -48,7 +48,6 @@ lalrpop_mod!(
     #[allow(clippy::all)]
     lir_parser
 );
-
 
 /// Parse Core and Standard variants of virtual machine source code.
 /// This will return core code by default, but will fallback on standard.
@@ -103,7 +102,7 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
     let code = code.trim();
     match lir_parser::ExprParser::new().parse(&code.to_string()) {
         Ok(parsed) => Ok(parsed),
-        Err(e) => Err(format_error(&code, e))
+        Err(e) => Err(format_error(&code, e)),
     }
 }
 

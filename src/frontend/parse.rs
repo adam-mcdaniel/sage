@@ -1260,7 +1260,7 @@ fn parse_pattern(pair: Pair<Rule>) -> Pattern {
             } else {
                 Pattern::Symbol(symbol)
             }
-        },
+        }
         Rule::pattern_alt => {
             let inner_rules = pair.into_inner();
             let mut patterns = Vec::new();
@@ -1273,4 +1273,3 @@ fn parse_pattern(pair: Pair<Rule>) -> Pattern {
         other => panic!("Unexpected rule: {:?}: {:?}", other, pair),
     }
 }
-

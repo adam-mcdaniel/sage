@@ -490,14 +490,12 @@ impl TypeCheck for Expr {
             }
 
             // Typecheck a reference to a value.
-            Self::Refer(e) => {
-                match *e.clone() {
-                    Expr::ConstExpr(ConstExpr::Symbol(_)) 
-                    | Expr::Deref(_)
-                    | Expr::Member(_, _)
-                    | Expr::Index(_, _) => e.type_check(env),
-                    other => Err(Error::InvalidRefer(other.clone())),
-                }
+            Self::Refer(e) => match *e.clone() {
+                Expr::ConstExpr(ConstExpr::Symbol(_))
+                | Expr::Deref(_)
+                | Expr::Member(_, _)
+                | Expr::Index(_, _) => e.type_check(env),
+                other => Err(Error::InvalidRefer(other.clone())),
             },
             // Typecheck a dereference of a pointer.
             Self::Deref(e) => {

@@ -78,9 +78,9 @@
 //! | Arithmetic             | `IsNonNegative?` | `Add`     | `Subtract`      | `Multiply` | `Divide`    | `Remainder`  |
 //! | Worldly                | `GetChar`        | `PutChar` | `GetInt`        | `PutInt`   | `GetFloat`  | `PutFloat`   |
 pub mod asm;
+pub mod frontend;
 pub mod io;
 pub mod lir;
-pub mod frontend;
 pub mod parse;
 pub mod targets;
 pub mod vm;

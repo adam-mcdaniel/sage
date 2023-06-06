@@ -870,10 +870,20 @@ impl Type {
             Type::Unit(_unit_name, t) => t.get_member_offset(member, expr, env),
 
             Type::Apply(_, _) | Type::Poly(_, _) => {
-                let t = self.clone().simplify_until_matches(env, Type::Any, |t, env| Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _))))?;
+                let t = self
+                    .clone()
+                    .simplify_until_matches(env, Type::Any, |t, env| {
+                        Ok(!matches!(
+                            t,
+                            Type::Let(_, _, _)
+                                | Type::Symbol(_)
+                                | Type::Apply(_, _)
+                                | Type::Poly(_, _)
+                        ))
+                    })?;
                 t.get_member_offset(member, expr, env)
             }
-            
+
             Type::Symbol(name) => {
                 if let Some(t) = env.get_type(name) {
                     t.get_member_offset(member, expr, env)
@@ -945,7 +955,17 @@ impl Type {
             }
 
             Type::Apply(_, _) | Type::Poly(_, _) => {
-                let t = self.clone().simplify_until_matches(env, Type::Any, |t, env| Ok(!matches!(t, Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _))))?;
+                let t = self
+                    .clone()
+                    .simplify_until_matches(env, Type::Any, |t, env| {
+                        Ok(!matches!(
+                            t,
+                            Type::Let(_, _, _)
+                                | Type::Symbol(_)
+                                | Type::Apply(_, _)
+                                | Type::Poly(_, _)
+                        ))
+                    })?;
                 t.type_check_member(member, expr, env)
             }
 
@@ -1144,7 +1164,7 @@ impl fmt::Display for Type {
                     return Ok(());
                 }
                 if args.len() == 1 {
-                    write!(f, "{arg} -> {ret}", arg=args[0])?;
+                    write!(f, "{arg} -> {ret}", arg = args[0])?;
                     return Ok(());
                 }
                 write!(f, "(")?;

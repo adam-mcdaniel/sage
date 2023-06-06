@@ -28,11 +28,17 @@ pub struct C;
 
 impl Architecture for C {
     fn supports_input(&self, i: &Input) -> bool {
-        matches!(i.mode, InputMode::StdinChar | InputMode::StdinFloat | InputMode::StdinInt)
+        matches!(
+            i.mode,
+            InputMode::StdinChar | InputMode::StdinFloat | InputMode::StdinInt
+        )
     }
 
     fn supports_output(&self, o: &Output) -> bool {
-        matches!(o.mode, OutputMode::StdoutChar | OutputMode::StdoutFloat | OutputMode::StdoutInt)
+        matches!(
+            o.mode,
+            OutputMode::StdoutChar | OutputMode::StdoutFloat | OutputMode::StdoutInt
+        )
     }
 
     fn op(&mut self, op: &CoreOp) -> String {

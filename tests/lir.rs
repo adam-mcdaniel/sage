@@ -908,8 +908,7 @@ fn test_typecheck() {
     );
     assert!(matches!(
         expr.type_check(&env),
-        Err(Error::InvalidBinaryOp(_, _, _))
-        | Err(Error::InvalidBinaryOpTypes(_, _, _))
+        Err(Error::InvalidBinaryOp(_, _, _)) | Err(Error::InvalidBinaryOpTypes(_, _, _))
     ));
 
     let expr = Expr::let_var(

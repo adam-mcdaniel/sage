@@ -216,7 +216,7 @@ fn compile_source_to_asm(
             .map_err(Error::Parse)?
             .compile()
             .map_err(Error::LirError),
-        
+
         // If the source language is Sage, parse it and compile it to assembly code.
         SourceType::Sage => parse_frontend(src)
             .map_err(Error::Parse)?

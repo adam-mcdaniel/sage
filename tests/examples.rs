@@ -58,7 +58,8 @@ fn test_frontend_examples_helper() {
 
             let frontend_src = read_to_string(&path)
                 .expect(&format!("Could not read contents of file `{path:?}`"));
-            let frontend_code = parse_frontend(&frontend_src).expect(&format!("Could not parse `{path:?}`"));
+            let frontend_code =
+                parse_frontend(&frontend_src).expect(&format!("Could not parse `{path:?}`"));
             drop(frontend_src);
             let asm_code = frontend_code
                 .compile()

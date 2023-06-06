@@ -1,6 +1,6 @@
 mod parse;
-use parse::*;
 use no_comment::{languages, IntoWithoutComments};
+use parse::*;
 
 pub fn parse(code: impl ToString) -> Result<crate::lir::Expr, String> {
     let code = code
@@ -19,7 +19,11 @@ pub fn parse(code: impl ToString) -> Result<crate::lir::Expr, String> {
                 body: vec![crate::asm::StandardOp::Alloc(crate::asm::SP.deref())],
             });
 
-            Ok(crate::lir::Expr::LetConst("alloc".to_string(), alloc, Box::new(result)))
+            Ok(crate::lir::Expr::LetConst(
+                "alloc".to_string(),
+                alloc,
+                Box::new(result),
+            ))
         }
         Err(e) => Err(e.to_string()),
     }

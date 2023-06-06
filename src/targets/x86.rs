@@ -35,7 +35,10 @@ impl Architecture for X86 {
     }
 
     fn supports_output(&self, o: &Output) -> bool {
-        matches!(o.mode, OutputMode::StdoutChar | OutputMode::StdoutFloat | OutputMode::StdoutInt)
+        matches!(
+            o.mode,
+            OutputMode::StdoutChar | OutputMode::StdoutFloat | OutputMode::StdoutInt
+        )
     }
 
     fn op(&mut self, op: &CoreOp) -> String {
@@ -196,11 +199,13 @@ impl Architecture for X86 {
         match matching {
             CoreOp::Function => {
                 let label = self.branch_match.pop().unwrap();
-                format!("popq %rbp\n{indent}ret\n{label}:\n", indent = self.indentation().unwrap(), label = label)
+                format!(
+                    "popq %rbp\n{indent}ret\n{label}:\n",
+                    indent = self.indentation().unwrap(),
+                    label = label
+                )
             }
-            CoreOp::While
-            | CoreOp::If
-            | CoreOp::Else => {
+            CoreOp::While | CoreOp::If | CoreOp::Else => {
                 let label = self.branch_match.pop().unwrap();
                 format!("{label}:")
             }
@@ -210,7 +215,8 @@ impl Architecture for X86 {
 
     fn declare_proc(&mut self, label_id: usize) -> String {
         let result = format!("movq $fun{fun_count}, funs+{}(%rip)\n{indent}jmp fun_end{fun_count}\nfun{fun_count}:\n{indent}pushq   %rbp\n{indent}movq %rsp, %rbp\n", self.fun_count * 8, fun_count = self.fun_count, indent = self.indentation().unwrap());
-        self.branch_match.push(format!("fun_end{fun_count}", fun_count = self.fun_count));
+        self.branch_match
+            .push(format!("fun_end{fun_count}", fun_count = self.fun_count));
         self.fun_count += 1;
         result
     }
@@ -238,21 +244,29 @@ impl Architecture for X86 {
     fn put(&mut self, dst: &Output) -> Result<String, String> {
         let indent = self.indentation().unwrap();
         match dst.mode {
-            OutputMode::StdoutChar => Ok(format!("movq reg(%rip), %rax\n{indent}movl %eax, %edi\n{indent}call    putchar")),
+            OutputMode::StdoutChar => Ok(format!(
+                "movq reg(%rip), %rax\n{indent}movl %eax, %edi\n{indent}call    putchar"
+            )),
             // OutputMode::StdoutInt => Ok(format!("movq reg(%rip), %rax\n{indent}movq %rax, %xmm0\n{indent}movl $int_print, %edi\n{indent}movl $1, %eax\n{indent}call    printf", indent = self.indentation().unwrap())),
-            OutputMode::StdoutInt => Ok(format!("{indent}movq reg(%rip), %rax            # Load the integer value into rax
+            OutputMode::StdoutInt => Ok(format!(
+                "{indent}movq reg(%rip), %rax            # Load the integer value into rax
 {indent}movq %rax, %rsi
 {indent}movq $int_print, %rdi           # Load the address of the format string
 {indent}movq $0, %rax                   # Clear rax (return value)
-{indent}call printf                     # Call the printf function", indent = self.indentation().unwrap())),
-            OutputMode::StdoutFloat => Ok(format!("{indent}movq reg(%rip), %xmm0            # Load the integer value into rax
+{indent}call printf                     # Call the printf function",
+                indent = self.indentation().unwrap()
+            )),
+            OutputMode::StdoutFloat => Ok(format!(
+                "{indent}movq reg(%rip), %xmm0            # Load the integer value into rax
 subq $8, %rsp                   # Allocate space on the stack for the float argument
 movsd %xmm0, (%rsp)   # Move the double value to the stack
 movq $1, %rax       # File descriptor 1 represents standard output
 movq $float_print, %rdi      # Load the address of the format string into RDI
 movq (%rsp), %xmm0  # Load the double value into XMM0
 call printf        # Call printf function
-addq $8, %rsp       # Deallocate the space on the stack", indent = self.indentation().unwrap())),
+addq $8, %rsp       # Deallocate the space on the stack",
+                indent = self.indentation().unwrap()
+            )),
             _ => Err("Output not supported by this target".to_string()),
         }
     }
@@ -300,11 +314,15 @@ float_print:
         .string      \"%g\"
 int_print:
         .string      \"%ld\"
-".to_string();
+"
+        .to_string();
         for (i, val) in self.float_defs.iter().enumerate() {
             data += format!("float_const{i}: .quad {val}\n").as_str();
         }
-        Some(format!("{indent}movl $0, %eax\n{indent}ret\n{data}", indent = self.indentation().unwrap()))
+        Some(format!(
+            "{indent}movl $0, %eax\n{indent}ret\n{data}",
+            indent = self.indentation().unwrap()
+        ))
     }
 }
 

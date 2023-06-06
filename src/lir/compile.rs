@@ -522,7 +522,7 @@ impl Compile for Expr {
                             .as_type(Type::Pointer(elem.clone()))
                             // Index the new pointer
                             .idx(*idx.clone());
-                            // Push to the stack
+                        // Push to the stack
                         // if optimized_idx.type_check(env).is_ok() {
                         //     return optimized_idx.compile_expr(env, output);
                         // }
