@@ -99,7 +99,7 @@ impl GetSize for Type {
             | Self::Enum(_)
             | Self::Pointer(_)
             | Self::Proc(_, _) => 1,
-
+            
             // Tuple types are the sum of the sizes of their elements.
             Self::Tuple(items) => items.iter().flat_map(|t| t.get_size_checked(env, i)).sum(),
             // Array types are the size of their element type times the size of

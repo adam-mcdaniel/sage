@@ -13,6 +13,7 @@ pub use check::*;
 pub use inference::*;
 pub use size::*;
 
+
 /// The representation of a type in the LIR type system.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {

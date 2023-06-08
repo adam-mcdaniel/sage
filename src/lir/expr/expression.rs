@@ -549,7 +549,7 @@ impl fmt::Display for Expr {
                 write!(f, "union {{ {variant} = {val}, {ty}.. }}")
             }
             Self::EnumUnion(ty, variant, val) => {
-                write!(f, "enum {{ {variant} = {val}, {ty}.. }}")
+                write!(f, "{ty} of {variant} {val}")
             }
 
             Self::UnaryOp(op, x) => write!(f, "{}", op.display(x)),

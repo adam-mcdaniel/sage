@@ -1,2 +1,2 @@
 Matched!
-(South of enum {North, South, East, West}, 2, struct {x=5, y=-6})
+(enum {North, South, East, West} of South, 2, {x=5, y=-6})

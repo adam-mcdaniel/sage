@@ -626,7 +626,7 @@ impl Compile for Expr {
                 Expr::ConstExpr(ConstExpr::Symbol(name)) => {
                     // Get the variable's offset from the frame pointer.
                     if let Some((_, offset)) = env.get_var(&name) {
-                        // Calulate the address of the variable from the offset
+                        // Calculate the address of the variable from the offset
                         output.op(CoreOp::Many(vec![
                             CoreOp::Move { src: FP, dst: A },
                             CoreOp::Set(B, *offset as i64),
@@ -883,7 +883,7 @@ impl Compile for ConstExpr {
                         output.op(CoreOp::Next(
                             SP,
                             // This size *includes* the tag: it allocates space for it so we
-                            // can immediately set the value under the stack poiner as the tag.
+                            // can immediately set the value under the stack pointer as the tag.
                             Some(result_size as isize - val_size as isize),
                         ));
 

@@ -1254,6 +1254,27 @@
 <a href="#1254" id="1254">1254</a>
 <a href="#1255" id="1255">1255</a>
 <a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Types Module
 //!
 //! This module contains a collection of types and traits
@@ -1268,6 +1289,7 @@
 <span class="kw">pub use </span>check::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>inference::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>size::<span class="kw-2">*</span>;
+
 
 <span class="doccomment">/// The representation of a type in the LIR type system.
 </span><span class="attr">#[derive(Clone, Debug, PartialEq)]
@@ -2126,10 +2148,20 @@
             Type::Unit(_unit_name, t) =&gt; t.get_member_offset(member, expr, env),
 
             Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>t = <span class="self">self</span>.clone().simplify_until_matches(env, Type::Any, |t, env| <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(t, Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>))))<span class="question-mark">?</span>;
+                <span class="kw">let </span>t = <span class="self">self
+                    </span>.clone()
+                    .simplify_until_matches(env, Type::Any, |t, env| {
+                        <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
+                            t,
+                            Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
+                                | Type::Symbol(<span class="kw">_</span>)
+                                | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>)
+                                | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
+                        ))
+                    })<span class="question-mark">?</span>;
                 t.get_member_offset(member, expr, env)
             }
-            
+
             Type::Symbol(name) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = env.get_type(name) {
                     t.get_member_offset(member, expr, env)
@@ -2201,7 +2233,17 @@
             }
 
             Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>t = <span class="self">self</span>.clone().simplify_until_matches(env, Type::Any, |t, env| <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(t, Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>))))<span class="question-mark">?</span>;
+                <span class="kw">let </span>t = <span class="self">self
+                    </span>.clone()
+                    .simplify_until_matches(env, Type::Any, |t, env| {
+                        <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
+                            t,
+                            Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
+                                | Type::Symbol(<span class="kw">_</span>)
+                                | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>)
+                                | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
+                        ))
+                    })<span class="question-mark">?</span>;
                 t.type_check_member(member, expr, env)
             }
 
@@ -2400,7 +2442,7 @@
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 }
                 <span class="kw">if </span>args.len() == <span class="number">1 </span>{
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{arg} -&gt; {ret}&quot;</span>, arg=args[<span class="number">0</span>])<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{arg} -&gt; {ret}&quot;</span>, arg = args[<span class="number">0</span>])<span class="question-mark">?</span>;
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 }
                 <span class="macro">write!</span>(f, <span class="string">&quot;(&quot;</span>)<span class="question-mark">?</span>;

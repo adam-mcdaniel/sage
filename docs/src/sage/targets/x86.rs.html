@@ -309,6 +309,24 @@
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
 <a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # x86 Target
 //!
 //! An implementation of the virtual machine for x86.
@@ -346,7 +364,10 @@
     }
 
     <span class="kw">fn </span>supports_output(<span class="kw-2">&amp;</span><span class="self">self</span>, o: <span class="kw-2">&amp;</span>Output) -&gt; bool {
-        <span class="macro">matches!</span>(o.mode, OutputMode::StdoutChar | OutputMode::StdoutFloat | OutputMode::StdoutInt)
+        <span class="macro">matches!</span>(
+            o.mode,
+            OutputMode::StdoutChar | OutputMode::StdoutFloat | OutputMode::StdoutInt
+        )
     }
 
     <span class="kw">fn </span>op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>CoreOp) -&gt; String {
@@ -507,11 +528,13 @@
         <span class="kw">match </span>matching {
             CoreOp::Function =&gt; {
                 <span class="kw">let </span>label = <span class="self">self</span>.branch_match.pop().unwrap();
-                <span class="macro">format!</span>(<span class="string">&quot;popq %rbp\n{indent}ret\n{label}:\n&quot;</span>, indent = <span class="self">self</span>.indentation().unwrap(), label = label)
+                <span class="macro">format!</span>(
+                    <span class="string">&quot;popq %rbp\n{indent}ret\n{label}:\n&quot;</span>,
+                    indent = <span class="self">self</span>.indentation().unwrap(),
+                    label = label
+                )
             }
-            CoreOp::While
-            | CoreOp::If
-            | CoreOp::Else =&gt; {
+            CoreOp::While | CoreOp::If | CoreOp::Else =&gt; {
                 <span class="kw">let </span>label = <span class="self">self</span>.branch_match.pop().unwrap();
                 <span class="macro">format!</span>(<span class="string">&quot;{label}:&quot;</span>)
             }
@@ -521,7 +544,8 @@
 
     <span class="kw">fn </span>declare_proc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, label_id: usize) -&gt; String {
         <span class="kw">let </span>result = <span class="macro">format!</span>(<span class="string">&quot;movq $fun{fun_count}, funs+{}(%rip)\n{indent}jmp fun_end{fun_count}\nfun{fun_count}:\n{indent}pushq   %rbp\n{indent}movq %rsp, %rbp\n&quot;</span>, <span class="self">self</span>.fun_count * <span class="number">8</span>, fun_count = <span class="self">self</span>.fun_count, indent = <span class="self">self</span>.indentation().unwrap());
-        <span class="self">self</span>.branch_match.push(<span class="macro">format!</span>(<span class="string">&quot;fun_end{fun_count}&quot;</span>, fun_count = <span class="self">self</span>.fun_count));
+        <span class="self">self</span>.branch_match
+            .push(<span class="macro">format!</span>(<span class="string">&quot;fun_end{fun_count}&quot;</span>, fun_count = <span class="self">self</span>.fun_count));
         <span class="self">self</span>.fun_count += <span class="number">1</span>;
         result
     }
@@ -549,21 +573,29 @@
     <span class="kw">fn </span>put(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dst: <span class="kw-2">&amp;</span>Output) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="kw">let </span>indent = <span class="self">self</span>.indentation().unwrap();
         <span class="kw">match </span>dst.mode {
-            OutputMode::StdoutChar =&gt; <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;movq reg(%rip), %rax\n{indent}movl %eax, %edi\n{indent}call    putchar&quot;</span>)),
+            OutputMode::StdoutChar =&gt; <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(
+                <span class="string">&quot;movq reg(%rip), %rax\n{indent}movl %eax, %edi\n{indent}call    putchar&quot;
+            </span>)),
             <span class="comment">// OutputMode::StdoutInt =&gt; Ok(format!(&quot;movq reg(%rip), %rax\n{indent}movq %rax, %xmm0\n{indent}movl $int_print, %edi\n{indent}movl $1, %eax\n{indent}call    printf&quot;, indent = self.indentation().unwrap())),
-            </span>OutputMode::StdoutInt =&gt; <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;{indent}movq reg(%rip), %rax            # Load the integer value into rax
+            </span>OutputMode::StdoutInt =&gt; <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(
+                <span class="string">&quot;{indent}movq reg(%rip), %rax            # Load the integer value into rax
 {indent}movq %rax, %rsi
 {indent}movq $int_print, %rdi           # Load the address of the format string
 {indent}movq $0, %rax                   # Clear rax (return value)
-{indent}call printf                     # Call the printf function&quot;</span>, indent = <span class="self">self</span>.indentation().unwrap())),
-            OutputMode::StdoutFloat =&gt; <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;{indent}movq reg(%rip), %xmm0            # Load the integer value into rax
+{indent}call printf                     # Call the printf function&quot;</span>,
+                indent = <span class="self">self</span>.indentation().unwrap()
+            )),
+            OutputMode::StdoutFloat =&gt; <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(
+                <span class="string">&quot;{indent}movq reg(%rip), %xmm0            # Load the integer value into rax
 subq $8, %rsp                   # Allocate space on the stack for the float argument
 movsd %xmm0, (%rsp)   # Move the double value to the stack
 movq $1, %rax       # File descriptor 1 represents standard output
 movq $float_print, %rdi      # Load the address of the format string into RDI
 movq (%rsp), %xmm0  # Load the double value into XMM0
 call printf        # Call printf function
-addq $8, %rsp       # Deallocate the space on the stack&quot;</span>, indent = <span class="self">self</span>.indentation().unwrap())),
+addq $8, %rsp       # Deallocate the space on the stack&quot;</span>,
+                indent = <span class="self">self</span>.indentation().unwrap()
+            )),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Output not supported by this target&quot;</span>.to_string()),
         }
     }
@@ -611,11 +643,15 @@ float_print:
         .string      \&quot;%g\&quot;
 int_print:
         .string      \&quot;%ld\&quot;
-&quot;</span>.to_string();
+&quot;
+        </span>.to_string();
         <span class="kw">for </span>(i, val) <span class="kw">in </span><span class="self">self</span>.float_defs.iter().enumerate() {
             data += <span class="macro">format!</span>(<span class="string">&quot;float_const{i}: .quad {val}\n&quot;</span>).as_str();
         }
-        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;{indent}movl $0, %eax\n{indent}ret\n{data}&quot;</span>, indent = <span class="self">self</span>.indentation().unwrap()))
+        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(
+            <span class="string">&quot;{indent}movl $0, %eax\n{indent}ret\n{data}&quot;</span>,
+            indent = <span class="self">self</span>.indentation().unwrap()
+        ))
     }
 }
 

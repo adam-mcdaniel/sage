@@ -536,7 +536,7 @@ print("\\n");
 
 def print_result<T, E>(res: Result<T, E>) {
     match res {
-        of Ok(x) => print("okay: ", x, "\\n"),
+        of Ok(x) => print("success: ", x, "\\n"),
         of Err(e) => print("error: ", e, "\\n")
     }
 }
@@ -570,18 +570,12 @@ def or_else<T, E, F>(f: E -> Result<T, F>, res: Result<T, E>): Result<T, F> {
 }
 
 def inc(x: Int): Int = x + 1;
+def to_float(n: Int): Float = n as Float;
+def half(n: Float): Float = n / 2;
 
-def test<T>(text: &Char): Result<T, Float> = Result<T, Float> of Err 5.0; 
-    
 let text = "hello";
-print_result<Int, Float>(
-    or_else<Int, &Char, Float>(
-        test<Int>,
-        map<Int, Int, &Char>(inc, Result<Int, &Char> of Err (&text as &Char))
-    )
-);
-let x = test<Int>;
-print(x(&text as &Char), "\\n");
+print("Should print 5 / 2: ");
+print_result<Float, &Char>(map<Float, Float, &Char>(half, map<Int, Float, &Char>(to_float, Result<Int, &Char> of Ok 5)));
 `);
                     break;
                 case "calculator":
@@ -875,7 +869,7 @@ def parse_whitespaces(input: Input): Input {
         return input;
     }
 
-    for (); input.loc < input.length && (input.start[input.loc] == ' ' || input.start[input.loc] == '\r' || input.start[input.loc] == '\\n'); input.loc += 1 {}
+    for (); input.loc < input.length && (input.start[input.loc] == ' ' || input.start[input.loc] == '\\r' || input.start[input.loc] == '\\n'); input.loc += 1 {}
 
     return input;
 }
@@ -1431,13 +1425,13 @@ print(fact(n));`);
         document.getElementById("run").addEventListener("click", compile_and_run, false);
         </script>
         <select id="example" style="height: 3em; float: left;">
+            <option value="result">Result Enum (Generics)</option>
             <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
+            <option value="calculator">Calculator (Parser)</option>
             <option value="alloc">Allocator</option>
             <option value="list">Linked List Enum (Generics)</option>
-            <option value="result">Result Enum (Generics)</option>
-            <option value="tree">Tree (Generics)</option>
-            <option value="calculator">Calculator (Parser)</option>
             <option value="lisp">S-Expressions</option>
+            <option value="tree">Tree (Generics)</option>
             <option value="match">Pattern Matching</option>
             <option value="cat">Cat</option>
             <option value="factorial">Factorial</option>
@@ -1453,7 +1447,8 @@ print(fact(n));`);
             <select id="target" style="height: 3em; float: left;">
                 <option value="run"><b>Click to see stages of output</b></option>
                 <option value="run">Execution Output</option>
-                <option value="asm">Assembly</option>
+                <option value="lir">Lower IR</option>
+                <option value="asm">Assembly IR</option>
                 <option value="vm">Virtual Machine Code</option>
                 <option value="c">C Source</option>
                 <option value="x86">x86 Assembly</option>

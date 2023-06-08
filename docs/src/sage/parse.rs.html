@@ -226,7 +226,6 @@
 <a href="#226" id="226">226</a>
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Parsing Module
 //!
 //! This module contains all the related functions for parsing
@@ -255,9 +254,9 @@
 //! error enums in the future.
 
 </span><span class="kw">use </span><span class="kw">super</span>::asm::{CoreProgram, StandardProgram};
+<span class="kw">use </span><span class="kw">super</span>::frontend;
 <span class="kw">use </span><span class="kw">super</span>::lir::Expr;
 <span class="kw">use </span><span class="kw">super</span>::vm;
-<span class="kw">use </span><span class="kw">super</span>::frontend;
 
 <span class="kw">use </span>lalrpop_util::lalrpop_mod;
 <span class="kw">use </span>no_comment::{languages, IntoWithoutComments};
@@ -277,7 +276,6 @@
     <span class="attr">#[allow(clippy::all)]
     </span>lir_parser
 );
-
 
 <span class="doccomment">/// Parse Core and Standard variants of virtual machine source code.
 /// This will return core code by default, but will fallback on standard.
@@ -332,7 +330,7 @@
     <span class="kw">let </span>code = code.trim();
     <span class="kw">match </span>lir_parser::ExprParser::new().parse(<span class="kw-2">&amp;</span>code.to_string()) {
         <span class="prelude-val">Ok</span>(parsed) =&gt; <span class="prelude-val">Ok</span>(parsed),
-        <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(format_error(<span class="kw-2">&amp;</span>code, e))
+        <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(format_error(<span class="kw-2">&amp;</span>code, e)),
     }
 }
 

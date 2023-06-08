@@ -360,7 +360,7 @@
             | <span class="self">Self</span>::Enum(<span class="kw">_</span>)
             | <span class="self">Self</span>::Pointer(<span class="kw">_</span>)
             | <span class="self">Self</span>::Proc(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="number">1</span>,
-
+            
             <span class="comment">// Tuple types are the sum of the sizes of their elements.
             </span><span class="self">Self</span>::Tuple(items) =&gt; items.iter().flat_map(|t| t.get_size_checked(env, i)).sum(),
             <span class="comment">// Array types are the size of their element type times the size of

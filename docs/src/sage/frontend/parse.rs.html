@@ -1273,7 +1273,6 @@
 <a href="#1273" id="1273">1273</a>
 <a href="#1274" id="1274">1274</a>
 <a href="#1275" id="1275">1275</a>
-<a href="#1276" id="1276">1276</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::lir::<span class="kw-2">*</span>;
 <span class="kw">use </span>pest::{
     error::Error,
@@ -2536,7 +2535,7 @@
             } <span class="kw">else </span>{
                 Pattern::Symbol(symbol)
             }
-        },
+        }
         Rule::pattern_alt =&gt; {
             <span class="kw">let </span>inner_rules = pair.into_inner();
             <span class="kw">let </span><span class="kw-2">mut </span>patterns = Vec::new();
@@ -2549,5 +2548,4 @@
         other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected rule: {:?}: {:?}&quot;</span>, other, pair),
     }
 }
-
 </code></pre></div></section></main></body></html>

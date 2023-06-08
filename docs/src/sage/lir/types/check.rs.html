@@ -1151,8 +1151,6 @@
 <a href="#1151" id="1151">1151</a>
 <a href="#1152" id="1152">1152</a>
 <a href="#1153" id="1153">1153</a>
-<a href="#1154" id="1154">1154</a>
-<a href="#1155" id="1155">1155</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Checking
 //!
 //! This module contains the type checking logic for the Lower Intermediate Representation.
@@ -1645,14 +1643,12 @@
             </span>}
 
             <span class="comment">// Typecheck a reference to a value.
-            </span><span class="self">Self</span>::Refer(e) =&gt; {
-                <span class="kw">match </span><span class="kw-2">*</span>e.clone() {
-                    Expr::ConstExpr(ConstExpr::Symbol(<span class="kw">_</span>)) 
-                    | Expr::Deref(<span class="kw">_</span>)
-                    | Expr::Member(<span class="kw">_</span>, <span class="kw">_</span>)
-                    | Expr::Index(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; e.type_check(env),
-                    other =&gt; <span class="prelude-val">Err</span>(Error::InvalidRefer(other.clone())),
-                }
+            </span><span class="self">Self</span>::Refer(e) =&gt; <span class="kw">match </span><span class="kw-2">*</span>e.clone() {
+                Expr::ConstExpr(ConstExpr::Symbol(<span class="kw">_</span>))
+                | Expr::Deref(<span class="kw">_</span>)
+                | Expr::Member(<span class="kw">_</span>, <span class="kw">_</span>)
+                | Expr::Index(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; e.type_check(env),
+                other =&gt; <span class="prelude-val">Err</span>(Error::InvalidRefer(other.clone())),
             },
             <span class="comment">// Typecheck a dereference of a pointer.
             </span><span class="self">Self</span>::Deref(e) =&gt; {

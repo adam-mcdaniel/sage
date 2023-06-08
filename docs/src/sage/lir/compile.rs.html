@@ -1572,7 +1572,7 @@
                             </span>.as_type(Type::Pointer(elem.clone()))
                             <span class="comment">// Index the new pointer
                             </span>.idx(<span class="kw-2">*</span>idx.clone());
-                            <span class="comment">// Push to the stack
+                        <span class="comment">// Push to the stack
                         // if optimized_idx.type_check(env).is_ok() {
                         //     return optimized_idx.compile_expr(env, output);
                         // }
@@ -1676,7 +1676,7 @@
                 </span>Expr::ConstExpr(ConstExpr::Symbol(name)) =&gt; {
                     <span class="comment">// Get the variable&#39;s offset from the frame pointer.
                     </span><span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, offset)) = env.get_var(<span class="kw-2">&amp;</span>name) {
-                        <span class="comment">// Calulate the address of the variable from the offset
+                        <span class="comment">// Calculate the address of the variable from the offset
                         </span>output.op(CoreOp::Many(<span class="macro">vec!</span>[
                             CoreOp::Move { src: FP, dst: A },
                             CoreOp::Set(B, <span class="kw-2">*</span>offset <span class="kw">as </span>i64),
@@ -1933,7 +1933,7 @@
                         </span>output.op(CoreOp::Next(
                             SP,
                             <span class="comment">// This size *includes* the tag: it allocates space for it so we
-                            // can immediately set the value under the stack poiner as the tag.
+                            // can immediately set the value under the stack pointer as the tag.
                             </span><span class="prelude-val">Some</span>(result_size <span class="kw">as </span>isize - val_size <span class="kw">as </span>isize),
                         ));
 

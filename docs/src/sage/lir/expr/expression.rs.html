@@ -1256,7 +1256,7 @@
                 <span class="macro">write!</span>(f, <span class="string">&quot;union {{ {variant} = {val}, {ty}.. }}&quot;</span>)
             }
             <span class="self">Self</span>::EnumUnion(ty, variant, val) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;enum {{ {variant} = {val}, {ty}.. }}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">&quot;{ty} of {variant} {val}&quot;</span>)
             }
 
             <span class="self">Self</span>::UnaryOp(op, x) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, op.display(x)),
