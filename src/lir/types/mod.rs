@@ -140,9 +140,10 @@ impl Type {
         }
     }
 
-    // pub fn contains(&self,)
-
-    /// Simplify an expression until it matches a given function.
+    /// Simplify an expression until it matches a given function which "approves" of a type.
+    /// This will perform template applications to simplify the type if possible as well.
+    /// 
+    /// This is the **prefered** way to simplify a type into a concrete type.
     pub fn simplify_until_matches(
         self,
         env: &Env,
@@ -156,11 +157,7 @@ impl Type {
             if f(&simplified, env)? || simplified.is_atomic() {
                 return Ok(simplified);
             }
-            simplified = simplified.simplify(env)?.perform_template_applications(
-                env,
-                &mut HashMap::new(),
-                0,
-            )?
+            simplified = simplified.simplify(env)?.perform_template_applications(env, &mut HashMap::new())?
         }
         Err(Error::CouldntSimplify(simplified, expected))
     }
@@ -476,7 +473,6 @@ impl Type {
         &self,
         env: &Env,
         previous_applications: &mut HashMap<(Type, Vec<Type>), Type>,
-        i: usize,
     ) -> Result<Self, Error> {
         // If the type is an Apply on a Poly, then we can perform the application.
         // First, perform the applications on the type arguments.
@@ -497,25 +493,19 @@ impl Type {
 
                 match poly {
                     Self::Poly(params, template) => {
-                        let save = template.clone();
                         let mut template = *template;
                         for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
                             template = template.substitute(param, ty_arg);
                         }
-                        // template = template.simplify(env)?;
-                        // previous_applications.insert((Self::Poly(params, save), ty_args), template.clone());
                         Ok(template)
                     }
                     Self::Symbol(s) => {
                         match env.get_type(s.as_str()).cloned() {
                             Some(Self::Poly(params, template)) => {
-                                let save = template.clone();
                                 let mut template = *template;
                                 for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
                                     template = template.substitute(param, ty_arg);
                                 }
-                                // template = template.simplify(env)?;
-                                // previous_applications.insert((Self::Poly(params, save), ty_args), template.clone());
                                 Ok(template)
                             }
                             Some(other) => Ok(Self::Apply(Box::new(other), ty_args)),
@@ -771,14 +761,12 @@ impl Type {
             }
 
             (Self::Apply(poly, ty_args), b) | (b, Self::Apply(poly, ty_args)) => {
-                let a = Self::Apply(poly.clone(), ty_args.clone());
                 // If the type is a polymorphic type, then we need to simplify it first.
                 let f = poly.clone().simplify_until_matches(
                     env,
                     Type::Poly(vec![], Box::new(Type::Any)),
-                    |t, env| Ok(matches!(t, Type::Poly(_, _))),
+                    |t, _env| Ok(matches!(t, Type::Poly(_, _))),
                 )?;
-                // let a = a.simplify_until_matches(env, Type::Any, |t, env| Ok(t.is_simple()))?;
 
                 match f {
                     Self::Poly(ty_params, mut template) => {
@@ -789,12 +777,6 @@ impl Type {
                         }
                         template.equals_checked(b, compared_symbols, env, i)?
                     }
-                    //     // Self::Symbol(_) => {
-                    //     //     // If the type is not a polymorphic type, then we can compare it to the
-                    //     //     // other type.
-                    //     //     // return a.equals_checked(b, compared_symbols, env, i);
-                    //     //     false
-                    //     // }
                     _ => {
                         // If the type is not a polymorphic type, then we can compare it to the
                         // other type.
@@ -873,7 +855,7 @@ impl Type {
             Type::Apply(_, _) | Type::Poly(_, _) => {
                 let t = self
                     .clone()
-                    .simplify_until_matches(env, Type::Any, |t, env| {
+                    .simplify_until_matches(env, Type::Any, |t, _env| {
                         Ok(!matches!(
                             t,
                             Type::Let(_, _, _)
@@ -958,7 +940,7 @@ impl Type {
             Type::Apply(_, _) | Type::Poly(_, _) => {
                 let t = self
                     .clone()
-                    .simplify_until_matches(env, Type::Any, |t, env| {
+                    .simplify_until_matches(env, Type::Any, |t, _env| {
                         Ok(!matches!(
                             t,
                             Type::Let(_, _, _)
@@ -1179,7 +1161,7 @@ impl fmt::Display for Type {
             }
 
             Self::Symbol(name) => write!(f, "{name}"),
-            Self::Unit(unit_name, ty) => write!(f, "unit {unit_name}"),
+            Self::Unit(unit_name, _ty) => write!(f, "unit {unit_name}"),
             Self::Let(name, ty, ret) => write!(f, "let {name} = {ty} in {ret}"),
         }
     }

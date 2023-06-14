@@ -458,7 +458,7 @@ impl Compile for Expr {
             Self::EnumUnion(mut t, variant, val) => {
                 // Get the size of the tagged union.
                 let result_size = t.get_size(env)?;
-                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
                     Ok(!matches!(
                         t,
                         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
@@ -522,10 +522,20 @@ impl Compile for Expr {
                             .as_type(Type::Pointer(elem.clone()))
                             // Index the new pointer
                             .idx(*idx.clone());
-                        // Push to the stack
-                        // if optimized_idx.type_check(env).is_ok() {
-                        //     return optimized_idx.compile_expr(env, output);
-                        // }
+                        // The optimized index *may not be possible* if the array is
+                        // not able to be referenced (like an array literal). Type checking
+                        // a reference operation will confirm that the array is able to be
+                        // referenced. If the array is not a:
+                        // 1. Dereference
+                        // 2. Index access
+                        // 3. Member access
+                        // 4. Variable
+                        // If the array is a literal, then we will have to push the array
+                        // on the stack and essentially do the same address calculations,
+                        // but the difference is that the operation is not in-place.
+                        if optimized_idx.type_check(env).is_ok() {
+                            return optimized_idx.compile_expr(env, output);
+                        }
 
                         // Get the size of the element we will return.
                         let elem_size = elem.get_size(env)?;
