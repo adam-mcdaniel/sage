@@ -32,7 +32,7 @@ This way, a compiler never has to understand the hardware it compiles to.
 
 ## The Intermediate Issues
 
-So, if LLVM can do all this already, *why implement an alterative to do the same thing?* Well, there are a few reasons:
+So, if LLVM can do all this already, *why implement an alternative to do the same thing?* Well, there are a few reasons:
 
 1. Most compiler backends are complex.
 
