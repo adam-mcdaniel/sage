@@ -57,12 +57,12 @@ In order to solve some of these problems, [I've created another virtual machine]
 5. The instruction set must be able to implement abstractions like functions, pointers, and compound data types.
 6. ***Interacting with the environment (the outside world) should not change the state of anything but the register***. 
 
-Without further ado, here's the virtual machine instruction set.
-
 #### Examples
 
 The instruction set is composed of two halves of 24 instructions each: [the "Core", canonical instructions](CORE.md#the-core-instructions-in-depth), and the "Standard" instructions. Here are some example below demonstrating the language. There are others in the examples folder.
 
+- [AES](examples/vm/aes.vm.sg)
+- [Calculator](examples/vm/calculator.vm.sg)
 - [Factorial](examples/vm/factorial.vm.sg)
 - [Cat](examples/vm/cat.vm.sg)
 
@@ -141,6 +141,13 @@ let x = (3, Null),
 - [Inline Assembly](examples/lir/inline-assembly.lir.sg)
 - [Simulating Variable Capturing Functions](examples/lir/lambda-sim.lir.sg)
 
-## The Higher Intermediate Representation
+## The Sage Frontend
 
 🚧 🏗️ ⚠️ This is under construction! ⚠️ 🏗️ 🚧
+
+Here are examples of the current state of the frontend for Sage.
+
+- [128, 192, and 256 bit AES encryption and decryption](examples/frontend/AES.sg)
+- [A Calculator (Parser and Evaluator)](examples/frontend/calculator.sg)
+- [Tree and List Enums (Generics)](examples/frontend/trees.sg)
+- [Allocator](examples/frontend/allocator.sg)
