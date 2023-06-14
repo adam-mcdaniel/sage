@@ -493,8 +493,13 @@ impl TypeCheck for Expr {
             Self::Refer(e) => match *e.clone() {
                 Expr::ConstExpr(ConstExpr::Symbol(_))
                 | Expr::Deref(_)
-                | Expr::Member(_, _)
                 | Expr::Index(_, _) => e.type_check(env),
+                Expr::Member(inner, _) => {
+                    // Confirm that the inner expression can be referenced.
+                    inner.refer().type_check(env)?;
+                    // If so, then make sure the expression being accessed is also sound.
+                    e.type_check(env)
+                },
                 other => Err(Error::InvalidRefer(other.clone())),
             },
             // Typecheck a dereference of a pointer.
@@ -912,8 +917,8 @@ impl TypeCheck for ConstExpr {
                         cast_ty.clone(),
                     ));
                 }
-                // If it is, return success.
-                Ok(())
+                // If it is, return the result of the inner expression's typechecking result.
+                expr.type_check(env)
             }
 
             // Get the size of an expression in cells.
