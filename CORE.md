@@ -4,7 +4,7 @@ First, the anatomy of the virtual machine:
 
 ![Anatomy](assets/anatomy.svg)
 
-The machine is composed of 4 components: a static array of cells (a turing tape), a pointer (the turing tape head), a register (a single cell), and a "dereference" stack (a stack of addresses used to keep track of the tape head's changing position).
+The machine is composed of 5 components: a static array of cells (a turing tape), a pointer (the turing tape head), a register (a single cell), a "dereference" stack (a stack of addresses used to keep track of the tape head's changing position), and a call stack (to resume execution after a function call).
 
 User input should be encoded through the interface I/O (used with `Get` and `Put`) attached to the virtual machine.
 
