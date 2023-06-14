@@ -75,7 +75,7 @@ impl PolyProcedure {
             })
             .collect::<Result<Vec<_>, Error>>()?;
 
-        let bind_type_args = |mut ty: Type| -> Result<Type, Error> {
+        let bind_type_args = |mut _ty: Type| -> Result<Type, Error> {
             // for (name, arg) in self.ty_params.iter().zip(ty_args.iter()) {
             //     // ty = Type::let_bind(name, if arg == &Type::Symbol(name.clone()) {
             //     //     Type::Unit(name.clone(), Box::new(Type::Any))

@@ -150,7 +150,7 @@ impl GetSize for Type {
             }
 
             // Get the size of an `Apply` type.
-            Self::Apply(poly, ty_args) => {
+            Self::Apply(poly, _ty_args) => {
                 if let Ok(size) = poly.get_size_checked(env, i) {
                     return Ok(size);
                 }
@@ -158,7 +158,7 @@ impl GetSize for Type {
                 let result = self.clone().simplify_until_matches(
                     env,
                     Type::Poly(vec![], Box::new(Type::Any)),
-                    |t, env| Ok(t.is_simple()),
+                    |t, _env| Ok(t.is_simple()),
                 )?;
 
                 result.get_size_checked(env, i)?

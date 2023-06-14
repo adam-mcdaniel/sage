@@ -195,7 +195,7 @@ impl Architecture for X86 {
         })
     }
 
-    fn end(&mut self, matching: &CoreOp, fun: Option<usize>) -> String {
+    fn end(&mut self, matching: &CoreOp, _fun: Option<usize>) -> String {
         match matching {
             CoreOp::Function => {
                 let label = self.branch_match.pop().unwrap();
@@ -213,7 +213,7 @@ impl Architecture for X86 {
         }
     }
 
-    fn declare_proc(&mut self, label_id: usize) -> String {
+    fn declare_proc(&mut self, _label_id: usize) -> String {
         let result = format!("movq $fun{fun_count}, funs+{}(%rip)\n{indent}jmp fun_end{fun_count}\nfun{fun_count}:\n{indent}pushq   %rbp\n{indent}movq %rsp, %rbp\n", self.fun_count * 8, fun_count = self.fun_count, indent = self.indentation().unwrap());
         self.branch_match
             .push(format!("fun_end{fun_count}", fun_count = self.fun_count));
@@ -278,15 +278,15 @@ addq $8, %rsp       # Deallocate the space on the stack",
         // Ok("*ptr = reg;".to_string())
         todo!()
     }
-    fn prelude(&self, is_core: bool) -> Option<String> {
-        let mut result = ".text
+    fn prelude(&self, _is_core: bool) -> Option<String> {
+        let result = ".text
 .globl main
 main:
 ";
         Some(result.to_string())
     }
 
-    fn post_funs(&self, funs: Vec<i32>) -> Option<String> {
+    fn post_funs(&self, _funs: Vec<i32>) -> Option<String> {
         None
     }
 

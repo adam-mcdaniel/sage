@@ -13,7 +13,6 @@ struct FrontendParser;
 
 #[derive(Clone, Debug)]
 pub enum Statement {
-    Match(Expr, Vec<(Pattern, Self)>),
     Let(Vec<(String, Option<Type>, Expr)>),
     Assign(Expr, Option<Box<dyn AssignOp + 'static>>, Expr),
     If(Expr, Box<Self>, Option<Box<Self>>),
@@ -36,12 +35,6 @@ impl Statement {
         // }, rest_expr])
 
         let stmt = match (self, rest.clone()) {
-            (Self::Match(e, arms), _) => Expr::Match(
-                Box::new(e),
-                arms.into_iter()
-                    .map(|(a, b)| (a, b.to_expr(None)))
-                    .collect(),
-            ),
             (Self::Assign(lhs, op, rhs), _) => {
                 match op {
                     Some(op) => lhs.refer().assign(op, rhs),

@@ -15,7 +15,7 @@ use crate::lir::{
 };
 
 use core::fmt;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 /// A compiletime expression.
 #[derive(Clone, Debug, PartialEq)]
