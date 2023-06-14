@@ -6,7 +6,7 @@ First, the anatomy of the virtual machine:
 
 The machine is composed of 4 components: a static array of cells (a turing tape), a pointer (the turing tape head), a register (a single cell), and a "dereference" stack (a stack of addresses used to keep track of the tape head's changing position).
 
-In the pure, core variant of the virtual machine, there are no "user input" I/O instructions: user input should be encoded through the interface I/O (used with `Get` and `Put`) attached to the virtual machine.
+User input should be encoded through the interface I/O (used with `Get` and `Put`) attached to the virtual machine.
 
 ## Memory
 
