@@ -508,7 +508,7 @@ impl fmt::Display for ConstExpr {
                 write!(f, "]")
             }
             Self::Bool(x) => write!(f, "{}", if *x { "true" } else { "false" }),
-            Self::Char(ch) => write!(f, "{ch}"),
+            Self::Char(ch) => write!(f, "{ch:?}"),
             Self::Cell(n) => write!(f, "{n:x}"),
             Self::Int(n) => write!(f, "{n}"),
             Self::Float(n) => write!(f, "{n}"),
@@ -516,7 +516,7 @@ impl fmt::Display for ConstExpr {
             Self::Null => write!(f, "Null"),
 
             Self::Symbol(name) => write!(f, "{name}"),
-            Self::Of(t, name) => write!(f, "{name} of {t}"),
+            Self::Of(t, name) => write!(f, "{t} of {name}"),
             Self::SizeOfExpr(expr) => write!(f, "sizeofexpr({expr}"),
             Self::SizeOfType(ty) => write!(f, "sizeof({ty}"),
         }
