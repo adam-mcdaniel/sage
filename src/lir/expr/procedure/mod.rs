@@ -17,6 +17,8 @@
 //! version of the procedure. This can then be compiled directly to assembly.
 mod mono;
 mod poly;
+mod builtin;
 
 pub use mono::*;
 pub use poly::*;
+pub use builtin::*;

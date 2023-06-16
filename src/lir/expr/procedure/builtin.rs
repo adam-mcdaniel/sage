@@ -112,12 +112,12 @@ impl fmt::Display for CoreBuiltin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "proc(")?;
         for (i, op) in self.args.iter().enumerate() {
-            write!(f, "{}: {:?}", op.0, op.1)?;
+            write!(f, "{}: {}", op.0, op.1)?;
             if i < self.body.len() - 1 {
                 write!(f, ", ")?
             }
         }
-        write!(f, ") -> {:?} = core {{", self.ret)?;
+        write!(f, ") -> {} = core {{", self.ret)?;
         for (i, op) in self.body.iter().enumerate() {
             op.fmt(f)?;
             if i < self.body.len() - 1 {
@@ -133,12 +133,12 @@ impl fmt::Display for StandardBuiltin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "proc(")?;
         for (i, op) in self.args.iter().enumerate() {
-            write!(f, "{}: {:?}", op.0, op.1)?;
+            write!(f, "{}: {}", op.0, op.1)?;
             if i < self.body.len() - 1 {
                 write!(f, ", ")?
             }
         }
-        write!(f, ") -> {:?} = std {{", self.ret)?;
+        write!(f, ") -> {} = std {{", self.ret)?;
         for (i, op) in self.body.iter().enumerate() {
             op.fmt(f)?;
             if i < self.body.len() - 1 {
