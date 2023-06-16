@@ -1266,13 +1266,6 @@
 <a href="#1266" id="1266">1266</a>
 <a href="#1267" id="1267">1267</a>
 <a href="#1268" id="1268">1268</a>
-<a href="#1269" id="1269">1269</a>
-<a href="#1270" id="1270">1270</a>
-<a href="#1271" id="1271">1271</a>
-<a href="#1272" id="1272">1272</a>
-<a href="#1273" id="1273">1273</a>
-<a href="#1274" id="1274">1274</a>
-<a href="#1275" id="1275">1275</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::lir::<span class="kw-2">*</span>;
 <span class="kw">use </span>pest::{
     error::Error,
@@ -1288,7 +1281,6 @@
 
 <span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub enum </span>Statement {
-    Match(Expr, Vec&lt;(Pattern, <span class="self">Self</span>)&gt;),
     Let(Vec&lt;(String, <span class="prelude-ty">Option</span>&lt;Type&gt;, Expr)&gt;),
     Assign(Expr, <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>AssignOp + <span class="lifetime">&#39;static</span>&gt;&gt;, Expr),
     If(Expr, Box&lt;<span class="self">Self</span>&gt;, <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="self">Self</span>&gt;&gt;),
@@ -1311,12 +1303,6 @@
         // }, rest_expr])
 
         </span><span class="kw">let </span>stmt = <span class="kw">match </span>(<span class="self">self</span>, rest.clone()) {
-            (<span class="self">Self</span>::Match(e, arms), <span class="kw">_</span>) =&gt; Expr::Match(
-                Box::new(e),
-                arms.into_iter()
-                    .map(|(a, b)| (a, b.to_expr(<span class="prelude-val">None</span>)))
-                    .collect(),
-            ),
             (<span class="self">Self</span>::Assign(lhs, op, rhs), <span class="kw">_</span>) =&gt; {
                 <span class="kw">match </span>op {
                     <span class="prelude-val">Some</span>(op) =&gt; lhs.refer().assign(op, rhs),

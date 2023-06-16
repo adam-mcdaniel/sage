@@ -1151,6 +1151,11 @@
 <a href="#1151" id="1151">1151</a>
 <a href="#1152" id="1152">1152</a>
 <a href="#1153" id="1153">1153</a>
+<a href="#1154" id="1154">1154</a>
+<a href="#1155" id="1155">1155</a>
+<a href="#1156" id="1156">1156</a>
+<a href="#1157" id="1157">1157</a>
+<a href="#1158" id="1158">1158</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Checking
 //!
 //! This module contains the type checking logic for the Lower Intermediate Representation.
@@ -1646,8 +1651,13 @@
             </span><span class="self">Self</span>::Refer(e) =&gt; <span class="kw">match </span><span class="kw-2">*</span>e.clone() {
                 Expr::ConstExpr(ConstExpr::Symbol(<span class="kw">_</span>))
                 | Expr::Deref(<span class="kw">_</span>)
-                | Expr::Member(<span class="kw">_</span>, <span class="kw">_</span>)
                 | Expr::Index(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; e.type_check(env),
+                Expr::Member(inner, <span class="kw">_</span>) =&gt; {
+                    <span class="comment">// Confirm that the inner expression can be referenced.
+                    </span>inner.refer().type_check(env)<span class="question-mark">?</span>;
+                    <span class="comment">// If so, then make sure the expression being accessed is also sound.
+                    </span>e.type_check(env)
+                },
                 other =&gt; <span class="prelude-val">Err</span>(Error::InvalidRefer(other.clone())),
             },
             <span class="comment">// Typecheck a dereference of a pointer.
@@ -2065,8 +2075,8 @@
                         cast_ty.clone(),
                     ));
                 }
-                <span class="comment">// If it is, return success.
-                </span><span class="prelude-val">Ok</span>(())
+                <span class="comment">// If it is, return the result of the inner expression&#39;s typechecking result.
+                </span>expr.type_check(env)
             }
 
             <span class="comment">// Get the size of an expression in cells.

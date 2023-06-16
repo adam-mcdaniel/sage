@@ -143,13 +143,6 @@ def multiply(a: Int, b: Int): Int {
     return result & 0xFF;
 }
 
-let x = 0xFFFFFFFF;
-print_hexln(x, True);
-print_hexln(right_shift(x, 1), True);
-
-print_hexln(multiply(0x53, 0xCA), True);
-
-
 type State = [Int * 16];
 
 def row_major(c0r0: Int, c1r0: Int, c2r0: Int, c3r0: Int,
@@ -443,13 +436,15 @@ let state: State = row_major(
     0x08, 0x09, 0x0A, 0x0B,
     0x0C, 0x0D, 0x0E, 0x0F
 );
-
 print_keyln(&key);
+print("Before encryption: \\n");
 print_state(&state);
 print("\\n");
+print("After encryption: \\n");
 cipher(&state, &key);
 print_state(&state);
 print("\\n");
+print("After decryption: \\n");
 inverse_cipher(&state, &key);
 print_state(&state);
 print("\\n");
@@ -1425,6 +1420,7 @@ print(fact(n));`);
         document.getElementById("run").addEventListener("click", compile_and_run, false);
         </script>
         <select id="example" style="height: 3em; float: left;">
+            <option value="aes">Click to select example program (Default AES)</option>
             <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
             <option value="result">Result Enum (Generics)</option>
             <option value="calculator">Calculator (Parser)</option>

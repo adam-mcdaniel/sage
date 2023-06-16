@@ -1048,6 +1048,16 @@
 <a href="#1048" id="1048">1048</a>
 <a href="#1049" id="1049">1049</a>
 <a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compile
 //!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
@@ -1508,7 +1518,7 @@
             </span><span class="self">Self</span>::EnumUnion(<span class="kw-2">mut </span>t, variant, val) =&gt; {
                 <span class="comment">// Get the size of the tagged union.
                 </span><span class="kw">let </span>result_size = t.get_size(env)<span class="question-mark">?</span>;
-                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
                     <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
                         t,
                         Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
@@ -1572,12 +1582,22 @@
                             </span>.as_type(Type::Pointer(elem.clone()))
                             <span class="comment">// Index the new pointer
                             </span>.idx(<span class="kw-2">*</span>idx.clone());
-                        <span class="comment">// Push to the stack
-                        // if optimized_idx.type_check(env).is_ok() {
-                        //     return optimized_idx.compile_expr(env, output);
-                        // }
+                        <span class="comment">// The optimized index *may not be possible* if the array is
+                        // not able to be referenced (like an array literal). Type checking
+                        // a reference operation will confirm that the array is able to be
+                        // referenced. If the array is not a:
+                        // 1. Dereference
+                        // 2. Index access
+                        // 3. Member access
+                        // 4. Variable
+                        // If the array is a literal, then we will have to push the array
+                        // on the stack and essentially do the same address calculations,
+                        // but the difference is that the operation is not in-place.
+                        </span><span class="kw">if </span>optimized_idx.type_check(env).is_ok() {
+                            <span class="kw">return </span>optimized_idx.compile_expr(env, output);
+                        }
 
-                        // Get the size of the element we will return.
+                        <span class="comment">// Get the size of the element we will return.
                         </span><span class="kw">let </span>elem_size = elem.get_size(env)<span class="question-mark">?</span>;
                         <span class="comment">// Push the array onto the stack.
                         </span>val.compile_expr(env, output)<span class="question-mark">?</span>;

@@ -524,7 +524,7 @@
         </span>})
     }
 
-    <span class="kw">fn </span>end(<span class="kw-2">&amp;mut </span><span class="self">self</span>, matching: <span class="kw-2">&amp;</span>CoreOp, fun: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; String {
+    <span class="kw">fn </span>end(<span class="kw-2">&amp;mut </span><span class="self">self</span>, matching: <span class="kw-2">&amp;</span>CoreOp, _fun: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; String {
         <span class="kw">match </span>matching {
             CoreOp::Function =&gt; {
                 <span class="kw">let </span>label = <span class="self">self</span>.branch_match.pop().unwrap();
@@ -542,7 +542,7 @@
         }
     }
 
-    <span class="kw">fn </span>declare_proc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, label_id: usize) -&gt; String {
+    <span class="kw">fn </span>declare_proc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _label_id: usize) -&gt; String {
         <span class="kw">let </span>result = <span class="macro">format!</span>(<span class="string">&quot;movq $fun{fun_count}, funs+{}(%rip)\n{indent}jmp fun_end{fun_count}\nfun{fun_count}:\n{indent}pushq   %rbp\n{indent}movq %rsp, %rbp\n&quot;</span>, <span class="self">self</span>.fun_count * <span class="number">8</span>, fun_count = <span class="self">self</span>.fun_count, indent = <span class="self">self</span>.indentation().unwrap());
         <span class="self">self</span>.branch_match
             .push(<span class="macro">format!</span>(<span class="string">&quot;fun_end{fun_count}&quot;</span>, fun_count = <span class="self">self</span>.fun_count));
@@ -607,15 +607,15 @@ addq $8, %rsp       # Deallocate the space on the stack&quot;</span>,
         <span class="comment">// Ok(&quot;*ptr = reg;&quot;.to_string())
         </span><span class="macro">todo!</span>()
     }
-    <span class="kw">fn </span>prelude(<span class="kw-2">&amp;</span><span class="self">self</span>, is_core: bool) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="string">&quot;.text
+    <span class="kw">fn </span>prelude(<span class="kw-2">&amp;</span><span class="self">self</span>, _is_core: bool) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+        <span class="kw">let </span>result = <span class="string">&quot;.text
 .globl main
 main:
 &quot;</span>;
         <span class="prelude-val">Some</span>(result.to_string())
     }
 
-    <span class="kw">fn </span>post_funs(<span class="kw-2">&amp;</span><span class="self">self</span>, funs: Vec&lt;i32&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+    <span class="kw">fn </span>post_funs(<span class="kw-2">&amp;</span><span class="self">self</span>, _funs: Vec&lt;i32&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
         <span class="prelude-val">None
     </span>}
 

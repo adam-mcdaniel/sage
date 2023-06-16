@@ -288,7 +288,7 @@
             })
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, Error&gt;&gt;()<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>bind_type_args = |<span class="kw-2">mut </span>ty: Type| -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
+        <span class="kw">let </span>bind_type_args = |ty: Type| -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
             <span class="comment">// for (name, arg) in self.ty_params.iter().zip(ty_args.iter()) {
             //     // ty = Type::let_bind(name, if arg == &amp;Type::Symbol(name.clone()) {
             //     //     Type::Unit(name.clone(), Box::new(Type::Any))

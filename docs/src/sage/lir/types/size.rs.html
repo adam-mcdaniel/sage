@@ -411,7 +411,7 @@
             </span>}
 
             <span class="comment">// Get the size of an `Apply` type.
-            </span><span class="self">Self</span>::Apply(poly, ty_args) =&gt; {
+            </span><span class="self">Self</span>::Apply(poly, _ty_args) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Ok</span>(size) = poly.get_size_checked(env, i) {
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(size);
                 }
@@ -419,7 +419,7 @@
                 <span class="kw">let </span>result = <span class="self">self</span>.clone().simplify_until_matches(
                     env,
                     Type::Poly(<span class="macro">vec!</span>[], Box::new(Type::Any)),
-                    |t, env| <span class="prelude-val">Ok</span>(t.is_simple()),
+                    |t, _env| <span class="prelude-val">Ok</span>(t.is_simple()),
                 )<span class="question-mark">?</span>;
 
                 result.get_size_checked(env, i)<span class="question-mark">?

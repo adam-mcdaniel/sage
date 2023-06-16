@@ -1257,24 +1257,6 @@
 <a href="#1257" id="1257">1257</a>
 <a href="#1258" id="1258">1258</a>
 <a href="#1259" id="1259">1259</a>
-<a href="#1260" id="1260">1260</a>
-<a href="#1261" id="1261">1261</a>
-<a href="#1262" id="1262">1262</a>
-<a href="#1263" id="1263">1263</a>
-<a href="#1264" id="1264">1264</a>
-<a href="#1265" id="1265">1265</a>
-<a href="#1266" id="1266">1266</a>
-<a href="#1267" id="1267">1267</a>
-<a href="#1268" id="1268">1268</a>
-<a href="#1269" id="1269">1269</a>
-<a href="#1270" id="1270">1270</a>
-<a href="#1271" id="1271">1271</a>
-<a href="#1272" id="1272">1272</a>
-<a href="#1273" id="1273">1273</a>
-<a href="#1274" id="1274">1274</a>
-<a href="#1275" id="1275">1275</a>
-<a href="#1276" id="1276">1276</a>
-<a href="#1277" id="1277">1277</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Types Module
 //!
 //! This module contains a collection of types and traits
@@ -1417,9 +1399,10 @@
         }
     }
 
-    <span class="comment">// pub fn contains(&amp;self,)
-
-    </span><span class="doccomment">/// Simplify an expression until it matches a given function.
+    <span class="doccomment">/// Simplify an expression until it matches a given function which &quot;approves&quot; of a type.
+    /// This will perform template applications to simplify the type if possible as well.
+    /// 
+    /// This is the **prefered** way to simplify a type into a concrete type.
     </span><span class="kw">pub fn </span>simplify_until_matches(
         <span class="self">self</span>,
         env: <span class="kw-2">&amp;</span>Env,
@@ -1433,11 +1416,7 @@
             </span><span class="kw">if </span>f(<span class="kw-2">&amp;</span>simplified, env)<span class="question-mark">? </span>|| simplified.is_atomic() {
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(simplified);
             }
-            simplified = simplified.simplify(env)<span class="question-mark">?</span>.perform_template_applications(
-                env,
-                <span class="kw-2">&amp;mut </span>HashMap::new(),
-                <span class="number">0</span>,
-            )<span class="question-mark">?
+            simplified = simplified.simplify(env)<span class="question-mark">?</span>.perform_template_applications(env, <span class="kw-2">&amp;mut </span>HashMap::new())<span class="question-mark">?
         </span>}
         <span class="prelude-val">Err</span>(Error::CouldntSimplify(simplified, expected))
     }
@@ -1753,7 +1732,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         env: <span class="kw-2">&amp;</span>Env,
         previous_applications: <span class="kw-2">&amp;mut </span>HashMap&lt;(Type, Vec&lt;Type&gt;), Type&gt;,
-        i: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
         <span class="comment">// If the type is an Apply on a Poly, then we can perform the application.
         // First, perform the applications on the type arguments.
@@ -1774,26 +1752,20 @@
 
                 <span class="kw">match </span>poly {
                     <span class="self">Self</span>::Poly(params, template) =&gt; {
-                        <span class="kw">let </span>save = template.clone();
                         <span class="kw">let </span><span class="kw-2">mut </span>template = <span class="kw-2">*</span>template;
                         <span class="kw">for </span>(param, ty_arg) <span class="kw">in </span>params.iter().zip(ty_args.iter()) {
                             template = template.substitute(param, ty_arg);
                         }
-                        <span class="comment">// template = template.simplify(env)?;
-                        // previous_applications.insert((Self::Poly(params, save), ty_args), template.clone());
-                        </span><span class="prelude-val">Ok</span>(template)
+                        <span class="prelude-val">Ok</span>(template)
                     }
                     <span class="self">Self</span>::Symbol(s) =&gt; {
                         <span class="kw">match </span>env.get_type(s.as_str()).cloned() {
                             <span class="prelude-val">Some</span>(<span class="self">Self</span>::Poly(params, template)) =&gt; {
-                                <span class="kw">let </span>save = template.clone();
                                 <span class="kw">let </span><span class="kw-2">mut </span>template = <span class="kw-2">*</span>template;
                                 <span class="kw">for </span>(param, ty_arg) <span class="kw">in </span>params.iter().zip(ty_args.iter()) {
                                     template = template.substitute(param, ty_arg);
                                 }
-                                <span class="comment">// template = template.simplify(env)?;
-                                // previous_applications.insert((Self::Poly(params, save), ty_args), template.clone());
-                                </span><span class="prelude-val">Ok</span>(template)
+                                <span class="prelude-val">Ok</span>(template)
                             }
                             <span class="prelude-val">Some</span>(other) =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Apply(Box::new(other), ty_args)),
                             <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(<span class="self">self</span>.clone()),
@@ -2048,16 +2020,14 @@
             }
 
             (<span class="self">Self</span>::Apply(poly, ty_args), b) | (b, <span class="self">Self</span>::Apply(poly, ty_args)) =&gt; {
-                <span class="kw">let </span>a = <span class="self">Self</span>::Apply(poly.clone(), ty_args.clone());
                 <span class="comment">// If the type is a polymorphic type, then we need to simplify it first.
                 </span><span class="kw">let </span>f = poly.clone().simplify_until_matches(
                     env,
                     Type::Poly(<span class="macro">vec!</span>[], Box::new(Type::Any)),
-                    |t, env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>))),
+                    |t, _env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>))),
                 )<span class="question-mark">?</span>;
-                <span class="comment">// let a = a.simplify_until_matches(env, Type::Any, |t, env| Ok(t.is_simple()))?;
 
-                </span><span class="kw">match </span>f {
+                <span class="kw">match </span>f {
                     <span class="self">Self</span>::Poly(ty_params, <span class="kw-2">mut </span>template) =&gt; {
                         <span class="comment">// let mut new_env = env.clone();
                         </span><span class="kw">for </span>(name, ty) <span class="kw">in </span>ty_params.iter().zip(ty_args.iter()) {
@@ -2066,13 +2036,7 @@
                         }
                         template.equals_checked(b, compared_symbols, env, i)<span class="question-mark">?
                     </span>}
-                    <span class="comment">//     // Self::Symbol(_) =&gt; {
-                    //     //     // If the type is not a polymorphic type, then we can compare it to the
-                    //     //     // other type.
-                    //     //     // return a.equals_checked(b, compared_symbols, env, i);
-                    //     //     false
-                    //     // }
-                    </span><span class="kw">_ </span>=&gt; {
+                    <span class="kw">_ </span>=&gt; {
                         <span class="comment">// If the type is not a polymorphic type, then we can compare it to the
                         // other type.
                         // return a.equals_checked(b, compared_symbols, env, i);
@@ -2150,7 +2114,7 @@
             Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
                 <span class="kw">let </span>t = <span class="self">self
                     </span>.clone()
-                    .simplify_until_matches(env, Type::Any, |t, env| {
+                    .simplify_until_matches(env, Type::Any, |t, _env| {
                         <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
                             t,
                             Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
@@ -2235,7 +2199,7 @@
             Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
                 <span class="kw">let </span>t = <span class="self">self
                     </span>.clone()
-                    .simplify_until_matches(env, Type::Any, |t, env| {
+                    .simplify_until_matches(env, Type::Any, |t, _env| {
                         <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
                             t,
                             Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
@@ -2456,7 +2420,7 @@
             }
 
             <span class="self">Self</span>::Symbol(name) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{name}&quot;</span>),
-            <span class="self">Self</span>::Unit(unit_name, ty) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;unit {unit_name}&quot;</span>),
+            <span class="self">Self</span>::Unit(unit_name, _ty) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;unit {unit_name}&quot;</span>),
             <span class="self">Self</span>::Let(name, ty, ret) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;let {name} = {ty} in {ret}&quot;</span>),
         }
     }
