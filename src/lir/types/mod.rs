@@ -1061,7 +1061,7 @@ impl Simplify for Type {
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Any => write!(f, "*"),
+            Self::Any => write!(f, "Any"),
             Self::Never => write!(f, "Never"),
             Self::Pointer(ty) => write!(f, "&{ty}"),
             Self::Bool => write!(f, "Bool"),
