@@ -37,6 +37,11 @@ impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
         let i = i + 1;
         Ok(match self {
+            Self::AnnotatedWithSource { expr, loc } => {
+                // Get the type of the inner expression.
+                expr.get_type_checked(env, i).map_err(|e| e.with_loc(loc))?
+            }
+
             Self::Match(expr, branches) => {
                 for (pat, branch) in branches {
                     return pat.get_branch_result_type(&expr, branch, env);
@@ -402,6 +407,10 @@ impl GetType for Expr {
     /// Substitute a type in a given expression.
     fn substitute(&mut self, name: &str, ty: &Type) {
         match self {
+            Self::AnnotatedWithSource { expr, .. } => {
+                expr.substitute(name, ty);
+            }
+
             Self::ConstExpr(cexpr) => cexpr.substitute(name, ty),
             Self::LetConst(name, cexpr, expr) => {
                 cexpr.substitute(name, ty);

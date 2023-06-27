@@ -67,6 +67,11 @@ impl Compile for Expr {
 
         // Compile the expression.
         match self {
+            Self::AnnotatedWithSource { expr, loc } => {
+                // Compile the expression.
+                expr.compile_expr(env, output).map_err(|e| e.with_loc(&loc))?;
+            }
+
             Self::Match(expr, branches) => {
                 // Generate the pattern matching code.
                 Pattern::match_pattern(&expr, &branches, env)?
@@ -632,6 +637,15 @@ impl Compile for Expr {
 
             // Compile a reference operation (on a symbol or a field of a value).
             Self::Refer(val) => match *val {
+                // Get the value being referenced
+                Expr::AnnotatedWithSource { expr, loc } => {
+                    Self::Refer(expr).compile_expr(env, output).map_err(|e| e.with_loc(&loc))?
+                }
+
+                Expr::ConstExpr(ConstExpr::AnnotatedWithSource { expr, loc }) => {
+                    Self::Refer(Box::new(Expr::ConstExpr(*expr))).compile_expr(env, output).map_err(|e| e.with_loc(&loc))?
+                }
+
                 // Get the reference of a variable.
                 Expr::ConstExpr(ConstExpr::Symbol(name)) => {
                     // Get the variable's offset from the frame pointer.
@@ -766,6 +780,9 @@ impl Compile for ConstExpr {
 
         // Compile the constant expression.
         match self {
+            Self::AnnotatedWithSource { expr, loc } => {
+                expr.compile_expr(env, output).map_err(|err| err.with_loc(&loc))?;
+            }
             Self::LetTypes(bindings, expr) => {
                 let mut new_env = env.clone();
                 for (name, ty) in bindings {

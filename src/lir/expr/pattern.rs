@@ -424,31 +424,31 @@ impl Pattern {
             .and_then(|x| x.type_check(env))
         {
             Ok(()) => {}
-            // Err(Error::InvalidBinaryOp(_, a, b)) => {
-            //     let expected = a.get_type(env)?;
-            //     let found = b.get_type(env)?;
-            //     return Err(Error::MismatchedTypes {
-            //         expected,
-            //         found,
-            //         expr: matching_expr.clone(),
-            //     });
-            // },
-            // Err(Error::InvalidBinaryOpTypes(_, expected, found)) => {
-            //     return Err(Error::MismatchedTypes {
-            //         expected,
-            //         found,
-            //         expr: matching_expr.clone(),
-            //     })
-            // },
-            // _ => return Err(Error::MismatchedTypes {
-            //     expected,
-            //     found: matching_ty,
-            //     expr: matching_expr.clone(),
-            // })
-            Err(e) => return Err(e),
+            Err(Error::InvalidBinaryOp(_, a, b)) => {
+                let expected = a.get_type(env)?;
+                let found = b.get_type(env)?;
+                return Err(Error::MismatchedTypes {
+                    expected,
+                    found,
+                    expr: Expr::Match(Box::new(matching_expr.clone()), vec![(self.clone(), branch.clone())]),
+                });
+            },
+            Err(Error::InvalidBinaryOpTypes(_, expected, found)) => {
+                return Err(Error::MismatchedTypes {
+                    expected,
+                    found,
+                    expr: Expr::Match(Box::new(matching_expr.clone()), vec![(self.clone(), branch.clone())]),
+                })
+            },
+            _ => return Err(Error::MismatchedTypes {
+                expected,
+                found: matching_ty,
+                expr: Expr::Match(Box::new(matching_expr.clone()), vec![(self.clone(), branch.clone())])
+            })
+            // Err(e) => return Err(Error::InvalidPatternForExpr(matching_expr.clone(), self.clone())),
         }
         // Generate an expression with the bindings defined for the branch.
-        let result_expr = self.bind(&matching_expr, &matching_ty, &branch, env)?;
+        let result_expr = self.bind(&matching_expr, &matching_ty, &branch, env).map_err(|_| Error::InvalidPatternForExpr(matching_expr.clone(), self.clone()))?;
         // Type-check the expression generated to bind the pattern.
         result_expr.type_check(env)?;
         // Get the type of the expression generated to bind the pattern.

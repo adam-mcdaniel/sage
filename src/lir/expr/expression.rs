@@ -7,6 +7,7 @@
 
 use super::ops::*;
 use crate::lir::{ConstExpr, Pattern, Procedure, Type};
+use crate::parse::SourceCodeLocation;
 use core::fmt;
 use std::collections::BTreeMap;
 
@@ -15,6 +16,15 @@ use std::collections::BTreeMap;
 /// A runtime expression.
 #[derive(Clone, Debug)]
 pub enum Expr {
+    /// An expression along with data about its source code location.
+    /// This is used for error reporting.
+    AnnotatedWithSource {
+        // The expression itself.
+        expr: Box<Self>,
+        /// The source code location of the expression.
+        loc: SourceCodeLocation
+    },
+
     /// A constant expression.
     ConstExpr(ConstExpr),
     /// A block of expressions. The last expression in the block is the value of the block.
@@ -419,6 +429,7 @@ impl Expr {
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Self::AnnotatedWithSource { expr, .. } => write!(f, "{expr}"),
             Self::ConstExpr(expr) => write!(f, "{expr}"),
             Self::Many(exprs) => {
                 write!(f, "{{ ")?;
@@ -582,6 +593,7 @@ impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         use Expr::*;
         match (self, other) {
+            (Self::AnnotatedWithSource { expr, .. }, other) | (other, Self::AnnotatedWithSource { expr, .. })  => &**expr == other,
             // A constant expression.
             (ConstExpr(a), ConstExpr(b)) => a == b,
             // A block of expressions. The last expression in the block is the value of the block.
