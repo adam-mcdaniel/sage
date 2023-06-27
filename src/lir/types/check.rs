@@ -496,6 +496,9 @@ impl TypeCheck for Expr {
 
             // Typecheck a reference to a value.
             Self::Refer(e) => match *e.clone() {
+                Expr::AnnotatedWithSource { expr, loc } => {
+                    Self::Refer(expr).type_check(env).map_err(|e| e.with_loc(&loc))
+                }
                 Expr::ConstExpr(ConstExpr::Symbol(_))
                 | Expr::Deref(_)
                 | Expr::Index(_, _) => e.type_check(env),
@@ -876,7 +879,7 @@ impl TypeCheck for ConstExpr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
         match self {
             Self::AnnotatedWithSource { expr, loc } => {
-                expr.type_check(env).map_err(|err| err.with_loc(loc))
+                expr.type_check(env).map_err(|e| e.with_loc(loc))
             }
 
             // These are all guaranteed to be valid, or

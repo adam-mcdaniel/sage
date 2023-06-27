@@ -208,9 +208,14 @@ pub enum Error {
 }
 
 impl Error {
-    pub fn with_loc(self, location: &SourceCodeLocation) -> Self {
-        match self {
-            Self::AnnotatedWithSource { .. } => self,
+    pub fn with_loc(mut self, location: &SourceCodeLocation) -> Self {
+        match &mut self {
+            Self::AnnotatedWithSource { loc, .. } => {
+                if location.filename.is_some() && loc.filename.is_none() {
+                    loc.filename = location.filename.clone();
+                }
+                self
+            },
             _ => Self::AnnotatedWithSource {
                 err: Box::new(self),
                 loc: location.clone(),

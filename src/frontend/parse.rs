@@ -786,7 +786,7 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
         offset,
     };
 
-    match pair.as_rule() {
+    let result = match pair.as_rule() {
         Rule::expr | Rule::expr_atom | Rule::expr_group => {
             pair.into_inner().map(parse_expr).next().unwrap()
         }
@@ -871,7 +871,9 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
         }
         Rule::stmt_block => parse_stmt(pair, None).to_expr(None),
         other => panic!("Unexpected rule: {:?}: {:?}", other, pair),
-    }
+    };
+    // result
+    Expr::AnnotatedWithSource { expr: Box::new(result), loc }
 }
 
 fn parse_expr_term(pair: Pair<Rule>) -> Expr {

@@ -215,6 +215,15 @@ impl Compile for Expr {
             }
 
             Self::Apply(f, args) => {
+                if let Self::AnnotatedWithSource { expr, loc } = *f {
+                    // Compile the inner expression.
+                    return Self::Apply(expr, args).compile_expr(env, output).map_err(|e| {
+                        // If the inner expression fails to compile,
+                        // then add the source location to the error.
+                        e.with_loc(&loc)
+                    });
+                }
+
                 // Push the arguments to the procedure on the stack.
                 for arg in args {
                     // Compile the argument (push it on the stack)

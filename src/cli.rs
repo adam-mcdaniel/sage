@@ -16,6 +16,11 @@ use std::{
     fs::{read_to_string, write},
 };
 
+
+// The stack sizes of the threads used to compile the code.
+const RELEASE_STACK_SIZE_MB: usize = 512;
+const DEBUG_STACK_SIZE_MB: usize = RELEASE_STACK_SIZE_MB;
+
 /// The target options to compile the given source code to.
 #[derive(clap::ValueEnum, Clone, Copy, Debug)]
 enum TargetType {
@@ -128,10 +133,18 @@ impl fmt::Debug for Error {
                 use codespan_reporting::diagnostic::{Diagnostic, Label};
                 use codespan_reporting::files::SimpleFiles;
                 use codespan_reporting::term::{emit, termcolor::{ColorChoice, StandardStream}};
+                use no_comment::{languages, IntoWithoutComments};
                 
                 let SourceCodeLocation { line, column, filename, offset, length } = loc;
                 
                 let mut files = SimpleFiles::new();
+
+                let source_code = source_code
+                    .to_string()
+                    .chars()
+                    .without_comments(languages::rust())
+                    .collect::<String>();
+
                 let file_id = files.add(filename.clone().unwrap_or("unknown".to_string()), source_code);
                 match filename {
                     Some(filename) => {
@@ -149,9 +162,18 @@ impl fmt::Debug for Error {
                         emit(&mut writer.lock(), &config, &files, &diagnostic).unwrap();
                     },
                     None => {
-                        let loc = format!("{}:{}:{}", line, column, offset);
-                        let code = format!("{}\n{}^", source_code, " ".repeat(*column - 1));
-                        write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)?
+                        let loc = format!("unknown:{}:{}:{}", line, column, offset);
+                        // let code = format!("{}\n{}^", code, " ".repeat(*column - 1));
+                        // write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)?
+                        let diagnostic = Diagnostic::error()
+                            .with_message(format!("Error at {}", loc))
+                            .with_labels(vec![Label::primary(file_id, *offset..*offset + length.unwrap_or(0))
+                                .with_message(format!("{err:?}"))]);
+
+                        let writer = StandardStream::stderr(ColorChoice::Always);
+                        let config = codespan_reporting::term::Config::default();
+
+                        emit(&mut writer.lock(), &config, &files, &diagnostic).unwrap();
                     }
                 }
                 Ok(())
@@ -425,8 +447,6 @@ fn main() {
     // If we're in debug mode, start the compilation in a separate thread.
     // This is to allow the process to have more stack space.
     if !cfg!(debug_assertions) {
-        const RELEASE_STACK_SIZE_MB: usize = 256;
-
         let child = std::thread::Builder::new()
             .stack_size(RELEASE_STACK_SIZE_MB * 1024 * 1024)
             .spawn(cli)
@@ -435,8 +455,6 @@ fn main() {
         // Wait for the thread to finish.
         child.join().unwrap()
     } else {
-        const DEBUG_STACK_SIZE_MB: usize = 64;
-
         let child = std::thread::Builder::new()
             .stack_size(DEBUG_STACK_SIZE_MB * 1024 * 1024)
             .spawn(cli)

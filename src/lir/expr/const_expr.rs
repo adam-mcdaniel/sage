@@ -123,7 +123,7 @@ impl ConstExpr {
             Err(Error::RecursionDepthConst(self))
         } else {
             match self {
-                Self::AnnotatedWithSource { expr, .. } => expr.eval_checked(env, i),
+                Self::AnnotatedWithSource { expr, loc } => expr.eval_checked(env, i).map_err(|e| e.with_loc(&loc)),
 
                 Self::None
                 | Self::Null
@@ -265,8 +265,8 @@ impl Simplify for ConstExpr {
 impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
         Ok(match self.clone() {
-            Self::AnnotatedWithSource { expr, .. } => {
-                expr.get_type_checked(env, i)?
+            Self::AnnotatedWithSource { expr, loc } => {
+                expr.get_type_checked(env, i).map_err(|e| e.with_loc(&loc))?
             }
 
             Self::As(expr, cast_ty) => {
