@@ -1,0 +1,403 @@
+HashMap before inserting:
+Empty
+Inserting {x=1, y=1} -> x
+Inserting {x=2, y=4} -> xx
+Inserting {x=3, y=9} -> xxx
+Inserting {x=4, y=16} -> xxxx
+Inserting {x=5, y=25} -> xxxxx
+Inserting {x=6, y=36} -> xxxxxx
+Inserting {x=7, y=49} -> xxxxxxx
+Inserting {x=8, y=64} -> xxxxxxxx
+Inserting {x=9, y=81} -> xxxxxxxxx
+Inserting {x=10, y=100} -> xxxxxxxxxx
+Inserting {x=11, y=121} -> xxxxxxxxxxx
+Inserting {x=12, y=144} -> xxxxxxxxxxxx
+Inserting {x=13, y=169} -> xxxxxxxxxxxxx
+Inserting {x=14, y=196} -> xxxxxxxxxxxxxx
+Inserting {x=15, y=225} -> xxxxxxxxxxxxxxx
+Inserting {x=16, y=256} -> xxxxxxxxxxxxxxxx
+Inserting {x=17, y=289} -> xxxxxxxxxxxxxxxxx
+Inserting {x=18, y=324} -> xxxxxxxxxxxxxxxxxx
+Inserting {x=19, y=361} -> xxxxxxxxxxxxxxxxxxx
+Inserting {x=20, y=400} -> xxxxxxxxxxxxxxxxxxxx
+Inserting {x=21, y=441} -> xxxxxxxxxxxxxxxxxxxxx
+Inserting {x=22, y=484} -> xxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=23, y=529} -> xxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=24, y=576} -> xxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=25, y=625} -> xxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=26, y=676} -> xxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=27, y=729} -> xxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=28, y=784} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=29, y=841} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=30, y=900} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=31, y=961} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=32, y=1024} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=33, y=1089} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=34, y=1156} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=35, y=1225} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=36, y=1296} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=37, y=1369} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=38, y=1444} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=39, y=1521} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=40, y=1600} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=41, y=1681} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=42, y=1764} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=43, y=1849} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=44, y=1936} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=45, y=2025} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=46, y=2116} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=47, y=2209} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=48, y=2304} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=49, y=2401} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=50, y=2500} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=51, y=2601} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=52, y=2704} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=53, y=2809} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=54, y=2916} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=55, y=3025} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=56, y=3136} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=57, y=3249} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=58, y=3364} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=59, y=3481} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=60, y=3600} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=61, y=3721} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=62, y=3844} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=63, y=3969} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=64, y=4096} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=65, y=4225} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=66, y=4356} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=67, y=4489} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=68, y=4624} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=69, y=4761} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=70, y=4900} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=71, y=5041} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=72, y=5184} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=73, y=5329} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=74, y=5476} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=75, y=5625} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=76, y=5776} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=77, y=5929} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=78, y=6084} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=79, y=6241} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=80, y=6400} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=81, y=6561} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=82, y=6724} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=83, y=6889} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=84, y=7056} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=85, y=7225} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=86, y=7396} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=87, y=7569} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=88, y=7744} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=89, y=7921} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=90, y=8100} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=91, y=8281} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=92, y=8464} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=93, y=8649} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=94, y=8836} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=95, y=9025} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=96, y=9216} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=97, y=9409} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=98, y=9604} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Inserting {x=99, y=9801} -> xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+HashMap after inserting:
+--------------------------------
+hash: 210589962001, key: {x=12, y=144}, val: &(43417)
+hash: 5860017, key: {x=3, y=9}, val: &(43066)
+hash: 6949711860043, key: {x=88, y=7744}, val: &(49611)
+hash: 210592372061, key: {x=24, y=576}, val: &(44011)
+hash: 6949393885072, key: {x=40, y=1600}, val: &(45027)
+hash: 210589998073, key: {x=22, y=484}, val: &(43902)
+hash: 6949630102077, key: {x=56, y=3136}, val: &(46299)
+hash: 6949511619106, key: {x=43, y=1849}, val: &(45246)
+hash: 6949433065114, key: {x=41, y=1681}, val: &(45099)
+hash: 6949747334115, key: {x=59, y=3481}, val: &(46566)
+hash: 210598296125, key: {x=29, y=841}, val: &(44301)
+hash: 6949668156125, key: {x=47, y=2209}, val: &(45552)
+hash: 6949516367151, key: {x=83, y=6889}, val: &(49026)
+hash: 6949513993161, key: {x=63, y=3969}, val: &(46936)
+hash: 6949472306173, key: {x=42, y=1764}, val: &(45172)
+hash: 210595897184, key: {x=17, y=289}, val: &(43647)
+hash: 210592336186, key: {x=14, y=196}, val: &(43506)
+hash: 6949555391203, key: {x=84, y=7056}, val: &(49141)
+hash: 6949556575211, key: {x=94, y=8836}, val: &(50346)
+hash: 6949752069225, key: {x=99, y=9801}, val: &(50986)
+hash: 210591189242, key: {x=23, y=529}, val: &(43956)
+hash: 6949631290243, key: {x=66, y=4356}, val: &(47224)
+hash: 6949710678246, key: {x=78, y=6084}, val: &(48466)
+hash: 210598260249, key: {x=19, y=361}, val: &(43746)
+hash: 6949510437277, key: {x=33, y=1089}, val: &(44551)
+hash: 6949671716300, key: {x=77, y=5929}, val: &(48357)
+hash: 6949595673315, key: {x=95, y=9025}, val: &(50472)
+hash: 6949708304322, key: {x=58, y=3364}, val: &(46476)
+hash: 6949434242324, key: {x=51, y=2601}, val: &(45874)
+hash: 6949436618327, key: {x=71, y=5041}, val: &(47724)
+hash: 6949705930333, key: {x=38, y=1444}, val: &(44886)
+hash: 6949551829376, key: {x=54, y=2916}, val: &(46126)
+hash: 6949669346403, key: {x=57, y=3249}, val: &(46387)
+hash: 210591153433, key: {x=13, y=169}, val: &(43461)
+hash: 6949633666444, key: {x=86, y=7396}, val: &(49374)
+hash: 6949672906447, key: {x=87, y=7569}, val: &(49492)
+hash: 6949435430457, key: {x=61, y=3721}, val: &(46749)
+hash: 6949594487458, key: {x=85, y=7225}, val: &(49257)
+hash: 210597077463, key: {x=18, y=324}, val: &(43696)
+hash: 6949632478475, key: {x=76, y=5776}, val: &(48249)
+hash: 6949746139481, key: {x=49, y=2401}, val: &(45711)
+hash: 6949477045506, key: {x=82, y=6724}, val: &(48912)
+hash: 6949750885513, key: {x=89, y=7921}, val: &(49731)
+hash: 6949399814519, key: {x=90, y=8100}, val: &(49852)
+hash: 6949515174530, key: {x=73, y=5329}, val: &(47931)
+hash: 6949749701538, key: {x=79, y=6241}, val: &(48576)
+hash: 193381552, key: {x=4, y=16}, val: &(43101)
+hash: 210587657553, key: {x=30, y=900}, val: &(44362)
+hash: 6949473485561, key: {x=52, y=2704}, val: &(45957)
+hash: 6949713041577, key: {x=98, y=9604}, val: &(50856)
+hash: 6949554207590, key: {x=74, y=5476}, val: &(48036)
+hash: 6949437806592, key: {x=81, y=6561}, val: &(48799)
+hash: 6949438994594, key: {x=91, y=8281}, val: &(49974)
+hash: 210597113602, key: {x=28, y=784}, val: &(44241)
+hash: 193382609, key: {x=5, y=25}, val: &(43137)
+hash: 210587621611, key: {x=20, y=400}, val: &(43797)
+hash: 6949592115613, key: {x=65, y=4225}, val: &(47127)
+hash: 6949634843622, key: {x=96, y=9216}, val: &(50599)
+hash: 6949549461625, key: {x=34, y=1156}, val: &(44616)
+hash: 6949590929625, key: {x=55, y=3025}, val: &(46212)
+hash: 6949550645632, key: {x=44, y=1936}, val: &(45321)
+hash: 6949517548652, key: {x=93, y=8649}, val: &(50221)
+hash: 6949471115665, key: {x=32, y=1024}, val: &(44487)
+hash: 6949593301667, key: {x=75, y=5625}, val: &(48142)
+hash: 210587585671, key: {x=10, y=100}, val: &(43332)
+hash: 6949512800672, key: {x=53, y=2809}, val: &(46041)
+hash: 6949478235686, key: {x=92, y=8464}, val: &(50097)
+hash: 6949398628695, key: {x=80, y=6400}, val: &(48687)
+hash: 6949589743703, key: {x=45, y=2025}, val: &(45397)
+hash: 6949553023714, key: {x=64, y=4096}, val: &(47031)
+hash: 210593556729, key: {x=25, y=625}, val: &(44067)
+hash: 193383732, key: {x=6, y=36}, val: &(43174)
+hash: 210588772747, key: {x=11, y=121}, val: &(43374)
+hash: 6949670536747, key: {x=67, y=4489}, val: &(47322)
+hash: 210588808753, key: {x=21, y=441}, val: &(43849)
+hash: 210588844761, key: {x=31, y=961}, val: &(44424)
+hash: 6949666976770, key: {x=37, y=1369}, val: &(44817)
+hash: 6949744955770, key: {x=39, y=1521}, val: &(44956)
+hash: 210593520788, key: {x=15, y=225}, val: &(43552)
+hash: 6949627736800, key: {x=36, y=1296}, val: &(44749)
+hash: 6949674085803, key: {x=97, y=9409}, val: &(50727)
+hash: 193386839, key: {x=9, y=81}, val: &(43291)
+hash: 193385847, key: {x=8, y=64}, val: &(43251)
+hash: 6949588557847, key: {x=35, y=1225}, val: &(44682)
+hash: 6949707111866, key: {x=48, y=2304}, val: &(45631)
+hash: 6949474675872, key: {x=62, y=3844}, val: &(46842)
+hash: 210594707897, key: {x=16, y=256}, val: &(43599)
+hash: 210594743904, key: {x=26, y=676}, val: &(44124)
+hash: 6949396256916, key: {x=60, y=3600}, val: &(46657)
+hash: 6949475865920, key: {x=72, y=5184}, val: &(47827)
+hash: 193384921, key: {x=7, y=49}, val: &(43212)
+hash: 210595932928, key: {x=27, y=729}, val: &(44182)
+hash: 6949397442937, key: {x=70, y=4900}, val: &(47622)
+hash: 5859943, key: {x=1, y=1}, val: &(42999)
+hash: 6949748517958, key: {x=69, y=4761}, val: &(47521)
+hash: 6949395070961, key: {x=50, y=2500}, val: &(45792)
+hash: 6949628913977, key: {x=46, y=2116}, val: &(45474)
+hash: 5859979, key: {x=2, y=4}, val: &(43032)
+hash: 6949709485987, key: {x=68, y=4624}, val: &(47421)
+--------------------------------
+Retrieving {x=1, y=1}: x
+Retrieving {x=2, y=4}: xx
+Retrieving {x=3, y=9}: xxx
+Retrieving {x=4, y=16}: xxxx
+Retrieving {x=5, y=25}: xxxxx
+Retrieving {x=6, y=36}: xxxxxx
+Retrieving {x=7, y=49}: xxxxxxx
+Retrieving {x=8, y=64}: xxxxxxxx
+Retrieving {x=9, y=81}: xxxxxxxxx
+Retrieving {x=10, y=100}: xxxxxxxxxx
+Retrieving {x=11, y=121}: xxxxxxxxxxx
+Retrieving {x=12, y=144}: xxxxxxxxxxxx
+Retrieving {x=13, y=169}: xxxxxxxxxxxxx
+Retrieving {x=14, y=196}: xxxxxxxxxxxxxx
+Retrieving {x=15, y=225}: xxxxxxxxxxxxxxx
+Retrieving {x=16, y=256}: xxxxxxxxxxxxxxxx
+Retrieving {x=17, y=289}: xxxxxxxxxxxxxxxxx
+Retrieving {x=18, y=324}: xxxxxxxxxxxxxxxxxx
+Retrieving {x=19, y=361}: xxxxxxxxxxxxxxxxxxx
+Retrieving {x=20, y=400}: xxxxxxxxxxxxxxxxxxxx
+Retrieving {x=21, y=441}: xxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=22, y=484}: xxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=23, y=529}: xxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=24, y=576}: xxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=25, y=625}: xxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=26, y=676}: xxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=27, y=729}: xxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=28, y=784}: xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=29, y=841}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=30, y=900}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=31, y=961}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=32, y=1024}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=33, y=1089}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=34, y=1156}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=35, y=1225}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=36, y=1296}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=37, y=1369}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=38, y=1444}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=39, y=1521}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=40, y=1600}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=41, y=1681}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=42, y=1764}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=43, y=1849}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=44, y=1936}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=45, y=2025}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=46, y=2116}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=47, y=2209}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=48, y=2304}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=49, y=2401}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=50, y=2500}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=51, y=2601}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=52, y=2704}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=53, y=2809}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=54, y=2916}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=55, y=3025}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=56, y=3136}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=57, y=3249}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=58, y=3364}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=59, y=3481}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=60, y=3600}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=61, y=3721}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=62, y=3844}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=63, y=3969}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=64, y=4096}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=65, y=4225}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=66, y=4356}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=67, y=4489}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=68, y=4624}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=69, y=4761}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=70, y=4900}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=71, y=5041}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=72, y=5184}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=73, y=5329}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=74, y=5476}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=75, y=5625}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=76, y=5776}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=77, y=5929}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=78, y=6084}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=79, y=6241}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=80, y=6400}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=81, y=6561}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=82, y=6724}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=83, y=6889}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=84, y=7056}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=85, y=7225}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=86, y=7396}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=87, y=7569}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=88, y=7744}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=89, y=7921}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=90, y=8100}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=91, y=8281}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=92, y=8464}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=93, y=8649}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=94, y=8836}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=95, y=9025}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=96, y=9216}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=97, y=9409}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=98, y=9604}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=99, y=9801}: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Retrieving {x=100, y=10000}: Nothing
+Retrieving {x=101, y=10201}: Nothing
+Retrieving {x=102, y=10404}: Nothing
+Retrieving {x=103, y=10609}: Nothing
+Retrieving {x=104, y=10816}: Nothing
+Retrieving {x=105, y=11025}: Nothing
+Retrieving {x=106, y=11236}: Nothing
+Retrieving {x=107, y=11449}: Nothing
+Retrieving {x=108, y=11664}: Nothing
+Retrieving {x=109, y=11881}: Nothing
+Retrieving {x=110, y=12100}: Nothing
+Retrieving {x=111, y=12321}: Nothing
+Retrieving {x=112, y=12544}: Nothing
+Retrieving {x=113, y=12769}: Nothing
+Retrieving {x=114, y=12996}: Nothing
+Retrieving {x=115, y=13225}: Nothing
+Retrieving {x=116, y=13456}: Nothing
+Retrieving {x=117, y=13689}: Nothing
+Retrieving {x=118, y=13924}: Nothing
+Retrieving {x=119, y=14161}: Nothing
+Retrieving {x=120, y=14400}: Nothing
+Retrieving {x=121, y=14641}: Nothing
+Retrieving {x=122, y=14884}: Nothing
+Retrieving {x=123, y=15129}: Nothing
+Retrieving {x=124, y=15376}: Nothing
+Retrieving {x=125, y=15625}: Nothing
+Retrieving {x=126, y=15876}: Nothing
+Retrieving {x=127, y=16129}: Nothing
+Retrieving {x=128, y=16384}: Nothing
+Retrieving {x=129, y=16641}: Nothing
+Retrieving {x=130, y=16900}: Nothing
+Retrieving {x=131, y=17161}: Nothing
+Retrieving {x=132, y=17424}: Nothing
+Retrieving {x=133, y=17689}: Nothing
+Retrieving {x=134, y=17956}: Nothing
+Retrieving {x=135, y=18225}: Nothing
+Retrieving {x=136, y=18496}: Nothing
+Retrieving {x=137, y=18769}: Nothing
+Retrieving {x=138, y=19044}: Nothing
+Retrieving {x=139, y=19321}: Nothing
+Retrieving {x=140, y=19600}: Nothing
+Retrieving {x=141, y=19881}: Nothing
+Retrieving {x=142, y=20164}: Nothing
+Retrieving {x=143, y=20449}: Nothing
+Retrieving {x=144, y=20736}: Nothing
+Retrieving {x=145, y=21025}: Nothing
+Retrieving {x=146, y=21316}: Nothing
+Retrieving {x=147, y=21609}: Nothing
+Retrieving {x=148, y=21904}: Nothing
+Retrieving {x=149, y=22201}: Nothing
+Retrieving {x=150, y=22500}: Nothing
+Retrieving {x=151, y=22801}: Nothing
+Retrieving {x=152, y=23104}: Nothing
+Retrieving {x=153, y=23409}: Nothing
+Retrieving {x=154, y=23716}: Nothing
+Retrieving {x=155, y=24025}: Nothing
+Retrieving {x=156, y=24336}: Nothing
+Retrieving {x=157, y=24649}: Nothing
+Retrieving {x=158, y=24964}: Nothing
+Retrieving {x=159, y=25281}: Nothing
+Retrieving {x=160, y=25600}: Nothing
+Retrieving {x=161, y=25921}: Nothing
+Retrieving {x=162, y=26244}: Nothing
+Retrieving {x=163, y=26569}: Nothing
+Retrieving {x=164, y=26896}: Nothing
+Retrieving {x=165, y=27225}: Nothing
+Retrieving {x=166, y=27556}: Nothing
+Retrieving {x=167, y=27889}: Nothing
+Retrieving {x=168, y=28224}: Nothing
+Retrieving {x=169, y=28561}: Nothing
+Retrieving {x=170, y=28900}: Nothing
+Retrieving {x=171, y=29241}: Nothing
+Retrieving {x=172, y=29584}: Nothing
+Retrieving {x=173, y=29929}: Nothing
+Retrieving {x=174, y=30276}: Nothing
+Retrieving {x=175, y=30625}: Nothing
+Retrieving {x=176, y=30976}: Nothing
+Retrieving {x=177, y=31329}: Nothing
+Retrieving {x=178, y=31684}: Nothing
+Retrieving {x=179, y=32041}: Nothing
+Retrieving {x=180, y=32400}: Nothing
+Retrieving {x=181, y=32761}: Nothing
+Retrieving {x=182, y=33124}: Nothing
+Retrieving {x=183, y=33489}: Nothing
+Retrieving {x=184, y=33856}: Nothing
+Retrieving {x=185, y=34225}: Nothing
+Retrieving {x=186, y=34596}: Nothing
+Retrieving {x=187, y=34969}: Nothing
+Retrieving {x=188, y=35344}: Nothing
+Retrieving {x=189, y=35721}: Nothing
+Retrieving {x=190, y=36100}: Nothing
+Retrieving {x=191, y=36481}: Nothing
+Retrieving {x=192, y=36864}: Nothing
+Retrieving {x=193, y=37249}: Nothing
+Retrieving {x=194, y=37636}: Nothing
+Retrieving {x=195, y=38025}: Nothing
+Retrieving {x=196, y=38416}: Nothing
+Retrieving {x=197, y=38809}: Nothing
+Retrieving {x=198, y=39204}: Nothing
+Retrieving {x=199, y=39601}: Nothing
+Freeing 1000 HashMap Entries
