@@ -392,8 +392,8 @@ impl GetType for ConstExpr {
             }
             Self::Null => {}
             Self::None => {}
-            Self::SizeOfType(ty) => {
-                *ty = ty.substitute(name, ty);
+            Self::SizeOfType(inner_ty) => {
+                *inner_ty = inner_ty.substitute(name, ty);
             }
             Self::SizeOfExpr(expr) => {
                 expr.substitute(name, ty);

@@ -890,8 +890,11 @@ impl TypeCheck for ConstExpr {
             | Self::Int(_)
             | Self::Float(_)
             | Self::Char(_)
-            | Self::Bool(_)
-            | Self::SizeOfType(_) => Ok(()),
+            | Self::Bool(_) => Ok(()),
+
+            Self::SizeOfType(t) => {
+                t.type_check(env)
+            }
 
             Self::LetTypes(bindings, expr) => {
                 let mut new_env = env.clone();

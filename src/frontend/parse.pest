@@ -402,12 +402,12 @@ type_atom = {
     | type_array
     | type_ptr
     | "(" ~ type ~ ")"
-    | type_symbol
     | type_int
     | type_float
     | type_bool
     | type_char
     | type_none
+    | type_symbol
 }
 type_symbol = { symbol }
 type_tuple = { "(" ~ (type ~ ",")+ ~ type? ~ ")" }

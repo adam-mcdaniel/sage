@@ -136,6 +136,13 @@ impl Type {
             | Self::Any
             | Self::Never
             | Self::Enum(_) => true,
+            Self::Tuple(inner) => inner.iter().all(|t| t.is_atomic()),
+            Self::Array(inner, _) => inner.is_atomic(),
+            Self::Proc(args, ret) => args.iter().all(|t| t.is_atomic()) && ret.is_atomic(),
+            Self::Pointer(inner) => inner.is_atomic(),
+            Self::Struct(inner) => inner.iter().all(|(_, t)| t.is_atomic()),
+            Self::EnumUnion(inner) => inner.iter().all(|(_, t)| t.is_atomic()),
+            Self::Poly(_, _) | Self::Symbol(_) | Self::Apply(_, _) | Self::Let(_, _, _) => false,
             _ => false,
         }
     }
@@ -257,7 +264,7 @@ impl Type {
                     self.clone()
                 } else {
                     // Does the inner symbol use this type variable?
-                    template.substitute(name, substitution).into()
+                    Self::Poly(ty_params.clone(), template.substitute(name, substitution).into())
                 }
             }
             Self::Apply(poly, ty_args) => Self::Apply(

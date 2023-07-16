@@ -43,7 +43,10 @@ pub trait GetSize {
 impl GetSize for Type {
     fn get_size_checked(&self, env: &Env, i: usize) -> Result<usize, Error> {
         let i = i + 1;
+        // eprintln!("GetSize::get_size_checked: i = {i} {self}");
+        // eprintln!("Env: {env:?}");
         if i > Type::SIMPLIFY_RECURSION_LIMIT {
+            // eprintln!("GetSize::get_size_checked: recursion limit reached");
             return Err(Error::UnsizedType(self.clone()));
         }
         // eprintln!("GetSize::get_size_checked: i = {i} {self}");
@@ -228,7 +231,7 @@ impl GetSize for Type {
                 // }
             }
 
-            Self::Poly(ty_params, template) => {
+            Self::Poly(_ty_params, _template) => {
                 // let mut template = *template.clone();
                 // for ty_param in ty_params {
                 //     // template = template.substitute(ty_param, &Type::Unit(ty_param.clone(), Box::new(Type::Any)));
@@ -241,6 +244,14 @@ impl GetSize for Type {
                 // if let Ok(size) = template.get_size_checked(&new_env, i) {
                 //     return Ok(size);
                 // }
+
+                // let result = Self::Apply(
+                //     Box::new(self.clone()),
+                //     ty_params
+                //         .iter()
+                //         .map(|ty_param| Type::Unit(ty_param.clone(), Box::new(Type::Any)))
+                //         .collect(),
+                // ).get_size_checked(env, i);
                 return Err(Error::SizeOfTemplate(self.clone()));
             }
         })

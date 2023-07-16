@@ -1,0 +1,237 @@
+struct Entry<K, V> {
+    // The key of the entry
+    key: K,
+    // The value of the entry
+    val: V,
+    // Whether the entry is occupied (set to false when removed from the hashmap)
+    is_occupied: Bool
+}
+
+struct HashMap<K, V> {
+    // The entries of the hashmap
+    entries: &Entry<K, V>,
+    // The reserved size in memory of the entries
+    count_allocated: Int,
+    // The number of occupied entries
+    count_occupied: Int
+}
+
+// Used to represent a value that may or may not exist
+enum Option<T> {
+    // Some value
+    Some(T),
+    // No value
+    Nothing
+}
+                    
+// Hash a value
+def hash<T>(t: T): Int {
+    let size = sizeof(T);
+    let ptr = &t as &Int;
+    
+    let hashValue = 5381;
+    def left_shift(a: Int, b: Int): Int = {
+        while b {
+            a *= 2;
+            b -= 1;
+        }
+        return a;
+    }
+
+    for let i = 0; i < size; i += 1 {
+        let value = ptr[i];
+        while (value != 0) {
+            let digit = value % 10;
+            hashValue = (left_shift(hashValue, 5) + hashValue) + digit;
+            value /= 10;
+        }
+    }
+
+    if hashValue < 0 {
+        hashValue = -hashValue;
+    }
+    
+    return hashValue;
+}
+
+def eq<K>(a: K, b: K): Bool {
+    let size = sizeof(K);
+    let a_ptr = &a as &Int;
+    let b_ptr = &b as &Int;
+    
+    for let i=0; i<size; i+=1 {
+        if a_ptr[i] != b_ptr[i] {
+            return False;
+        }
+    }
+    return True;
+}
+
+def Entry_print<K, V>(self: &Entry<K, V>) {
+    print("hash: ", hash<K>(self->key), ", key: ", self->key, ", val: ", self->val);
+}
+
+def HashMap_clear<K, V>(self: &HashMap<K, V>) {
+    for let i=0; i < self->count_allocated; i+=1 {
+        self->entries[i].is_occupied = False;
+    }
+    self->count_occupied = 0;
+}
+
+
+def HashMap_new<K, V>(): HashMap<K, V> {
+    let size = 1000 * sizeof(Entry<K, V>);
+    let entries = alloc(size) as &Entry<K, V>;
+    let self = {
+        entries = entries,
+        count_allocated = 1000,
+        count_occupied = 0
+    };
+    HashMap_clear<K, V>(&self);
+    return self;
+}
+
+def HashMap_get<K, V>(self: &HashMap<K, V>, key: K): Option<&V> {
+    let index = hash<K>(key) % self->count_allocated;
+    while (self->entries[index].is_occupied) {
+        if (eq<K>(self->entries[index].key, key)) {
+            return Option<&V> of Some(&(self->entries[index].val));
+        }
+        index = (index + 1) % self->count_allocated;  // Linear probing for collision resolution
+    }
+    return Option<&V> of Nothing;
+}
+
+def HashMap_check_bounds<K, V>(self: &HashMap<K, V>) {
+    if (self->count_allocated - self->count_occupied) < 100 {
+        // Allocate new space
+        let old_size = self->count_allocated * sizeof(Entry<K, V>);
+        let old_entries = self->entries;
+        let old_map = {
+            entries = old_entries,
+            count_occupied = self->count_occupied,
+            count_allocated = self->count_allocated
+        };
+
+        let new_size = old_size * 2;
+        self->count_allocated *= 2;
+        self->entries = alloc(new_size) as &Entry<K, V>;
+        HashMap_clear<K, V>(self);
+
+        for let i=0; i<old_map.count_allocated; i+=1 {
+            if old_entries[i].is_occupied {
+                match HashMap_get<K, V>(&old_map, old_entries[i].key) {
+                    of Some(val) => HashMap_put<K, V>(self, old_entries[i].key, *val),
+                    of Nothing => {}
+                }
+            }
+        }
+    }
+}
+
+def HashMap_put<K, V>(self: &HashMap<K, V>, key: K, val: V) {
+    let index = hash<K>(key) % self->count_allocated;
+    
+    while (self->entries[index].is_occupied) {
+        if (eq<K>(self->entries[index].key, key)) {
+            self->entries[index].val = val;  // Update value if key already exists
+            return ();
+        }
+        index = (index + 1) % self->count_allocated;  // Linear probing for collision resolution
+    }
+
+    self->entries[index].key = key;
+    self->entries[index].val = val;
+    self->entries[index].is_occupied = True;
+    self->count_occupied += 1;
+    
+    HashMap_check_bounds<K, V>(self);
+}
+
+def HashMap_print<K, V>(self: &HashMap<K, V>) {
+    let count = 0;
+    if self->count_occupied == 0 {
+        print("Empty\n");
+        return ();
+    }
+    print("--------------------------------\n");
+    for let i=0; i < self->count_allocated; i+=1 {
+        if self->entries[i].is_occupied {
+            Entry_print<K, V>(&(self->entries[i]));
+            print("\n");
+            count += 1;
+        }
+    }
+    print("--------------------------------\n");
+}
+
+def HashMap_drop<K, V>(self: &HashMap<K, V>) {
+    print("Freeing ", self->count_allocated, " HashMap Entries\n");
+    del self->entries;
+}
+
+struct Point {
+    x: Int,
+    y: Int
+}
+
+def f(x: Int): Point {
+    return {x = x, y = x * x};
+}
+
+let map = HashMap_new<Point, &Char>();
+
+def putstr(s: &Char) {
+    let i = 0;
+    while s[i] != '\0' {
+        print(s[i]);
+        i += 1;
+    }
+}
+
+def putstrln(s: &Char) {
+    let i = 0;
+    while s[i] != '\0' {
+        print(s[i]);
+        i += 1;
+    }
+    print("\n");
+}
+
+const INSERT_COUNT = 100;
+const CHECK_COUNT = 200;
+
+print("HashMap before inserting:\n");
+HashMap_print<Point, &Char>(&map);
+
+for let i=1; i<INSERT_COUNT; i+=1 {
+    let point = f(i);
+    let key = point as Point;
+    let value = alloc((i + 32) * sizeof(Char)) as &Char;
+    for let j=0; j<i; j+=1 {
+        value[j] = 'x';
+    }
+    value[i] = '\0';
+    print("Inserting ", key, " -> ");
+    putstrln(value);
+    HashMap_put<Point, &Char>(&map, key, value);
+}
+
+print("HashMap after inserting:\n");
+HashMap_print<Point, &Char>(&map);
+
+for let i=1; i<CHECK_COUNT; i+=1 {
+    let point = f(i);
+    let key = point as Point;
+    print("Retrieving ", key, ": ");
+
+    match HashMap_get<Point, &Char>(&map, key) {
+        of Some(value) => {
+            putstrln(*value);
+            del *value;
+        },
+        of Nothing => print("Nothing\n")
+    }
+}
+
+HashMap_drop<Point, &Char>(&map);
