@@ -705,6 +705,18 @@
 <a href="#705" id="705">705</a>
 <a href="#706" id="706">706</a>
 <a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Expression
 //!
 //! An expression is a runtime value.
@@ -714,6 +726,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::ops::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::lir::{ConstExpr, Pattern, Procedure, Type};
+<span class="kw">use </span><span class="kw">crate</span>::parse::SourceCodeLocation;
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::collections::BTreeMap;
 
@@ -722,6 +735,15 @@
 /// A runtime expression.
 </span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub enum </span>Expr {
+    <span class="doccomment">/// An expression along with data about its source code location.
+    /// This is used for error reporting.
+    </span>AnnotatedWithSource {
+        <span class="comment">// The expression itself.
+        </span>expr: Box&lt;<span class="self">Self</span>&gt;,
+        <span class="doccomment">/// The source code location of the expression.
+        </span>loc: SourceCodeLocation
+    },
+
     <span class="doccomment">/// A constant expression.
     </span>ConstExpr(ConstExpr),
     <span class="doccomment">/// A block of expressions. The last expression in the block is the value of the block.
@@ -1126,6 +1148,7 @@
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>Expr {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::AnnotatedWithSource { expr, .. } =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{expr}&quot;</span>),
             <span class="self">Self</span>::ConstExpr(expr) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{expr}&quot;</span>),
             <span class="self">Self</span>::Many(exprs) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;{{ &quot;</span>)<span class="question-mark">?</span>;
@@ -1289,6 +1312,7 @@
     <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">match </span>(<span class="self">self</span>, other) {
+            (<span class="self">Self</span>::AnnotatedWithSource { expr, .. }, other) | (other, <span class="self">Self</span>::AnnotatedWithSource { expr, .. })  =&gt; <span class="kw-2">&amp;**</span>expr == other,
             <span class="comment">// A constant expression.
             </span>(ConstExpr(a), ConstExpr(b)) =&gt; a == b,
             <span class="comment">// A block of expressions. The last expression in the block is the value of the block.

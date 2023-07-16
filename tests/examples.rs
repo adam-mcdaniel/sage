@@ -12,7 +12,7 @@ fn test_frontend_examples() {
     // Compiling most examples overflows the tiny stack for tests.
     // So, we spawn a new thread with a larger stack size.
     let child = std::thread::Builder::new()
-        .stack_size(24 * 1024 * 1024)
+        .stack_size(64 * 1024 * 1024)
         .spawn(test_frontend_examples_helper)
         .unwrap();
 
@@ -59,7 +59,7 @@ fn test_frontend_examples_helper() {
             let frontend_src = read_to_string(&path)
                 .expect(&format!("Could not read contents of file `{path:?}`"));
             let frontend_code =
-                parse_frontend(&frontend_src).expect(&format!("Could not parse `{path:?}`"));
+                parse_frontend(&frontend_src, path.to_str()).expect(&format!("Could not parse `{path:?}`"));
             drop(frontend_src);
             let asm_code = frontend_code
                 .compile()

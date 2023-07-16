@@ -16,6 +16,11 @@ use std::{
     fs::{read_to_string, write},
 };
 
+
+// The stack sizes of the threads used to compile the code.
+const RELEASE_STACK_SIZE_MB: usize = 512;
+const DEBUG_STACK_SIZE_MB: usize = RELEASE_STACK_SIZE_MB;
+
 /// The target options to compile the given source code to.
 #[derive(clap::ValueEnum, Clone, Copy, Debug)]
 enum TargetType {
@@ -83,6 +88,12 @@ struct Args {
 
 /// The types of errors returned by the CLI.
 enum Error {
+    /// With the given source code location and the source code itself.
+    WithSourceCode {
+        loc: SourceCodeLocation,
+        source_code: String,
+        err: Box<Self>
+    },
     /// Error in reading source or writing generated code.
     IO(std::io::Error),
     /// Error parsing the source code.
@@ -99,6 +110,17 @@ enum Error {
     InvalidSource(String),
 }
 
+impl Error {
+    pub fn annotate_with_source(self, code: &String) -> Self {
+        match self {
+            Self::LirError(lir::Error::AnnotatedWithSource { err, loc }) => {
+                Self::WithSourceCode { loc: loc.clone(), source_code: code.clone(), err: Box::new(Error::LirError(*err)) }
+            }
+            _ => self
+        }
+    }
+}
+
 impl fmt::Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -106,6 +128,60 @@ impl fmt::Debug for Error {
             Error::Parse(e) => write!(f, "Parse error: {}", e),
             Error::AsmError(e) => write!(f, "Assembly error: {:?}", e),
             Error::LirError(e) => write!(f, "LIR error: {}", e),
+            Error::WithSourceCode { loc, source_code, err } => {
+                // use codespan_reporting::files::SimpleFiles; 
+                use codespan_reporting::diagnostic::{Diagnostic, Label};
+                use codespan_reporting::files::SimpleFiles;
+                use codespan_reporting::term::{emit, termcolor::{ColorChoice, StandardStream}};
+                use no_comment::{languages, IntoWithoutComments};
+                
+                let SourceCodeLocation { line, column, filename, offset, length } = loc;
+                
+                let mut files = SimpleFiles::new();
+
+                let source_code = source_code
+                    .to_string()
+                    .chars()
+                    .without_comments(languages::rust())
+                    .collect::<String>();
+
+                let file_id = files.add(filename.clone().unwrap_or("unknown".to_string()), source_code);
+                match filename {
+                    Some(filename) => {
+                        let loc = format!("{}:{}:{}:{}", filename, line, column, offset);
+                        // let code = format!("{}\n{}^", code, " ".repeat(*column - 1));
+                        // write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)?
+                        let diagnostic = Diagnostic::error()
+                            .with_message(format!("Error at {}", loc))
+                            .with_labels(vec![Label::primary(file_id, *offset..*offset + length.unwrap_or(0))
+                                .with_message(format!("{err:?}"))]);
+
+                        let writer = StandardStream::stderr(ColorChoice::Always);
+                        let config = codespan_reporting::term::Config::default();
+
+                        emit(&mut writer.lock(), &config, &files, &diagnostic).unwrap();
+                    },
+                    None => {
+                        let loc = format!("unknown:{}:{}:{}", line, column, offset);
+                        // let code = format!("{}\n{}^", code, " ".repeat(*column - 1));
+                        // write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)?
+                        let diagnostic = Diagnostic::error()
+                            .with_message(format!("Error at {}", loc))
+                            .with_labels(vec![Label::primary(file_id, *offset..*offset + length.unwrap_or(0))
+                                .with_message(format!("{err:?}"))]);
+
+                        let writer = StandardStream::stderr(ColorChoice::Always);
+                        let config = codespan_reporting::term::Config::default();
+
+                        emit(&mut writer.lock(), &config, &files, &diagnostic).unwrap();
+                    }
+                }
+                Ok(())
+                // let loc = format!("{}:{}:{}:{}", filename, line, column, offset);
+
+
+                // write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)
+            },
             Error::InterpreterError(e) => write!(f, "Interpreter error: {}", e),
             Error::BuildError(e) => write!(f, "Build error: {}", e),
             Error::InvalidSource(e) => write!(f, "Invalid source: {}", e),
@@ -115,6 +191,7 @@ impl fmt::Debug for Error {
 
 /// Compile a given source language to virtual machine code.
 fn compile_source_to_vm(
+    filename: Option<&str>,
     src: String,
     src_type: SourceType,
     call_stack_size: usize,
@@ -178,10 +255,11 @@ fn compile_source_to_vm(
             }
         }
         SourceType::Sage => {
-            match parse_frontend(src)
+            match parse_frontend(&src, filename)
                 .map_err(Error::Parse)?
                 .compile()
-                .map_err(Error::LirError)?
+                .map_err(Error::LirError)
+                .map_err(|e| e.annotate_with_source(&src))?
             {
                 // If we got back a valid program, assemble it and return the result.
                 Ok(asm_code) => Ok(Ok(asm_code
@@ -197,6 +275,7 @@ fn compile_source_to_vm(
 
 /// Compile code in a given source language to assembly code.
 fn compile_source_to_asm(
+    filename: Option<&str>,
     src: String,
     src_type: SourceType,
 ) -> Result<Result<sage::asm::CoreProgram, sage::asm::StandardProgram>, Error> {
@@ -218,10 +297,11 @@ fn compile_source_to_asm(
             .map_err(Error::LirError),
 
         // If the source language is Sage, parse it and compile it to assembly code.
-        SourceType::Sage => parse_frontend(src)
+        SourceType::Sage => parse_frontend(&src, filename)
             .map_err(Error::Parse)?
             .compile()
-            .map_err(Error::LirError),
+            .map_err(Error::LirError)
+            .map_err(|e| e.annotate_with_source(&src)),
         // If the source language is a virtual machine program,
         // then we cannot compile it to assembly. Throw an error.
         SourceType::CoreVM | SourceType::StdVM => Err(Error::InvalidSource(
@@ -232,6 +312,7 @@ fn compile_source_to_asm(
 
 /// Compile code in a given source language to a given target language.
 fn compile(
+    filename: Option<&str>,
     src: String,
     src_type: SourceType,
     target: TargetType,
@@ -241,7 +322,7 @@ fn compile(
 ) -> Result<(), Error> {
     match target {
         // If the target is `Run`, then compile the code and execute it with the interpreter.
-        TargetType::Run => match compile_source_to_vm(src, src_type, call_stack_size)? {
+        TargetType::Run => match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
             // If the code is core variant virtual machine code
             Ok(vm_code) => {
                 CoreInterpreter::new(StandardDevice)
@@ -259,7 +340,7 @@ fn compile(
         // and then use the C target implementation to build the output source code.
         TargetType::C => write_file(
             format!("{output}.c"),
-            match compile_source_to_vm(src, src_type, call_stack_size)? {
+            match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
                 Ok(vm_code) => targets::C::default().build_core(&vm_code.flatten()),
                 Err(vm_code) => targets::C::default().build_std(&vm_code.flatten()),
             }
@@ -269,7 +350,7 @@ fn compile(
         // and then use the x86 target implementation to build the output source code.
         TargetType::X86 => write_file(
             format!("{output}.s"),
-            match compile_source_to_vm(src, src_type, call_stack_size)? {
+            match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
                 Ok(vm_code) => targets::X86::default().build_core(&vm_code.flatten()),
                 Err(vm_code) => targets::X86::default().build_std(&vm_code.flatten()),
             }
@@ -277,7 +358,7 @@ fn compile(
         )?,
         // If the target is core virtual machine code, then try to compile the source to the core variant.
         // If not possible, throw an error.
-        TargetType::CoreVM => match compile_source_to_vm(src, src_type, call_stack_size)? {
+        TargetType::CoreVM => match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
             Ok(vm_code) if debug => write_file(
                 format!("{output}.vm.sg"),
                 format!("{:#}", vm_code.flatten()),
@@ -291,7 +372,7 @@ fn compile(
         // If the result is core variant, we don't care. Just return the generated code.
         TargetType::StdVM => write_file(
             format!("{output}.vm.sg"),
-            match compile_source_to_vm(src, src_type, call_stack_size)? {
+            match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
                 Ok(vm_code) if debug => format!("{:#}", vm_code.flatten()),
                 Err(vm_code) if debug => format!("{:#}", vm_code.flatten()),
                 Ok(vm_code) => vm_code.flatten().to_string(),
@@ -300,7 +381,7 @@ fn compile(
         )?,
         // If the target is core assembly code, then try to compile the source to the core variant.
         // If not possible, throw an error.
-        TargetType::CoreASM => match compile_source_to_asm(src, src_type)? {
+        TargetType::CoreASM => match compile_source_to_asm(filename, src, src_type)? {
             Ok(asm_code) if debug => {
                 write_file(format!("{output}.asm.sg"), format!("{:#}", asm_code))
             }
@@ -313,7 +394,7 @@ fn compile(
         // If the result is core variant, we don't care. Just return the generated code.
         TargetType::StdASM => write_file(
             format!("{output}.asm.sg"),
-            match compile_source_to_asm(src, src_type)? {
+            match compile_source_to_asm(filename, src, src_type)? {
                 Ok(core_asm_code) if debug => format!("{:#}", core_asm_code),
                 Err(std_asm_code) if debug => format!("{:#}", std_asm_code),
                 Ok(core_asm_code) => core_asm_code.to_string(),
@@ -342,6 +423,7 @@ fn cli() {
     match read_file(&args.input) {
         Ok(file_contents) => {
             match compile(
+                Some(&args.input),
                 file_contents,
                 args.source_type,
                 args.target_type,
@@ -351,7 +433,7 @@ fn cli() {
             ) {
                 Ok(_) => {}
                 Err(e) => {
-                    eprintln!("Error compiling file: {:#?}", e);
+                    eprintln!("{:#?}", e);
                 }
             }
         }
@@ -365,10 +447,14 @@ fn main() {
     // If we're in debug mode, start the compilation in a separate thread.
     // This is to allow the process to have more stack space.
     if !cfg!(debug_assertions) {
-        cli()
-    } else {
-        const DEBUG_STACK_SIZE_MB: usize = 24;
+        let child = std::thread::Builder::new()
+            .stack_size(RELEASE_STACK_SIZE_MB * 1024 * 1024)
+            .spawn(cli)
+            .unwrap();
 
+        // Wait for the thread to finish.
+        child.join().unwrap()
+    } else {
         let child = std::thread::Builder::new()
             .stack_size(DEBUG_STACK_SIZE_MB * 1024 * 1024)
             .spawn(cli)
