@@ -226,6 +226,47 @@
 <a href="#226" id="226">226</a>
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Parsing Module
 //!
 //! This module contains all the related functions for parsing
@@ -260,6 +301,47 @@
 
 <span class="kw">use </span>lalrpop_util::lalrpop_mod;
 <span class="kw">use </span>no_comment::{languages, IntoWithoutComments};
+
+<span class="doccomment">/// A struct representing a location in the source code.
+/// This is used to format errors properly.
+</span><span class="attr">#[derive(Clone, Debug, PartialEq)]
+</span><span class="kw">pub struct </span>SourceCodeLocation {
+    <span class="kw">pub </span>line: usize,
+    <span class="kw">pub </span>column: usize,
+    <span class="kw">pub </span>offset: usize,
+    <span class="kw">pub </span>length: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+    <span class="kw">pub </span>filename: <span class="prelude-ty">Option</span>&lt;String&gt;,
+}
+
+<span class="kw">impl </span>SourceCodeLocation {
+    <span class="comment">// Given the source code, get the string associated with this location.
+    </span><span class="kw">pub fn </span>get_code(<span class="kw-2">&amp;</span><span class="self">self</span>, source: <span class="kw-2">&amp;</span>str) -&gt; String {
+        <span class="kw">let </span><span class="kw-2">mut </span>code = String::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>line_number = <span class="number">1</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>column_number = <span class="number">1</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>offset = <span class="number">0</span>;
+
+        <span class="kw">for </span>c <span class="kw">in </span>source.chars() {
+            <span class="kw">if </span>line_number == <span class="self">self</span>.line &amp;&amp; column_number == <span class="self">self</span>.column {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(length) = <span class="self">self</span>.length {
+                    code.push_str(<span class="kw-2">&amp;</span>source[offset..(offset + length)]);
+                    <span class="kw">break</span>;
+                }
+            }
+
+            <span class="kw">if </span>c == <span class="string">&#39;\n&#39; </span>{
+                line_number += <span class="number">1</span>;
+                column_number = <span class="number">1</span>;
+            } <span class="kw">else </span>{
+                column_number += <span class="number">1</span>;
+            }
+
+            offset += <span class="number">1</span>;
+        }
+
+        code
+    }
+}
 
 <span class="macro">lalrpop_mod!</span>(
     <span class="attr">#[allow(clippy::all)]
@@ -335,8 +417,8 @@
 }
 
 <span class="doccomment">/// Parse frontend sage code into an LIR expression.
-</span><span class="kw">pub fn </span>parse_frontend(input: <span class="kw">impl </span>ToString) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, String&gt; {
-    frontend::parse(input)
+</span><span class="kw">pub fn </span>parse_frontend(input: <span class="kw">impl </span>ToString, filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, String&gt; {
+    frontend::parse(input, filename)
 }
 
 <span class="kw">type </span>SyntaxError&lt;<span class="lifetime">&#39;a</span>, T&gt; = lalrpop_util::ParseError&lt;usize, T, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>str&gt;;

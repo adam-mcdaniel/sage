@@ -32,16 +32,16 @@
 <span class="kw">use </span>no_comment::{languages, IntoWithoutComments};
 <span class="kw">use </span>parse::<span class="kw-2">*</span>;
 
-<span class="kw">pub fn </span>parse(code: <span class="kw">impl </span>ToString) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">crate</span>::lir::Expr, String&gt; {
+<span class="kw">pub fn </span>parse(code: <span class="kw">impl </span>ToString, filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">crate</span>::lir::Expr, String&gt; {
     <span class="kw">let </span>code = code
         .to_string()
         .chars()
         .without_comments(languages::rust())
         .collect::&lt;String&gt;();
 
-    <span class="kw">match </span>parse_frontend(code.as_ref()) {
+    <span class="kw">match </span>parse_frontend(code.as_ref(), filename) {
         <span class="prelude-val">Ok</span>(result) =&gt; {
-            <span class="comment">// eprintln!(&quot;Parsed LIR: {:#}&quot;, result);
+            <span class="comment">// eprintln!(&quot;Parsed LIR: {:#?}&quot;, result);
             </span><span class="kw">let </span>alloc = <span class="kw">crate</span>::lir::ConstExpr::StandardBuiltin(<span class="kw">crate</span>::lir::StandardBuiltin {
                 name: <span class="string">&quot;alloc&quot;</span>.to_string(),
                 args: <span class="macro">vec!</span>[(<span class="string">&quot;size&quot;</span>.to_string(), <span class="kw">crate</span>::lir::Type::Int)],

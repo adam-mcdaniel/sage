@@ -522,6 +522,25 @@
 <a href="#522" id="522">522</a>
 <a href="#523" id="523">523</a>
 <a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Constant Expressions
 //!
 //! Constant expressions are expressions that can be evaluated at compile time.
@@ -537,6 +556,7 @@
     CoreBuiltin, Env, Error, Expr, GetSize, GetType, PolyProcedure, Procedure, Simplify,
     StandardBuiltin, Type, TypeCheck,
 };
+<span class="kw">use </span><span class="kw">crate</span>::parse::SourceCodeLocation;
 
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::collections::BTreeMap;
@@ -544,6 +564,12 @@
 <span class="doccomment">/// A compiletime expression.
 </span><span class="attr">#[derive(Clone, Debug, PartialEq)]
 </span><span class="kw">pub enum </span>ConstExpr {
+    <span class="comment">// A constant expression annotated with its source code location.
+    </span>AnnotatedWithSource {
+        expr: Box&lt;<span class="self">Self</span>&gt;,
+        loc: SourceCodeLocation,
+    },
+
     <span class="doccomment">/// Bind a list of types in a constant expression.
     </span>LetTypes(Vec&lt;(String, Type)&gt;, Box&lt;<span class="self">Self</span>&gt;),
 
@@ -640,6 +666,8 @@
             <span class="prelude-val">Err</span>(Error::RecursionDepthConst(<span class="self">self</span>))
         } <span class="kw">else </span>{
             <span class="kw">match </span><span class="self">self </span>{
+                <span class="self">Self</span>::AnnotatedWithSource { expr, loc } =&gt; expr.eval_checked(env, i).map_err(|e| e.with_loc(<span class="kw-2">&amp;</span>loc)),
+
                 <span class="self">Self</span>::None
                 | <span class="self">Self</span>::Null
                 | <span class="self">Self</span>::Cell(<span class="kw">_</span>)
@@ -780,6 +808,10 @@
 <span class="kw">impl </span>GetType <span class="kw">for </span>ConstExpr {
     <span class="kw">fn </span>get_type_checked(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env, i: usize) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
         <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self</span>.clone() {
+            <span class="self">Self</span>::AnnotatedWithSource { expr, loc } =&gt; {
+                expr.get_type_checked(env, i).map_err(|e| e.with_loc(<span class="kw-2">&amp;</span>loc))<span class="question-mark">?
+            </span>}
+
             <span class="self">Self</span>::As(expr, cast_ty) =&gt; {
                 <span class="kw">let </span>found = expr.get_type_checked(env, i)<span class="question-mark">?</span>;
                 <span class="kw">if </span>!found.can_cast_to(<span class="kw-2">&amp;</span>cast_ty, env)<span class="question-mark">? </span>{
@@ -876,6 +908,9 @@
 
     <span class="kw">fn </span>substitute(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str, ty: <span class="kw-2">&amp;</span>Type) {
         <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::AnnotatedWithSource { expr, .. } =&gt; {
+                expr.substitute(name, ty);
+            }
             <span class="self">Self</span>::As(expr, cast_ty) =&gt; {
                 expr.substitute(name, ty);
                 <span class="kw-2">*</span>cast_ty = cast_ty.substitute(name, ty);
@@ -957,6 +992,9 @@
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>ConstExpr {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::AnnotatedWithSource { expr, .. } =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;{expr}&quot;</span>)
+            }
             <span class="self">Self</span>::CoreBuiltin(builtin) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;{builtin}&quot;</span>)
             }

@@ -1519,31 +1519,31 @@
             .and_then(|x| x.type_check(env))
         {
             <span class="prelude-val">Ok</span>(()) =&gt; {}
-            <span class="comment">// Err(Error::InvalidBinaryOp(_, a, b)) =&gt; {
-            //     let expected = a.get_type(env)?;
-            //     let found = b.get_type(env)?;
-            //     return Err(Error::MismatchedTypes {
-            //         expected,
-            //         found,
-            //         expr: matching_expr.clone(),
-            //     });
-            // },
-            // Err(Error::InvalidBinaryOpTypes(_, expected, found)) =&gt; {
-            //     return Err(Error::MismatchedTypes {
-            //         expected,
-            //         found,
-            //         expr: matching_expr.clone(),
-            //     })
-            // },
-            // _ =&gt; return Err(Error::MismatchedTypes {
-            //     expected,
-            //     found: matching_ty,
-            //     expr: matching_expr.clone(),
-            // })
-            </span><span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
-        }
+            <span class="prelude-val">Err</span>(Error::InvalidBinaryOp(<span class="kw">_</span>, a, b)) =&gt; {
+                <span class="kw">let </span>expected = a.get_type(env)<span class="question-mark">?</span>;
+                <span class="kw">let </span>found = b.get_type(env)<span class="question-mark">?</span>;
+                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
+                    expected,
+                    found,
+                    expr: Expr::Match(Box::new(matching_expr.clone()), <span class="macro">vec!</span>[(<span class="self">self</span>.clone(), branch.clone())]),
+                });
+            },
+            <span class="prelude-val">Err</span>(Error::InvalidBinaryOpTypes(<span class="kw">_</span>, expected, found)) =&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
+                    expected,
+                    found,
+                    expr: Expr::Match(Box::new(matching_expr.clone()), <span class="macro">vec!</span>[(<span class="self">self</span>.clone(), branch.clone())]),
+                })
+            },
+            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
+                expected,
+                found: matching_ty,
+                expr: Expr::Match(Box::new(matching_expr.clone()), <span class="macro">vec!</span>[(<span class="self">self</span>.clone(), branch.clone())])
+            })
+            <span class="comment">// Err(e) =&gt; return Err(Error::InvalidPatternForExpr(matching_expr.clone(), self.clone())),
+        </span>}
         <span class="comment">// Generate an expression with the bindings defined for the branch.
-        </span><span class="kw">let </span>result_expr = <span class="self">self</span>.bind(<span class="kw-2">&amp;</span>matching_expr, <span class="kw-2">&amp;</span>matching_ty, <span class="kw-2">&amp;</span>branch, env)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>result_expr = <span class="self">self</span>.bind(<span class="kw-2">&amp;</span>matching_expr, <span class="kw-2">&amp;</span>matching_ty, <span class="kw-2">&amp;</span>branch, env).map_err(|<span class="kw">_</span>| Error::InvalidPatternForExpr(matching_expr.clone(), <span class="self">self</span>.clone()))<span class="question-mark">?</span>;
         <span class="comment">// Type-check the expression generated to bind the pattern.
         </span>result_expr.type_check(env)<span class="question-mark">?</span>;
         <span class="comment">// Get the type of the expression generated to bind the pattern.
