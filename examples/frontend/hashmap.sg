@@ -1,24 +1,49 @@
-
-def left_shift(a: Int, b: Int): Int = {
-    while b {
-        a *= 2;
-        b -= 1;
-    }
-    return a;
+struct Entry<K, V> {
+    // The key of the entry
+    key: K,
+    // The value of the entry
+    val: V,
+    // Whether the entry is occupied (set to false when removed from the hashmap)
+    is_occupied: Bool
 }
 
+struct HashMap<K, V> {
+    // The entries of the hashmap
+    entries: &Entry<K, V>,
+    // The reserved size in memory of the entries
+    count_allocated: Int,
+    // The number of occupied entries
+    count_occupied: Int
+}
+
+// Used to represent a value that may or may not exist
+enum Option<T> {
+    // Some value
+    Some(T),
+    // No value
+    Nothing
+}
+                    
+// Hash a value
 def hash<T>(t: T): Int {
     let size = sizeof(T);
     let ptr = &t as &Int;
     
-    let hashValue = 5381;  // Initial hash value
+    let hashValue = 5381;
+    def left_shift(a: Int, b: Int): Int = {
+        while b {
+            a *= 2;
+            b -= 1;
+        }
+        return a;
+    }
 
     for let i = 0; i < size; i += 1 {
         let value = ptr[i];
         while (value != 0) {
             let digit = value % 10;
-            hashValue = (left_shift(hashValue, 5) + hashValue) + digit;  // Update the hash value
-            value /= 10;  // Remove the least significant digit
+            hashValue = (left_shift(hashValue, 5) + hashValue) + digit;
+            value /= 10;
         }
     }
 
@@ -42,28 +67,8 @@ def eq<K>(a: K, b: K): Bool {
     return True;
 }
 
-
-struct Entry<K, V> {
-    key: K,
-    val: V,
-    is_occupied: Bool,
-}
-
 def Entry_print<K, V>(self: &Entry<K, V>) {
     print("hash: ", hash<K>(self->key), ", key: ", self->key, ", val: ", self->val);
-}
-
-struct HashMap<K, V> {
-    entries: &(Entry<K, V>),
-    // The reserved size in memory of the entries
-    count_allocated: Int,
-    // The number of occupied entries
-    count_occupied: Int,
-}
-
-enum Option<T> {
-    Some(T),
-    Nothing
 }
 
 def HashMap_clear<K, V>(self: &HashMap<K, V>) {
@@ -169,19 +174,6 @@ struct Point {
     x: Int,
     y: Int
 }
-
-// def f(x: Int): Int = x * x;
-// for let i=0; i<100; i+=1 {
-//     let points = [
-//         {x = i, y = f(i)},
-//         {x = i+1, y = f(i+1)},
-//         {x = i+2, y = f(i+2)},
-//         {x = i+3, y = f(i+3)},
-//         {x = i+4, y = f(i+4)}
-//     ];
-//     // Hash the list of points
-//     print(i, " -> ", hash<[Point * 5]>(points) % 97, "\n");
-// }
 
 def f(x: Int): Point {
     return {x = x, y = x * x};

@@ -43,10 +43,10 @@ pub trait GetSize {
 impl GetSize for Type {
     fn get_size_checked(&self, env: &Env, i: usize) -> Result<usize, Error> {
         let i = i + 1;
-        eprintln!("GetSize::get_size_checked: i = {i} {self}");
+        // eprintln!("GetSize::get_size_checked: i = {i} {self}");
         // eprintln!("Env: {env:?}");
         if i > Type::SIMPLIFY_RECURSION_LIMIT {
-            eprintln!("GetSize::get_size_checked: recursion limit reached");
+            // eprintln!("GetSize::get_size_checked: recursion limit reached");
             return Err(Error::UnsizedType(self.clone()));
         }
         // eprintln!("GetSize::get_size_checked: i = {i} {self}");
