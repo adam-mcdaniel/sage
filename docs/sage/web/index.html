@@ -987,7 +987,7 @@ def binop(
     if input.start[input.loc] == op {
         input.loc += 1;
         input = parse_whitespaces(input);
-        match parse_term(input) {
+        match factor(input) {
             of Ok (input, rhs) => {
                 return ParseResult of Ok (input, cons(lhs, rhs));
             },
@@ -1125,7 +1125,7 @@ def parse_group(input: Input): ParseResult {
                 return ParseResult of Err (input.loc);
             }
             input.loc += 1;
-            ParseResult of Ok (input, new Expr of Group(expr));
+            return ParseResult of Ok (input, new Expr of Group(expr));
         },
         of Err _ => ParseResult of Err (input.loc)
     };
@@ -1138,7 +1138,7 @@ def parse_whitespaces(input: Input): Input {
         return input;
     }
 
-    for (); input.loc < input.length && (input.start[input.loc] == ' ' || input.start[input.loc] == '\\r' || input.start[input.loc] == '\\n'); input.loc += 1 {}
+    for (); input.loc < input.length && (input.start[input.loc] == ' ' || input.start[input.loc] == '\r' || input.start[input.loc] == '\\n'); input.loc += 1 {}
 
     return input;
 }
@@ -1176,8 +1176,8 @@ def read(): Input {
     buf[len] = '\\0';
 
     return {
-        start = buf as &Char,
-        length = strlen(buf as &Char),
+        start = buf,
+        length = strlen(buf),
         loc = 0
     };
 }
@@ -1299,7 +1299,8 @@ def print_char(x: Char) = print(x);
 test<Int>(&x, print_int);
 print("\\n");
 test<Char>(&y, print_char);
-print("\\n");`);
+print("\\n");
+`);
                     break;
                 case "lisp":
                     source.setValue(`def strlen(ch: &Char): Int {

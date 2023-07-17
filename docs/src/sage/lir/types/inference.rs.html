@@ -589,6 +589,11 @@
 <a href="#589" id="589">589</a>
 <a href="#590" id="590">590</a>
 <a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Inference
 //!
 //! This module contains the type inference algorithm for the language.
@@ -791,7 +796,12 @@
 
             <span class="comment">// A while loop returns the None value.
             </span><span class="self">Self</span>::While(cond, <span class="kw">_</span>) =&gt; {
-                <span class="kw">match </span><span class="kw-2">**</span>cond {
+                <span class="kw">let </span><span class="kw-2">mut </span>cond = <span class="kw-2">*</span>cond.clone();
+                <span class="kw">while let </span>Expr::AnnotatedWithSource { expr, .. } = cond {
+                    cond = <span class="kw-2">*</span>expr;
+                }
+
+                <span class="kw">match </span>cond {
                     <span class="self">Self</span>::ConstExpr(ConstExpr::Bool(<span class="bool-val">true</span>)) =&gt; Type::Never,
                     <span class="self">Self</span>::ConstExpr(<span class="kw-2">ref </span>c) =&gt; {
                         <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) = c.clone().simplify(env)<span class="question-mark">?</span>.as_bool(env) {
