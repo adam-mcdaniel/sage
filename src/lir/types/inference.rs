@@ -82,6 +82,12 @@ impl GetType for Expr {
             Self::ConstExpr(c) => c.get_type_checked(env, i)?,
             // Get the type of the result of the block of expressions.
             Self::Many(exprs) => {
+                for expr in exprs {
+                    if expr.get_type_checked(env, i)? == Type::Never {
+                        return Ok(Type::Never);
+                    }
+                }
+
                 // Get the type of the last expression in the block.
                 if let Some(expr) = exprs.last() {
                     // If the last expression returns a value,
@@ -193,7 +199,24 @@ impl GetType for Expr {
             }
 
             // A while loop returns the None value.
-            Self::While(_, _) => Type::None,
+            Self::While(cond, _) => {
+                let mut cond = *cond.clone();
+                while let Expr::AnnotatedWithSource { expr, .. } = cond {
+                    cond = *expr;
+                }
+
+                match cond {
+                    Self::ConstExpr(ConstExpr::Bool(true)) => Type::Never,
+                    Self::ConstExpr(ref c) => {
+                        if let Ok(true) = c.clone().simplify(env)?.as_bool(env) {
+                            Type::Never
+                        } else {
+                            Type::None
+                        }
+                    }
+                    _ => Type::None,
+                }
+            },
 
             // An if statement returns the type of the expression
             // that is evaluated if the condition is true (which must

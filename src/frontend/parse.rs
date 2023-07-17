@@ -1065,7 +1065,8 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
         ),
         Rule::const_none => ConstExpr::None,
         Rule::const_null => ConstExpr::Null,
-        Rule::const_size_of => ConstExpr::SizeOfType(parse_type(pair.into_inner().next().unwrap())),
+        Rule::const_size_of_type => ConstExpr::SizeOfType(parse_type(pair.into_inner().next().unwrap())),
+        Rule::const_size_of_expr => ConstExpr::SizeOfExpr(parse_expr(pair.into_inner().next().unwrap()).into()),
         other => panic!("Unexpected rule: {:?}: {:?}", other, pair),
     }
 }
@@ -1136,6 +1137,7 @@ fn parse_type(pair: Pair<Rule>) -> Type {
         Rule::type_bool => Type::Bool,
         Rule::type_char => Type::Char,
         Rule::type_none => Type::None,
+        Rule::type_never => Type::Never,
 
         Rule::type_tuple => {
             let inner_rules = pair.into_inner();

@@ -304,7 +304,7 @@ def round_key(word0: Int, word1: Int, word2: Int, word3: Int): State {
 
 def key_expansion(key: &Key, nr: Int, nk: Int): &Int = {
     let key_data = key as &Int;
-    let w = alloc(4 * (nr + 1) * sizeof(Int)) as &Int;
+    let w = alloc(4 * (nr + 1) * sizeof<Int>()) as &Int;
     for let i=0; i < nk; i+=1 {
         w[i] = word(key_data[4*i], key_data[4*i+1], key_data[4*i+2], key_data[4*i+3]);
     }

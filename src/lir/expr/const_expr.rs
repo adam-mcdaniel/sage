@@ -294,7 +294,8 @@ impl GetType for ConstExpr {
             }
             Self::Monomorphize(expr, ty_args) => {
                 // Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::<Result<Vec<Type>, Error>>()?).perform_template_applications(env, &mut HashMap::new(), 0)?
-                Type::Apply(Box::new(expr.get_type_checked(env, i)?), ty_args)
+                let result = Type::Apply(Box::new(expr.get_type_checked(env, i)?), ty_args.clone());
+                result
             }
             Self::TypeOf(expr) => {
                 let size = expr.get_type_checked(env, i)?.to_string().len();
@@ -376,15 +377,15 @@ impl GetType for ConstExpr {
                 // if bindings.iter().map(|(n, _)| n).any(|n| n == name) {
                 //     return;
                 // }
-                for (_, ty) in bindings {
-                    *ty = ty.substitute(name, ty);
+                for (_, ty_bind) in bindings {
+                    *ty_bind = ty_bind.substitute(name, ty);
                 }
                 expr.substitute(name, ty);
             }
             Self::Monomorphize(expr, ty_args) => {
                 expr.substitute(name, ty);
-                for ty in ty_args {
-                    *ty = ty.substitute(name, ty);
+                for ty_arg in ty_args {
+                    *ty_arg = ty_arg.substitute(name, ty);
                 }
             }
             Self::TypeOf(expr) => {
@@ -421,12 +422,12 @@ impl GetType for ConstExpr {
                     item.substitute(name, ty);
                 }
             }
-            Self::Union(t, _, expr) => {
-                *t = t.substitute(name, ty);
+            Self::Union(inner, _, expr) => {
+                *inner = inner.substitute(name, ty);
                 expr.substitute(name, ty);
             }
-            Self::EnumUnion(t, _, expr) => {
-                *t = t.substitute(name, ty);
+            Self::EnumUnion(inner, _, expr) => {
+                *inner = inner.substitute(name, ty);
                 expr.substitute(name, ty);
             }
             Self::PolyProc(proc) => {

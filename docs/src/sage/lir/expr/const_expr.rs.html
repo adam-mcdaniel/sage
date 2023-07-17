@@ -541,6 +541,7 @@
 <a href="#541" id="541">541</a>
 <a href="#542" id="542">542</a>
 <a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Constant Expressions
 //!
 //! Constant expressions are expressions that can be evaluated at compile time.
@@ -837,7 +838,8 @@
             </span>}
             <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; {
                 <span class="comment">// Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::&lt;Result&lt;Vec&lt;Type&gt;, Error&gt;&gt;()?).perform_template_applications(env, &amp;mut HashMap::new(), 0)?
-                </span>Type::Apply(Box::new(expr.get_type_checked(env, i)<span class="question-mark">?</span>), ty_args)
+                </span><span class="kw">let </span>result = Type::Apply(Box::new(expr.get_type_checked(env, i)<span class="question-mark">?</span>), ty_args.clone());
+                result
             }
             <span class="self">Self</span>::TypeOf(expr) =&gt; {
                 <span class="kw">let </span>size = expr.get_type_checked(env, i)<span class="question-mark">?</span>.to_string().len();
@@ -919,15 +921,15 @@
                 <span class="comment">// if bindings.iter().map(|(n, _)| n).any(|n| n == name) {
                 //     return;
                 // }
-                </span><span class="kw">for </span>(<span class="kw">_</span>, ty) <span class="kw">in </span>bindings {
-                    <span class="kw-2">*</span>ty = ty.substitute(name, ty);
+                </span><span class="kw">for </span>(<span class="kw">_</span>, ty_bind) <span class="kw">in </span>bindings {
+                    <span class="kw-2">*</span>ty_bind = ty_bind.substitute(name, ty);
                 }
                 expr.substitute(name, ty);
             }
             <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; {
                 expr.substitute(name, ty);
-                <span class="kw">for </span>ty <span class="kw">in </span>ty_args {
-                    <span class="kw-2">*</span>ty = ty.substitute(name, ty);
+                <span class="kw">for </span>ty_arg <span class="kw">in </span>ty_args {
+                    <span class="kw-2">*</span>ty_arg = ty_arg.substitute(name, ty);
                 }
             }
             <span class="self">Self</span>::TypeOf(expr) =&gt; {
@@ -964,12 +966,12 @@
                     item.substitute(name, ty);
                 }
             }
-            <span class="self">Self</span>::Union(t, <span class="kw">_</span>, expr) =&gt; {
-                <span class="kw-2">*</span>t = t.substitute(name, ty);
+            <span class="self">Self</span>::Union(inner, <span class="kw">_</span>, expr) =&gt; {
+                <span class="kw-2">*</span>inner = inner.substitute(name, ty);
                 expr.substitute(name, ty);
             }
-            <span class="self">Self</span>::EnumUnion(t, <span class="kw">_</span>, expr) =&gt; {
-                <span class="kw-2">*</span>t = t.substitute(name, ty);
+            <span class="self">Self</span>::EnumUnion(inner, <span class="kw">_</span>, expr) =&gt; {
+                <span class="kw-2">*</span>inner = inner.substitute(name, ty);
                 expr.substitute(name, ty);
             }
             <span class="self">Self</span>::PolyProc(proc) =&gt; {

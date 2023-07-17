@@ -1,21 +1,3 @@
-struct Entry<K, V> {
-    // The key of the entry
-    key: K,
-    // The value of the entry
-    val: V,
-    // Whether the entry is occupied (set to false when removed from the hashmap)
-    is_occupied: Bool
-}
-
-struct HashMap<K, V> {
-    // The entries of the hashmap
-    entries: &Entry<K, V>,
-    // The reserved size in memory of the entries
-    count_allocated: Int,
-    // The number of occupied entries
-    count_occupied: Int
-}
-
 // Used to represent a value that may or may not exist
 enum Option<T> {
     // Some value
@@ -23,10 +5,56 @@ enum Option<T> {
     // No value
     Nothing
 }
-                    
+
+struct Entry<K, V> {
+    // The key of the entry
+    key: K,
+    // The value of the entry
+    val: V
+}
+
+struct HashMap<K, V> {
+    // The entries of the hashmap
+    entries: &Option<Entry<K, V>>,
+    // The reserved size in memory of the entries
+    count_allocated: Int,
+    // The number of occupied entries
+    count_occupied: Int
+}
+                  
+def is_some<T>(opt: Option<T>): Bool = match opt {
+    of Some(_) => True,
+    of Nothing => False
+};
+
+def refer<T>(opt: &Option<T>): Option<&T> {
+    let inner = opt as &T;
+    if let &of Nothing = opt {
+        return Option<&T> of Nothing;
+    }
+    return Option<&T> of Some(inner);
+}
+
+def exit(code: Int): ! {
+    print("Exiting with code ", code, "\n");
+    while True {
+        // Deref a null pointer to cause a segfault
+        let error = *(Null as &Int);
+    }
+}
+
+def unwrap<T>(opt: Option<T>): T {
+    if let of Some(val) = opt {
+        return val;
+    } else {
+        print("Error: Tried to unwrap a None value\n");
+        exit(1);
+    }
+}
+  
 // Hash a value
 def hash<T>(t: T): Int {
-    let size = sizeof(T);
+    let size = sizeof(t);
     let ptr = &t as &Int;
     
     let hashValue = 5381;
@@ -55,7 +83,7 @@ def hash<T>(t: T): Int {
 }
 
 def eq<K>(a: K, b: K): Bool {
-    let size = sizeof(K);
+    let size = sizeof(a);
     let a_ptr = &a as &Int;
     let b_ptr = &b as &Int;
     
@@ -73,15 +101,15 @@ def Entry_print<K, V>(self: &Entry<K, V>) {
 
 def HashMap_clear<K, V>(self: &HashMap<K, V>) {
     for let i=0; i < self->count_allocated; i+=1 {
-        self->entries[i].is_occupied = False;
+        self->entries[i] = Option<Entry<K, V>> of Nothing;
     }
     self->count_occupied = 0;
 }
 
 
 def HashMap_new<K, V>(): HashMap<K, V> {
-    let size = 1000 * sizeof(Entry<K, V>);
-    let entries = alloc(size) as &Entry<K, V>;
+    let size = 1000 * sizeof<Option<Entry<K, V>>>();
+    let entries = alloc(size) as &Option<Entry<K, V>>;
     let self = {
         entries = entries,
         count_allocated = 1000,
@@ -93,9 +121,10 @@ def HashMap_new<K, V>(): HashMap<K, V> {
 
 def HashMap_get<K, V>(self: &HashMap<K, V>, key: K): Option<&V> {
     let index = hash<K>(key) % self->count_allocated;
-    while (self->entries[index].is_occupied) {
-        if (eq<K>(self->entries[index].key, key)) {
-            return Option<&V> of Some(&(self->entries[index].val));
+    while is_some<Entry<K, V>>(self->entries[index]) {
+        let entry = unwrap<&Entry<K, V>>(refer<Entry<K, V>>(&(self->entries[index])));
+        if (eq<K>(entry->key, key)) {
+            return Option<&V> of Some(&(entry->val));
         }
         index = (index + 1) % self->count_allocated;  // Linear probing for collision resolution
     }
@@ -105,7 +134,7 @@ def HashMap_get<K, V>(self: &HashMap<K, V>, key: K): Option<&V> {
 def HashMap_check_bounds<K, V>(self: &HashMap<K, V>) {
     if (self->count_allocated - self->count_occupied) < 100 {
         // Allocate new space
-        let old_size = self->count_allocated * sizeof(Entry<K, V>);
+        let old_size = self->count_allocated * sizeof(self->entries[0]);
         let old_entries = self->entries;
         let old_map = {
             entries = old_entries,
@@ -115,13 +144,13 @@ def HashMap_check_bounds<K, V>(self: &HashMap<K, V>) {
 
         let new_size = old_size * 2;
         self->count_allocated *= 2;
-        self->entries = alloc(new_size) as &Entry<K, V>;
+        self->entries = alloc(new_size) as &Option<Entry<K, V>>;
         HashMap_clear<K, V>(self);
 
         for let i=0; i<old_map.count_allocated; i+=1 {
-            if old_entries[i].is_occupied {
-                match HashMap_get<K, V>(&old_map, old_entries[i].key) {
-                    of Some(val) => HashMap_put<K, V>(self, old_entries[i].key, *val),
+            if let of Some(old_entry) = old_entries[i] {
+                match HashMap_get<K, V>(&old_map, old_entry.key) {
+                    of Some(val) => HashMap_put<K, V>(self, old_entry.key, *val),
                     of Nothing => {}
                 }
             }
@@ -131,18 +160,19 @@ def HashMap_check_bounds<K, V>(self: &HashMap<K, V>) {
 
 def HashMap_put<K, V>(self: &HashMap<K, V>, key: K, val: V) {
     let index = hash<K>(key) % self->count_allocated;
-    
-    while (self->entries[index].is_occupied) {
-        if (eq<K>(self->entries[index].key, key)) {
-            self->entries[index].val = val;  // Update value if key already exists
+    while is_some<Entry<K, V>>(self->entries[index]) {
+        let entry = unwrap<&Entry<K, V>>(refer<Entry<K, V>>(&(self->entries[index])));
+        if (eq<K>(entry->key, key)) {
+            entry->val = val;  // Update value if key already exists
             return ();
         }
         index = (index + 1) % self->count_allocated;  // Linear probing for collision resolution
     }
 
-    self->entries[index].key = key;
-    self->entries[index].val = val;
-    self->entries[index].is_occupied = True;
+    self->entries[index] = Option<Entry<K, V>> of Some({
+        key = key,
+        val = val
+    });
     self->count_occupied += 1;
     
     HashMap_check_bounds<K, V>(self);
@@ -156,8 +186,8 @@ def HashMap_print<K, V>(self: &HashMap<K, V>) {
     }
     print("--------------------------------\n");
     for let i=0; i < self->count_allocated; i+=1 {
-        if self->entries[i].is_occupied {
-            Entry_print<K, V>(&(self->entries[i]));
+        if let of Some(entry) = self->entries[i] {
+            Entry_print<K, V>(&entry);
             print("\n");
             count += 1;
         }
@@ -198,6 +228,15 @@ def putstrln(s: &Char) {
     print("\n");
 }
 
+def make_x_str(x_count: Int): &Char {
+    let value = alloc((x_count + 32) * sizeof<Char>()) as &Char;
+    for let i=0; i<x_count; i+=1 {
+        value[i] = 'x';
+    }
+    value[x_count] = '\0';
+    return value;
+}
+
 const INSERT_COUNT = 100;
 const CHECK_COUNT = 200;
 
@@ -207,11 +246,7 @@ HashMap_print<Point, &Char>(&map);
 for let i=1; i<INSERT_COUNT; i+=1 {
     let point = f(i);
     let key = point as Point;
-    let value = alloc((i + 32) * sizeof(Char)) as &Char;
-    for let j=0; j<i; j+=1 {
-        value[j] = 'x';
-    }
-    value[i] = '\0';
+    let value = make_x_str(i);
     print("Inserting ", key, " -> ");
     putstrln(value);
     HashMap_put<Point, &Char>(&map, key, value);
@@ -235,3 +270,4 @@ for let i=1; i<CHECK_COUNT; i+=1 {
 }
 
 HashMap_drop<Point, &Char>(&map);
+

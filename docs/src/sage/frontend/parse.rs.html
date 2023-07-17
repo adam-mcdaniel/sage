@@ -1305,6 +1305,8 @@
 <a href="#1305" id="1305">1305</a>
 <a href="#1306" id="1306">1306</a>
 <a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{lir::<span class="kw-2">*</span>, parse::SourceCodeLocation};
 <span class="kw">use </span>pest::{
     error::Error,
@@ -2372,7 +2374,8 @@
         ),
         Rule::const_none =&gt; ConstExpr::None,
         Rule::const_null =&gt; ConstExpr::Null,
-        Rule::const_size_of =&gt; ConstExpr::SizeOfType(parse_type(pair.into_inner().next().unwrap())),
+        Rule::const_size_of_type =&gt; ConstExpr::SizeOfType(parse_type(pair.into_inner().next().unwrap())),
+        Rule::const_size_of_expr =&gt; ConstExpr::SizeOfExpr(parse_expr(pair.into_inner().next().unwrap()).into()),
         other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected rule: {:?}: {:?}&quot;</span>, other, pair),
     }
 }
@@ -2443,6 +2446,7 @@
         Rule::type_bool =&gt; Type::Bool,
         Rule::type_char =&gt; Type::Char,
         Rule::type_none =&gt; Type::None,
+        Rule::type_never =&gt; Type::Never,
 
         Rule::type_tuple =&gt; {
             <span class="kw">let </span>inner_rules = pair.into_inner();

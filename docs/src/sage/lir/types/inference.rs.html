@@ -571,6 +571,24 @@
 <a href="#571" id="571">571</a>
 <a href="#572" id="572">572</a>
 <a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Inference
 //!
 //! This module contains the type inference algorithm for the language.
@@ -655,6 +673,12 @@
             </span><span class="self">Self</span>::ConstExpr(c) =&gt; c.get_type_checked(env, i)<span class="question-mark">?</span>,
             <span class="comment">// Get the type of the result of the block of expressions.
             </span><span class="self">Self</span>::Many(exprs) =&gt; {
+                <span class="kw">for </span>expr <span class="kw">in </span>exprs {
+                    <span class="kw">if </span>expr.get_type_checked(env, i)<span class="question-mark">? </span>== Type::Never {
+                        <span class="kw">return </span><span class="prelude-val">Ok</span>(Type::Never);
+                    }
+                }
+
                 <span class="comment">// Get the type of the last expression in the block.
                 </span><span class="kw">if let </span><span class="prelude-val">Some</span>(expr) = exprs.last() {
                     <span class="comment">// If the last expression returns a value,
@@ -766,7 +790,19 @@
             </span>}
 
             <span class="comment">// A while loop returns the None value.
-            </span><span class="self">Self</span>::While(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; Type::None,
+            </span><span class="self">Self</span>::While(cond, <span class="kw">_</span>) =&gt; {
+                <span class="kw">match </span><span class="kw-2">**</span>cond {
+                    <span class="self">Self</span>::ConstExpr(ConstExpr::Bool(<span class="bool-val">true</span>)) =&gt; Type::Never,
+                    <span class="self">Self</span>::ConstExpr(<span class="kw-2">ref </span>c) =&gt; {
+                        <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) = c.clone().simplify(env)<span class="question-mark">?</span>.as_bool(env) {
+                            Type::Never
+                        } <span class="kw">else </span>{
+                            Type::None
+                        }
+                    }
+                    <span class="kw">_ </span>=&gt; Type::None,
+                }
+            },
 
             <span class="comment">// An if statement returns the type of the expression
             // that is evaluated if the condition is true (which must

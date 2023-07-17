@@ -318,7 +318,7 @@ def readline(ch: &Char, len: Int): Int {
 }
 
 def read(): Input {
-    let buf = alloc(sizeof(Char) * 1024) as &Char;
+    let buf = alloc(sizeof<Char>() * 1024) as &Char;
 
     print("? ");
     let len = readline(buf, 0);

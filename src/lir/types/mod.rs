@@ -91,7 +91,7 @@ pub enum Type {
 
 impl Type {
     /// This is the maximum number of times a type will be simplified recursively.
-    pub const SIMPLIFY_RECURSION_LIMIT: usize = 20;
+    pub const SIMPLIFY_RECURSION_LIMIT: usize = 30;
 
     /// Is this type in a simple form?
     /// A simple form is a form that does not require any immediate simplification.
@@ -350,7 +350,7 @@ impl Type {
         }
 
         let i = i + 1;
-        if i > 500 {
+        if i > Self::SIMPLIFY_RECURSION_LIMIT {
             return Err(Error::RecursionDepthTypeEquality(
                 self.clone(),
                 other.clone(),
@@ -481,51 +481,51 @@ impl Type {
         env: &Env,
         previous_applications: &mut HashMap<(Type, Vec<Type>), Type>,
     ) -> Result<Self, Error> {
+        let before = self.to_string();
         // If the type is an Apply on a Poly, then we can perform the application.
         // First, perform the applications on the type arguments.
         // We can use memoization with the previous_applications HashMap to avoid infinite recursion.
-        match self.clone().simplify(env)? {
+        Ok(match self.clone().simplify(env)? {
             Self::Apply(poly, ty_args) => {
                 let pair = (
-                    *poly,
+                    poly.simplify(env)?.perform_template_applications(env, previous_applications)?,
                     ty_args
                         .into_iter()
-                        .map(|t| t.clone().simplify(env))
+                        .map(|t| t.clone().simplify(env)?.perform_template_applications(env, previous_applications))
                         .collect::<Result<Vec<_>, _>>()?,
                 );
                 if let Some(t) = previous_applications.get(&pair) {
-                    return Ok(t.clone());
-                }
-                let (poly, ty_args) = pair;
-
-                match poly {
-                    Self::Poly(params, template) => {
-                        let mut template = *template;
-                        for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
-                            template = template.substitute(param, ty_arg);
-                        }
-                        Ok(template)
-                    }
-                    Self::Symbol(s) => {
-                        match env.get_type(s.as_str()).cloned() {
-                            Some(Self::Poly(params, template)) => {
-                                let mut template = *template;
-                                for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
-                                    template = template.substitute(param, ty_arg);
-                                }
-                                Ok(template)
+                    t.clone()
+                } else {
+                    let (poly, ty_args) = pair;
+    
+                    match poly {
+                        Self::Poly(params, template) => {
+                            let mut template = *template;
+                            for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
+                                template = template.substitute(param, ty_arg);
                             }
-                            Some(other) => Ok(Self::Apply(Box::new(other), ty_args)),
-                            None => Ok(self.clone()),
+                            template
                         }
+                        Self::Symbol(s) => {
+                            match env.get_type(s.as_str()).cloned() {
+                                Some(Self::Poly(params, template)) => {
+                                    let mut template = *template;
+                                    for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
+                                        template = template.substitute(param, ty_arg);
+                                    }
+                                    template
+                                }
+                                Some(other) => Self::Apply(Box::new(other), ty_args),
+                                None => self.clone(),
+                            }
+                        }
+                        _ => self.clone(),
                     }
-                    _ => Ok(self.clone()),
                 }
             }
-            other => {
-                return Ok(other);
-            }
-        }
+            other => other
+        })
     }
 
     /// Are two types structurally equal?
@@ -541,9 +541,11 @@ impl Type {
             return Ok(true);
         }
 
-        if i > 50 {
+        if i >= Self::SIMPLIFY_RECURSION_LIMIT {
             return Ok(false);
         }
+
+        let i = i + 1;
 
         Ok(match (self, other) {
             (Self::Any, _)
@@ -562,7 +564,7 @@ impl Type {
                     // If the two types have the same name, they must equal the same type
                     // under the same environment.
                     true
-                } else if i > 10 && compared_symbols.contains(&(a.clone(), b.clone())) {
+                } else if i > Self::SIMPLIFY_RECURSION_LIMIT / 2 && compared_symbols.contains(&(a.clone(), b.clone())) {
                     // If we've seen this comparison of these two symbols before, and we've done
                     // lots of symbol replacements (indicated by `i`), then we're probably trying
                     // to compare two distinct types which are asymptotically unequal.
@@ -572,7 +574,7 @@ impl Type {
                     // we just say the types are unequal if we cannot simplify symbols further.
                     compared_symbols.insert((a.clone(), b.clone()));
                     match (env.get_type(a), env.get_type(b)) {
-                        (Some(a), Some(b)) => a.equals_checked(b, compared_symbols, env, i + 1)?,
+                        (Some(a), Some(b)) => a.equals_checked(b, compared_symbols, env, i)?,
                         _ => false,
                     }
                 }
@@ -581,7 +583,7 @@ impl Type {
                 // To get as much specific information as possible about type errors,
                 // we just say the types are unequal if we cannot simplify symbols further.
                 match env.get_type(x) {
-                    Some(t) => t.equals_checked(y, compared_symbols, env, i + 1)?,
+                    Some(t) => t.equals_checked(y, compared_symbols, env, i)?,
                     None => false,
                 }
             }
@@ -645,7 +647,7 @@ impl Type {
             // If we're comparing two units, then we can just compare their names and confirm
             // their structures are equal.
             (Self::Unit(unit_name1, t1), Self::Unit(unit_name2, t2)) => {
-                unit_name1 == unit_name2 && t1.equals_checked(t2, compared_symbols, env, i + 1)?
+                unit_name1 == unit_name2 && t1.equals_checked(t2, compared_symbols, env, i)?
             }
 
             (Self::Enum(a), Self::Enum(b)) => {
@@ -758,8 +760,12 @@ impl Type {
                 } else {
                     // If the two polymorphic types are not equal, then we can't just compare the two
                     // types' parameters. We need to simplify the types first.
-                    self.clone().simplify_checked(env, i)?.equals_checked(
-                        &other.clone().simplify_checked(env, i)?,
+                    other.clone().simplify_until_matches(
+                        env,
+                        Type::Any,
+                        |t, _env| Ok(t.is_simple()),
+                    )?.equals_checked(
+                        self,
                         compared_symbols,
                         env,
                         i,
@@ -769,28 +775,33 @@ impl Type {
 
             (Self::Apply(poly, ty_args), b) | (b, Self::Apply(poly, ty_args)) => {
                 // If the type is a polymorphic type, then we need to simplify it first.
-                let f = poly.clone().simplify_until_matches(
-                    env,
-                    Type::Poly(vec![], Box::new(Type::Any)),
-                    |t, _env| Ok(matches!(t, Type::Poly(_, _))),
-                )?;
+                // let f = poly.clone().simplify_until_matches(
+                //     env,
+                //     Type::Poly(vec![], Box::new(Type::Any)),
+                //     |t, _env| Ok(matches!(t, Type::Poly(_, _))),
+                // )?;
 
-                match f {
-                    Self::Poly(ty_params, mut template) => {
-                        // let mut new_env = env.clone();
-                        for (name, ty) in ty_params.iter().zip(ty_args.iter()) {
-                            // new_env.define_type(name, ty.clone());
-                            *template = template.substitute(name, ty);
-                        }
-                        template.equals_checked(b, compared_symbols, env, i)?
-                    }
-                    _ => {
-                        // If the type is not a polymorphic type, then we can compare it to the
-                        // other type.
-                        // return a.equals_checked(b, compared_symbols, env, i);
-                        false
-                    }
-                }
+                // match f {
+                //     Self::Poly(ty_params, mut template) => {
+                //         // let mut new_env = env.clone();
+                //         for (name, ty) in ty_params.iter().zip(ty_args.iter()) {
+                //             // new_env.define_type(name, ty.clone());
+                //             *template = template.substitute(name, ty);
+                //         }
+                //         template.equals_checked(b, compared_symbols, env, i)?
+                //     }
+                //     _ => {
+                //         // If the type is not a polymorphic type, then we can compare it to the
+                //         // other type.
+                //         // return a.equals_checked(b, compared_symbols, env, i);
+                //         false
+                //     }
+                // }
+                Self::Apply(poly.clone(), ty_args.clone()).simplify_until_matches(
+                    env,
+                    Type::Any,
+                    |t, _env| Ok(t.is_simple()),
+                )?.equals_checked(b, compared_symbols, env, i)?
             }
 
             _ => false,
@@ -847,7 +858,7 @@ impl Type {
                 // Find the member offset of the returned type under the new scope
                 //
                 // NOTE:
-                // We simplfy the type before AND after getting the member offset because
+                // We simplify the type before AND after getting the member offset because
                 // we want to make sure that recursive types don't leave undefined symbols
                 // in the in the resulting type.
                 let (t, offset) = ret
@@ -972,7 +983,11 @@ impl Type {
 impl Simplify for Type {
     fn simplify_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
         let i = i + 1;
-        // let s = self.to_string();
+        if i > Self::SIMPLIFY_RECURSION_LIMIT {
+            return Err(Error::UnsizedType(self.clone()));
+        }
+
+        let s = self.to_string();
         let result = match self {
             Self::None
             | Self::Never
@@ -1061,6 +1076,7 @@ impl Simplify for Type {
                 Self::Apply(Box::new(poly.simplify_checked(env, i)?), ty_args)
             }
         };
+        // eprintln!("Simplified {} to {}", s, result);    
         Ok(result)
     }
 }

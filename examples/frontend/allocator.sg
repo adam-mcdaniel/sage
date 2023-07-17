@@ -7,7 +7,7 @@ def allocate<T>(count: Int): Option<&T> {
     if (count <= 0) {
         return Option<&T> of Nothing;
     }
-    let ptr = alloc(count * sizeof(T)) as &T;
+    let ptr = alloc(count * sizeof<T>()) as &T;
     if (ptr == Null) {
         return Option<&T> of Nothing;
     } else {

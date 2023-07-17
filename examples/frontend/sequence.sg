@@ -22,7 +22,7 @@ def allocate<T>(count: Int): Option<&T> {
     if (count <= 0) {
         return Option<&T> of Nothing;
     }
-    let ptr = alloc(count * sizeof(T)) as &T;
+    let ptr = alloc(count * sizeof<T>()) as &T;
     if (ptr == Null) {
         return Option<&T> of Nothing;
     } else {
@@ -261,7 +261,7 @@ def Sequence_push<T>(s: Sequence<T>, c: T): Sequence<T> {
 def Sequence_concat<T>(first: Sequence<T>, second: Sequence<T>): Sequence<T> {
     let new_len = first.len + second.len;
     let new_cap = first.cap + second.cap;
-    let new_data = alloc(new_cap * sizeof(T)) as &T;
+    let new_data = alloc(new_cap * sizeof<T>()) as &T;
     for let i = 0; i < first.len; i+=1 {
         new_data[i] = first.data[i];
     }
