@@ -6,7 +6,7 @@
 //! supplying the input and handling the output of the program. For testing the compiler,
 //! assembler, and virtual machine, we use a `TestingDevice` object to supply sample input
 //! and capture the output to test against the predicted output.
-use crate::io::{Input, InputMode, Output, OutputMode};
+use crate::side_effects::{FFIBinding, Input, InputMode, Output, OutputMode};
 
 mod core;
 pub use self::core::*;
@@ -36,6 +36,9 @@ pub trait Device {
     /// Poke a value into the side-effecting device wrapping
     /// the virtual machine.
     fn poke(&mut self, val: i64) -> Result<(), String>;
+
+    /// FFI call to the device.
+    fn ffi_call(&mut self, ffi: &FFIBinding) -> Result<(), String>;
 }
 
 /// A device used for testing the compiler. This simply keeps a buffer
@@ -207,6 +210,11 @@ impl Device for TestingDevice {
         println!("poking {}", val);
         Ok(())
     }
+
+    fn ffi_call(&mut self, ffi: &FFIBinding) -> Result<(), String> {
+        println!("ffi call: {:?}", ffi);
+        Ok(())
+    }
 }
 
 /// A device used for standard input and output.
@@ -311,6 +319,11 @@ impl Device for StandardDevice {
 
     fn poke(&mut self, val: i64) -> Result<(), String> {
         println!("poking {}", val);
+        Ok(())
+    }
+
+    fn ffi_call(&mut self, ffi: &FFIBinding) -> Result<(), String> {
+        println!("ffi call: {:?}", ffi);
         Ok(())
     }
 }

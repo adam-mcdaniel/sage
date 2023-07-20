@@ -38,6 +38,7 @@
 use super::{CoreOp, CoreProgram, Error, VirtualMachineProgram};
 use core::fmt;
 use std::collections::HashMap;
+use crate::side_effects::{FFIBinding, FFIType, Input, Output};
 
 impl VirtualMachineProgram for StandardProgram {
     fn op(&mut self, op: CoreOp) {
@@ -293,8 +294,9 @@ pub enum StandardOp {
     /// Get a value from the input interface / device and store it in the register.
     /// This is intended to function something like system calls for using any external
     /// functionality that can't be implemented in the virtual machine, such as I/O or OS operations.
-    ///
-    /// The specific behavior of this instruction is purposefully not defined.
+    /// 
+    /// Whenever a value is returned from the foreign function interface, it is stored in the
+    /// FFI buffer of cells. This instruction will 
     Peek,
     /// Write the value of the register to the output interface / device.
     /// This is intended to function something like system calls for using any external
@@ -302,6 +304,9 @@ pub enum StandardOp {
     ///
     /// The specific behavior of this instruction is purposefully not defined.
     Poke,
+
+    /// Call a foreign function interface function.
+    Call(FFIBinding),
 }
 
 impl fmt::Display for StandardOp {
@@ -328,6 +333,7 @@ impl fmt::Display for StandardOp {
             StandardOp::Pow => write!(f, "pow"),
             StandardOp::Peek => write!(f, "peek"),
             StandardOp::Poke => write!(f, "poke"),
+            StandardOp::Call(binding) => write!(f, "call {}", binding),
         }
     }
 }

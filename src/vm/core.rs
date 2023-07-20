@@ -3,7 +3,7 @@
 //! Core instructions are instructions that **must** be implemented for
 //! every target. Write programs in the core variant to guarantee ports
 //! for ***every*** target.
-use crate::io::{Input, Output};
+use crate::side_effects::{Input, Output};
 
 use super::{Error, StandardOp, StandardProgram, VirtualMachineProgram};
 use core::fmt;

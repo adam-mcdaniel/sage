@@ -31,7 +31,7 @@ use super::{
     AssemblyProgram, Env, Error, Location, F, FP, SP,
 };
 use crate::{
-    io::{Input, InputMode, Output, OutputMode},
+    side_effects::{Input, InputMode, Output, OutputMode},
     vm::{self, VirtualMachineProgram},
 };
 use std::{collections::BTreeSet, fmt};

@@ -2,7 +2,7 @@ use super::*;
 
 use crate::{
     asm::{AssemblyProgram, CoreOp, Location, A, B, C, SP},
-    io::*,
+    side_effects::*,
     lir::*,
 };
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};

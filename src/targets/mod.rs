@@ -43,7 +43,7 @@ pub mod x86;
 pub use x86::*;
 
 use crate::{
-    io::{Input, Output},
+    side_effects::{Input, Output},
     vm::{self, *},
 };
 

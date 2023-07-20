@@ -17,7 +17,7 @@
 //! does not depend on defining functions at runtime.
 use super::{Architecture, CompiledTarget};
 use crate::{
-    io::{Input, InputMode, Output, OutputMode},
+    side_effects::{Input, InputMode, Output, OutputMode},
     vm::{CoreOp, StandardOp},
 };
 

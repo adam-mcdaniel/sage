@@ -53,7 +53,7 @@
 //! 16 bit ints + no floats for a hardware implementation would suffice.
 //! Infinitely large ints and floats are also supported, but the implementation
 //! must be able to handle them.
-use crate::io::{Input, Output};
+use crate::side_effects::{Input, Output};
 
 mod core;
 pub use self::core::*;

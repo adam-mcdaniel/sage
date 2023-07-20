@@ -62,7 +62,7 @@
 //!   Indirect(Address(6)) // go the address pointed to by the value in the 6th cell of the tape
 //!   ```
 use crate::{
-    io::{Input, Output},
+    side_effects::{Input, Output},
     vm::{self, Error, VirtualMachineProgram},
     NULL,
 };

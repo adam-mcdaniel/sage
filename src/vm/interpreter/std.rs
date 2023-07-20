@@ -401,6 +401,9 @@ where
                     self.register = result as i64;
                 }
                 StandardOp::Free => {}
+                StandardOp::Call(binding) => {
+                    self.device.ffi_call(binding)?;
+                }
             }
             self.i += 1
         } else {

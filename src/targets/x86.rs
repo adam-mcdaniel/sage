@@ -5,7 +5,7 @@
 //! This allows the virtual machine to target the x86 CPU architecture.
 use super::{Architecture, CompiledTarget};
 use crate::{
-    io::{Input, InputMode, Output, OutputMode},
+    side_effects::{Input, InputMode, Output, OutputMode},
     vm::{CoreOp, StandardOp},
 };
 
