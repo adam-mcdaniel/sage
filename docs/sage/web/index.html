@@ -847,6 +847,347 @@ print("Should print 5 / 2: ");
 print_result<Float, &Char>(map<Float, Float, &Char>(half, map<Int, Float, &Char>(to_float, Result<Int, &Char> of Ok 5)));
 `);
                     break;
+
+                case "vector":
+                    source.setValue(`enum Option<T> {
+    Some(T),
+    Nothing
+}
+
+enum Result<T, E> {
+    Ok(T),
+    Err(E)
+}
+
+def allocate<T>(count: Int): Option<&T> {
+    if (count <= 0) {
+        return Option<&T> of Nothing;
+    }
+    let ptr = alloc(count * sizeof<T>()) as &T;
+    if (ptr == Null) {
+        return Option<&T> of Nothing;
+    } else {
+        return Option<&T> of Some(ptr);
+    }
+}
+
+def copy_slice<T>(data: &T, count: Int): Option<&T> {
+    match allocate<T>(count) {
+        of Some(ptr) => {
+            for let i = 0; i < count; i+=1 {
+                ptr[i] = data[i];
+            }
+            return Option<&T> of Some(ptr);
+        },
+        of Nothing => {
+            return Option<&T> of Nothing;
+        }
+    }
+}
+
+def copy<T>(data: &T): Option<&T> {
+    return copy_slice<T>(data, 1);
+}
+
+def reallocate<T>(data: &T, old_count: Int, new_count: Int): Option<&T> {
+    match allocate<T>(new_count) {
+        of Some(ptr) => {
+            for let i = 0; i < old_count; i+=1 {
+                ptr[i] = data[i];
+            }
+            del data;
+            return Option<&T> of Some(ptr);
+        },
+        of Nothing => {
+            return Option<&T> of Nothing;
+        }
+    }
+}
+
+enum Either<T> {
+    Left(T),
+    Right(T)
+}
+
+enum Ordering {
+    Less,
+    Equal,
+    Greater
+}
+
+struct String {
+    data: &Char,
+    len: Int,
+    cap: Int
+}
+
+def String_clone(s: &String): String {
+    let data = alloc(s->cap) as &Char;
+    for let i = 0; i < s->len; i+=1 {
+        data[i] = s->data[i];
+    }
+    return {
+        data=data,
+        len=s->len,
+        cap=s->cap
+    };
+    // match copy_slice<Char>(s->data, s->cap) {
+    //     of Some(data) => {
+    //         return Option<String> of Some({
+    //             data=data,
+    //             len=s->len,
+    //             cap=s->cap
+    //         });
+    //     },
+    //     of Nothing => {
+    //         return Option<String> of Nothing;
+    //     }
+    // }
+}
+
+def String_new_with_capacity(cap: Int): Option<String> {
+    match allocate<Char>(cap) {
+        of Some(data) => {
+            return Option<String> of Some({
+                data=data,
+                len=0,
+                cap=cap
+            });
+        },
+        of Nothing => {
+            return Option<String> of Nothing;
+        }
+    }
+}
+
+def String_from(text: &Char): Option<String> {
+    let len = 0;
+    while (text[len] != '\\0') {
+        len += 1;
+    }
+    match String_new_with_capacity(len) {
+        of Some(s) => {
+            for let i = 0; i < len; i+=1 {
+                s.data[i] = text[i];
+            }
+            s.len = len;
+            return Option<String> of Some(s);
+        },
+        of Nothing => {
+            return Option<String> of Nothing;
+        }
+    }
+}
+
+def String_print(s: &String) {
+    for let i = 0; i < s->len; i+=1 {
+        print(s->data[i]);
+    }
+}
+
+def nth(s: &String, n: Int): Option<&Char> {
+    if (n < 0 || n >= s->len) {
+        return Option<&Char> of Nothing;
+    } else {
+        return Option<&Char> of Some(&(s->data[n]));
+    }
+}
+
+def String_push(s: String, c: Char): String {
+    if s.len == s.cap {
+        let new_cap = s.cap * 2;
+        match reallocate<Char>(s.data, s.cap, new_cap) {
+            of Some(data) => {
+                s.data = data;
+                s.cap = new_cap;
+            },
+            of Nothing => {
+                return s;
+            }
+        }
+    }
+    s.data[s.len] = c;
+    s.len += 1;
+    return s;
+}
+
+def String_drop(s: &String) {
+    if s->data != Null {
+        del s->data;
+    }
+}
+
+struct Sequence<T> {
+    len: Int,
+    cap: Int,
+    data: &T,
+}
+
+def Sequence_clone<T>(s: &Sequence<T>): Option<Sequence<T>> {
+    match copy_slice<T>(s->data, s->cap) {
+        of Some(data) => {
+            return Option<Sequence<T>> of Some({
+                data=data,
+                len=s->len,
+                cap=s->cap
+            });
+        },
+        of Nothing => {
+            return Option<Sequence<T>> of Nothing;
+        }
+    }
+}
+
+def Sequence_new_with_capacity<T>(cap: Int): Option<Sequence<T>> {
+    match allocate<T>(cap) {
+        of Some(data) => {
+            return Option<Sequence<T>> of Some({
+                data=data,
+                len=0,
+                cap=cap
+            });
+        },
+        of Nothing => {
+            return Option<Sequence<T>> of Nothing;
+        }
+    }
+}
+
+def Sequence_from<T>(data: &T, len: Int): Option<Sequence<T>> {
+    match Sequence_new_with_capacity<T>(len) {
+        of Some(s) => {
+            for let i = 0; i < len; i+=1 {
+                s.data[i] = data[i];
+            }
+            s.len = len;
+            return Option<Sequence<T>> of Some(s);
+        },
+        of Nothing => {
+            return Option<Sequence<T>> of Nothing;
+        }
+    }
+}
+
+def Sequence_print<T>(s: &Sequence<T>) {
+    print("[");
+    for let i = 0; i < s->len; i+=1 {
+        print(s->data[i]);
+        if i < s->len - 1 {
+            print(", ");
+        }
+    }
+    print("]");
+}
+
+def Sequence_println<T>(s: &Sequence<T>) {
+    Sequence_print<T>(s);
+    print("\\n");
+}
+
+def Sequence_push<T>(s: Sequence<T>, c: T): Sequence<T> {
+    if (s.len == s.cap) {
+        let old_data = s.data;
+        if let of Some(ptr) = reallocate<T>(s.data, s.cap, s.cap * 2) {
+            s.data = ptr;
+        } else {
+            return s;
+        }
+        s.cap *= 2;
+    }
+    s.data[s.len] = c;
+    s.len += 1;
+    return s;
+}
+
+def Sequence_concat<T>(first: Sequence<T>, second: Sequence<T>): Sequence<T> {
+    let new_len = first.len + second.len;
+    let new_cap = first.cap + second.cap;
+    let new_data = alloc(new_cap * sizeof<T>()) as &T;
+    for let i = 0; i < first.len; i+=1 {
+        new_data[i] = first.data[i];
+    }
+    for let i = 0; i < second.len; i+=1 {
+        new_data[first.len + i] = second.data[i];
+    }
+    return {
+        data=new_data,
+        len=new_len,
+        cap=new_cap
+    };
+}
+
+def Sequence_reverse<T>(s: Sequence<T>): Sequence<T> {
+    for let i = 0; i < s.len / 2; i+=1 {
+        let tmp = s.data[i];
+        s.data[i] = s.data[s.len - i - 1];
+        s.data[s.len - i - 1] = tmp;
+    }
+    return s;
+}
+
+def Sequence_drop<T>(s: &Sequence<T>) {
+    if s->data != Null {
+        del s->data;
+    }
+}
+
+def Sequence_nth<T>(s: &Sequence<T>, n: Int): Option<&T> {
+    if (n < 0 || n >= s->len) {
+        return Option<&T> of Nothing;
+    } else {
+        return Option<&T> of Some(&(s->data[n]));
+    }
+}
+
+def test<T>(first: &T, second: &T) {
+    if let (of Some(a), of Some(b)) = (Sequence_from<T>(first, 5), Sequence_from<T>(second, 5)) {
+        let seq = Sequence_concat<T>(a, Sequence_reverse<T>(b));
+        Sequence_println<T>(&seq);
+        Sequence_drop<T>(&a);
+        Sequence_drop<T>(&b);
+        Sequence_drop<T>(&seq);
+    }
+}
+
+let first = [1, 2, 3, 4, 5];
+let second = [6, 7, 8, 9, 10];
+print("Sequence of ints: ");
+test<Int>(&first as &Int, &second as &Int);
+
+let raw_text = "Hello, world!\\0";
+if let of Some(str) = String_from(&raw_text as &Char) {
+    let first = [
+        str,
+        String_push(String_clone(&str), '!'),
+        String_push(String_push(String_clone(&str), '!'), '!'),
+        String_clone(&str),
+        String_clone(&str)
+    ];
+
+    let second = [
+        String_clone(&str),
+        String_clone(&str),
+        String_clone(&str),
+        String_clone(&str),
+        String_clone(&str)
+    ];
+    
+    print("Sequence of strings: ");
+    test<String>(&first as &String, &second as &String);
+    for let i = 0; i < 5; i+=1 {
+        print(i, ": "); String_print(&(first[i])); print("\\n");
+    }
+    for let i = 0; i < 5; i+=1 {
+        print(i + 5, ": "); String_print(&(second[i])); print("\\n");
+    }
+
+    for let i = 0; i < 5; i+=1 {
+        String_drop(&(first[i]));
+        String_drop(&(second[i]));
+    }
+}`);
+                    break;
+
                 case "calculator":
                     document.getElementById("input").value = "(4 + 6) * ((8 - 3) / 2) + (9 % 5)";
                     source.setValue(`enum Expr {
@@ -1700,6 +2041,7 @@ print(fact(n));`);
             <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
             <option value="result">Result Enum (Generics)</option>
             <option value="calculator">Calculator (Parser)</option>
+            <option value="vector">Vector (Generics)</option>
             <option value="alloc">Allocator</option>
             <option value="list">Linked List Enum (Generics)</option>
             <option value="lisp">S-Expressions</option>

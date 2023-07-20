@@ -1,12 +1,3 @@
-//! std.sg
-//! =========
-//! 
-//! The standard library for the Sage programming language.
-//! 
-//! This library is the core of the Sage programming language. It contains
-//! the basic types and functions that are used throughout the language.
-//!
-
 enum Option<T> {
     Some(T),
     Nothing
@@ -16,7 +7,6 @@ enum Result<T, E> {
     Ok(T),
     Err(E)
 }
-
 
 def allocate<T>(count: Int): Option<&T> {
     if (count <= 0) {
@@ -310,6 +300,7 @@ def test<T>(first: &T, second: &T) {
 
 let first = [1, 2, 3, 4, 5];
 let second = [6, 7, 8, 9, 10];
+print("Sequence of ints: ");
 test<Int>(&first as &Int, &second as &Int);
 
 let raw_text = "Hello, world!\0";
@@ -330,7 +321,14 @@ if let of Some(str) = String_from(&raw_text as &Char) {
         String_clone(&str)
     ];
     
+    print("Sequence of strings: ");
     test<String>(&first as &String, &second as &String);
+    for let i = 0; i < 5; i+=1 {
+        print(i, ": "); String_print(&(first[i])); print("\n");
+    }
+    for let i = 0; i < 5; i+=1 {
+        print(i + 5, ": "); String_print(&(second[i])); print("\n");
+    }
 
     for let i = 0; i < 5; i+=1 {
         String_drop(&(first[i]));

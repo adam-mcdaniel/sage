@@ -221,7 +221,14 @@ impl GetType for Expr {
             // An if statement returns the type of the expression
             // that is evaluated if the condition is true (which must
             // be type-equal with the else branch).
-            Self::If(_, t, _) => t.get_type_checked(env, i)?,
+            Self::If(_, t, e) => {
+                let ty = t.get_type_checked(env, i)?;
+                if ty == Type::Never {
+                    e.get_type_checked(env, i)?
+                } else {
+                    ty
+                }
+            },
             // When statements return either the type of the expression
             // that is evaluated if the condition is true or the else branch.
             Self::When(c, t, e) => {

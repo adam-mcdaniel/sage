@@ -274,7 +274,7 @@ def parse_group(input: Input): ParseResult {
                 return ParseResult of Err (input.loc);
             }
             input.loc += 1;
-            return ParseResult of Ok (input, new Expr of Group(expr));
+            ParseResult of Ok (input, new Expr of Group(expr));
         },
         of Err _ => ParseResult of Err (input.loc)
     };

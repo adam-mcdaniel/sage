@@ -594,6 +594,13 @@
 <a href="#594" id="594">594</a>
 <a href="#595" id="595">595</a>
 <a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Inference
 //!
 //! This module contains the type inference algorithm for the language.
@@ -817,7 +824,14 @@
             <span class="comment">// An if statement returns the type of the expression
             // that is evaluated if the condition is true (which must
             // be type-equal with the else branch).
-            </span><span class="self">Self</span>::If(<span class="kw">_</span>, t, <span class="kw">_</span>) =&gt; t.get_type_checked(env, i)<span class="question-mark">?</span>,
+            </span><span class="self">Self</span>::If(<span class="kw">_</span>, t, e) =&gt; {
+                <span class="kw">let </span>ty = t.get_type_checked(env, i)<span class="question-mark">?</span>;
+                <span class="kw">if </span>ty == Type::Never {
+                    e.get_type_checked(env, i)<span class="question-mark">?
+                </span>} <span class="kw">else </span>{
+                    ty
+                }
+            },
             <span class="comment">// When statements return either the type of the expression
             // that is evaluated if the condition is true or the else branch.
             </span><span class="self">Self</span>::When(c, t, e) =&gt; {
