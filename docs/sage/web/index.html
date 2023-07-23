@@ -64,6 +64,280 @@
         function setExampleProgram() {
             console.log(document.getElementById("example").value);
             switch (document.getElementById("example").value) {
+                case "hashmap":
+                    source.setValue(`// Used to represent a value that may or may not exist
+enum Option<T> {
+    // Some value
+    Some(T),
+    // No value
+    Nothing
+}
+
+struct Entry<K, V> {
+    // The key of the entry
+    key: K,
+    // The value of the entry
+    val: V
+}
+
+struct HashMap<K, V> {
+    // The entries of the hashmap
+    entries: &Option<Entry<K, V>>,
+    // The reserved size in memory of the entries
+    count_allocated: Int,
+    // The number of occupied entries
+    count_occupied: Int
+}
+                  
+def is_some<T>(opt: Option<T>): Bool = match opt {
+    of Some(_) => True,
+    of Nothing => False
+};
+
+def refer<T>(opt: &Option<T>): Option<&T> {
+    let inner = opt as &T;
+    if let &of Nothing = opt {
+        return Option<&T> of Nothing;
+    }
+    return Option<&T> of Some(inner);
+}
+
+def exit(code: Int): ! {
+    print("Exiting with code ", code, "\\n");
+    while True {
+        // Deref a null pointer to cause a segfault
+        let error = *(Null as &Int);
+    }
+}
+
+def unwrap<T>(opt: Option<T>): T {
+    if let of Some(val) = opt {
+        return val;
+    } else {
+        print("Error: Tried to unwrap a None value\\n");
+        exit(1);
+    }
+}
+  
+// Hash a value
+def hash<T>(t: T): Int {
+    let size = sizeof(t);
+    let ptr = &t as &Int;
+    
+    let hashValue = 5381;
+    def left_shift(a: Int, b: Int): Int = {
+        while b {
+            a *= 2;
+            b -= 1;
+        }
+        return a;
+    }
+
+    for let i = 0; i < size; i += 1 {
+        let value = ptr[i];
+        while (value != 0) {
+            let digit = value % 10;
+            hashValue = (left_shift(hashValue, 5) + hashValue) + digit;
+            value /= 10;
+        }
+    }
+
+    if hashValue < 0 {
+        hashValue = -hashValue;
+    }
+    
+    return hashValue;
+}
+
+def eq<K>(a: K, b: K): Bool {
+    let size = sizeof(a);
+    let a_ptr = &a as &Int;
+    let b_ptr = &b as &Int;
+    
+    for let i=0; i<size; i+=1 {
+        if a_ptr[i] != b_ptr[i] {
+            return False;
+        }
+    }
+    return True;
+}
+
+def Entry_print<K, V>(self: &Entry<K, V>) {
+    print("hash: ", hash<K>(self->key), ", key: ", self->key, ", val: ", self->val);
+}
+
+def HashMap_clear<K, V>(self: &HashMap<K, V>) {
+    for let i=0; i < self->count_allocated; i+=1 {
+        self->entries[i] = Option<Entry<K, V>> of Nothing;
+    }
+    self->count_occupied = 0;
+}
+
+
+def HashMap_new<K, V>(): HashMap<K, V> {
+    let size = 1000 * sizeof<Option<Entry<K, V>>>();
+    let entries = alloc(size) as &Option<Entry<K, V>>;
+    let self = {
+        entries = entries,
+        count_allocated = 1000,
+        count_occupied = 0
+    };
+    HashMap_clear<K, V>(&self);
+    return self;
+}
+
+def HashMap_get<K, V>(self: &HashMap<K, V>, key: K): Option<&V> {
+    let index = hash<K>(key) % self->count_allocated;
+    while is_some<Entry<K, V>>(self->entries[index]) {
+        let entry = unwrap<&Entry<K, V>>(refer<Entry<K, V>>(&(self->entries[index])));
+        if (eq<K>(entry->key, key)) {
+            return Option<&V> of Some(&(entry->val));
+        }
+        index = (index + 1) % self->count_allocated;  // Linear probing for collision resolution
+    }
+    return Option<&V> of Nothing;
+}
+
+def HashMap_check_bounds<K, V>(self: &HashMap<K, V>) {
+    if (self->count_allocated - self->count_occupied) < 100 {
+        // Allocate new space
+        let old_size = self->count_allocated * sizeof(self->entries[0]);
+        let old_entries = self->entries;
+        let old_map = {
+            entries = old_entries,
+            count_occupied = self->count_occupied,
+            count_allocated = self->count_allocated
+        };
+
+        let new_size = old_size * 2;
+        self->count_allocated *= 2;
+        self->entries = alloc(new_size) as &Option<Entry<K, V>>;
+        HashMap_clear<K, V>(self);
+
+        for let i=0; i<old_map.count_allocated; i+=1 {
+            if let of Some(old_entry) = old_entries[i] {
+                match HashMap_get<K, V>(&old_map, old_entry.key) {
+                    of Some(val) => HashMap_put<K, V>(self, old_entry.key, *val),
+                    of Nothing => {}
+                }
+            }
+        }
+    }
+}
+
+def HashMap_put<K, V>(self: &HashMap<K, V>, key: K, val: V) {
+    let index = hash<K>(key) % self->count_allocated;
+    while is_some<Entry<K, V>>(self->entries[index]) {
+        let entry = unwrap<&Entry<K, V>>(refer<Entry<K, V>>(&(self->entries[index])));
+        if (eq<K>(entry->key, key)) {
+            entry->val = val;  // Update value if key already exists
+            return ();
+        }
+        index = (index + 1) % self->count_allocated;  // Linear probing for collision resolution
+    }
+
+    self->entries[index] = Option<Entry<K, V>> of Some({
+        key = key,
+        val = val
+    });
+    self->count_occupied += 1;
+    
+    HashMap_check_bounds<K, V>(self);
+}
+
+def HashMap_print<K, V>(self: &HashMap<K, V>) {
+    let count = 0;
+    if self->count_occupied == 0 {
+        print("Empty\\n");
+        return ();
+    }
+    print("--------------------------------\\n");
+    for let i=0; i < self->count_allocated; i+=1 {
+        if let of Some(entry) = self->entries[i] {
+            Entry_print<K, V>(&entry);
+            print("\\n");
+            count += 1;
+        }
+    }
+    print("--------------------------------\\n");
+}
+
+def HashMap_drop<K, V>(self: &HashMap<K, V>) {
+    print("Freeing ", self->count_allocated, " HashMap Entries\\n");
+    del self->entries;
+}
+
+struct Point {
+    x: Int,
+    y: Int
+}
+
+def f(x: Int): Point {
+    return {x = x, y = x * x};
+}
+
+let map = HashMap_new<Point, &Char>();
+
+def putstr(s: &Char) {
+    let i = 0;
+    while s[i] != '\\0' {
+        print(s[i]);
+        i += 1;
+    }
+}
+
+def putstrln(s: &Char) {
+    let i = 0;
+    while s[i] != '\\0' {
+        print(s[i]);
+        i += 1;
+    }
+    print("\\n");
+}
+
+def make_x_str(x_count: Int): &Char {
+    let value = alloc((x_count + 1) * sizeof<Char>()) as &Char;
+    for let i=0; i<x_count; i+=1 {
+        value[i] = 'x';
+    }
+    value[x_count] = '\\0';
+    return value;
+}
+
+const INSERT_COUNT = 8;
+const CHECK_COUNT = 16;
+
+print("HashMap before inserting:\\n");
+HashMap_print<Point, &Char>(&map);
+
+for let i=1; i<INSERT_COUNT; i+=1 {
+    let point = f(i);
+    let key = point as Point;
+    let value = make_x_str(i);
+    print("Inserting ", key, " -> ");
+    putstrln(value);
+    HashMap_put<Point, &Char>(&map, key, value);
+}
+
+print("HashMap after inserting:\\n");
+HashMap_print<Point, &Char>(&map);
+
+for let i=1; i<CHECK_COUNT; i+=1 {
+    let point = f(i);
+    let key = point as Point;
+    print("Retrieving ", key, ": ");
+
+    match HashMap_get<Point, &Char>(&map, key) {
+        of Some(value) => {
+            putstrln(*value);
+            del *value;
+        },
+        of Nothing => print("Nothing\\n")
+    }
+}
+
+HashMap_drop<Point, &Char>(&map);`);
+                    break;
                 case "aes":
                     source.setValue(`def print_hex(n: Int, lower: Bool) {
     if n < 10 {
@@ -364,7 +638,7 @@ def round_key(word0: Int, word1: Int, word2: Int, word3: Int): State {
 
 def key_expansion(key: &Key, nr: Int, nk: Int): &Int = {
     let key_data = key as &Int;
-    let w = alloc(4 * (nr + 1) * sizeof(Int)) as &Int;
+    let w = alloc(4 * (nr + 1) * sizeof<Int>()) as &Int;
     for let i=0; i < nk; i+=1 {
         w[i] = word(key_data[4*i], key_data[4*i+1], key_data[4*i+2], key_data[4*i+3]);
     }
@@ -573,6 +847,347 @@ print("Should print 5 / 2: ");
 print_result<Float, &Char>(map<Float, Float, &Char>(half, map<Int, Float, &Char>(to_float, Result<Int, &Char> of Ok 5)));
 `);
                     break;
+
+                case "vector":
+                    source.setValue(`enum Option<T> {
+    Some(T),
+    Nothing
+}
+
+enum Result<T, E> {
+    Ok(T),
+    Err(E)
+}
+
+def allocate<T>(count: Int): Option<&T> {
+    if (count <= 0) {
+        return Option<&T> of Nothing;
+    }
+    let ptr = alloc(count * sizeof<T>()) as &T;
+    if (ptr == Null) {
+        return Option<&T> of Nothing;
+    } else {
+        return Option<&T> of Some(ptr);
+    }
+}
+
+def copy_slice<T>(data: &T, count: Int): Option<&T> {
+    match allocate<T>(count) {
+        of Some(ptr) => {
+            for let i = 0; i < count; i+=1 {
+                ptr[i] = data[i];
+            }
+            return Option<&T> of Some(ptr);
+        },
+        of Nothing => {
+            return Option<&T> of Nothing;
+        }
+    }
+}
+
+def copy<T>(data: &T): Option<&T> {
+    return copy_slice<T>(data, 1);
+}
+
+def reallocate<T>(data: &T, old_count: Int, new_count: Int): Option<&T> {
+    match allocate<T>(new_count) {
+        of Some(ptr) => {
+            for let i = 0; i < old_count; i+=1 {
+                ptr[i] = data[i];
+            }
+            del data;
+            return Option<&T> of Some(ptr);
+        },
+        of Nothing => {
+            return Option<&T> of Nothing;
+        }
+    }
+}
+
+enum Either<T> {
+    Left(T),
+    Right(T)
+}
+
+enum Ordering {
+    Less,
+    Equal,
+    Greater
+}
+
+struct String {
+    data: &Char,
+    len: Int,
+    cap: Int
+}
+
+def String_clone(s: &String): String {
+    let data = alloc(s->cap) as &Char;
+    for let i = 0; i < s->len; i+=1 {
+        data[i] = s->data[i];
+    }
+    return {
+        data=data,
+        len=s->len,
+        cap=s->cap
+    };
+    // match copy_slice<Char>(s->data, s->cap) {
+    //     of Some(data) => {
+    //         return Option<String> of Some({
+    //             data=data,
+    //             len=s->len,
+    //             cap=s->cap
+    //         });
+    //     },
+    //     of Nothing => {
+    //         return Option<String> of Nothing;
+    //     }
+    // }
+}
+
+def String_new_with_capacity(cap: Int): Option<String> {
+    match allocate<Char>(cap) {
+        of Some(data) => {
+            return Option<String> of Some({
+                data=data,
+                len=0,
+                cap=cap
+            });
+        },
+        of Nothing => {
+            return Option<String> of Nothing;
+        }
+    }
+}
+
+def String_from(text: &Char): Option<String> {
+    let len = 0;
+    while (text[len] != '\\0') {
+        len += 1;
+    }
+    match String_new_with_capacity(len) {
+        of Some(s) => {
+            for let i = 0; i < len; i+=1 {
+                s.data[i] = text[i];
+            }
+            s.len = len;
+            return Option<String> of Some(s);
+        },
+        of Nothing => {
+            return Option<String> of Nothing;
+        }
+    }
+}
+
+def String_print(s: &String) {
+    for let i = 0; i < s->len; i+=1 {
+        print(s->data[i]);
+    }
+}
+
+def nth(s: &String, n: Int): Option<&Char> {
+    if (n < 0 || n >= s->len) {
+        return Option<&Char> of Nothing;
+    } else {
+        return Option<&Char> of Some(&(s->data[n]));
+    }
+}
+
+def String_push(s: String, c: Char): String {
+    if s.len == s.cap {
+        let new_cap = s.cap * 2;
+        match reallocate<Char>(s.data, s.cap, new_cap) {
+            of Some(data) => {
+                s.data = data;
+                s.cap = new_cap;
+            },
+            of Nothing => {
+                return s;
+            }
+        }
+    }
+    s.data[s.len] = c;
+    s.len += 1;
+    return s;
+}
+
+def String_drop(s: &String) {
+    if s->data != Null {
+        del s->data;
+    }
+}
+
+struct Sequence<T> {
+    len: Int,
+    cap: Int,
+    data: &T,
+}
+
+def Sequence_clone<T>(s: &Sequence<T>): Option<Sequence<T>> {
+    match copy_slice<T>(s->data, s->cap) {
+        of Some(data) => {
+            return Option<Sequence<T>> of Some({
+                data=data,
+                len=s->len,
+                cap=s->cap
+            });
+        },
+        of Nothing => {
+            return Option<Sequence<T>> of Nothing;
+        }
+    }
+}
+
+def Sequence_new_with_capacity<T>(cap: Int): Option<Sequence<T>> {
+    match allocate<T>(cap) {
+        of Some(data) => {
+            return Option<Sequence<T>> of Some({
+                data=data,
+                len=0,
+                cap=cap
+            });
+        },
+        of Nothing => {
+            return Option<Sequence<T>> of Nothing;
+        }
+    }
+}
+
+def Sequence_from<T>(data: &T, len: Int): Option<Sequence<T>> {
+    match Sequence_new_with_capacity<T>(len) {
+        of Some(s) => {
+            for let i = 0; i < len; i+=1 {
+                s.data[i] = data[i];
+            }
+            s.len = len;
+            return Option<Sequence<T>> of Some(s);
+        },
+        of Nothing => {
+            return Option<Sequence<T>> of Nothing;
+        }
+    }
+}
+
+def Sequence_print<T>(s: &Sequence<T>) {
+    print("[");
+    for let i = 0; i < s->len; i+=1 {
+        print(s->data[i]);
+        if i < s->len - 1 {
+            print(", ");
+        }
+    }
+    print("]");
+}
+
+def Sequence_println<T>(s: &Sequence<T>) {
+    Sequence_print<T>(s);
+    print("\\n");
+}
+
+def Sequence_push<T>(s: Sequence<T>, c: T): Sequence<T> {
+    if (s.len == s.cap) {
+        let old_data = s.data;
+        if let of Some(ptr) = reallocate<T>(s.data, s.cap, s.cap * 2) {
+            s.data = ptr;
+        } else {
+            return s;
+        }
+        s.cap *= 2;
+    }
+    s.data[s.len] = c;
+    s.len += 1;
+    return s;
+}
+
+def Sequence_concat<T>(first: Sequence<T>, second: Sequence<T>): Sequence<T> {
+    let new_len = first.len + second.len;
+    let new_cap = first.cap + second.cap;
+    let new_data = alloc(new_cap * sizeof<T>()) as &T;
+    for let i = 0; i < first.len; i+=1 {
+        new_data[i] = first.data[i];
+    }
+    for let i = 0; i < second.len; i+=1 {
+        new_data[first.len + i] = second.data[i];
+    }
+    return {
+        data=new_data,
+        len=new_len,
+        cap=new_cap
+    };
+}
+
+def Sequence_reverse<T>(s: Sequence<T>): Sequence<T> {
+    for let i = 0; i < s.len / 2; i+=1 {
+        let tmp = s.data[i];
+        s.data[i] = s.data[s.len - i - 1];
+        s.data[s.len - i - 1] = tmp;
+    }
+    return s;
+}
+
+def Sequence_drop<T>(s: &Sequence<T>) {
+    if s->data != Null {
+        del s->data;
+    }
+}
+
+def Sequence_nth<T>(s: &Sequence<T>, n: Int): Option<&T> {
+    if (n < 0 || n >= s->len) {
+        return Option<&T> of Nothing;
+    } else {
+        return Option<&T> of Some(&(s->data[n]));
+    }
+}
+
+def test<T>(first: &T, second: &T) {
+    if let (of Some(a), of Some(b)) = (Sequence_from<T>(first, 5), Sequence_from<T>(second, 5)) {
+        let seq = Sequence_concat<T>(a, Sequence_reverse<T>(b));
+        Sequence_println<T>(&seq);
+        Sequence_drop<T>(&a);
+        Sequence_drop<T>(&b);
+        Sequence_drop<T>(&seq);
+    }
+}
+
+let first = [1, 2, 3, 4, 5];
+let second = [6, 7, 8, 9, 10];
+print("Sequence of ints: ");
+test<Int>(&first as &Int, &second as &Int);
+
+let raw_text = "Hello, world!\\0";
+if let of Some(str) = String_from(&raw_text as &Char) {
+    let first = [
+        str,
+        String_push(String_clone(&str), '!'),
+        String_push(String_push(String_clone(&str), '!'), '!'),
+        String_clone(&str),
+        String_clone(&str)
+    ];
+
+    let second = [
+        String_clone(&str),
+        String_clone(&str),
+        String_clone(&str),
+        String_clone(&str),
+        String_clone(&str)
+    ];
+    
+    print("Sequence of strings: ");
+    test<String>(&first as &String, &second as &String);
+    for let i = 0; i < 5; i+=1 {
+        print(i, ": "); String_print(&(first[i])); print("\\n");
+    }
+    for let i = 0; i < 5; i+=1 {
+        print(i + 5, ": "); String_print(&(second[i])); print("\\n");
+    }
+
+    for let i = 0; i < 5; i+=1 {
+        String_drop(&(first[i]));
+        String_drop(&(second[i]));
+    }
+}`);
+                    break;
+
                 case "calculator":
                     document.getElementById("input").value = "(4 + 6) * ((8 - 3) / 2) + (9 % 5)";
                     source.setValue(`enum Expr {
@@ -713,7 +1328,7 @@ def binop(
     if input.start[input.loc] == op {
         input.loc += 1;
         input = parse_whitespaces(input);
-        match parse_term(input) {
+        match factor(input) {
             of Ok (input, rhs) => {
                 return ParseResult of Ok (input, cons(lhs, rhs));
             },
@@ -851,7 +1466,7 @@ def parse_group(input: Input): ParseResult {
                 return ParseResult of Err (input.loc);
             }
             input.loc += 1;
-            ParseResult of Ok (input, new Expr of Group(expr));
+            return ParseResult of Ok (input, new Expr of Group(expr));
         },
         of Err _ => ParseResult of Err (input.loc)
     };
@@ -864,7 +1479,7 @@ def parse_whitespaces(input: Input): Input {
         return input;
     }
 
-    for (); input.loc < input.length && (input.start[input.loc] == ' ' || input.start[input.loc] == '\\r' || input.start[input.loc] == '\\n'); input.loc += 1 {}
+    for (); input.loc < input.length && (input.start[input.loc] == ' ' || input.start[input.loc] == '\r' || input.start[input.loc] == '\\n'); input.loc += 1 {}
 
     return input;
 }
@@ -895,15 +1510,15 @@ def readline(ch: &Char, len: Int): Int {
 }
 
 def read(): Input {
-    let buf = alloc(sizeof(Char) * 1024) as &Char;
+    let buf = alloc(sizeof<Char>() * 1024) as &Char;
 
     print("? ");
     let len = readline(buf, 0);
     buf[len] = '\\0';
 
     return {
-        start = buf as &Char,
-        length = strlen(buf as &Char),
+        start = buf,
+        length = strlen(buf),
         loc = 0
     };
 }
@@ -1025,7 +1640,8 @@ def print_char(x: Char) = print(x);
 test<Int>(&x, print_int);
 print("\\n");
 test<Char>(&y, print_char);
-print("\\n");`);
+print("\\n");
+`);
                     break;
                 case "lisp":
                     source.setValue(`def strlen(ch: &Char): Int {
@@ -1055,7 +1671,7 @@ def string_new(s: &Char): String {
         len += 1;
     }
 
-    let buffer = alloc(sizeof(Char) * len) as &Char;
+    let buffer = alloc(sizeof<Char>() * len) as &Char;
     strcpy(buffer, s);
 
     return {
@@ -1311,7 +1927,7 @@ def allocate<T>(count: Int): Option<&T> {
     if (count <= 0) {
         return Option<&T> of Nothing;
     }
-    let ptr = alloc(count * sizeof(T)) as &T;
+    let ptr = alloc(count * sizeof<T>()) as &T;
     if (ptr == Null) {
         return Option<&T> of Nothing;
     } else {
@@ -1420,10 +2036,12 @@ print(fact(n));`);
         document.getElementById("run").addEventListener("click", compile_and_run, false);
         </script>
         <select id="example" style="height: 3em; float: left;">
-            <option value="aes">Click to select example program (Default AES)</option>
+            <option value="hashmap">Click to select example program (Default HashMap)</option>
+            <option value="hashmap">HashMap (Generics)</option>
+            <option value="vector">Vector (Generics)</option>
             <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
-            <option value="result">Result Enum (Generics)</option>
             <option value="calculator">Calculator (Parser)</option>
+            <option value="result">Result Enum (Generics)</option>
             <option value="alloc">Allocator</option>
             <option value="list">Linked List Enum (Generics)</option>
             <option value="lisp">S-Expressions</option>

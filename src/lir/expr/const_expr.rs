@@ -13,6 +13,7 @@ use crate::lir::{
     CoreBuiltin, Env, Error, Expr, GetSize, GetType, PolyProcedure, Procedure, Simplify,
     StandardBuiltin, Type, TypeCheck,
 };
+use crate::parse::SourceCodeLocation;
 
 use core::fmt;
 use std::collections::BTreeMap;
@@ -20,6 +21,12 @@ use std::collections::BTreeMap;
 /// A compiletime expression.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConstExpr {
+    // A constant expression annotated with its source code location.
+    AnnotatedWithSource {
+        expr: Box<Self>,
+        loc: SourceCodeLocation,
+    },
+
     /// Bind a list of types in a constant expression.
     LetTypes(Vec<(String, Type)>, Box<Self>),
 
@@ -116,6 +123,8 @@ impl ConstExpr {
             Err(Error::RecursionDepthConst(self))
         } else {
             match self {
+                Self::AnnotatedWithSource { expr, loc } => expr.eval_checked(env, i).map_err(|e| e.with_loc(&loc)),
+
                 Self::None
                 | Self::Null
                 | Self::Cell(_)
@@ -256,6 +265,10 @@ impl Simplify for ConstExpr {
 impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
         Ok(match self.clone() {
+            Self::AnnotatedWithSource { expr, loc } => {
+                expr.get_type_checked(env, i).map_err(|e| e.with_loc(&loc))?
+            }
+
             Self::As(expr, cast_ty) => {
                 let found = expr.get_type_checked(env, i)?;
                 if !found.can_cast_to(&cast_ty, env)? {
@@ -281,7 +294,8 @@ impl GetType for ConstExpr {
             }
             Self::Monomorphize(expr, ty_args) => {
                 // Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::<Result<Vec<Type>, Error>>()?).perform_template_applications(env, &mut HashMap::new(), 0)?
-                Type::Apply(Box::new(expr.get_type_checked(env, i)?), ty_args)
+                let result = Type::Apply(Box::new(expr.get_type_checked(env, i)?), ty_args.clone());
+                result
             }
             Self::TypeOf(expr) => {
                 let size = expr.get_type_checked(env, i)?.to_string().len();
@@ -352,6 +366,9 @@ impl GetType for ConstExpr {
 
     fn substitute(&mut self, name: &str, ty: &Type) {
         match self {
+            Self::AnnotatedWithSource { expr, .. } => {
+                expr.substitute(name, ty);
+            }
             Self::As(expr, cast_ty) => {
                 expr.substitute(name, ty);
                 *cast_ty = cast_ty.substitute(name, ty);
@@ -360,15 +377,15 @@ impl GetType for ConstExpr {
                 // if bindings.iter().map(|(n, _)| n).any(|n| n == name) {
                 //     return;
                 // }
-                for (_, ty) in bindings {
-                    *ty = ty.substitute(name, ty);
+                for (_, ty_bind) in bindings {
+                    *ty_bind = ty_bind.substitute(name, ty);
                 }
                 expr.substitute(name, ty);
             }
             Self::Monomorphize(expr, ty_args) => {
                 expr.substitute(name, ty);
-                for ty in ty_args {
-                    *ty = ty.substitute(name, ty);
+                for ty_arg in ty_args {
+                    *ty_arg = ty_arg.substitute(name, ty);
                 }
             }
             Self::TypeOf(expr) => {
@@ -376,8 +393,8 @@ impl GetType for ConstExpr {
             }
             Self::Null => {}
             Self::None => {}
-            Self::SizeOfType(ty) => {
-                *ty = ty.substitute(name, ty);
+            Self::SizeOfType(inner_ty) => {
+                *inner_ty = inner_ty.substitute(name, ty);
             }
             Self::SizeOfExpr(expr) => {
                 expr.substitute(name, ty);
@@ -405,12 +422,12 @@ impl GetType for ConstExpr {
                     item.substitute(name, ty);
                 }
             }
-            Self::Union(t, _, expr) => {
-                *t = t.substitute(name, ty);
+            Self::Union(inner, _, expr) => {
+                *inner = inner.substitute(name, ty);
                 expr.substitute(name, ty);
             }
-            Self::EnumUnion(t, _, expr) => {
-                *t = t.substitute(name, ty);
+            Self::EnumUnion(inner, _, expr) => {
+                *inner = inner.substitute(name, ty);
                 expr.substitute(name, ty);
             }
             Self::PolyProc(proc) => {
@@ -433,6 +450,9 @@ impl GetType for ConstExpr {
 impl fmt::Display for ConstExpr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Self::AnnotatedWithSource { expr, .. } => {
+                write!(f, "{expr}")
+            }
             Self::CoreBuiltin(builtin) => {
                 write!(f, "{builtin}")
             }

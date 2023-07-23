@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/const_expr.rs`."><title>const_expr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ba5701c5741a7b69.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0 (90c541806 2023-05-31)" data-search-js="search-e077946657036a58.js" data-settings-js="settings-298e1ea74db45b39.js" data-settings-css="settings-7bfb4c59cc6bc502.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../../static.files/source-script-905937fbbdc8e9ea.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-f61008743c98d196.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/const_expr.rs`."><title>const_expr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.0 (8ede3aae2 2023-07-12)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -522,6 +522,26 @@
 <a href="#522" id="522">522</a>
 <a href="#523" id="523">523</a>
 <a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Constant Expressions
 //!
 //! Constant expressions are expressions that can be evaluated at compile time.
@@ -537,6 +557,7 @@
     CoreBuiltin, Env, Error, Expr, GetSize, GetType, PolyProcedure, Procedure, Simplify,
     StandardBuiltin, Type, TypeCheck,
 };
+<span class="kw">use </span><span class="kw">crate</span>::parse::SourceCodeLocation;
 
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::collections::BTreeMap;
@@ -544,6 +565,12 @@
 <span class="doccomment">/// A compiletime expression.
 </span><span class="attr">#[derive(Clone, Debug, PartialEq)]
 </span><span class="kw">pub enum </span>ConstExpr {
+    <span class="comment">// A constant expression annotated with its source code location.
+    </span>AnnotatedWithSource {
+        expr: Box&lt;<span class="self">Self</span>&gt;,
+        loc: SourceCodeLocation,
+    },
+
     <span class="doccomment">/// Bind a list of types in a constant expression.
     </span>LetTypes(Vec&lt;(String, Type)&gt;, Box&lt;<span class="self">Self</span>&gt;),
 
@@ -640,6 +667,8 @@
             <span class="prelude-val">Err</span>(Error::RecursionDepthConst(<span class="self">self</span>))
         } <span class="kw">else </span>{
             <span class="kw">match </span><span class="self">self </span>{
+                <span class="self">Self</span>::AnnotatedWithSource { expr, loc } =&gt; expr.eval_checked(env, i).map_err(|e| e.with_loc(<span class="kw-2">&amp;</span>loc)),
+
                 <span class="self">Self</span>::None
                 | <span class="self">Self</span>::Null
                 | <span class="self">Self</span>::Cell(<span class="kw">_</span>)
@@ -780,6 +809,10 @@
 <span class="kw">impl </span>GetType <span class="kw">for </span>ConstExpr {
     <span class="kw">fn </span>get_type_checked(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env, i: usize) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
         <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self</span>.clone() {
+            <span class="self">Self</span>::AnnotatedWithSource { expr, loc } =&gt; {
+                expr.get_type_checked(env, i).map_err(|e| e.with_loc(<span class="kw-2">&amp;</span>loc))<span class="question-mark">?
+            </span>}
+
             <span class="self">Self</span>::As(expr, cast_ty) =&gt; {
                 <span class="kw">let </span>found = expr.get_type_checked(env, i)<span class="question-mark">?</span>;
                 <span class="kw">if </span>!found.can_cast_to(<span class="kw-2">&amp;</span>cast_ty, env)<span class="question-mark">? </span>{
@@ -805,7 +838,8 @@
             </span>}
             <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; {
                 <span class="comment">// Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::&lt;Result&lt;Vec&lt;Type&gt;, Error&gt;&gt;()?).perform_template_applications(env, &amp;mut HashMap::new(), 0)?
-                </span>Type::Apply(Box::new(expr.get_type_checked(env, i)<span class="question-mark">?</span>), ty_args)
+                </span><span class="kw">let </span>result = Type::Apply(Box::new(expr.get_type_checked(env, i)<span class="question-mark">?</span>), ty_args.clone());
+                result
             }
             <span class="self">Self</span>::TypeOf(expr) =&gt; {
                 <span class="kw">let </span>size = expr.get_type_checked(env, i)<span class="question-mark">?</span>.to_string().len();
@@ -876,6 +910,9 @@
 
     <span class="kw">fn </span>substitute(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str, ty: <span class="kw-2">&amp;</span>Type) {
         <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::AnnotatedWithSource { expr, .. } =&gt; {
+                expr.substitute(name, ty);
+            }
             <span class="self">Self</span>::As(expr, cast_ty) =&gt; {
                 expr.substitute(name, ty);
                 <span class="kw-2">*</span>cast_ty = cast_ty.substitute(name, ty);
@@ -884,15 +921,15 @@
                 <span class="comment">// if bindings.iter().map(|(n, _)| n).any(|n| n == name) {
                 //     return;
                 // }
-                </span><span class="kw">for </span>(<span class="kw">_</span>, ty) <span class="kw">in </span>bindings {
-                    <span class="kw-2">*</span>ty = ty.substitute(name, ty);
+                </span><span class="kw">for </span>(<span class="kw">_</span>, ty_bind) <span class="kw">in </span>bindings {
+                    <span class="kw-2">*</span>ty_bind = ty_bind.substitute(name, ty);
                 }
                 expr.substitute(name, ty);
             }
             <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; {
                 expr.substitute(name, ty);
-                <span class="kw">for </span>ty <span class="kw">in </span>ty_args {
-                    <span class="kw-2">*</span>ty = ty.substitute(name, ty);
+                <span class="kw">for </span>ty_arg <span class="kw">in </span>ty_args {
+                    <span class="kw-2">*</span>ty_arg = ty_arg.substitute(name, ty);
                 }
             }
             <span class="self">Self</span>::TypeOf(expr) =&gt; {
@@ -900,8 +937,8 @@
             }
             <span class="self">Self</span>::Null =&gt; {}
             <span class="self">Self</span>::None =&gt; {}
-            <span class="self">Self</span>::SizeOfType(ty) =&gt; {
-                <span class="kw-2">*</span>ty = ty.substitute(name, ty);
+            <span class="self">Self</span>::SizeOfType(inner_ty) =&gt; {
+                <span class="kw-2">*</span>inner_ty = inner_ty.substitute(name, ty);
             }
             <span class="self">Self</span>::SizeOfExpr(expr) =&gt; {
                 expr.substitute(name, ty);
@@ -929,12 +966,12 @@
                     item.substitute(name, ty);
                 }
             }
-            <span class="self">Self</span>::Union(t, <span class="kw">_</span>, expr) =&gt; {
-                <span class="kw-2">*</span>t = t.substitute(name, ty);
+            <span class="self">Self</span>::Union(inner, <span class="kw">_</span>, expr) =&gt; {
+                <span class="kw-2">*</span>inner = inner.substitute(name, ty);
                 expr.substitute(name, ty);
             }
-            <span class="self">Self</span>::EnumUnion(t, <span class="kw">_</span>, expr) =&gt; {
-                <span class="kw-2">*</span>t = t.substitute(name, ty);
+            <span class="self">Self</span>::EnumUnion(inner, <span class="kw">_</span>, expr) =&gt; {
+                <span class="kw-2">*</span>inner = inner.substitute(name, ty);
                 expr.substitute(name, ty);
             }
             <span class="self">Self</span>::PolyProc(proc) =&gt; {
@@ -957,6 +994,9 @@
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>ConstExpr {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::AnnotatedWithSource { expr, .. } =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;{expr}&quot;</span>)
+            }
             <span class="self">Self</span>::CoreBuiltin(builtin) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;{builtin}&quot;</span>)
             }

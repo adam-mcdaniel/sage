@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/types/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ba5701c5741a7b69.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0 (90c541806 2023-05-31)" data-search-js="search-e077946657036a58.js" data-settings-js="settings-298e1ea74db45b39.js" data-settings-css="settings-7bfb4c59cc6bc502.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../../static.files/source-script-905937fbbdc8e9ea.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-f61008743c98d196.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/types/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.0 (8ede3aae2 2023-07-12)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1257,6 +1257,29 @@
 <a href="#1257" id="1257">1257</a>
 <a href="#1258" id="1258">1258</a>
 <a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Types Module
 //!
 //! This module contains a collection of types and traits
@@ -1350,7 +1373,7 @@
 
 <span class="kw">impl </span>Type {
     <span class="doccomment">/// This is the maximum number of times a type will be simplified recursively.
-    </span><span class="kw">pub const </span>SIMPLIFY_RECURSION_LIMIT: usize = <span class="number">20</span>;
+    </span><span class="kw">pub const </span>SIMPLIFY_RECURSION_LIMIT: usize = <span class="number">30</span>;
 
     <span class="doccomment">/// Is this type in a simple form?
     /// A simple form is a form that does not require any immediate simplification.
@@ -1395,6 +1418,13 @@
             | <span class="self">Self</span>::Any
             | <span class="self">Self</span>::Never
             | <span class="self">Self</span>::Enum(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            <span class="self">Self</span>::Tuple(inner) =&gt; inner.iter().all(|t| t.is_atomic()),
+            <span class="self">Self</span>::Array(inner, <span class="kw">_</span>) =&gt; inner.is_atomic(),
+            <span class="self">Self</span>::Proc(args, ret) =&gt; args.iter().all(|t| t.is_atomic()) &amp;&amp; ret.is_atomic(),
+            <span class="self">Self</span>::Pointer(inner) =&gt; inner.is_atomic(),
+            <span class="self">Self</span>::Struct(inner) =&gt; inner.iter().all(|(<span class="kw">_</span>, t)| t.is_atomic()),
+            <span class="self">Self</span>::EnumUnion(inner) =&gt; inner.iter().all(|(<span class="kw">_</span>, t)| t.is_atomic()),
+            <span class="self">Self</span>::Poly(<span class="kw">_</span>, <span class="kw">_</span>) | <span class="self">Self</span>::Symbol(<span class="kw">_</span>) | <span class="self">Self</span>::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | <span class="self">Self</span>::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
@@ -1516,7 +1546,7 @@
                     </span><span class="self">self</span>.clone()
                 } <span class="kw">else </span>{
                     <span class="comment">// Does the inner symbol use this type variable?
-                    </span>template.substitute(name, substitution).into()
+                    </span><span class="self">Self</span>::Poly(ty_params.clone(), template.substitute(name, substitution).into())
                 }
             }
             <span class="self">Self</span>::Apply(poly, ty_args) =&gt; <span class="self">Self</span>::Apply(
@@ -1602,7 +1632,7 @@
         }
 
         <span class="kw">let </span>i = i + <span class="number">1</span>;
-        <span class="kw">if </span>i &gt; <span class="number">500 </span>{
+        <span class="kw">if </span>i &gt; <span class="self">Self</span>::SIMPLIFY_RECURSION_LIMIT {
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::RecursionDepthTypeEquality(
                 <span class="self">self</span>.clone(),
                 other.clone(),
@@ -1733,51 +1763,51 @@
         env: <span class="kw-2">&amp;</span>Env,
         previous_applications: <span class="kw-2">&amp;mut </span>HashMap&lt;(Type, Vec&lt;Type&gt;), Type&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
+        <span class="kw">let </span>before = <span class="self">self</span>.to_string();
         <span class="comment">// If the type is an Apply on a Poly, then we can perform the application.
         // First, perform the applications on the type arguments.
         // We can use memoization with the previous_applications HashMap to avoid infinite recursion.
-        </span><span class="kw">match </span><span class="self">self</span>.clone().simplify(env)<span class="question-mark">? </span>{
+        </span><span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self</span>.clone().simplify(env)<span class="question-mark">? </span>{
             <span class="self">Self</span>::Apply(poly, ty_args) =&gt; {
                 <span class="kw">let </span>pair = (
-                    <span class="kw-2">*</span>poly,
+                    poly.simplify(env)<span class="question-mark">?</span>.perform_template_applications(env, previous_applications)<span class="question-mark">?</span>,
                     ty_args
                         .into_iter()
-                        .map(|t| t.clone().simplify(env))
+                        .map(|t| t.clone().simplify(env)<span class="question-mark">?</span>.perform_template_applications(env, previous_applications))
                         .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
                 );
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = previous_applications.get(<span class="kw-2">&amp;</span>pair) {
-                    <span class="kw">return </span><span class="prelude-val">Ok</span>(t.clone());
-                }
-                <span class="kw">let </span>(poly, ty_args) = pair;
-
-                <span class="kw">match </span>poly {
-                    <span class="self">Self</span>::Poly(params, template) =&gt; {
-                        <span class="kw">let </span><span class="kw-2">mut </span>template = <span class="kw-2">*</span>template;
-                        <span class="kw">for </span>(param, ty_arg) <span class="kw">in </span>params.iter().zip(ty_args.iter()) {
-                            template = template.substitute(param, ty_arg);
-                        }
-                        <span class="prelude-val">Ok</span>(template)
-                    }
-                    <span class="self">Self</span>::Symbol(s) =&gt; {
-                        <span class="kw">match </span>env.get_type(s.as_str()).cloned() {
-                            <span class="prelude-val">Some</span>(<span class="self">Self</span>::Poly(params, template)) =&gt; {
-                                <span class="kw">let </span><span class="kw-2">mut </span>template = <span class="kw-2">*</span>template;
-                                <span class="kw">for </span>(param, ty_arg) <span class="kw">in </span>params.iter().zip(ty_args.iter()) {
-                                    template = template.substitute(param, ty_arg);
-                                }
-                                <span class="prelude-val">Ok</span>(template)
+                    t.clone()
+                } <span class="kw">else </span>{
+                    <span class="kw">let </span>(poly, ty_args) = pair;
+    
+                    <span class="kw">match </span>poly {
+                        <span class="self">Self</span>::Poly(params, template) =&gt; {
+                            <span class="kw">let </span><span class="kw-2">mut </span>template = <span class="kw-2">*</span>template;
+                            <span class="kw">for </span>(param, ty_arg) <span class="kw">in </span>params.iter().zip(ty_args.iter()) {
+                                template = template.substitute(param, ty_arg);
                             }
-                            <span class="prelude-val">Some</span>(other) =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Apply(Box::new(other), ty_args)),
-                            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(<span class="self">self</span>.clone()),
+                            template
                         }
+                        <span class="self">Self</span>::Symbol(s) =&gt; {
+                            <span class="kw">match </span>env.get_type(s.as_str()).cloned() {
+                                <span class="prelude-val">Some</span>(<span class="self">Self</span>::Poly(params, template)) =&gt; {
+                                    <span class="kw">let </span><span class="kw-2">mut </span>template = <span class="kw-2">*</span>template;
+                                    <span class="kw">for </span>(param, ty_arg) <span class="kw">in </span>params.iter().zip(ty_args.iter()) {
+                                        template = template.substitute(param, ty_arg);
+                                    }
+                                    template
+                                }
+                                <span class="prelude-val">Some</span>(other) =&gt; <span class="self">Self</span>::Apply(Box::new(other), ty_args),
+                                <span class="prelude-val">None </span>=&gt; <span class="self">self</span>.clone(),
+                            }
+                        }
+                        <span class="kw">_ </span>=&gt; <span class="self">self</span>.clone(),
                     }
-                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(<span class="self">self</span>.clone()),
                 }
             }
-            other =&gt; {
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(other);
-            }
-        }
+            other =&gt; other
+        })
     }
 
     <span class="doccomment">/// Are two types structurally equal?
@@ -1793,9 +1823,11 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
         }
 
-        <span class="kw">if </span>i &gt; <span class="number">50 </span>{
+        <span class="kw">if </span>i &gt;= <span class="self">Self</span>::SIMPLIFY_RECURSION_LIMIT {
             <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
         }
+
+        <span class="kw">let </span>i = i + <span class="number">1</span>;
 
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>(<span class="self">self</span>, other) {
             (<span class="self">Self</span>::Any, <span class="kw">_</span>)
@@ -1814,7 +1846,7 @@
                     <span class="comment">// If the two types have the same name, they must equal the same type
                     // under the same environment.
                     </span><span class="bool-val">true
-                </span>} <span class="kw">else if </span>i &gt; <span class="number">10 </span>&amp;&amp; compared_symbols.contains(<span class="kw-2">&amp;</span>(a.clone(), b.clone())) {
+                </span>} <span class="kw">else if </span>i &gt; <span class="self">Self</span>::SIMPLIFY_RECURSION_LIMIT / <span class="number">2 </span>&amp;&amp; compared_symbols.contains(<span class="kw-2">&amp;</span>(a.clone(), b.clone())) {
                     <span class="comment">// If we&#39;ve seen this comparison of these two symbols before, and we&#39;ve done
                     // lots of symbol replacements (indicated by `i`), then we&#39;re probably trying
                     // to compare two distinct types which are asymptotically unequal.
@@ -1824,7 +1856,7 @@
                     // we just say the types are unequal if we cannot simplify symbols further.
                     </span>compared_symbols.insert((a.clone(), b.clone()));
                     <span class="kw">match </span>(env.get_type(a), env.get_type(b)) {
-                        (<span class="prelude-val">Some</span>(a), <span class="prelude-val">Some</span>(b)) =&gt; a.equals_checked(b, compared_symbols, env, i + <span class="number">1</span>)<span class="question-mark">?</span>,
+                        (<span class="prelude-val">Some</span>(a), <span class="prelude-val">Some</span>(b)) =&gt; a.equals_checked(b, compared_symbols, env, i)<span class="question-mark">?</span>,
                         <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
                     }
                 }
@@ -1833,7 +1865,7 @@
                 <span class="comment">// To get as much specific information as possible about type errors,
                 // we just say the types are unequal if we cannot simplify symbols further.
                 </span><span class="kw">match </span>env.get_type(x) {
-                    <span class="prelude-val">Some</span>(t) =&gt; t.equals_checked(y, compared_symbols, env, i + <span class="number">1</span>)<span class="question-mark">?</span>,
+                    <span class="prelude-val">Some</span>(t) =&gt; t.equals_checked(y, compared_symbols, env, i)<span class="question-mark">?</span>,
                     <span class="prelude-val">None </span>=&gt; <span class="bool-val">false</span>,
                 }
             }
@@ -1897,7 +1929,7 @@
             <span class="comment">// If we&#39;re comparing two units, then we can just compare their names and confirm
             // their structures are equal.
             </span>(<span class="self">Self</span>::Unit(unit_name1, t1), <span class="self">Self</span>::Unit(unit_name2, t2)) =&gt; {
-                unit_name1 == unit_name2 &amp;&amp; t1.equals_checked(t2, compared_symbols, env, i + <span class="number">1</span>)<span class="question-mark">?
+                unit_name1 == unit_name2 &amp;&amp; t1.equals_checked(t2, compared_symbols, env, i)<span class="question-mark">?
             </span>}
 
             (<span class="self">Self</span>::Enum(a), <span class="self">Self</span>::Enum(b)) =&gt; {
@@ -2010,8 +2042,12 @@
                 </span>} <span class="kw">else </span>{
                     <span class="comment">// If the two polymorphic types are not equal, then we can&#39;t just compare the two
                     // types&#39; parameters. We need to simplify the types first.
-                    </span><span class="self">self</span>.clone().simplify_checked(env, i)<span class="question-mark">?</span>.equals_checked(
-                        <span class="kw-2">&amp;</span>other.clone().simplify_checked(env, i)<span class="question-mark">?</span>,
+                    </span>other.clone().simplify_until_matches(
+                        env,
+                        Type::Any,
+                        |t, _env| <span class="prelude-val">Ok</span>(t.is_simple()),
+                    )<span class="question-mark">?</span>.equals_checked(
+                        <span class="self">self</span>,
                         compared_symbols,
                         env,
                         i,
@@ -2021,29 +2057,34 @@
 
             (<span class="self">Self</span>::Apply(poly, ty_args), b) | (b, <span class="self">Self</span>::Apply(poly, ty_args)) =&gt; {
                 <span class="comment">// If the type is a polymorphic type, then we need to simplify it first.
-                </span><span class="kw">let </span>f = poly.clone().simplify_until_matches(
-                    env,
-                    Type::Poly(<span class="macro">vec!</span>[], Box::new(Type::Any)),
-                    |t, _env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>))),
-                )<span class="question-mark">?</span>;
+                // let f = poly.clone().simplify_until_matches(
+                //     env,
+                //     Type::Poly(vec![], Box::new(Type::Any)),
+                //     |t, _env| Ok(matches!(t, Type::Poly(_, _))),
+                // )?;
 
-                <span class="kw">match </span>f {
-                    <span class="self">Self</span>::Poly(ty_params, <span class="kw-2">mut </span>template) =&gt; {
-                        <span class="comment">// let mut new_env = env.clone();
-                        </span><span class="kw">for </span>(name, ty) <span class="kw">in </span>ty_params.iter().zip(ty_args.iter()) {
-                            <span class="comment">// new_env.define_type(name, ty.clone());
-                            </span><span class="kw-2">*</span>template = template.substitute(name, ty);
-                        }
-                        template.equals_checked(b, compared_symbols, env, i)<span class="question-mark">?
-                    </span>}
-                    <span class="kw">_ </span>=&gt; {
-                        <span class="comment">// If the type is not a polymorphic type, then we can compare it to the
-                        // other type.
-                        // return a.equals_checked(b, compared_symbols, env, i);
-                        </span><span class="bool-val">false
-                    </span>}
-                }
-            }
+                // match f {
+                //     Self::Poly(ty_params, mut template) =&gt; {
+                //         // let mut new_env = env.clone();
+                //         for (name, ty) in ty_params.iter().zip(ty_args.iter()) {
+                //             // new_env.define_type(name, ty.clone());
+                //             *template = template.substitute(name, ty);
+                //         }
+                //         template.equals_checked(b, compared_symbols, env, i)?
+                //     }
+                //     _ =&gt; {
+                //         // If the type is not a polymorphic type, then we can compare it to the
+                //         // other type.
+                //         // return a.equals_checked(b, compared_symbols, env, i);
+                //         false
+                //     }
+                // }
+                </span><span class="self">Self</span>::Apply(poly.clone(), ty_args.clone()).simplify_until_matches(
+                    env,
+                    Type::Any,
+                    |t, _env| <span class="prelude-val">Ok</span>(t.is_simple()),
+                )<span class="question-mark">?</span>.equals_checked(b, compared_symbols, env, i)<span class="question-mark">?
+            </span>}
 
             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         })
@@ -2099,7 +2140,7 @@
                 <span class="comment">// Find the member offset of the returned type under the new scope
                 //
                 // NOTE:
-                // We simplfy the type before AND after getting the member offset because
+                // We simplify the type before AND after getting the member offset because
                 // we want to make sure that recursive types don&#39;t leave undefined symbols
                 // in the in the resulting type.
                 </span><span class="kw">let </span>(t, offset) = ret
@@ -2224,8 +2265,12 @@
 <span class="kw">impl </span>Simplify <span class="kw">for </span>Type {
     <span class="kw">fn </span>simplify_checked(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env, i: usize) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
         <span class="kw">let </span>i = i + <span class="number">1</span>;
-        <span class="comment">// let s = self.to_string();
-        </span><span class="kw">let </span>result = <span class="kw">match </span><span class="self">self </span>{
+        <span class="kw">if </span>i &gt; <span class="self">Self</span>::SIMPLIFY_RECURSION_LIMIT {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsizedType(<span class="self">self</span>.clone()));
+        }
+
+        <span class="kw">let </span>s = <span class="self">self</span>.to_string();
+        <span class="kw">let </span>result = <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::None
             | <span class="self">Self</span>::Never
             | <span class="self">Self</span>::Any
@@ -2313,7 +2358,8 @@
                 <span class="self">Self</span>::Apply(Box::new(poly.simplify_checked(env, i)<span class="question-mark">?</span>), ty_args)
             }
         };
-        <span class="prelude-val">Ok</span>(result)
+        <span class="comment">// eprintln!(&quot;Simplified {} to {}&quot;, s, result);    
+        </span><span class="prelude-val">Ok</span>(result)
     }
 }
 

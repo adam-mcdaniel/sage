@@ -304,7 +304,7 @@ def round_key(word0: Int, word1: Int, word2: Int, word3: Int): State {
 
 def key_expansion(key: &Key, nr: Int, nk: Int): &Int = {
     let key_data = key as &Int;
-    let w = alloc(4 * (nr + 1) * sizeof(Int)) as &Int;
+    let w = alloc(4 * (nr + 1) * sizeof<Int>()) as &Int;
     for let i=0; i < nk; i+=1 {
         w[i] = word(key_data[4*i], key_data[4*i+1], key_data[4*i+2], key_data[4*i+3]);
     }
@@ -377,11 +377,15 @@ let state: State = row_major(
     0x0C, 0x0D, 0x0E, 0x0F
 );
 
-for let i=0; i < 10; i += 1 {
-    print_keyln(&key);
-    print_state(&state);
-    print("\n");
-    cipher(&state, &key);
-    print_state(&state);
-    print("\n");
-}
+print_keyln(&key);
+print("Raw\n");
+print_state(&state);
+print("\n");
+print("Cipher\n");
+cipher(&state, &key);
+print_state(&state);
+print("\n");
+print("Inverse-Cipher\n");
+inverse_cipher(&state, &key);
+print_state(&state);
+print("\n");

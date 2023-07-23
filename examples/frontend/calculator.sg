@@ -136,7 +136,7 @@ def binop(
     if input.start[input.loc] == op {
         input.loc += 1;
         input = parse_whitespaces(input);
-        match parse_term(input) {
+        match factor(input) {
             of Ok (input, rhs) => {
                 return ParseResult of Ok (input, cons(lhs, rhs));
             },
@@ -318,20 +318,30 @@ def readline(ch: &Char, len: Int): Int {
 }
 
 def read(): Input {
-    let buf = alloc(sizeof(Char) * 1024) as &Char;
+    let buf = alloc(sizeof<Char>() * 1024) as &Char;
 
     print("? ");
     let len = readline(buf, 0);
     buf[len] = '\0';
 
     return {
-        start = buf as &Char,
-        length = strlen(buf as &Char),
+        start = buf,
+        length = strlen(buf),
+        loc = 0
+    };
+}
+def test(): Input {
+    let buf = alloc(sizeof<Char>() * 34) as &Char;
+    *(buf as &[Char * 34]) = "(4 + 6) * ((8 - 3) / 2) + (9 % 5)\0";
+    
+    return {
+        start = buf,
+        length = strlen(buf),
         loc = 0
     };
 }
 
-let input = read();
+let input = test();
 match parse_expr(input) {
     of Ok (input, n) => {
         print_expr(n);

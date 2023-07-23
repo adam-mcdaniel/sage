@@ -33,6 +33,47 @@ use super::vm;
 use lalrpop_util::lalrpop_mod;
 use no_comment::{languages, IntoWithoutComments};
 
+/// A struct representing a location in the source code.
+/// This is used to format errors properly.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SourceCodeLocation {
+    pub line: usize,
+    pub column: usize,
+    pub offset: usize,
+    pub length: Option<usize>,
+    pub filename: Option<String>,
+}
+
+impl SourceCodeLocation {
+    // Given the source code, get the string associated with this location.
+    pub fn get_code(&self, source: &str) -> String {
+        let mut code = String::new();
+        let mut line_number = 1;
+        let mut column_number = 1;
+        let mut offset = 0;
+
+        for c in source.chars() {
+            if line_number == self.line && column_number == self.column {
+                if let Some(length) = self.length {
+                    code.push_str(&source[offset..(offset + length)]);
+                    break;
+                }
+            }
+
+            if c == '\n' {
+                line_number += 1;
+                column_number = 1;
+            } else {
+                column_number += 1;
+            }
+
+            offset += 1;
+        }
+
+        code
+    }
+}
+
 lalrpop_mod!(
     #[allow(clippy::all)]
     asm_parser
@@ -107,8 +148,8 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
 }
 
 /// Parse frontend sage code into an LIR expression.
-pub fn parse_frontend(input: impl ToString) -> Result<Expr, String> {
-    frontend::parse(input)
+pub fn parse_frontend(input: impl ToString, filename: Option<&str>) -> Result<Expr, String> {
+    frontend::parse(input, filename)
 }
 
 type SyntaxError<'a, T> = lalrpop_util::ParseError<usize, T, &'a str>;

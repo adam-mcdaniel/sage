@@ -37,6 +37,11 @@ impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
         let i = i + 1;
         Ok(match self {
+            Self::AnnotatedWithSource { expr, loc } => {
+                // Get the type of the inner expression.
+                expr.get_type_checked(env, i).map_err(|e| e.with_loc(loc))?
+            }
+
             Self::Match(expr, branches) => {
                 for (pat, branch) in branches {
                     return pat.get_branch_result_type(&expr, branch, env);
@@ -77,6 +82,12 @@ impl GetType for Expr {
             Self::ConstExpr(c) => c.get_type_checked(env, i)?,
             // Get the type of the result of the block of expressions.
             Self::Many(exprs) => {
+                for expr in exprs {
+                    if expr.get_type_checked(env, i)? == Type::Never {
+                        return Ok(Type::Never);
+                    }
+                }
+
                 // Get the type of the last expression in the block.
                 if let Some(expr) = exprs.last() {
                     // If the last expression returns a value,
@@ -188,12 +199,36 @@ impl GetType for Expr {
             }
 
             // A while loop returns the None value.
-            Self::While(_, _) => Type::None,
+            Self::While(cond, _) => {
+                let mut cond = *cond.clone();
+                while let Expr::AnnotatedWithSource { expr, .. } = cond {
+                    cond = *expr;
+                }
+
+                match cond {
+                    Self::ConstExpr(ConstExpr::Bool(true)) => Type::Never,
+                    Self::ConstExpr(ref c) => {
+                        if let Ok(true) = c.clone().simplify(env)?.as_bool(env) {
+                            Type::Never
+                        } else {
+                            Type::None
+                        }
+                    }
+                    _ => Type::None,
+                }
+            },
 
             // An if statement returns the type of the expression
             // that is evaluated if the condition is true (which must
             // be type-equal with the else branch).
-            Self::If(_, t, _) => t.get_type_checked(env, i)?,
+            Self::If(_, t, e) => {
+                let ty = t.get_type_checked(env, i)?;
+                if ty == Type::Never {
+                    e.get_type_checked(env, i)?
+                } else {
+                    ty
+                }
+            },
             // When statements return either the type of the expression
             // that is evaluated if the condition is true or the else branch.
             Self::When(c, t, e) => {
@@ -402,6 +437,10 @@ impl GetType for Expr {
     /// Substitute a type in a given expression.
     fn substitute(&mut self, name: &str, ty: &Type) {
         match self {
+            Self::AnnotatedWithSource { expr, .. } => {
+                expr.substitute(name, ty);
+            }
+
             Self::ConstExpr(cexpr) => cexpr.substitute(name, ty),
             Self::LetConst(name, cexpr, expr) => {
                 cexpr.substitute(name, ty);

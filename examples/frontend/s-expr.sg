@@ -26,7 +26,7 @@ def string_new(s: &Char): String {
         len += 1;
     }
 
-    let buffer = alloc(sizeof(Char) * len) as &Char;
+    let buffer = alloc(sizeof<Char>() * len) as &Char;
     strcpy(buffer, s);
 
     return {

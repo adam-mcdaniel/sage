@@ -312,19 +312,19 @@ where
                     CoreOp::BitwiseNand => {
                         self.register = !(self.register & *self.get_cell());
                     }
-                    CoreOp::Add => self.register += *self.get_cell(),
-                    CoreOp::Sub => self.register -= *self.get_cell(),
-                    CoreOp::Mul => self.register *= *self.get_cell(),
+                    CoreOp::Add => self.register = self.register.overflowing_add(*self.get_cell()).0,
+                    CoreOp::Sub => self.register = self.register.overflowing_sub(*self.get_cell()).0,
+                    CoreOp::Mul => self.register = self.register.overflowing_mul(*self.get_cell()).0,
                     CoreOp::Div => {
                         let d = *self.get_cell();
                         if d != 0 {
-                            self.register /= d
+                            self.register = self.register.overflowing_div(d).0
                         }
                     }
                     CoreOp::Rem => {
                         let d = *self.get_cell();
                         if d != 0 {
-                            self.register %= d
+                            self.register = self.register.overflowing_rem(d).0
                         }
                     }
 

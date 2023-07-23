@@ -1,6 +1,6 @@
 [package]
 name = "sage"
-authors = ["Adam McDaniel <adam.mcdaniel17@gmail.com>"]
+authors = ["Adam McDaniel <adam.mcdaniel17@gmail.com> (https://adam-mcdaniel.net)"]
 version = "0.0.1-alpha"
 edition = "2021"
 license = "GPL-2.0-or-later"
@@ -23,6 +23,7 @@ no-comment = "0.0.3"
 pest = "2.6.0"
 pest_derive = "2.6.0"
 snailquote = "0.3.1"
+codespan-reporting = "0.11.1"
 
 # Add a build-time dependency on the lalrpop library:
 [build-dependencies]
