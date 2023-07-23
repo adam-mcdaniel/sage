@@ -1,4 +1,4 @@
-use sage::{io::Output, vm::*};
+use sage::{side_effects::Output, vm::*};
 
 #[test]
 fn test_add() {

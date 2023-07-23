@@ -1,7 +1,7 @@
 use maplit::btreemap;
 use sage::{
     asm::{CoreOp, CoreProgram, StandardOp, StandardProgram, A, SP},
-    io::{Input, Output},
+    side_effects::{Input, Output},
     lir::*,
     parse::*,
     vm::{as_int, CoreInterpreter, StandardInterpreter, TestingDevice},

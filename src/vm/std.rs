@@ -38,7 +38,7 @@
 use super::{CoreOp, CoreProgram, Error, VirtualMachineProgram};
 use core::fmt;
 use std::collections::HashMap;
-use crate::side_effects::{FFIBinding, FFIType, Input, Output};
+use crate::side_effects::*;
 
 impl VirtualMachineProgram for StandardProgram {
     fn op(&mut self, op: CoreOp) {

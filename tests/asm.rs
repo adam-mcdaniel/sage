@@ -1,6 +1,6 @@
 use sage::{
     asm::*,
-    io::{Input, Output},
+    side_effects::{Input, Output},
     parse::parse_asm,
     vm::{CoreInterpreter, TestingDevice},
 };
