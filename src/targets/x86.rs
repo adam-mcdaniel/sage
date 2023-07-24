@@ -11,6 +11,7 @@ use crate::{
 
 /// The type for the x86 target which implements the `Target` trait.
 /// This allows the compiler to target the C language.
+#[derive(Default)]
 pub struct X86 {
     branch_count: usize,
     fun_count: usize,
@@ -18,16 +19,7 @@ pub struct X86 {
     float_defs: Vec<f64>,
 }
 
-impl Default for X86 {
-    fn default() -> Self {
-        Self {
-            branch_count: 0,
-            fun_count: 0,
-            branch_match: Vec::new(),
-            float_defs: Vec::new(),
-        }
-    }
-}
+
 
 impl Architecture for X86 {
     fn supports_input(&self, i: &Input) -> bool {

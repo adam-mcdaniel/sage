@@ -42,11 +42,11 @@ impl BinaryOp for Comparison {
                 }
 
                 // Make sure that inner types are compatible.
-                if !a_type.equals(&b_type, env)? {
+                if !a_type.equals(b_type, env)? {
                     return Ok(false);
                 }
 
-                self.can_apply(&a_type, &b_type, env)
+                self.can_apply(a_type, b_type, env)
             }
             (a, Self::Equal, b) | (a, Self::NotEqual, b) => {
                 Ok(a.equals(b, env)? && a.get_size(env)? == 1)
@@ -216,7 +216,7 @@ impl BinaryOp for Comparison {
             }
 
             (Type::Unit(_name1, a_type), _, Type::Unit(_name2, b_type)) => {
-                return self.compile_types(&a_type, &b_type, env, output);
+                return self.compile_types(a_type, b_type, env, output);
             }
 
             (a, Self::Equal, b) if a.equals(b, env)? => {

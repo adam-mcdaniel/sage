@@ -122,7 +122,7 @@ impl TypeCheck for Type {
                 match poly.clone().simplify_until_matches(
                     env,
                     Type::Poly(vec![], Box::new(Type::Any)),
-                    |t, env| Ok(matches!(t, Type::Poly(_, _))),
+                    |t, _env| Ok(matches!(t, Type::Poly(_, _))),
                 )? {
                     Type::Symbol(name) => {
                         // Get the type definition.
@@ -133,7 +133,7 @@ impl TypeCheck for Type {
                         match ty.clone().simplify_until_matches(
                             env,
                             Type::Poly(vec![], Box::new(Type::Any)),
-                            |t, env| Ok(matches!(t, Type::Poly(_, _))),
+                            |t, _env| Ok(matches!(t, Type::Poly(_, _))),
                         )? {
                             Type::Poly(ty_params, _) => {
                                 // Check that the number of type arguments matches the number of type parameters.
@@ -197,16 +197,10 @@ impl TypeCheck for Expr {
                 expr.type_check(env)?;
                 let ty = expr.get_type(env)?;
 
-                if ty == Type::Never {
-                    // If the expression is of type `Never`, then
+                if ty == Type::Never || ty == Type::Any  {
+                    // If the expression is an opaque type like `Any` or `Never`, then
                     // throw an `InvalidMatchExpr` error. We do this
                     // because `Never` is an opaque type, and we can't
-                    // match on it.
-                    return Err(Error::InvalidMatchExpr(*expr.clone()));
-                } else if ty == Type::Any {
-                    // If the expression is an opaque `Any` type,
-                    // then throw an `InvalidMatchExpr` error. We do this
-                    // because `Any` is an opaque type, and we can't
                     // match on it.
                     return Err(Error::InvalidMatchExpr(*expr.clone()));
                 }
@@ -300,7 +294,7 @@ impl TypeCheck for Expr {
                         let ty = expr.get_type(env)?;
                         if !ty.equals(&Type::None, env)? {
                             // If it's not, return an error.
-                            return Err(Error::UnusedExpr(expr.clone(), ty.clone()));
+                            return Err(Error::UnusedExpr(expr.clone(), ty));
                         }
                     }
                 }
@@ -508,7 +502,7 @@ impl TypeCheck for Expr {
                     // If so, then make sure the expression being accessed is also sound.
                     e.type_check(env)
                 },
-                other => Err(Error::InvalidRefer(other.clone())),
+                other => Err(Error::InvalidRefer(other)),
             },
             // Typecheck a dereference of a pointer.
             Self::Deref(e) => {
@@ -578,7 +572,7 @@ impl TypeCheck for Expr {
                 // Get the type of the function.
                 let mut f_type = f.get_type(env)?;
                 f_type =
-                    f_type.simplify_until_matches(env, Type::Any, |t, env| Ok(t.is_simple()))?;
+                    f_type.simplify_until_matches(env, Type::Any, |t, _env| Ok(t.is_simple()))?;
                 // Infer the types of the supplied arguments.
                 let mut args_inferred = vec![];
                 for arg in args {
@@ -681,7 +675,7 @@ impl TypeCheck for Expr {
                 // Typecheck the type.
                 t.type_check(env)?;
                 let mut t = t.clone();
-                t = t.simplify_until_matches(env, Type::Union(BTreeMap::new()), |t, env| {
+                t = t.simplify_until_matches(env, Type::Union(BTreeMap::new()), |t, _env| {
                     Ok(matches!(t, Type::Union(_)))
                 })?;
                 match t {
@@ -698,16 +692,16 @@ impl TypeCheck for Expr {
                                     expr: self.clone(),
                                 });
                             }
-                            return Ok(());
+                            Ok(())
                         } else {
-                            return Err(Error::MemberNotFound(
+                            Err(Error::MemberNotFound(
                                 self.clone(),
                                 ConstExpr::Symbol(field.clone()),
-                            ));
+                            ))
                         }
                     }
                     _ => {
-                        return Err(Error::MemberNotFound(
+                        Err(Error::MemberNotFound(
                             self.clone(),
                             ConstExpr::Symbol(field.clone()),
                         ))
@@ -757,7 +751,7 @@ impl TypeCheck for Expr {
                 // Typecheck the type
                 t.type_check(env)?;
                 let mut t = t.clone();
-                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
                     Ok(matches!(t, Type::EnumUnion(_)))
                 })?;
 
@@ -775,15 +769,15 @@ impl TypeCheck for Expr {
                                     expr: self.clone(),
                                 });
                             }
-                            return Ok(());
+                            Ok(())
                         } else {
-                            return Err(Error::VariantNotFound(
+                            Err(Error::VariantNotFound(
                                 Type::EnumUnion(fields),
                                 variant.clone(),
-                            ));
+                            ))
                         }
                     }
-                    t => return Err(Error::VariantNotFound(t, variant.clone())),
+                    t => Err(Error::VariantNotFound(t, variant.clone())),
                 }
 
                 // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
@@ -902,9 +896,9 @@ impl TypeCheck for ConstExpr {
                     new_env.define_type(name.clone(), ty.clone());
                 }
                 for (_, ty) in bindings {
-                    ty.type_check(&mut new_env)?;
+                    ty.type_check(&new_env)?;
                 }
-                expr.type_check(&mut new_env)
+                expr.type_check(&new_env)
             }
             Self::Monomorphize(expr, ty_args) => {
                 self.get_type(env)?.type_check(env)?;
@@ -924,7 +918,7 @@ impl TypeCheck for ConstExpr {
                 // Calculate the inferred type of the expression.
                 let found = expr.get_type(env)?;
                 // Confirm that the cast is valid.
-                if !found.can_cast_to(&cast_ty, env)? {
+                if !found.can_cast_to(cast_ty, env)? {
                     // If it isn't, return an error.
                     return Err(Error::InvalidAs(
                         Expr::ConstExpr(*expr.clone()),
@@ -967,7 +961,7 @@ impl TypeCheck for ConstExpr {
                 let mut t = t.clone();
 
                 t =
-                    t.simplify_until_matches(env, Type::Enum(vec![variant.clone()]), |t, env| {
+                    t.simplify_until_matches(env, Type::Enum(vec![variant.clone()]), |t, _env| {
                         Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_)))
                     })?;
 
@@ -976,14 +970,14 @@ impl TypeCheck for ConstExpr {
                         // If the enum contains the variant, return success.
                         if variants.contains(variant) {
                             // Return success.
-                            return Ok(());
+                            Ok(())
                         } else {
                             // Otherwise, the variant isn't contained in the enum,
                             // so return an error.
-                            return Err(Error::VariantNotFound(
+                            Err(Error::VariantNotFound(
                                 Type::Enum(variants),
                                 variant.clone(),
-                            ));
+                            ))
                         }
                     }
                     Type::EnumUnion(variants) if variants.get(variant) == Some(&Type::None) => {
@@ -992,17 +986,17 @@ impl TypeCheck for ConstExpr {
                             && variants.get(variant) == Some(&Type::None)
                         {
                             // Return success.
-                            return Ok(());
+                            Ok(())
                         } else {
                             // Otherwise, the variant isn't contained in the enum,
                             // so return an error.
-                            return Err(Error::VariantNotFound(
+                            Err(Error::VariantNotFound(
                                 Type::EnumUnion(variants),
                                 variant.clone(),
-                            ));
+                            ))
                         }
                     }
-                    _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
+                    _ => Err(Error::VariantNotFound(t.clone(), variant.clone())),
                 }
                 // // Check that the variant is contained in the enum.
                 // // Only check 50 levels deep to keep recursion under control.
@@ -1100,7 +1094,7 @@ impl TypeCheck for ConstExpr {
                 // Confirm the type supplied is a union.
                 let mut t = t.clone();
 
-                t = t.simplify_until_matches(env, Type::Union(BTreeMap::new()), |t, env| {
+                t = t.simplify_until_matches(env, Type::Union(BTreeMap::new()), |t, _env| {
                     Ok(matches!(t, Type::Union(_)))
                 })?;
 
@@ -1118,16 +1112,16 @@ impl TypeCheck for ConstExpr {
                                     expr: Expr::ConstExpr(self.clone()),
                                 });
                             }
-                            return Ok(());
+                            Ok(())
                         } else {
-                            return Err(Error::MemberNotFound(
+                            Err(Error::MemberNotFound(
                                 Expr::ConstExpr(self.clone()),
                                 ConstExpr::Symbol(field.clone()),
-                            ));
+                            ))
                         }
                     }
                     _ => {
-                        return Err(Error::MemberNotFound(
+                        Err(Error::MemberNotFound(
                             Expr::ConstExpr(self.clone()),
                             ConstExpr::Symbol(field.clone()),
                         ))
@@ -1140,7 +1134,7 @@ impl TypeCheck for ConstExpr {
                 // Confirm the type supplied is a union.
                 let mut t = t.clone();
                 t =
-                    t.simplify_until_matches(env, Type::Enum(vec![variant.clone()]), |t, env| {
+                    t.simplify_until_matches(env, Type::Enum(vec![variant.clone()]), |t, _env| {
                         Ok(matches!(t, Type::EnumUnion(_) | Type::Enum(_)))
                     })?;
                 match t {
@@ -1157,15 +1151,15 @@ impl TypeCheck for ConstExpr {
                                     expr: Expr::ConstExpr(self.clone()),
                                 });
                             }
-                            return Ok(());
+                            Ok(())
                         } else {
-                            return Err(Error::VariantNotFound(
+                            Err(Error::VariantNotFound(
                                 Type::EnumUnion(fields),
                                 variant.clone(),
-                            ));
+                            ))
                         }
                     }
-                    _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
+                    _ => Err(Error::VariantNotFound(t.clone(), variant.clone())),
                 }
             }
         }

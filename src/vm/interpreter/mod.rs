@@ -268,7 +268,7 @@ impl Device for StandardDevice {
     fn get(&mut self, src: Input) -> Result<i64, String> {
         Ok(match src.mode {
             InputMode::StdinChar => self.get_char()? as i64,
-            InputMode::StdinInt => self.get_int()? as i64,
+            InputMode::StdinInt => self.get_int()?,
             InputMode::StdinFloat => as_int(self.get_float()?),
             InputMode::Thermometer => as_int(295.15),
             _ => {

@@ -22,7 +22,7 @@
 //! |`union {a: A, b: B, ... i: Int = 5}`|The max size of any type of `A`, `B`, ...|
 //! |`proc(A, B, ...) -> T`|1|
 //! |`enum {A, B, ...}`|1|
-use std::hash::Hash;
+
 
 use super::*;
 

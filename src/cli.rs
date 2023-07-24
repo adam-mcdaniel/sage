@@ -111,10 +111,10 @@ enum Error {
 }
 
 impl Error {
-    pub fn annotate_with_source(self, code: &String) -> Self {
+    pub fn annotate_with_source(self, code: &str) -> Self {
         match self {
             Self::LirError(lir::Error::AnnotatedWithSource { err, loc }) => {
-                Self::WithSourceCode { loc: loc.clone(), source_code: code.clone(), err: Box::new(Error::LirError(*err)) }
+                Self::WithSourceCode { loc, source_code: code.to_owned(), err: Box::new(Error::LirError(*err)) }
             }
             _ => self
         }

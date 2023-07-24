@@ -36,9 +36,9 @@ fn test_frontend_examples_helper() {
         {
             let file_name = path
                 .file_name()
-                .expect(&format!("Could not get file name of path `{path:?}`"))
+                .unwrap_or_else(|| panic!("Could not get file name of path `{path:?}`"))
                 .to_str()
-                .expect(&format!("Could not get file name of path `{path:?}`"))
+                .unwrap_or_else(|| panic!("Could not get file name of path `{path:?}`"))
                 .to_string();
             let correct_output_path = PathBuf::from("examples/output")
                 .join(file_name)
@@ -52,35 +52,35 @@ fn test_frontend_examples_helper() {
             };
             let correct_output = correct_output_text
                 .as_bytes()
-                .into_iter()
+                .iter()
                 .map(|byte| *byte as i64)
                 .collect::<Vec<_>>();
 
             let frontend_src = read_to_string(&path)
-                .expect(&format!("Could not read contents of file `{path:?}`"));
+                .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
             let frontend_code =
-                parse_frontend(&frontend_src, path.to_str()).expect(&format!("Could not parse `{path:?}`"));
+                parse_frontend(&frontend_src, path.to_str()).unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
             drop(frontend_src);
             let asm_code = frontend_code
                 .compile()
-                .expect(&format!("Could not compile LIR code in `{path:?}`"));
+                .unwrap_or_else(|_| panic!("Could not compile LIR code in `{path:?}`"));
 
             let vm_code = match asm_code {
                 Ok(core_asm_code) => Ok(core_asm_code
                     .assemble(CALL_STACK_SIZE)
-                    .expect(&format!("Could not assemble code in `{path:?}`"))),
+                    .unwrap_or_else(|_| panic!("Could not assemble code in `{path:?}`"))),
                 Err(std_asm_code) => Err(std_asm_code
                     .assemble(CALL_STACK_SIZE)
-                    .expect(&format!("Could not assemble code in `{path:?}`"))),
+                    .unwrap_or_else(|_| panic!("Could not assemble code in `{path:?}`"))),
             };
 
             let device = match vm_code {
                 Ok(vm_code) => CoreInterpreter::new(TestingDevice::new(INPUT))
                     .run(&vm_code)
-                    .expect(&format!("Could not interpret code in `{path:?}`")),
+                    .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
                 Err(vm_code) => StandardInterpreter::new(TestingDevice::new(INPUT))
                     .run(&vm_code)
-                    .expect(&format!("Could not interpret code in `{path:?}`")),
+                    .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
             };
 
             let output_text = device.output_str();
@@ -120,9 +120,9 @@ fn test_lir_examples_helper() {
         {
             let file_name = path
                 .file_name()
-                .expect(&format!("Could not get file name of path `{path:?}`"))
+                .unwrap_or_else(|| panic!("Could not get file name of path `{path:?}`"))
                 .to_str()
-                .expect(&format!("Could not get file name of path `{path:?}`"))
+                .unwrap_or_else(|| panic!("Could not get file name of path `{path:?}`"))
                 .to_string();
             let correct_output_path = PathBuf::from("examples/output")
                 .join(file_name)
@@ -136,34 +136,34 @@ fn test_lir_examples_helper() {
             };
             let correct_output = correct_output_text
                 .as_bytes()
-                .into_iter()
+                .iter()
                 .map(|byte| *byte as i64)
                 .collect::<Vec<_>>();
 
             let lir_src = read_to_string(&path)
-                .expect(&format!("Could not read contents of file `{path:?}`"));
-            let lir_code = parse_lir(&lir_src).expect(&format!("Could not parse `{path:?}`"));
+                .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
+            let lir_code = parse_lir(&lir_src).unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
             drop(lir_src);
             let asm_code = lir_code
                 .compile()
-                .expect(&format!("Could not compile LIR code in `{path:?}`"));
+                .unwrap_or_else(|_| panic!("Could not compile LIR code in `{path:?}`"));
 
             let vm_code = match asm_code {
                 Ok(core_asm_code) => Ok(core_asm_code
                     .assemble(CALL_STACK_SIZE)
-                    .expect(&format!("Could not assemble code in `{path:?}`"))),
+                    .unwrap_or_else(|_| panic!("Could not assemble code in `{path:?}`"))),
                 Err(std_asm_code) => Err(std_asm_code
                     .assemble(CALL_STACK_SIZE)
-                    .expect(&format!("Could not assemble code in `{path:?}`"))),
+                    .unwrap_or_else(|_| panic!("Could not assemble code in `{path:?}`"))),
             };
 
             let device = match vm_code {
                 Ok(vm_code) => CoreInterpreter::new(TestingDevice::new(INPUT))
                     .run(&vm_code)
-                    .expect(&format!("Could not interpret code in `{path:?}`")),
+                    .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
                 Err(vm_code) => StandardInterpreter::new(TestingDevice::new(INPUT))
                     .run(&vm_code)
-                    .expect(&format!("Could not interpret code in `{path:?}`")),
+                    .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
             };
 
             let output_text = device.output_str();
@@ -202,9 +202,9 @@ fn test_asm_examples_helper() {
         {
             let file_name = path
                 .file_name()
-                .expect(&format!("Could not get file name of path `{path:?}`"))
+                .unwrap_or_else(|| panic!("Could not get file name of path `{path:?}`"))
                 .to_str()
-                .expect(&format!("Could not get file name of path `{path:?}`"))
+                .unwrap_or_else(|| panic!("Could not get file name of path `{path:?}`"))
                 .to_string();
             let correct_output_path = PathBuf::from("examples/output")
                 .join(file_name)
@@ -218,31 +218,31 @@ fn test_asm_examples_helper() {
             };
             let correct_output = correct_output_text
                 .as_bytes()
-                .into_iter()
+                .iter()
                 .map(|byte| *byte as i64)
                 .collect::<Vec<_>>();
 
             let asm_src = read_to_string(&path)
-                .expect(&format!("Could not read contents of file `{path:?}`"));
-            let asm_code = parse_asm(&asm_src).expect(&format!("Could not parse `{path:?}`"));
+                .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
+            let asm_code = parse_asm(&asm_src).unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
             drop(asm_src);
 
             let vm_code = match asm_code {
                 Ok(core_asm_code) => Ok(core_asm_code
                     .assemble(CALL_STACK_SIZE)
-                    .expect(&format!("Could not assemble code in `{path:?}`"))),
+                    .unwrap_or_else(|_| panic!("Could not assemble code in `{path:?}`"))),
                 Err(std_asm_code) => Err(std_asm_code
                     .assemble(CALL_STACK_SIZE)
-                    .expect(&format!("Could not assemble code in `{path:?}`"))),
+                    .unwrap_or_else(|_| panic!("Could not assemble code in `{path:?}`"))),
             };
 
             let device = match vm_code {
                 Ok(vm_code) => CoreInterpreter::new(TestingDevice::new(INPUT))
                     .run(&vm_code)
-                    .expect(&format!("Could not interpret code in `{path:?}`")),
+                    .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
                 Err(vm_code) => StandardInterpreter::new(TestingDevice::new(INPUT))
                     .run(&vm_code)
-                    .expect(&format!("Could not interpret code in `{path:?}`")),
+                    .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
             };
 
             let output_text = device.output_str();

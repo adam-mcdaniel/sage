@@ -102,7 +102,7 @@ impl TypeCheck for Procedure {
 
         // Get the type of the procedure's body, and confirm that it matches the return type.
         let body_type = self.body.get_type(&new_env)?;
-        if !body_type.equals(&self.ret, &env)? {
+        if !body_type.equals(&self.ret, env)? {
             Err(Error::MismatchedTypes {
                 expected: self.ret.clone(),
                 found: body_type,
