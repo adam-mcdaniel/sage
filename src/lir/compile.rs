@@ -995,7 +995,7 @@ impl Compile for ConstExpr {
                     Type::EnumUnion(variants) if variants.get(&variant) == Some(&Type::None) => {
                         // Get the index of the variant.
                         if let Some(index) =
-                            Type::variant_index(&variants.into_keys().collect(), &variant)
+                            Type::variant_index(variants.into_keys().collect::<Vec<_>>().as_slice(), &variant)
                         {
                             // Push the index of the variant onto the stack.
                             // Allocate the size of the structure on the stack by

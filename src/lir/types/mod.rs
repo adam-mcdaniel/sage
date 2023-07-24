@@ -175,8 +175,8 @@ impl Type {
     }
 
     /// Calculate the integral value of a variant in an enum.
-    pub fn variant_index(variants: &Vec<String>, variant: &String) -> Option<usize> {
-        let mut variants = variants.clone();
+    pub fn variant_index(variants: &[String], variant: &String) -> Option<usize> {
+        let mut variants = variants.to_vec();
         variants.sort();
         if let Ok(index) = variants.binary_search(variant) {
             Some(index)
