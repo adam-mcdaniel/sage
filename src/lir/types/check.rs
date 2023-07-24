@@ -197,16 +197,10 @@ impl TypeCheck for Expr {
                 expr.type_check(env)?;
                 let ty = expr.get_type(env)?;
 
-                if ty == Type::Never {
-                    // If the expression is of type `Never`, then
+                if ty == Type::Never || ty == Type::Any  {
+                    // If the expression is an opaque type like `Any` or `Never`, then
                     // throw an `InvalidMatchExpr` error. We do this
                     // because `Never` is an opaque type, and we can't
-                    // match on it.
-                    return Err(Error::InvalidMatchExpr(*expr.clone()));
-                } else if ty == Type::Any {
-                    // If the expression is an opaque `Any` type,
-                    // then throw an `InvalidMatchExpr` error. We do this
-                    // because `Any` is an opaque type, and we can't
                     // match on it.
                     return Err(Error::InvalidMatchExpr(*expr.clone()));
                 }
@@ -902,9 +896,9 @@ impl TypeCheck for ConstExpr {
                     new_env.define_type(name.clone(), ty.clone());
                 }
                 for (_, ty) in bindings {
-                    ty.type_check(&mut new_env)?;
+                    ty.type_check(&new_env)?;
                 }
-                expr.type_check(&mut new_env)
+                expr.type_check(&new_env)
             }
             Self::Monomorphize(expr, ty_args) => {
                 self.get_type(env)?.type_check(env)?;

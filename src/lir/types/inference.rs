@@ -49,9 +49,12 @@ impl GetType for Expr {
                         return Ok(ty);
                     }
                 }
+                // If the match expression is empty, then it returns the None value.
                 if branches.is_empty() {
                     Type::None
                 } else {
+                    // All the branches never return a value, so the match expression
+                    // returns the Never type.
                     Type::Never
                 }
             }

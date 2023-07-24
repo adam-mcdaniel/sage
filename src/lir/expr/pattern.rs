@@ -1026,16 +1026,11 @@ impl Pattern {
             (Self::Wildcard, _) | (Self::ConstExpr(_), _) => ret.clone(),
 
             // If the pattern is an alternative, then bind the first pattern.
-            // All their bindings will be the same, so it doesn't matter which one
+            // All their bindings will be the same type, so it doesn't matter which one
             // we choose.
             (Self::Alt(patterns), _) => {
-                let mut result = ret.clone();
                 // Bind the first pattern.
-                for pattern in patterns.iter() {
-                    result = pattern.bind(expr, ty, &result, env)?;
-                    break;
-                }
-                result
+                patterns.first().map(|x| x.bind(expr, ty, ret, env)).unwrap_or(Err(Error::InvalidPatternForExpr(expr.clone(), self.clone())))?
             }
 
             _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone())),
