@@ -44,9 +44,16 @@ impl GetType for Expr {
 
             Self::Match(expr, branches) => {
                 for (pat, branch) in branches {
-                    return pat.get_branch_result_type(expr, branch, env);
+                    let ty = pat.get_branch_result_type(expr, branch, env)?;
+                    if ty != Type::Never {
+                        return Ok(ty);
+                    }
                 }
-                Type::None
+                if branches.is_empty() {
+                    Type::None
+                } else {
+                    Type::Never
+                }
             }
 
             Self::IfLet(_pat, _expr, _a, b) => {
