@@ -537,8 +537,8 @@ impl fmt::Display for ConstExpr {
 
             Self::Symbol(name) => write!(f, "{name}"),
             Self::Of(t, name) => write!(f, "{t} of {name}"),
-            Self::SizeOfExpr(expr) => write!(f, "sizeofexpr({expr}"),
-            Self::SizeOfType(ty) => write!(f, "sizeof({ty}"),
+            Self::SizeOfExpr(expr) => write!(f, "sizeof({expr}"),
+            Self::SizeOfType(ty) => write!(f, "sizeof<{ty}>()"),
         }
     }
 }
