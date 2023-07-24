@@ -172,8 +172,8 @@ impl Pattern {
 
                         // If this pattern matches a wildcard or a symbol, set all the booleans to true.
                         Pattern::Symbol(_) | Pattern::Wildcard => {
-                            for i in 0..variants.len() {
-                                found[i] = true;
+                            for found_item in found.iter_mut().take(variants.len()) {
+                                *found_item = true;
                             }
                         }
                         // Check if the alternate pattern branches are exhaustive.
@@ -182,8 +182,8 @@ impl Pattern {
                             if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)?
                             {
                                 // If it is exhaustive, set all the booleans to true.
-                                for i in 0..variants.len() {
-                                    found[i] = true;
+                                for found_item in found.iter_mut().take(variants.len()) {
+                                    *found_item = true;
                                 }
                             }
                         }
@@ -229,8 +229,8 @@ impl Pattern {
                         }
                         // If this pattern matches a wildcard or a symbol, set all the booleans to true.
                         Pattern::Symbol(_) | Pattern::Wildcard => {
-                            for i in 0..items.len() {
-                                found[i] = true;
+                            for found_item in found.iter_mut().take(items.len()) {
+                                *found_item = true;
                             }
                         }
                         // Check if the alternate pattern branches are exhaustive.
@@ -239,8 +239,8 @@ impl Pattern {
                             if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)?
                             {
                                 // If it is exhaustive, set all the booleans to true.
-                                for i in 0..items.len() {
-                                    found[i] = true;
+                                for found_item in found.iter_mut().take(items.len()) {
+                                    *found_item = true;
                                 }
                             }
                         }

@@ -418,7 +418,7 @@ impl GetType for ConstExpr {
                 }
             }
             Self::Struct(fields) => {
-                for (_, item) in fields {
+                for item in fields.values_mut() {
                     item.substitute(name, ty);
                 }
             }

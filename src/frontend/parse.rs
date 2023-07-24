@@ -1,7 +1,7 @@
 use crate::{lir::*, parse::SourceCodeLocation};
 use pest::{
     error::Error,
-    iterators::{Pair},
+    iterators::Pair,
     Parser,
 };
 use pest_derive::Parser;
@@ -1032,7 +1032,7 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
             } else if s.len() > 2 && &s[..2] == "0x" {
                 i64::from_str_radix(&s[2..], 16).unwrap()
             } else if !s.is_empty() {
-                i64::from_str_radix(s, 10).unwrap()
+                s.parse::<i64>().unwrap()
             } else {
                 0
             })
