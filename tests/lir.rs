@@ -284,6 +284,18 @@ fn test_array() {
 
 #[test]
 fn test_nested_arrays() {
+    // Compiling most examples overflows the tiny stack for tests.
+    // So, we spawn a new thread with a larger stack size.
+    let child = std::thread::Builder::new()
+        .stack_size(64 * 1024 * 1024)
+        .spawn(test_nested_arrays_helper)
+        .unwrap();
+
+    // Wait for the thread to finish.
+    child.join().unwrap();
+}
+
+fn test_nested_arrays_helper() {
     let mut env = Env::default();
     let mut program = CoreProgram::new(vec![]);
 
