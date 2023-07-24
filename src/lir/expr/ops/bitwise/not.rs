@@ -1,6 +1,6 @@
 //! # Bitwise Operations
 use crate::{
-    asm::{AssemblyProgram, CoreOp, StandardOp, A, SP},
+    asm::{AssemblyProgram, CoreOp, SP},
     lir::*,
 };
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};

@@ -50,9 +50,8 @@ impl SourceCodeLocation {
         let mut code = String::new();
         let mut line_number = 1;
         let mut column_number = 1;
-        let mut offset = 0;
 
-        for c in source.chars() {
+        for (offset, c) in source.chars().enumerate() {
             if line_number == self.line && column_number == self.column {
                 if let Some(length) = self.length {
                     code.push_str(&source[offset..(offset + length)]);
@@ -67,7 +66,6 @@ impl SourceCodeLocation {
                 column_number += 1;
             }
 
-            offset += 1;
         }
 
         code
@@ -103,11 +101,11 @@ pub fn parse_vm(
 
     let code = code.trim();
 
-    match vm_parser::CoreProgramParser::new().parse(&code.to_string()) {
+    match vm_parser::CoreProgramParser::new().parse(code) {
         Ok(parsed) => Ok(Ok(parsed)),
-        Err(_) => match vm_parser::StandardProgramParser::new().parse(&code.to_string()) {
+        Err(_) => match vm_parser::StandardProgramParser::new().parse(code) {
             Ok(parsed) => Ok(Err(parsed)),
-            Err(e) => Err(format_error(&code, e)),
+            Err(e) => Err(format_error(code, e)),
         },
     }
 }
@@ -123,11 +121,11 @@ pub fn parse_asm(input: impl ToString) -> Result<Result<CoreProgram, StandardPro
 
     let code = code.trim();
 
-    match asm_parser::CoreProgramParser::new().parse(&code.to_string()) {
+    match asm_parser::CoreProgramParser::new().parse(code) {
         Ok(parsed) => Ok(Ok(parsed)),
-        Err(_) => match asm_parser::StandardProgramParser::new().parse(&code.to_string()) {
+        Err(_) => match asm_parser::StandardProgramParser::new().parse(code) {
             Ok(parsed) => Ok(Err(parsed)),
-            Err(e) => Err(format_error(&code, e)),
+            Err(e) => Err(format_error(code, e)),
         },
     }
 }
@@ -141,9 +139,9 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
         .collect::<String>();
 
     let code = code.trim();
-    match lir_parser::ExprParser::new().parse(&code.to_string()) {
+    match lir_parser::ExprParser::new().parse(code) {
         Ok(parsed) => Ok(parsed),
-        Err(e) => Err(format_error(&code, e)),
+        Err(e) => Err(format_error(code, e)),
     }
 }
 

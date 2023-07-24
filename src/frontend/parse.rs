@@ -1,7 +1,7 @@
 use crate::{lir::*, parse::SourceCodeLocation};
 use pest::{
     error::Error,
-    iterators::{Pair, Pairs},
+    iterators::{Pair},
     Parser,
 };
 use pest_derive::Parser;
@@ -470,7 +470,7 @@ fn parse_decl(pair: Pair<Rule>, filename: Option<&str>) -> Declaration {
                 Declaration::Struct(name, fields)
             } else {
                 Declaration::Type(vec![(
-                    name.to_string(),
+                    name,
                     Type::Poly(
                         ty_params,
                         Box::new(Type::Struct(fields.into_iter().collect())),
@@ -522,7 +522,7 @@ fn parse_decl(pair: Pair<Rule>, filename: Option<&str>) -> Declaration {
                 let is_simple = variants.iter().all(|(_, ty)| ty.is_none());
                 if is_simple {
                     Declaration::Type(vec![(
-                        name.to_string(),
+                        name,
                         Type::Poly(
                             ty_params,
                             Box::new(Type::Enum(
@@ -532,7 +532,7 @@ fn parse_decl(pair: Pair<Rule>, filename: Option<&str>) -> Declaration {
                     )])
                 } else {
                     Declaration::Type(vec![(
-                        name.to_string(),
+                        name,
                         Type::Poly(
                             ty_params,
                             Box::new(Type::EnumUnion(
@@ -586,9 +586,9 @@ fn parse_stmt(pair: Pair<Rule>, filename: Option<&str>) -> Statement {
             Rule::stmt_match => Statement::Expr(parse_match(pair)),
 
             Rule::stmt_block => {
-                let mut inner_rules = pair.into_inner();
+                let inner_rules = pair.into_inner();
                 let mut stmts = Vec::new();
-                while let Some(stmt) = inner_rules.next() {
+                for stmt in inner_rules {
                     stmts.push(parse_decl(stmt, filename));
                 }
                 Statement::Block(stmts)
@@ -1026,13 +1026,13 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
         Rule::const_int => {
             let s = pair.as_str();
             ConstExpr::Int(if s.len() > 2 && &s[..2] == "0b" {
-                i64::from_str_radix(&s[2..], 2).unwrap() as i64
+                i64::from_str_radix(&s[2..], 2).unwrap()
             } else if s.len() > 2 && &s[..2] == "0o" {
-                i64::from_str_radix(&s[2..], 8).unwrap() as i64
+                i64::from_str_radix(&s[2..], 8).unwrap()
             } else if s.len() > 2 && &s[..2] == "0x" {
-                i64::from_str_radix(&s[2..], 16).unwrap() as i64
-            } else if s.len() > 0 {
-                i64::from_str_radix(s, 10).unwrap() as i64
+                i64::from_str_radix(&s[2..], 16).unwrap()
+            } else if !s.is_empty() {
+                i64::from_str_radix(s, 10).unwrap()
             } else {
                 0
             })
@@ -1060,7 +1060,7 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
             .unwrap()
             .replace("\\0", "\0")
             .chars()
-            .map(|ch| ConstExpr::Char(ch))
+            .map(ConstExpr::Char)
             .collect(),
         ),
         Rule::const_none => ConstExpr::None,
@@ -1083,7 +1083,7 @@ fn parse_type(pair: Pair<Rule>) -> Type {
             let mut head = parse_type(inner_rules.next().unwrap());
 
             while inner_rules.peek().is_some() {
-                while let Some(parsed_args) = inner_rules.next() {
+                for parsed_args in inner_rules.by_ref() {
                     let mut ty_args = vec![];
                     // type_application_suffix
                     // args.push(parse_type(arg));

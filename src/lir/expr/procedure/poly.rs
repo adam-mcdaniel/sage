@@ -3,7 +3,7 @@
 //! A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 //! This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 //! A procedure is compiled down to a label in the assembly code.
-use crate::lir::{ConstExpr, Env, Error, Expr, GetSize, GetType, Simplify, Type, TypeCheck};
+use crate::lir::{ConstExpr, Env, Error, Expr, GetSize, GetType, Type, TypeCheck};
 use core::fmt;
 use std::{collections::HashMap, rc::Rc, sync::Mutex};
 

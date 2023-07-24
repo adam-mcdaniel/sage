@@ -49,7 +49,7 @@ impl BinaryOp for Arithmetic {
                 }
 
                 // Make sure that inner types are compatible.
-                if !a_type.equals(&b_type, env)? {
+                if !a_type.equals(b_type, env)? {
                     return Ok(false);
                 }
 
@@ -89,7 +89,7 @@ impl BinaryOp for Arithmetic {
                     ));
                 }
 
-                Type::Unit(name1.clone(), a_type.clone())
+                Type::Unit(name1, a_type)
             }
             _ => {
                 return Err(Error::InvalidBinaryOp(
@@ -214,7 +214,7 @@ impl BinaryOp for Arithmetic {
                 CoreOp::Set(dst.clone(), 1),
                 CoreOp::While(src.clone()),
                 CoreOp::Mul {
-                    src: tmp.clone(),
+                    src: tmp,
                     dst,
                 },
                 CoreOp::Dec(src),
@@ -261,7 +261,7 @@ impl BinaryOp for Arithmetic {
             }
 
             (Type::Unit(_name1, a_type), Type::Unit(_name2, b_type)) => {
-                return self.compile_types(&a_type, &b_type, env, output);
+                return self.compile_types(a_type, b_type, env, output);
             }
 
             // Cannot do arithmetic on other pairs of types.

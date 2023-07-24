@@ -18,7 +18,7 @@ impl Add {
             (Type::Array(t1, size1), Type::Array(t2, size2)) => {
                 if t1.equals(&t2, env)? {
                     Ok(Type::Array(
-                        t1.clone(),
+                        t1,
                         Box::new(self.eval(&size1, &size2, &mut env.clone())?),
                     ))
                 } else {
@@ -235,7 +235,7 @@ impl BinaryOp for Add {
             (Expr::ConstExpr(lhs), rhs) => match (lhs.eval(env)?, &rhs_type) {
                 (ConstExpr::Int(lhs), Type::Int | Type::Cell) => {
                     rhs.compile_expr(env, output)?;
-                    output.op(CoreOp::Set(A, lhs as i64));
+                    output.op(CoreOp::Set(A, lhs));
                     output.op(CoreOp::Add {
                         src: A,
                         dst: SP.deref(),
@@ -275,7 +275,7 @@ impl BinaryOp for Add {
             (lhs, Expr::ConstExpr(rhs)) => match (&lhs_type, rhs.eval(env)?) {
                 (Type::Int | Type::Cell, ConstExpr::Int(rhs)) => {
                     lhs.compile_expr(env, output)?;
-                    output.op(CoreOp::Set(A, rhs as i64));
+                    output.op(CoreOp::Set(A, rhs));
                     output.op(CoreOp::Add {
                         src: A,
                         dst: SP.deref(),

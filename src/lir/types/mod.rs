@@ -481,7 +481,7 @@ impl Type {
         env: &Env,
         previous_applications: &mut HashMap<(Type, Vec<Type>), Type>,
     ) -> Result<Self, Error> {
-        let before = self.to_string();
+        let _before = self.to_string();
         // If the type is an Apply on a Poly, then we can perform the application.
         // First, perform the applications on the type arguments.
         // We can use memoization with the previous_applications HashMap to avoid infinite recursion.
@@ -491,7 +491,7 @@ impl Type {
                     poly.simplify(env)?.perform_template_applications(env, previous_applications)?,
                     ty_args
                         .into_iter()
-                        .map(|t| t.clone().simplify(env)?.perform_template_applications(env, previous_applications))
+                        .map(|t| t.simplify(env)?.perform_template_applications(env, previous_applications))
                         .collect::<Result<Vec<_>, _>>()?,
                 );
                 if let Some(t) = previous_applications.get(&pair) {
@@ -987,7 +987,7 @@ impl Simplify for Type {
             return Err(Error::UnsizedType(self.clone()));
         }
 
-        let s = self.to_string();
+        let _s = self.to_string();
         let result = match self {
             Self::None
             | Self::Never

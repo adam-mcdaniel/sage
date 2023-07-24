@@ -417,12 +417,12 @@ impl Expr {
 
     /// Perform an AssignOp on this expression.
     pub fn assign_op(self, op: impl AssignOp + 'static, e: impl Into<Self>) -> Self {
-        Expr::AssignOp(Box::new(op), Box::new(self.clone()), Box::new(e.into()))
+        Expr::AssignOp(Box::new(op), Box::new(self), Box::new(e.into()))
     }
 
     /// Perform an AssignOp on this expression.
     pub fn assign(self, op: Box<dyn AssignOp>, e: impl Into<Self>) -> Self {
-        Expr::AssignOp(op, Box::new(self.clone()), Box::new(e.into()))
+        Expr::AssignOp(op, Box::new(self), Box::new(e.into()))
     }
 }
 
