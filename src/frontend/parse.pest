@@ -6,7 +6,7 @@ keyword = @{
     | "in" | "if" | "elif" |"else" | "while" | "break" | "continue"
     | "return" | "struct" | "enum" | "as" | "of" | "sizeof"
     | "def" | "let" | "const" | "type" | "core" | "std"
-    | "Int" | "Float" | "Bool" | "Char" | "None" | "Null" | "Never"
+    | "Int" | "Float" | "Bool" | "Char" | "Cell" | "None" | "Null" | "Never"
     | "True" | "False" | "new"
 }
 
@@ -408,6 +408,7 @@ type_atom = {
     | type_array
     | type_ptr
     | "(" ~ type ~ ")"
+    | type_cell
     | type_int
     | type_float
     | type_bool
@@ -423,6 +424,7 @@ type_struct = { "struct"? ~ "{" ~ (symbol ~ ":" ~ type ~ ",")+ ~ (symbol ~ ":" ~
 type_enum = { "enum" ~ "{" ~ (decl_enum_variant ~ ",")+ ~ decl_enum_variant? ~ "}" }
 type_ptr = { "&" ~ type }
 type_int = @{ "Int" }
+type_cell = @{ "Cell" }
 type_float = @{ "Float" }
 type_bool = @{ "Bool" }
 type_char = @{ "Char" }

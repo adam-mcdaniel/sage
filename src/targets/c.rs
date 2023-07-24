@@ -160,18 +160,26 @@ impl Architecture for C {
         Ok("*(++ffi_ptr) = reg;".to_string())
     }
     fn prelude(&self, is_core: bool) -> Option<String> {
-        let mut result = r#"#include <stdio.h>
+        let mut result = r#"#include <stdlib.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
-union int_or_float {
+union cell {
 long long int i;
 double f;
-union int_or_float *p;
+union cell *p;
 } tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256], *ffi_ptr = ffi_channel;
 
 void square_root() {
     ffi_ptr->f = sqrt(ffi_ptr->f);
+}
+
+void __unsafe_memcpy() {
+    union cell *dst = ffi_ptr[-2].p, *src = ffi_ptr[-1].p;
+    long long int n = ffi_ptr[0].i;
+    memcpy(dst, src, n * sizeof(union cell));
 }
 
 void add() {

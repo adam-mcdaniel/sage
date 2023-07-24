@@ -1153,6 +1153,7 @@ fn parse_type(pair: Pair<Rule>) -> Type {
 
         Rule::type_symbol => Type::Symbol(pair.as_str().to_string()),
         Rule::type_int => Type::Int,
+        Rule::type_cell => Type::Cell,
         Rule::type_float => Type::Float,
         Rule::type_bool => Type::Bool,
         Rule::type_char => Type::Char,
