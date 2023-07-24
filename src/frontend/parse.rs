@@ -33,11 +33,6 @@ pub enum Statement {
 impl Statement {
     fn to_expr(self, rest: Option<Expr>) -> Expr {
         let rest_expr = Box::new(rest.clone().unwrap_or(Expr::ConstExpr(ConstExpr::None)));
-        // Expr::Block(vec![match self {
-        //     Self::Match(e, arms) => {
-        //         Expr::Match(Box::new(e), arms.into_iter().map(|(a, b)| (a, b.to_expr(None))).collect())
-        //     }
-        // }, rest_expr])
 
         let stmt = match (self, rest.clone()) {
             (Self::AnnotatedWithSource { stmt, loc }, _) => {
@@ -125,7 +120,7 @@ impl Statement {
         if let Some(Expr::Many(mut stmts)) = rest {
             stmts.insert(0, stmt);
             Expr::Many(stmts)
-        } else if let Some(_) = rest {
+        } else if rest.is_some() {
             Expr::Many(vec![stmt, *rest_expr])
         } else {
             stmt
@@ -347,7 +342,7 @@ impl Program {
     }
 }
 
-pub fn parse_frontend(code: &str, filename: Option<&str>) -> Result<Expr, Error<Rule>> {
+pub fn parse_frontend(code: &str, filename: Option<&str>) -> Result<Expr, Box<Error<Rule>>> {
     let x = FrontendParser::parse(Rule::program, code)?;
     Ok(parse_program(x.into_iter().next().unwrap(), filename).to_expr())
 }

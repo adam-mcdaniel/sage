@@ -191,7 +191,7 @@ impl BinaryOp for Arithmetic {
         &self,
         lhs: &Type,
         rhs: &Type,
-        env: &mut Env,
+        _env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
         let src = SP.deref();
@@ -261,7 +261,7 @@ impl BinaryOp for Arithmetic {
             }
 
             (Type::Unit(_name1, a_type), Type::Unit(_name2, b_type)) => {
-                return self.compile_types(a_type, b_type, env, output);
+                return self.compile_types(a_type, b_type, _env, output);
             }
 
             // Cannot do arithmetic on other pairs of types.

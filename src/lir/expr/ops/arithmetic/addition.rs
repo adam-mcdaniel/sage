@@ -228,10 +228,7 @@ impl BinaryOp for Add {
         let rhs_type = rhs.get_type(env)?;
 
         match (lhs.clone(), rhs.clone()) {
-            (Expr::ConstExpr(lhs), Expr::ConstExpr(rhs)) => match self.eval(&lhs, &rhs, env) {
-                Ok(result) => return result.compile_expr(env, output),
-                Err(_) => {}
-            },
+            (Expr::ConstExpr(lhs), Expr::ConstExpr(rhs)) => return self.eval(&lhs, &rhs, env)?.compile_expr(env, output),
             (Expr::ConstExpr(lhs), rhs) => match (lhs.eval(env)?, &rhs_type) {
                 (ConstExpr::Int(lhs), Type::Int | Type::Cell) => {
                     rhs.compile_expr(env, output)?;
