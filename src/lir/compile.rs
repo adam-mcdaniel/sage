@@ -810,7 +810,12 @@ impl Compile for ConstExpr {
             }
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
                 Self::PolyProc(poly_proc) => {
-                    // First, monomorphize the function
+                    // Simplify the type arguments.
+                    let ty_args = ty_args
+                        .into_iter()
+                        .map(|ty| ty.simplify(env))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    // Monomorphize the function
                     let proc = poly_proc.monomorphize(ty_args, env)?;
                     // Typecheck the monomorphized function.
                     proc.type_check(env)?;
