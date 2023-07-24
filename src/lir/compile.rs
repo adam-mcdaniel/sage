@@ -513,7 +513,7 @@ impl Compile for Expr {
                         return Err(Error::VariantNotFound(Type::EnumUnion(fields), variant));
                     }
                 } else {
-                    return Err(Error::VariantNotFound(t.clone(), variant.clone()));
+                    return Err(Error::VariantNotFound(t.clone(), variant));
                 }
             }
 
@@ -811,7 +811,7 @@ impl Compile for ConstExpr {
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
                 Self::PolyProc(poly_proc) => {
                     // First, monomorphize the function
-                    let proc = poly_proc.monomorphize(ty_args.clone(), env)?;
+                    let proc = poly_proc.monomorphize(ty_args, env)?;
                     // Typecheck the monomorphized function.
                     proc.type_check(env)?;
                     // Compile the monomorphized function.
@@ -846,12 +846,12 @@ impl Compile for ConstExpr {
             // Compile a cell value.
             Self::Cell(n) => {
                 output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), n as i64));
+                output.op(CoreOp::Set(SP.deref(), n));
             }
             // Compile an integer constant.
             Self::Int(n) => {
                 output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), n as i64));
+                output.op(CoreOp::Set(SP.deref(), n));
             }
             // Compile a float constant.
             Self::Float(f) => {
@@ -908,7 +908,7 @@ impl Compile for ConstExpr {
                 // Get the size of the tagged union.
                 let result_size = t.get_size(env)?;
                 let t =
-                    t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                    t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
                         Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_)))
                     })?;
 
@@ -976,7 +976,7 @@ impl Compile for ConstExpr {
                 // Get the type of the expression.
                 let ty = expr.get_type(env)?;
                 // Return the type as a string.
-                ConstExpr::Array(ty.to_string().chars().map(|c| ConstExpr::Char(c)).collect())
+                ConstExpr::Array(ty.to_string().chars().map(ConstExpr::Char).collect())
                     .compile_expr(env, output)?
             }
 
@@ -987,7 +987,7 @@ impl Compile for ConstExpr {
                 enum_type = enum_type.simplify_until_matches(
                     env,
                     Type::Enum(vec![variant.clone()]),
-                    |t, env| Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_))),
+                    |t, _env| Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_))),
                 )?;
 
                 match enum_type.clone() {
@@ -1008,7 +1008,7 @@ impl Compile for ConstExpr {
                     Type::EnumUnion(variants) if variants.get(&variant) == Some(&Type::None) => {
                         // Get the index of the variant.
                         if let Some(index) =
-                            Type::variant_index(&variants.into_keys().collect(), &variant)
+                            Type::variant_index(variants.into_keys().collect::<Vec<_>>().as_slice(), &variant)
                         {
                             // Push the index of the variant onto the stack.
                             // Allocate the size of the structure on the stack by

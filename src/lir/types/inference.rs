@@ -44,9 +44,19 @@ impl GetType for Expr {
 
             Self::Match(expr, branches) => {
                 for (pat, branch) in branches {
-                    return pat.get_branch_result_type(&expr, branch, env);
+                    let ty = pat.get_branch_result_type(expr, branch, env)?;
+                    if ty != Type::Never {
+                        return Ok(ty);
+                    }
                 }
-                Type::None
+                // If the match expression is empty, then it returns the None value.
+                if branches.is_empty() {
+                    Type::None
+                } else {
+                    // All the branches never return a value, so the match expression
+                    // returns the Never type.
+                    Type::Never
+                }
             }
 
             Self::IfLet(_pat, _expr, _a, b) => {
@@ -268,13 +278,13 @@ impl GetType for Expr {
                 ty = ty.simplify_until_matches(
                     env,
                     Type::Proc(vec![], Box::new(Type::Any)),
-                    |t, env| Ok(t.is_simple()),
+                    |t, _env| Ok(t.is_simple()),
                 )?;
                 match ty {
                     Type::Proc(_, ret) => *ret,
                     Type::Let(name, t, result) => {
                         let mut new_env = env.clone();
-                        new_env.define_type(name, *t.clone());
+                        new_env.define_type(name, *t);
                         if let Type::Proc(_args, ret) = *result {
                             *ret
                         } else {
@@ -356,7 +366,7 @@ impl GetType for Expr {
                 match val.get_type_checked(env, i)?.simplify_until_matches(
                     env,
                     Type::Struct(BTreeMap::new()),
-                    |t, env| {
+                    |t, _env| {
                         Ok(matches!(
                             t,
                             Type::Tuple(_) | Type::Struct(_) | Type::Union(_)
@@ -462,7 +472,7 @@ impl GetType for Expr {
                 }
                 expr.substitute(name, ty)
             }
-            Self::LetVar(var, t, val, ret) => {
+            Self::LetVar(_var, t, val, ret) => {
                 if let Some(t) = t {
                     *t = t.substitute(name, ty);
                 }
@@ -520,26 +530,26 @@ impl GetType for Expr {
                 }
             }
 
-            Self::IfLet(pat, expr, then_body, else_body) => {
+            Self::IfLet(_pat, expr, then_body, else_body) => {
                 expr.substitute(name, ty);
                 then_body.substitute(name, ty);
                 else_body.substitute(name, ty)
             }
 
-            Self::UnaryOp(op, expr) => expr.substitute(name, ty),
+            Self::UnaryOp(_op, expr) => expr.substitute(name, ty),
 
-            Self::BinaryOp(op, lhs, rhs) => {
+            Self::BinaryOp(_op, lhs, rhs) => {
                 lhs.substitute(name, ty);
                 rhs.substitute(name, ty)
             }
 
-            Self::TernaryOp(op, cond, then, els) => {
+            Self::TernaryOp(_op, cond, then, els) => {
                 cond.substitute(name, ty);
                 then.substitute(name, ty);
                 els.substitute(name, ty)
             }
 
-            Self::AssignOp(op, lhs, rhs) => {
+            Self::AssignOp(_op, lhs, rhs) => {
                 lhs.substitute(name, ty);
                 rhs.substitute(name, ty)
             }

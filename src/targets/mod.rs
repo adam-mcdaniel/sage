@@ -222,7 +222,7 @@ pub trait CompiledTarget: Architecture {
             for op in f {
                 result += &tab.repeat(indent);
                 result += &self.build_op(
-                    &op,
+                    op,
                     &mut matching_ops,
                     &mut matching_funs,
                     &mut current_fun,
@@ -270,7 +270,7 @@ pub trait CompiledTarget: Architecture {
             for op in f {
                 result += &tab.repeat(indent);
                 result += &self.build_std_op(
-                    &op,
+                    op,
                     &mut matching_ops,
                     &mut matching_funs,
                     &mut current_fun,

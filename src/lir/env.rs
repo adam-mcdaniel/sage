@@ -70,7 +70,7 @@ impl Env {
     /// Define a type with a given name under this environment.
     pub fn define_type(&mut self, name: impl ToString, ty: Type) {
         if Type::Symbol(name.to_string()) != ty {
-            if let Some(size) = ty.get_size(self).ok() {
+            if let Ok(size) = ty.get_size(self) {
                 self.type_sizes.insert(ty.clone(), size);
             }
 

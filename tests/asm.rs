@@ -19,7 +19,7 @@ fn test_add() {
     ]);
 
     let program = CoreProgram::new(vec![
-        add.clone(),
+        add,
         Set(A, 32),
         Push(A, 1),
         Set(A, 1),
@@ -269,11 +269,11 @@ fn test_str() {
         Return,
         CoreOp::put_string("return test 2!\n", Output::stdout_char()),
         End,
-        putint.clone(),
-        putstr.clone(),
-        getstr.clone(),
-        strlen.clone(),
-        strrev.clone(),
+        putint,
+        putstr,
+        getstr,
+        strlen,
+        strrev,
         Comment(String::from(
             r#"Hey jude!
                                 Hello world!

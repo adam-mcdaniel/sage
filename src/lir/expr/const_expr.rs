@@ -158,7 +158,7 @@ impl ConstExpr {
                     expr.get_type_checked(env, i)?
                         .to_string()
                         .chars()
-                        .map(|c| Self::Char(c))
+                        .map(Self::Char)
                         .collect(),
                 )),
 
@@ -168,7 +168,7 @@ impl ConstExpr {
                         return Err(Error::InvalidAs(
                             Expr::ConstExpr(*expr.clone()),
                             found,
-                            cast_ty.clone(),
+                            cast_ty,
                         ));
                     }
 
@@ -278,7 +278,7 @@ impl GetType for ConstExpr {
                     return Err(Error::InvalidAs(
                         Expr::ConstExpr(self.clone()),
                         found,
-                        cast_ty.clone(),
+                        cast_ty,
                     ));
                 }
 
@@ -297,8 +297,8 @@ impl GetType for ConstExpr {
             }
             Self::Monomorphize(expr, ty_args) => {
                 // Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::<Result<Vec<Type>, Error>>()?).perform_template_applications(env, &mut HashMap::new(), 0)?
-                let result = Type::Apply(Box::new(expr.get_type_checked(env, i)?), ty_args.clone());
-                result
+                
+                Type::Apply(Box::new(expr.get_type_checked(env, i)?), ty_args)
             }
             Self::TypeOf(expr) => {
                 let size = expr.get_type_checked(env, i)?.to_string().len();
@@ -422,7 +422,7 @@ impl GetType for ConstExpr {
                 }
             }
             Self::Struct(fields) => {
-                for (_, item) in fields {
+                for item in fields.values_mut() {
                     item.substitute(name, ty);
                 }
             }

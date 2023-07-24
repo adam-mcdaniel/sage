@@ -69,7 +69,7 @@ fn test_struct_helper() {
                     Expr::Many(vec![
                         put_char.clone().app(vec![Expr::var("x").field(var("a"))]),
                         put_char.clone().app(vec![Expr::var("x").field(var("b"))]),
-                        put_char.clone().app(vec![Expr::var("x").field(var("c"))]),
+                        put_char.app(vec![Expr::var("x").field(var("c"))]),
                     ]),
                 )
                 .into(),
@@ -197,7 +197,7 @@ fn test_tuples() {
                 put_char
                     .clone()
                     .app(vec![Expr::var("tup").field(ConstExpr::Int(0))]),
-                add.clone().app(vec![
+                add.app(vec![
                     Expr::var("tup")
                         .field(ConstExpr::Int(1))
                         .field(ConstExpr::Int(0)),
@@ -338,7 +338,7 @@ fn test_nested_arrays() {
                     put_char.clone().app(vec![Expr::var("arr")
                         .idx(Expr::var("i"))
                         .idx(ConstExpr::Int(1))]),
-                    put_char.clone().app(vec![Expr::var("arr")
+                    put_char.app(vec![Expr::var("arr")
                         .idx(Expr::var("i"))
                         .idx(ConstExpr::Int(2))]),
                 ]),
@@ -573,7 +573,7 @@ fn test_struct2() {
                 ]),
                 put_char.clone().app(vec![ConstExpr::Char(',').into()]),
                 put_char.clone().app(vec![ConstExpr::Char(' ').into()]),
-                put_char.clone().app(vec![
+                put_char.app(vec![
                     Expr::var("p").field(ConstExpr::Symbol("y".to_string()))
                 ]),
             ]),
@@ -607,7 +607,7 @@ fn test_struct2() {
                                 .field(ConstExpr::Symbol("x".to_string())),
                             Expr::var("dx")
                         ]),
-                        "y".to_string() => add.clone().app(vec![
+                        "y".to_string() => add.app(vec![
                             Expr::var("p")
                                 .field(ConstExpr::Symbol("y".to_string())),
                             Expr::var("dy")
@@ -1463,7 +1463,7 @@ fn test_pseudotemplates_helper() {
                 }),
                 "Some".to_string(),
                 Box::new(Expr::var("first").refer()),
-            ).into()]),
+            )]),
             Expr::Many(vec![
                 put_char.clone().app(vec![Expr::var("second")
                     .field(ConstExpr::Int(1))
@@ -1475,7 +1475,7 @@ fn test_pseudotemplates_helper() {
                     .field(ConstExpr::Symbol("Some".to_string()))
                     .refer()
                     .deref_mut(Expr::var("second").refer()),
-                put_char.clone().app(vec![Expr::var("second")
+                put_char.app(vec![Expr::var("second")
                     .field(ConstExpr::Int(1))
                     .field(ConstExpr::Symbol("Some".to_string()))
                     .deref()
@@ -1537,7 +1537,7 @@ fn test_mutually_recursive_types() {
         ),
     )]);
 
-    let program = expr.clone().compile().unwrap().unwrap();
+    let program = expr.compile().unwrap().unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new_raw(vec![]));
     let vm_code = program.assemble(10).unwrap();
@@ -1545,7 +1545,7 @@ fn test_mutually_recursive_types() {
 
     assert_eq!(device.output_vals(), vec![sage::NULL]);
 
-    let expr = put_char.clone().app(vec![Expr::let_types(
+    let expr = put_char.app(vec![Expr::let_types(
         vec![
             ("A", Type::Pointer(Box::new(Type::Symbol("B".to_string())))),
             ("B", Type::Pointer(Box::new(Type::Symbol("A".to_string())))),
@@ -1572,7 +1572,7 @@ fn test_mutually_recursive_types() {
         ),
     )]);
 
-    expr.clone().compile().unwrap_err();
+    expr.compile().unwrap_err();
 }
 
 #[test]
@@ -1597,7 +1597,7 @@ fn test_let_multiple_vars() {
         Expr::var("z"),
     )]);
 
-    let program = expr.clone().compile().unwrap().unwrap();
+    let program = expr.compile().unwrap().unwrap();
 
     let i = CoreInterpreter::new(TestingDevice::new_raw(vec![]));
     let vm_code = program.assemble(10).unwrap();
@@ -1605,7 +1605,7 @@ fn test_let_multiple_vars() {
 
     assert_eq!(device.output_vals(), vec![50]);
 
-    let expr = put_char.clone().app(vec![Expr::let_vars(
+    let expr = put_char.app(vec![Expr::let_vars(
         vec![
             ("y", None, Expr::var("x").add(ConstExpr::Int(5))),
             ("x", None, ConstExpr::Int(5).into()),
@@ -1614,7 +1614,7 @@ fn test_let_multiple_vars() {
         Expr::var("z"),
     )]);
 
-    expr.clone().compile().unwrap_err();
+    expr.compile().unwrap_err();
 }
 
 #[test]
@@ -1746,16 +1746,16 @@ fn test_quicksort_helper() {
     let expr = parse_lir(list).unwrap();
     let expr = Expr::let_consts(
         vec![
-            ("alloc", alloc.clone()),
-            ("inc", inc.clone()),
-            ("lte", lte.clone()),
-            ("lt", lt.clone()),
-            ("swap", swap.clone()),
-            ("put_char", put_char.clone()),
+            ("alloc", alloc),
+            ("inc", inc),
+            ("lte", lte),
+            ("lt", lt),
+            ("swap", swap),
+            ("put_char", put_char),
         ],
         expr,
     );
-    let asm_std = expr.clone().compile().unwrap().unwrap_err();
+    let asm_std = expr.compile().unwrap().unwrap_err();
     let vm_code = asm_std.assemble(512).unwrap();
     let device = StandardInterpreter::new(TestingDevice::new_raw(vec![]))
         .run(&vm_code)
@@ -1763,7 +1763,7 @@ fn test_quicksort_helper() {
 
     assert_eq!(
         device.output_vals(),
-        (1..=50).into_iter().collect::<Vec<_>>()
+        (1..=50).collect::<Vec<_>>()
     );
 }
 
@@ -1810,8 +1810,8 @@ fn test_collatz_helper() {
     "#;
 
     let expr = parse_lir(collatz).unwrap();
-    let expr = Expr::let_const("put_char", put_char.clone(), expr);
-    let asm_std = expr.clone().compile().unwrap().unwrap();
+    let expr = Expr::let_const("put_char", put_char, expr);
+    let asm_std = expr.compile().unwrap().unwrap();
     let vm_code = asm_std.assemble(16).unwrap();
     let device = CoreInterpreter::new(TestingDevice::new(""))
         .run(&vm_code)
