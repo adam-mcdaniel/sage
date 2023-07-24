@@ -53,7 +53,7 @@
 //! 16 bit ints + no floats for a hardware implementation would suffice.
 //! Infinitely large ints and floats are also supported, but the implementation
 //! must be able to handle them.
-use crate::side_effects::{Input, Output};
+use crate::side_effects::{Input, Output, FFIBinding};
 
 mod core;
 pub use self::core::*;
@@ -81,6 +81,18 @@ pub trait VirtualMachineProgram {
     fn op(&mut self, op: CoreOp);
     fn std_op(&mut self, op: StandardOp) -> Result<(), Error>;
     fn code(&self) -> Result<CoreProgram, StandardProgram>;
+
+    fn ffi_call(&mut self, ffi: FFIBinding) -> Result<(), Error> {
+        self.std_op(StandardOp::Call(ffi))
+    }
+
+    fn poke(&mut self) -> Result<(), Error> {
+        self.std_op(StandardOp::Poke)
+    }
+
+    fn peek(&mut self) -> Result<(), Error> {
+        self.std_op(StandardOp::Peek)
+    }
 
     fn comment(&mut self, comment: &str) {
         self.op(CoreOp::Comment(comment.to_string()));

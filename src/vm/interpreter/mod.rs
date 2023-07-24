@@ -14,7 +14,7 @@ mod std;
 pub use self::std::*;
 
 use ::std::{
-    collections::VecDeque,
+    collections::{VecDeque, HashMap},
     io::{stdin, stdout, Read, Write},
 };
 
@@ -49,6 +49,8 @@ pub trait Device {
 /// Then, we check the devices output against the correct output.
 #[derive(Debug, Default)]
 pub struct TestingDevice {
+    pub ffi: HashMap<FFIBinding, fn(&mut VecDeque<i64>)>,
+    pub ffi_channel: VecDeque<i64>,
     pub input: VecDeque<i64>,
     pub output: Vec<(i64, Output)>,
 }
@@ -57,6 +59,8 @@ impl TestingDevice {
     /// Create a new testing device with some given sample input.
     pub fn new(sample_input: impl ToString) -> Self {
         Self {
+            ffi: HashMap::new(),
+            ffi_channel: VecDeque::new(),
             input: sample_input
                 .to_string()
                 .chars()
@@ -68,6 +72,8 @@ impl TestingDevice {
 
     pub fn new_raw(input: Vec<i64>) -> Self {
         Self {
+            ffi: HashMap::new(),
+            ffi_channel: VecDeque::new(),
             input: input.into(),
             output: vec![],
         }
@@ -202,27 +208,66 @@ impl Device for TestingDevice {
     }
 
     fn peek(&mut self) -> Result<i64, String> {
-        println!("peeking");
-        Ok(0)
+        // println!("peeking");
+        // Ok(0)
+        if let Some(n) = self.ffi_channel.pop_front() {
+            Ok(n)
+        } else {
+            Err("ffi channel is empty".to_string())
+        }
     }
 
     fn poke(&mut self, val: i64) -> Result<(), String> {
-        println!("poking {}", val);
+        self.ffi_channel.push_back(val);
         Ok(())
     }
 
     fn ffi_call(&mut self, ffi: &FFIBinding) -> Result<(), String> {
-        println!("ffi call: {:?}", ffi);
-        Ok(())
+        if let Some(f) = self.ffi.get(ffi) {
+            f(&mut self.ffi_channel);
+            Ok(())
+        } else {
+            Err(format!("ffi call not found: {:?}", ffi))
+        }
     }
 }
 
 /// A device used for standard input and output.
 /// This simply retrieves a character from standard-in with `get`,
 /// and writes a character to standard-out with `put`.
-pub struct StandardDevice;
+#[derive(Debug, Clone)]
+pub struct StandardDevice {
+    ffi: HashMap<FFIBinding, fn(&mut VecDeque<i64>)>,
+    ffi_channel: VecDeque<i64>,
+}
+
+impl Default for StandardDevice {
+    fn default() -> Self {
+        let mut result = Self {
+            ffi: HashMap::new(),
+            ffi_channel: VecDeque::new(),
+        };
+        
+        result.add_binding(FFIBinding::new("square_root".to_string(), 1, 1), |channel| {
+            let val = as_float(channel.pop_front().unwrap());
+            channel.push_back(as_int(val.sqrt()));
+        });
+
+        result.add_binding(FFIBinding::new("add".to_string(), 2, 1), |channel| {
+            let a = as_float(channel.pop_front().unwrap());
+            let b = as_float(channel.pop_front().unwrap());
+            channel.push_back(as_int(a + b));
+        });
+
+        result
+    }
+}
 
 impl StandardDevice {
+    pub fn add_binding(&mut self, ffi: FFIBinding, f: fn(&mut VecDeque<i64>)) {
+        self.ffi.insert(ffi, f);
+    }
+
     fn get_char(&mut self) -> Result<char, String> {
         let mut buf = [0];
         if stdout().flush().is_err() {
@@ -313,17 +358,30 @@ impl Device for StandardDevice {
     }
 
     fn peek(&mut self) -> Result<i64, String> {
-        println!("peeking");
-        Ok(0)
+        // println!("peeking");
+        // Ok(0)
+        if let Some(n) = self.ffi_channel.pop_front() {
+            Ok(n)
+        } else {
+            Err("ffi channel is empty".to_string())
+        }
     }
 
     fn poke(&mut self, val: i64) -> Result<(), String> {
-        println!("poking {}", val);
+        // println!("poking {}", val);
+        // Ok(())
+        self.ffi_channel.push_back(val);
         Ok(())
     }
 
     fn ffi_call(&mut self, ffi: &FFIBinding) -> Result<(), String> {
-        println!("ffi call: {:?}", ffi);
-        Ok(())
+        // println!("ffi call: {:?}", ffi);
+        // Ok(())
+        if let Some(f) = self.ffi.get(ffi) {
+            f(&mut self.ffi_channel);
+            Ok(())
+        } else {
+            Err(format!("ffi call not found: {:?}", ffi))
+        }
     }
 }

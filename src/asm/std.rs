@@ -10,6 +10,7 @@ use super::{
     location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP,
 };
 use crate::vm::{self, VirtualMachineProgram};
+use crate::side_effects::ffi::FFIBinding;
 use std::{collections::BTreeSet, fmt};
 
 /// A program composed of standard instructions, which can be assembled
@@ -242,10 +243,8 @@ pub enum StandardOp {
     /// Free the memory allocated at the address stored in the operand cell.
     Free(Location),
 
-    /// Read from the runtime's interface into the operand cell.
-    Peek(Location),
-    /// Write from the operand cell into the runtime's interface.
-    Poke(Location),
+    /// Call a foreign function.
+    Call(FFIBinding),
 }
 
 fn unsupported(op: StandardOp) -> Result<(), Error> {
@@ -369,6 +368,59 @@ impl StandardOp {
                 }
             }
 
+            Self::Call(binding) => {
+                let input_cells = binding.input_cells;
+                let output_cells = binding.output_cells;
+
+                // `Poke` all the input cells to the FFI channel.
+                // Start at the first input cell, which is located
+                // at the address stored in the `SP` register minus
+                // the number of input cells. The last input cell
+                // is located at the address stored in the `SP`
+                // register.
+
+                // The address of the first input cell.
+                let first_input_cell = SP.deref().offset(1 - (input_cells as isize));
+
+                // The address of the first output cell.
+                let first_output_cell = first_input_cell.clone();
+
+                // Poke all the input cells to the FFI channel.
+                // First, go to the first input cell.
+                first_input_cell.to(result);
+                for i in 0..input_cells {
+                    // Get the input cell from the tape.
+                    result.restore();
+                    // Poke the input cell to the FFI channel.
+                    result.poke()?;
+                    if i < input_cells - 1 {
+                        // If this is not the last input cell, go to the next input cell.
+                        result.move_pointer(1);
+                    }
+                }
+                first_input_cell.offset(input_cells as isize - 1).from(result);
+
+                // Call the foreign function.
+                result.ffi_call(binding.clone())?;
+
+                // Peek all the output cells from the FFI channel.
+                // First, go to the first output cell.
+                first_output_cell.to(result);
+                for i in 0..output_cells {
+                    // Peek the output cell from the FFI channel.
+                    result.peek()?;
+                    // Store to the output cell on the tape.
+                    result.save();
+                    if i < output_cells - 1 {
+                        // If this is not the last output cell, go to the next output cell.
+                        result.move_pointer(1);
+                    }
+                }
+                result.where_is_pointer();
+                SP.deref().from(result);
+                result.save();
+            }
+
             _ => {
                 panic!("unimplemented {}", self)
             }
@@ -410,8 +462,9 @@ impl fmt::Display for StandardOp {
             Self::Alloc(loc) => write!(f, "alloc {loc}"),
             Self::Free(loc) => write!(f, "free {loc}"),
 
-            Self::Peek(loc) => write!(f, "peek {loc}"),
-            Self::Poke(loc) => write!(f, "poke {loc}"),
+            // Self::Peek(loc) => write!(f, "peek {loc}"),
+            // Self::Poke(loc) => write!(f, "poke {loc}"),
+            Self::Call(binding) => write!(f, "ffi {}", binding),
         }
     }
 }

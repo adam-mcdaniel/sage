@@ -17,7 +17,7 @@ pub fn as_int(n: f64) -> i64 {
 
 impl Default for StandardInterpreter<StandardDevice> {
     fn default() -> Self {
-        Self::new(StandardDevice)
+        Self::new(StandardDevice::default())
     }
 }
 

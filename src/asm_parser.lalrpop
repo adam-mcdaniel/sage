@@ -127,8 +127,8 @@ StandardOp: StandardOp = {
     "alloc" <Location> => StandardOp::Alloc(<>),
     "free" <Location> => StandardOp::Free(<>),
     
-    "peek" <Location> => StandardOp::Peek(<>),
-    "poke" <Location> => StandardOp::Poke(<>),
+    // "peek" <Location> => StandardOp::Peek(<>),
+    // "poke" <Location> => StandardOp::Poke(<>),
 }
 
 Location: Location = {
@@ -144,6 +144,14 @@ Location: Location = {
     "F" => F,
     "SP" => SP,
     "FP" => FP,
+}
+
+FFIBinding: FFIBinding = {
+    "ffi" <name: Symbol> "(" <input_cells: IntLit> ")" "->" <output_cells: IntLit> => FFIBinding {
+        name,
+        input_cells: input_cells as usize,
+        output_cells: output_cells as usize,
+    },
 }
 
 Input: Input = {

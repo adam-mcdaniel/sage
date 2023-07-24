@@ -68,6 +68,7 @@ decl = {
     | decl_struct
     | decl_enum
     | decl_const
+    | decl_extern
     | stmt
 }
 decl_proc = {
@@ -103,6 +104,9 @@ decl_enum_variant = {
 }
 decl_const = {
     "const" ~ (symbol ~ "=" ~ const ~ ",")* ~ symbol ~ "=" ~ const ~ ";"+
+}
+decl_extern = {
+    "extern" ~ symbol ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ ";"+
 }
 
 stmt = {

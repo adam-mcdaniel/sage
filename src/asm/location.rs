@@ -209,8 +209,10 @@ impl Location {
             }
 
             Location::Offset(loc, offset) => {
-                result.move_pointer(-*offset);
                 loc.from(result);
+                if !matches!(**loc, Location::Indirect(_)) {
+                    result.move_pointer(-*offset);
+                }
             }
         }
     }

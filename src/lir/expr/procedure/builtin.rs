@@ -44,8 +44,11 @@ impl GetType for CoreBuiltin {
 }
 
 impl TypeCheck for CoreBuiltin {
-    fn type_check(&self, _env: &Env) -> Result<(), Error> {
-        Ok(())
+    fn type_check(&self, env: &Env) -> Result<(), Error> {
+        for (_, ty) in &self.args {
+            ty.type_check(env)?;
+        }
+        self.ret.type_check(env)
     }
 }
 
@@ -78,8 +81,11 @@ pub struct StandardBuiltin {
 }
 
 impl TypeCheck for StandardBuiltin {
-    fn type_check(&self, _env: &Env) -> Result<(), Error> {
-        Ok(())
+    fn type_check(&self, env: &Env) -> Result<(), Error> {
+        for (_, ty) in &self.args {
+            ty.type_check(env)?;
+        }
+        self.ret.type_check(env)
     }
 }
 

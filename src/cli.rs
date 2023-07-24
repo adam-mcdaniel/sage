@@ -325,13 +325,13 @@ fn compile(
         TargetType::Run => match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
             // If the code is core variant virtual machine code
             Ok(vm_code) => {
-                CoreInterpreter::new(StandardDevice)
+                CoreInterpreter::new(StandardDevice::default())
                     .run(&vm_code)
                     .map_err(Error::InterpreterError)?;
             }
             // If the code is standard variant virtual machine code
             Err(vm_code) => {
-                StandardInterpreter::new(StandardDevice)
+                StandardInterpreter::new(StandardDevice::default())
                     .run(&vm_code)
                     .map_err(Error::InterpreterError)?;
             }
