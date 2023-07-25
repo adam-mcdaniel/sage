@@ -30,14 +30,16 @@ pub trait Device {
     /// Put the given value to the given output destination.
     fn put(&mut self, val: i64, dst: Output) -> Result<(), String>;
 
-    /// Peek a value from the side-effecting device wrapping
-    /// the virtual machine.
+    /// Peek at the next value in the FFI buffer for the FFI function calls.
+    /// Store the peeked value in the register.
     fn peek(&mut self) -> Result<i64, String>;
-    /// Poke a value into the side-effecting device wrapping
-    /// the virtual machine.
+    /// Poke a value into the FFI buffer for the FFI function calls.
     fn poke(&mut self, val: i64) -> Result<(), String>;
 
-    /// FFI call to the device.
+    /// FFI call to the device. This will get the FFI binding for the device
+    /// and call the function associated with the binding. If the tape is
+    /// provided, the foreign function may mutate the tape. Otherwise all
+    /// interaction with the FFI is done through the FFI channel.
     fn ffi_call(&mut self, ffi: &FFIBinding, tape: Option<&mut Vec<i64>>) -> Result<(), String>;
 }
 
@@ -358,8 +360,6 @@ impl Device for StandardDevice {
     }
 
     fn peek(&mut self) -> Result<i64, String> {
-        // println!("peeking");
-        // Ok(0)
         if let Some(n) = self.ffi_channel.pop_front() {
             Ok(n)
         } else {
@@ -368,15 +368,11 @@ impl Device for StandardDevice {
     }
 
     fn poke(&mut self, val: i64) -> Result<(), String> {
-        // println!("poking {}", val);
-        // Ok(())
         self.ffi_channel.push_back(val);
         Ok(())
     }
 
     fn ffi_call(&mut self, ffi: &FFIBinding, tape: Option<&mut Vec<i64>>) -> Result<(), String> {
-        // println!("ffi call: {:?}", ffi);
-        // Ok(())
         if let Some(f) = self.ffi.get(ffi) {
             f(&mut self.ffi_channel, tape);
             Ok(())
