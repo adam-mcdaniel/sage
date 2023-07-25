@@ -9,7 +9,7 @@ use super::{as_float, as_int};
 
 impl Default for WasmInterpreter<StandardDevice> {
     fn default() -> Self {
-        Self::new(StandardDevice)
+        Self::new(StandardDevice::default())
     }
 }
 
@@ -337,7 +337,9 @@ where
                         self.device.put(self.register, o.clone())?
                     },
                 },
-
+                StandardOp::Call(ffi_binding) => {
+                    self.device.ffi_call(ffi_binding, Some(&mut self.cells))?
+                }
                 StandardOp::Peek => {
                     match self.device.peek() {
                         Ok(val) => self.register = val as i64,

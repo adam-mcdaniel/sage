@@ -421,6 +421,59 @@
 <a href="#421" id="421">421</a>
 <a href="#422" id="422">422</a>
 <a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Standard Assembly Variant
 //!
 //! This variant of the assembly language is intended to be used
@@ -433,6 +486,7 @@
     location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP,
 };
 <span class="kw">use </span><span class="kw">crate</span>::vm::{<span class="self">self</span>, VirtualMachineProgram};
+<span class="kw">use </span><span class="kw">crate</span>::side_effects::ffi::FFIBinding;
 <span class="kw">use </span>std::{collections::BTreeSet, fmt};
 
 <span class="doccomment">/// A program composed of standard instructions, which can be assembled
@@ -665,10 +719,8 @@
     <span class="doccomment">/// Free the memory allocated at the address stored in the operand cell.
     </span>Free(Location),
 
-    <span class="doccomment">/// Read from the runtime&#39;s interface into the operand cell.
-    </span>Peek(Location),
-    <span class="doccomment">/// Write from the operand cell into the runtime&#39;s interface.
-    </span>Poke(Location),
+    <span class="doccomment">/// Call a foreign function.
+    </span>Call(FFIBinding),
 }
 
 <span class="kw">fn </span>unsupported(op: StandardOp) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
@@ -792,6 +844,59 @@
                 </span>}
             }
 
+            <span class="self">Self</span>::Call(binding) =&gt; {
+                <span class="kw">let </span>input_cells = binding.input_cells;
+                <span class="kw">let </span>output_cells = binding.output_cells;
+
+                <span class="comment">// `Poke` all the input cells to the FFI channel.
+                // Start at the first input cell, which is located
+                // at the address stored in the `SP` register minus
+                // the number of input cells. The last input cell
+                // is located at the address stored in the `SP`
+                // register.
+
+                // The address of the first input cell.
+                </span><span class="kw">let </span>first_input_cell = SP.deref().offset(<span class="number">1 </span>- (input_cells <span class="kw">as </span>isize));
+
+                <span class="comment">// The address of the first output cell.
+                </span><span class="kw">let </span>first_output_cell = first_input_cell.clone();
+
+                <span class="comment">// Poke all the input cells to the FFI channel.
+                // First, go to the first input cell.
+                </span>first_input_cell.to(result);
+                <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..input_cells {
+                    <span class="comment">// Get the input cell from the tape.
+                    </span>result.restore();
+                    <span class="comment">// Poke the input cell to the FFI channel.
+                    </span>result.poke()<span class="question-mark">?</span>;
+                    <span class="kw">if </span>i &lt; input_cells - <span class="number">1 </span>{
+                        <span class="comment">// If this is not the last input cell, go to the next input cell.
+                        </span>result.move_pointer(<span class="number">1</span>);
+                    }
+                }
+                first_input_cell.offset(input_cells <span class="kw">as </span>isize - <span class="number">1</span>).from(result);
+
+                <span class="comment">// Call the foreign function.
+                </span>result.ffi_call(binding.clone())<span class="question-mark">?</span>;
+
+                <span class="comment">// Peek all the output cells from the FFI channel.
+                // First, go to the first output cell.
+                </span>first_output_cell.to(result);
+                <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..output_cells {
+                    <span class="comment">// Peek the output cell from the FFI channel.
+                    </span>result.peek()<span class="question-mark">?</span>;
+                    <span class="comment">// Store to the output cell on the tape.
+                    </span>result.save();
+                    <span class="kw">if </span>i &lt; output_cells - <span class="number">1 </span>{
+                        <span class="comment">// If this is not the last output cell, go to the next output cell.
+                        </span>result.move_pointer(<span class="number">1</span>);
+                    }
+                }
+                result.where_is_pointer();
+                SP.deref().from(result);
+                result.save();
+            }
+
             <span class="kw">_ </span>=&gt; {
                 <span class="macro">panic!</span>(<span class="string">&quot;unimplemented {}&quot;</span>, <span class="self">self</span>)
             }
@@ -833,8 +938,9 @@
             <span class="self">Self</span>::Alloc(loc) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;alloc {loc}&quot;</span>),
             <span class="self">Self</span>::Free(loc) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;free {loc}&quot;</span>),
 
-            <span class="self">Self</span>::Peek(loc) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;peek {loc}&quot;</span>),
-            <span class="self">Self</span>::Poke(loc) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;poke {loc}&quot;</span>),
+            <span class="comment">// Self::Peek(loc) =&gt; write!(f, &quot;peek {loc}&quot;),
+            // Self::Poke(loc) =&gt; write!(f, &quot;poke {loc}&quot;),
+            </span><span class="self">Self</span>::Call(binding) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;ffi {}&quot;</span>, binding),
         }
     }
 }

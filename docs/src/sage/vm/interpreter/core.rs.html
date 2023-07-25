@@ -338,7 +338,7 @@
 <span class="kw">impl </span>Default <span class="kw">for </span>CoreInterpreter&lt;StandardDevice&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            device: StandardDevice,
+            device: StandardDevice::default(),
             pointer: <span class="number">0</span>,
             register: <span class="number">0</span>,
             cells: <span class="macro">vec!</span>[],

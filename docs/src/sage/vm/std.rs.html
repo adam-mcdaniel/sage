@@ -337,6 +337,12 @@
 <a href="#337" id="337">337</a>
 <a href="#338" id="338">338</a>
 <a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The standard instructions of the virtual machine are defined here.
 //!
 //! ## Purpose of the Standard Instructions
@@ -377,6 +383,7 @@
 </span><span class="kw">use super</span>::{CoreOp, CoreProgram, Error, VirtualMachineProgram};
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span><span class="kw">crate</span>::side_effects::<span class="kw-2">*</span>;
 
 <span class="kw">impl </span>VirtualMachineProgram <span class="kw">for </span>StandardProgram {
     <span class="kw">fn </span>op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: CoreOp) {
@@ -632,8 +639,9 @@
     <span class="doccomment">/// Get a value from the input interface / device and store it in the register.
     /// This is intended to function something like system calls for using any external
     /// functionality that can&#39;t be implemented in the virtual machine, such as I/O or OS operations.
-    ///
-    /// The specific behavior of this instruction is purposefully not defined.
+    /// 
+    /// Whenever a value is returned from the foreign function interface, it is stored in the
+    /// FFI buffer of cells. This instruction will 
     </span>Peek,
     <span class="doccomment">/// Write the value of the register to the output interface / device.
     /// This is intended to function something like system calls for using any external
@@ -641,6 +649,9 @@
     ///
     /// The specific behavior of this instruction is purposefully not defined.
     </span>Poke,
+
+    <span class="doccomment">/// Call a foreign function interface function.
+    </span>Call(FFIBinding),
 }
 
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>StandardOp {
@@ -667,6 +678,7 @@
             StandardOp::Pow =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;pow&quot;</span>),
             StandardOp::Peek =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;peek&quot;</span>),
             StandardOp::Poke =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;poke&quot;</span>),
+            StandardOp::Call(binding) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;call {}&quot;</span>, binding),
         }
     }
 }

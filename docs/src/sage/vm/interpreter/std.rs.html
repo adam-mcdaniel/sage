@@ -409,6 +409,9 @@
 <a href="#409" id="409">409</a>
 <a href="#410" id="410">410</a>
 <a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Standard Interpreter Module
 //!
 //! This module implements an interpreter for the Standard virtual machine
@@ -428,7 +431,7 @@
 
 <span class="kw">impl </span>Default <span class="kw">for </span>StandardInterpreter&lt;StandardDevice&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new(StandardDevice)
+        <span class="self">Self</span>::new(StandardDevice::default())
     }
 }
 
@@ -812,6 +815,9 @@
                     </span><span class="self">self</span>.register = result <span class="kw">as </span>i64;
                 }
                 StandardOp::Free =&gt; {}
+                StandardOp::Call(binding) =&gt; {
+                    <span class="self">self</span>.device.ffi_call(binding, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;mut </span><span class="self">self</span>.cells))<span class="question-mark">?</span>;
+                }
             }
             <span class="self">self</span>.i += <span class="number">1
         </span>} <span class="kw">else </span>{

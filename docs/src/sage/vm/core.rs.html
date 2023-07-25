@@ -308,7 +308,7 @@
 //! Core instructions are instructions that **must** be implemented for
 //! every target. Write programs in the core variant to guarantee ports
 //! for ***every*** target.
-</span><span class="kw">use </span><span class="kw">crate</span>::io::{Input, Output};
+</span><span class="kw">use </span><span class="kw">crate</span>::side_effects::{Input, Output};
 
 <span class="kw">use super</span>::{Error, StandardOp, StandardProgram, VirtualMachineProgram};
 <span class="kw">use </span>core::fmt;

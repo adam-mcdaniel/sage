@@ -1457,8 +1457,8 @@
     }
 
     <span class="doccomment">/// Calculate the integral value of a variant in an enum.
-    </span><span class="kw">pub fn </span>variant_index(variants: <span class="kw-2">&amp;</span>Vec&lt;String&gt;, variant: <span class="kw-2">&amp;</span>String) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>variants = variants.clone();
+    </span><span class="kw">pub fn </span>variant_index(variants: <span class="kw-2">&amp;</span>[String], variant: <span class="kw-2">&amp;</span>String) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>variants = variants.to_vec();
         variants.sort();
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(index) = variants.binary_search(variant) {
             <span class="prelude-val">Some</span>(index)
@@ -1763,7 +1763,7 @@
         env: <span class="kw-2">&amp;</span>Env,
         previous_applications: <span class="kw-2">&amp;mut </span>HashMap&lt;(Type, Vec&lt;Type&gt;), Type&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
-        <span class="kw">let </span>before = <span class="self">self</span>.to_string();
+        <span class="kw">let </span>_before = <span class="self">self</span>.to_string();
         <span class="comment">// If the type is an Apply on a Poly, then we can perform the application.
         // First, perform the applications on the type arguments.
         // We can use memoization with the previous_applications HashMap to avoid infinite recursion.
@@ -1773,7 +1773,7 @@
                     poly.simplify(env)<span class="question-mark">?</span>.perform_template_applications(env, previous_applications)<span class="question-mark">?</span>,
                     ty_args
                         .into_iter()
-                        .map(|t| t.clone().simplify(env)<span class="question-mark">?</span>.perform_template_applications(env, previous_applications))
+                        .map(|t| t.simplify(env)<span class="question-mark">?</span>.perform_template_applications(env, previous_applications))
                         .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
                 );
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = previous_applications.get(<span class="kw-2">&amp;</span>pair) {
@@ -2269,7 +2269,7 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsizedType(<span class="self">self</span>.clone()));
         }
 
-        <span class="kw">let </span>s = <span class="self">self</span>.to_string();
+        <span class="kw">let </span>_s = <span class="self">self</span>.to_string();
         <span class="kw">let </span>result = <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::None
             | <span class="self">Self</span>::Never

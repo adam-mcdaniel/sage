@@ -47,6 +47,10 @@ extern "C" {
     // Multiple arguments too!
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log_many(a: &str, b: &str);
+
+    fn alert(s: &str);
+
+    fn eval(s: &str) -> JsValue;
 }
 
 macro_rules! console_log {
@@ -54,8 +58,6 @@ macro_rules! console_log {
     // `bare_bones`
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
 }
-
-
 
 /// The types of errors returned by the CLI.
 enum BetterError {

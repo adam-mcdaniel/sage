@@ -1088,14 +1088,9 @@
 <a href="#1088" id="1088">1088</a>
 <a href="#1089" id="1089">1089</a>
 <a href="#1090" id="1090">1090</a>
-<a href="#1091" id="1091">1091</a>
-<a href="#1092" id="1092">1092</a>
-<a href="#1093" id="1093">1093</a>
-<a href="#1094" id="1094">1094</a>
-<a href="#1095" id="1095">1095</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::lir::<span class="kw-2">*</span>;
 <span class="kw">use </span>core::fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
-<span class="kw">use </span>std::{collections::HashMap, hash::Hash};
+<span class="kw">use </span>std::{collections::HashMap};
 
 <span class="doccomment">/// A pattern which can be matched against an expression.
 ///
@@ -1163,7 +1158,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
         <span class="comment">// Get the type of the expression being matched.
         </span><span class="kw">let </span><span class="kw-2">mut </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
-        ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+        ty = ty.simplify_until_matches(env, Type::Any, |t, _env| {
             <span class="comment">// Ok(t.is_simple())
             </span><span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
                 t,
@@ -1194,7 +1189,7 @@
         env: <span class="kw-2">&amp;</span>Env,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>ty = matching_expr_ty.clone();
-        ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+        ty = ty.simplify_until_matches(env, Type::Any, |t, _env| {
             <span class="comment">// Ok(t.is_simple())
             </span><span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
                 t,
@@ -1267,8 +1262,8 @@
 
                         <span class="comment">// If this pattern matches a wildcard or a symbol, set all the booleans to true.
                         </span>Pattern::Symbol(<span class="kw">_</span>) | Pattern::Wildcard =&gt; {
-                            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..variants.len() {
-                                found[i] = <span class="bool-val">true</span>;
+                            <span class="kw">for </span>found_item <span class="kw">in </span>found.iter_mut().take(variants.len()) {
+                                <span class="kw-2">*</span>found_item = <span class="bool-val">true</span>;
                             }
                         }
                         <span class="comment">// Check if the alternate pattern branches are exhaustive.
@@ -1277,8 +1272,8 @@
                             </span><span class="kw">if </span><span class="self">Self</span>::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)<span class="question-mark">?
                             </span>{
                                 <span class="comment">// If it is exhaustive, set all the booleans to true.
-                                </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..variants.len() {
-                                    found[i] = <span class="bool-val">true</span>;
+                                </span><span class="kw">for </span>found_item <span class="kw">in </span>found.iter_mut().take(variants.len()) {
+                                    <span class="kw-2">*</span>found_item = <span class="bool-val">true</span>;
                                 }
                             }
                         }
@@ -1324,8 +1319,8 @@
                         }
                         <span class="comment">// If this pattern matches a wildcard or a symbol, set all the booleans to true.
                         </span>Pattern::Symbol(<span class="kw">_</span>) | Pattern::Wildcard =&gt; {
-                            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..items.len() {
-                                found[i] = <span class="bool-val">true</span>;
+                            <span class="kw">for </span>found_item <span class="kw">in </span>found.iter_mut().take(items.len()) {
+                                <span class="kw-2">*</span>found_item = <span class="bool-val">true</span>;
                             }
                         }
                         <span class="comment">// Check if the alternate pattern branches are exhaustive.
@@ -1334,8 +1329,8 @@
                             </span><span class="kw">if </span><span class="self">Self</span>::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)<span class="question-mark">?
                             </span>{
                                 <span class="comment">// If it is exhaustive, set all the booleans to true.
-                                </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..items.len() {
-                                    found[i] = <span class="bool-val">true</span>;
+                                </span><span class="kw">for </span>found_item <span class="kw">in </span>found.iter_mut().take(items.len()) {
+                                    <span class="kw-2">*</span>found_item = <span class="bool-val">true</span>;
                                 }
                             }
                         }
@@ -1505,7 +1500,7 @@
         //     }
         // }
 
-        </span>matching_ty = matching_ty.simplify_until_matches(env, Type::Any, |t, env| {
+        </span>matching_ty = matching_ty.simplify_until_matches(env, Type::Any, |t, _env| {
             <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
                 t,
                 Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
@@ -1515,7 +1510,7 @@
         </span><span class="kw">let </span>expected = <span class="self">self</span>.get_branch_result_type(matching_expr, branch, env)<span class="question-mark">?</span>;
         <span class="comment">// Type-check the expression generated to match the pattern.
         </span><span class="kw">match </span><span class="self">self
-            </span>.matches(<span class="kw-2">&amp;</span>matching_expr, <span class="kw-2">&amp;</span>matching_ty, env)
+            </span>.matches(matching_expr, <span class="kw-2">&amp;</span>matching_ty, env)
             .and_then(|x| x.type_check(env))
         {
             <span class="prelude-val">Ok</span>(()) =&gt; {}
@@ -1543,7 +1538,7 @@
             <span class="comment">// Err(e) =&gt; return Err(Error::InvalidPatternForExpr(matching_expr.clone(), self.clone())),
         </span>}
         <span class="comment">// Generate an expression with the bindings defined for the branch.
-        </span><span class="kw">let </span>result_expr = <span class="self">self</span>.bind(<span class="kw-2">&amp;</span>matching_expr, <span class="kw-2">&amp;</span>matching_ty, <span class="kw-2">&amp;</span>branch, env).map_err(|<span class="kw">_</span>| Error::InvalidPatternForExpr(matching_expr.clone(), <span class="self">self</span>.clone()))<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>result_expr = <span class="self">self</span>.bind(matching_expr, <span class="kw-2">&amp;</span>matching_ty, branch, env).map_err(|<span class="kw">_</span>| Error::InvalidPatternForExpr(matching_expr.clone(), <span class="self">self</span>.clone()))<span class="question-mark">?</span>;
         <span class="comment">// Type-check the expression generated to bind the pattern.
         </span>result_expr.type_check(env)<span class="question-mark">?</span>;
         <span class="comment">// Get the type of the expression generated to bind the pattern.
@@ -1586,7 +1581,7 @@
             Box::new(cond),
             <span class="comment">// If the expression matches the pattern, bind the pattern to the expression,
             // and evaluate the `then` expression.
-            </span>Box::new(<span class="self">self</span>.bind(<span class="kw-2">&amp;</span>var, <span class="kw-2">&amp;</span>ty, <span class="kw-2">&amp;</span>then, env)<span class="question-mark">?</span>),
+            </span>Box::new(<span class="self">self</span>.bind(<span class="kw-2">&amp;</span>var, <span class="kw-2">&amp;</span>ty, then, env)<span class="question-mark">?</span>),
             <span class="comment">// Otherwise, evaluate the `else_` expression.
             </span>Box::new(else_.clone()),
         );
@@ -1618,7 +1613,7 @@
         //         _ =&gt; break,
         //     }
         // }
-        </span>match_type = match_type.simplify_until_matches(env, Type::Any, |t, env| {
+        </span>match_type = match_type.simplify_until_matches(env, Type::Any, |t, _env| {
             <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
                 t,
                 Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
@@ -1626,7 +1621,7 @@
         })<span class="question-mark">?</span>;
         new_env.define_var(var_name.clone(), match_type.clone())<span class="question-mark">?</span>;
         <span class="comment">// Generate the expression which evaluates the `match` expression.
-        </span><span class="kw">let </span>match_expr = Pattern::match_pattern_helper(<span class="kw-2">&amp;</span>Expr::var(<span class="kw-2">&amp;</span>var_name), <span class="kw-2">&amp;</span>branches, <span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>match_expr = Pattern::match_pattern_helper(<span class="kw-2">&amp;</span>Expr::var(<span class="kw-2">&amp;</span>var_name), branches, <span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
 
         <span class="comment">// Define the variable in the generated expression.
         </span><span class="kw">let </span>result = Expr::let_var(var_name, <span class="prelude-val">Some</span>(match_type), expr.clone(), match_expr);
@@ -1649,13 +1644,13 @@
         // This is because the first pattern should be checked with
         // the first if statement, and so it should be added to the
         // chain of if statements last.
-        </span><span class="kw">for </span>(pattern, ret) <span class="kw">in </span>branches.into_iter().rev() {
+        </span><span class="kw">for </span>(pattern, ret) <span class="kw">in </span>branches.iter().rev() {
             <span class="comment">// An expression which evaluates to true if the expression matches the pattern.
-            </span><span class="kw">let </span>cond = pattern.matches(<span class="kw-2">&amp;</span>expr, <span class="kw-2">&amp;</span>ty, env)<span class="question-mark">?</span>;
+            </span><span class="kw">let </span>cond = pattern.matches(expr, <span class="kw-2">&amp;</span>ty, env)<span class="question-mark">?</span>;
             <span class="comment">// A new if statement which checks if the expression matches the pattern.
             </span>result = Expr::If(
                 Box::new(cond),
-                Box::new(pattern.bind(<span class="kw-2">&amp;</span>expr, <span class="kw-2">&amp;</span>ty, ret, env)<span class="question-mark">?</span>),
+                Box::new(pattern.bind(expr, <span class="kw-2">&amp;</span>ty, ret, env)<span class="question-mark">?</span>),
                 Box::new(result),
             );
         }
@@ -1685,7 +1680,7 @@
         //         _ =&gt; break,
         //     }
         // }
-        </span>ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+        </span>ty = ty.simplify_until_matches(env, Type::Any, |t, _env| {
             <span class="comment">// Ok(t.is_simple())
             </span><span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
                 t,
@@ -1803,7 +1798,7 @@
                 </span>result
             }
 
-            (pat, ty) =&gt; {
+            (_pat, _ty) =&gt; {
                 <span class="comment">// eprintln!(&quot;pat: {pat}&quot;);
                 // eprintln!(&quot;ty: {ty}&quot;);
                 // If the pattern does not match the type, then return an error.
@@ -1828,7 +1823,7 @@
         //     }
         // }
 
-        </span>ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+        </span>ty = ty.simplify_until_matches(env, Type::Any, |t, _env| {
             <span class="comment">// Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
             // Ok(t.is_simple())
             </span><span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
@@ -2009,7 +2004,7 @@
         //         _ =&gt; break,
         //     }
         // }
-        </span>ty = ty.simplify_until_matches(env, Type::Any, |t, env| {
+        </span>ty = ty.simplify_until_matches(env, Type::Any, |t, _env| {
             <span class="comment">// Ok(matches!(t, Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _) | Type::Any))
             // Ok(matches!(t, Type::Any | Type::Tuple(_) | Type::EnumUnion(_) | Type::Enum(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_) | Type::Array(_, _) | Type::Proc(_, _)))
             // Ok(t.is_simple())
@@ -2044,7 +2039,7 @@
             // but there is no pattern to bind, simply error check.
             </span>(<span class="self">Self</span>::Variant(name, <span class="prelude-val">None</span>), Type::EnumUnion(variants)) =&gt; {
                 <span class="comment">// Get the inner variant type from the tagged union
-                </span><span class="kw">if let </span><span class="prelude-val">None </span>= variants.get(name) {
+                </span><span class="kw">if </span>variants.get(name).is_none() {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(ty.clone(), name.clone()));
                 }
                 ret.clone()
@@ -2121,17 +2116,12 @@
             </span>(<span class="self">Self</span>::Wildcard, <span class="kw">_</span>) | (<span class="self">Self</span>::ConstExpr(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; ret.clone(),
 
             <span class="comment">// If the pattern is an alternative, then bind the first pattern.
-            // All their bindings will be the same, so it doesn&#39;t matter which one
+            // All their bindings will be the same type, so it doesn&#39;t matter which one
             // we choose.
             </span>(<span class="self">Self</span>::Alt(patterns), <span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>result = ret.clone();
                 <span class="comment">// Bind the first pattern.
-                </span><span class="kw">for </span>pattern <span class="kw">in </span>patterns.iter() {
-                    result = pattern.bind(expr, ty, <span class="kw-2">&amp;</span>result, env)<span class="question-mark">?</span>;
-                    <span class="kw">break</span>;
-                }
-                result
-            }
+                </span>patterns.first().map(|x| x.bind(expr, ty, ret, env)).unwrap_or(<span class="prelude-val">Err</span>(Error::InvalidPatternForExpr(expr.clone(), <span class="self">self</span>.clone())))<span class="question-mark">?
+            </span>}
 
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidPatternForExpr(expr.clone(), <span class="self">self</span>.clone())),
         })

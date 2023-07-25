@@ -1136,12 +1136,12 @@
 
     <span class="doccomment">/// Perform an AssignOp on this expression.
     </span><span class="kw">pub fn </span>assign_op(<span class="self">self</span>, op: <span class="kw">impl </span>AssignOp + <span class="lifetime">&#39;static</span>, e: <span class="kw">impl </span>Into&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
-        Expr::AssignOp(Box::new(op), Box::new(<span class="self">self</span>.clone()), Box::new(e.into()))
+        Expr::AssignOp(Box::new(op), Box::new(<span class="self">self</span>), Box::new(e.into()))
     }
 
     <span class="doccomment">/// Perform an AssignOp on this expression.
     </span><span class="kw">pub fn </span>assign(<span class="self">self</span>, op: Box&lt;<span class="kw">dyn </span>AssignOp&gt;, e: <span class="kw">impl </span>Into&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
-        Expr::AssignOp(op, Box::new(<span class="self">self</span>.clone()), Box::new(e.into()))
+        Expr::AssignOp(op, Box::new(<span class="self">self</span>), Box::new(e.into()))
     }
 }
 

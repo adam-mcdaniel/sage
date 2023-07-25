@@ -1307,10 +1307,31 @@
 <a href="#1307" id="1307">1307</a>
 <a href="#1308" id="1308">1308</a>
 <a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
+<a href="#1326" id="1326">1326</a>
+<a href="#1327" id="1327">1327</a>
+<a href="#1328" id="1328">1328</a>
+<a href="#1329" id="1329">1329</a>
+<a href="#1330" id="1330">1330</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{lir::<span class="kw-2">*</span>, parse::SourceCodeLocation};
 <span class="kw">use </span>pest::{
     error::Error,
-    iterators::{Pair, Pairs},
+    iterators::Pair,
     Parser,
 };
 <span class="kw">use </span>pest_derive::Parser;
@@ -1342,13 +1363,8 @@
 <span class="kw">impl </span>Statement {
     <span class="kw">fn </span>to_expr(<span class="self">self</span>, rest: <span class="prelude-ty">Option</span>&lt;Expr&gt;) -&gt; Expr {
         <span class="kw">let </span>rest_expr = Box::new(rest.clone().unwrap_or(Expr::ConstExpr(ConstExpr::None)));
-        <span class="comment">// Expr::Block(vec![match self {
-        //     Self::Match(e, arms) =&gt; {
-        //         Expr::Match(Box::new(e), arms.into_iter().map(|(a, b)| (a, b.to_expr(None))).collect())
-        //     }
-        // }, rest_expr])
 
-        </span><span class="kw">let </span>stmt = <span class="kw">match </span>(<span class="self">self</span>, rest.clone()) {
+        <span class="kw">let </span>stmt = <span class="kw">match </span>(<span class="self">self</span>, rest.clone()) {
             (<span class="self">Self</span>::AnnotatedWithSource { stmt, loc }, <span class="kw">_</span>) =&gt; {
                 <span class="kw">return </span>Expr::AnnotatedWithSource { expr: Box::new(stmt.to_expr(rest)), loc };
             },
@@ -1434,7 +1450,7 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(Expr::Many(<span class="kw-2">mut </span>stmts)) = rest {
             stmts.insert(<span class="number">0</span>, stmt);
             Expr::Many(stmts)
-        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(<span class="kw">_</span>) = rest {
+        } <span class="kw">else if </span>rest.is_some() {
             Expr::Many(<span class="macro">vec!</span>[stmt, <span class="kw-2">*</span>rest_expr])
         } <span class="kw">else </span>{
             stmt
@@ -1445,6 +1461,7 @@
 <span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub enum </span>Declaration {
     Struct(String, Vec&lt;(String, Type)&gt;),
+    Extern(String, Vec&lt;(<span class="prelude-ty">Option</span>&lt;String&gt;, Type)&gt;, Type),
     Enum(String, Vec&lt;(String, <span class="prelude-ty">Option</span>&lt;Type&gt;)&gt;),
     Const(Vec&lt;(String, ConstExpr)&gt;),
     Proc(String, Vec&lt;(String, Type)&gt;, <span class="prelude-ty">Option</span>&lt;Type&gt;, Box&lt;Statement&gt;),
@@ -1477,6 +1494,9 @@
     <span class="kw">fn </span>to_expr(<span class="self">self</span>, rest: <span class="prelude-ty">Option</span>&lt;Expr&gt;) -&gt; Expr {
         <span class="kw">let </span>rest_expr = Box::new(rest.clone().unwrap_or(Expr::ConstExpr(ConstExpr::None)));
         <span class="kw">match </span>(<span class="self">self</span>, rest) {
+            (<span class="self">Self</span>::Extern(name, args, ret), rest) =&gt; {
+                <span class="self">Self</span>::Const(<span class="macro">vec!</span>[(name.clone(), ConstExpr::FFIProcedure(FFIProcedure::new(name, args.into_iter().map(|(<span class="kw">_</span>, x)| x).collect(), ret)))]).to_expr(rest)
+            }
             (<span class="self">Self</span>::Struct(name, fields), <span class="prelude-val">Some</span>(Expr::LetTypes(<span class="kw-2">mut </span>types, ret))) =&gt; {
                 types.push((name, Type::Struct(fields.into_iter().collect())));
                 Expr::LetTypes(types, ret)
@@ -1656,7 +1676,7 @@
     }
 }
 
-<span class="kw">pub fn </span>parse_frontend(code: <span class="kw-2">&amp;</span>str, filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, Error&lt;Rule&gt;&gt; {
+<span class="kw">pub fn </span>parse_frontend(code: <span class="kw-2">&amp;</span>str, filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, Box&lt;Error&lt;Rule&gt;&gt;&gt; {
     <span class="kw">let </span>x = FrontendParser::parse(Rule::program, code)<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(parse_program(x.into_iter().next().unwrap(), filename).to_expr())
 }
@@ -1779,7 +1799,7 @@
                 Declaration::Struct(name, fields)
             } <span class="kw">else </span>{
                 Declaration::Type(<span class="macro">vec!</span>[(
-                    name.to_string(),
+                    name,
                     Type::Poly(
                         ty_params,
                         Box::new(Type::Struct(fields.into_iter().collect())),
@@ -1831,7 +1851,7 @@
                 <span class="kw">let </span>is_simple = variants.iter().all(|(<span class="kw">_</span>, ty)| ty.is_none());
                 <span class="kw">if </span>is_simple {
                     Declaration::Type(<span class="macro">vec!</span>[(
-                        name.to_string(),
+                        name,
                         Type::Poly(
                             ty_params,
                             Box::new(Type::Enum(
@@ -1841,7 +1861,7 @@
                     )])
                 } <span class="kw">else </span>{
                     Declaration::Type(<span class="macro">vec!</span>[(
-                        name.to_string(),
+                        name,
                         Type::Poly(
                             ty_params,
                             Box::new(Type::EnumUnion(
@@ -1854,6 +1874,27 @@
                     )])
                 }
             }
+        }
+        Rule::decl_extern =&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
+            <span class="kw">let </span>name = inner_rules.next().unwrap().as_str().to_string();
+            <span class="kw">let </span><span class="kw-2">mut </span>args = Vec::new();
+            <span class="kw">let </span><span class="kw-2">mut </span>ret = <span class="prelude-val">None</span>;
+            <span class="kw">for </span>pair <span class="kw">in </span>inner_rules {
+                <span class="kw">match </span>pair.as_rule() {
+                    Rule::decl_proc_param =&gt; {
+                        <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
+                        <span class="kw">let </span>name = inner_rules.next().unwrap().as_str().to_string();
+                        <span class="kw">let </span>ty = parse_type(inner_rules.next().unwrap());
+                        args.push((<span class="prelude-val">Some</span>(name), ty));
+                    }
+                    Rule::r#type =&gt; {
+                        ret = <span class="prelude-val">Some</span>(parse_type(pair));
+                    }
+                    other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected rule {:?}&quot;</span>, other),
+                }
+            }
+            Declaration::Extern(name, args, ret.unwrap_or(Type::None))
         }
         Rule::decl_const =&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
@@ -1895,9 +1936,9 @@
             Rule::stmt_match =&gt; Statement::Expr(parse_match(pair)),
 
             Rule::stmt_block =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
+                <span class="kw">let </span>inner_rules = pair.into_inner();
                 <span class="kw">let </span><span class="kw-2">mut </span>stmts = Vec::new();
-                <span class="kw">while let </span><span class="prelude-val">Some</span>(stmt) = inner_rules.next() {
+                <span class="kw">for </span>stmt <span class="kw">in </span>inner_rules {
                     stmts.push(parse_decl(stmt, filename));
                 }
                 Statement::Block(stmts)
@@ -2335,13 +2376,13 @@
         Rule::const_int =&gt; {
             <span class="kw">let </span>s = pair.as_str();
             ConstExpr::Int(<span class="kw">if </span>s.len() &gt; <span class="number">2 </span>&amp;&amp; <span class="kw-2">&amp;</span>s[..<span class="number">2</span>] == <span class="string">&quot;0b&quot; </span>{
-                i64::from_str_radix(<span class="kw-2">&amp;</span>s[<span class="number">2</span>..], <span class="number">2</span>).unwrap() <span class="kw">as </span>i64
+                i64::from_str_radix(<span class="kw-2">&amp;</span>s[<span class="number">2</span>..], <span class="number">2</span>).unwrap()
             } <span class="kw">else if </span>s.len() &gt; <span class="number">2 </span>&amp;&amp; <span class="kw-2">&amp;</span>s[..<span class="number">2</span>] == <span class="string">&quot;0o&quot; </span>{
-                i64::from_str_radix(<span class="kw-2">&amp;</span>s[<span class="number">2</span>..], <span class="number">8</span>).unwrap() <span class="kw">as </span>i64
+                i64::from_str_radix(<span class="kw-2">&amp;</span>s[<span class="number">2</span>..], <span class="number">8</span>).unwrap()
             } <span class="kw">else if </span>s.len() &gt; <span class="number">2 </span>&amp;&amp; <span class="kw-2">&amp;</span>s[..<span class="number">2</span>] == <span class="string">&quot;0x&quot; </span>{
-                i64::from_str_radix(<span class="kw-2">&amp;</span>s[<span class="number">2</span>..], <span class="number">16</span>).unwrap() <span class="kw">as </span>i64
-            } <span class="kw">else if </span>s.len() &gt; <span class="number">0 </span>{
-                i64::from_str_radix(s, <span class="number">10</span>).unwrap() <span class="kw">as </span>i64
+                i64::from_str_radix(<span class="kw-2">&amp;</span>s[<span class="number">2</span>..], <span class="number">16</span>).unwrap()
+            } <span class="kw">else if </span>!s.is_empty() {
+                s.parse::&lt;i64&gt;().unwrap()
             } <span class="kw">else </span>{
                 <span class="number">0
             </span>})
@@ -2369,7 +2410,7 @@
             .unwrap()
             .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\0&quot;</span>)
             .chars()
-            .map(|ch| ConstExpr::Char(ch))
+            .map(ConstExpr::Char)
             .collect(),
         ),
         Rule::const_none =&gt; ConstExpr::None,
@@ -2392,7 +2433,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>head = parse_type(inner_rules.next().unwrap());
 
             <span class="kw">while </span>inner_rules.peek().is_some() {
-                <span class="kw">while let </span><span class="prelude-val">Some</span>(parsed_args) = inner_rules.next() {
+                <span class="kw">for </span>parsed_args <span class="kw">in </span>inner_rules.by_ref() {
                     <span class="kw">let </span><span class="kw-2">mut </span>ty_args = <span class="macro">vec!</span>[];
                     <span class="comment">// type_application_suffix
                     // args.push(parse_type(arg));
@@ -2442,6 +2483,7 @@
 
         Rule::type_symbol =&gt; Type::Symbol(pair.as_str().to_string()),
         Rule::type_int =&gt; Type::Int,
+        Rule::type_cell =&gt; Type::Cell,
         Rule::type_float =&gt; Type::Float,
         Rule::type_bool =&gt; Type::Bool,
         Rule::type_char =&gt; Type::Char,

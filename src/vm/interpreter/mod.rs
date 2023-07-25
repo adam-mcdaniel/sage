@@ -38,7 +38,7 @@ pub trait Device {
     fn poke(&mut self, val: i64) -> Result<(), String>;
 
     /// FFI call to the device.
-    fn ffi_call(&mut self, ffi: &FFIBinding) -> Result<(), String>;
+    fn ffi_call(&mut self, ffi: &FFIBinding, tape: Option<&mut Vec<i64>>) -> Result<(), String>;
 }
 
 /// A device used for testing the compiler. This simply keeps a buffer
@@ -49,7 +49,7 @@ pub trait Device {
 /// Then, we check the devices output against the correct output.
 #[derive(Debug, Default)]
 pub struct TestingDevice {
-    pub ffi: HashMap<FFIBinding, fn(&mut VecDeque<i64>)>,
+    pub ffi: HashMap<FFIBinding, fn(&mut VecDeque<i64>, Option<&mut Vec<i64>>)>,
     pub ffi_channel: VecDeque<i64>,
     pub input: VecDeque<i64>,
     pub output: Vec<(i64, Output)>,
@@ -222,9 +222,9 @@ impl Device for TestingDevice {
         Ok(())
     }
 
-    fn ffi_call(&mut self, ffi: &FFIBinding) -> Result<(), String> {
+    fn ffi_call(&mut self, ffi: &FFIBinding, tape: Option<&mut Vec<i64>>) -> Result<(), String> {
         if let Some(f) = self.ffi.get(ffi) {
-            f(&mut self.ffi_channel);
+            f(&mut self.ffi_channel, tape);
             Ok(())
         } else {
             Err(format!("ffi call not found: {:?}", ffi))
@@ -237,7 +237,7 @@ impl Device for TestingDevice {
 /// and writes a character to standard-out with `put`.
 #[derive(Debug, Clone)]
 pub struct StandardDevice {
-    ffi: HashMap<FFIBinding, fn(&mut VecDeque<i64>)>,
+    ffi: HashMap<FFIBinding, fn(&mut VecDeque<i64>, Option<&mut Vec<i64>>)>,
     ffi_channel: VecDeque<i64>,
 }
 
@@ -248,12 +248,12 @@ impl Default for StandardDevice {
             ffi_channel: VecDeque::new(),
         };
         
-        result.add_binding(FFIBinding::new("square_root".to_string(), 1, 1), |channel| {
+        result.add_binding(FFIBinding::new("square_root".to_string(), 1, 1), |channel, _| {
             let val = as_float(channel.pop_front().unwrap());
             channel.push_back(as_int(val.sqrt()));
         });
 
-        result.add_binding(FFIBinding::new("add".to_string(), 2, 1), |channel| {
+        result.add_binding(FFIBinding::new("add".to_string(), 2, 1), |channel, _| {
             let a = as_float(channel.pop_front().unwrap());
             let b = as_float(channel.pop_front().unwrap());
             channel.push_back(as_int(a + b));
@@ -264,7 +264,7 @@ impl Default for StandardDevice {
 }
 
 impl StandardDevice {
-    pub fn add_binding(&mut self, ffi: FFIBinding, f: fn(&mut VecDeque<i64>)) {
+    pub fn add_binding(&mut self, ffi: FFIBinding, f: fn(&mut VecDeque<i64>, Option<&mut Vec<i64>>)) {
         self.ffi.insert(ffi, f);
     }
 
@@ -374,11 +374,11 @@ impl Device for StandardDevice {
         Ok(())
     }
 
-    fn ffi_call(&mut self, ffi: &FFIBinding) -> Result<(), String> {
+    fn ffi_call(&mut self, ffi: &FFIBinding, tape: Option<&mut Vec<i64>>) -> Result<(), String> {
         // println!("ffi call: {:?}", ffi);
         // Ok(())
         if let Some(f) = self.ffi.get(ffi) {
-            f(&mut self.ffi_channel);
+            f(&mut self.ffi_channel, tape);
             Ok(())
         } else {
             Err(format!("ffi call not found: {:?}", ffi))

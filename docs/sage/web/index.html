@@ -2011,7 +2011,26 @@ let n = 0;
 input(&n);
 
 print(fact(n));`);
-                    document.getElementById("input").value = "5";
+                case "ffi":
+                    source.setValue(`
+// This gives the compiler enough information to do all the memory operations
+// for poking the data to the device (1 cell, the string address),
+// making the FFI call, and peeking the result back out (0 cells).
+// 
+// The expected argument/return value cells in the peek/poke buffer are
+// automatically calculated from this stub, and then are preserved in the
+// VM code.
+extern alert(message: &Char);
+
+// Call the JavaScript alert function!
+let buf = alloc(1024) as &Char;
+
+input(&buf[0]);
+for let i = 1; i < 1024 && !(buf[i - 1] == '\0'); i+=1 {
+    input(&buf[i]);
+}
+alert(buf);`);
+                    document.getElementById("input").value = "Hello, FFI!";
                     break;
                 case "hello world":
                     source.setValue("print(\"Hello, world!\\n\");");
