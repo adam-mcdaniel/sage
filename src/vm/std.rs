@@ -296,13 +296,16 @@ pub enum StandardOp {
     /// functionality that can't be implemented in the virtual machine, such as I/O or OS operations.
     /// 
     /// Whenever a value is returned from the foreign function interface, it is stored in the
-    /// FFI buffer of cells. This instruction will 
+    /// FFI buffer of cells. Whenever an FFI function is called, it will receive its arguments
+    /// from this buffer.
     Peek,
     /// Write the value of the register to the output interface / device.
     /// This is intended to function something like system calls for using any external
     /// functionality that can't be implemented in the virtual machine, such as I/O or OS operations.
     ///
-    /// The specific behavior of this instruction is purposefully not defined.
+    /// Whenever a value is returned from the foreign function interface, it is stored in the
+    /// FFI buffer of cells. Whenever an FFI function is called, it will receive its arguments
+    /// from this buffer.
     Poke,
 
     /// Call a foreign function interface function.
