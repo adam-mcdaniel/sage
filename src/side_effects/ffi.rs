@@ -21,6 +21,6 @@ impl FFIBinding {
 
 impl Display for FFIBinding {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{}({}) -> {}", self.name, self.input_cells, self.output_cells)
+        write!(f, "{}", self.name)
     }
 }

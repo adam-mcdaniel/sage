@@ -464,7 +464,7 @@ impl fmt::Display for StandardOp {
 
             // Self::Peek(loc) => write!(f, "peek {loc}"),
             // Self::Poke(loc) => write!(f, "poke {loc}"),
-            Self::Call(binding) => write!(f, "ffi {}", binding),
+            Self::Call(binding) => write!(f, "call {}", binding),
         }
     }
 }

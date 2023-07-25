@@ -47,6 +47,6 @@
 
 <span class="kw">impl </span>Display <span class="kw">for </span>FFIBinding {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}({}) -&gt; {}&quot;</span>, <span class="self">self</span>.name, <span class="self">self</span>.input_cells, <span class="self">self</span>.output_cells)
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.name)
     }
 }</code></pre></div></section></main></body></html>
