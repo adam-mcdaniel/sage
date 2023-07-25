@@ -210,6 +210,8 @@ impl Location {
 
             Location::Offset(loc, offset) => {
                 loc.from(result);
+                // If the offset is from a dereferenced pointer, then moving back before
+                // reversing the dereference does nothing, so we can skip it.
                 if !matches!(**loc, Location::Indirect(_)) {
                     result.move_pointer(-*offset);
                 }
