@@ -210,8 +210,6 @@ impl Device for TestingDevice {
     }
 
     fn peek(&mut self) -> Result<i64, String> {
-        // println!("peeking");
-        // Ok(0)
         if let Some(n) = self.ffi_channel.pop_front() {
             Ok(n)
         } else {
