@@ -2012,25 +2012,50 @@ input(&n);
 
 print(fact(n));`);
                 case "ffi":
-                    source.setValue(`
-// This gives the compiler enough information to do all the memory operations
-// for poking the data to the device (1 cell, the string address),
-// making the FFI call, and peeking the result back out (0 cells).
-// 
-// The expected argument/return value cells in the peek/poke buffer are
-// automatically calculated from this stub, and then are preserved in the
-// VM code.
+                    source.setValue(`// NOTE: I have *explicitly* given the VM access to the JavaScript functions 
+// \`alert\` and \`eval\` internally. If you try and call any other
+// foreign function, the VM will not have bindings for them and will halt.
+// Running someone else's code in a safe manner is as simple as making
+// sure you only provide bindings for safe foreign functions to execute!
+// (e.g. \`eval\` is surely not safe, but something like \`alert\` is generally safe.)
+
 extern alert(message: &Char);
+extern eval(code: &Char, size: Int);
+
+const BUFFER_SIZE = 1024;
+
+def read(buf: &Char) {
+    let ch = ' ';
+    input(&ch);
+    for let i = 0; ch; i+=1 {
+        buf[i] = ch;
+        input(&ch);
+    }
+}
+
+def write(buf: &Char) {
+    for let i = 0; buf[i]; i+=1 {
+        print(buf[i]);
+    }
+}
+
+let buf = alloc(BUFFER_SIZE) as &Char;
+
+// Read the code to evaluate from the input box!
+read(buf);
+print("Input code: ");
+write(buf);
+
+// Evaluate the code in the input box!
+eval(buf, BUFFER_SIZE);
+
+// Print the result of the evaluation to the output box!
+print("\\nResult: ");
+write(buf);
 
 // Call the JavaScript alert function!
-let buf = alloc(1024) as &Char;
-
-input(&buf[0]);
-for let i = 1; i < 1024 && !(buf[i - 1] == '\0'); i+=1 {
-    input(&buf[i]);
-}
 alert(buf);`);
-                    document.getElementById("input").value = "Hello, FFI!";
+                    document.getElementById("input").value = "('b' + 'a' + + 'a' + 'a').toUpperCase()";
                     break;
                 case "hello world":
                     source.setValue("print(\"Hello, world!\\n\");");
@@ -2059,6 +2084,7 @@ alert(buf);`);
             <option value="hashmap">HashMap (Generics)</option>
             <option value="vector">Vector (Generics)</option>
             <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
+            <option value="ffi">Foreign Function Interface (JavaScript Example)</option>
             <option value="calculator">Calculator (Parser)</option>
             <option value="result">Result Enum (Generics)</option>
             <option value="alloc">Allocator</option>

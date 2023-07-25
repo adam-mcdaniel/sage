@@ -60,17 +60,17 @@ impl WasmDevice {
                 }
                 let mut str_buf = Vec::with_capacity(str_len);
                 for i in 0..str_len {
-                    str_buf.push(tape[buf_addr as usize + i] as u8);
+                    str_buf.push(tape[buf_addr as usize + i] as i8 as u8);
                 }
                 let str_buf = String::from_utf8(str_buf).unwrap();
                 let js_value = eval(&str_buf);
                 let js_value = format!("{js_value:?}");
                 let js_value = js_value[8..js_value.len()-1].to_string();
                 let js_value = js_value.as_bytes();
-                for i in 0..std::cmp::min(js_value.len(), buf_size as usize) {
-                    tape[buf_addr as usize + i] = js_value[i] as i64;
+                for i in 0..std::cmp::min(js_value.len(), (buf_size - 1) as usize) {
+                    tape[buf_addr as usize + i] = (js_value[i] % 0xff) as i64;
                 }
-                tape[buf_addr as usize + std::cmp::min(js_value.len(), buf_size as usize)] = 0;
+                tape[buf_addr as usize + std::cmp::min(js_value.len(), (buf_size - 1) as usize)] = 0;
             }
         });
         result
