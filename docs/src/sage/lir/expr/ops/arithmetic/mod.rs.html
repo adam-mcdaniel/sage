@@ -360,7 +360,7 @@
                 }
 
                 <span class="comment">// Make sure that inner types are compatible.
-                </span><span class="kw">if </span>!a_type.equals(<span class="kw-2">&amp;</span>b_type, env)<span class="question-mark">? </span>{
+                </span><span class="kw">if </span>!a_type.equals(b_type, env)<span class="question-mark">? </span>{
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
                 }
 
@@ -400,7 +400,7 @@
                     ));
                 }
 
-                Type::Unit(name1.clone(), a_type.clone())
+                Type::Unit(name1, a_type)
             }
             <span class="kw">_ </span>=&gt; {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidBinaryOp(
@@ -502,7 +502,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         lhs: <span class="kw-2">&amp;</span>Type,
         rhs: <span class="kw-2">&amp;</span>Type,
-        env: <span class="kw-2">&amp;mut </span>Env,
+        _env: <span class="kw-2">&amp;mut </span>Env,
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">let </span>src = SP.deref();
@@ -525,7 +525,7 @@
                 CoreOp::Set(dst.clone(), <span class="number">1</span>),
                 CoreOp::While(src.clone()),
                 CoreOp::Mul {
-                    src: tmp.clone(),
+                    src: tmp,
                     dst,
                 },
                 CoreOp::Dec(src),
@@ -572,7 +572,7 @@
             }
 
             (Type::Unit(_name1, a_type), Type::Unit(_name2, b_type)) =&gt; {
-                <span class="kw">return </span><span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>a_type, <span class="kw-2">&amp;</span>b_type, env, output);
+                <span class="kw">return </span><span class="self">self</span>.compile_types(a_type, b_type, _env, output);
             }
 
             <span class="comment">// Cannot do arithmetic on other pairs of types.

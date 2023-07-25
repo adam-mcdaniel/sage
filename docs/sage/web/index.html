@@ -2011,7 +2011,52 @@ let n = 0;
 input(&n);
 
 print(fact(n));`);
-                    document.getElementById("input").value = "5";
+                    break;
+                case "ffi":
+                    source.setValue(`// NOTE: I have *explicitly* given the VM access to the JavaScript functions 
+// \`alert\` and \`eval\` internally. If you try and call any other
+// foreign function, the VM will not have bindings for them and will halt.
+// Running someone else's code in a safe manner is as simple as making
+// sure you only provide bindings for safe foreign functions to execute!
+// (e.g. \`eval\` is surely not safe, but something like \`alert\` is generally safe.)
+
+extern alert(message: &Char);
+extern eval(code: &Char, size: Int);
+
+const BUFFER_SIZE = 1024;
+
+def read(buf: &Char) {
+    let ch = ' ';
+    input(&ch);
+    for let i = 0; ch; i+=1 {
+        buf[i] = ch;
+        input(&ch);
+    }
+}
+
+def write(buf: &Char) {
+    for let i = 0; buf[i]; i+=1 {
+        print(buf[i]);
+    }
+}
+
+let buf = alloc(BUFFER_SIZE) as &Char;
+
+// Read the code to evaluate from the input box!
+read(buf);
+print("Input code: ");
+write(buf);
+
+// Evaluate the code in the input box!
+eval(buf, BUFFER_SIZE);
+
+// Print the result of the evaluation to the output box!
+print("\\nResult: ");
+write(buf);
+
+// Call the JavaScript alert function!
+alert(buf);`);
+                    document.getElementById("input").value = "('b' + 'a' + + 'a' + 'a').toUpperCase()";
                     break;
                 case "hello world":
                     source.setValue("print(\"Hello, world!\\n\");");
@@ -2040,6 +2085,7 @@ print(fact(n));`);
             <option value="hashmap">HashMap (Generics)</option>
             <option value="vector">Vector (Generics)</option>
             <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
+            <option value="ffi">Foreign Function Interface (JavaScript Example)</option>
             <option value="calculator">Calculator (Parser)</option>
             <option value="result">Result Enum (Generics)</option>
             <option value="alloc">Allocator</option>

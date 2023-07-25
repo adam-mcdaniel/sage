@@ -632,6 +632,10 @@
 <a href="#632" id="632">632</a>
 <a href="#633" id="633">633</a>
 <a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Assembly Memory Location
 //!
 //! This module contains the `Location` type, which represents a memory
@@ -696,7 +700,7 @@
 //!   Indirect(Address(6)) // go the address pointed to by the value in the 6th cell of the tape
 //!   ```
 </span><span class="kw">use crate</span>::{
-    io::{Input, Output},
+    side_effects::{Input, Output},
     vm::{<span class="self">self</span>, Error, VirtualMachineProgram},
     NULL,
 };
@@ -843,8 +847,12 @@
             }
 
             Location::Offset(loc, offset) =&gt; {
-                result.move_pointer(-<span class="kw-2">*</span>offset);
                 loc.from(result);
+                <span class="comment">// If the offset is from a dereferenced pointer, then moving back before
+                // reversing the dereference does nothing, so we can skip it.
+                </span><span class="kw">if </span>!<span class="macro">matches!</span>(<span class="kw-2">**</span>loc, Location::Indirect(<span class="kw">_</span>)) {
+                    result.move_pointer(-<span class="kw-2">*</span>offset);
+                }
             }
         }
     }

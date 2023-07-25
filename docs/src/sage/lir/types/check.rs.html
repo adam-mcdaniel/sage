@@ -1167,10 +1167,6 @@
 <a href="#1167" id="1167">1167</a>
 <a href="#1168" id="1168">1168</a>
 <a href="#1169" id="1169">1169</a>
-<a href="#1170" id="1170">1170</a>
-<a href="#1171" id="1171">1171</a>
-<a href="#1172" id="1172">1172</a>
-<a href="#1173" id="1173">1173</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Checking
 //!
 //! This module contains the type checking logic for the Lower Intermediate Representation.
@@ -1295,7 +1291,7 @@
                 </span><span class="kw">match </span>poly.clone().simplify_until_matches(
                     env,
                     Type::Poly(<span class="macro">vec!</span>[], Box::new(Type::Any)),
-                    |t, env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>))),
+                    |t, _env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>))),
                 )<span class="question-mark">? </span>{
                     Type::Symbol(name) =&gt; {
                         <span class="comment">// Get the type definition.
@@ -1306,7 +1302,7 @@
                         </span><span class="kw">match </span>ty.clone().simplify_until_matches(
                             env,
                             Type::Poly(<span class="macro">vec!</span>[], Box::new(Type::Any)),
-                            |t, env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>))),
+                            |t, _env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>))),
                         )<span class="question-mark">? </span>{
                             Type::Poly(ty_params, <span class="kw">_</span>) =&gt; {
                                 <span class="comment">// Check that the number of type arguments matches the number of type parameters.
@@ -1370,16 +1366,10 @@
                 </span>expr.type_check(env)<span class="question-mark">?</span>;
                 <span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
 
-                <span class="kw">if </span>ty == Type::Never {
-                    <span class="comment">// If the expression is of type `Never`, then
+                <span class="kw">if </span>ty == Type::Never || ty == Type::Any  {
+                    <span class="comment">// If the expression is an opaque type like `Any` or `Never`, then
                     // throw an `InvalidMatchExpr` error. We do this
                     // because `Never` is an opaque type, and we can&#39;t
-                    // match on it.
-                    </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidMatchExpr(<span class="kw-2">*</span>expr.clone()));
-                } <span class="kw">else if </span>ty == Type::Any {
-                    <span class="comment">// If the expression is an opaque `Any` type,
-                    // then throw an `InvalidMatchExpr` error. We do this
-                    // because `Any` is an opaque type, and we can&#39;t
                     // match on it.
                     </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidMatchExpr(<span class="kw-2">*</span>expr.clone()));
                 }
@@ -1473,7 +1463,7 @@
                         </span><span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
                         <span class="kw">if </span>!ty.equals(<span class="kw-2">&amp;</span>Type::None, env)<span class="question-mark">? </span>{
                             <span class="comment">// If it&#39;s not, return an error.
-                            </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnusedExpr(expr.clone(), ty.clone()));
+                            </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnusedExpr(expr.clone(), ty));
                         }
                     }
                 }
@@ -1681,7 +1671,7 @@
                     <span class="comment">// If so, then make sure the expression being accessed is also sound.
                     </span>e.type_check(env)
                 },
-                other =&gt; <span class="prelude-val">Err</span>(Error::InvalidRefer(other.clone())),
+                other =&gt; <span class="prelude-val">Err</span>(Error::InvalidRefer(other)),
             },
             <span class="comment">// Typecheck a dereference of a pointer.
             </span><span class="self">Self</span>::Deref(e) =&gt; {
@@ -1751,7 +1741,7 @@
                 <span class="comment">// Get the type of the function.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>f_type = f.get_type(env)<span class="question-mark">?</span>;
                 f_type =
-                    f_type.simplify_until_matches(env, Type::Any, |t, env| <span class="prelude-val">Ok</span>(t.is_simple()))<span class="question-mark">?</span>;
+                    f_type.simplify_until_matches(env, Type::Any, |t, _env| <span class="prelude-val">Ok</span>(t.is_simple()))<span class="question-mark">?</span>;
                 <span class="comment">// Infer the types of the supplied arguments.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>args_inferred = <span class="macro">vec!</span>[];
                 <span class="kw">for </span>arg <span class="kw">in </span>args {
@@ -1854,7 +1844,7 @@
                 <span class="comment">// Typecheck the type.
                 </span>t.type_check(env)<span class="question-mark">?</span>;
                 <span class="kw">let </span><span class="kw-2">mut </span>t = t.clone();
-                t = t.simplify_until_matches(env, Type::Union(BTreeMap::new()), |t, env| {
+                t = t.simplify_until_matches(env, Type::Union(BTreeMap::new()), |t, _env| {
                     <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Union(<span class="kw">_</span>)))
                 })<span class="question-mark">?</span>;
                 <span class="kw">match </span>t {
@@ -1871,16 +1861,16 @@
                                     expr: <span class="self">self</span>.clone(),
                                 });
                             }
-                            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                            <span class="prelude-val">Ok</span>(())
                         } <span class="kw">else </span>{
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(
+                            <span class="prelude-val">Err</span>(Error::MemberNotFound(
                                 <span class="self">self</span>.clone(),
                                 ConstExpr::Symbol(field.clone()),
-                            ));
+                            ))
                         }
                     }
                     <span class="kw">_ </span>=&gt; {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(
+                        <span class="prelude-val">Err</span>(Error::MemberNotFound(
                             <span class="self">self</span>.clone(),
                             ConstExpr::Symbol(field.clone()),
                         ))
@@ -1930,7 +1920,7 @@
                 <span class="comment">// Typecheck the type
                 </span>t.type_check(env)<span class="question-mark">?</span>;
                 <span class="kw">let </span><span class="kw-2">mut </span>t = t.clone();
-                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
                     <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::EnumUnion(<span class="kw">_</span>)))
                 })<span class="question-mark">?</span>;
 
@@ -1948,15 +1938,15 @@
                                     expr: <span class="self">self</span>.clone(),
                                 });
                             }
-                            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                            <span class="prelude-val">Ok</span>(())
                         } <span class="kw">else </span>{
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(
+                            <span class="prelude-val">Err</span>(Error::VariantNotFound(
                                 Type::EnumUnion(fields),
                                 variant.clone(),
-                            ));
+                            ))
                         }
                     }
-                    t =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(t, variant.clone())),
+                    t =&gt; <span class="prelude-val">Err</span>(Error::VariantNotFound(t, variant.clone())),
                 }
 
                 <span class="comment">// for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
@@ -2075,9 +2065,9 @@
                     new_env.define_type(name.clone(), ty.clone());
                 }
                 <span class="kw">for </span>(<span class="kw">_</span>, ty) <span class="kw">in </span>bindings {
-                    ty.type_check(<span class="kw-2">&amp;mut </span>new_env)<span class="question-mark">?</span>;
+                    ty.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
                 }
-                expr.type_check(<span class="kw-2">&amp;mut </span>new_env)
+                expr.type_check(<span class="kw-2">&amp;</span>new_env)
             }
             <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; {
                 <span class="self">self</span>.get_type(env)<span class="question-mark">?</span>.type_check(env)<span class="question-mark">?</span>;
@@ -2097,7 +2087,7 @@
                 <span class="comment">// Calculate the inferred type of the expression.
                 </span><span class="kw">let </span>found = expr.get_type(env)<span class="question-mark">?</span>;
                 <span class="comment">// Confirm that the cast is valid.
-                </span><span class="kw">if </span>!found.can_cast_to(<span class="kw-2">&amp;</span>cast_ty, env)<span class="question-mark">? </span>{
+                </span><span class="kw">if </span>!found.can_cast_to(cast_ty, env)<span class="question-mark">? </span>{
                     <span class="comment">// If it isn&#39;t, return an error.
                     </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidAs(
                         Expr::ConstExpr(<span class="kw-2">*</span>expr.clone()),
@@ -2116,6 +2106,8 @@
             </span><span class="self">Self</span>::CoreBuiltin(builtin) =&gt; builtin.type_check(env),
             <span class="comment">// Typecheck a standard-builtin inline assembly procedure.
             </span><span class="self">Self</span>::StandardBuiltin(builtin) =&gt; builtin.type_check(env),
+            <span class="comment">// Typecheck a FFI procedure call
+            </span><span class="self">Self</span>::FFIProcedure(ffi) =&gt; ffi.type_check(env),
             <span class="comment">// Typecheck a procedure.
             </span><span class="self">Self</span>::Proc(proc) =&gt; proc.type_check(env),
             <span class="self">Self</span>::PolyProc(proc) =&gt; proc.type_check(env),
@@ -2140,7 +2132,7 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>t = t.clone();
 
                 t =
-                    t.simplify_until_matches(env, Type::Enum(<span class="macro">vec!</span>[variant.clone()]), |t, env| {
+                    t.simplify_until_matches(env, Type::Enum(<span class="macro">vec!</span>[variant.clone()]), |t, _env| {
                         <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>)))
                     })<span class="question-mark">?</span>;
 
@@ -2149,14 +2141,14 @@
                         <span class="comment">// If the enum contains the variant, return success.
                         </span><span class="kw">if </span>variants.contains(variant) {
                             <span class="comment">// Return success.
-                            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                            </span><span class="prelude-val">Ok</span>(())
                         } <span class="kw">else </span>{
                             <span class="comment">// Otherwise, the variant isn&#39;t contained in the enum,
                             // so return an error.
-                            </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(
+                            </span><span class="prelude-val">Err</span>(Error::VariantNotFound(
                                 Type::Enum(variants),
                                 variant.clone(),
-                            ));
+                            ))
                         }
                     }
                     Type::EnumUnion(variants) <span class="kw">if </span>variants.get(variant) == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>Type::None) =&gt; {
@@ -2165,17 +2157,17 @@
                             &amp;&amp; variants.get(variant) == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>Type::None)
                         {
                             <span class="comment">// Return success.
-                            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                            </span><span class="prelude-val">Ok</span>(())
                         } <span class="kw">else </span>{
                             <span class="comment">// Otherwise, the variant isn&#39;t contained in the enum,
                             // so return an error.
-                            </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(
+                            </span><span class="prelude-val">Err</span>(Error::VariantNotFound(
                                 Type::EnumUnion(variants),
                                 variant.clone(),
-                            ));
+                            ))
                         }
                     }
-                    <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(t.clone(), variant.clone())),
+                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(Error::VariantNotFound(t.clone(), variant.clone())),
                 }
                 <span class="comment">// // Check that the variant is contained in the enum.
                 // // Only check 50 levels deep to keep recursion under control.
@@ -2273,7 +2265,7 @@
                 <span class="comment">// Confirm the type supplied is a union.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>t = t.clone();
 
-                t = t.simplify_until_matches(env, Type::Union(BTreeMap::new()), |t, env| {
+                t = t.simplify_until_matches(env, Type::Union(BTreeMap::new()), |t, _env| {
                     <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Union(<span class="kw">_</span>)))
                 })<span class="question-mark">?</span>;
 
@@ -2291,16 +2283,16 @@
                                     expr: Expr::ConstExpr(<span class="self">self</span>.clone()),
                                 });
                             }
-                            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                            <span class="prelude-val">Ok</span>(())
                         } <span class="kw">else </span>{
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(
+                            <span class="prelude-val">Err</span>(Error::MemberNotFound(
                                 Expr::ConstExpr(<span class="self">self</span>.clone()),
                                 ConstExpr::Symbol(field.clone()),
-                            ));
+                            ))
                         }
                     }
                     <span class="kw">_ </span>=&gt; {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(
+                        <span class="prelude-val">Err</span>(Error::MemberNotFound(
                             Expr::ConstExpr(<span class="self">self</span>.clone()),
                             ConstExpr::Symbol(field.clone()),
                         ))
@@ -2313,7 +2305,7 @@
                 <span class="comment">// Confirm the type supplied is a union.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>t = t.clone();
                 t =
-                    t.simplify_until_matches(env, Type::Enum(<span class="macro">vec!</span>[variant.clone()]), |t, env| {
+                    t.simplify_until_matches(env, Type::Enum(<span class="macro">vec!</span>[variant.clone()]), |t, _env| {
                         <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::EnumUnion(<span class="kw">_</span>) | Type::Enum(<span class="kw">_</span>)))
                     })<span class="question-mark">?</span>;
                 <span class="kw">match </span>t {
@@ -2330,15 +2322,15 @@
                                     expr: Expr::ConstExpr(<span class="self">self</span>.clone()),
                                 });
                             }
-                            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                            <span class="prelude-val">Ok</span>(())
                         } <span class="kw">else </span>{
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(
+                            <span class="prelude-val">Err</span>(Error::VariantNotFound(
                                 Type::EnumUnion(fields),
                                 variant.clone(),
-                            ));
+                            ))
                         }
                     }
-                    <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(t.clone(), variant.clone())),
+                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(Error::VariantNotFound(t.clone(), variant.clone())),
                 }
             }
         }

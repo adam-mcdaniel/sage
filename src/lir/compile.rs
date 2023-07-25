@@ -241,6 +241,11 @@ impl Compile for Expr {
                         // Apply the standard builtin to the arguments on the stack.
                         builtin.compile_expr(env, output)?;
                     }
+                    // If the procedure is a foreign function,
+                    Expr::ConstExpr(ConstExpr::FFIProcedure(ffi)) => {
+                        // Apply the foreign function to the arguments on the stack.
+                        ffi.compile_expr(env, output)?;
+                    }
                     // If the procedure is a symbol, get the procedure from the environment.
                     Expr::ConstExpr(ConstExpr::Symbol(name)) => {
                         match env.get_const(&name) {
@@ -251,6 +256,10 @@ impl Compile for Expr {
                             // If the procedure is a standard builtin,
                             Some(ConstExpr::StandardBuiltin(builtin)) => {
                                 builtin.clone().compile_expr(env, output)?;
+                            }
+                            // If the procedure is a foreign function,
+                            Some(ConstExpr::FFIProcedure(ffi)) => {
+                                ffi.clone().compile_expr(env, output)?;
                             }
                             // Otherwise, it must be a procedure.
                             _ => {
@@ -945,6 +954,10 @@ impl Compile for ConstExpr {
             // Compile a standard builtin.
             Self::StandardBuiltin(builtin) => {
                 builtin.compile_expr(env, output)?;
+            }
+            // Compile a foreign call.
+            Self::FFIProcedure(ffi_proc) => {
+                ffi_proc.compile_expr(env, output)?;
             }
             // Compile a procedure.
             Self::Proc(proc) => {

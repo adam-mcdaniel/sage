@@ -131,6 +131,7 @@ impl Statement {
 #[derive(Clone, Debug)]
 pub enum Declaration {
     Struct(String, Vec<(String, Type)>),
+    Extern(String, Vec<(Option<String>, Type)>, Type),
     Enum(String, Vec<(String, Option<Type>)>),
     Const(Vec<(String, ConstExpr)>),
     Proc(String, Vec<(String, Type)>, Option<Type>, Box<Statement>),
@@ -163,6 +164,9 @@ impl Declaration {
     fn to_expr(self, rest: Option<Expr>) -> Expr {
         let rest_expr = Box::new(rest.clone().unwrap_or(Expr::ConstExpr(ConstExpr::None)));
         match (self, rest) {
+            (Self::Extern(name, args, ret), rest) => {
+                Self::Const(vec![(name.clone(), ConstExpr::FFIProcedure(FFIProcedure::new(name, args.into_iter().map(|(_, x)| x).collect(), ret)))]).to_expr(rest)
+            }
             (Self::Struct(name, fields), Some(Expr::LetTypes(mut types, ret))) => {
                 types.push((name, Type::Struct(fields.into_iter().collect())));
                 Expr::LetTypes(types, ret)
@@ -540,6 +544,27 @@ fn parse_decl(pair: Pair<Rule>, filename: Option<&str>) -> Declaration {
                     )])
                 }
             }
+        }
+        Rule::decl_extern => {
+            let mut inner_rules = pair.into_inner();
+            let name = inner_rules.next().unwrap().as_str().to_string();
+            let mut args = Vec::new();
+            let mut ret = None;
+            for pair in inner_rules {
+                match pair.as_rule() {
+                    Rule::decl_proc_param => {
+                        let mut inner_rules = pair.into_inner();
+                        let name = inner_rules.next().unwrap().as_str().to_string();
+                        let ty = parse_type(inner_rules.next().unwrap());
+                        args.push((Some(name), ty));
+                    }
+                    Rule::r#type => {
+                        ret = Some(parse_type(pair));
+                    }
+                    other => panic!("unexpected rule {:?}", other),
+                }
+            }
+            Declaration::Extern(name, args, ret.unwrap_or(Type::None))
         }
         Rule::decl_const => {
             let mut inner_rules = pair.into_inner();
@@ -1128,6 +1153,7 @@ fn parse_type(pair: Pair<Rule>) -> Type {
 
         Rule::type_symbol => Type::Symbol(pair.as_str().to_string()),
         Rule::type_int => Type::Int,
+        Rule::type_cell => Type::Cell,
         Rule::type_float => Type::Float,
         Rule::type_bool => Type::Bool,
         Rule::type_char => Type::Char,

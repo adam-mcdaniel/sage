@@ -300,7 +300,7 @@
 
         <span class="comment">// Get the type of the procedure&#39;s body, and confirm that it matches the return type.
         </span><span class="kw">let </span>body_type = <span class="self">self</span>.body.get_type(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
-        <span class="kw">if </span>!body_type.equals(<span class="kw-2">&amp;</span><span class="self">self</span>.ret, <span class="kw-2">&amp;</span>env)<span class="question-mark">? </span>{
+        <span class="kw">if </span>!body_type.equals(<span class="kw-2">&amp;</span><span class="self">self</span>.ret, env)<span class="question-mark">? </span>{
             <span class="prelude-val">Err</span>(Error::MismatchedTypes {
                 expected: <span class="self">self</span>.ret.clone(),
                 found: body_type,

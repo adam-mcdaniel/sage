@@ -7,7 +7,7 @@ use crate::vm::{CoreOp, CoreProgram, Device, StandardDevice};
 impl Default for CoreInterpreter<StandardDevice> {
     fn default() -> Self {
         Self {
-            device: StandardDevice,
+            device: StandardDevice::default(),
             pointer: 0,
             register: 0,
             cells: vec![],

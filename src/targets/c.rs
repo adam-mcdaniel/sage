@@ -17,7 +17,7 @@
 //! does not depend on defining functions at runtime.
 use super::{Architecture, CompiledTarget};
 use crate::{
-    io::{Input, InputMode, Output, OutputMode},
+    side_effects::{Input, InputMode, Output, OutputMode},
     vm::{CoreOp, StandardOp},
 };
 
@@ -77,6 +77,7 @@ impl Architecture for C {
 
     fn std_op(&mut self, op: &StandardOp) -> Result<String, String> {
         Ok(match op {
+            StandardOp::Call(ffi) => format!("{}();", ffi.name),
             StandardOp::Peek => self.peek()?,
             StandardOp::Poke => self.poke()?,
             StandardOp::Set(n) => format!("reg.f = {};", n),
@@ -153,20 +154,30 @@ impl Architecture for C {
         }
     }
     fn peek(&mut self) -> Result<String, String> {
-        // Ok("reg.i = *ptr;".to_string())
-        todo!()
+        Ok("reg = *(ffi_ptr--);".to_string())
     }
     fn poke(&mut self) -> Result<String, String> {
-        // Ok("*ptr = reg;".to_string())
-        todo!()
+        Ok("*(++ffi_ptr) = reg;".to_string())
     }
     fn prelude(&self, is_core: bool) -> Option<String> {
-        let mut result = r#"#include <stdio.h>
-union int_or_float {
+        let mut result = r#"#include <stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <string.h>
+
+union cell {
 long long int i;
 double f;
-union int_or_float *p;
-} tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg;
+union cell *p;
+} tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256], *ffi_ptr = ffi_channel;
+
+void __unsafe_memcpy() {
+    union cell *dst = ffi_ptr[-2].p, *src = ffi_ptr[-1].p;
+    long long int n = ffi_ptr[0].i;
+    memcpy(dst, src, n * sizeof(union cell));
+}
+
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);
 "#

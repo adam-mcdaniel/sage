@@ -228,7 +228,7 @@
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
         <span class="kw">let </span>ty = ty.clone().simplify(env)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(ty
-            .simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+            .simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
                 <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>)))
             })
             .is_ok())
@@ -237,7 +237,7 @@
     <span class="doccomment">/// Get the type of the result of applying this unary operation to the given type.
     </span><span class="kw">fn </span>return_type(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
-        ty = ty.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+        ty = ty.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
             <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>)))
         })<span class="question-mark">?</span>;
         <span class="comment">// for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
@@ -278,15 +278,15 @@
                 } <span class="kw">else </span>{
                     <span class="prelude-val">Err</span>(Error::MismatchedTypes {
                         expected: Type::EnumUnion(BTreeMap::new()),
-                        found: t.clone(),
-                        expr: Expr::ConstExpr(expr.clone()),
+                        found: t,
+                        expr: Expr::ConstExpr(expr),
                     })
                 }
             }
             found =&gt; <span class="prelude-val">Err</span>(Error::MismatchedTypes {
                 expected: Type::EnumUnion(BTreeMap::new()),
                 found: found.get_type(env)<span class="question-mark">?</span>,
-                expr: Expr::ConstExpr(expr.clone()),
+                expr: Expr::ConstExpr(expr),
             }),
         }
     }
@@ -338,7 +338,7 @@
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
         <span class="kw">let </span>ty = ty.clone().simplify(env)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(ty
-            .simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+            .simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
                 <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::EnumUnion(<span class="kw">_</span>) | Type::Enum(<span class="kw">_</span>)))
             })
             .is_ok())
@@ -347,7 +347,7 @@
     <span class="doccomment">/// Get the type of the result of applying this unary operation to the given type.
     </span><span class="kw">fn </span>return_type(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
-        ty = ty.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+        ty = ty.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
             <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::EnumUnion(<span class="kw">_</span>) | Type::Enum(<span class="kw">_</span>)))
         })<span class="question-mark">?</span>;
         <span class="comment">// for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
@@ -386,14 +386,14 @@
                     <span class="prelude-val">Err</span>(Error::MismatchedTypes {
                         expected: Type::EnumUnion(BTreeMap::new()),
                         found: t.clone(),
-                        expr: Expr::ConstExpr(expr.clone()),
+                        expr: Expr::ConstExpr(expr),
                     })
                 }
             }
             found =&gt; <span class="prelude-val">Err</span>(Error::MismatchedTypes {
                 expected: Type::EnumUnion(BTreeMap::new()),
                 found: found.get_type(env)<span class="question-mark">?</span>,
-                expr: Expr::ConstExpr(expr.clone()),
+                expr: Expr::ConstExpr(expr),
             }),
         }
     }

@@ -17,7 +17,7 @@ pub fn as_int(n: f64) -> i64 {
 
 impl Default for StandardInterpreter<StandardDevice> {
     fn default() -> Self {
-        Self::new(StandardDevice)
+        Self::new(StandardDevice::default())
     }
 }
 
@@ -401,6 +401,9 @@ where
                     self.register = result as i64;
                 }
                 StandardOp::Free => {}
+                StandardOp::Call(binding) => {
+                    self.device.ffi_call(binding, Some(&mut self.cells))?;
+                }
             }
             self.i += 1
         } else {

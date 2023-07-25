@@ -164,6 +164,18 @@
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Virtual Machine Module
 //!
 //! This module contains all things related to the virtual machine.
@@ -219,7 +231,7 @@
 //! 16 bit ints + no floats for a hardware implementation would suffice.
 //! Infinitely large ints and floats are also supported, but the implementation
 //! must be able to handle them.
-</span><span class="kw">use </span><span class="kw">crate</span>::io::{Input, Output};
+</span><span class="kw">use </span><span class="kw">crate</span>::side_effects::{Input, Output, FFIBinding};
 
 <span class="kw">mod </span>core;
 <span class="kw">pub use </span><span class="self">self</span>::core::<span class="kw-2">*</span>;
@@ -247,6 +259,18 @@
     <span class="kw">fn </span>op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: CoreOp);
     <span class="kw">fn </span>std_op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: StandardOp) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
     <span class="kw">fn </span>code(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;CoreProgram, StandardProgram&gt;;
+
+    <span class="kw">fn </span>ffi_call(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ffi: FFIBinding) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="self">self</span>.std_op(StandardOp::Call(ffi))
+    }
+
+    <span class="kw">fn </span>poke(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="self">self</span>.std_op(StandardOp::Poke)
+    }
+
+    <span class="kw">fn </span>peek(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="self">self</span>.std_op(StandardOp::Peek)
+    }
 
     <span class="kw">fn </span>comment(<span class="kw-2">&amp;mut </span><span class="self">self</span>, comment: <span class="kw-2">&amp;</span>str) {
         <span class="self">self</span>.op(CoreOp::Comment(comment.to_string()));

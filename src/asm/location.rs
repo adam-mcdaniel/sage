@@ -62,7 +62,7 @@
 //!   Indirect(Address(6)) // go the address pointed to by the value in the 6th cell of the tape
 //!   ```
 use crate::{
-    io::{Input, Output},
+    side_effects::{Input, Output},
     vm::{self, Error, VirtualMachineProgram},
     NULL,
 };
@@ -209,7 +209,11 @@ impl Location {
             }
 
             Location::Offset(loc, offset) => {
-                result.move_pointer(-*offset);
+                // If the offset is from a dereferenced pointer, then moving back before
+                // reversing the dereference does nothing, so we can skip it.
+                if !matches!(**loc, Location::Indirect(_)) {
+                    result.move_pointer(-*offset);
+                }
                 loc.from(result);
             }
         }

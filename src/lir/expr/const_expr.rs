@@ -11,7 +11,7 @@
 
 use crate::lir::{
     CoreBuiltin, Env, Error, Expr, GetSize, GetType, PolyProcedure, Procedure, Simplify,
-    StandardBuiltin, Type, TypeCheck,
+    StandardBuiltin, FFIProcedure, Type, TypeCheck,
 };
 use crate::parse::SourceCodeLocation;
 
@@ -76,6 +76,8 @@ pub enum ConstExpr {
     CoreBuiltin(CoreBuiltin),
     /// A builtin implemented in handwritten standard assembly.
     StandardBuiltin(StandardBuiltin),
+    /// A foreign function interface binding.
+    FFIProcedure(FFIProcedure),
     /// A procedure.
     Proc(Procedure),
     /// A polymorphic procedure.
@@ -135,6 +137,7 @@ impl ConstExpr {
                 | Self::Of(_, _)
                 | Self::CoreBuiltin(_)
                 | Self::StandardBuiltin(_)
+                | Self::FFIProcedure(_)
                 | Self::Proc(_)
                 | Self::PolyProc(_) => Ok(self),
 
@@ -337,6 +340,7 @@ impl GetType for ConstExpr {
             Self::Proc(proc) => proc.get_type_checked(env, i)?,
             Self::CoreBuiltin(builtin) => builtin.get_type_checked(env, i)?,
             Self::StandardBuiltin(builtin) => builtin.get_type_checked(env, i)?,
+            Self::FFIProcedure(ffi_proc) => ffi_proc.get_type_checked(env, i)?,
 
             Self::Symbol(name) => {
                 if let Some((t, _)) = env.get_var(&name) {
@@ -442,6 +446,9 @@ impl GetType for ConstExpr {
             Self::StandardBuiltin(builtin) => {
                 builtin.substitute(name, ty);
             }
+            Self::FFIProcedure(ffi_proc) => {
+                ffi_proc.substitute(name, ty);
+            }
             Self::Symbol(_) => {}
         }
     }
@@ -450,6 +457,9 @@ impl GetType for ConstExpr {
 impl fmt::Display for ConstExpr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Self::FFIProcedure(ffi_proc) => {
+                write!(f, "{ffi_proc}")
+            }
             Self::AnnotatedWithSource { expr, .. } => {
                 write!(f, "{expr}")
             }

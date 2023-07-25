@@ -1084,6 +1084,24 @@
 <a href="#1084" id="1084">1084</a>
 <a href="#1085" id="1085">1085</a>
 <a href="#1086" id="1086">1086</a>
+<a href="#1087" id="1087">1087</a>
+<a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a>
+<a href="#1099" id="1099">1099</a>
+<a href="#1100" id="1100">1100</a>
+<a href="#1101" id="1101">1101</a>
+<a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compile
 //!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
@@ -1327,6 +1345,11 @@
                         <span class="comment">// Apply the standard builtin to the arguments on the stack.
                         </span>builtin.compile_expr(env, output)<span class="question-mark">?</span>;
                     }
+                    <span class="comment">// If the procedure is a foreign function,
+                    </span>Expr::ConstExpr(ConstExpr::FFIProcedure(ffi)) =&gt; {
+                        <span class="comment">// Apply the foreign function to the arguments on the stack.
+                        </span>ffi.compile_expr(env, output)<span class="question-mark">?</span>;
+                    }
                     <span class="comment">// If the procedure is a symbol, get the procedure from the environment.
                     </span>Expr::ConstExpr(ConstExpr::Symbol(name)) =&gt; {
                         <span class="kw">match </span>env.get_const(<span class="kw-2">&amp;</span>name) {
@@ -1337,6 +1360,10 @@
                             <span class="comment">// If the procedure is a standard builtin,
                             </span><span class="prelude-val">Some</span>(ConstExpr::StandardBuiltin(builtin)) =&gt; {
                                 builtin.clone().compile_expr(env, output)<span class="question-mark">?</span>;
+                            }
+                            <span class="comment">// If the procedure is a foreign function,
+                            </span><span class="prelude-val">Some</span>(ConstExpr::FFIProcedure(ffi)) =&gt; {
+                                ffi.clone().compile_expr(env, output)<span class="question-mark">?</span>;
                             }
                             <span class="comment">// Otherwise, it must be a procedure.
                             </span><span class="kw">_ </span>=&gt; {
@@ -1590,7 +1617,7 @@
                         </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(Type::EnumUnion(fields), variant));
                     }
                 } <span class="kw">else </span>{
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(t.clone(), variant.clone()));
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(t.clone(), variant));
                 }
             }
 
@@ -1887,8 +1914,13 @@
             }
             <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; <span class="kw">match </span>expr.eval(env)<span class="question-mark">? </span>{
                 <span class="self">Self</span>::PolyProc(poly_proc) =&gt; {
-                    <span class="comment">// First, monomorphize the function
-                    </span><span class="kw">let </span>proc = poly_proc.monomorphize(ty_args.clone(), env)<span class="question-mark">?</span>;
+                    <span class="comment">// Simplify the type arguments.
+                    </span><span class="kw">let </span>ty_args = ty_args
+                        .into_iter()
+                        .map(|ty| ty.simplify(env))
+                        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
+                    <span class="comment">// Monomorphize the function
+                    </span><span class="kw">let </span>proc = poly_proc.monomorphize(ty_args, env)<span class="question-mark">?</span>;
                     <span class="comment">// Typecheck the monomorphized function.
                     </span>proc.type_check(env)<span class="question-mark">?</span>;
                     <span class="comment">// Compile the monomorphized function.
@@ -1923,12 +1955,12 @@
             <span class="comment">// Compile a cell value.
             </span><span class="self">Self</span>::Cell(n) =&gt; {
                 output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.op(CoreOp::Set(SP.deref(), n <span class="kw">as </span>i64));
+                output.op(CoreOp::Set(SP.deref(), n));
             }
             <span class="comment">// Compile an integer constant.
             </span><span class="self">Self</span>::Int(n) =&gt; {
                 output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.op(CoreOp::Set(SP.deref(), n <span class="kw">as </span>i64));
+                output.op(CoreOp::Set(SP.deref(), n));
             }
             <span class="comment">// Compile a float constant.
             </span><span class="self">Self</span>::Float(f) =&gt; {
@@ -1985,7 +2017,7 @@
                 <span class="comment">// Get the size of the tagged union.
                 </span><span class="kw">let </span>result_size = t.get_size(env)<span class="question-mark">?</span>;
                 <span class="kw">let </span>t =
-                    t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, env| {
+                    t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
                         <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>)))
                     })<span class="question-mark">?</span>;
 
@@ -2027,6 +2059,10 @@
             </span><span class="self">Self</span>::StandardBuiltin(builtin) =&gt; {
                 builtin.compile_expr(env, output)<span class="question-mark">?</span>;
             }
+            <span class="comment">// Compile a foreign call.
+            </span><span class="self">Self</span>::FFIProcedure(ffi_proc) =&gt; {
+                ffi_proc.compile_expr(env, output)<span class="question-mark">?</span>;
+            }
             <span class="comment">// Compile a procedure.
             </span><span class="self">Self</span>::Proc(proc) =&gt; {
                 <span class="comment">// Get the mangled name of the procedure.
@@ -2049,7 +2085,7 @@
                 <span class="comment">// Get the type of the expression.
                 </span><span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
                 <span class="comment">// Return the type as a string.
-                </span>ConstExpr::Array(ty.to_string().chars().map(|c| ConstExpr::Char(c)).collect())
+                </span>ConstExpr::Array(ty.to_string().chars().map(ConstExpr::Char).collect())
                     .compile_expr(env, output)<span class="question-mark">?
             </span>}
 
@@ -2060,7 +2096,7 @@
                 </span>enum_type = enum_type.simplify_until_matches(
                     env,
                     Type::Enum(<span class="macro">vec!</span>[variant.clone()]),
-                    |t, env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>))),
+                    |t, _env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>))),
                 )<span class="question-mark">?</span>;
 
                 <span class="kw">match </span>enum_type.clone() {
@@ -2081,7 +2117,7 @@
                     </span>Type::EnumUnion(variants) <span class="kw">if </span>variants.get(<span class="kw-2">&amp;</span>variant) == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>Type::None) =&gt; {
                         <span class="comment">// Get the index of the variant.
                         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(index) =
-                            Type::variant_index(<span class="kw-2">&amp;</span>variants.into_keys().collect(), <span class="kw-2">&amp;</span>variant)
+                            Type::variant_index(variants.into_keys().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().as_slice(), <span class="kw-2">&amp;</span>variant)
                         {
                             <span class="comment">// Push the index of the variant onto the stack.
                             // Allocate the size of the structure on the stack by

@@ -937,6 +937,8 @@ impl TypeCheck for ConstExpr {
             Self::CoreBuiltin(builtin) => builtin.type_check(env),
             // Typecheck a standard-builtin inline assembly procedure.
             Self::StandardBuiltin(builtin) => builtin.type_check(env),
+            // Typecheck a FFI procedure call
+            Self::FFIProcedure(ffi) => ffi.type_check(env),
             // Typecheck a procedure.
             Self::Proc(proc) => proc.type_check(env),
             Self::PolyProc(proc) => proc.type_check(env),

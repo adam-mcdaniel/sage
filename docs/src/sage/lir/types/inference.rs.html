@@ -601,6 +601,16 @@
 <a href="#601" id="601">601</a>
 <a href="#602" id="602">602</a>
 <a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Inference
 //!
 //! This module contains the type inference algorithm for the language.
@@ -647,9 +657,19 @@
 
             <span class="self">Self</span>::Match(expr, branches) =&gt; {
                 <span class="kw">for </span>(pat, branch) <span class="kw">in </span>branches {
-                    <span class="kw">return </span>pat.get_branch_result_type(<span class="kw-2">&amp;</span>expr, branch, env);
+                    <span class="kw">let </span>ty = pat.get_branch_result_type(expr, branch, env)<span class="question-mark">?</span>;
+                    <span class="kw">if </span>ty != Type::Never {
+                        <span class="kw">return </span><span class="prelude-val">Ok</span>(ty);
+                    }
                 }
-                Type::None
+                <span class="comment">// If the match expression is empty, then it returns the None value.
+                </span><span class="kw">if </span>branches.is_empty() {
+                    Type::None
+                } <span class="kw">else </span>{
+                    <span class="comment">// All the branches never return a value, so the match expression
+                    // returns the Never type.
+                    </span>Type::Never
+                }
             }
 
             <span class="self">Self</span>::IfLet(_pat, _expr, _a, b) =&gt; {
@@ -871,13 +891,13 @@
                 ty = ty.simplify_until_matches(
                     env,
                     Type::Proc(<span class="macro">vec!</span>[], Box::new(Type::Any)),
-                    |t, env| <span class="prelude-val">Ok</span>(t.is_simple()),
+                    |t, _env| <span class="prelude-val">Ok</span>(t.is_simple()),
                 )<span class="question-mark">?</span>;
                 <span class="kw">match </span>ty {
                     Type::Proc(<span class="kw">_</span>, ret) =&gt; <span class="kw-2">*</span>ret,
                     Type::Let(name, t, result) =&gt; {
                         <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                        new_env.define_type(name, <span class="kw-2">*</span>t.clone());
+                        new_env.define_type(name, <span class="kw-2">*</span>t);
                         <span class="kw">if let </span>Type::Proc(_args, ret) = <span class="kw-2">*</span>result {
                             <span class="kw-2">*</span>ret
                         } <span class="kw">else </span>{
@@ -959,7 +979,7 @@
                 </span><span class="kw">match </span>val.get_type_checked(env, i)<span class="question-mark">?</span>.simplify_until_matches(
                     env,
                     Type::Struct(BTreeMap::new()),
-                    |t, env| {
+                    |t, _env| {
                         <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(
                             t,
                             Type::Tuple(<span class="kw">_</span>) | Type::Struct(<span class="kw">_</span>) | Type::Union(<span class="kw">_</span>)
@@ -1065,7 +1085,7 @@
                 }
                 expr.substitute(name, ty)
             }
-            <span class="self">Self</span>::LetVar(var, t, val, ret) =&gt; {
+            <span class="self">Self</span>::LetVar(_var, t, val, ret) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = t {
                     <span class="kw-2">*</span>t = t.substitute(name, ty);
                 }
@@ -1123,26 +1143,26 @@
                 }
             }
 
-            <span class="self">Self</span>::IfLet(pat, expr, then_body, else_body) =&gt; {
+            <span class="self">Self</span>::IfLet(_pat, expr, then_body, else_body) =&gt; {
                 expr.substitute(name, ty);
                 then_body.substitute(name, ty);
                 else_body.substitute(name, ty)
             }
 
-            <span class="self">Self</span>::UnaryOp(op, expr) =&gt; expr.substitute(name, ty),
+            <span class="self">Self</span>::UnaryOp(_op, expr) =&gt; expr.substitute(name, ty),
 
-            <span class="self">Self</span>::BinaryOp(op, lhs, rhs) =&gt; {
+            <span class="self">Self</span>::BinaryOp(_op, lhs, rhs) =&gt; {
                 lhs.substitute(name, ty);
                 rhs.substitute(name, ty)
             }
 
-            <span class="self">Self</span>::TernaryOp(op, cond, then, els) =&gt; {
+            <span class="self">Self</span>::TernaryOp(_op, cond, then, els) =&gt; {
                 cond.substitute(name, ty);
                 then.substitute(name, ty);
                 els.substitute(name, ty)
             }
 
-            <span class="self">Self</span>::AssignOp(op, lhs, rhs) =&gt; {
+            <span class="self">Self</span>::AssignOp(_op, lhs, rhs) =&gt; {
                 lhs.substitute(name, ty);
                 rhs.substitute(name, ty)
             }

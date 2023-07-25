@@ -317,11 +317,11 @@
                 }
 
                 <span class="comment">// Make sure that inner types are compatible.
-                </span><span class="kw">if </span>!a_type.equals(<span class="kw-2">&amp;</span>b_type, env)<span class="question-mark">? </span>{
+                </span><span class="kw">if </span>!a_type.equals(b_type, env)<span class="question-mark">? </span>{
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
                 }
 
-                <span class="self">self</span>.can_apply(<span class="kw-2">&amp;</span>a_type, <span class="kw-2">&amp;</span>b_type, env)
+                <span class="self">self</span>.can_apply(a_type, b_type, env)
             }
             (a, <span class="self">Self</span>::Equal, b) | (a, <span class="self">Self</span>::NotEqual, b) =&gt; {
                 <span class="prelude-val">Ok</span>(a.equals(b, env)<span class="question-mark">? </span>&amp;&amp; a.get_size(env)<span class="question-mark">? </span>== <span class="number">1</span>)
@@ -491,7 +491,7 @@
             }
 
             (Type::Unit(_name1, a_type), <span class="kw">_</span>, Type::Unit(_name2, b_type)) =&gt; {
-                <span class="kw">return </span><span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>a_type, <span class="kw-2">&amp;</span>b_type, env, output);
+                <span class="kw">return </span><span class="self">self</span>.compile_types(a_type, b_type, env, output);
             }
 
             (a, <span class="self">Self</span>::Equal, b) <span class="kw">if </span>a.equals(b, env)<span class="question-mark">? </span>=&gt; {

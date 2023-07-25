@@ -197,6 +197,29 @@
 <a href="#197" id="197">197</a>
 <a href="#198" id="198">198</a>
 <a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # C Target
 //!
 //! An implementation of the virtual machine for the C language.
@@ -216,7 +239,7 @@
 //! does not depend on defining functions at runtime.
 </span><span class="kw">use super</span>::{Architecture, CompiledTarget};
 <span class="kw">use crate</span>::{
-    io::{Input, InputMode, Output, OutputMode},
+    side_effects::{Input, InputMode, Output, OutputMode},
     vm::{CoreOp, StandardOp},
 };
 
@@ -243,7 +266,7 @@
     <span class="kw">fn </span>op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>CoreOp) -&gt; String {
         <span class="kw">match </span>op {
             CoreOp::Comment(n) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;// {}&quot;</span>, n.replace(<span class="string">&quot;\n&quot;</span>, <span class="string">&quot;\n// &quot;</span>).replace(<span class="string">&quot;\r&quot;</span>, <span class="string">&quot;&quot;</span>))
+                <span class="macro">format!</span>(<span class="string">&quot;// {}&quot;</span>, n.replace(<span class="string">&#39;\n&#39;</span>, <span class="string">&quot;\n// &quot;</span>).replace(<span class="string">&#39;\r&#39;</span>, <span class="string">&quot;&quot;</span>))
                 <span class="comment">// let mut comment = String::new();
                 // for line in n.split(&#39;\n&#39;) {
                 //     comment += &amp;format!(&quot;// {}&quot;, line.trim());
@@ -276,6 +299,7 @@
 
     <span class="kw">fn </span>std_op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>StandardOp) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>op {
+            StandardOp::Call(ffi) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}();&quot;</span>, ffi.name),
             StandardOp::Peek =&gt; <span class="self">self</span>.peek()<span class="question-mark">?</span>,
             StandardOp::Poke =&gt; <span class="self">self</span>.poke()<span class="question-mark">?</span>,
             StandardOp::Set(n) =&gt; <span class="macro">format!</span>(<span class="string">&quot;reg.f = {};&quot;</span>, n),
@@ -352,20 +376,42 @@
         }
     }
     <span class="kw">fn </span>peek(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
-        <span class="comment">// Ok(&quot;reg.i = *ptr;&quot;.to_string())
-        </span><span class="macro">todo!</span>()
+        <span class="prelude-val">Ok</span>(<span class="string">&quot;reg = *(ffi_ptr--);&quot;</span>.to_string())
     }
     <span class="kw">fn </span>poke(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
-        <span class="comment">// Ok(&quot;*ptr = reg;&quot;.to_string())
-        </span><span class="macro">todo!</span>()
+        <span class="prelude-val">Ok</span>(<span class="string">&quot;*(++ffi_ptr) = reg;&quot;</span>.to_string())
     }
     <span class="kw">fn </span>prelude(<span class="kw-2">&amp;</span><span class="self">self</span>, is_core: bool) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="string">r#&quot;#include &lt;stdio.h&gt;
-union int_or_float {
+        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="string">r#&quot;#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;math.h&gt;
+#include &lt;string.h&gt;
+
+union cell {
 long long int i;
 double f;
-union int_or_float *p;
-} tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg;
+union cell *p;
+} tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256], *ffi_ptr = ffi_channel;
+
+void square_root() {
+    ffi_ptr-&gt;f = sqrt(ffi_ptr-&gt;f);
+}
+
+void __unsafe_memcpy() {
+    union cell *dst = ffi_ptr[-2].p, *src = ffi_ptr[-1].p;
+    long long int n = ffi_ptr[0].i;
+    memcpy(dst, src, n * sizeof(union cell));
+}
+
+void add() {
+    double a = ffi_ptr[-1].f;
+    double b = ffi_ptr[0].f;
+
+    ffi_ptr[-1].f = a + b;
+    ffi_ptr--;
+}
+
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);
 &quot;#
