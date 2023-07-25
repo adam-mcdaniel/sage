@@ -172,22 +172,10 @@ double f;
 union cell *p;
 } tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256], *ffi_ptr = ffi_channel;
 
-void square_root() {
-    ffi_ptr->f = sqrt(ffi_ptr->f);
-}
-
 void __unsafe_memcpy() {
     union cell *dst = ffi_ptr[-2].p, *src = ffi_ptr[-1].p;
     long long int n = ffi_ptr[0].i;
     memcpy(dst, src, n * sizeof(union cell));
-}
-
-void add() {
-    double a = ffi_ptr[-1].f;
-    double b = ffi_ptr[0].f;
-
-    ffi_ptr[-1].f = a + b;
-    ffi_ptr--;
 }
 
 unsigned int ref_ptr = 0;
