@@ -379,12 +379,6 @@
 <a href="#379" id="379">379</a>
 <a href="#380" id="380">380</a>
 <a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # The Interpreter Module
 //!
 //! This module implements two interpreters for the virtual machine: one for each variant.
@@ -417,14 +411,16 @@
     <span class="doccomment">/// Put the given value to the given output destination.
     </span><span class="kw">fn </span>put(<span class="kw-2">&amp;mut </span><span class="self">self</span>, val: i64, dst: Output) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt;;
 
-    <span class="doccomment">/// Peek a value from the side-effecting device wrapping
-    /// the virtual machine.
+    <span class="doccomment">/// Peek at the next value in the FFI buffer for the FFI function calls.
+    /// Store the peeked value in the register.
     </span><span class="kw">fn </span>peek(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;i64, String&gt;;
-    <span class="doccomment">/// Poke a value into the side-effecting device wrapping
-    /// the virtual machine.
+    <span class="doccomment">/// Poke a value into the FFI buffer for the FFI function calls.
     </span><span class="kw">fn </span>poke(<span class="kw-2">&amp;mut </span><span class="self">self</span>, val: i64) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt;;
 
-    <span class="doccomment">/// FFI call to the device.
+    <span class="doccomment">/// FFI call to the device. This will get the FFI binding for the device
+    /// and call the function associated with the binding. If the tape is
+    /// provided, the foreign function may mutate the tape. Otherwise all
+    /// interaction with the FFI is done through the FFI channel.
     </span><span class="kw">fn </span>ffi_call(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ffi: <span class="kw-2">&amp;</span>FFIBinding, tape: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>Vec&lt;i64&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt;;
 }
 
@@ -595,9 +591,7 @@
     }
 
     <span class="kw">fn </span>peek(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;i64, String&gt; {
-        <span class="comment">// println!(&quot;peeking&quot;);
-        // Ok(0)
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(n) = <span class="self">self</span>.ffi_channel.pop_front() {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(n) = <span class="self">self</span>.ffi_channel.pop_front() {
             <span class="prelude-val">Ok</span>(n)
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(<span class="string">&quot;ffi channel is empty&quot;</span>.to_string())
@@ -745,9 +739,7 @@
     }
 
     <span class="kw">fn </span>peek(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;i64, String&gt; {
-        <span class="comment">// println!(&quot;peeking&quot;);
-        // Ok(0)
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(n) = <span class="self">self</span>.ffi_channel.pop_front() {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(n) = <span class="self">self</span>.ffi_channel.pop_front() {
             <span class="prelude-val">Ok</span>(n)
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(<span class="string">&quot;ffi channel is empty&quot;</span>.to_string())
@@ -755,16 +747,12 @@
     }
 
     <span class="kw">fn </span>poke(<span class="kw-2">&amp;mut </span><span class="self">self</span>, val: i64) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
-        <span class="comment">// println!(&quot;poking {}&quot;, val);
-        // Ok(())
-        </span><span class="self">self</span>.ffi_channel.push_back(val);
+        <span class="self">self</span>.ffi_channel.push_back(val);
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">fn </span>ffi_call(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ffi: <span class="kw-2">&amp;</span>FFIBinding, tape: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>Vec&lt;i64&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
-        <span class="comment">// println!(&quot;ffi call: {:?}&quot;, ffi);
-        // Ok(())
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(f) = <span class="self">self</span>.ffi.get(ffi) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(f) = <span class="self">self</span>.ffi.get(ffi) {
             f(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ffi_channel, tape);
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else </span>{

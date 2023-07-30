@@ -5,8 +5,8 @@
 //! The label is the name of the foreign function. The types determine the 
 //! size of the cells for the arguments and return value.
 use crate::side_effects::FFIBinding;
-use crate::asm::{AssemblyProgram, StandardOp, CoreOp, A, FP, SP};
-use crate::lir::{Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Type, TypeCheck};
+use crate::asm::{AssemblyProgram, StandardOp};
+use crate::lir::{Compile, Env, Error, GetSize, GetType, Type, TypeCheck};
 use core::fmt::{Display, Formatter, Result as FmtResult};
 
 /// A typed procedure which calls a foreign function.

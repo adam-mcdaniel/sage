@@ -343,6 +343,9 @@
 <a href="#343" id="343">343</a>
 <a href="#344" id="344">344</a>
 <a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The standard instructions of the virtual machine are defined here.
 //!
 //! ## Purpose of the Standard Instructions
@@ -641,13 +644,16 @@
     /// functionality that can&#39;t be implemented in the virtual machine, such as I/O or OS operations.
     /// 
     /// Whenever a value is returned from the foreign function interface, it is stored in the
-    /// FFI buffer of cells. This instruction will 
+    /// FFI buffer of cells. Whenever an FFI function is called, it will receive its arguments
+    /// from this buffer.
     </span>Peek,
     <span class="doccomment">/// Write the value of the register to the output interface / device.
     /// This is intended to function something like system calls for using any external
     /// functionality that can&#39;t be implemented in the virtual machine, such as I/O or OS operations.
     ///
-    /// The specific behavior of this instruction is purposefully not defined.
+    /// Whenever a value is returned from the foreign function interface, it is stored in the
+    /// FFI buffer of cells. Whenever an FFI function is called, it will receive its arguments
+    /// from this buffer.
     </span>Poke,
 
     <span class="doccomment">/// Call a foreign function interface function.

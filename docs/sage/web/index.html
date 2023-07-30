@@ -931,18 +931,6 @@ def String_clone(s: &String): String {
         len=s->len,
         cap=s->cap
     };
-    // match copy_slice<Char>(s->data, s->cap) {
-    //     of Some(data) => {
-    //         return Option<String> of Some({
-    //             data=data,
-    //             len=s->len,
-    //             cap=s->cap
-    //         });
-    //     },
-    //     of Nothing => {
-    //         return Option<String> of Nothing;
-    //     }
-    // }
 }
 
 def String_new_with_capacity(cap: Int): Option<String> {
@@ -1160,32 +1148,27 @@ if let of Some(str) = String_from(&raw_text as &Char) {
         str,
         String_push(String_clone(&str), '!'),
         String_push(String_push(String_clone(&str), '!'), '!'),
-        String_clone(&str),
-        String_clone(&str)
+        String_push(String_push(String_push(String_clone(&str), '!'), '!'), '!'),
+        String_push(String_push(String_push(String_push(String_clone(&str), '!'), '!'), '!'), '!')
     ];
 
-    let second = [
-        String_clone(&str),
-        String_clone(&str),
-        String_clone(&str),
-        String_clone(&str),
-        String_clone(&str)
-    ];
-    
-    print("Sequence of strings: ");
-    test<String>(&first as &String, &second as &String);
-    for let i = 0; i < 5; i+=1 {
-        print(i, ": "); String_print(&(first[i])); print("\\n");
+    if let of Some(second) = Sequence_from<String>(&first as &String, sizeof(first) / sizeof<String>()) {
+        print("Sequence of strings: ");
+        test<String>(&first as &String, second.data);
+        for let i = 0; i < 5; i+=1 {
+            print(i, ": "); String_print(&(first[i])); print("\\n");
+        }
+        second = Sequence_reverse<String>(second);
+        for let i = 0; i < 5; i+=1 {
+            if let of Some(s) = Sequence_nth<String>(&second, i) {
+                print(i + 5, ": "); String_print(s); print("\\n");
+            	String_drop(s);
+            }
+        }
+    	Sequence_drop<String>(&second);
     }
-    for let i = 0; i < 5; i+=1 {
-        print(i + 5, ": "); String_print(&(second[i])); print("\\n");
-    }
-
-    for let i = 0; i < 5; i+=1 {
-        String_drop(&(first[i]));
-        String_drop(&(second[i]));
-    }
-}`);
+}
+print("Vector operations done!\\n");`);
                     break;
 
                 case "calculator":
@@ -1479,7 +1462,7 @@ def parse_whitespaces(input: Input): Input {
         return input;
     }
 
-    for (); input.loc < input.length && (input.start[input.loc] == ' ' || input.start[input.loc] == '\r' || input.start[input.loc] == '\\n'); input.loc += 1 {}
+    for (); input.loc < input.length && (input.start[input.loc] == ' ' || input.start[input.loc] == '\\r' || input.start[input.loc] == '\\n'); input.loc += 1 {}
 
     return input;
 }

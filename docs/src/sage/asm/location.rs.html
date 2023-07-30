@@ -847,12 +847,12 @@
             }
 
             Location::Offset(loc, offset) =&gt; {
-                loc.from(result);
                 <span class="comment">// If the offset is from a dereferenced pointer, then moving back before
                 // reversing the dereference does nothing, so we can skip it.
                 </span><span class="kw">if </span>!<span class="macro">matches!</span>(<span class="kw-2">**</span>loc, Location::Indirect(<span class="kw">_</span>)) {
                     result.move_pointer(-<span class="kw-2">*</span>offset);
                 }
+                loc.from(result);
             }
         }
     }
