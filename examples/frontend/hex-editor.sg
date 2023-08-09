@@ -322,9 +322,10 @@ def allocate<T>(count: Int): &T {
     return alloc(sizeof<T>() * count) as &T;
 }
 
-def reallocate<T>(src: &T, new_size: Int): &T {
+def reallocate<T>(src: &T, old_size: Int, new_size: Int): &T {
     let dst = allocate<T>(new_size);
-    copy<T>(dst, src, new_size);
+    copy<T>(dst, src, old_size);
+    del src;
     return dst;
 }
 
@@ -341,7 +342,7 @@ def Memory_extend(m: &Memory, count: Int) {
     while (m->length + count >= m->capacity) {
         m->capacity *= 2;
     }
-    m->data = reallocate<Int>(m->data, m->capacity);
+    m->data = reallocate<Int>(m->data, m->length, m->capacity);
     m->length += count;
 }
 

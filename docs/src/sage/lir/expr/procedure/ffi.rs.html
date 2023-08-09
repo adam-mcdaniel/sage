@@ -89,8 +89,8 @@
 //! The label is the name of the foreign function. The types determine the 
 //! size of the cells for the arguments and return value.
 </span><span class="kw">use </span><span class="kw">crate</span>::side_effects::FFIBinding;
-<span class="kw">use </span><span class="kw">crate</span>::asm::{AssemblyProgram, StandardOp, CoreOp, A, FP, SP};
-<span class="kw">use </span><span class="kw">crate</span>::lir::{Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Type, TypeCheck};
+<span class="kw">use </span><span class="kw">crate</span>::asm::{AssemblyProgram, StandardOp};
+<span class="kw">use </span><span class="kw">crate</span>::lir::{Compile, Env, Error, GetSize, GetType, Type, TypeCheck};
 <span class="kw">use </span>core::fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 
 <span class="doccomment">/// A typed procedure which calls a foreign function.
