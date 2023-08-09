@@ -1,0 +1,464 @@
+enum Maybe<T> {
+    Some(T),
+    Nothing,
+}
+
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+
+enum Command {
+    Write {
+        start: Int,
+        end: Maybe<Int>,
+        value: Int,
+    },
+    Examine {
+        start: Int,
+        end: Maybe<Int>
+    },
+    Clear(Maybe<Int>),
+    Grow(Int),
+    Shrink(Int),
+    Quit,
+    Report,
+    Help,
+    Unknown,
+}
+
+struct Memory {
+    data: &Int,
+    length: Int,
+    capacity: Int,
+}
+
+const HELP_MESSAGE = "HELP
+====
+Commands:
+1. Examine a byte in memory:
+    '<address>'           to examine a single byte
+    '<address>.<address>' to examine a range of memory
+
+2. Write to a byte in memory:
+    '<address>=<value>'           to write a single byte
+    '<address>.<address>=<value>' to write a range of memory
+
+3. Clear memory:
+    '!'         to clear all memory to zero
+    '! <value>' to clear all memory to a specific value
+
+4. Grow or shrink memory:
+    '+ <value>' to grow memory to a specific size
+    '- <value>' to shrink memory to a specific size
+
+5. Report:
+    'r' to print the current memory state
+    'h' to print this help message
+
+6. Quit:
+    'q' to quit
+    EOF to quit
+    
+All numbers are hexadecimal.";
+
+def main() {
+    let m = Memory_default();
+
+    let is_done = False;
+    while !is_done {
+        let result = Command_read();
+        match result {
+            of Examine {
+                start,
+                end=of Some(end)
+            } => {
+                for let i=start; i<end; i+=1 {
+                    print_byte(Memory_get(&m, i));
+                    print(" ");
+                }
+                print("\n");
+            },
+    
+            of Examine {
+                start,
+                end=of Nothing
+            } => {
+                print_byte(Memory_get(&m, start));
+                print("\n");
+            },
+    
+            of Write {
+                start,
+                end=of Some(end),
+                value
+            } => {
+                for let i=start; i<end; i+=1 {
+                    Memory_set(&m, i, value);
+                }
+            },
+            
+            of Write {
+                start,
+                end=of Nothing,
+                value
+            } => {
+                Memory_set(&m, start, value);
+            },
+    
+            of Clear(of Some(val)) => {
+                for let i=0; i<m.length; i+=1 {
+                    m.data[i] = val;
+                }
+            },
+    
+            of Clear(of Nothing) => {
+                for let i=0; i<m.length; i+=1 {
+                    m.data[i] = 0;
+                }
+            },
+    
+            of Grow(val) => {
+                if val < m.length {
+                    print("Cannot grow memory to a smaller size ", val, "\n");
+                } else {
+                    Memory_extend(&m, val - m.length);
+                }
+            },
+    
+            of Shrink(val) => {
+                if val > m.length {
+                    print("Cannot shrink memory to a greater size ", val, "\n");
+                } else {
+                    Memory_shrink(&m, m.length - val);
+                }
+            },
+    
+            of Quit => {
+                is_done = True;
+            },
+    
+            of Help => {
+                print(HELP_MESSAGE, "\n");
+            },
+
+            of Report => {
+                Memory_print(&m);
+            },
+    
+            _ => {
+                print("unknown\n");
+            }
+        }
+
+    }
+    Memory_free(&m);
+}
+
+def is_char_between(ch: Char, start: Char, end: Char): Bool {
+    return ch as Int >= start as Int && ch as Int <= end as Int;
+}
+
+def digit_to_int(ch: Char): Int {
+    if (is_char_between(ch, '0', '9')) {
+        return ch as Int - '0' as Int;
+    } elif (is_char_between(ch, 'A', 'F')) {
+        return ch as Int - 'A' as Int + 10;
+    } elif (is_char_between(ch, 'a', 'f')) {
+        return ch as Int - 'a' as Int + 10;
+    } else {
+        return 0;
+    }
+}
+
+def is_digit(ch: Char): Bool {
+    return is_char_between(ch, '0', '9') || is_char_between(ch, 'A', 'F') || is_char_between(ch, 'a', 'f');
+}
+
+def read_int(): Int {
+    let ch = ' ';
+    input(&ch);
+    while ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' {
+        input(&ch);
+    }
+
+    let start = digit_to_int(ch);
+    while is_digit(ch) {
+        input(&ch);
+        if is_digit(ch) {
+            start = start * 16 + digit_to_int(ch);
+        }
+    }
+
+    return start;
+}
+
+def Command_read(): Command {
+    let ch = ' ';
+    while ch {
+        input(&ch);
+        while ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' {
+            input(&ch);
+        }
+
+        if ch as Int == -1 {
+            return Command of Quit;
+        }
+
+        if is_digit(ch) {
+            // Parse a hex number
+            let start = digit_to_int(ch);
+            while is_digit(ch) {
+                input(&ch);
+                if is_digit(ch) {
+                    start = start * 16 + digit_to_int(ch);
+                }
+            }
+
+            // Check for a range
+            if ch == '.' {
+                // Parse another int
+                input(&ch);
+                let end = digit_to_int(ch);
+                while is_digit(ch) {
+                    input(&ch);
+                    if is_digit(ch) {
+                        end = end * 16 + digit_to_int(ch);
+                    }
+                }
+
+                if end < start {
+                    print("Invalid range\n");
+                    return Command of Unknown;
+                } else {
+                    // Check for an assignment
+                    if ch == '\n' {
+                        return Command of Examine {
+                            start=start,
+                            end=Maybe<Int> of Some(end)
+                        };
+                    } elif ch == '=' {
+                        let value = read_int();
+                        return Command of Write {
+                            start=start,
+                            end=Maybe<Int> of Some(end),
+                            value=value
+                        };
+                    } else {
+                        return Command of Examine {
+                            start=start,
+                            end=Maybe<Int> of Some(end)
+                        };
+                    }
+                }
+            } elif ch == '=' {
+                let value = read_int();
+                return Command of Write {
+                    start=start,
+                    end=Maybe<Int> of Nothing,
+                    value=value
+                };
+            } else {
+                return Command of Examine {
+                    start=start,
+                    end=Maybe<Int> of Nothing
+                };
+            }
+            
+            return Command of Unknown;
+        } else {
+            match ch {
+                'h' | 'H' => {
+                    return Command of Help;
+                },
+                'r' | 'R' => {
+                    return Command of Report;
+                },
+    
+                'q' | 'Q' | '\0' => {
+                    return Command of Quit;
+                },
+
+                '+' => {
+                    let value = read_int();
+                    if value <= 0 {
+                        print("Invalid value\n");
+                        return Command of Unknown;
+                    }
+                    return Command of Grow(value);
+                },
+
+                '-' => {
+                    let value = read_int();
+                    if value <= 0 {
+                        print("Invalid value\n");
+                        return Command of Unknown;
+                    }
+                    return Command of Shrink(value);
+                },
+
+                '\\' | '!' => {
+                    let value = read_int();
+                    return Command of Clear(Maybe<Int> of Some(value));
+                },
+    
+                _ => {
+                    return Command of Unknown;
+                }
+            }
+        }
+
+    }
+    return Command of Unknown;
+}
+
+def copy<T>(dst: &T, src: &T, count: Int) {
+    for let i=0; i<count; i+=1 {
+        dst[i] = src[i];
+    }
+}
+
+def allocate<T>(count: Int): &T {
+    return alloc(sizeof<T>() * count) as &T;
+}
+
+def reallocate<T>(src: &T, new_size: Int): &T {
+    let dst = allocate<T>(new_size);
+    copy<T>(dst, src, new_size);
+    return dst;
+}
+
+def Memory_push(m: &Memory, value: Int) {
+    while (m->length >= m->capacity) {
+        m->capacity *= 2;
+    }
+    m->data = allocate<Int>(m->capacity);
+    m->data[m->length] = value;
+    m->length += 1;
+}
+
+def Memory_extend(m: &Memory, count: Int) {
+    while (m->length + count >= m->capacity) {
+        m->capacity *= 2;
+    }
+    m->data = reallocate<Int>(m->data, m->capacity);
+    m->length += count;
+}
+
+def Memory_pop(m: &Memory): Int {
+    if (m->length == 0) {
+        return 0;
+    }
+    m->length -= 1;
+    return m->data[m->length];
+}
+
+def Memory_shrink(m: &Memory, count: Int) {
+    if (m->length < count) {
+        m->length = 0;
+    } else {
+        m->length -= count;
+    }
+}
+
+def Memory_index(m: &Memory, index: Int): &Int {
+    if (index >= m->length) {
+        Memory_extend(m, index - m->length + 1);
+    }
+    return &(m->data[index]);
+}
+
+def Memory_get(m: &Memory, index: Int): Int {
+    return *(Memory_index(m, index));
+}
+
+def Memory_set(m: &Memory, index: Int, value: Int) {
+    *(Memory_index(m, index)) = value;
+}
+
+def Memory_new(n: Int): Memory {
+    return {
+        data=allocate<Int>(n),
+        length=0,
+        capacity=n
+    };
+}
+
+def Memory_default(): Memory {
+    return Memory_new(10000);
+}
+
+def Memory_free(m: &Memory) {
+    del m->data;
+}
+
+def print_byte(c: Int) {
+    c = c & 0xFF;
+    let hex = "0123456789ABCDEF";
+    print(hex[(c / 16) & 0xF]);
+    print(hex[c & 0xF]);
+}
+
+def print_addr(c: Int) {
+    c = c & 0xFFFFFFFF;
+    let hex = "0123456789ABCDEF";
+    print(hex[(c / 0x10000000) & 0xF]);
+    print(hex[(c / 0x1000000) & 0xF]);
+    print(hex[(c / 0x100000) & 0xF]);
+    print(hex[(c / 0x10000) & 0xF]);
+    print(hex[(c / 0x1000) & 0xF]);
+    print(hex[(c / 0x100) & 0xF]);
+    print(hex[(c / 0x10) & 0xF]);
+    print(hex[c & 0xF]);
+}
+
+def Memory_print(m: &Memory) {
+    print("Memory: ", m->length, "/", m->capacity, "\n");
+    if (m->length == 0) {
+        print("Empty\n");
+    }
+    for let i=0; i<m->length; i+=1 {
+        // Print address
+        if (i % 16 == 0) {
+            print_addr(i);
+            print(": ");
+        }
+
+        print_byte(m->data[i]);
+        print(" ");
+        if i % 16 == 15 {
+            // print ASCII
+            print(" | ");
+            for let j=i-15; j<=i; j+=1 {
+                let c = m->data[j];
+                if (c >= 32 && c <= 126) {
+                    print(c as Char);
+                } else {
+                    print(".");
+                }
+            }
+            print("\n");
+        }
+    }
+
+    // print ASCII
+    if (m->length % 16 != 0) {
+        let i = m->length;
+        let j = i - (i % 16);
+        for let k=i; k<j+16; k+=1 {
+            print("   ");
+        }
+        print(" | ");
+        for let k=j; k<i; k+=1 {
+            let c = m->data[k];
+            if (c >= 32 && c <= 126) {
+                print(c as Char);
+            } else {
+                print(".");
+            }
+        }
+        print("\n");
+    }
+}
+
+main();
