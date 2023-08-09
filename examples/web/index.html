@@ -355,27 +355,22 @@ db=64
 dc=21
 dd=0
 r`;
-                    source.setValue(`enum Maybe<T> {
+                    source.setValue(`enum Option<T> {
     Some(T),
     Nothing,
-}
-
-enum Result<T, E> {
-    Ok(T),
-    Err(E),
 }
 
 enum Command {
     Write {
         start: Int,
-        end: Maybe<Int>,
+        end: Option<Int>,
         value: Int,
     },
     Examine {
         start: Int,
-        end: Maybe<Int>
+        end: Option<Int>
     },
-    Clear(Maybe<Int>),
+    Clear(Option<Int>),
     Grow(Int),
     Shrink(Int),
     Quit,
@@ -592,19 +587,19 @@ def Command_read(): Command {
                     if ch == '\\n' {
                         return Command of Examine {
                             start=start,
-                            end=Maybe<Int> of Some(end)
+                            end=Option<Int> of Some(end)
                         };
                     } elif ch == '=' {
                         let value = read_int();
                         return Command of Write {
                             start=start,
-                            end=Maybe<Int> of Some(end),
+                            end=Option<Int> of Some(end),
                             value=value
                         };
                     } else {
                         return Command of Examine {
                             start=start,
-                            end=Maybe<Int> of Some(end)
+                            end=Option<Int> of Some(end)
                         };
                     }
                 }
@@ -612,13 +607,13 @@ def Command_read(): Command {
                 let value = read_int();
                 return Command of Write {
                     start=start,
-                    end=Maybe<Int> of Nothing,
+                    end=Option<Int> of Nothing,
                     value=value
                 };
             } else {
                 return Command of Examine {
                     start=start,
-                    end=Maybe<Int> of Nothing
+                    end=Option<Int> of Nothing
                 };
             }
             
@@ -656,7 +651,7 @@ def Command_read(): Command {
 
                 '\\\\' | '!' => {
                     let value = read_int();
-                    return Command of Clear(Maybe<Int> of Some(value));
+                    return Command of Clear(Option<Int> of Some(value));
                 },
     
                 _ => {
