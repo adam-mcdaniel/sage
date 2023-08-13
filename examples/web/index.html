@@ -355,34 +355,41 @@ db=64
 dc=21
 dd=0
 r`;
-                    source.setValue(`enum Option<T> {
+                    source.setValue(`// Used to represent a value that may or may not exist
+enum Option<T> {
+    // Some value
     Some(T),
-    Nothing,
+    // No value
+    Nothing
 }
 
+// A command for the editor
 enum Command {
+    // Store a value at an address with an optional range
     Write {
         start: Int,
         end: Option<Int>,
         value: Int,
     },
+    // Print out a value at an address with an optional range
     Examine {
         start: Int,
         end: Option<Int>
     },
+    // Clear memory to zero or a specific value
     Clear(Option<Int>),
+    // Grow the memory to a specific size
     Grow(Int),
+    // Shrink the memory to a specific size
     Shrink(Int),
+    // Quit the program
     Quit,
+    // Print the current memory state
     Report,
+    // Print the help message
     Help,
+    // Unknown command
     Unknown,
-}
-
-struct Memory {
-    data: &Int,
-    length: Int,
-    capacity: Int,
 }
 
 const HELP_MESSAGE = "HELP
@@ -413,6 +420,16 @@ Commands:
     EOF to quit
     
 All numbers are hexadecimal.";
+
+// The memory operated on by the editor
+struct Memory {
+    // The data in memory
+    data: &Int,
+    // The number of bytes of data
+    length: Int,
+    // The number of bytes allocated for the data
+    capacity: Int,
+}
 
 def main() {
     let m = Memory_default();
@@ -2543,10 +2560,10 @@ alert(buf);`);
         document.getElementById("run").addEventListener("click", compile_and_run, false);
         </script>
         <select id="example" style="height: 3em; float: left;">
-            <option value="hashmap">Click to select example program (Default HashMap)</option>
+            <option value="hex-editor">Click to select example program (Default Hex Editor)</option>
+            <option value="hex-editor">Hex Editor</option>
             <option value="hashmap">HashMap (Generics)</option>
             <option value="vector">Vector (Generics)</option>
-            <option value="hex-editor">Hex Editor</option>
             <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
             <option value="ffi">Foreign Function Interface (JavaScript Example)</option>
             <option value="calculator">Calculator (Parser)</option>
