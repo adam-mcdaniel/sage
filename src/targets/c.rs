@@ -43,8 +43,8 @@ impl Architecture for C {
 
     fn op(&mut self, op: &CoreOp) -> String {
         match op {
-            CoreOp::Comment(n) => {
-                format!("// {}", n.replace('\n', "\n// ").replace('\r', ""))
+            CoreOp::Comment(text) => {
+                format!("// {}", text.replace('\n', "\n// ").replace('\r', ""))
                 // let mut comment = String::new();
                 // for line in n.split('\n') {
                 //     comment += &format!("// {}", line.trim());

@@ -253,8 +253,8 @@
 
     <span class="kw">fn </span>op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>CoreOp) -&gt; String {
         <span class="kw">match </span>op {
-            CoreOp::Comment(n) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;// {}&quot;</span>, n.replace(<span class="string">&#39;\n&#39;</span>, <span class="string">&quot;\n// &quot;</span>).replace(<span class="string">&#39;\r&#39;</span>, <span class="string">&quot;&quot;</span>))
+            CoreOp::Comment(text) =&gt; {
+                <span class="macro">format!</span>(<span class="string">&quot;// {}&quot;</span>, text.replace(<span class="string">&#39;\n&#39;</span>, <span class="string">&quot;\n// &quot;</span>).replace(<span class="string">&#39;\r&#39;</span>, <span class="string">&quot;&quot;</span>))
                 <span class="comment">// let mut comment = String::new();
                 // for line in n.split(&#39;\n&#39;) {
                 //     comment += &amp;format!(&quot;// {}&quot;, line.trim());
