@@ -315,8 +315,9 @@ impl Put {
 
             Type::EnumUnion(fields) => {
                 // Calculate the address of the tag and the data
-                let tag_address = SP.deref();
-                let data_address = SP.deref().offset(1 - (t.get_size(env)? as isize));
+                let tag_address = addr.offset(t.get_size(env)? as isize - 1);
+                let data_address = addr;
+
                 // The list of possible variants
                 let variants: Vec<String> = fields.clone().into_keys().collect();
                 // Iterate through all of the possible tags and check if the value is one of them

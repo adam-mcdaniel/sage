@@ -63,6 +63,7 @@ def main() {
     let is_done = False;
     while !is_done {
         let result = Command_read();
+        print(result, "\n");
         match result {
             of Examine {
                 start,
