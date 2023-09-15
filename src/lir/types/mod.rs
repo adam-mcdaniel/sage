@@ -13,6 +13,7 @@ pub use check::*;
 pub use inference::*;
 pub use size::*;
 
+use log::{trace, warn, error};
 
 /// The representation of a type in the LIR type system.
 #[derive(Clone, Debug, PartialEq)]
@@ -345,19 +346,22 @@ impl Type {
     /// Can this type be cast to another type?
     /// This function should always halt (type casting *MUST* be decidable).
     fn can_cast_to_checked(&self, other: &Self, env: &Env, i: usize) -> Result<bool, Error> {
+        trace!("Checking if {} can be cast to {}", self, other);
+
         if self == other {
             return Ok(true);
         }
 
         let i = i + 1;
         if i > Self::SIMPLIFY_RECURSION_LIMIT {
+            error!("Recursion depth limit reached while checking if {} can be cast to {}", self, other);
             return Err(Error::RecursionDepthTypeEquality(
                 self.clone(),
                 other.clone(),
             ));
         }
 
-        match (self, other) {
+        let result = match (self, other) {
             (Self::Let(name, t, ret), other) | (other, Self::Let(name, t, ret)) => {
                 let mut new_env = env.clone();
                 new_env.define_type(name, *t.clone());
@@ -467,7 +471,11 @@ impl Type {
                     Ok(false)
                 }
             }
-        }
+        }?;
+
+        trace!("Can cast? {} -> {}: {}", self, other, result);
+        
+        Ok(result)
     }
 
     /// Are two types structurally equal?
@@ -542,6 +550,7 @@ impl Type {
         }
 
         if i >= Self::SIMPLIFY_RECURSION_LIMIT {
+            warn!("Recursion depth limit reached while checking if {} equals {}", self, other);
             return Ok(false);
         }
 
@@ -804,7 +813,10 @@ impl Type {
                 )?.equals_checked(b, compared_symbols, env, i)?
             }
 
-            _ => false,
+            (a, b) => {
+                trace!("{} is not equal to {}", a, b);
+                false
+            },
         })
     }
 
@@ -861,6 +873,7 @@ impl Type {
                 // We simplify the type before AND after getting the member offset because
                 // we want to make sure that recursive types don't leave undefined symbols
                 // in the in the resulting type.
+                warn!("Getting member offset of let-bound type {self}");
                 let (t, offset) = ret
                     .clone()
                     .simplify(env)?
@@ -871,6 +884,7 @@ impl Type {
             Type::Unit(_unit_name, t) => t.get_member_offset(member, expr, env),
 
             Type::Apply(_, _) | Type::Poly(_, _) => {
+                warn!("Getting member offset of polymorphic type {self}");
                 let t = self
                     .clone()
                     .simplify_until_matches(env, Type::Any, |t, _env| {
@@ -913,6 +927,7 @@ impl Type {
                         return Ok(());
                     }
                 }
+                error!("{} does not have member {}", self, member);
                 Err(Error::MemberNotFound(expr.clone(), member.clone()))
             }
             Type::Tuple(items) => {
@@ -924,6 +939,7 @@ impl Type {
                         return Ok(());
                     }
                 }
+                error!("{} does not have member {}", self, member);
                 Err(Error::MemberNotFound(expr.clone(), member.clone()))
             }
             Type::Union(types) => match types.get(&member.clone().as_symbol(env)?) {
@@ -934,6 +950,7 @@ impl Type {
                 // Create a new scope and define the new type within it
                 let mut new_env = env.clone();
                 new_env.define_type(name, *t.clone());
+                trace!("Type checking member of let-bound type {self}");
                 // Find the member offset of the returned type under the new scope
                 //
                 // NOTE:
@@ -951,6 +968,7 @@ impl Type {
                 if let Some(t) = env.get_type(name) {
                     t.type_check_member(member, expr, env)
                 } else {
+                    error!("Type {self} not defined in environment {env}");
                     Err(Error::TypeNotDefined(name.clone()))
                 }
             }
@@ -967,11 +985,13 @@ impl Type {
                                 | Type::Poly(_, _)
                         ))
                     })?;
+                trace!("Simplified {self} to {t}");
                 t.type_check_member(member, expr, env)
             }
 
             Type::Any => {
                 // Any type can have any member
+                warn!("Type checking member `{member}` of Any type {self}");
                 Ok(())
             }
 
@@ -984,6 +1004,7 @@ impl Simplify for Type {
     fn simplify_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
         let i = i + 1;
         if i > Self::SIMPLIFY_RECURSION_LIMIT {
+            error!("Recursion depth limit reached while simplifying type {self}");
             return Err(Error::UnsizedType(self.clone()));
         }
 
@@ -1010,6 +1031,7 @@ impl Simplify for Type {
                     // Simplify the result of the let body under the new environment.
                     let result = ret.clone().simplify_checked(&new_env, i)?;
                     if *ret == Self::Symbol(name.clone()) {
+                        trace!("Let-bound type returns binding, replacing {name} with bound type {t} in {result}");
                         // If the let body is the bound type, then we can subsitute the bound type
                         // for a copy of the whole let-binding.
                         result.substitute(&name, &Self::Let(name.clone(), t, ret))
@@ -1019,6 +1041,7 @@ impl Simplify for Type {
                         result
                     }
                 } else {
+                    trace!("Let-bound type {t} does not contain bound variable {name}, can substitute into {ret}");
                     // If the type isn't recursive, we can just substitute the variable for the type binding!
                     ret.substitute(&name, &t).simplify_checked(env, i)?
                 }
@@ -1076,7 +1099,6 @@ impl Simplify for Type {
                 Self::Apply(Box::new(poly.simplify_checked(env, i)?), ty_args)
             }
         };
-        // eprintln!("Simplified {} to {}", s, result);    
         Ok(result)
     }
 }

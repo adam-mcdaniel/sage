@@ -11,6 +11,8 @@
 
 use super::*;
 
+use log::trace;
+
 /// Get the type associated with a value under a given environment.
 pub trait GetType {
     /// Get the type associated with a value under a given environment.
@@ -35,6 +37,7 @@ pub trait GetType {
 /// Infer the type associated with an expression under a given environment.
 impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
+        trace!("Getting type of expression {}", self);
         let i = i + 1;
         Ok(match self {
             Self::AnnotatedWithSource { expr, loc } => {
@@ -272,7 +275,7 @@ impl GetType for Expr {
             // the following instructions to be executed.
             Self::Return(_) => Type::Never,
             // Get the type of a procedure call.
-            Self::Apply(func, _) => {
+            Self::Apply(func, args) => {
                 // Get the type of the function.
                 let mut ty = func.get_type_checked(env, i)?;
                 ty = ty.simplify_until_matches(
@@ -446,6 +449,7 @@ impl GetType for Expr {
 
     /// Substitute a type in a given expression.
     fn substitute(&mut self, name: &str, ty: &Type) {
+        trace!("Substituting {name} for {ty} in {self}");
         match self {
             Self::AnnotatedWithSource { expr, .. } => {
                 expr.substitute(name, ty);

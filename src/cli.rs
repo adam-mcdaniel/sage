@@ -21,6 +21,52 @@ use std::{
 const RELEASE_STACK_SIZE_MB: usize = 512;
 const DEBUG_STACK_SIZE_MB: usize = RELEASE_STACK_SIZE_MB;
 
+#[derive(clap::ValueEnum, Default, Clone, Debug, PartialEq)]
+enum LogLevel {
+    /// Print all the errors
+    Error,
+    /// Print all the warnings and errors
+    Warn,
+    /// Print all the info messages
+    Info,
+    /// Print all the debug information
+    Debug,
+    /// Trace the compilation of the program
+    Trace,
+    /// Display no messages
+    #[default]
+    Off
+}
+
+impl PartialOrd for LogLevel {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match (self, other) {
+            (LogLevel::Error, LogLevel::Error) => Some(std::cmp::Ordering::Equal),
+            (LogLevel::Error, _) => Some(std::cmp::Ordering::Greater),
+            (LogLevel::Warn, LogLevel::Error) => Some(std::cmp::Ordering::Less),
+            (LogLevel::Warn, LogLevel::Warn) => Some(std::cmp::Ordering::Equal),
+            (LogLevel::Warn, _) => Some(std::cmp::Ordering::Greater),
+            (LogLevel::Info, LogLevel::Error) => Some(std::cmp::Ordering::Less),
+            (LogLevel::Info, LogLevel::Warn) => Some(std::cmp::Ordering::Less),
+            (LogLevel::Info, LogLevel::Info) => Some(std::cmp::Ordering::Equal),
+            (LogLevel::Info, _) => Some(std::cmp::Ordering::Greater),
+            (LogLevel::Debug, LogLevel::Error) => Some(std::cmp::Ordering::Less),
+            (LogLevel::Debug, LogLevel::Warn) => Some(std::cmp::Ordering::Less),
+            (LogLevel::Debug, LogLevel::Info) => Some(std::cmp::Ordering::Less),
+            (LogLevel::Debug, LogLevel::Debug) => Some(std::cmp::Ordering::Equal),
+            (LogLevel::Debug, _) => Some(std::cmp::Ordering::Greater),
+            (LogLevel::Trace, LogLevel::Error) => Some(std::cmp::Ordering::Less),
+            (LogLevel::Trace, LogLevel::Warn) => Some(std::cmp::Ordering::Less),
+            (LogLevel::Trace, LogLevel::Info) => Some(std::cmp::Ordering::Less),
+            (LogLevel::Trace, LogLevel::Debug) => Some(std::cmp::Ordering::Less),
+            (LogLevel::Trace, LogLevel::Trace) => Some(std::cmp::Ordering::Equal),
+            (LogLevel::Trace, _) => Some(std::cmp::Ordering::Greater),
+            (LogLevel::Off, LogLevel::Off) => Some(std::cmp::Ordering::Equal),
+            (LogLevel::Off, _) => Some(std::cmp::Ordering::Less),
+        }
+    }
+}
+
 /// The target options to compile the given source code to.
 #[derive(clap::ValueEnum, Clone, Copy, Debug)]
 enum TargetType {
@@ -81,9 +127,14 @@ struct Args {
     #[clap(short, long, value_parser, default_value = "8192")]
     call_stack_size: usize,
 
-    /// Compile the output code in debug mode.
-    #[clap(short, long, default_value = "false")]
-    debug: bool,
+    /// The log level to use.
+    #[clap(short, long, value_parser, default_value = "off")]
+    log_level: LogLevel,
+
+    /// The symbol to debug (if any exists). This will
+    /// also enable debug logging.
+    #[clap(short, long, value_parser)]
+    debug: Option<String>,
 }
 
 /// The types of errors returned by the CLI.
@@ -419,6 +470,22 @@ fn read_file(name: &str) -> Result<String, Error> {
 fn cli() {
     // Parse the arguments to the CLI.
     let args = Args::parse();
+    let mut builder = env_logger::Builder::from_default_env();
+    builder.format_timestamp(None);
+
+    let target = args.debug.as_ref().map(|s| s.as_str());
+
+    // Set the log level.
+    match args.log_level {
+        LogLevel::Error if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Error),
+        LogLevel::Warn if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Warn),
+        LogLevel::Off if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Off),
+        LogLevel::Info => builder.filter(target, log::LevelFilter::Info),
+        LogLevel::Trace => builder.filter(target, log::LevelFilter::Trace),
+        _ => builder.filter(target, log::LevelFilter::Debug),
+    };
+
+    builder.init();
 
     match read_file(&args.input) {
         Ok(file_contents) => {
@@ -429,7 +496,7 @@ fn cli() {
                 args.target_type,
                 args.output,
                 args.call_stack_size,
-                args.debug,
+                args.debug.is_some(),
             ) {
                 Ok(_) => {}
                 Err(e) => {

@@ -13,6 +13,8 @@ use crate::lir::{Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Type, T
 use core::fmt;
 use std::sync::Mutex;
 
+use log::{debug, trace, warn, error};
+
 // TODO: Do this without lazy_static. This is used to create unique mangled IDs for each compiled function.
 use lazy_static::lazy_static;
 lazy_static! {
@@ -89,6 +91,7 @@ impl Procedure {
 
 impl TypeCheck for Procedure {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
+        trace!("type checking procedure: {}", self);
         // Typecheck the types of the arguments and return value
         for (_, t) in &self.args {
             t.type_check(env)?;
@@ -135,6 +138,8 @@ impl GetType for Procedure {
 
 impl Compile for Procedure {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        let common_name = self.common_name.clone();
+
         // Compile the contents of the procedure under a new environment
         let mut new_env = env.new_scope();
 
@@ -158,6 +163,7 @@ impl Compile for Procedure {
         if let Some(common_name) = self.common_name {
             output.comment(format!("{}({})", common_name, args_size));
         }
+        let current_instruction = output.current_instruction();
 
         // Execute the body to leave the return value
         self.body.compile_expr(&mut new_env, output)?;
@@ -178,7 +184,14 @@ impl Compile for Procedure {
         // Push the procedure label address onto the stack
         output.op(CoreOp::SetLabel(A, self.mangled_name.clone()));
         output.op(CoreOp::Push(A, 1));
-        output.comment("done".to_string());
+        // Log the compiled procedure
+        let message = format!("Compiled procedure {common_name} to {mangled_name} with args of size {args_size} and return value of size {ret_size}",
+            common_name = common_name.clone().unwrap_or_else(|| "<anonymous>".to_string()),
+            mangled_name = self.mangled_name,
+            args_size = args_size,
+            ret_size = ret_size,
+        );
+        output.log_instructions_after(&common_name.unwrap_or(self.mangled_name), &message, current_instruction);
 
         Ok(())
     }

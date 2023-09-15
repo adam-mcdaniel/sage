@@ -7,6 +7,8 @@ use crate::lir::{ConstExpr, Env, Error, Expr, GetSize, GetType, Type, TypeCheck}
 use core::fmt;
 use std::{collections::HashMap, rc::Rc, sync::Mutex};
 
+use log::{debug, trace, warn, error};
+
 use super::Procedure;
 
 /// A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
@@ -58,10 +60,16 @@ impl PolyProcedure {
         }
     }
 
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
     /// Take some type arguments and produce a monomorphized version of the procedure.
     /// This monomorphized version can then be compiled directly. Additionally, the
     /// mono version of the procedure is memoized, so that it is only compiled once.
     pub fn monomorphize(&self, ty_args: Vec<Type>, env: &Env) -> Result<Procedure, Error> {
+        debug!("Monomorphizing {} with {:?}", self, ty_args);
+
         // This is a helper function to distribute the defined type
         // arguments over the body and arguments of the function.
 
@@ -160,6 +168,7 @@ impl GetType for PolyProcedure {
 
 impl TypeCheck for PolyProcedure {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
+        trace!("Type checking {self}");
         // Create a new scope for the procedure's body, and define the arguments for the scope.
         let mut new_env = env.new_scope();
         for ty_param in &self.ty_params {

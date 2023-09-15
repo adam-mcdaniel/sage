@@ -93,7 +93,7 @@ pub const E: Location = Location::Address(8);
 pub const F: Location = Location::Address(9);
 
 /// A location in memory (on the tape of the virtual machine).
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Location {
     /// A fixed position in the tape (a constant address known at compile time).
     Address(usize),
@@ -136,6 +136,36 @@ impl fmt::Display for Location {
                     write!(
                         f,
                         "{} {} {}",
+                        loc,
+                        if offset < 0 { "-" } else { "+" },
+                        if offset < 0 { -offset } else { offset }
+                    )
+                }
+            }
+        }
+    }
+}
+
+impl fmt::Debug for Location {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Location::Address(addr) if *addr <= 9 => write!(f, "{self} ({addr})"),
+            Location::Address(addr) => write!(f, "{addr}"),
+            Location::Indirect(loc) => write!(f, "[{loc:?}]"),
+            Location::Offset(loc, offset) => {
+                let offset = *offset;
+                if let Location::Indirect(ref addr) = **loc {
+                    write!(
+                        f,
+                        "[{:?} {} {}]",
+                        addr,
+                        if offset < 0 { "-" } else { "+" },
+                        if offset < 0 { -offset } else { offset }
+                    )
+                } else {
+                    write!(
+                        f,
+                        "{:?} {} {}",
                         loc,
                         if offset < 0 { "-" } else { "+" },
                         if offset < 0 { -offset } else { offset }
