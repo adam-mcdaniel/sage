@@ -38,35 +38,6 @@ enum LogLevel {
     Off
 }
 
-impl PartialOrd for LogLevel {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match (self, other) {
-            (LogLevel::Error, LogLevel::Error) => Some(std::cmp::Ordering::Equal),
-            (LogLevel::Error, _) => Some(std::cmp::Ordering::Greater),
-            (LogLevel::Warn, LogLevel::Error) => Some(std::cmp::Ordering::Less),
-            (LogLevel::Warn, LogLevel::Warn) => Some(std::cmp::Ordering::Equal),
-            (LogLevel::Warn, _) => Some(std::cmp::Ordering::Greater),
-            (LogLevel::Info, LogLevel::Error) => Some(std::cmp::Ordering::Less),
-            (LogLevel::Info, LogLevel::Warn) => Some(std::cmp::Ordering::Less),
-            (LogLevel::Info, LogLevel::Info) => Some(std::cmp::Ordering::Equal),
-            (LogLevel::Info, _) => Some(std::cmp::Ordering::Greater),
-            (LogLevel::Debug, LogLevel::Error) => Some(std::cmp::Ordering::Less),
-            (LogLevel::Debug, LogLevel::Warn) => Some(std::cmp::Ordering::Less),
-            (LogLevel::Debug, LogLevel::Info) => Some(std::cmp::Ordering::Less),
-            (LogLevel::Debug, LogLevel::Debug) => Some(std::cmp::Ordering::Equal),
-            (LogLevel::Debug, _) => Some(std::cmp::Ordering::Greater),
-            (LogLevel::Trace, LogLevel::Error) => Some(std::cmp::Ordering::Less),
-            (LogLevel::Trace, LogLevel::Warn) => Some(std::cmp::Ordering::Less),
-            (LogLevel::Trace, LogLevel::Info) => Some(std::cmp::Ordering::Less),
-            (LogLevel::Trace, LogLevel::Debug) => Some(std::cmp::Ordering::Less),
-            (LogLevel::Trace, LogLevel::Trace) => Some(std::cmp::Ordering::Equal),
-            (LogLevel::Trace, _) => Some(std::cmp::Ordering::Greater),
-            (LogLevel::Off, LogLevel::Off) => Some(std::cmp::Ordering::Equal),
-            (LogLevel::Off, _) => Some(std::cmp::Ordering::Less),
-        }
-    }
-}
-
 /// The target options to compile the given source code to.
 #[derive(clap::ValueEnum, Clone, Copy, Debug)]
 enum TargetType {
