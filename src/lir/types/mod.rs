@@ -15,15 +15,28 @@ pub use size::*;
 
 use log::{trace, warn, error};
 
+/// Mutability of a pointer.
+/// This is used to provide type safety for pointers.
+/// A mutable pointer can be used to mutate the value it points to.
+/// An immutable pointer can only be used to read the value it points to.
+/// An `Any` pointer can be used to read or write the value it points to; this is
+/// used to override pointer access protections for compiler-builtins.
 #[derive(Copy, Clone, Default, Debug, Eq, PartialOrd, Ord, Hash)]
 pub enum Mutability {
+    /// Mutable access to a value.
     Mutable,
+    /// Immutable access to a value.
+    /// This is the default way to access a value.
     #[default]
     Immutable,
+    /// Unchecked access to a value. This is used to override access protections.
     Any,
 }
 
 impl Mutability {
+    /// Can a pointer of this mutability decay to a pointer of another mutability?
+    /// Mutable pointers can decay to immutable pointers, but immutable pointers
+    /// cannot decay to mutable pointers. `Any`  pointers are unchecked..
     pub fn can_decay_to(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Mutable, _) => true,
@@ -34,15 +47,19 @@ impl Mutability {
         }
     }
 
+    /// Can this data be accessed mutably?
     pub fn is_mutable(&self) -> bool {
         matches!(self, Self::Mutable) || matches!(self, Self::Any)
     }
 
+    /// Is this data protected against mutation?
     pub fn is_constant(&self) -> bool {
         matches!(self, Self::Immutable) || matches!(self, Self::Any)
     }
 }
 
+/// Convert a boolean into a mutability.
+/// True is mutable, false is immutable.
 impl From<bool> for Mutability {
     fn from(b: bool) -> Self {
         if b {
@@ -53,19 +70,24 @@ impl From<bool> for Mutability {
     }
 }
 
+/// Convert a mutability into a boolean.
+/// It will return true if the data is mutable (or any), and false if it is immutable.
 impl From<Mutability> for bool {
     fn from(m: Mutability) -> Self {
         m.is_mutable()
     }
 }
 
+/// Check if two access types are equal.
 impl PartialEq for Mutability {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
+            // Mutable is equal to mutable.
             (Self::Mutable, Self::Mutable) => true,
+            // Immutable is equal to immutable.
             (Self::Immutable, Self::Immutable) => true,
-            (Self::Any, _) => true,
-            (_, Self::Any) => true,
+            // Any is equal to any other mutability.
+            (Self::Any, _) | (_, Self::Any) => true,
             _ => false,
         }
     }
