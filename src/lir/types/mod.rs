@@ -873,7 +873,6 @@ impl Type {
                 // We simplify the type before AND after getting the member offset because
                 // we want to make sure that recursive types don't leave undefined symbols
                 // in the in the resulting type.
-                warn!("Getting member offset of let-bound type {self}");
                 let (t, offset) = ret
                     .clone()
                     .simplify(env)?
@@ -884,7 +883,6 @@ impl Type {
             Type::Unit(_unit_name, t) => t.get_member_offset(member, expr, env),
 
             Type::Apply(_, _) | Type::Poly(_, _) => {
-                warn!("Getting member offset of polymorphic type {self}");
                 let t = self
                     .clone()
                     .simplify_until_matches(env, Type::Any, |t, _env| {

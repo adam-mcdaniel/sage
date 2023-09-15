@@ -7,7 +7,7 @@
 use super::{Compile, ConstExpr, Error, GetSize, Procedure, Type};
 use crate::asm::AssemblyProgram;
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
-use std::{collections::HashMap, rc::Rc, sync::RwLock};
+use std::{collections::HashMap, rc::Rc};
 
 
 use log::{debug, warn, error};
@@ -36,7 +36,7 @@ pub struct Env {
     expected_ret: Option<Type>,
 
     /// Memoized type sizes.
-    type_sizes: Rc<RwLock<HashMap<Type, usize>>>,
+    type_sizes: Rc<HashMap<Type, usize>>,
 }
 
 impl Default for Env {
@@ -45,10 +45,10 @@ impl Default for Env {
             // It is important that we use reference counting for the tables because the environment
             // will be copied many times during the compilation process to create new scopes.
             types: Rc::new(HashMap::new()),
+            type_sizes: Rc::new(HashMap::new()),
             consts: Rc::new(HashMap::new()),
             procs: Rc::new(HashMap::new()),
             vars: Rc::new(HashMap::new()),
-            type_sizes: Rc::new(RwLock::new(HashMap::new())),
             // The last argument is stored at `[FP]`, so our first variable must be at `[FP + 1]`.
             fp_offset: 1,
             args_size: 0,
@@ -207,22 +207,31 @@ impl Env {
     /// This helps the compiler memoize the size of types so that it doesn't have to
     /// recalculate the size of the same type multiple times.
     pub(super) fn has_precalculated_size(&self, ty: &Type) -> bool {
-        self.type_sizes.read().unwrap().contains_key(ty)
+        self.type_sizes.contains_key(ty)
     }
 
     /// Get the precalculated size of the given type.
     /// This helps the compiler memoize the size of types so that it doesn't have to
     /// recalculate the size of the same type multiple times.
     pub(super) fn get_precalculated_size(&self, ty: &Type) -> Option<usize> {
-        self.type_sizes.read().unwrap().get(ty).copied()
+        self.type_sizes.get(ty).copied()
     }
 
     /// Set the precalculated size of the given type.
     /// This helps the compiler memoize the size of types so that it doesn't have to
     /// recalculate the size of the same type multiple times.
-    pub(super) fn set_precalculated_size(&self, ty: Type, size: usize) {
-        debug!("Memoizing type size {ty} with size {size}");
-        self.type_sizes.write().unwrap().insert(ty, size);
+    pub(super) fn set_precalculated_size(&mut self, ty: Type, size: usize) {
+        debug!(target: "size", "Memoizing type size {ty} with size {size}");
+        if let Some(old_size) = self.type_sizes.get(&ty) {
+            if *old_size == size {
+                debug!(target: "size", "Type size {ty} was already memoized with size {size}");
+                return;
+            } else {
+                warn!(target: "size", "Type size {ty} was already memoized with size {old_size}, but we memoized it with size {size}");
+            }
+        }
+        Rc::make_mut(&mut self.type_sizes).insert(ty, size);
+
     }
 }
 
