@@ -60,6 +60,9 @@ impl PolyProcedure {
         }
     }
 
+    /// Get the name of this polymorphic procedure.
+    /// This is not the mangled name, but the name known to the LIR front-end.
+    /// The mangled name is unique for each monomorph of the procedure.
     pub fn get_name(&self) -> &str {
         &self.name
     }
@@ -84,22 +87,6 @@ impl PolyProcedure {
             .collect::<Result<Vec<_>, Error>>()?;
 
         let bind_type_args = |ty: Type| -> Result<Type, Error> {
-            // for (name, arg) in self.ty_params.iter().zip(ty_args.iter()) {
-            //     // ty = Type::let_bind(name, if arg == &Type::Symbol(name.clone()) {
-            //     //     Type::Unit(name.clone(), Box::new(Type::Any))
-            //     // } else {
-            //     //     arg.clone()
-            //     // }, ty)
-            //     ty = ty.clone().substitute(name, arg);
-            //     // ty = Type::let_bind(&name, if arg == &Type::Symbol(name.clone()) {
-            //     //     Type::Unit(name.clone(), Box::new(Type::Any))
-            //     // } else {
-            //     //     arg.clone()
-            //     // }, ty);
-            // }
-
-            // Type::Apply(Box::new(Type::Poly(self.ty_params.clone(), Box::new(ty))), ty_args.clone()).simplify(env)?.perform_template_applications(env, &mut HashMap::new(), 0)
-
             let ty = Type::Apply(
                 Box::new(Type::Poly(self.ty_params.clone(), Box::new(ty))),
                 simplified_ty_args.clone(),
@@ -118,9 +105,9 @@ impl PolyProcedure {
             .collect::<Result<Vec<_>, Error>>()?;
         let ret = bind_type_args(self.ret.clone())?;
         let mut body = *self.body.clone();
-        // eprintln!("Before substitution: {}", body);
+
         body.substitute_types(&self.ty_params, &simplified_ty_args);
-        // eprintln!("After substitution: {}", body);
+
         body = Expr::LetTypes(
             self.ty_params
                 .iter()
@@ -138,7 +125,6 @@ impl PolyProcedure {
             .or_insert_with(|| Procedure::new(Some(mangled_name.clone()), args, ret, body))
             .clone();
         drop(monomorphs);
-        // eprintln!("monomorphized: {}", monomorph);
 
         Ok(monomorph)
     }
@@ -197,7 +183,6 @@ impl TypeCheck for PolyProcedure {
             // Typecheck the procedure's body.
             self.body.type_check(&new_env)
         }
-        // Ok(())
     }
 }
 
