@@ -502,10 +502,12 @@ impl TypeCheck for Expr {
                 }
                 Expr::ConstExpr(ConstExpr::Symbol(name)) => {
                     // Check if the symbol is defined as mutable
-                    if expected_mutability.is_mutable() && env.is_defined_as_mutable(&name) {
-                        // If it is, then return success.
+                    if env.is_defined_as_mutable(&name) {
+                        // If it is, then return success. (We can reference it however we want.)
                         Ok(())
-                    } else if !expected_mutability.is_mutable() || env.is_defined_as_mutable(&name) {
+                    } else if expected_mutability.is_constant() {
+                        // If the symbol is not defined as mutable, but we expect it to be constant,
+                        // then return success. (We can reference it as a constant.)
                         Ok(())
                     } else {
                         error!("Expected mutability {expected_mutability} for expression {self}, but found incompatible mutability in environment {env}");
