@@ -214,7 +214,12 @@ impl Env {
     /// This helps the compiler memoize the size of types so that it doesn't have to
     /// recalculate the size of the same type multiple times.
     pub(super) fn get_precalculated_size(&self, ty: &Type) -> Option<usize> {
-        self.type_sizes.get(ty).copied()
+        // Get the precalculated size of the given type.
+        let size = self.type_sizes.get(ty).copied()?;
+        // Log the size of the type.
+        debug!(target: "size", "Getting memoized type size for {ty} => {size}");
+        // Return the size of the type.
+        Some(size)
     }
 
     /// Set the precalculated size of the given type.
@@ -231,7 +236,6 @@ impl Env {
             }
         }
         Rc::make_mut(&mut self.type_sizes).insert(ty, size);
-
     }
 }
 

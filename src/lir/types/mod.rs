@@ -820,12 +820,16 @@ impl Type {
         })
     }
 
+    /// Get the type and offset of a member of a type.
+    /// This will confirm the member exists, and then get its type and offset in memory from
+    /// the base address of the value.
     pub(super) fn get_member_offset(
         &self,
         member: &ConstExpr,
         expr: &Expr,
         env: &Env,
     ) -> Result<(Type, usize), Error> {
+        trace!("Getting offset of member {member} in expression {self} in the environment {env}");
         match self {
             Type::Struct(members) => {
                 let mut offset = 0;
