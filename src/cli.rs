@@ -451,7 +451,7 @@ fn cli() {
         LogLevel::Error if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Error),
         LogLevel::Warn if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Warn),
         LogLevel::Off if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Off),
-        LogLevel::Info => builder.filter(target, log::LevelFilter::Info),
+        LogLevel::Info if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Info),
         LogLevel::Trace => builder.filter(target, log::LevelFilter::Trace),
         _ => builder.filter(target, log::LevelFilter::Debug),
     };
