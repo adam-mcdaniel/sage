@@ -82,7 +82,7 @@ struct Entry<K, V> {
 
 struct HashMap<K, V> {
     // The entries of the hashmap
-    entries: &Option<Entry<K, V>>,
+    entries: &mut Option<Entry<K, V>>,
     // The reserved size in memory of the entries
     count_allocated: Int,
     // The number of occupied entries
@@ -100,6 +100,14 @@ def refer<T>(opt: &Option<T>): Option<&T> {
         return Option<&T> of Nothing;
     }
     return Option<&T> of Some(inner);
+}
+
+def refer_mut<T>(opt: &mut Option<T>): Option<&mut T> {
+    let inner = opt as &mut T;
+    if let &of Nothing = opt {
+        return Option<&mut T> of Nothing;
+    }
+    return Option<&mut T> of Some(inner);
 }
 
 def exit(code: Int): ! {
@@ -124,8 +132,8 @@ def hash<T>(t: T): Int {
     let size = sizeof(t);
     let ptr = &t as &Int;
     
-    let hashValue = 5381;
-    def left_shift(a: Int, b: Int): Int = {
+    let mut hashValue = 5381;
+    def left_shift(mut a: Int, mut b: Int): Int = {
         while b {
             a *= 2;
             b -= 1;
@@ -133,8 +141,8 @@ def hash<T>(t: T): Int {
         return a;
     }
 
-    for let i = 0; i < size; i += 1 {
-        let value = ptr[i];
+    for let mut i = 0; i < size; i += 1 {
+        let mut value = ptr[i];
         while (value != 0) {
             let digit = value % 10;
             hashValue = (left_shift(hashValue, 5) + hashValue) + digit;
@@ -154,7 +162,7 @@ def eq<K>(a: K, b: K): Bool {
     let a_ptr = &a as &Int;
     let b_ptr = &b as &Int;
     
-    for let i=0; i<size; i+=1 {
+    for let mut i=0; i<size; i+=1 {
         if a_ptr[i] != b_ptr[i] {
             return False;
         }
@@ -163,58 +171,58 @@ def eq<K>(a: K, b: K): Bool {
 }
 
 def Entry_print<K, V>(self: &Entry<K, V>) {
-    print("hash: ", hash<K>(self->key), ", key: ", self->key, ", val: ", self->val);
+    print("hash: ", hash<K>(self.key), ", key: ", self.key, ", val: ", self.val);
 }
 
-def HashMap_clear<K, V>(self: &HashMap<K, V>) {
-    for let i=0; i < self->count_allocated; i+=1 {
-        self->entries[i] = Option<Entry<K, V>> of Nothing;
+def HashMap_clear<K, V>(self: &mut HashMap<K, V>) {
+    for let mut i=0; i < self.count_allocated; i+=1 {
+        self.entries[i] = Option<Entry<K, V>> of Nothing;
     }
-    self->count_occupied = 0;
+    self.count_occupied = 0;
 }
 
 
 def HashMap_new<K, V>(): HashMap<K, V> {
     let size = 1000 * sizeof<Option<Entry<K, V>>>();
-    let entries = alloc(size) as &Option<Entry<K, V>>;
-    let self = {
+    let entries = alloc(size) as &mut Option<Entry<K, V>>;
+    let mut self = {
         entries = entries,
         count_allocated = 1000,
         count_occupied = 0
     };
-    HashMap_clear<K, V>(&self);
+    HashMap_clear<K, V>(&mut self);
     return self;
 }
 
 def HashMap_get<K, V>(self: &HashMap<K, V>, key: K): Option<&V> {
-    let index = hash<K>(key) % self->count_allocated;
-    while is_some<Entry<K, V>>(self->entries[index]) {
-        let entry = unwrap<&Entry<K, V>>(refer<Entry<K, V>>(&(self->entries[index])));
-        if (eq<K>(entry->key, key)) {
-            return Option<&V> of Some(&(entry->val));
+    let mut index = hash<K>(key) % self.count_allocated;
+    while is_some<Entry<K, V>>(self.entries[index]) {
+        let entry = unwrap<&Entry<K, V>>(refer<Entry<K, V>>(&(self.entries[index])));
+        if (eq<K>(entry.key, key)) {
+            return Option<&V> of Some(&(entry.val));
         }
-        index = (index + 1) % self->count_allocated;  // Linear probing for collision resolution
+        index = (index + 1) % self.count_allocated;  // Linear probing for collision resolution
     }
     return Option<&V> of Nothing;
 }
 
-def HashMap_check_bounds<K, V>(self: &HashMap<K, V>) {
-    if (self->count_allocated - self->count_occupied) < 100 {
+def HashMap_check_bounds<K, V>(self: &mut HashMap<K, V>) {
+    if (self.count_allocated - self.count_occupied) < 100 {
         // Allocate new space
-        let old_size = self->count_allocated * sizeof(self->entries[0]);
-        let old_entries = self->entries;
+        let old_size = self.count_allocated * sizeof(self.entries[0]);
+        let old_entries = self.entries;
         let old_map = {
             entries = old_entries,
-            count_occupied = self->count_occupied,
-            count_allocated = self->count_allocated
+            count_occupied = self.count_occupied,
+            count_allocated = self.count_allocated
         };
 
         let new_size = old_size * 2;
-        self->count_allocated *= 2;
-        self->entries = alloc(new_size) as &Option<Entry<K, V>>;
+        self.count_allocated *= 2;
+        self.entries = alloc(new_size) as &Option<Entry<K, V>>;
         HashMap_clear<K, V>(self);
 
-        for let i=0; i<old_map.count_allocated; i+=1 {
+        for let mut i=0; i<old_map.count_allocated; i+=1 {
             if let of Some(old_entry) = old_entries[i] {
                 match HashMap_get<K, V>(&old_map, old_entry.key) {
                     of Some(val) => HashMap_put<K, V>(self, old_entry.key, *val),
@@ -225,35 +233,35 @@ def HashMap_check_bounds<K, V>(self: &HashMap<K, V>) {
     }
 }
 
-def HashMap_put<K, V>(self: &HashMap<K, V>, key: K, val: V) {
-    let index = hash<K>(key) % self->count_allocated;
-    while is_some<Entry<K, V>>(self->entries[index]) {
-        let entry = unwrap<&Entry<K, V>>(refer<Entry<K, V>>(&(self->entries[index])));
-        if (eq<K>(entry->key, key)) {
-            entry->val = val;  // Update value if key already exists
+def HashMap_put<K, V>(self: &mut HashMap<K, V>, key: K, val: V) {
+    let mut index = hash<K>(key) % self.count_allocated;
+    while is_some<Entry<K, V>>(self.entries[index]) {
+        let entry = unwrap<&mut Entry<K, V>>(refer_mut<Entry<K, V>>(&mut (self.entries[index])));
+        if (eq<K>(entry.key, key)) {
+            entry.val = val;  // Update value if key already exists
             return ();
         }
-        index = (index + 1) % self->count_allocated;  // Linear probing for collision resolution
+        index = (index + 1) % self.count_allocated;  // Linear probing for collision resolution
     }
 
-    self->entries[index] = Option<Entry<K, V>> of Some({
+    self.entries[index] = Option<Entry<K, V>> of Some({
         key = key,
         val = val
     });
-    self->count_occupied += 1;
+    self.count_occupied += 1;
     
     HashMap_check_bounds<K, V>(self);
 }
 
 def HashMap_print<K, V>(self: &HashMap<K, V>) {
-    let count = 0;
-    if self->count_occupied == 0 {
+    let mut count = 0;
+    if self.count_occupied == 0 {
         print("Empty\\n");
         return ();
     }
     print("--------------------------------\\n");
-    for let i=0; i < self->count_allocated; i+=1 {
-        if let of Some(entry) = self->entries[i] {
+    for let mut i=0; i < self.count_allocated; i+=1 {
+        if let of Some(entry) = self.entries[i] {
             Entry_print<K, V>(&entry);
             print("\\n");
             count += 1;
@@ -263,8 +271,8 @@ def HashMap_print<K, V>(self: &HashMap<K, V>) {
 }
 
 def HashMap_drop<K, V>(self: &HashMap<K, V>) {
-    print("Freeing ", self->count_allocated, " HashMap Entries\\n");
-    del self->entries;
+    print("Freeing ", self.count_allocated, " HashMap Entries\\n");
+    del self.entries;
 }
 
 struct Point {
@@ -276,10 +284,8 @@ def f(x: Int): Point {
     return {x = x, y = x * x};
 }
 
-let map = HashMap_new<Point, &Char>();
-
 def putstr(s: &Char) {
-    let i = 0;
+    let mut i = 0;
     while s[i] != '\\0' {
         print(s[i]);
         i += 1;
@@ -287,7 +293,7 @@ def putstr(s: &Char) {
 }
 
 def putstrln(s: &Char) {
-    let i = 0;
+    let mut i = 0;
     while s[i] != '\\0' {
         print(s[i]);
         i += 1;
@@ -296,33 +302,35 @@ def putstrln(s: &Char) {
 }
 
 def make_x_str(x_count: Int): &Char {
-    let value = alloc((x_count + 1) * sizeof<Char>()) as &Char;
-    for let i=0; i<x_count; i+=1 {
+    let value = alloc((x_count + 32) * sizeof<Char>()) as &mut Char;
+    for let mut i=0; i<x_count; i+=1 {
         value[i] = 'x';
     }
     value[x_count] = '\\0';
     return value;
 }
 
-const INSERT_COUNT = 8;
-const CHECK_COUNT = 16;
+const INSERT_COUNT = 100;
+const CHECK_COUNT = 200;
+
+let mut map = HashMap_new<Point, &Char>();
 
 print("HashMap before inserting:\\n");
 HashMap_print<Point, &Char>(&map);
 
-for let i=1; i<INSERT_COUNT; i+=1 {
+for let mut i=1; i<INSERT_COUNT; i+=1 {
     let point = f(i);
     let key = point as Point;
     let value = make_x_str(i);
     print("Inserting ", key, " -> ");
     putstrln(value);
-    HashMap_put<Point, &Char>(&map, key, value);
+    HashMap_put<Point, &Char>(&mut map, key, value);
 }
 
 print("HashMap after inserting:\\n");
 HashMap_print<Point, &Char>(&map);
 
-for let i=1; i<CHECK_COUNT; i+=1 {
+for let mut i=1; i<CHECK_COUNT; i+=1 {
     let point = f(i);
     let key = point as Point;
     print("Retrieving ", key, ": ");
@@ -355,41 +363,34 @@ db=64
 dc=21
 dd=0
 r`;
-                    source.setValue(`// Used to represent a value that may or may not exist
-enum Option<T> {
-    // Some value
+                    source.setValue(`enum Option<T> {
     Some(T),
-    // No value
-    Nothing
+    Nothing,
 }
 
-// A command for the editor
 enum Command {
-    // Store a value at an address with an optional range
     Write {
         start: Int,
         end: Option<Int>,
         value: Int,
     },
-    // Print out a value at an address with an optional range
     Examine {
         start: Int,
         end: Option<Int>
     },
-    // Clear memory to zero or a specific value
     Clear(Option<Int>),
-    // Grow the memory to a specific size
     Grow(Int),
-    // Shrink the memory to a specific size
     Shrink(Int),
-    // Quit the program
     Quit,
-    // Print the current memory state
     Report,
-    // Print the help message
     Help,
-    // Unknown command
     Unknown,
+}
+
+struct Memory {
+    data: &mut Int,
+    length: Int,
+    capacity: Int,
 }
 
 const HELP_MESSAGE = "HELP
@@ -419,22 +420,12 @@ Commands:
     'q' to quit
     EOF to quit
     
-All inputs use hexadecimal.";
-
-// The memory operated on by the editor
-struct Memory {
-    // The data in memory
-    data: &Int,
-    // The number of bytes of data
-    length: Int,
-    // The number of bytes allocated for the data
-    capacity: Int,
-}
+All numbers are hexadecimal.";
 
 def main() {
-    let m = Memory_default();
+    let mut m = Memory_default();
 
-    let is_done = False;
+    let mut is_done = False;
     while !is_done {
         let result = Command_read();
         match result {
@@ -442,8 +433,8 @@ def main() {
                 start,
                 end=of Some(end)
             } => {
-                for let i=start; i<end; i+=1 {
-                    print_byte(Memory_get(&m, i));
+                for let mut i=start; i<end; i+=1 {
+                    print_byte(Memory_get(&mut m, i));
                     print(" ");
                 }
                 print("\\n");
@@ -453,7 +444,7 @@ def main() {
                 start,
                 end=of Nothing
             } => {
-                print_byte(Memory_get(&m, start));
+                print_byte(Memory_get(&mut m, start));
                 print("\\n");
             },
     
@@ -462,8 +453,8 @@ def main() {
                 end=of Some(end),
                 value
             } => {
-                for let i=start; i<end; i+=1 {
-                    Memory_set(&m, i, value);
+                for let mut i=start; i<end; i+=1 {
+                    Memory_set(&mut m, i, value);
                 }
             },
             
@@ -472,17 +463,17 @@ def main() {
                 end=of Nothing,
                 value
             } => {
-                Memory_set(&m, start, value);
+                Memory_set(&mut m, start, value);
             },
     
             of Clear(of Some(val)) => {
-                for let i=0; i<m.length; i+=1 {
+                for let mut i=0; i<m.length; i+=1 {
                     m.data[i] = val;
                 }
             },
     
             of Clear(of Nothing) => {
-                for let i=0; i<m.length; i+=1 {
+                for let mut i=0; i<m.length; i+=1 {
                     m.data[i] = 0;
                 }
             },
@@ -491,7 +482,7 @@ def main() {
                 if val < m.length {
                     print("Cannot grow memory to a smaller size ", val, "\\n");
                 } else {
-                    Memory_extend(&m, val - m.length);
+                    Memory_extend(&mut m, val - m.length);
                 }
             },
     
@@ -499,7 +490,7 @@ def main() {
                 if val > m.length {
                     print("Cannot shrink memory to a greater size ", val, "\\n");
                 } else {
-                    Memory_shrink(&m, m.length - val);
+                    Memory_shrink(&mut m, m.length - val);
                 }
             },
     
@@ -545,15 +536,15 @@ def is_digit(ch: Char): Bool {
 }
 
 def read_int(): Int {
-    let ch = ' ';
-    input(&ch);
+    let mut ch = ' ';
+    input(&mut ch);
     while ch == ' ' || ch == '\\t' || ch == '\\n' || ch == '\\r' {
-        input(&ch);
+        input(&mut ch);
     }
 
-    let start = digit_to_int(ch);
+    let mut start = digit_to_int(ch);
     while is_digit(ch) {
-        input(&ch);
+        input(&mut ch);
         if is_digit(ch) {
             start = start * 16 + digit_to_int(ch);
         }
@@ -563,11 +554,11 @@ def read_int(): Int {
 }
 
 def Command_read(): Command {
-    let ch = ' ';
+    let mut ch = ' ';
     while ch {
-        input(&ch);
+        input(&mut ch);
         while ch == ' ' || ch == '\\t' || ch == '\\n' || ch == '\\r' {
-            input(&ch);
+            input(&mut ch);
         }
 
         if ch as Int == -1 {
@@ -576,9 +567,9 @@ def Command_read(): Command {
 
         if is_digit(ch) {
             // Parse a hex number
-            let start = digit_to_int(ch);
+            let mut start = digit_to_int(ch);
             while is_digit(ch) {
-                input(&ch);
+                input(&mut ch);
                 if is_digit(ch) {
                     start = start * 16 + digit_to_int(ch);
                 }
@@ -587,10 +578,10 @@ def Command_read(): Command {
             // Check for a range
             if ch == '.' {
                 // Parse another int
-                input(&ch);
-                let end = digit_to_int(ch);
+                input(&mut ch);
+                let mut end = digit_to_int(ch);
                 while is_digit(ch) {
-                    input(&ch);
+                    input(&mut ch);
                     if is_digit(ch) {
                         end = end * 16 + digit_to_int(ch);
                     }
@@ -681,14 +672,14 @@ def Command_read(): Command {
     return Command of Unknown;
 }
 
-def copy<T>(dst: &T, src: &T, count: Int) {
-    for let i=0; i<count; i+=1 {
+def copy<T>(dst: &mut T, src: &T, count: Int) {
+    for let mut i=0; i<count; i+=1 {
         dst[i] = src[i];
     }
 }
 
-def allocate<T>(count: Int): &T {
-    return alloc(sizeof<T>() * count) as &T;
+def allocate<T>(count: Int): &mut T {
+    return alloc(sizeof<T>() * count) as &mut T;
 }
 
 def reallocate<T>(src: &T, old_size: Int, new_size: Int): &T {
@@ -698,7 +689,7 @@ def reallocate<T>(src: &T, old_size: Int, new_size: Int): &T {
     return dst;
 }
 
-def Memory_push(m: &Memory, value: Int) {
+def Memory_push(m: &mut Memory, value: Int) {
     while (m->length >= m->capacity) {
         m->capacity *= 2;
     }
@@ -707,7 +698,7 @@ def Memory_push(m: &Memory, value: Int) {
     m->length += 1;
 }
 
-def Memory_extend(m: &Memory, count: Int) {
+def Memory_extend(m: &mut Memory, count: Int) {
     while (m->length + count >= m->capacity) {
         m->capacity *= 2;
     }
@@ -715,7 +706,7 @@ def Memory_extend(m: &Memory, count: Int) {
     m->length += count;
 }
 
-def Memory_pop(m: &Memory): Int {
+def Memory_pop(m: &mut Memory): Int {
     if (m->length == 0) {
         return 0;
     }
@@ -723,7 +714,7 @@ def Memory_pop(m: &Memory): Int {
     return m->data[m->length];
 }
 
-def Memory_shrink(m: &Memory, count: Int) {
+def Memory_shrink(m: &mut Memory, count: Int) {
     if (m->length < count) {
         m->length = 0;
     } else {
@@ -731,18 +722,18 @@ def Memory_shrink(m: &Memory, count: Int) {
     }
 }
 
-def Memory_index(m: &Memory, index: Int): &Int {
+def Memory_index(m: &mut Memory, index: Int): &mut Int {
     if (index >= m->length) {
         Memory_extend(m, index - m->length + 1);
     }
-    return &(m->data[index]);
+    return &mut (m->data[index]);
 }
 
-def Memory_get(m: &Memory, index: Int): Int {
+def Memory_get(m: &mut Memory, index: Int): Int {
     return *(Memory_index(m, index));
 }
 
-def Memory_set(m: &Memory, index: Int, value: Int) {
+def Memory_set(m: &mut Memory, index: Int, value: Int) {
     *(Memory_index(m, index)) = value;
 }
 
@@ -762,14 +753,14 @@ def Memory_free(m: &Memory) {
     del m->data;
 }
 
-def print_byte(c: Int) {
+def print_byte(mut c: Int) {
     c = c & 0xFF;
     let hex = "0123456789ABCDEF";
     print(hex[(c / 16) & 0xF]);
     print(hex[c & 0xF]);
 }
 
-def print_addr(c: Int) {
+def print_addr(mut c: Int) {
     c = c & 0xFFFFFFFF;
     let hex = "0123456789ABCDEF";
     print(hex[(c / 0x10000000) & 0xF]);
@@ -787,7 +778,7 @@ def Memory_print(m: &Memory) {
     if (m->length == 0) {
         print("Empty\\n");
     }
-    for let i=0; i<m->length; i+=1 {
+    for let mut i=0; i<m->length; i+=1 {
         // Print address
         if (i % 16 == 0) {
             print_addr(i);
@@ -799,7 +790,7 @@ def Memory_print(m: &Memory) {
         if i % 16 == 15 {
             // print ASCII
             print(" | ");
-            for let j=i-15; j<=i; j+=1 {
+            for let mut j=i-15; j<=i; j+=1 {
                 let c = m->data[j];
                 if (c >= 32 && c <= 126) {
                     print(c as Char);
@@ -815,11 +806,11 @@ def Memory_print(m: &Memory) {
     if (m->length % 16 != 0) {
         let i = m->length;
         let j = i - (i % 16);
-        for let k=i; k<j+16; k+=1 {
+        for let mut k=i; k<j+16; k+=1 {
             print("   ");
         }
         print(" | ");
-        for let k=j; k<i; k+=1 {
+        for let mut k=j; k<i; k+=1 {
             let c = m->data[k];
             if (c >= 32 && c <= 126) {
                 print(c as Char);
@@ -845,13 +836,13 @@ main();`);
     }
 }
 
-def print_byte(n: Int, lower: Bool) {
+def print_byte(mut n: Int, lower: Bool) {
     n &= 0xFF;
     print_hex(n / 16, lower);
     print_hex(n % 16, lower);
 }
 
-def left_shift(a: Int, b: Int): Int = {
+def left_shift(mut a: Int, mut b: Int): Int = {
     while b {
         a *= 2;
         b -= 1;
@@ -861,9 +852,9 @@ def left_shift(a: Int, b: Int): Int = {
 
 const MIN_INT = -2147483648;
 
-def right_shift(a: Int, b: Int): Int = {
-    let offset = MIN_INT, was_negative = a < 0;
-    for let i=0; i < b - 1; i += 1 {
+def right_shift(mut a: Int, mut b: Int): Int = {
+    let mut offset = MIN_INT, was_negative = a < 0;
+    for let mut i=0; i < b - 1; i += 1 {
         offset /= 2;
     }
 
@@ -889,19 +880,19 @@ def print_byteln(n: Int, lower: Bool) {
     print("\\n");
 }
 
-def xtime(n: Int): Int {
+def xtime(mut n: Int): Int {
     n &= 0xFF;
     n *= 2;
 
     return n < 0x100? n : n ^ 0x1B;
 }
 
-def multiply(a: Int, b: Int): Int {
+def multiply(mut a: Int, mut b: Int): Int {
     a &= 0xFF;
     b &= 0xFF;
-    let result = 0;
-    let next_term = a;
-    for let i=0; i < 8; i += 1 {
+    let mut result = 0;
+    let mut next_term = a;
+    for let mut i=0; i < 8; i += 1 {
         if b & 1 {
             result ^= next_term;
         }
@@ -938,21 +929,22 @@ def get(state: &State, row: Int, col: Int): Int {
     return (state as &Int)[row * 4 + col];
 }
 
-def set(state: &State, row: Int, col: Int, value: Int) {
-    (state as &Int)[row * 4 + col] = value;
+def set(state: &mut State, row: Int, col: Int, value: Int) {
+    (state as &mut Int)[row * 4 + col] = value;
 }
 
 def print_state(self: &State) {
-    for let i=0; i < 4; i += 1 {
-        for let j=0; j < 4; j += 1 {
-            print_byte(get(self, i, j), False); print(" ");
+    for let mut i=0; i < 4; i += 1 {
+        for let mut j=0; j < 4; j += 1 {
+            print_byte(get(self, i, j), False);
+            print(" ");
         }
         print("\\n");
     }
 }
 
-def rotate_row(self: &State, row: Int, steps: Int) {
-    for let i=0; i<steps; i += 1 {
+def rotate_row(self: &mut State, row: Int, steps: Int) {
+    for let mut i=0; i<steps; i += 1 {
         let temp = get(self, row, 0);
         set(self, row, 0, get(self, row, 1));
         set(self, row, 1, get(self, row, 2));
@@ -961,28 +953,28 @@ def rotate_row(self: &State, row: Int, steps: Int) {
     }
 }
 
-def shift_rows(self: &State) {
+def shift_rows(self: &mut State) {
     rotate_row(self, 1, 1);
     rotate_row(self, 2, 2);
     rotate_row(self, 3, 3);
 }
 
-def inverse_shift_rows(self: &State) {
+def inverse_shift_rows(self: &mut State) {
     rotate_row(self, 1, 3);
     rotate_row(self, 2, 2);
     rotate_row(self, 3, 1);
 }
 
-def add_round_key(self: &State, round_key: &State) {
+def add_round_key(self: &mut State, round_key: &State) {
     let round_key_ptr = round_key as &Int;
-    let self_ptr = self as &Int;
-    for let i=0; i < 16; i += 1 {
+    let self_ptr = self as &mut Int;
+    for let mut i=0; i < 16; i += 1 {
         self_ptr[i] ^= round_key_ptr[i];
     }
 }
 
-def mix_columns(self: &State) {
-    for let j=0; j < 4; j += 1 {
+def mix_columns(self: &mut State) {
+    for let mut j=0; j < 4; j += 1 {
         let s0 = get(self, 0, j);
         let s1 = get(self, 1, j);
         let s2 = get(self, 2, j);
@@ -995,8 +987,8 @@ def mix_columns(self: &State) {
     }
 }
 
-def inverse_mix_columns(self: &State) {
-    for let j=0; j < 4; j += 1 {
+def inverse_mix_columns(self: &mut State) {
+    for let mut j=0; j < 4; j += 1 {
         let s0 = get(self, 0, j);
         let s1 = get(self, 1, j);
         let s2 = get(self, 2, j);
@@ -1010,7 +1002,7 @@ def inverse_mix_columns(self: &State) {
 }
 
 
-def substitute_byte(byte: Int): Int {
+def substitute_byte(mut byte: Int): Int {
     let S_BOX = [[99, 124, 119, 123, 242, 107, 111, 197, 48, 1, 103, 43, 254, 215, 171, 118], [202, 130, 201, 125, 250, 89, 71, 240, 173, 212, 162, 175, 156, 164, 114, 192], [183, 253, 147, 38, 54, 63, 247, 204, 52, 165, 229, 241, 113, 216, 49, 21], [4, 199, 35, 195, 24, 150, 5, 154, 7, 18, 128, 226, 235, 39, 178, 117], [9, 131, 44, 26, 27, 110, 90, 160, 82, 59, 214, 179, 41, 227, 47, 132], [83, 209, 0, 237, 32, 252, 177, 91, 106, 203, 190, 57, 74, 76, 88, 207], [208, 239, 170, 251, 67, 77, 51, 133, 69, 249, 2, 127, 80, 60, 159, 168], [81, 163, 64, 143, 146, 157, 56, 245, 188, 182, 218, 33, 16, 255, 243, 210], [205, 12, 19, 236, 95, 151, 68, 23, 196, 167, 126, 61, 100, 93, 25, 115], [96, 129, 79, 220, 34, 42, 144, 136, 70, 238, 184, 20, 222, 94, 11, 219], [224, 50, 58, 10, 73, 6, 36, 92, 194, 211, 172, 98, 145, 149, 228, 121], [231, 200, 55, 109, 141, 213, 78, 169, 108, 86, 244, 234, 101, 122, 174, 8], [186, 120, 37, 46, 28, 166, 180, 198, 232, 221, 116, 31, 75, 189, 139, 138], [112, 62, 181, 102, 72, 3, 246, 14, 97, 53, 87, 185, 134, 193, 29, 158], [225, 248, 152, 17, 105, 217, 142, 148, 155, 30, 135, 233, 206, 85, 40, 223], [140, 161, 137, 13, 191, 230, 66, 104, 65, 153, 45, 15, 176, 84, 187, 22]];
     byte &= 0xFF;
     let row = right_shift(byte, 4) & 0xF;
@@ -1018,7 +1010,7 @@ def substitute_byte(byte: Int): Int {
     return S_BOX[row][col];
 }
 
-def inverse_substitute_byte(byte: Int): Int {
+def inverse_substitute_byte(mut byte: Int): Int {
     let INVERSE_S_BOX = [[82, 9, 106, 213, 48, 54, 165, 56, 191, 64, 163, 158, 129, 243, 215, 251], [124, 227, 57, 130, 155, 47, 255, 135, 52, 142, 67, 68, 196, 222, 233, 203], [84, 123, 148, 50, 166, 194, 35, 61, 238, 76, 149, 11, 66, 250, 195, 78], [8, 46, 161, 102, 40, 217, 36, 178, 118, 91, 162, 73, 109, 139, 209, 37], [114, 248, 246, 100, 134, 104, 152, 22, 212, 164, 92, 204, 93, 101, 182, 146], [108, 112, 72, 80, 253, 237, 185, 218, 94, 21, 70, 87, 167, 141, 157, 132], [144, 216, 171, 0, 140, 188, 211, 10, 247, 228, 88, 5, 184, 179, 69, 6], [208, 44, 30, 143, 202, 63, 15, 2, 193, 175, 189, 3, 1, 19, 138, 107], [58, 145, 17, 65, 79, 103, 220, 234, 151, 242, 207, 206, 240, 180, 230, 115], [150, 172, 116, 34, 231, 173, 53, 133, 226, 249, 55, 232, 28, 117, 223, 110], [71, 241, 26, 113, 29, 41, 197, 137, 111, 183, 98, 14, 170, 24, 190, 27], [252, 86, 62, 75, 198, 210, 121, 32, 154, 219, 192, 254, 120, 205, 90, 244], [31, 221, 168, 51, 136, 7, 199, 49, 177, 18, 16, 89, 39, 128, 236, 95], [96, 81, 127, 169, 25, 181, 74, 13, 45, 229, 122, 159, 147, 201, 156, 239], [160, 224, 59, 77, 174, 42, 245, 176, 200, 235, 187, 60, 131, 83, 153, 97], [23, 43, 4, 126, 186, 119, 214, 38, 225, 105, 20, 99, 85, 33, 12, 125]];
     byte &= 0xFF;
     let row = right_shift(byte, 4) & 0xF;
@@ -1026,17 +1018,17 @@ def inverse_substitute_byte(byte: Int): Int {
     return INVERSE_S_BOX[row][col];
 }
 
-def substitute_bytes(self: &State) {
-    for let i=0; i < 4; i += 1 {
-        for let j=0; j < 4; j += 1 {
+def substitute_bytes(self: &mut State) {
+    for let mut i=0; i < 4; i += 1 {
+        for let mut j=0; j < 4; j += 1 {
             set(self, i, j, substitute_byte(get(self, i, j)));
         }
     }
 }
 
-def inverse_substitute_bytes(self: &State) {
-    for let i=0; i < 4; i += 1 {
-        for let j=0; j < 4; j += 1 {
+def inverse_substitute_bytes(self: &mut State) {
+    for let mut i=0; i < 4; i += 1 {
+        for let mut j=0; j < 4; j += 1 {
             set(self, i, j, inverse_substitute_byte(get(self, i, j)));
         }
     }
@@ -1081,7 +1073,7 @@ def print_key(self: &Key) {
     }
     let size = get_key_size(self);
     let data = get_key_data(self);
-    for let i=0; i < size; i+=1 {
+    for let mut i=0; i < size; i+=1 {
         print_byte(data[i], False);
     }
 }
@@ -1133,14 +1125,14 @@ def round_key(word0: Int, word1: Int, word2: Int, word3: Int): State {
 
 def key_expansion(key: &Key, nr: Int, nk: Int): &Int = {
     let key_data = key as &Int;
-    let w = alloc(4 * (nr + 1) * sizeof<Int>()) as &Int;
-    for let i=0; i < nk; i+=1 {
+    let w = alloc(4 * (nr + 1) * sizeof<Int>()) as &mut Int;
+    for let mut i=0; i < nk; i+=1 {
         w[i] = word(key_data[4*i], key_data[4*i+1], key_data[4*i+2], key_data[4*i+3]);
     }
 
     let rcon = [1, 2, 4, 8, 16, 32, 64, 128, 27, 54];
-    for let i=nk; i < 4 * (nr + 1); i += 1 {
-        let temp = w[i-1];
+    for let mut i=nk; i < 4 * (nr + 1); i += 1 {
+        let mut temp = w[i-1];
         if i % nk == 0 {
             temp = substitute_word(rotate_word(temp)) ^ word(rcon[i / nk - 1], 0, 0, 0);
         } elif nk == 8 && i % nk == 4 {
@@ -1153,13 +1145,13 @@ def key_expansion(key: &Key, nr: Int, nk: Int): &Int = {
     return w;
 }
 
-def cipher(self: &State, key: &Key) {
+def cipher(self: &mut State, key: &Key) {
     let len = get_key_length(key);
     let nr = get_key_rounds(key);
     let k = key_expansion(key, nr, len);
-    let rk = round_key(k[0], k[1], k[2], k[3]);
+    let mut rk = round_key(k[0], k[1], k[2], k[3]);
     add_round_key(self, &rk);
-    for let i=4; i < 4 * (nr + 1); i+=4 {
+    for let mut i=4; i < 4 * (nr + 1); i+=4 {
         rk = round_key(k[i], k[i+1], k[i+2], k[i+3]);
         substitute_bytes(self);
         shift_rows(self);
@@ -1172,14 +1164,14 @@ def cipher(self: &State, key: &Key) {
     del k;
 }
 
-def inverse_cipher(self: &State, key: &Key) {
+def inverse_cipher(self: &mut State, key: &Key) {
     let len = get_key_length(key);
     let nr = get_key_rounds(key);
     let k = key_expansion(key, nr, len);
 
-    let rk = round_key(k[4*nr], k[4*nr+1], k[4*nr+2], k[4*nr+3]);
+    let mut rk = round_key(k[4*nr], k[4*nr+1], k[4*nr+2], k[4*nr+3]);
     add_round_key(self, &rk);
-    for let i=4*nr-4; i >= 0; i-=4 {
+    for let mut i=4*nr-4; i >= 0; i-=4 {
         rk = round_key(k[i], k[i+1], k[i+2], k[i+3]);
         inverse_shift_rows(self);
         inverse_substitute_bytes(self);
@@ -1199,25 +1191,25 @@ let key = Key of Key128 [
 ];
 
 
-let state: State = row_major(
+let mut state: State = row_major(
     0x00, 0x01, 0x02, 0x03,
     0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0A, 0x0B,
     0x0C, 0x0D, 0x0E, 0x0F
 );
+
 print_keyln(&key);
-print("Before encryption: \\n");
+print("Raw\\n");
 print_state(&state);
 print("\\n");
-print("After encryption: \\n");
-cipher(&state, &key);
+print("Cipher\\n");
+cipher(&mut state, &key);
 print_state(&state);
 print("\\n");
-print("After decryption: \\n");
-inverse_cipher(&state, &key);
+print("Inverse-Cipher\\n");
+inverse_cipher(&mut state, &key);
 print_state(&state);
-print("\\n");
-`);
+print("\\n");`);
                     break;
                 case "list":
                     source.setValue(`enum List<T> {
@@ -1354,40 +1346,40 @@ enum Result<T, E> {
     Err(E)
 }
 
-def allocate<T>(count: Int): Option<&T> {
+def allocate<T>(count: Int): Option<&mut T> {
     if (count <= 0) {
-        return Option<&T> of Nothing;
+        return Option<&mut T> of Nothing;
     }
-    let ptr = alloc(count * sizeof<T>()) as &T;
+    let ptr = alloc(count * sizeof<T>()) as &mut T;
     if (ptr == Null) {
-        return Option<&T> of Nothing;
+        return Option<&mut T> of Nothing;
     } else {
-        return Option<&T> of Some(ptr);
+        return Option<&mut T> of Some(ptr);
     }
 }
 
-def copy_slice<T>(data: &T, count: Int): Option<&T> {
+def copy_slice<T>(data: &T, count: Int): Option<&mut T> {
     match allocate<T>(count) {
-        of Some(ptr) => {
-            for let i = 0; i < count; i+=1 {
+        of Some(mut ptr) => {
+            for let mut i = 0; i < count; i+=1 {
                 ptr[i] = data[i];
             }
-            return Option<&T> of Some(ptr);
+            return Option<&mut T> of Some(ptr);
         },
         of Nothing => {
-            return Option<&T> of Nothing;
+            return Option<&mut T> of Nothing;
         }
     }
 }
 
-def copy<T>(data: &T): Option<&T> {
+def copy<T>(data: &T): Option<&mut T> {
     return copy_slice<T>(data, 1);
 }
 
 def reallocate<T>(data: &T, old_count: Int, new_count: Int): Option<&T> {
     match allocate<T>(new_count) {
         of Some(ptr) => {
-            for let i = 0; i < old_count; i+=1 {
+            for let mut i = 0; i < old_count; i+=1 {
                 ptr[i] = data[i];
             }
             del data;
@@ -1411,14 +1403,14 @@ enum Ordering {
 }
 
 struct String {
-    data: &Char,
+    data: &mut Char,
     len: Int,
     cap: Int
 }
 
 def String_clone(s: &String): String {
-    let data = alloc(s->cap) as &Char;
-    for let i = 0; i < s->len; i+=1 {
+    let data = alloc(s->cap) as &mut Char;
+    for let mut i = 0; i < s->len; i+=1 {
         data[i] = s->data[i];
     }
     return {
@@ -1444,13 +1436,13 @@ def String_new_with_capacity(cap: Int): Option<String> {
 }
 
 def String_from(text: &Char): Option<String> {
-    let len = 0;
+    let mut len = 0;
     while (text[len] != '\\0') {
         len += 1;
     }
     match String_new_with_capacity(len) {
-        of Some(s) => {
-            for let i = 0; i < len; i+=1 {
+        of Some(mut s) => {
+            for let mut i = 0; i < len; i+=1 {
                 s.data[i] = text[i];
             }
             s.len = len;
@@ -1463,7 +1455,7 @@ def String_from(text: &Char): Option<String> {
 }
 
 def String_print(s: &String) {
-    for let i = 0; i < s->len; i+=1 {
+    for let mut i = 0; i < s->len; i+=1 {
         print(s->data[i]);
     }
 }
@@ -1476,7 +1468,7 @@ def nth(s: &String, n: Int): Option<&Char> {
     }
 }
 
-def String_push(s: String, c: Char): String {
+def String_push(mut s: String, c: Char): String {
     if s.len == s.cap {
         let new_cap = s.cap * 2;
         match reallocate<Char>(s.data, s.cap, new_cap) {
@@ -1503,7 +1495,7 @@ def String_drop(s: &String) {
 struct Sequence<T> {
     len: Int,
     cap: Int,
-    data: &T,
+    data: &mut T,
 }
 
 def Sequence_clone<T>(s: &Sequence<T>): Option<Sequence<T>> {
@@ -1538,8 +1530,8 @@ def Sequence_new_with_capacity<T>(cap: Int): Option<Sequence<T>> {
 
 def Sequence_from<T>(data: &T, len: Int): Option<Sequence<T>> {
     match Sequence_new_with_capacity<T>(len) {
-        of Some(s) => {
-            for let i = 0; i < len; i+=1 {
+        of Some(mut s) => {
+            for let mut i = 0; i < len; i+=1 {
                 s.data[i] = data[i];
             }
             s.len = len;
@@ -1553,7 +1545,7 @@ def Sequence_from<T>(data: &T, len: Int): Option<Sequence<T>> {
 
 def Sequence_print<T>(s: &Sequence<T>) {
     print("[");
-    for let i = 0; i < s->len; i+=1 {
+    for let mut i = 0; i < s->len; i+=1 {
         print(s->data[i]);
         if i < s->len - 1 {
             print(", ");
@@ -1585,11 +1577,11 @@ def Sequence_push<T>(s: Sequence<T>, c: T): Sequence<T> {
 def Sequence_concat<T>(first: Sequence<T>, second: Sequence<T>): Sequence<T> {
     let new_len = first.len + second.len;
     let new_cap = first.cap + second.cap;
-    let new_data = alloc(new_cap * sizeof<T>()) as &T;
-    for let i = 0; i < first.len; i+=1 {
+    let new_data = alloc(new_cap * sizeof<T>()) as &mut T;
+    for let mut i = 0; i < first.len; i+=1 {
         new_data[i] = first.data[i];
     }
-    for let i = 0; i < second.len; i+=1 {
+    for let mut i = 0; i < second.len; i+=1 {
         new_data[first.len + i] = second.data[i];
     }
     return {
@@ -1600,7 +1592,7 @@ def Sequence_concat<T>(first: Sequence<T>, second: Sequence<T>): Sequence<T> {
 }
 
 def Sequence_reverse<T>(s: Sequence<T>): Sequence<T> {
-    for let i = 0; i < s.len / 2; i+=1 {
+    for let mut i = 0; i < s.len / 2; i+=1 {
         let tmp = s.data[i];
         s.data[i] = s.data[s.len - i - 1];
         s.data[s.len - i - 1] = tmp;
@@ -1647,14 +1639,14 @@ if let of Some(str) = String_from(&raw_text as &Char) {
         String_push(String_push(String_push(String_push(String_clone(&str), '!'), '!'), '!'), '!')
     ];
 
-    if let of Some(second) = Sequence_from<String>(&first as &String, sizeof(first) / sizeof<String>()) {
+    if let of Some(mut second) = Sequence_from<String>(&first as &String, sizeof(first) / sizeof<String>()) {
         print("Sequence of strings: ");
         test<String>(&first as &String, second.data);
-        for let i = 0; i < 5; i+=1 {
+        for let mut i = 0; i < 5; i+=1 {
             print(i, ": "); String_print(&(first[i])); print("\\n");
         }
         second = Sequence_reverse<String>(second);
-        for let i = 0; i < 5; i+=1 {
+        for let mut i = 0; i < 5; i+=1 {
             if let of Some(s) = Sequence_nth<String>(&second, i) {
                 print(i + 5, ": "); String_print(s); print("\\n");
             	String_drop(s);
@@ -1676,6 +1668,34 @@ print("Vector operations done!\\n");`);
     Rem (&Expr, &Expr),
     Num Float,
     Group &Expr,
+}
+
+struct Input {
+    start: &Char,
+    loc: Int,
+    length: Int
+}
+
+def free_input(input: Input) {
+    del input.start;
+}
+
+enum ParseResult {
+    Ok (Input, &Expr),
+    Err Int
+}
+
+def main() {
+    let input = read();
+    match parse_expr(input) {
+        of Ok (input, n) => {
+            print_expr(n);
+            print("\\n => ", eval(n), "\\n");
+            free_expr(n);
+            free_input(input);
+        },
+        of Err n => print("\\nCalculator: error while parsing at character: \\n", input.start[n], "\\n")
+    }
 }
 
 def eval(expr: &Expr): Float = match *expr {
@@ -1748,24 +1768,9 @@ def is_between_inclusive(ch: Char, start: Char, end: Char): Bool {
     return start <= ch && ch <= end;
 }
 
-struct Input {
-    start: &Char,
-    loc: Int,
-    length: Int
-}
-
-def free_input(input: Input) {
-    del input.start;
-}
-
-enum ParseResult {
-    Ok (Input, &Expr),
-    Err Int
-}
-
-def parse_float(input: Input): ParseResult {
+def parse_float(mut input: Input): ParseResult {
     let save = input;
-    let n = 0.0;
+    let mut n = 0.0;
 
     if (input.loc == input.length) {
         return ParseResult of Err (input.loc);
@@ -1782,7 +1787,7 @@ def parse_float(input: Input): ParseResult {
 
     if (input.loc < input.length && input.start[input.loc] == '.') {
         input.loc += 1;
-        let m = 0.1;
+        let mut m = 0.1;
         for (); input.loc < input.length && is_between_inclusive(input.start[input.loc], '0', '9'); input.loc += 1 {
             n += (input.start[input.loc] as Int - '0' as Int) as Float * m;
             m *= 0.1;
@@ -1793,7 +1798,7 @@ def parse_float(input: Input): ParseResult {
 
 def binop(
     lhs: &Expr,
-    input: Input,
+    mut input: Input,
     op: Char,
     factor: Input -> ParseResult,
     cons: (&Expr, &Expr) -> &Expr): ParseResult {
@@ -1819,7 +1824,7 @@ def binop(
     }
 }
 
-def parse_expr(input: Input): ParseResult {
+def parse_expr(mut input: Input): ParseResult {
     let save = input;
 
     if (input.loc == input.length) {
@@ -1834,7 +1839,7 @@ def parse_expr(input: Input): ParseResult {
     }
 
     match parse_term(input) {
-        of Ok (new_input, lhs) => {
+        of Ok (new_input, mut lhs) => {
             input = new_input;
             while True {
                 lhs = match binop(lhs, input, '+', parse_term, add_cons) {
@@ -1859,7 +1864,7 @@ def parse_expr(input: Input): ParseResult {
     }
 }
 
-def parse_term(input: Input): ParseResult {
+def parse_term(mut input: Input): ParseResult {
     let save = input;
 
     if (input.loc == input.length) {
@@ -1877,7 +1882,7 @@ def parse_term(input: Input): ParseResult {
     }
 
     match parse_atom(input) {
-        of Ok (new_input, lhs) => {
+        of Ok (new_input, mut lhs) => {
             input = new_input;
             while True {
                 lhs = match binop(lhs, input, '*', parse_atom, mul_cons) {
@@ -1923,7 +1928,7 @@ def parse_atom(input: Input): ParseResult {
     return result;
 }
 
-def parse_group(input: Input): ParseResult {
+def parse_group(mut input: Input): ParseResult {
     let save = input;
 
     if (input.loc == input.length) {
@@ -1938,19 +1943,19 @@ def parse_group(input: Input): ParseResult {
     let input = parse_whitespaces(input);
 
     return match parse_expr(input) {
-        of Ok (input, expr) => {
+        of Ok (mut input, expr) => {
             input = parse_whitespaces(input);
             if (input.start[input.loc] != ')') {
                 return ParseResult of Err (input.loc);
             }
             input.loc += 1;
-            return ParseResult of Ok (input, new Expr of Group(expr));
+            ParseResult of Ok (input, new Expr of Group(expr));
         },
         of Err _ => ParseResult of Err (input.loc)
     };
 }
 
-def parse_whitespaces(input: Input): Input {
+def parse_whitespaces(mut input: Input): Input {
     let save = input;
 
     if (input.loc == input.length) {
@@ -1965,21 +1970,21 @@ def parse_whitespaces(input: Input): Input {
 def is_done(input: Input): Bool = input.loc >= input.length;
 
 def strlen(ch: &Char): Int {
-    let i = 0;
+    let mut i = 0;
     for (); ch[i] != '\\0'; i+=1 {}
     return i;
 }
 
 def getchar(): Char {
-    let ch = ' ';
-    input(&ch);
+    let mut ch = ' ';
+    input(&mut ch);
     return ch;
 }
 
-def readline(ch: &Char, len: Int): Int {
-    let i = len;
+def readline(ch: &mut Char, len: Int): Int {
+    let mut i = len;
 
-    let c = getchar();
+    let mut c = getchar();
     for (); c != '\\n' && c != '\\0'; i+=1 {
         ch[i] = c;
         c = getchar();
@@ -1988,30 +1993,30 @@ def readline(ch: &Char, len: Int): Int {
 }
 
 def read(): Input {
-    let buf = alloc(sizeof<Char>() * 1024) as &Char;
+    let buf = alloc(sizeof<Char>() * 1024) as &mut Char;
 
     print("? ");
     let len = readline(buf, 0);
     buf[len] = '\\0';
 
     return {
-        start = buf,
+        start = buf as &Char,
+        length = strlen(buf),
+        loc = 0
+    };
+}
+def test(): Input {
+    let buf = alloc(sizeof<Char>() * 34) as &mut Char;
+    *(buf as &mut [Char * 34]) = "(4 + 6) * ((8 - 3) / 2) + (9 % 5)\\0";
+    
+    return {
+        start = buf as &Char,
         length = strlen(buf),
         loc = 0
     };
 }
 
-let input = read();
-match parse_expr(input) {
-    of Ok (input, n) => {
-        print_expr(n);
-        print("\\n => ", eval(n), "\\n");
-        free_expr(n);
-        free_input(input);
-    },
-    of Err n => print("\\nCalculator: error while parsing at character: \\n", input.start[n], "\\n")
-}
-`);
+main();`);
                     break;
                 case "tree":
                     source.setValue(`enum Option<T> {
@@ -2122,16 +2127,17 @@ print("\\n");
 `);
                     break;
                 case "lisp":
-                    source.setValue(`def strlen(ch: &Char): Int {
-    let len = 0;
+                    source.setValue(`// Implement a scheme evaluator in Sage.
+def strlen(ch: &Char): Int {
+    let mut len = 0;
     while ch[len] != '\\0' {
         len += 1;
     }
     return len;
 }
 
-def strcpy(dst: &Char, src: &Char) {
-    let i = 0;
+def strcpy(dst: &mut Char, src: &Char) {
+    let mut i = 0;
     for (); src[i] != '\\0'; i+=1 {
         dst[i] = src[i];
     }
@@ -2139,17 +2145,17 @@ def strcpy(dst: &Char, src: &Char) {
 }
 
 struct String {
-    data: &Char,
+    data: &mut Char,
     len: Int,
 }
 
 def string_new(s: &Char): String {
-    let len = 0;
+    let mut len = 0;
     while s[len] != '\\0' {
         len += 1;
     }
 
-    let buffer = alloc(sizeof<Char>() * len) as &Char;
+    let buffer = alloc(sizeof<Char>() * len) as &mut Char;
     strcpy(buffer, s);
 
     return {
@@ -2159,7 +2165,7 @@ def string_new(s: &Char): String {
 }
 
 def string_print(s: String) {
-    for let i=0; i < s.len; i+=1 {
+    for let mut i=0; i < s.len; i+=1 {
         print(s.data[i]);
     }
 }
@@ -2283,7 +2289,7 @@ def expr_println(expr: &Expr) {
     print("\\n");
 }
 
-def expr_reduce(acc: Expr, x: Expr, env: &Env, fun: (Expr, Expr, &Env) -> Expr): Expr {
+def expr_reduce(mut acc: Expr, x: Expr, env: &Env, fun: (Expr, Expr, &Env) -> Expr): Expr {
     match x {
         of Pair { car, cdr } => {
             acc = fun(acc, *car, env);
@@ -2385,7 +2391,7 @@ print("  map(increment): ");
 let result = expr_map(expr, &env, inc);
 expr_println(&result);
 
-for let i=0; i<10; i+=1 {
+for let mut i=0; i<20; i+=1 {
     let range = range(1, i);
     expr_println(&range);
 }
@@ -2401,15 +2407,15 @@ string_print(s);
     Nothing
 }
 
-def allocate<T>(count: Int): Option<&T> {
+def allocate<T>(count: Int): Option<&mut T> {
     if (count <= 0) {
-        return Option<&T> of Nothing;
+        return Option<&mut T> of Nothing;
     }
-    let ptr = alloc(count * sizeof<T>()) as &T;
+    let ptr = alloc(count * sizeof<T>()) as &mut T;
     if (ptr == Null) {
-        return Option<&T> of Nothing;
+        return Option<&mut T> of Nothing;
     } else {
-        return Option<&T> of Some(ptr);
+        return Option<&mut T> of Some(ptr);
     }
 }
 
@@ -2420,7 +2426,7 @@ struct Point<T> {
 
 match allocate<Point<Int>>(5) {
     of Some(val) => {
-        for let i=0; i<5; i+=1 {
+        for let mut i=0; i<5; i+=1 {
             val[i].x = i;
             val[i].y = i * 2;
         }
@@ -2430,8 +2436,7 @@ match allocate<Point<Int>>(5) {
     of Nothing => {
         print("Failed to allocate memory");
     }
-}
-`);
+}`);
                     break;
                 case "match":
                     source.setValue(`enum Direction {
@@ -2470,9 +2475,9 @@ if let of Some(n) = divide(5, 0) {
                     document.getElementById("input").value = "";
                     break;
                 case "cat":
-                    source.setValue(`let ch = ' ';
+                    source.setValue(`let mut ch = ' ';
 while (ch != '\\0') {
-    input(&ch);
+    input(&mut ch);
     print(ch);
 }`);
                     document.getElementById("input").value = "this is a cat program!";
@@ -2485,8 +2490,8 @@ while (ch != '\\0') {
     }
 }
 
-let n = 0;
-input(&n);
+let mut n = 0;
+input(&mut n);
 
 print(fact(n));`);
                     document.getElementById("input").value = "5";
@@ -2497,29 +2502,29 @@ print(fact(n));`);
 // foreign function, the VM will not have bindings for them and will halt.
 // Running someone else's code in a safe manner is as simple as making
 // sure you only provide bindings for safe foreign functions to execute!
-// (e.g. \`eval\` is surely not safe, but something like \`alert\` is generally safe.)
+// (e.g.\`eval\` is surely not safe, but something like \`alert\` is generally safe.)
 
 extern alert(message: &Char);
 extern eval(code: &Char, size: Int);
 
 const BUFFER_SIZE = 1024;
 
-def read(buf: &Char) {
-    let ch = ' ';
-    input(&ch);
-    for let i = 0; ch; i+=1 {
+def read(buf: &mut Char) {
+    let mut ch = ' ';
+    input(&mut ch);
+    for let mut i = 0; ch; i+=1 {
         buf[i] = ch;
-        input(&ch);
+        input(&mut ch);
     }
 }
 
 def write(buf: &Char) {
-    for let i = 0; buf[i]; i+=1 {
+    for let mut i = 0; buf[i]; i+=1 {
         print(buf[i]);
     }
 }
 
-let buf = alloc(BUFFER_SIZE) as &Char;
+let buf = alloc(BUFFER_SIZE) as &mut Char;
 
 // Read the code to evaluate from the input box!
 read(buf);
@@ -2538,7 +2543,7 @@ alert(buf);`);
                     document.getElementById("input").value = "('b' + 'a' + + 'a' + 'a').toUpperCase()";
                     break;
                 case "hello world":
-                    source.setValue("print(\"Hello, world!\\n\");");
+                    source.setValue("print(\"Hello, world!\n\");");
                     break;
                 default:
                     console.log("Unknown example: " + example);

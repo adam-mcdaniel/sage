@@ -13,19 +13,16 @@ pub struct Get;
 impl UnaryOp for Get {
     /// Can this unary operation be applied to the given type?
     fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
-        Ok(ty
-            .clone()
-            .simplify_until_matches(env, Type::Any, |t, _env| {
-                if let Type::Pointer(mutability, x) = t.clone() {
-                    match *x {
-                        Type::Char | Type::Int | Type::Float if mutability.is_mutable() => Ok(true),
-                        _ => Ok(false),
-                    }
-                } else {
-                    Ok(false)
+        ty.simplify_until_concrete(env).map(|ty| {
+            if let Type::Pointer(mutability, x) = ty {
+                match *x {
+                    Type::Char | Type::Int | Type::Float => mutability.is_mutable(),
+                    _ => false,
                 }
-            })
-            .is_ok())
+            } else {
+                false
+            }
+        })
     }
 
     /// Get the type of the result of applying this unary operation to the given type.
