@@ -42,6 +42,8 @@ pub use c::*;
 pub mod x86;
 pub use x86::*;
 
+use log::info;
+
 use crate::{
     side_effects::{Input, Output},
     vm::{self, *},
@@ -203,6 +205,7 @@ pub trait CompiledTarget: Architecture {
 
     /// Compile the core variant of the machine code (must be implemented for every target).
     fn build_core(&mut self, program: &vm::CoreProgram) -> Result<String, String> {
+        info!("Compiling core program for target {}", self.name());
         let (main_ops, function_defs) = program.clone().get_main_and_functions();
         let mut result = self.prelude(true).unwrap_or("".to_string());
 
@@ -247,11 +250,13 @@ pub trait CompiledTarget: Architecture {
             result += &self.postop().unwrap_or("".to_string());
         }
 
+        info!("Finished compiling core program for target {}", self.name());
         Ok(result + &tab + self.postlude(true).unwrap_or("".to_string()).as_str())
     }
 
     /// Compile the standard variant of the machine code (should be implemented for every target possible).
     fn build_std(&mut self, program: &vm::StandardProgram) -> Result<String, String> {
+        info!("Compiling standard program for target {}", self.name());
         let (main_ops, function_defs) = program.clone().get_main_and_functions();
         let mut result = self.prelude(false).unwrap_or("".to_string());
 
@@ -295,6 +300,7 @@ pub trait CompiledTarget: Architecture {
             result += &self.postop().unwrap_or("".to_string());
         }
 
+        info!("Finished compiling standard program for target {}", self.name());
         Ok(result + &tab + self.postlude(false).unwrap_or("".to_string()).as_str())
     }
 }

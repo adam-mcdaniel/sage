@@ -12,6 +12,8 @@
 use super::*;
 use crate::lir::Pattern;
 
+use log::{trace, error};
+
 /// A trait used to enforce type checking.
 ///
 /// Whenever this is applied, it will return `Ok(())`
@@ -24,6 +26,7 @@ pub trait TypeCheck {
 /// Check the soundness of a given type in the environment.
 impl TypeCheck for Type {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
+        trace!("Type checking type: {self}");
         // TODO: Also add checks for infinitely sized types.
         match self {
             Self::Any
@@ -44,6 +47,7 @@ impl TypeCheck for Type {
                 if env.get_type(name).is_some() {
                     Ok(())
                 } else {
+                    error!("Type {name} not defined in environment {env}");
                     Err(Error::TypeNotDefined(name.clone()))
                 }
             }
@@ -64,6 +68,7 @@ impl TypeCheck for Type {
                 // Check that the length is non-negative.
                 if len.clone().as_int(env)? < 0 {
                     // If it is negative, return an error.
+                    error!("Negative array length detected in type {self} in environment {env}");
                     return Err(Error::NegativeArrayLength(Expr::ConstExpr(*len.clone())));
                 }
                 // Otherwise, return success.
@@ -138,19 +143,27 @@ impl TypeCheck for Type {
                             Type::Poly(ty_params, _) => {
                                 // Check that the number of type arguments matches the number of type parameters.
                                 if ty_args.len() != ty_params.len() {
+                                    error!("Expected {} type arguments for type {name}, but found {} in environment {env}", ty_params.len(), ty_args.len());
                                     Err(Error::InvalidTemplateArgs(self.clone()))?;
                                 }
                             }
-                            _ => Err(Error::ApplyNonTemplate(self.clone()))?,
+                            _ => {
+                                error!("Type {name} is not a template in environment {env}");
+                                Err(Error::ApplyNonTemplate(self.clone()))?
+                            },
                         }
                     }
                     Type::Poly(ty_params, _) => {
                         // Check that the number of type arguments matches the number of type parameters.
                         if ty_params.len() != ty_args.len() {
+                            error!("Expected {} type arguments for type {self}, but found {} in environment {env}", ty_params.len(), ty_args.len());
                             Err(Error::InvalidTemplateArgs(self.clone()))?;
                         }
                     }
-                    _ => Err(Error::ApplyNonTemplate(self.clone()))?,
+                    _ => {
+                        error!("Type {self} is not a template in environment {env}");
+                        Err(Error::ApplyNonTemplate(self.clone()))?
+                    },
                 }
                 // Return success if all the types are sound.
                 Ok(())
@@ -165,6 +178,7 @@ impl TypeCheck for Type {
 /// Check the type-soundness of a given expression.
 impl TypeCheck for Expr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
+        trace!("Type checking expression: {self}");
         match self {
             Self::AnnotatedWithSource { expr, loc } => {
                 // Check the inner expression.
@@ -293,6 +307,7 @@ impl TypeCheck for Expr {
                         // Otherwise, return an error.
                         let ty = expr.get_type(env)?;
                         if !ty.equals(&Type::None, env)? {
+                            error!("Expected type {} for expression {expr}, but found type {ty} in environment {env}", Type::None);
                             // If it's not, return an error.
                             return Err(Error::UnusedExpr(expr.clone(), ty));
                         }
@@ -871,6 +886,7 @@ impl TypeCheck for Expr {
 // Typecheck a constant expression.
 impl TypeCheck for ConstExpr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
+        trace!("Typechecking constant expression: {}", self);
         match self {
             Self::AnnotatedWithSource { expr, loc } => {
                 expr.type_check(env).map_err(|e| e.with_loc(loc))
@@ -919,6 +935,7 @@ impl TypeCheck for ConstExpr {
                 let found = expr.get_type(env)?;
                 // Confirm that the cast is valid.
                 if !found.can_cast_to(cast_ty, env)? {
+                    error!("Invalid cast: {found} as {cast_ty} in environment {env}");
                     // If it isn't, return an error.
                     return Err(Error::InvalidAs(
                         Expr::ConstExpr(*expr.clone()),
@@ -953,6 +970,7 @@ impl TypeCheck for ConstExpr {
                     // Return success.
                     Ok(())
                 } else {
+                    error!("Symbol {name} not defined in environment {env}");
                     // If there is no binding for the symbol, return an error.
                     Err(Error::SymbolNotDefined(name.clone()))
                 }
@@ -1066,6 +1084,7 @@ impl TypeCheck for ConstExpr {
                         // Confirm that the type of the item is the same as the
                         // last item.
                         if !last_type.equals(&item_type, env)? {
+                            error!("Mismatched types: {last_type} != {item_type} in environment {env}");
                             // If it isn't, return an error.
                             return Err(Error::MismatchedTypes {
                                 expected: last_type,
@@ -1108,6 +1127,7 @@ impl TypeCheck for ConstExpr {
                             val.type_check(env)?;
                             let found = val.get_type(env)?;
                             if !ty.equals(&found, env)? {
+                                error!("Mismatched types: {ty} != {found} in environment {env}");
                                 return Err(Error::MismatchedTypes {
                                     expected: ty.clone(),
                                     found,
@@ -1116,6 +1136,7 @@ impl TypeCheck for ConstExpr {
                             }
                             Ok(())
                         } else {
+                            error!("Member {field} not found in type {self} in environment {env}");
                             Err(Error::MemberNotFound(
                                 Expr::ConstExpr(self.clone()),
                                 ConstExpr::Symbol(field.clone()),
@@ -1123,6 +1144,7 @@ impl TypeCheck for ConstExpr {
                         }
                     }
                     _ => {
+                        error!("Member {field} not found in type {self} in environment {env}");
                         Err(Error::MemberNotFound(
                             Expr::ConstExpr(self.clone()),
                             ConstExpr::Symbol(field.clone()),
@@ -1147,6 +1169,7 @@ impl TypeCheck for ConstExpr {
                             val.type_check(env)?;
                             let found = val.get_type(env)?;
                             if !ty.equals(&found, env)? {
+                                error!("Mismatched types: {ty} != {found} in environment {env}");
                                 return Err(Error::MismatchedTypes {
                                     expected: ty.clone(),
                                     found,
@@ -1155,6 +1178,7 @@ impl TypeCheck for ConstExpr {
                             }
                             Ok(())
                         } else {
+                            error!("Variant {variant} not found in type {self} in environment {env}");
                             Err(Error::VariantNotFound(
                                 Type::EnumUnion(fields),
                                 variant.clone(),

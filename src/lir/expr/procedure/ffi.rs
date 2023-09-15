@@ -9,6 +9,8 @@ use crate::asm::{AssemblyProgram, StandardOp};
 use crate::lir::{Compile, Env, Error, GetSize, GetType, Type, TypeCheck};
 use core::fmt::{Display, Formatter, Result as FmtResult};
 
+use log::debug;
+
 /// A typed procedure which calls a foreign function.
 /// This is compiled down to a standard assembly `Call` instruction.
 /// The label is the name of the foreign function. The types determine the
@@ -58,6 +60,7 @@ impl GetType for FFIProcedure {
 
 impl Compile for FFIProcedure {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        debug!("Compiling FFI procedure: {}", self);
         let mut args_size = 0;
         for arg in &self.args {
             args_size += arg.get_size(env)?;

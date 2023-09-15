@@ -23,8 +23,8 @@
 //! |`proc(A, B, ...) -> T`|1|
 //! |`enum {A, B, ...}`|1|
 
-
 use super::*;
+use log::{error, trace};
 
 /// Get the size of something in memory (number of cells).
 pub trait GetSize {
@@ -43,17 +43,20 @@ pub trait GetSize {
 impl GetSize for Type {
     fn get_size_checked(&self, env: &Env, i: usize) -> Result<usize, Error> {
         let i = i + 1;
+        trace!("Getting the size of type {self} in environment {env} with depth {i}");
         // eprintln!("GetSize::get_size_checked: i = {i} {self}");
         // eprintln!("Env: {env:?}");
         if i > Type::SIMPLIFY_RECURSION_LIMIT {
-            // eprintln!("GetSize::get_size_checked: recursion limit reached");
+            error!("Recursion limit reached while calculating size of type {self}");
             return Err(Error::UnsizedType(self.clone()));
         }
         // eprintln!("GetSize::get_size_checked: i = {i} {self}");
 
-        if let Some(precalculated_type) = env.get_type_size(self) {
-            // eprintln!("GetSize::get_size_checked: precalculated_type {self} = {precalculated_type}");
-            return Ok(precalculated_type);
+        if env.has_precalculated_size(self) {
+            return env.get_precalculated_size(self).ok_or_else(|| {
+                error!("Type {self} has no size in environment {env}");
+                Error::UnsizedType(self.clone())
+            });
         }
 
         Ok(match self {
@@ -65,7 +68,9 @@ impl GetSize for Type {
             // don't know what it is yet. So we return an error.
             //
             // **Its size is undefined.**
-            Self::Any => return Err(Error::UnsizedType(self.clone())),
+            Self::Any => {
+                return Err(Error::UnsizedType(self.clone()))
+            },
 
             // Get the size of an inline type.
             Self::Let(name, t, ret) => {
@@ -85,6 +90,7 @@ impl GetSize for Type {
                     // Get the size of the type.
                     t.get_size_checked(env, i)?
                 } else {
+                    error!("Type {name} not defined in environment {env}");
                     // If the type is not defined, return an error.
                     return Err(Error::TypeNotDefined(name.clone()));
                 }

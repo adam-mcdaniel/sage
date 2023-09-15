@@ -1,6 +1,8 @@
 use crate::lir::*;
 use core::fmt::{Display, Formatter, Result as FmtResult};
-use std::{collections::HashMap};
+use std::collections::HashMap;
+
+use log::trace;
 
 /// A pattern which can be matched against an expression.
 ///
@@ -396,6 +398,7 @@ impl Pattern {
     /// Type-check a pattern match of an expression against this pattern,
     /// and type-check the branch where the expression is bound to the pattern.
     pub fn type_check(&self, matching_expr: &Expr, branch: &Expr, env: &Env) -> Result<(), Error> {
+        trace!("Type checking pattern match: {} => {}", self, branch);
         // Get the type of the expression being matched.
         let mut matching_ty = matching_expr.get_type(env)?;
         // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {

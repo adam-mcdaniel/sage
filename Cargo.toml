@@ -24,6 +24,8 @@ pest = "2.6.0"
 pest_derive = "2.6.0"
 snailquote = "0.3.1"
 codespan-reporting = "0.11.1"
+log = "0.4.20"
+env_logger = "0.10.0"
 
 # Add a build-time dependency on the lalrpop library:
 [build-dependencies]
