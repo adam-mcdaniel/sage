@@ -12,7 +12,6 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
 
     match parse_frontend(code.as_ref(), filename) {
         Ok(result) => {
-            // eprintln!("Parsed LIR: {:#?}", result);
             let alloc = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
                 name: "alloc".to_string(),
                 args: vec![("size".to_string(), crate::lir::Type::Int)],

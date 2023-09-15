@@ -247,8 +247,6 @@ impl Type {
     ) -> Result<Self, Error> {
         let mut simplified = self;
         for _ in 0..Self::SIMPLIFY_RECURSION_LIMIT {
-            // eprintln!("STAGE {i}: {simplified}", i = i, simplified = simplified);
-            // if f(&simplified, env)? || matches!(simplified, Type::Never | Type::Int | Type::Any | Type::Cell | Type::Bool | Type::Float | Type::Char | Type::None | Type::Enum(_)) {
             if f(&simplified, env)? || simplified.is_atomic() {
                 return Ok(simplified);
             }

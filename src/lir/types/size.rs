@@ -44,13 +44,11 @@ impl GetSize for Type {
     fn get_size_checked(&self, env: &Env, i: usize) -> Result<usize, Error> {
         let i = i + 1;
         trace!("Getting the size of type {self} in environment {env} with depth {i}");
-        // eprintln!("GetSize::get_size_checked: i = {i} {self}");
-        // eprintln!("Env: {env:?}");
+
         if i > Type::SIMPLIFY_RECURSION_LIMIT {
             error!("Recursion limit reached while calculating size of type {self}");
             return Err(Error::UnsizedType(self.clone()));
         }
-        // eprintln!("GetSize::get_size_checked: i = {i} {self}");
 
         if env.has_precalculated_size(self) {
             return env.get_precalculated_size(self).ok_or_else(|| {

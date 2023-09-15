@@ -508,7 +508,7 @@ impl TypeCheck for Expr {
                     } else if !expected_mutability.is_mutable() || env.is_defined_as_mutable(&name) {
                         Ok(())
                     } else {
-                        eprintln!("elem: {}", e);
+                        error!("Expected mutability {expected_mutability} for expression {self}, but found incompatible mutability in environment {env}");
                         // If it isn't, then return an error.
                         Err(Error::InvalidRefer(self.clone()))
                     }
@@ -519,7 +519,7 @@ impl TypeCheck for Expr {
                     match inner.get_type(env)? {
                         Type::Pointer(found_mutability, _) => {
                             if !found_mutability.can_decay_to(expected_mutability) {
-                                eprintln!("elem: {}", inner);
+                                error!("Expected mutability {expected_mutability} for expression {self}, but found mutability {found_mutability} in environment {env}");
                                 return Err(Error::MismatchedMutability {
                                     expected: *expected_mutability,
                                     found: found_mutability,
@@ -539,13 +539,13 @@ impl TypeCheck for Expr {
                 },
                 Expr::Member(inner, _) => {
                     // // Confirm that the inner expression can be referenced.
-                    // inner.refer(*expected_mutability).type_check(env)?;
                     match inner.get_type(env)? {
                         Type::Struct(_) | Type::Union(_) | Type::Tuple(_) => {
                             inner.refer(*expected_mutability).type_check(env)?;
                         }
                         Type::Pointer(found_mutability, _) => {
                             if !found_mutability.can_decay_to(expected_mutability) {
+                                error!("Expected mutability {expected_mutability} for expression {self}, but found mutability {found_mutability} in environment {env}");
                                 return Err(Error::MismatchedMutability {
                                     expected: *expected_mutability,
                                     found: found_mutability,

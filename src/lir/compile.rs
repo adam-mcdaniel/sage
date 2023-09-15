@@ -16,7 +16,7 @@ use crate::asm::{
 use crate::NULL;
 use std::collections::BTreeMap;
 
-use log::{info, warn};
+use log::{info, warn, error};
 
 /// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
@@ -667,9 +667,6 @@ impl Compile for Expr {
                     dst: SP.deref().offset(1 - val_size as isize),
                     size,
                 });
-                // eprintln!("\n\nval_size: {val_size}\n => {val_type}");
-                // eprintln!("size: {size}\n => {}", self.get_type(env)?);
-                // eprintln!("{self}");
                 // Pop the remaining elements off the stack, so the field remains.
                 output.op(CoreOp::Pop(None, val_size - size));
             }
@@ -712,6 +709,7 @@ impl Compile for Expr {
                             CoreOp::Push(C, 1),
                         ]))
                     } else {
+                        error!("Tried to get the reference of a symbol that isn't a variable: {name} in environment {env}");
                         // Return an error if the symbol isn't defined.
                         return Err(Error::SymbolNotDefined(name.clone()));
                     }
@@ -741,7 +739,7 @@ impl Compile for Expr {
                             val.clone().compile_expr(env, output)?;
                         }
                         other => {
-                            eprintln!("val_type: {}", other);
+                            error!("Tried to get a member {name} of a non-struct, non-tuple, non-union, non-pointer type: {other} of value {val} in environment {env}");
                             return Err(Error::InvalidRefer(Expr::Member(val, name)));
                         }
                     }

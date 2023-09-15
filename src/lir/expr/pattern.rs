@@ -466,8 +466,6 @@ impl Pattern {
             });
         }
 
-        // eprintln!("Type checked pattern match: {} => {}", self, branch);
-
         // If no error was returned, the type-checking succeeded.
         Ok(())
     }
@@ -713,8 +711,6 @@ impl Pattern {
             }
 
             (_pat, _ty) => {
-                // eprintln!("pat: {pat}");
-                // eprintln!("ty: {ty}");
                 // If the pattern does not match the type, then return an error.
                 return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
             }

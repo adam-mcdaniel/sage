@@ -7,7 +7,7 @@ use crate::lir::{ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type
 use core::fmt;
 use std::{collections::HashMap, rc::Rc, sync::Mutex};
 
-use log::{debug, trace};
+use log::{debug, trace, error};
 
 use super::Procedure;
 
@@ -186,8 +186,10 @@ impl TypeCheck for PolyProcedure {
 
         // Get the type of the procedure's body, and confirm that it matches the return type.
         let body_type = self.body.get_type(&new_env)?;
-        // eprintln!("body_type: {}", body_type);
+
         if !body_type.can_decay_to(&self.ret, &new_env)? {
+            error!("Mismatched types: expected {}, found {}", self.ret, body_type);
+
             Err(Error::MismatchedTypes {
                 expected: self.ret.clone(),
                 found: body_type,

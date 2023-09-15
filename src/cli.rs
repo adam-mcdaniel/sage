@@ -16,6 +16,7 @@ use std::{
     fs::{read_to_string, write},
 };
 
+use log::error;
 
 // The stack sizes of the threads used to compile the code.
 const RELEASE_STACK_SIZE_MB: usize = 512;
@@ -450,7 +451,7 @@ fn cli() {
     match args.log_level {
         LogLevel::Error if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Error),
         LogLevel::Warn if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Warn),
-        LogLevel::Off if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Off),
+        LogLevel::Off if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Error),
         LogLevel::Info if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Info),
         LogLevel::Trace => builder.filter(target, log::LevelFilter::Trace),
         _ => builder.filter(target, log::LevelFilter::Debug),
@@ -471,12 +472,12 @@ fn cli() {
             ) {
                 Ok(_) => {}
                 Err(e) => {
-                    eprintln!("{:#?}", e);
+                    error!("{e:#?}");
                 }
             }
         }
         Err(e) => {
-            eprintln!("Error reading file: {:?}", e);
+            error!("Error reading file: {e:?}");
         }
     }
 }
