@@ -13,7 +13,7 @@ use crate::lir::{Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Type, T
 use core::fmt;
 use std::sync::Mutex;
 
-use log::{debug, trace, warn, error};
+use log::trace;
 
 // TODO: Do this without lazy_static. This is used to create unique mangled IDs for each compiled function.
 use lazy_static::lazy_static;

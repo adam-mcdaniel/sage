@@ -12,8 +12,7 @@
 use super::*;
 use crate::lir::Pattern;
 
-use clap::error;
-use log::{trace, warn, error};
+use log::{trace, error};
 
 /// A trait used to enforce type checking.
 ///

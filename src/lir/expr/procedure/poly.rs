@@ -7,7 +7,7 @@ use crate::lir::{ConstExpr, Env, Error, Expr, GetSize, GetType, Type, TypeCheck}
 use core::fmt;
 use std::{collections::HashMap, rc::Rc, sync::Mutex};
 
-use log::{debug, trace, warn, error};
+use log::{debug, trace};
 
 use super::Procedure;
 

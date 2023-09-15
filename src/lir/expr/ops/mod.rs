@@ -14,14 +14,13 @@ mod tagged_union;
 pub use arithmetic::*;
 pub use assign::*;
 pub use bitwise::*;
-use clap::error;
 pub use comparison::*;
 pub use io::*;
 pub use logic::*;
 pub use memory::*;
 pub use tagged_union::*;
 
-use log::{trace, debug, warn, error};
+use log::{trace, error};
 use crate::{asm::AssemblyProgram, lir::*};
 use std::cmp::Ordering;
 

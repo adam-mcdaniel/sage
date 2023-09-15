@@ -24,7 +24,7 @@
 //! |`enum {A, B, ...}`|1|
 
 use super::*;
-use log::{debug, error, trace, warn};
+use log::{error, trace};
 
 /// Get the size of something in memory (number of cells).
 pub trait GetSize {

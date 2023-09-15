@@ -2,7 +2,7 @@ use crate::lir::*;
 use core::fmt::{Display, Formatter, Result as FmtResult};
 use std::collections::HashMap;
 
-use log::{trace, warn, error};
+use log::trace;
 
 /// A pattern which can be matched against an expression.
 ///

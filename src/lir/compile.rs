@@ -16,7 +16,7 @@ use crate::asm::{
 use crate::NULL;
 use std::collections::BTreeMap;
 
-use log::{info, debug, warn, error};
+use log::{info, warn};
 
 /// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.

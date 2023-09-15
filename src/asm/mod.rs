@@ -58,7 +58,16 @@ pub trait AssemblyProgram {
     /// into the program code yet?
     fn is_defined(&self, label: &str) -> bool;
 
+    /// Get the current instruction number.
     fn current_instruction(&self) -> usize;
+
+    /// Log all the instructions after the given instruction number.
+    /// The `target` is an identifier for the instructions being logged. This is used
+    /// to search for the log messages in the output.
+    /// The `message` is a message to be logged before the instructions. This tells some
+    /// context about the instructions being logged.
+    /// The `i` is the instruction number to start logging at.
+    /// This will log all instructions until the end of the program.
     fn log_instructions_after(&self, target: &str, message: &str, mut i: usize) {
         debug!(target: target, "{target}: {}", message);
         while let Some(op) = self.get_op(i) {
@@ -70,6 +79,7 @@ pub trait AssemblyProgram {
         }
     }
 
+    /// Get the operation at the given instruction number.
     fn get_op(&self, start: usize) -> Option<Result<CoreOp, StandardOp>>;
 }
 

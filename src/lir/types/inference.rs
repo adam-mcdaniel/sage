@@ -275,7 +275,7 @@ impl GetType for Expr {
             // the following instructions to be executed.
             Self::Return(_) => Type::Never,
             // Get the type of a procedure call.
-            Self::Apply(func, args) => {
+            Self::Apply(func, _) => {
                 // Get the type of the function.
                 let mut ty = func.get_type_checked(env, i)?;
                 ty = ty.simplify_until_matches(

@@ -36,7 +36,7 @@ use crate::{
 };
 use std::{collections::BTreeSet, fmt};
 
-use log::{debug, info};
+use log::info;
 
 /// An assembly program composed of core instructions, which can be assembled
 /// into the core virtual machine instructions.

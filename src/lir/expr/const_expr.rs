@@ -15,7 +15,7 @@ use crate::lir::{
 };
 use crate::parse::SourceCodeLocation;
 
-use log::{trace, warn, error};
+use log::{trace, error};
 
 use core::fmt;
 use std::collections::BTreeMap;
