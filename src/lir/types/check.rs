@@ -517,8 +517,11 @@ impl TypeCheck for Expr {
                 | Expr::Index(inner, _) => {
                     // Confirm that the inner expression can be referenced.
                     match inner.get_type(env)? {
+                        // If we are dereferencing/indexing a pointer,
+                        // confirm that the inner pointer has the expected mutability.
                         Type::Pointer(found_mutability, _) => {
                             if !found_mutability.can_decay_to(expected_mutability) {
+                                // If if doesn't, then return an error.
                                 error!("Expected mutability {expected_mutability} for expression {self}, but found mutability {found_mutability} in environment {env}");
                                 return Err(Error::MismatchedMutability {
                                     expected: *expected_mutability,
@@ -528,6 +531,7 @@ impl TypeCheck for Expr {
                             }
                         }
                         
+                        // If we are indexing an array, confirm that the inner array can be referenced with the expected mutability.
                         Type::Array(_, _) => {
                             inner.refer(*expected_mutability).type_check(env)?;
                         }
@@ -540,11 +544,16 @@ impl TypeCheck for Expr {
                 Expr::Member(inner, _) => {
                     // // Confirm that the inner expression can be referenced.
                     match inner.get_type(env)? {
+                        // If we are getting a member of a struct/union/tuple,
+                        // check if we can reference the inner expression with the expected mutability.
                         Type::Struct(_) | Type::Union(_) | Type::Tuple(_) => {
                             inner.refer(*expected_mutability).type_check(env)?;
                         }
+                        // If we are getting a member of a pointer,
+                        // confirm that the inner pointer has the expected mutability.
                         Type::Pointer(found_mutability, _) => {
                             if !found_mutability.can_decay_to(expected_mutability) {
+                                // If if doesn't, then return an error.
                                 error!("Expected mutability {expected_mutability} for expression {self}, but found mutability {found_mutability} in environment {env}");
                                 return Err(Error::MismatchedMutability {
                                     expected: *expected_mutability,
@@ -733,10 +742,7 @@ impl TypeCheck for Expr {
             Self::Union(t, field, val) => {
                 // Typecheck the type.
                 t.type_check(env)?;
-                let mut t = t.clone();
-                t = t.simplify_until_matches(env, Type::Union(BTreeMap::new()), |t, _env| {
-                    Ok(matches!(t, Type::Union(_)))
-                })?;
+                let t = t.simplify_until_union(env)?;
                 match t {
                     Type::Union(fields) => {
                         // Confirm that the variant is a valid variant.
@@ -809,10 +815,7 @@ impl TypeCheck for Expr {
             Self::EnumUnion(t, variant, val) => {
                 // Typecheck the type
                 t.type_check(env)?;
-                let mut t = t.clone();
-                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
-                    Ok(matches!(t, Type::EnumUnion(_)))
-                })?;
+                let t = t.simplify_until_union(env)?;
 
                 match t {
                     Type::EnumUnion(fields) => {
@@ -1022,12 +1025,11 @@ impl TypeCheck for ConstExpr {
 
             // Typecheck a variant of an enum.
             Self::Of(t, variant) => {
-                let mut t = t.clone();
-
-                t =
-                    t.simplify_until_matches(env, Type::Enum(vec![variant.clone()]), |t, _env| {
-                        Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_)))
-                    })?;
+                let t = t.simplify_until_has_variants(env).map_err(
+                |_| Error::VariantNotFound(
+                    t.clone(),
+                    variant.clone(),
+                ))?;
 
                 match t {
                     Type::Enum(variants) => {
@@ -1118,11 +1120,7 @@ impl TypeCheck for ConstExpr {
             // Typecheck a union literal.
             Self::Union(t, field, val) => {
                 // Confirm the type supplied is a union.
-                let mut t = t.clone();
-
-                t = t.simplify_until_matches(env, Type::Union(BTreeMap::new()), |t, _env| {
-                    Ok(matches!(t, Type::Union(_)))
-                })?;
+                let t = t.simplify_until_union(env)?;
 
                 match t {
                     Type::Union(fields) => {
@@ -1161,11 +1159,7 @@ impl TypeCheck for ConstExpr {
             // Typecheck a tagged union literal.
             Self::EnumUnion(t, variant, val) => {
                 // Confirm the type supplied is a union.
-                let mut t = t.clone();
-                t =
-                    t.simplify_until_matches(env, Type::Enum(vec![variant.clone()]), |t, _env| {
-                        Ok(matches!(t, Type::EnumUnion(_) | Type::Enum(_)))
-                    })?;
+                let t = t.simplify_until_union(env)?;
                 match t {
                     Type::EnumUnion(fields) => {
                         // Confirm that the variant is a valid variant.

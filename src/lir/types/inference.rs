@@ -165,11 +165,7 @@ impl GetType for Expr {
                 new_env.define_type(name, t.clone());
                 new_env.define_type(name, t.clone().simplify(&new_env)?);
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?.simplify_until_matches(
-                    env,
-                    Type::Any,
-                    |t, env| t.type_check(env).map(|()| true),
-                )?
+                ret.get_type_checked(&new_env, i)?.simplify_until_type_checks(env)?
             }
 
             // Get the type of a resulting expression after several type definitions.
@@ -182,11 +178,7 @@ impl GetType for Expr {
                     new_env.define_type(name, ty.clone().simplify(&new_env)?);
                 }
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?.simplify_until_matches(
-                    env,
-                    Type::Any,
-                    |t, env| t.type_check(env).map(|()| true),
-                )?
+                ret.get_type_checked(&new_env, i)?.simplify_until_type_checks(env)?
             }
 
             // Get the type of a resulting expression after a variable definition.
@@ -278,11 +270,7 @@ impl GetType for Expr {
             Self::Apply(func, _) => {
                 // Get the type of the function.
                 let mut ty = func.get_type_checked(env, i)?;
-                ty = ty.simplify_until_matches(
-                    env,
-                    Type::Proc(vec![], Box::new(Type::Any)),
-                    |t, _env| Ok(t.is_simple()),
-                )?;
+                ty = ty.simplify_until_concrete(env)?;
                 match ty {
                     Type::Proc(_, ret) => *ret,
                     Type::Let(name, t, result) => {
@@ -366,16 +354,7 @@ impl GetType for Expr {
                 // Get the field to access (as an integer)
                 let as_int = field.clone().as_int(env);
                 // Get the type of the value to get the member of.
-                match val.get_type_checked(env, i)?.simplify_until_matches(
-                    env,
-                    Type::Struct(BTreeMap::new()),
-                    |t, _env| {
-                        Ok(matches!(
-                            t,
-                            Type::Tuple(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_, _)
-                        ))
-                    },
-                ) {
+                match val.get_type_checked(env, i)?.simplify_until_has_members(env) {
                     Ok(Type::Pointer(_, t)) => t.get_member_offset(field, val, env)?.0,
                     // If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
@@ -418,19 +397,9 @@ impl GetType for Expr {
                             return Err(Error::MemberNotFound(*val.clone(), field.clone()));
                         }
                     }
-                    // // If we're accessing a member whose type is a more complex
-                    // // let-binding, we need to look up the type of the member using
-                    // // another environment.
-                    // Type::Let(name, t, ret) => {
-                    //     // Create a new environment with the type of the let-binding
-                    //     let mut new_env = env.clone();
-                    //     new_env.define_type(name, *t);
-                    //     // Get the type of the member in the new environment.
-                    //     ret.get_member_offset(field, val, &new_env)?.0
-                    // }
 
                     // If we're accessing a member of a type that is not a tuple,
-                    // struct, or union, we cannot access a member.
+                    // struct, union, or pointer, we cannot access a member.
                     _ => return Err(Error::MemberNotFound(*val.clone(), field.clone())),
                 }
             }

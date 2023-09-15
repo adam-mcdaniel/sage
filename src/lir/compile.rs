@@ -14,7 +14,6 @@ use crate::asm::{
     AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
 };
 use crate::NULL;
-use std::collections::BTreeMap;
 
 use log::{info, warn, error};
 
@@ -494,15 +493,10 @@ impl Compile for Expr {
             }
 
             // Compile a tagged union literal.
-            Self::EnumUnion(mut t, variant, val) => {
+            Self::EnumUnion(t, variant, val) => {
                 // Get the size of the tagged union.
                 let result_size = t.get_size(env)?;
-                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
-                    Ok(!matches!(
-                        t,
-                        Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
-                    ))
-                })?;
+                let t = t.simplify_until_concrete(env)?;
                 if let Type::EnumUnion(fields) = t {
                     // Get the list of possible variant names.
                     let variants = fields.clone().into_keys().collect::<Vec<_>>();
@@ -972,10 +966,7 @@ impl Compile for ConstExpr {
             Self::EnumUnion(t, variant, val) => {
                 // Get the size of the tagged union.
                 let result_size = t.get_size(env)?;
-                let t =
-                    t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
-                        Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_)))
-                    })?;
+                let t = t.simplify_until_has_variants(env)?;
 
                 // Get the inner list of variants and compile the expression using this information.
                 if let Type::EnumUnion(variants) = t.clone().simplify(env)? {
@@ -1049,11 +1040,7 @@ impl Compile for ConstExpr {
             Self::Of(mut enum_type, variant) => {
                 // Only try to simplify the type 50 times at most.
                 // This is to prevent infinite loops and to keep recursion under control.
-                enum_type = enum_type.simplify_until_matches(
-                    env,
-                    Type::Enum(vec![variant.clone()]),
-                    |t, _env| Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_))),
-                )?;
+                enum_type = enum_type.simplify_until_has_variants(env)?;
 
                 match enum_type.clone() {
                     // If the type is an enum, we can continue.

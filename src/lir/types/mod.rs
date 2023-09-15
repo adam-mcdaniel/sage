@@ -214,10 +214,33 @@ impl Type {
         }
     }
 
-    /// Simplify an expression until you can get its members.
+    /// Simplify until the type passes the type checker.
+    pub fn simplify_until_type_checks(&self, env: &Env) -> Result<Self, Error> {
+        self.clone().simplify_until_matches(
+            env,
+            Type::Any,
+            |t, env| t.type_check(env).map(|_| true),
+        )
+    }
+
+    /// Simplify a type until you can get its members.
     pub fn simplify_until_has_members(&self, env: &Env) -> Result<Self, Error> {
         self.clone().simplify_until_matches(env, Type::Any, |t, _| {
             Ok(matches!(t, Type::Tuple(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_, _)))
+        })
+    }
+
+    /// Simplify a type until it's a union.
+    pub fn simplify_until_union(&self, env: &Env) -> Result<Self, Error> {
+        self.clone().simplify_until_matches(env, Type::Any, |t, _| {
+            Ok(matches!(t, Type::Union(_) | Type::EnumUnion(_)))
+        })
+    }
+
+    /// Simplify a type until you can get its variants.
+    pub fn simplify_until_has_variants(&self, env: &Env) -> Result<Self, Error> {
+        self.clone().simplify_until_matches(env, Type::Enum(vec![]), |t, _| {
+            Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_)))
         })
     }
 
@@ -238,7 +261,8 @@ impl Type {
     /// Simplify an expression until it matches a given function which "approves" of a type.
     /// This will perform template applications to simplify the type if possible as well.
     /// 
-    /// This is the **prefered** way to simplify a type into a concrete type.
+    /// This is usually too verbose to be used on its own, better to make a wrapper function
+    /// that calls this with a more specific use case/purpose.
     pub fn simplify_until_matches(
         self,
         env: &Env,
@@ -423,6 +447,9 @@ impl Type {
         }
     }
 
+    /// Does this type have an element type matching the supplied type?
+    /// If this type is an array of Integers, for example, then this function
+    /// will return true if the supplied type is an Integer.
     pub fn has_element_type(&self, element: &Self, env: &Env) -> Result<bool, Error> {
         match self {
             Self::Array(inner, _) => inner.equals(element, env),
@@ -432,41 +459,61 @@ impl Type {
     }
 
     /// Can this type decay into another type?
+    /// 
+    /// A type can decay into another type if the compiler can automatically convert the type
+    /// into the other type. *This is distinct from the compiler seeing the types as equal.*
+    /// The two types are *not* equal; the compiler will just automatically perform the conversion.
+    /// 
+    /// For all cases right now, a decay does nothing; the representations of the types
+    /// in the compiler are the same for all types of decay.
     pub fn can_decay_to(&self, desired: &Self, env: &Env) -> Result<bool, Error> {
         if self == desired {
             return Ok(true);
         }
 
         match (self, desired) {
+            // Can we decay a pointer to a pointer?
             (Self::Pointer(found_mutability, found_elem_ty), Self::Pointer(desired_mutabilty, desired_elem_ty)) => {
+                // Check if the mutabilities and element types can decay.
                 if found_mutability.can_decay_to(&desired_mutabilty) && found_elem_ty.can_decay_to(&desired_elem_ty, env)? {
+                    // If they can, then we can decay.
                     return Ok(true)
                 }
 
+                // Check if the mutabilities are compatible, and check if this type points to an array of elements of the desired element type.
                 if found_mutability.can_decay_to(&desired_mutabilty) && found_elem_ty.has_element_type(desired_elem_ty, env)? {
+                    // If so, then we can decay.
                     return Ok(true)
                 }
 
                 Ok(false)
             }
-
+            
+            // Can a tuple decay to another tuple?
             (Self::Tuple(found_fields), Self::Tuple(desired_fields)) => {
+                // If the tuples have different numbers of fields, then we can't decay.
                 if found_fields.len() != desired_fields.len() {
                     return Ok(false);
                 }
+                // Check if each field can decay to the corresponding field in the other tuple.
                 for (found_field, desired_field) in found_fields.iter().zip(desired_fields.iter()) {
                     if !found_field.can_decay_to(desired_field, env)? {
+                        // If any field can't decay, then we can't decay.
                         return Ok(false);
                     }
                 }
+                // If all fields can decay, then we can decay.
                 Ok(true)
             }
 
+            // Can an array decay to another array?
             (Self::Array(found_elem_ty, _), Self::Array(desired_elem_ty, _)) => {
+                // Check if the element types can decay, and if the sizes are equal.
                 if found_elem_ty.can_decay_to(desired_elem_ty, env)? && self.get_size(env)? == desired.get_size(env)? {
                     return Ok(true)
                 }
 
+                // Check if the element types are compatible, and if the sizes are equal.
                 if found_elem_ty.has_element_type(desired_elem_ty, env)? && self.get_size(env)? == desired.get_size(env)? {
                     return Ok(true)
                 }
@@ -474,51 +521,27 @@ impl Type {
                 Ok(false)
             }
 
-            (Self::Struct(found_fields), Self::Struct(desired_fields)) => {
+            // Can a struct decay to another struct?
+            (Self::EnumUnion(found_fields), Self::EnumUnion(desired_fields))
+            | (Self::Union(found_fields), Self::Union(desired_fields))
+            | (Self::Struct(found_fields), Self::Struct(desired_fields)) => {
+                // If the structs have a different number of fields, then they can't be equal.
                 if found_fields.len() != desired_fields.len() {
                     return Ok(false);
                 }
+                // For each name in the first struct, check that the second struct has the same name.
                 for (found_field_name, found_field_ty) in found_fields.iter() {
                     if let Some(desired_field_ty) = desired_fields.get(found_field_name) {
                         if !found_field_ty.can_decay_to(desired_field_ty, env)? {
+                            // If any field can't decay, then we can't decay.
                             return Ok(false);
                         }
                     } else {
+                        // If there's a difference in the names of the fields, then we can't decay.
                         return Ok(false);
                     }
                 }
-                Ok(true)
-            }
-
-            (Self::Union(found_fields), Self::Union(desired_fields)) => {
-                if found_fields.len() != desired_fields.len() {
-                    return Ok(false);
-                }
-                for (found_field_name, found_field_ty) in found_fields.iter() {
-                    if let Some(desired_field_ty) = desired_fields.get(found_field_name) {
-                        if !found_field_ty.can_decay_to(desired_field_ty, env)? {
-                            return Ok(false);
-                        }
-                    } else {
-                        return Ok(false);
-                    }
-                }
-                Ok(true)
-            }
-
-            (Self::EnumUnion(found_fields), Self::EnumUnion(desired_fields)) => {
-                if found_fields.len() != desired_fields.len() {
-                    return Ok(false);
-                }
-                for (found_field_name, found_field_ty) in found_fields.iter() {
-                    if let Some(desired_field_ty) = desired_fields.get(found_field_name) {
-                        if !found_field_ty.can_decay_to(desired_field_ty, env)? {
-                            return Ok(false);
-                        }
-                    } else {
-                        return Ok(false);
-                    }
-                }
+                // If we've made it this far, we know all the fields match and can decay.
                 Ok(true)
             }
 
@@ -958,11 +981,7 @@ impl Type {
                 } else {
                     // If the two polymorphic types are not equal, then we can't just compare the two
                     // types' parameters. We need to simplify the types first.
-                    other.clone().simplify_until_matches(
-                        env,
-                        Type::Any,
-                        |t, _env| Ok(t.is_simple()),
-                    )?.equals_checked(
+                    other.clone().simplify_until_concrete(env)?.equals_checked(
                         self,
                         compared_symbols,
                         env,
@@ -972,34 +991,7 @@ impl Type {
             }
 
             (Self::Apply(poly, ty_args), b) | (b, Self::Apply(poly, ty_args)) => {
-                // If the type is a polymorphic type, then we need to simplify it first.
-                // let f = poly.clone().simplify_until_matches(
-                //     env,
-                //     Type::Poly(vec![], Box::new(Type::Any)),
-                //     |t, _env| Ok(matches!(t, Type::Poly(_, _))),
-                // )?;
-
-                // match f {
-                //     Self::Poly(ty_params, mut template) => {
-                //         // let mut new_env = env.clone();
-                //         for (name, ty) in ty_params.iter().zip(ty_args.iter()) {
-                //             // new_env.define_type(name, ty.clone());
-                //             *template = template.substitute(name, ty);
-                //         }
-                //         template.equals_checked(b, compared_symbols, env, i)?
-                //     }
-                //     _ => {
-                //         // If the type is not a polymorphic type, then we can compare it to the
-                //         // other type.
-                //         // return a.equals_checked(b, compared_symbols, env, i);
-                //         false
-                //     }
-                // }
-                Self::Apply(poly.clone(), ty_args.clone()).simplify_until_matches(
-                    env,
-                    Type::Any,
-                    |t, _env| Ok(t.is_simple()),
-                )?.equals_checked(b, compared_symbols, env, i)?
+                Self::Apply(poly.clone(), ty_args.clone()).simplify_until_concrete(env)?.equals_checked(b, compared_symbols, env, i)?
             }
 
             (a, b) => {
@@ -1079,15 +1071,7 @@ impl Type {
             Type::Apply(_, _) | Type::Poly(_, _) => {
                 let t = self
                     .clone()
-                    .simplify_until_matches(env, Type::Any, |t, _env| {
-                        Ok(!matches!(
-                            t,
-                            Type::Let(_, _, _)
-                                | Type::Symbol(_)
-                                | Type::Apply(_, _)
-                                | Type::Poly(_, _)
-                        ))
-                    })?;
+                    .simplify_until_concrete(env)?;
                 t.get_member_offset(member, expr, env)
             }
 

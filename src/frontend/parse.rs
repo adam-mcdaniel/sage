@@ -352,7 +352,6 @@ pub fn parse_frontend(code: &str, filename: Option<&str>) -> Result<Expr, Box<Er
 }
 
 fn parse_symbol(pair: Pair<Rule>) -> (Mutability, String) {
-    // pair.into_inner().next().unwrap().as_str().to_string()
     if pair.as_rule() == Rule::mut_symbol {
         (Mutability::Mutable, pair.into_inner().next().unwrap().as_str().to_string())
     } else {

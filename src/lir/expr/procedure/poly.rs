@@ -3,7 +3,7 @@
 //! A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 //! This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 //! A procedure is compiled down to a label in the assembly code.
-use crate::lir::{ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck};
+use crate::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
 use core::fmt;
 use std::{collections::HashMap, rc::Rc, sync::Mutex};
 
@@ -82,9 +82,7 @@ impl PolyProcedure {
             .into_iter()
             .map(|ty| {
                 // Simplify the type until it is concrete
-                ty.simplify_until_matches(env, Type::Any, |t, env| {
-                    t.get_size(env).map(|_| t.is_simple())
-                })
+                ty.simplify_until_concrete(env)
             })
             .collect::<Result<Vec<_>, Error>>()?;
 
@@ -98,9 +96,7 @@ impl PolyProcedure {
             );
             // Simplify the type until it is simple.
             // This reduces to the concrete version of the type application.
-            ty.simplify_until_matches(env, Type::Any, |t, env| {
-                t.get_size(env).map(|_| t.is_simple())
-            })
+            ty.simplify_until_concrete(env)
         };
 
         // Distribute the type parameters over the body and arguments of the function.

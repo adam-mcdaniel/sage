@@ -11,7 +11,7 @@
 
 use crate::lir::{
     CoreBuiltin, Env, Error, Expr, GetSize, GetType, PolyProcedure, Procedure, Simplify,
-    StandardBuiltin, FFIProcedure, Type, TypeCheck, Mutability,
+    StandardBuiltin, FFIProcedure, Type, Mutability,
 };
 use crate::parse::SourceCodeLocation;
 
@@ -298,11 +298,7 @@ impl GetType for ConstExpr {
                 for (name, ty) in bindings {
                     new_env.define_type(&name, ty);
                 }
-                expr.get_type_checked(&new_env, i)?.simplify_until_matches(
-                    env,
-                    Type::Any,
-                    |t, env| t.type_check(env).map(|_| true),
-                )?
+                expr.get_type_checked(&new_env, i)?.simplify_until_type_checks(env)?
             }
             Self::Monomorphize(expr, ty_args) => {
                 // Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::<Result<Vec<Type>, Error>>()?).perform_template_applications(env, &mut HashMap::new(), 0)?
