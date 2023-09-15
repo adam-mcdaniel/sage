@@ -8,6 +8,8 @@ use crate::asm::{AssemblyProgram, CoreOp, StandardOp};
 use crate::lir::{Compile, Env, Error, GetType, Type, TypeCheck};
 use core::fmt;
 
+use log::trace;
+
 /// A builtin pseudo-procedure implemented in the core assembly variant.
 ///
 /// This is not actually executed like a legitimate procedure, but
@@ -29,6 +31,7 @@ pub struct CoreBuiltin {
 
 impl GetType for CoreBuiltin {
     fn get_type_checked(&self, _env: &Env, _i: usize) -> Result<Type, Error> {
+        trace!("Getting type of builtin: {}", self);
         Ok(Type::Proc(
             self.args.iter().map(|(_, t)| t.clone()).collect(),
             Box::new(self.ret.clone()),
@@ -45,6 +48,7 @@ impl GetType for CoreBuiltin {
 
 impl TypeCheck for CoreBuiltin {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
+        trace!("Type checking builtin: {}", self);
         for (_, ty) in &self.args {
             ty.type_check(env)?;
         }
@@ -54,6 +58,7 @@ impl TypeCheck for CoreBuiltin {
 
 impl Compile for CoreBuiltin {
     fn compile_expr(self, _env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        trace!("Compiling builtin: {}", self);
         self.body.into_iter().for_each(|op| output.op(op));
         Ok(())
     }
@@ -82,6 +87,7 @@ pub struct StandardBuiltin {
 
 impl TypeCheck for StandardBuiltin {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
+        trace!("Type checking builtin: {}", self);
         for (_, ty) in &self.args {
             ty.type_check(env)?;
         }
@@ -91,6 +97,7 @@ impl TypeCheck for StandardBuiltin {
 
 impl GetType for StandardBuiltin {
     fn get_type_checked(&self, _env: &Env, _i: usize) -> Result<Type, Error> {
+        trace!("Getting type of builtin: {}", self);
         Ok(Type::Proc(
             self.args.iter().map(|(_, t)| t.clone()).collect(),
             Box::new(self.ret.clone()),
@@ -107,6 +114,7 @@ impl GetType for StandardBuiltin {
 
 impl Compile for StandardBuiltin {
     fn compile_expr(self, _env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        trace!("Compiling builtin: {}", self);
         for op in self.body {
             output.std_op(op)?
         }

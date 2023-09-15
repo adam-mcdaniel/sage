@@ -16,6 +16,8 @@ use crate::asm::{
 use crate::NULL;
 use std::collections::BTreeMap;
 
+use log::{info, warn};
+
 /// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
 pub trait Compile: TypeCheck {
@@ -29,24 +31,30 @@ pub trait Compile: TypeCheck {
     where
         Self: Sized + Clone,
     {
+        info!("Type checking...");
         // First, type check the expression.
         self.type_check(&Env::default())?;
+        info!("Type checked successfully.");
         // Then, attempt to compile the expression into a core assembly program.
         let mut core_asm = CoreProgram::default();
-        if self
+
+        info!("Compiling...");
+        // If the expression cannot be compiled into a core assembly program,
+        // then compile it into a standard assembly program.
+        if let Err(err) = self
             .clone()
             // Compile the expression into the core assembly program.
             .compile_expr(&mut Env::default(), &mut core_asm)
-            // If the expression cannot be compiled into a core assembly program,
-            .is_err()
         {
-            // then compile it into a standard assembly program.
+            warn!("Failed to compile into core assembly program: {err}, falling back on standard assembly");
             let mut std_asm = StandardProgram::default();
             // Compile the expression into the standard assembly program.
             self.compile_expr(&mut Env::default(), &mut std_asm)?;
+            info!("Compiled to standard assembly successfully.");
             // Return the fallback standard assembly program.
             Ok(Err(std_asm))
         } else {
+            info!("Compiled to core assembly successfully.");
             // Return the successfully compiled core assembly program.
             Ok(Ok(core_asm))
         }
@@ -58,12 +66,16 @@ pub trait Compile: TypeCheck {
 /// Compile an LIR expression into several core assembly instructions.
 impl Compile for Expr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        let mut debug_str = format!("{self:50}");
+        debug_str.truncate(50);
+        
         // Write a little comment about what we're compiling.
         if !matches!(self, Self::ConstExpr(_)) {
             let mut comment = format!("{self}");
             comment.truncate(70);
-            output.comment(format!("compiling `{comment}`"));
         }
+
+        let current_instruction = output.current_instruction();
 
         // Compile the expression.
         match self {
@@ -316,6 +328,7 @@ impl Compile for Expr {
             }
             // Compile a let statement with a variable.
             Self::LetVar(name, mutability, specifier, e, body) => {
+                let message = format!("Initializing '{name}' with expression '{e}'");
                 // Get the type of the variable using its specifier,
                 // or by deducing the type ourselves.
                 let t = if let Some(t) = specifier {
@@ -331,6 +344,9 @@ impl Compile for Expr {
                 // Get the size of the variable we are writing to.
                 let var_size = t.get_size(env)?;
                 new_env.define_var(&name, mutability, t)?;
+
+                output.log_instructions_after(&name, &message, current_instruction);
+
 
                 let result_type = body.get_type(&new_env)?;
                 let result_size = result_type.get_size(&new_env)?;
@@ -597,7 +613,7 @@ impl Compile for Expr {
                         output.op(CoreOp::Pop(None, val_size - size));
                     }
                     // If the value being indexed is a pointer:
-                    Type::Pointer(mutability, elem) => {
+                    Type::Pointer(_, elem) => {
                         // Push the index onto the stack.
                         idx.compile_expr(env, output)?;
                         // Push the pointer being indexed onto the stack.
@@ -823,8 +839,8 @@ impl Compile for Expr {
                 other => return Err(Error::InvalidRefer(other)),
             },
         }
+
         // Return success.
-        output.comment("done".to_string());
         Ok(())
     }
 }
@@ -832,10 +848,10 @@ impl Compile for Expr {
 /// Compile a constant expression.
 impl Compile for ConstExpr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        let mut comment = format!("{self}");
-        comment.truncate(70);
-        output.comment(format!("compiling constant `{comment}`"));
+        let mut debug_str = format!("{self}");
+        debug_str.truncate(50);
 
+        let current_instruction = output.current_instruction();
         // Compile the constant expression.
         match self {
             Self::AnnotatedWithSource { expr, loc } => {
@@ -855,12 +871,18 @@ impl Compile for ConstExpr {
                         .into_iter()
                         .map(|ty| ty.simplify(env))
                         .collect::<Result<Vec<_>, _>>()?;
+
+                    let common_name = poly_proc.get_name();
+                    let message = format!("Monomorphized {common_name} with type arguments {}", ty_args.iter().map(|ty| format!("{}", ty)).collect::<Vec<_>>().join(", "));
+                    let current_instruction = output.current_instruction();
                     // Monomorphize the function
                     let proc = poly_proc.monomorphize(ty_args, env)?;
                     // Typecheck the monomorphized function.
                     proc.type_check(env)?;
                     // Compile the monomorphized function.
                     proc.compile_expr(env, output)?;
+
+                    output.log_instructions_after(&common_name, &message, current_instruction);
                 }
                 val => {
                     return Err(Error::InvalidMonomorphize(val));
@@ -1138,7 +1160,7 @@ impl Compile for ConstExpr {
                 }
             }
         }
-        output.comment("done".to_string());
+        output.log_instructions_after(&"expr", &debug_str, current_instruction);
         Ok(())
     }
 }

@@ -7,6 +7,8 @@ use crate::lir::{ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type
 use core::fmt;
 use std::{collections::HashMap, rc::Rc, sync::Mutex};
 
+use log::{debug, trace};
+
 use super::Procedure;
 
 /// A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
@@ -58,44 +60,44 @@ impl PolyProcedure {
         }
     }
 
+    /// Get the name of this polymorphic procedure.
+    /// This is not the mangled name, but the name known to the LIR front-end.
+    /// The mangled name is unique for each monomorph of the procedure.
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
     /// Take some type arguments and produce a monomorphized version of the procedure.
     /// This monomorphized version can then be compiled directly. Additionally, the
     /// mono version of the procedure is memoized, so that it is only compiled once.
     pub fn monomorphize(&self, ty_args: Vec<Type>, env: &Env) -> Result<Procedure, Error> {
+        debug!("Monomorphizing {} with {:?}", self, ty_args);
+
         // This is a helper function to distribute the defined type
         // arguments over the body and arguments of the function.
 
+        // Simplify all the type arguments until they are concrete
         let simplified_ty_args = ty_args
             .clone()
             .into_iter()
             .map(|ty| {
+                // Simplify the type until it is concrete
                 ty.simplify_until_matches(env, Type::Any, |t, env| {
                     t.get_size(env).map(|_| t.is_simple())
                 })
             })
             .collect::<Result<Vec<_>, Error>>()?;
 
+        // This is a helper function to bind the type arguments to the type parameters.
         let bind_type_args = |ty: Type| -> Result<Type, Error> {
-            // for (name, arg) in self.ty_params.iter().zip(ty_args.iter()) {
-            //     // ty = Type::let_bind(name, if arg == &Type::Symbol(name.clone()) {
-            //     //     Type::Unit(name.clone(), Box::new(Type::Any))
-            //     // } else {
-            //     //     arg.clone()
-            //     // }, ty)
-            //     ty = ty.clone().substitute(name, arg);
-            //     // ty = Type::let_bind(&name, if arg == &Type::Symbol(name.clone()) {
-            //     //     Type::Unit(name.clone(), Box::new(Type::Any))
-            //     // } else {
-            //     //     arg.clone()
-            //     // }, ty);
-            // }
-
-            // Type::Apply(Box::new(Type::Poly(self.ty_params.clone(), Box::new(ty))), ty_args.clone()).simplify(env)?.perform_template_applications(env, &mut HashMap::new(), 0)
-
+            // Add the type parameters to the given type,
+            // and apply the arguments.
             let ty = Type::Apply(
                 Box::new(Type::Poly(self.ty_params.clone(), Box::new(ty))),
                 simplified_ty_args.clone(),
             );
+            // Simplify the type until it is simple.
+            // This reduces to the concrete version of the type application.
             ty.simplify_until_matches(env, Type::Any, |t, env| {
                 t.get_size(env).map(|_| t.is_simple())
             })
@@ -110,9 +112,11 @@ impl PolyProcedure {
             .collect::<Result<Vec<_>, Error>>()?;
         let ret = bind_type_args(self.ret.clone())?;
         let mut body = *self.body.clone();
-        // eprintln!("Before substitution: {}", body);
+
+        // Substitute the type arguments into the body of the function.
         body.substitute_types(&self.ty_params, &simplified_ty_args);
-        // eprintln!("After substitution: {}", body);
+
+        // Wrap the body in a let expression to bind the type arguments.
         body = Expr::LetTypes(
             self.ty_params
                 .iter()
@@ -122,16 +126,20 @@ impl PolyProcedure {
             Box::new(body),
         );
 
+        // Generate a mangled name for the monomorphized procedure.
         let mangled_name = format!("__MONOMORPHIZED_({ty_args:?}){}{args:?}{ret:?}", self.name);
 
+        // Memoize the monomorphized procedure.
         let mut monomorphs = self.monomorphs.lock().unwrap();
+        // If the monomorphized procedure has already been memoized, return it, otherwise memoize it.
         let monomorph = monomorphs
             .entry(mangled_name.clone())
             .or_insert_with(|| Procedure::new(Some(mangled_name.clone()), args, ret, body))
             .clone();
+        // Unlock the mutex to prevent a deadlock.
         drop(monomorphs);
-        // eprintln!("monomorphized: {}", monomorph);
 
+        // Return the monomorphized procedure.
         Ok(monomorph)
     }
 }
@@ -160,6 +168,7 @@ impl GetType for PolyProcedure {
 
 impl TypeCheck for PolyProcedure {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
+        trace!("Type checking {self}");
         // Create a new scope for the procedure's body, and define the arguments for the scope.
         let mut new_env = env.new_scope();
         for ty_param in &self.ty_params {
@@ -188,7 +197,6 @@ impl TypeCheck for PolyProcedure {
             // Typecheck the procedure's body.
             self.body.type_check(&new_env)
         }
-        // Ok(())
     }
 }
 

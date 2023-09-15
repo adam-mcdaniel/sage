@@ -15,6 +15,8 @@ use crate::lir::{
 };
 use crate::parse::SourceCodeLocation;
 
+use log::{trace, error};
+
 use core::fmt;
 use std::collections::BTreeMap;
 
@@ -122,8 +124,10 @@ impl ConstExpr {
     fn eval_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
         let i = i + 1;
         if i > 500 {
+            error!("Recursion depth exceeded while evaluating: {self}");
             Err(Error::RecursionDepthConst(self))
         } else {
+            trace!("Evaluating constexpr: {self}");
             match self {
                 Self::AnnotatedWithSource { expr, loc } => expr.eval_checked(env, i).map_err(|e| e.with_loc(&loc)),
 
@@ -220,6 +224,7 @@ impl ConstExpr {
 
     /// Try to get this constant expression as an integer.
     pub fn as_int(self, env: &Env) -> Result<i64, Error> {
+        trace!("Getting int from constexpr: {self}");
         match self.eval_checked(env, 0) {
             Ok(Self::Int(n)) => Ok(n),
             Ok(other) => Err(Error::NonIntegralConst(other)),
@@ -229,6 +234,7 @@ impl ConstExpr {
 
     /// Try to get this constant expression as a float.
     pub fn as_float(self, env: &Env) -> Result<f64, Error> {
+        trace!("Getting float from constexpr: {self}");
         match self.eval_checked(env, 0) {
             Ok(Self::Float(n)) => Ok(n),
             Ok(other) => Err(Error::NonIntegralConst(other)),
@@ -238,6 +244,7 @@ impl ConstExpr {
 
     /// Try to get this constant expression as a boolean value.
     pub fn as_bool(self, env: &Env) -> Result<bool, Error> {
+        trace!("Getting bool from constexpr: {self}");
         match self.eval_checked(env, 0) {
             Ok(Self::Bool(b)) => Ok(b),
             Ok(other) => Err(Error::NonIntegralConst(other)),
@@ -247,6 +254,7 @@ impl ConstExpr {
 
     /// Try to get this constant expression as a symbol (like in LISP).
     pub fn as_symbol(self, env: &Env) -> Result<String, Error> {
+        trace!("Getting symbol from constexpr: {self}");
         match self {
             // Check to see if the constexpr is already a symbol.
             Self::Symbol(name) => Ok(name),
@@ -267,6 +275,7 @@ impl Simplify for ConstExpr {
 
 impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
+        trace!("Getting type from constexpr: {self}");
         Ok(match self.clone() {
             Self::AnnotatedWithSource { expr, loc } => {
                 expr.get_type_checked(env, i).map_err(|e| e.with_loc(&loc))?

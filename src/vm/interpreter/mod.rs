@@ -8,6 +8,8 @@
 //! and capture the output to test against the predicted output.
 use crate::side_effects::{FFIBinding, Input, InputMode, Output, OutputMode};
 
+use log::{trace, warn, error};
+
 mod core;
 pub use self::core::*;
 mod std;
@@ -105,9 +107,11 @@ impl TestingDevice {
     }
 
     fn get_int(&mut self) -> Result<i64, String> {
+
         let mut result: i64 = 0;
         loop {
             if self.input.is_empty() {
+                warn!("EOF while parsing integer: {result}");
                 break;
             }
             let ch = self.input[0] as u8 as char;
@@ -133,6 +137,8 @@ impl TestingDevice {
             }
         }
 
+        trace!("Got integer input: {}", result);
+
         Ok(result)
     }
 
@@ -140,6 +146,7 @@ impl TestingDevice {
         let whole_part = self.get_int()? as f64;
 
         if self.input.is_empty() {
+            warn!("EOF while parsing float: {whole_part}");
             return Ok(whole_part);
         }
 
@@ -149,6 +156,7 @@ impl TestingDevice {
             self.get_char()?;
             let fractional_part = self.get_int()? as f64;
             let digits = fractional_part.log10() as i32 + 1;
+            trace!("Got float input: {}.{:0digits$}", whole_part, fractional_part, digits=digits as usize);
             Ok(whole_part
                 + if digits > 1 {
                     fractional_part / 10.0_f64.powi(digits)
@@ -156,6 +164,8 @@ impl TestingDevice {
                     0.0
                 })
         } else {
+
+            trace!("Got float input: {}", whole_part);
             Ok(whole_part)
         }
     }
@@ -166,6 +176,7 @@ impl TestingDevice {
         for (ch, _) in &self.output {
             result.push(*ch as i8 as u8 as char)
         }
+        trace!("Output from testing device: {}", result);
         result
     }
 
@@ -182,13 +193,14 @@ impl Device for TestingDevice {
                 if let Some(n) = self.input.pop_front() {
                     Ok(n)
                 } else {
+                    error!("Tried to get character from empty input buffer");
                     Err("input is empty".to_string())
                 }
             }
             InputMode::StdinInt => self.get_int(),
             InputMode::StdinFloat => self.get_float().map(as_int),
             _ => {
-                eprintln!("Requested input mode: {}", src.mode);
+                warn!("Requested input mode: {}", src.mode);
                 Ok(0)
             }
         }
@@ -203,7 +215,7 @@ impl Device for TestingDevice {
             OutputMode::StdoutInt => self.put_int(val),
             OutputMode::StdoutFloat => self.put_float(as_float(val)),
             _ => {
-                eprintln!("Requested output mode: {} (with output={val})", dst.mode);
+                warn!("Requested output mode: {} (with output={val})", dst.mode);
                 Ok(())
             }
         }
@@ -213,6 +225,7 @@ impl Device for TestingDevice {
         if let Some(n) = self.ffi_channel.pop_front() {
             Ok(n)
         } else {
+            error!("Tried to peek from empty ffi channel");
             Err("ffi channel is empty".to_string())
         }
     }
@@ -224,9 +237,11 @@ impl Device for TestingDevice {
 
     fn ffi_call(&mut self, ffi: &FFIBinding, tape: Option<&mut Vec<i64>>) -> Result<(), String> {
         if let Some(f) = self.ffi.get(ffi) {
+            trace!("Calling FFI: {}", ffi);
             f(&mut self.ffi_channel, tape);
             Ok(())
         } else {
+            error!("FFI call not found: {:?}", ffi);
             Err(format!("ffi call not found: {:?}", ffi))
         }
     }
@@ -265,15 +280,18 @@ impl Default for StandardDevice {
 
 impl StandardDevice {
     pub fn add_binding(&mut self, ffi: FFIBinding, f: fn(&mut VecDeque<i64>, Option<&mut Vec<i64>>)) {
+        trace!("Adding ffi binding to VM interpreter: {}", ffi);
         self.ffi.insert(ffi, f);
     }
 
     fn get_char(&mut self) -> Result<char, String> {
         let mut buf = [0];
         if stdout().flush().is_err() {
+            error!("Could not flush output, do you have a terminal?");
             return Err("Could not flush output".to_string());
         }
         if stdin().read(&mut buf).is_err() {
+            error!("Could not flush output, do you have a terminal?");
             return Err("Could not get user input".to_string());
         }
         Ok(buf[0] as char)
@@ -282,6 +300,7 @@ impl StandardDevice {
     fn get_int(&mut self) -> Result<i64, String> {
         let mut buf = [0];
         if stdout().flush().is_err() {
+            error!("Could not flush output, do you have a terminal?");
             return Err("Could not flush output".to_string());
         }
 
@@ -290,6 +309,7 @@ impl StandardDevice {
         let mut result = if buf[0].is_ascii_digit() {
             (buf[0] - b'0') as i64
         } else {
+            warn!("EOF while parsing integer");
             0
         };
 
@@ -302,18 +322,25 @@ impl StandardDevice {
             }
         }
 
+        trace!("Got integer input: {}", result);
+
         Ok(result)
     }
 
     fn get_float(&mut self) -> Result<f64, String> {
         let mut buf = String::new();
         if stdout().flush().is_err() {
+            error!("Could not flush output, do you have a terminal?");
             return Err("Could not flush output".to_string());
         }
         if stdin().read_line(&mut buf).is_err() {
+            error!("Could not flush output, do you have a terminal?");
             return Err("Could not get user input".to_string());
         }
-        Ok(buf.trim().parse::<f64>().unwrap_or(0.0))
+        Ok(buf.trim().parse::<f64>().unwrap_or_else(|s| {
+            warn!("Could not parse float: {s:?}, defaulting to 0.0");
+            0.0
+        }))
     }
 }
 
@@ -325,7 +352,7 @@ impl Device for StandardDevice {
             InputMode::StdinFloat => as_int(self.get_float()?),
             InputMode::Thermometer => as_int(295.15),
             _ => {
-                eprintln!(
+                warn!(
                     "Requested input mode: {} (on channel #{})",
                     src.mode, src.channel
                 );
@@ -344,7 +371,7 @@ impl Device for StandardDevice {
             OutputMode::StderrInt => eprint!("{}", val),
             OutputMode::StderrFloat => eprint!("{:?}", as_float(val)),
             _ => {
-                eprintln!(
+                warn!(
                     "Requested output mode: {} (on channel #{}) with output={val}",
                     dst.mode, dst.channel
                 );
@@ -361,6 +388,7 @@ impl Device for StandardDevice {
         if let Some(n) = self.ffi_channel.pop_front() {
             Ok(n)
         } else {
+            error!("Tried to peek from empty ffi channel");
             Err("ffi channel is empty".to_string())
         }
     }
@@ -372,9 +400,11 @@ impl Device for StandardDevice {
 
     fn ffi_call(&mut self, ffi: &FFIBinding, tape: Option<&mut Vec<i64>>) -> Result<(), String> {
         if let Some(f) = self.ffi.get(ffi) {
+            trace!("Calling FFI: {}", ffi);
             f(&mut self.ffi_channel, tape);
             Ok(())
         } else {
+            error!("FFI call not found: {:?}", ffi);
             Err(format!("ffi call not found: {:?}", ffi))
         }
     }

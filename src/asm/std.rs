@@ -13,6 +13,8 @@ use crate::vm::{self, VirtualMachineProgram};
 use crate::side_effects::ffi::FFIBinding;
 use std::{collections::BTreeSet, fmt};
 
+use log::info;
+
 /// A program composed of standard instructions, which can be assembled
 /// into the standard virtual machine instructions.
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
@@ -50,11 +52,14 @@ impl StandardProgram {
         let mut env = Env::default();
         // Create the stack of frame pointers starting directly after the last register
         F.copy_address_to(&FP_STACK, &mut result);
+        info!("Frame pointer stack begins at {FP_STACK:?}, and is {} cells long.", allowed_recursion_depth);
         // Copy the address just after the allocated space to the stack pointer.
-        FP_STACK
+        let starting_sp_addr = FP_STACK
             .deref()
-            .offset(allowed_recursion_depth as isize)
-            .copy_address_to(&SP, &mut result);
+            .offset(allowed_recursion_depth as isize);
+
+        starting_sp_addr.copy_address_to(&SP, &mut result);
+        info!("Stack pointer is initialized to point to {starting_sp_addr:?}.");
 
         SP.copy_to(&FP, &mut result);
         for (i, op) in self.code.iter().enumerate() {
@@ -135,6 +140,14 @@ impl AssemblyProgram for StandardProgram {
 
     fn is_defined(&self, label: &str) -> bool {
         self.labels.contains(label)
+    }
+
+    fn current_instruction(&self) -> usize {
+        self.code.len()
+    }
+
+    fn get_op(&self, start: usize) -> Option<Result<CoreOp, StandardOp>> {
+        self.code.get(start).cloned().map(Err)
     }
 }
 
