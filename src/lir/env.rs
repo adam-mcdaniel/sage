@@ -203,14 +203,23 @@ impl Env {
         self.expected_ret = Some(t);
     }
 
+    /// Does the environment have some precalculated size for the given type?
+    /// This helps the compiler memoize the size of types so that it doesn't have to
+    /// recalculate the size of the same type multiple times.
     pub(super) fn has_precalculated_size(&self, ty: &Type) -> bool {
         self.type_sizes.read().unwrap().contains_key(ty)
     }
 
+    /// Get the precalculated size of the given type.
+    /// This helps the compiler memoize the size of types so that it doesn't have to
+    /// recalculate the size of the same type multiple times.
     pub(super) fn get_precalculated_size(&self, ty: &Type) -> Option<usize> {
         self.type_sizes.read().unwrap().get(ty).copied()
     }
 
+    /// Set the precalculated size of the given type.
+    /// This helps the compiler memoize the size of types so that it doesn't have to
+    /// recalculate the size of the same type multiple times.
     pub(super) fn set_precalculated_size(&self, ty: Type, size: usize) {
         debug!("Memoizing type size {ty} with size {size}");
         self.type_sizes.write().unwrap().insert(ty, size);

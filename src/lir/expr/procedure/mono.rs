@@ -138,8 +138,6 @@ impl GetType for Procedure {
 
 impl Compile for Procedure {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        let common_name = self.common_name.clone();
-
         // Compile the contents of the procedure under a new environment
         let mut new_env = env.new_scope();
 
@@ -160,7 +158,7 @@ impl Compile for Procedure {
 
         // Declare the function body
         output.op(CoreOp::Fn(self.mangled_name.clone()));
-        if let Some(common_name) = self.common_name {
+        if let Some(common_name) = &self.common_name {
             output.comment(format!("{}({})", common_name, args_size));
         }
         let current_instruction = output.current_instruction();
@@ -184,14 +182,16 @@ impl Compile for Procedure {
         // Push the procedure label address onto the stack
         output.op(CoreOp::SetLabel(A, self.mangled_name.clone()));
         output.op(CoreOp::Push(A, 1));
+
+        let name = self.common_name.as_ref().map(|x| x.as_str()).unwrap_or_else(|| "<anonymous>");
         // Log the compiled procedure
         let message = format!("Compiled procedure {common_name} to {mangled_name} with args of size {args_size} and return value of size {ret_size}",
-            common_name = common_name.clone().unwrap_or_else(|| "<anonymous>".to_string()),
+            common_name = name,
             mangled_name = self.mangled_name,
             args_size = args_size,
             ret_size = ret_size,
         );
-        output.log_instructions_after(&common_name.unwrap_or(self.mangled_name), &message, current_instruction);
+        output.log_instructions_after(name, &message, current_instruction);
 
         Ok(())
     }
