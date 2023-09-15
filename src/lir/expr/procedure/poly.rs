@@ -76,21 +76,28 @@ impl PolyProcedure {
         // This is a helper function to distribute the defined type
         // arguments over the body and arguments of the function.
 
+        // Simplify all the type arguments until they are concrete
         let simplified_ty_args = ty_args
             .clone()
             .into_iter()
             .map(|ty| {
+                // Simplify the type until it is concrete
                 ty.simplify_until_matches(env, Type::Any, |t, env| {
                     t.get_size(env).map(|_| t.is_simple())
                 })
             })
             .collect::<Result<Vec<_>, Error>>()?;
 
+        // This is a helper function to bind the type arguments to the type parameters.
         let bind_type_args = |ty: Type| -> Result<Type, Error> {
+            // Add the type parameters to the given type,
+            // and apply the arguments.
             let ty = Type::Apply(
                 Box::new(Type::Poly(self.ty_params.clone(), Box::new(ty))),
                 simplified_ty_args.clone(),
             );
+            // Simplify the type until it is simple.
+            // This reduces to the concrete version of the type application.
             ty.simplify_until_matches(env, Type::Any, |t, env| {
                 t.get_size(env).map(|_| t.is_simple())
             })
@@ -106,8 +113,10 @@ impl PolyProcedure {
         let ret = bind_type_args(self.ret.clone())?;
         let mut body = *self.body.clone();
 
+        // Substitute the type arguments into the body of the function.
         body.substitute_types(&self.ty_params, &simplified_ty_args);
 
+        // Wrap the body in a let expression to bind the type arguments.
         body = Expr::LetTypes(
             self.ty_params
                 .iter()
@@ -117,15 +126,20 @@ impl PolyProcedure {
             Box::new(body),
         );
 
+        // Generate a mangled name for the monomorphized procedure.
         let mangled_name = format!("__MONOMORPHIZED_({ty_args:?}){}{args:?}{ret:?}", self.name);
 
+        // Memoize the monomorphized procedure.
         let mut monomorphs = self.monomorphs.lock().unwrap();
+        // If the monomorphized procedure has already been memoized, return it, otherwise memoize it.
         let monomorph = monomorphs
             .entry(mangled_name.clone())
             .or_insert_with(|| Procedure::new(Some(mangled_name.clone()), args, ret, body))
             .clone();
+        // Unlock the mutex to prevent a deadlock.
         drop(monomorphs);
 
+        // Return the monomorphized procedure.
         Ok(monomorph)
     }
 }
