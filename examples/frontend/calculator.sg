@@ -301,8 +301,8 @@ def strlen(ch: &Char): Int {
 }
 
 def getchar(): Char {
-    let ch = ' ';
-    input(&ch);
+    let mut ch = ' ';
+    input(&mut ch);
     return ch;
 }
 
