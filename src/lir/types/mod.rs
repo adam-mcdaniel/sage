@@ -14,6 +14,72 @@ pub use inference::*;
 pub use size::*;
 
 
+#[derive(Copy, Clone, Default, Debug, Eq, PartialOrd, Ord, Hash)]
+pub enum Mutability {
+    Mutable,
+    #[default]
+    Immutable,
+    Any,
+}
+
+impl Mutability {
+    pub fn can_decay_to(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Mutable, _) => true,
+            (Self::Immutable, Self::Immutable) => true,
+            (Self::Any, _) => true,
+            (_, Self::Any) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_mutable(&self) -> bool {
+        matches!(self, Self::Mutable) || matches!(self, Self::Any)
+    }
+
+    pub fn is_constant(&self) -> bool {
+        matches!(self, Self::Immutable) || matches!(self, Self::Any)
+    }
+}
+
+impl From<bool> for Mutability {
+    fn from(b: bool) -> Self {
+        if b {
+            Self::Mutable
+        } else {
+            Self::Immutable
+        }
+    }
+}
+
+impl From<Mutability> for bool {
+    fn from(m: Mutability) -> Self {
+        m.is_mutable()
+    }
+}
+
+impl PartialEq for Mutability {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Mutable, Self::Mutable) => true,
+            (Self::Immutable, Self::Immutable) => true,
+            (Self::Any, _) => true,
+            (_, Self::Any) => true,
+            _ => false,
+        }
+    }
+}
+
+impl fmt::Display for Mutability {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Mutable => write!(f, "mut"),
+            Self::Immutable => write!(f, "const"),
+            Self::Any => write!(f, "any"),
+        }
+    }
+}
+
 /// The representation of a type in the LIR type system.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {
@@ -69,7 +135,7 @@ pub enum Type {
     /// A procedure with a list of parameters and a return type.
     Proc(Vec<Type>, Box<Type>),
     /// A pointer to another type.
-    Pointer(Box<Self>),
+    Pointer(Mutability, Box<Self>),
     /// A type reserved by the compiler.
     /// This type is equal to any other type.
     /// The NULL pointer, for example, is of type `Pointer(Any)`.
@@ -120,7 +186,7 @@ impl Type {
             | Self::Array(_, _)
             | Self::Tuple(_)
             | Self::Unit(_, _)
-            | Self::Pointer(_) => true,
+            | Self::Pointer(_, _) => true,
         }
     }
 
@@ -139,12 +205,33 @@ impl Type {
             Self::Tuple(inner) => inner.iter().all(|t| t.is_atomic()),
             Self::Array(inner, _) => inner.is_atomic(),
             Self::Proc(args, ret) => args.iter().all(|t| t.is_atomic()) && ret.is_atomic(),
-            Self::Pointer(inner) => inner.is_atomic(),
+            Self::Pointer(_, inner) => inner.is_atomic(),
             Self::Struct(inner) => inner.iter().all(|(_, t)| t.is_atomic()),
             Self::EnumUnion(inner) => inner.iter().all(|(_, t)| t.is_atomic()),
             Self::Poly(_, _) | Self::Symbol(_) | Self::Apply(_, _) | Self::Let(_, _, _) => false,
             _ => false,
         }
+    }
+
+    /// Simplify an expression until you can get its members.
+    pub fn simplify_until_has_members(&self, env: &Env) -> Result<Self, Error> {
+        self.clone().simplify_until_matches(env, Type::Any, |t, _| {
+            Ok(matches!(t, Type::Tuple(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_, _)))
+        })
+    }
+
+    /// Simplify until the type is a polymorphic type.
+    pub fn simplify_until_poly(&self, env: &Env) -> Result<Self, Error> {
+        self.clone().simplify_until_matches(
+            env,
+            Type::Poly(vec![], Box::new(Type::Any)),
+            |t, _| Ok(matches!(t, Type::Poly(_, _))),
+        )
+    }
+
+    /// Simplify until the type is concrete.
+    pub fn simplify_until_concrete(&self, env: &Env) -> Result<Self, Error> {
+        self.clone().simplify_until_matches(env, Type::Any, |t, _env| Ok(t.is_simple()))
     }
 
     /// Simplify an expression until it matches a given function which "approves" of a type.
@@ -233,7 +320,7 @@ impl Type {
             Self::Proc(params, ret) => {
                 params.iter().any(|t| t.contains_symbol(name)) || ret.contains_symbol(name)
             }
-            Self::Pointer(t) => t.contains_symbol(name),
+            Self::Pointer(_, t) => t.contains_symbol(name),
         }
     }
 
@@ -333,7 +420,110 @@ impl Type {
                     .collect(),
                 Box::new(ret.substitute(name, substitution)),
             ),
-            Self::Pointer(ptr) => Self::Pointer(Box::new(ptr.substitute(name, substitution))),
+            Self::Pointer(mutability, ptr) => Self::Pointer(*mutability, Box::new(ptr.substitute(name, substitution))),
+        }
+    }
+
+    pub fn has_element_type(&self, element: &Self, env: &Env) -> Result<bool, Error> {
+        match self {
+            Self::Array(inner, _) => inner.equals(element, env),
+            Self::Pointer(_, inner) => inner.equals(element, env),
+            _ => Ok(false),
+        }
+    }
+
+    /// Can this type decay into another type?
+    pub fn can_decay_to(&self, desired: &Self, env: &Env) -> Result<bool, Error> {
+        if self == desired {
+            return Ok(true);
+        }
+
+        match (self, desired) {
+            (Self::Pointer(found_mutability, found_elem_ty), Self::Pointer(desired_mutabilty, desired_elem_ty)) => {
+                if found_mutability.can_decay_to(&desired_mutabilty) && found_elem_ty.can_decay_to(&desired_elem_ty, env)? {
+                    return Ok(true)
+                }
+
+                if found_mutability.can_decay_to(&desired_mutabilty) && found_elem_ty.has_element_type(desired_elem_ty, env)? {
+                    return Ok(true)
+                }
+
+                Ok(false)
+            }
+
+            (Self::Tuple(found_fields), Self::Tuple(desired_fields)) => {
+                if found_fields.len() != desired_fields.len() {
+                    return Ok(false);
+                }
+                for (found_field, desired_field) in found_fields.iter().zip(desired_fields.iter()) {
+                    if !found_field.can_decay_to(desired_field, env)? {
+                        return Ok(false);
+                    }
+                }
+                Ok(true)
+            }
+
+            (Self::Array(found_elem_ty, _), Self::Array(desired_elem_ty, _)) => {
+                if found_elem_ty.can_decay_to(desired_elem_ty, env)? && self.get_size(env)? == desired.get_size(env)? {
+                    return Ok(true)
+                }
+
+                if found_elem_ty.has_element_type(desired_elem_ty, env)? && self.get_size(env)? == desired.get_size(env)? {
+                    return Ok(true)
+                }
+
+                Ok(false)
+            }
+
+            (Self::Struct(found_fields), Self::Struct(desired_fields)) => {
+                if found_fields.len() != desired_fields.len() {
+                    return Ok(false);
+                }
+                for (found_field_name, found_field_ty) in found_fields.iter() {
+                    if let Some(desired_field_ty) = desired_fields.get(found_field_name) {
+                        if !found_field_ty.can_decay_to(desired_field_ty, env)? {
+                            return Ok(false);
+                        }
+                    } else {
+                        return Ok(false);
+                    }
+                }
+                Ok(true)
+            }
+
+            (Self::Union(found_fields), Self::Union(desired_fields)) => {
+                if found_fields.len() != desired_fields.len() {
+                    return Ok(false);
+                }
+                for (found_field_name, found_field_ty) in found_fields.iter() {
+                    if let Some(desired_field_ty) = desired_fields.get(found_field_name) {
+                        if !found_field_ty.can_decay_to(desired_field_ty, env)? {
+                            return Ok(false);
+                        }
+                    } else {
+                        return Ok(false);
+                    }
+                }
+                Ok(true)
+            }
+
+            (Self::EnumUnion(found_fields), Self::EnumUnion(desired_fields)) => {
+                if found_fields.len() != desired_fields.len() {
+                    return Ok(false);
+                }
+                for (found_field_name, found_field_ty) in found_fields.iter() {
+                    if let Some(desired_field_ty) = desired_fields.get(found_field_name) {
+                        if !found_field_ty.can_decay_to(desired_field_ty, env)? {
+                            return Ok(false);
+                        }
+                    } else {
+                        return Ok(false);
+                    }
+                }
+                Ok(true)
+            }
+
+            (a, b) => a.equals(b, env)
         }
     }
 
@@ -397,8 +587,8 @@ impl Type {
             (Self::Cell, Self::Float) | (Self::Float, Self::Cell) => Ok(true),
             (Self::Cell, Self::Char) | (Self::Char, Self::Cell) => Ok(true),
             (Self::Cell, Self::Bool) | (Self::Bool, Self::Cell) => Ok(true),
-            (Self::Cell, Self::Pointer(_)) | (Self::Pointer(_), Self::Cell) => Ok(true),
-            (Self::Pointer(_), Self::Pointer(_)) => Ok(true),
+            (Self::Cell, Self::Pointer(_, _)) | (Self::Pointer(_, _), Self::Cell) => Ok(true),
+            (Self::Pointer(found, _), Self::Pointer(desired, _)) => Ok(found.can_decay_to(desired)),
 
             (Self::Any, _) | (_, Self::Any) => Ok(true),
 
@@ -461,7 +651,7 @@ impl Type {
             }
 
             (a, b) => {
-                if a.equals(b, env)? {
+                if a.can_decay_to(b, env)? {
                     Ok(true)
                 } else {
                     Ok(false)
@@ -524,6 +714,7 @@ impl Type {
                     }
                 }
             }
+            Self::Pointer(mutability, inner) => Self::Pointer(mutability, Box::new(inner.perform_template_applications(env, previous_applications)?)),
             other => other
         })
     }
@@ -721,8 +912,8 @@ impl Type {
                 ret1.equals_checked(ret2, compared_symbols, env, i)?
             }
 
-            (Self::Pointer(t1), Self::Pointer(t2)) => {
-                t1.equals_checked(t2, compared_symbols, env, i)?
+            (Self::Pointer(m1, t1), Self::Pointer(m2, t2)) => {
+                m1 == m2 && t1.equals_checked(t2, compared_symbols, env, i)?
             }
 
             (Self::Poly(ty_params1, template1), Self::Poly(ty_params2, template2)) => {
@@ -815,6 +1006,7 @@ impl Type {
         env: &Env,
     ) -> Result<(Type, usize), Error> {
         match self {
+            Type::Pointer(_, t) => t.get_member_offset(member, expr, env),
             Type::Struct(members) => {
                 let mut offset = 0;
                 for (k, t) in members.clone() {
@@ -904,6 +1096,8 @@ impl Type {
         env: &Env,
     ) -> Result<(), Error> {
         match self {
+            Type::Pointer(_, t) => t.type_check_member(member, expr, env),
+
             Type::Struct(members) => {
                 for (k, _) in members.clone() {
                     // If this element is the requested member
@@ -999,7 +1193,7 @@ impl Simplify for Type {
             | Self::Cell
             | Self::Enum(_)
             | Self::Poly(_, _) => self.clone(),
-            Self::Pointer(inner) => Self::Pointer(Box::new(inner.simplify_checked(env, i)?)),
+            Self::Pointer(mutability, inner) => Self::Pointer(mutability, Box::new(inner.simplify_checked(env, i)?)),
 
             Self::Let(name, t, ret) => {
                 // Is the bound type recursive?
@@ -1086,7 +1280,13 @@ impl fmt::Display for Type {
         match self {
             Self::Any => write!(f, "Any"),
             Self::Never => write!(f, "Never"),
-            Self::Pointer(ty) => write!(f, "&{ty}"),
+            Self::Pointer(mutability, ty) => {
+                write!(f, "&")?;
+                if mutability.is_mutable() {
+                    write!(f, "mut ")?;
+                }
+                write!(f, "{ty}")
+            },
             Self::Bool => write!(f, "Bool"),
             Self::Char => write!(f, "Char"),
             Self::Cell => write!(f, "Cell"),
@@ -1200,8 +1400,9 @@ impl std::hash::Hash for Type {
             Self::Never => {
                 state.write_u8(1);
             }
-            Self::Pointer(ty) => {
+            Self::Pointer(m, ty) => {
                 state.write_u8(2);
+                m.hash(state);
                 ty.hash(state);
             }
             Self::Bool => {

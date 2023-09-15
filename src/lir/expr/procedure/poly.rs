@@ -3,7 +3,7 @@
 //! A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 //! This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 //! A procedure is compiled down to a label in the assembly code.
-use crate::lir::{ConstExpr, Env, Error, Expr, GetSize, GetType, Type, TypeCheck};
+use crate::lir::{ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck};
 use core::fmt;
 use std::{collections::HashMap, rc::Rc, sync::Mutex};
 
@@ -19,7 +19,7 @@ pub struct PolyProcedure {
     /// The type parameters of the procedure.
     ty_params: Vec<String>,
     /// The arguments of the procedure.
-    args: Vec<(String, Type)>,
+    args: Vec<(String, Mutability, Type)>,
     /// The return type of the procedure.
     ret: Type,
     /// The body of the procedure.
@@ -44,7 +44,7 @@ impl PolyProcedure {
     pub fn new(
         name: String,
         ty_params: Vec<String>,
-        args: Vec<(String, Type)>,
+        args: Vec<(String, Mutability, Type)>,
         ret: Type,
         body: impl Into<Expr>,
     ) -> Self {
@@ -106,7 +106,7 @@ impl PolyProcedure {
             .args
             .clone()
             .into_iter()
-            .map(|(name, t)| Ok((name, bind_type_args(t)?)))
+            .map(|(name, mutability, t)| Ok((name, mutability, bind_type_args(t)?)))
             .collect::<Result<Vec<_>, Error>>()?;
         let ret = bind_type_args(self.ret.clone())?;
         let mut body = *self.body.clone();
@@ -141,7 +141,7 @@ impl GetType for PolyProcedure {
         Ok(Type::Poly(
             self.ty_params.clone(),
             Box::new(Type::Proc(
-                self.args.iter().map(|(_, t)| t.clone()).collect(),
+                self.args.iter().map(|(_, _, t)| t.clone()).collect(),
                 Box::new(self.ret.clone()),
             )),
         ))
@@ -153,7 +153,7 @@ impl GetType for PolyProcedure {
         }
         self.args
             .iter_mut()
-            .for_each(|(_, t)| *t = t.substitute(name, ty));
+            .for_each(|(_, _, t)| *t = t.substitute(name, ty));
         self.ret = self.ret.substitute(name, ty);
     }
 }
@@ -170,7 +170,7 @@ impl TypeCheck for PolyProcedure {
         new_env.set_expected_return_type(self.ret.clone());
 
         // Typecheck the types of the arguments and return value
-        for (_, t) in &self.args {
+        for (_, _, t) in &self.args {
             t.type_check(&new_env)?;
         }
         self.ret.type_check(&new_env)?;
@@ -178,7 +178,7 @@ impl TypeCheck for PolyProcedure {
         // Get the type of the procedure's body, and confirm that it matches the return type.
         let body_type = self.body.get_type(&new_env)?;
         // eprintln!("body_type: {}", body_type);
-        if !body_type.equals(&self.ret, &new_env)? {
+        if !body_type.can_decay_to(&self.ret, &new_env)? {
             Err(Error::MismatchedTypes {
                 expected: self.ret.clone(),
                 found: body_type,
@@ -202,7 +202,10 @@ impl fmt::Display for PolyProcedure {
             }
         }
         write!(f, "](")?;
-        for (i, (name, ty)) in self.args.iter().enumerate() {
+        for (i, (name, mutability, ty)) in self.args.iter().enumerate() {
+            if mutability.is_mutable() {
+                write!(f, "mut ")?;
+            }
             write!(f, "{name}: {ty}")?;
             if i < self.args.len() - 1 {
                 write!(f, ", ")?

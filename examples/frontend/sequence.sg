@@ -8,40 +8,40 @@ enum Result<T, E> {
     Err(E)
 }
 
-def allocate<T>(count: Int): Option<&T> {
+def allocate<T>(count: Int): Option<&mut T> {
     if (count <= 0) {
-        return Option<&T> of Nothing;
+        return Option<&mut T> of Nothing;
     }
-    let ptr = alloc(count * sizeof<T>()) as &T;
+    let ptr = alloc(count * sizeof<T>()) as &mut T;
     if (ptr == Null) {
-        return Option<&T> of Nothing;
+        return Option<&mut T> of Nothing;
     } else {
-        return Option<&T> of Some(ptr);
+        return Option<&mut T> of Some(ptr);
     }
 }
 
-def copy_slice<T>(data: &T, count: Int): Option<&T> {
+def copy_slice<T>(data: &T, count: Int): Option<&mut T> {
     match allocate<T>(count) {
         of Some(ptr) => {
-            for let i = 0; i < count; i+=1 {
+            for let mut i = 0; i < count; i+=1 {
                 ptr[i] = data[i];
             }
-            return Option<&T> of Some(ptr);
+            return Option<&mut T> of Some(ptr);
         },
         of Nothing => {
-            return Option<&T> of Nothing;
+            return Option<&mut T> of Nothing;
         }
     }
 }
 
-def copy<T>(data: &T): Option<&T> {
+def copy<T>(data: &T): Option<&mut T> {
     return copy_slice<T>(data, 1);
 }
 
 def reallocate<T>(data: &T, old_count: Int, new_count: Int): Option<&T> {
     match allocate<T>(new_count) {
         of Some(ptr) => {
-            for let i = 0; i < old_count; i+=1 {
+            for let mut i = 0; i < old_count; i+=1 {
                 ptr[i] = data[i];
             }
             del data;
@@ -65,14 +65,14 @@ enum Ordering {
 }
 
 struct String {
-    data: &Char,
+    data: &mut Char,
     len: Int,
     cap: Int
 }
 
 def String_clone(s: &String): String {
-    let data = alloc(s->cap) as &Char;
-    for let i = 0; i < s->len; i+=1 {
+    let data = alloc(s->cap) as &mut Char;
+    for let mut i = 0; i < s->len; i+=1 {
         data[i] = s->data[i];
     }
     return {
@@ -110,13 +110,13 @@ def String_new_with_capacity(cap: Int): Option<String> {
 }
 
 def String_from(text: &Char): Option<String> {
-    let len = 0;
+    let mut len = 0;
     while (text[len] != '\0') {
         len += 1;
     }
     match String_new_with_capacity(len) {
-        of Some(s) => {
-            for let i = 0; i < len; i+=1 {
+        of Some(mut s) => {
+            for let mut i = 0; i < len; i+=1 {
                 s.data[i] = text[i];
             }
             s.len = len;
@@ -129,7 +129,7 @@ def String_from(text: &Char): Option<String> {
 }
 
 def String_print(s: &String) {
-    for let i = 0; i < s->len; i+=1 {
+    for let mut i = 0; i < s->len; i+=1 {
         print(s->data[i]);
     }
 }
@@ -142,7 +142,7 @@ def nth(s: &String, n: Int): Option<&Char> {
     }
 }
 
-def String_push(s: String, c: Char): String {
+def String_push(mut s: String, c: Char): String {
     if s.len == s.cap {
         let new_cap = s.cap * 2;
         match reallocate<Char>(s.data, s.cap, new_cap) {
@@ -169,7 +169,7 @@ def String_drop(s: &String) {
 struct Sequence<T> {
     len: Int,
     cap: Int,
-    data: &T,
+    data: &mut T,
 }
 
 def Sequence_clone<T>(s: &Sequence<T>): Option<Sequence<T>> {
@@ -204,8 +204,8 @@ def Sequence_new_with_capacity<T>(cap: Int): Option<Sequence<T>> {
 
 def Sequence_from<T>(data: &T, len: Int): Option<Sequence<T>> {
     match Sequence_new_with_capacity<T>(len) {
-        of Some(s) => {
-            for let i = 0; i < len; i+=1 {
+        of Some(mut s) => {
+            for let mut i = 0; i < len; i+=1 {
                 s.data[i] = data[i];
             }
             s.len = len;
@@ -219,7 +219,7 @@ def Sequence_from<T>(data: &T, len: Int): Option<Sequence<T>> {
 
 def Sequence_print<T>(s: &Sequence<T>) {
     print("[");
-    for let i = 0; i < s->len; i+=1 {
+    for let mut i = 0; i < s->len; i+=1 {
         print(s->data[i]);
         if i < s->len - 1 {
             print(", ");
@@ -251,11 +251,11 @@ def Sequence_push<T>(s: Sequence<T>, c: T): Sequence<T> {
 def Sequence_concat<T>(first: Sequence<T>, second: Sequence<T>): Sequence<T> {
     let new_len = first.len + second.len;
     let new_cap = first.cap + second.cap;
-    let new_data = alloc(new_cap * sizeof<T>()) as &T;
-    for let i = 0; i < first.len; i+=1 {
+    let mut new_data = alloc(new_cap * sizeof<T>()) as &mut T;
+    for let mut i = 0; i < first.len; i+=1 {
         new_data[i] = first.data[i];
     }
-    for let i = 0; i < second.len; i+=1 {
+    for let mut i = 0; i < second.len; i+=1 {
         new_data[first.len + i] = second.data[i];
     }
     return {
@@ -266,7 +266,7 @@ def Sequence_concat<T>(first: Sequence<T>, second: Sequence<T>): Sequence<T> {
 }
 
 def Sequence_reverse<T>(s: Sequence<T>): Sequence<T> {
-    for let i = 0; i < s.len / 2; i+=1 {
+    for let mut i = 0; i < s.len / 2; i+=1 {
         let tmp = s.data[i];
         s.data[i] = s.data[s.len - i - 1];
         s.data[s.len - i - 1] = tmp;
@@ -323,14 +323,14 @@ if let of Some(str) = String_from(&raw_text as &Char) {
     
     print("Sequence of strings: ");
     test<String>(&first as &String, &second as &String);
-    for let i = 0; i < 5; i+=1 {
+    for let mut i = 0; i < 5; i+=1 {
         print(i, ": "); String_print(&(first[i])); print("\n");
     }
-    for let i = 0; i < 5; i+=1 {
+    for let mut i = 0; i < 5; i+=1 {
         print(i + 5, ": "); String_print(&(second[i])); print("\n");
     }
 
-    for let i = 0; i < 5; i+=1 {
+    for let mut i = 0; i < 5; i+=1 {
         String_drop(&(first[i]));
         String_drop(&(second[i]));
     }

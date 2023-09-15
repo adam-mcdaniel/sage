@@ -14,7 +14,7 @@ impl UnaryOp for New {
     /// Get the type of the result of applying this unary operation to the given type.
     fn return_type(&self, expr: &Expr, env: &Env) -> Result<Type, Error> {
         let ty = expr.get_type(env)?;
-        Ok(Type::Pointer(Box::new(ty)))
+        Ok(Type::Pointer(Mutability::Mutable, Box::new(ty)))
     }
 
     /// Evaluate this unary operation on the given constant values.
@@ -75,7 +75,7 @@ pub struct Delete;
 impl UnaryOp for Delete {
     /// Can this unary operation be applied to the given type?
     fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
-        ty.equals(&Type::Pointer(Box::new(Type::Any)), env)
+        ty.equals(&Type::Pointer(Mutability::Any, Box::new(Type::Any)), env)
     }
 
     /// Get the type of the result of applying this unary operation to the given type.

@@ -3,15 +3,15 @@ enum Option<T> {
     Nothing
 }
 
-def allocate<T>(count: Int): Option<&T> {
+def allocate<T>(count: Int): Option<&mut T> {
     if (count <= 0) {
-        return Option<&T> of Nothing;
+        return Option<&mut T> of Nothing;
     }
-    let ptr = alloc(count * sizeof<T>()) as &T;
+    let ptr = alloc(count * sizeof<T>()) as &mut T;
     if (ptr == Null) {
-        return Option<&T> of Nothing;
+        return Option<&mut T> of Nothing;
     } else {
-        return Option<&T> of Some(ptr);
+        return Option<&mut T> of Some(ptr);
     }
 }
 
@@ -22,7 +22,7 @@ struct Point<T> {
 
 match allocate<Point<Int>>(5) {
     of Some(val) => {
-        for let i=0; i<5; i+=1 {
+        for let mut i=0; i<5; i+=1 {
             val[i].x = i;
             val[i].y = i * 2;
         }

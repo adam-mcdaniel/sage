@@ -19,7 +19,7 @@ PatternTerm: Pattern = {
 PatternAtom: Pattern = {
     List<"(", Pattern, ",", ")"> => Pattern::Tuple(<>),
     List<("struct" "{"), (<Symbol> "=" <Pattern>), ",", "}"> => Pattern::Struct(<>.into_iter().collect()),
-    Symbol => Pattern::Symbol(<>),
+    Symbol => Pattern::Symbol(Mutability::Any, <>),
     // ConstAtom => Pattern::ConstExpr(<>), 
     //<variant: Symbol> "of" <t: TypeTerm> => Pattern::ConstExpr(ConstExpr::Of(t, variant)),
     "true" => Pattern::ConstExpr(ConstExpr::Bool(true)),
@@ -33,7 +33,9 @@ PatternAtom: Pattern = {
 
 Type: Type = {
     "let" <var: Symbol> "=" <t: Type> "in" <ret: Type> => Type::Let(var, Box::new(t), Box::new(ret)),
-    "proc" <args: List<"(", Type, ",", ")">> "->" <ret: Type> => Type::Proc(args, Box::new(ret)),
+    "proc" <args: List<"(", Type, ",", ")">> "->" <ret: Type> => {
+        Type::Proc(args, Box::new(ret))
+    },
     TypeTerm => <>,
 }
 
@@ -45,7 +47,7 @@ EnumVariant: (String, Option<Type>) = {
 TypeTerm: Type = {
     "(" <Type> ")" => <>,
     Tuple<Type> => Type::Tuple(<>),
-    "&" <Type> => Type::Pointer(Box::new(<>)),
+    "&" <Type> => Type::Pointer(Mutability::Any, Box::new(<>)),
     "enum" <variants: List<"{", EnumVariant, ",", "}">> => {
         for variant in &variants {
             match variant.1 {
@@ -76,8 +78,14 @@ TypeAtom: Type = {
 }
 
 ConstExpr: ConstExpr = {
-    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <body: Block> => ConstExpr::Proc(Procedure::new(None, args, ret, body)),
-    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "=" <body: Block> => ConstExpr::Proc(Procedure::new(None, args, Type::None, body)),
+    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <body: Block> => {
+        let args = args.into_iter().map(|(name, t)| (name, Mutability::Any, t)).collect();
+        ConstExpr::Proc(Procedure::new(None, args, ret, body))
+    },
+    "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "=" <body: Block> => {
+        let args = args.into_iter().map(|(name, t)| (name, Mutability::Any, t)).collect();
+        ConstExpr::Proc(Procedure::new(None, args, Type::None, body))
+    },
     "proc" <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <mut body: CoreAsm> => {
         body.args = args;
         body.ret = ret;
@@ -109,6 +117,7 @@ ConstAtom: ConstExpr = {
 
 pub Expr: Expr = {
     <defs: List<"let", (<Symbol> <(":" <Type>)?> "=" <Logic>), ",", "in">> <e: Expr> => {
+        let defs: Vec<_> = defs.into_iter().map(|(name, t, val)| (name, Mutability::Mutable, t, val)).collect();
         Expr::LetVars(defs, Box::new(e))
     },
     <defs: List<"type", (<Symbol> "=" <Type>), ",", "in">> <e: Expr> => {
@@ -118,6 +127,7 @@ pub Expr: Expr = {
         Expr::LetConsts(defs.into_iter().collect(), Box::new(e))
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <body: Block> "in" <e: Expr> => {
+        let args = args.into_iter().map(|(name, t)| (name, Mutability::Any, t)).collect();
         Expr::LetProc(name, Procedure::new(None, args, ret, body), Box::new(e))
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <mut body: CoreAsm> "in" <e: Expr> => {
@@ -141,16 +151,17 @@ pub Expr: Expr = {
         Expr::LetConst(name, ConstExpr::StandardBuiltin(body), Box::new(e))
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "=" <body: Block> "in" <e: Expr> => {
+        let args = args.into_iter().map(|(name, t)| (name, Mutability::Any, t)).collect();
         Expr::LetProc(name, Procedure::new(None, args, Type::None, body), Box::new(e))
     },
     "while" <cond: Expr> <body: Block> => Expr::While(Box::new(cond), Box::new(body)),
-    <x: Pointer> "=" <val: Expr> => x.refer().deref_mut(val),
-    <x: Pointer> "+=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Add), val),
-    <x: Pointer> "-=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Subtract), val),
-    <x: Pointer> "*=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Multiply), val),
-    <x: Pointer> "/=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Divide), val),
-    <x: Pointer> "%=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Remainder), val),
-    <x: Pointer> "**=" <val: Expr> => x.refer().assign_op(Assign::new(Arithmetic::Power), val),
+    <x: Pointer> "=" <val: Expr> => x.refer(Mutability::Any).deref_mut(val),
+    <x: Pointer> "+=" <val: Expr> => x.refer(Mutability::Any).assign_op(Assign::new(Arithmetic::Add), val),
+    <x: Pointer> "-=" <val: Expr> => x.refer(Mutability::Any).assign_op(Assign::new(Arithmetic::Subtract), val),
+    <x: Pointer> "*=" <val: Expr> => x.refer(Mutability::Any).assign_op(Assign::new(Arithmetic::Multiply), val),
+    <x: Pointer> "/=" <val: Expr> => x.refer(Mutability::Any).assign_op(Assign::new(Arithmetic::Divide), val),
+    <x: Pointer> "%=" <val: Expr> => x.refer(Mutability::Any).assign_op(Assign::new(Arithmetic::Remainder), val),
+    <x: Pointer> "**=" <val: Expr> => x.refer(Mutability::Any).assign_op(Assign::new(Arithmetic::Power), val),
     "return" <Expr> => Expr::Return(Box::new(<>)),
     "debug" <Expr> => Expr::UnaryOp(Put::Debug.clone_box(), Box::new(<>)),
     "put" <Expr> => Expr::UnaryOp(Put::Display.clone_box(), Box::new(<>)),
@@ -160,7 +171,7 @@ pub Expr: Expr = {
 
 Pointer: Expr = {
     "*" <Pointer> => <>.deref(),
-    "&" <Pointer> => <>.refer(),
+    "&" <Pointer> => <>.refer(Mutability::Any),
     Logic => <>,
 }
 

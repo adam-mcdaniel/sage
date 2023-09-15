@@ -7,7 +7,7 @@ keyword = @{
     | "return" | "struct" | "enum" | "as" | "of" | "sizeof"
     | "def" | "let" | "const" | "type" | "core" | "std"
     | "Int" | "Float" | "Bool" | "Char" | "Cell" | "None" | "Null" | "Never"
-    | "True" | "False" | "new"
+    | "True" | "False" | "new" | "mut"
 }
 
 operator = @{
@@ -20,6 +20,7 @@ operator = @{
     | ":" | "." | "," | ";" | "->" | "=>"
 }
 
+mut_symbol = { "mut" ~ symbol }
 symbol = @{ !keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* | keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
 decimal = @{ "0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT* }
@@ -78,7 +79,7 @@ decl_proc = {
 decl_proc_block = { "def" ~ symbol ~ type_parameters? ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ "="? ~ stmt_block }
 decl_proc_expr = { "def" ~ symbol ~ type_parameters? ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ "=" ~ expr ~ ";"+ }
 decl_proc_param = {
-    symbol ~ ":" ~ type
+    (mut_symbol | symbol) ~ ":" ~ type
 }
 type_parameters = {
     "<" ~ (symbol ~ ",")* ~ symbol ~ ">"
@@ -131,7 +132,7 @@ short_stmt = {
 stmt_let = {
     // stmt_let_typed
     // | stmt_let_untyped
-    "let" ~ (symbol ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ symbol ~ (":" ~ type)? ~ "=" ~ expr
+    "let" ~ ((mut_symbol | symbol) ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ (mut_symbol | symbol) ~ (":" ~ type)? ~ "=" ~ expr
 }
 // stmt_let_untyped = {
 //     "let" ~ symbol ~ "=" ~ expr
@@ -167,6 +168,7 @@ pattern_atom = {
     | pattern_tuple
     | pattern_ptr
     | pattern_wildcard
+    | pattern_mut_symbol
     | pattern_symbol
     | pattern_const
 }
@@ -174,6 +176,7 @@ pattern_group = { "(" ~ pattern ~ ")" }
 pattern_tuple = { "(" ~ (pattern ~ ",")+ ~ pattern? ~ ")" }
 pattern_struct = { "struct"? ~ "{" ~ (pattern_field ~ ",")* ~ pattern_field? ~ "}" }
 pattern_field = { symbol ~ "=" ~ pattern | symbol }
+pattern_mut_symbol = { "mut" ~ symbol }
 pattern_symbol = { symbol }
 pattern_wildcard = { "_" }
 pattern_ptr = { "&" ~ pattern }
@@ -207,8 +210,8 @@ stmt_let_in = {
     stmt_let_in_block
     | stmt_let_in_expr
 }
-stmt_let_in_block = { "let" ~ (symbol ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ symbol ~ (":" ~ type)? ~ "=" ~ expr ~ "in" ~ stmt_block }
-stmt_let_in_expr = { "let" ~ (symbol ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ symbol ~ (":" ~ type)? ~ "=" ~ expr ~ "in" ~ expr ~ ";"+ }
+stmt_let_in_block = { "let" ~ ((mut_symbol | symbol) ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ (mut_symbol | symbol) ~ (":" ~ type)? ~ "=" ~ expr ~ "in" ~ stmt_block }
+stmt_let_in_expr = { "let" ~ ((mut_symbol | symbol) ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ (mut_symbol | symbol) ~ (":" ~ type)? ~ "=" ~ expr ~ "in" ~ expr ~ ";"+ }
 
 // stmt_type_in = {
 //     stmt_type_in_block
@@ -304,7 +307,7 @@ expr_keyword_unary_op = @{ ("new" | "del") ~ !symbol }
 expr_unary = {
     expr_unary_op* ~ (expr_variant | const_monomorph | expr_atom | const)
 }
-expr_unary_op = !{ "!" | "-" | "&" | "~" | "*" }
+expr_unary_op = !{ "!" | "-" | "&mut" | "&" | "~" | "*" }
 expr_variant = { type_term ~ "of" ~ symbol ~ expr_atom? }
 
 expr_int_field = { "." ~ decimal }
@@ -407,6 +410,7 @@ type_atom = {
     | type_tuple
     | type_array
     | type_ptr
+    | type_mut_ptr
     | "(" ~ type ~ ")"
     | type_cell
     | type_int
@@ -423,6 +427,7 @@ type_array = { "[" ~ type ~ "*" ~ const ~ "]" }
 type_struct = { "struct"? ~ "{" ~ (symbol ~ ":" ~ type ~ ",")+ ~ (symbol ~ ":" ~ type)? ~ "}" }
 type_enum = { "enum" ~ "{" ~ (decl_enum_variant ~ ",")+ ~ decl_enum_variant? ~ "}" }
 type_ptr = { "&" ~ type }
+type_mut_ptr = { "&" ~ "mut" ~ type }
 type_int = @{ "Int" }
 type_cell = @{ "Cell" }
 type_float = @{ "Float" }

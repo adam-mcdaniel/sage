@@ -1,14 +1,14 @@
 // Implement a scheme evaluator in Sage.
 def strlen(ch: &Char): Int {
-    let len = 0;
+    let mut len = 0;
     while ch[len] != '\0' {
         len += 1;
     }
     return len;
 }
 
-def strcpy(dst: &Char, src: &Char) {
-    let i = 0;
+def strcpy(dst: &mut Char, src: &Char) {
+    let mut i = 0;
     for (); src[i] != '\0'; i+=1 {
         dst[i] = src[i];
     }
@@ -16,17 +16,17 @@ def strcpy(dst: &Char, src: &Char) {
 }
 
 struct String {
-    data: &Char,
+    data: &mut Char,
     len: Int,
 }
 
 def string_new(s: &Char): String {
-    let len = 0;
+    let mut len = 0;
     while s[len] != '\0' {
         len += 1;
     }
 
-    let buffer = alloc(sizeof<Char>() * len) as &Char;
+    let buffer = alloc(sizeof<Char>() * len) as &mut Char;
     strcpy(buffer, s);
 
     return {
@@ -36,7 +36,7 @@ def string_new(s: &Char): String {
 }
 
 def string_print(s: String) {
-    for let i=0; i < s.len; i+=1 {
+    for let mut i=0; i < s.len; i+=1 {
         print(s.data[i]);
     }
 }
@@ -160,7 +160,7 @@ def expr_println(expr: &Expr) {
     print("\n");
 }
 
-def expr_reduce(acc: Expr, x: Expr, env: &Env, fun: (Expr, Expr, &Env) -> Expr): Expr {
+def expr_reduce(mut acc: Expr, x: Expr, env: &Env, fun: (Expr, Expr, &Env) -> Expr): Expr {
     match x {
         of Pair { car, cdr } => {
             acc = fun(acc, *car, env);
@@ -262,7 +262,7 @@ print("  map(increment): ");
 let result = expr_map(expr, &env, inc);
 expr_println(&result);
 
-for let i=0; i<20; i+=1 {
+for let mut i=0; i<20; i+=1 {
     let range = range(1, i);
     expr_println(&range);
 }

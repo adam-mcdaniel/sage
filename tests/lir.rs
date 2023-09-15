@@ -41,9 +41,10 @@ fn test_struct_helper() {
 
     let expr = Expr::let_vars(
         vec![
-            ("x", None, ConstExpr::Char('x').into()),
+            ("x", Mutability::Any, None, ConstExpr::Char('x').into()),
             (
                 "y",
+                Mutability::Any, 
                 None,
                 Expr::structure(btreemap! {
                     "a" => ConstExpr::Char('a').into(),
@@ -51,14 +52,16 @@ fn test_struct_helper() {
                     "c" => ConstExpr::Char('c').into(),
                 }),
             ),
-            ("z", None, ConstExpr::Char('z').into()),
+            ("z", Mutability::Any, None, ConstExpr::Char('z').into()),
             (
                 "put_char",
+                Mutability::Any, 
                 None,
                 ConstExpr::proc(
                     None,
                     vec![(
                         "x".to_string(),
+                        Mutability::Any, 
                         Type::Struct(btreemap! {
                             "a".to_string() => Type::Char,
                             "b".to_string() => Type::Char,
@@ -123,13 +126,14 @@ fn test_scopes() {
 
     let expr = Expr::let_var(
         "f",
+        Mutability::Any, 
         None,
         ConstExpr::proc(
             None,
             vec![
-                ("x".to_string(), Type::Int),
-                ("y".to_string(), Type::Int),
-                ("z".to_string(), Type::Int),
+                ("x".to_string(), Mutability::Any, Type::Int),
+                ("y".to_string(), Mutability::Any, Type::Int),
+                ("z".to_string(), Mutability::Any, Type::Int),
             ],
             Type::Int,
             add.clone().app(vec![
@@ -185,11 +189,13 @@ fn test_tuples() {
 
     let expr = Expr::let_var(
         "test",
+        Mutability::Any, 
         None,
         ConstExpr::proc(
             None,
             vec![(
                 "tup".to_string(),
+                Mutability::Any, 
                 Type::Tuple(vec![Type::Char, Type::Tuple(vec![Type::Int, Type::Int])]),
             )],
             Type::Int,
@@ -253,6 +259,7 @@ fn test_array() {
 
     let expr = Expr::let_var(
         "i",
+        Mutability::Any, 
         None,
         ConstExpr::Int(0),
         put_char.app(vec![add.app(vec![
@@ -312,14 +319,17 @@ fn test_nested_arrays_helper() {
 
     let expr = Expr::let_var(
         "i",
+        Mutability::Any, 
         None,
         ConstExpr::Int(1),
         Expr::let_var(
             "j",
+            Mutability::Any, 
             None,
             ConstExpr::Int(1),
             Expr::let_var(
                 "arr",
+                Mutability::Any, 
                 None,
                 Expr::Array(vec![
                     Expr::Array(vec![
@@ -342,7 +352,7 @@ fn test_nested_arrays_helper() {
                     Expr::var("arr")
                         .idx(Expr::var("i"))
                         .idx(Expr::var("j"))
-                        .refer()
+                        .refer(Mutability::Any)
                         .deref_mut(ConstExpr::Char('!')),
                     put_char.clone().app(vec![Expr::var("arr")
                         .idx(Expr::var("i"))
@@ -384,6 +394,7 @@ fn test_nested_structs() {
 
     let expr = Expr::let_var(
         "p",
+        Mutability::Any, 
         None,
         Expr::Struct(btreemap! {
             "a".to_string() => Expr::Struct(btreemap! {
@@ -401,7 +412,7 @@ fn test_nested_structs() {
             Expr::var("p")
                 .field(ConstExpr::Symbol("a".to_string()))
                 .field(ConstExpr::Symbol("b".to_string()))
-                .refer()
+                .refer(Mutability::Any)
                 .deref_mut(ConstExpr::Int(8)),
             put_char.clone().app(vec![Expr::var("p")
                 .field(ConstExpr::Symbol("a".to_string()))
@@ -424,7 +435,7 @@ fn test_nested_structs() {
             put_char.clone().app(vec![ConstExpr::Char('\n').into()]),
             Expr::var("p")
                 .field(ConstExpr::Symbol("b".to_string()))
-                .refer()
+                .refer(Mutability::Any)
                 .deref_mut(Expr::Struct(btreemap! {
                     "x".to_string() => ConstExpr::Int(5).into(),
                     "y".to_string() => ConstExpr::Int(4).into(),
@@ -481,12 +492,14 @@ fn test_union() {
 
     let expr = Expr::let_var(
         "test",
+        Mutability::Any, 
         None,
         ConstExpr::proc(
             None,
             vec![
                 (
                     "a".to_string(),
+                    Mutability::Any, 
                     Type::Union(btreemap! {
                         "ch".to_string() => Type::Char,
                         "tup".to_string() => Type::Tuple(vec![Type::Int, Type::Int]),
@@ -494,6 +507,7 @@ fn test_union() {
                 ),
                 (
                     "b".to_string(),
+                    Mutability::Any, 
                     Type::Union(btreemap! {
                         "ch".to_string() => Type::Char,
                         "tup".to_string() => Type::Tuple(vec![Type::Int, Type::Int]),
@@ -568,11 +582,13 @@ fn test_struct2() {
 
     let expr = Expr::let_var(
         "putpoint",
+        Mutability::Any, 
         None,
         ConstExpr::proc(
             None,
             vec![(
                 "p".to_string(),
+                Mutability::Any, 
                 Type::Struct(btreemap! {
                     "x".to_string() => Type::Int,
                     "y".to_string() => Type::Int,
@@ -592,19 +608,21 @@ fn test_struct2() {
         ),
         Expr::let_var(
             "move",
+            Mutability::Any, 
             None,
             ConstExpr::proc(
                 None,
                 vec![
                     (
                         "p".to_string(),
+                        Mutability::Any, 
                         Type::Struct(btreemap! {
                             "x".to_string() => Type::Int,
                             "y".to_string() => Type::Int,
                         }),
                     ),
-                    ("dx".to_string(), Type::Int),
-                    ("dy".to_string(), Type::Int),
+                    ("dx".to_string(), Mutability::Any, Type::Int),
+                    ("dy".to_string(), Mutability::Any, Type::Int),
                 ],
                 Type::Struct(btreemap! {
                     "x".to_string() => Type::Int,
@@ -725,11 +743,12 @@ fn test_loop() {
 
     let expr = Expr::let_var(
         "a",
+        Mutability::Any, 
         None,
         ConstExpr::Int(6),
         Expr::var("a").while_loop(Expr::Many(vec![
             Expr::var("a")
-                .refer()
+                .refer(Mutability::Any)
                 .deref_mut(sub.app(vec![Expr::var("a"), ConstExpr::Int(1).into()])),
             put_char.app(vec![Expr::var("a")]),
         ])),
@@ -762,6 +781,7 @@ fn test_if() {
 
     let expr = Expr::let_var(
         "a",
+        Mutability::Any, 
         None,
         ConstExpr::Int(6),
         put_char.app(vec![Expr::from(ConstExpr::Int(1)).if_then(
@@ -911,6 +931,7 @@ fn test_typecheck() {
 
     let expr = Expr::let_var(
         "a",
+        Mutability::Any, 
         None,
         Expr::structure(btreemap! {
             "x" => ConstExpr::Int(1).into(),
@@ -925,6 +946,7 @@ fn test_typecheck() {
 
     let expr = Expr::let_var(
         "a",
+        Mutability::Any, 
         None,
         Expr::structure(btreemap! {
             "x" => ConstExpr::Int(1).into(),
@@ -963,7 +985,7 @@ fn test_recursive_types_helper() {
     let alloc = ConstExpr::StandardBuiltin(StandardBuiltin {
         name: "alloc".to_string(),
         args: vec![("size".to_string(), Type::Int)],
-        ret: Type::Pointer(Box::new(Type::Any)),
+        ret: Type::Pointer(Mutability::Any, Box::new(Type::Any)),
         body: vec![StandardOp::Alloc(SP.deref())],
     });
 
@@ -971,16 +993,17 @@ fn test_recursive_types_helper() {
         "Node",
         Type::Struct(btreemap! {
             "data".to_string() => Type::Int,
-            "next".to_string() => Type::Pointer(Box::new(Type::Symbol("Node".to_string()))),
+            "next".to_string() => Type::Pointer(Mutability::Any, Box::new(Type::Symbol("Node".to_string()))),
         }),
         Expr::let_vars(
             vec![
                 (
                     "node",
+                    Mutability::Any, 
                     None,
                     ConstExpr::proc(
                         None,
-                        vec![("val".to_string(), Type::Int)],
+                        vec![("val".to_string(), Mutability::Any, Type::Int)],
                         Type::Symbol("Node".to_string()),
                         Expr::structure(btreemap! {
                             "data" => Expr::var("val"),
@@ -991,10 +1014,11 @@ fn test_recursive_types_helper() {
                 ),
                 (
                     "next",
+                    Mutability::Any, 
                     None,
                     ConstExpr::proc(
                         None,
-                        vec![("node".to_string(), Type::Symbol("Node".to_string()))],
+                        vec![("node".to_string(), Mutability::Any, Type::Symbol("Node".to_string()))],
                         Type::Symbol("Node".to_string()),
                         Expr::var("node").field(var("next")).deref(),
                     )
@@ -1002,16 +1026,18 @@ fn test_recursive_types_helper() {
                 ),
                 (
                     "cons",
+                    Mutability::Any, 
                     None,
                     ConstExpr::proc(
                         None,
                         vec![
-                            ("head".to_string(), Type::Symbol("Node".to_string())),
-                            ("tail".to_string(), Type::Symbol("Node".to_string())),
+                            ("head".to_string(), Mutability::Any, Type::Symbol("Node".to_string())),
+                            ("tail".to_string(), Mutability::Any, Type::Symbol("Node".to_string())),
                         ],
                         Type::Symbol("Node".to_string()),
                         Expr::let_var(
                             "ptr",
+                            Mutability::Any, 
                             None,
                             alloc.app(vec![Expr::var("tail").size_of()]),
                             Expr::Many(vec![
@@ -1066,13 +1092,13 @@ fn test_alloc_and_free_helper() {
     let alloc = ConstExpr::StandardBuiltin(StandardBuiltin {
         name: "alloc".to_string(),
         args: vec![("size".to_string(), Type::Int)],
-        ret: Type::Pointer(Box::new(Type::Any)),
+        ret: Type::Pointer(Mutability::Any, Box::new(Type::Any)),
         body: vec![StandardOp::Alloc(SP.deref())],
     });
 
     let free = ConstExpr::StandardBuiltin(StandardBuiltin {
         name: "free".to_string(),
-        args: vec![("ptr".to_string(), Type::Pointer(Box::new(Type::Any)))],
+        args: vec![("ptr".to_string(), Type::Pointer(Mutability::Any, Box::new(Type::Any)))],
         ret: Type::None,
         body: vec![
             StandardOp::Free(SP.deref()),
@@ -1095,7 +1121,7 @@ fn test_alloc_and_free_helper() {
         "Node",
         Type::Struct(btreemap! {
             "data".to_string() => Type::Int,
-            "next".to_string() => Type::Pointer(Box::new(Type::Symbol("Node".to_string()))),
+            "next".to_string() => Type::Pointer(Mutability::Any, Box::new(Type::Symbol("Node".to_string()))),
         }),
         Expr::let_procs(
             btreemap! {
@@ -1103,6 +1129,7 @@ fn test_alloc_and_free_helper() {
                         None,
                         vec![(
                         "val".to_string(),
+                        Mutability::Any, 
                         Type::Int
                     )],
                     Type::Symbol("Node".to_string()),
@@ -1115,6 +1142,7 @@ fn test_alloc_and_free_helper() {
                         None,
                         vec![(
                         "node".to_string(),
+                        Mutability::Any, 
                         Type::Symbol("Node".to_string()),
                     )],
                     Type::None,
@@ -1137,16 +1165,19 @@ fn test_alloc_and_free_helper() {
                         vec![
                         (
                             "head".to_string(),
+                            Mutability::Any, 
                             Type::Symbol("Node".to_string()),
                         ),
                         (
                             "tail".to_string(),
+                            Mutability::Any, 
                             Type::Symbol("Node".to_string()),
                         ),
                     ],
                     Type::Symbol("Node".to_string()),
                     Expr::let_var(
                         "ptr",
+                        Mutability::Any, 
                         None,
                         alloc.app(vec![
                             Expr::var("tail").size_of()
@@ -1203,7 +1234,7 @@ fn test_recursion() {
         "factorial",
         Procedure::new(
             None,
-            vec![("n".to_string(), Type::Int)],
+            vec![("n".to_string(), Mutability::Any, Type::Int)],
             Type::Int,
             Expr::var("n").if_then(
                 Expr::var("factorial")
@@ -1241,7 +1272,7 @@ fn test_inline_let_type() {
         "factorial",
         Procedure::new(
             None,
-            vec![("n".to_string(), Type::Int)],
+            vec![("n".to_string(), Mutability::Any, Type::Int)],
             Type::Let(
                 "a".to_string(),
                 Box::new(Type::Let(
@@ -1296,13 +1327,14 @@ fn test_inline_let_recursive_type() {
                 "Node".to_string(),
                 Box::new(Type::Struct(btreemap! {
                     "data".to_string() => Type::Symbol("data".to_string()),
-                    "next".to_string() => Type::Pointer(Box::new(Type::Symbol("Node".to_string()))),
+                    "next".to_string() => Type::Pointer(Mutability::Any, Box::new(Type::Symbol("Node".to_string()))),
                 })),
                 Box::new(Type::Symbol("Node".to_string())),
             )),
         ),
         Expr::let_var(
             "test",
+            Mutability::Any, 
             Some(Type::Symbol("hmm".to_string())),
             Expr::structure(btreemap! {
                 "data" => ConstExpr::Int(3).into(),
@@ -1320,12 +1352,13 @@ fn test_inline_let_recursive_type() {
             "List<Int>".to_string(),
             Box::new(Type::Tuple(vec![
                 Type::Int,
-                Type::Pointer(Box::new(Type::Symbol("List<Int>".to_string()))),
+                Type::Pointer(Mutability::Any, Box::new(Type::Symbol("List<Int>".to_string()))),
             ])),
             Box::new(Type::Symbol("List<Int>".to_string())),
         ),
         Expr::let_var(
             "first",
+            Mutability::Any, 
             Some(Type::Symbol("List<Int>".to_string())),
             Expr::Tuple(vec![ConstExpr::Int(3).into(), ConstExpr::Null.into()]),
             ConstExpr::Int(5),
@@ -1343,7 +1376,7 @@ fn test_inline_let_type_equality() {
         Box::new(Type::Tuple(vec![
             Type::Int,
             Type::Union(btreemap! {
-                "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("A".to_string()))),
+                "Some".to_string() => Type::Pointer(Mutability::Any, Box::new(Type::Symbol("A".to_string()))),
                 "None".to_string() => Type::None,
             }),
         ])),
@@ -1356,7 +1389,7 @@ fn test_inline_let_type_equality() {
             Box::new(Type::Tuple(vec![
                 Type::Symbol("T".to_string()),
                 Type::Union(btreemap! {
-                    "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("C".to_string()))),
+                    "Some".to_string() => Type::Pointer(Mutability::Any, Box::new(Type::Symbol("C".to_string()))),
                     "None".to_string() => Type::None,
                 }),
             ])),
@@ -1369,7 +1402,7 @@ fn test_inline_let_type_equality() {
         Box::new(Type::Tuple(vec![
             Type::Int,
             Type::Union(btreemap! {
-                "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("A".to_string()))),
+                "Some".to_string() => Type::Pointer(Mutability::Any, Box::new(Type::Symbol("A".to_string()))),
                 "None".to_string() => Type::None,
             }),
         ])),
@@ -1385,7 +1418,7 @@ fn test_inline_let_type_equality() {
                 Box::new(Type::Tuple(vec![
                     Type::Symbol("T".to_string()),
                     Type::Union(btreemap! {
-                        "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("C".to_string()))),
+                        "Some".to_string() => Type::Pointer(Mutability::Any, Box::new(Type::Symbol("C".to_string()))),
                         "None".to_string() => Type::None,
                     }),
                 ])),
@@ -1422,15 +1455,16 @@ fn test_pseudotemplates_helper() {
 
     let expr = Expr::let_var(
         "first",
+        Mutability::Any,
         None,
         Expr::Tuple(vec![ConstExpr::Int(3).into(), ConstExpr::Union(
             Type::Union(btreemap! {
-                "Some".to_string() => Type::Pointer(Box::new(Type::Let(
+                "Some".to_string() => Type::Pointer(Mutability::Immutable, Box::new(Type::Let(
                     "A".to_string(),
                     Box::new(Type::Tuple(vec![
                         Type::Int,
                         Type::Union(btreemap! {
-                            "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("A".to_string()))),
+                            "Some".to_string() => Type::Pointer(Mutability::Immutable, Box::new(Type::Symbol("A".to_string()))),
                             "None".to_string() => Type::None,
                         }),
                     ])),
@@ -1443,6 +1477,7 @@ fn test_pseudotemplates_helper() {
         ).into()]),
         Expr::let_var(
             "second",
+            Mutability::Any,
             Some(Type::Let(
                 "T".to_string(),
                 Box::new(Type::Int),
@@ -1451,7 +1486,7 @@ fn test_pseudotemplates_helper() {
                     Box::new(Type::Tuple(vec![
                         Type::Symbol("T".to_string()),
                         Type::Union(btreemap! {
-                            "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("List<Int>".to_string()))),
+                            "Some".to_string() => Type::Pointer(Mutability::Immutable, Box::new(Type::Symbol("List<Int>".to_string()))),
                             "None".to_string() => Type::None,
                         }),
                     ])),
@@ -1460,12 +1495,12 @@ fn test_pseudotemplates_helper() {
             )),
             Expr::Tuple(vec![ConstExpr::Int(5).into(), Expr::Union(
                 Type::Union(btreemap! {
-                    "Some".to_string() => Type::Pointer(Box::new(Type::Let(
+                    "Some".to_string() => Type::Pointer(Mutability::Any, Box::new(Type::Let(
                         "List<Int>".to_string(),
                         Box::new(Type::Tuple(vec![
                             Type::Int,
                             Type::Union(btreemap! {
-                                "Some".to_string() => Type::Pointer(Box::new(Type::Symbol("List<Int>".to_string()))),
+                                "Some".to_string() => Type::Pointer(Mutability::Immutable, Box::new(Type::Symbol("List<Int>".to_string()))),
                                 "None".to_string() => Type::None,
                             }),
                         ])),
@@ -1474,7 +1509,7 @@ fn test_pseudotemplates_helper() {
                     "None".to_string() => Type::None,
                 }),
                 "Some".to_string(),
-                Box::new(Expr::var("first").refer()),
+                Box::new(Expr::var("first").refer(Mutability::Any)),
             )]),
             Expr::Many(vec![
                 put_char.clone().app(vec![Expr::var("second")
@@ -1485,8 +1520,8 @@ fn test_pseudotemplates_helper() {
                 Expr::var("second")
                     .field(ConstExpr::Int(1))
                     .field(ConstExpr::Symbol("Some".to_string()))
-                    .refer()
-                    .deref_mut(Expr::var("second").refer()),
+                    .refer(Mutability::Any)
+                    .deref_mut(Expr::var("second").refer(Mutability::Any)),
                 put_char.app(vec![Expr::var("second")
                     .field(ConstExpr::Int(1))
                     .field(ConstExpr::Symbol("Some".to_string()))
@@ -1526,20 +1561,22 @@ fn test_mutually_recursive_types() {
 
     let expr = put_char.clone().app(vec![Expr::let_types(
         vec![
-            ("A", Type::Pointer(Box::new(Type::Symbol("B".to_string())))),
-            ("B", Type::Pointer(Box::new(Type::Symbol("A".to_string())))),
+            ("A", Type::Pointer(Mutability::Any, Box::new(Type::Symbol("B".to_string())))),
+            ("B", Type::Pointer(Mutability::Any, Box::new(Type::Symbol("A".to_string())))),
         ],
         Expr::let_vars(
             vec![
                 (
                     "a",
+                    Mutability::Any, 
                     Some(Type::Symbol("A".to_string())),
                     ConstExpr::Null.into(),
                 ),
                 (
                     "b",
+                    Mutability::Any, 
                     Some(Type::Symbol("B".to_string())),
-                    Expr::var("a").refer(),
+                    Expr::var("a").refer(Mutability::Any),
                 ),
             ],
             Expr::var("b")
@@ -1559,23 +1596,25 @@ fn test_mutually_recursive_types() {
 
     let expr = put_char.app(vec![Expr::let_types(
         vec![
-            ("A", Type::Pointer(Box::new(Type::Symbol("B".to_string())))),
-            ("B", Type::Pointer(Box::new(Type::Symbol("A".to_string())))),
-            ("C", Type::Pointer(Box::new(Type::Symbol("C".to_string())))),
+            ("A", Type::Pointer(Mutability::Any, Box::new(Type::Symbol("B".to_string())))),
+            ("B", Type::Pointer(Mutability::Any, Box::new(Type::Symbol("A".to_string())))),
+            ("C", Type::Pointer(Mutability::Any, Box::new(Type::Symbol("C".to_string())))),
         ],
         Expr::let_vars(
             vec![
                 (
                     "a",
+                    Mutability::Any, 
                     Some(Type::Symbol("A".to_string())),
                     ConstExpr::Null.into(),
                 ),
                 (
                     "b",
+                    Mutability::Any, 
                     Some(Type::Symbol("B".to_string())),
-                    Expr::var("a").refer(),
+                    Expr::var("a").refer(Mutability::Any),
                 ),
-                ("c", Some(Type::Symbol("C".to_string())), Expr::var("b")),
+                ("c", Mutability::Any, Some(Type::Symbol("C".to_string())), Expr::var("b")),
             ],
             Expr::var("c")
                 .deref()
@@ -1602,9 +1641,9 @@ fn test_let_multiple_vars() {
 
     let expr = put_char.clone().app(vec![Expr::let_vars(
         vec![
-            ("x", None, ConstExpr::Int(5).into()),
-            ("y", None, Expr::var("x").add(ConstExpr::Int(5))),
-            ("z", None, Expr::var("y").mul(ConstExpr::Int(5))),
+            ("x", Mutability::Any, None, ConstExpr::Int(5).into()),
+            ("y", Mutability::Any, None, Expr::var("x").add(ConstExpr::Int(5))),
+            ("z", Mutability::Any, None, Expr::var("y").mul(ConstExpr::Int(5))),
         ],
         Expr::var("z"),
     )]);
@@ -1619,9 +1658,9 @@ fn test_let_multiple_vars() {
 
     let expr = put_char.app(vec![Expr::let_vars(
         vec![
-            ("y", None, Expr::var("x").add(ConstExpr::Int(5))),
-            ("x", None, ConstExpr::Int(5).into()),
-            ("z", None, Expr::var("y").mul(ConstExpr::Int(5))),
+            ("y", Mutability::Any, None, Expr::var("x").add(ConstExpr::Int(5))),
+            ("x", Mutability::Any, None, ConstExpr::Int(5).into()),
+            ("z", Mutability::Any, None, Expr::var("y").mul(ConstExpr::Int(5))),
         ],
         Expr::var("z"),
     )]);
@@ -1656,8 +1695,8 @@ fn test_quicksort_helper() {
     let swap = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "swap".to_string(),
         args: vec![
-            ("x".to_string(), Type::Pointer(Box::new(Type::Int))),
-            ("y".to_string(), Type::Pointer(Box::new(Type::Int))),
+            ("x".to_string(), Type::Pointer(Mutability::Any, Box::new(Type::Int))),
+            ("y".to_string(), Type::Pointer(Mutability::Any, Box::new(Type::Int))),
         ],
         ret: Type::None,
         body: vec![
@@ -1702,7 +1741,7 @@ fn test_quicksort_helper() {
     });
     let inc = ConstExpr::CoreBuiltin(CoreBuiltin {
         name: "inc".to_string(),
-        args: vec![("x".to_string(), Type::Pointer(Box::new(Type::Int)))],
+        args: vec![("x".to_string(), Type::Pointer(Mutability::Any, Box::new(Type::Int)))],
         ret: Type::None,
         body: vec![CoreOp::Inc(SP.deref().deref()), CoreOp::Pop(None, 1)],
     });
@@ -1710,7 +1749,7 @@ fn test_quicksort_helper() {
     let alloc = ConstExpr::StandardBuiltin(StandardBuiltin {
         name: "alloc".to_string(),
         args: vec![("size".to_string(), Type::Int)],
-        ret: Type::Pointer(Box::new(Type::Any)),
+        ret: Type::Pointer(Mutability::Any, Box::new(Type::Any)),
         body: vec![StandardOp::Alloc(SP.deref())],
     });
 

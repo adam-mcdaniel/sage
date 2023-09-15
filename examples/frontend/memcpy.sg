@@ -1,12 +1,12 @@
-extern __unsafe_memcpy(dst: &Cell, src: &Cell, size: Int);
+extern __unsafe_memcpy(dst: &mut Cell, src: &Cell, size: Int);
 
-def memcpy<T>(dst: &T, src: &T, count: Int) {
-    __unsafe_memcpy(dst as &Cell, src as &Cell, count * sizeof<T>());
+def memcpy<T>(dst: &mut T, src: &T, count: Int) {
+    __unsafe_memcpy(dst as &mut Cell, src as &Cell, count * sizeof<T>());
 }
 
 let src = [1, 2, 3, 4, 5];
-let dst = [0, 0, 0, 0, 0];
+let mut dst = [0, 0, 0, 0, 0];
 
 print("src: ", src, "\ndst: ", dst, "\n");
-memcpy<[Int * sizeof(src)]>(&dst, &src, 1);
+memcpy<[Int * sizeof(src)]>(&mut dst, &src, 1);
 print("src: ", src, "\ndst: ", dst, "\n");

@@ -18,7 +18,7 @@ pub enum Statement {
         stmt: Box<Self>,
         loc: SourceCodeLocation,
     },
-    Let(Vec<(String, Option<Type>, Expr)>),
+    Let(Vec<(String, Mutability, Option<Type>, Expr)>),
     Assign(Expr, Option<Box<dyn AssignOp + 'static>>, Expr),
     If(Expr, Box<Self>, Option<Box<Self>>),
     IfLet(Pattern, Expr, Box<Self>, Option<Box<Self>>),
@@ -26,7 +26,7 @@ pub enum Statement {
     For(Box<Self>, Expr, Box<Self>, Box<Self>),
     Return(Expr),
     Block(Vec<Declaration>),
-    LetIn(Vec<(String, Option<Type>, Expr)>, Box<Self>),
+    LetIn(Vec<(String, Mutability, Option<Type>, Expr)>, Box<Self>),
     Expr(Expr),
 }
 
@@ -40,9 +40,9 @@ impl Statement {
             },
             (Self::Assign(lhs, op, rhs), _) => {
                 match op {
-                    Some(op) => lhs.refer().assign(op, rhs),
+                    Some(op) => lhs.refer(Mutability::Mutable).assign(op, rhs),
                     // Some(op) => Expr::AssignOp(lhs, op, Box::new(rhs), rest_expr),
-                    None => lhs.refer().deref_mut(rhs),
+                    None => lhs.refer(Mutability::Mutable).deref_mut(rhs),
                 }
             }
             (Self::If(cond, body, None), _) => Expr::If(
@@ -109,8 +109,8 @@ impl Statement {
             // }
             (Self::LetIn(defs, body), _) => Expr::LetVars(defs, Box::new(body.to_expr(None))),
             (Self::Let(defs), Some(Expr::LetVars(mut vars, ret))) => {
-                for (name, ty, val) in defs.into_iter().rev() {
-                    vars.insert(0, (name, ty, val));
+                for (name, mutability, ty, val) in defs.into_iter().rev() {
+                    vars.insert(0, (name, mutability, ty, val));
                 }
                 return Expr::LetVars(vars, ret);
             }
@@ -134,11 +134,11 @@ pub enum Declaration {
     Extern(String, Vec<(Option<String>, Type)>, Type),
     Enum(String, Vec<(String, Option<Type>)>),
     Const(Vec<(String, ConstExpr)>),
-    Proc(String, Vec<(String, Type)>, Option<Type>, Box<Statement>),
+    Proc(String, Vec<(String, Mutability, Type)>, Option<Type>, Box<Statement>),
     PolyProc(
         String,
         Vec<String>,
-        Vec<(String, Type)>,
+        Vec<(String, Mutability, Type)>,
         Option<Type>,
         Box<Statement>,
     ),
@@ -149,7 +149,7 @@ pub enum Declaration {
 impl Declaration {
     fn proc_to_expr(
         name: String,
-        args: Vec<(String, Type)>,
+        args: Vec<(String, Mutability, Type)>,
         ret: Option<Type>,
         body: Statement,
     ) -> Procedure {
@@ -351,6 +351,15 @@ pub fn parse_frontend(code: &str, filename: Option<&str>) -> Result<Expr, Box<Er
     Ok(parse_program(x.into_iter().next().unwrap(), filename).to_expr())
 }
 
+fn parse_symbol(pair: Pair<Rule>) -> (Mutability, String) {
+    // pair.into_inner().next().unwrap().as_str().to_string()
+    if pair.as_rule() == Rule::mut_symbol {
+        (Mutability::Mutable, pair.into_inner().next().unwrap().as_str().to_string())
+    } else {
+        (Mutability::Immutable, pair.as_str().to_string())
+    }
+}
+
 fn parse_program(pair: Pair<Rule>, filename: Option<&str>) -> Program {
     Program(pair.into_inner().map(|x| parse_decl(x, filename)).collect())
 }
@@ -381,9 +390,9 @@ fn parse_decl(pair: Pair<Rule>, filename: Option<&str>) -> Declaration {
                 match pair.as_rule() {
                     Rule::decl_proc_param => {
                         let mut inner_rules = pair.into_inner();
-                        let name = inner_rules.next().unwrap().as_str().to_string();
+                        let (mutability, name) = parse_symbol(inner_rules.next().unwrap());
                         let ty = parse_type(inner_rules.next().unwrap());
-                        params.push((name, ty));
+                        params.push((name, mutability, ty));
                     }
                     Rule::r#type => {
                         ret = Some(parse_type(pair));
@@ -693,16 +702,16 @@ fn parse_stmt(pair: Pair<Rule>, filename: Option<&str>) -> Statement {
                 let mut inner_rules = pair.into_inner();
                 let mut defs = vec![];
                 while inner_rules.peek().is_some() {
-                    let symbol = inner_rules.next().unwrap().as_str().to_string();
+                    let (mutability, symbol) = parse_symbol(inner_rules.next().unwrap());
                     let ty = inner_rules.next().unwrap();
                     if ty.as_rule() == Rule::expr {
-                        defs.push((symbol, None, parse_expr(ty)));
+                        defs.push((symbol, mutability,None, parse_expr(ty)));
                         continue;
                     }
                     if let Some(expr) = inner_rules.next() {
-                        defs.push((symbol, Some(parse_type(ty)), parse_expr(expr)));
+                        defs.push((symbol, mutability,Some(parse_type(ty)), parse_expr(expr)));
                     } else {
-                        defs.push((symbol, None, parse_expr(ty)));
+                        defs.push((symbol, mutability, None, parse_expr(ty)));
                     }
                 }
                 Statement::Let(defs)
@@ -712,16 +721,16 @@ fn parse_stmt(pair: Pair<Rule>, filename: Option<&str>) -> Statement {
                 let mut inner_rules = pair.into_inner();
                 let mut defs = vec![];
                 while inner_rules.clone().count() > 1 {
-                    let symbol = inner_rules.next().unwrap().as_str().to_string();
+                    let (mutability, symbol) = parse_symbol(inner_rules.next().unwrap());
                     let ty = inner_rules.next().unwrap();
                     if ty.as_rule() == Rule::expr {
-                        defs.push((symbol, None, parse_expr(ty)));
+                        defs.push((symbol, mutability, None, parse_expr(ty)));
                         continue;
                     }
                     if let Some(expr) = inner_rules.next() {
-                        defs.push((symbol, Some(parse_type(ty)), parse_expr(expr)));
+                        defs.push((symbol, mutability, Some(parse_type(ty)), parse_expr(expr)));
                     } else {
-                        defs.push((symbol, None, parse_expr(ty)));
+                        defs.push((symbol, mutability, None, parse_expr(ty)));
                     }
                 }
                 let last = inner_rules.next().unwrap();
@@ -874,7 +883,8 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
                         "!" => result.not(),
                         "-" => result.neg(),
                         "~" => result.bitnot(),
-                        "&" => result.refer(),
+                        "&" => result.refer(Mutability::Immutable),
+                        "&mut" => result.refer(Mutability::Mutable),
                         "new" => result.unop(New),
                         "del" => result.unop(Delete),
                         "*" => result.deref(),
@@ -1229,7 +1239,12 @@ fn parse_type(pair: Pair<Rule>) -> Type {
         Rule::type_ptr => {
             let mut inner_rules = pair.into_inner();
             let ty = parse_type(inner_rules.next().unwrap());
-            Type::Pointer(Box::new(ty))
+            Type::Pointer(Mutability::Immutable, Box::new(ty))
+        }
+        Rule::type_mut_ptr => {
+            let mut inner_rules = pair.into_inner();
+            let ty = parse_type(inner_rules.next().unwrap());
+            Type::Pointer(Mutability::Mutable, Box::new(ty))
         }
         Rule::type_proc => {
             let mut inner_rules = pair.into_inner();
@@ -1293,7 +1308,7 @@ fn parse_pattern(pair: Pair<Rule>) -> Pattern {
                 let mut inner_rules = pair.into_inner();
                 let symbol = inner_rules.next().unwrap().as_str().to_string();
                 if inner_rules.peek().is_none() {
-                    fields.push((symbol.clone(), Pattern::Symbol(symbol)));
+                    fields.push((symbol.clone(), Pattern::Symbol(Mutability::Immutable, symbol)));
                     continue;
                 }
                 // let pattern = parse_pattern(inner_rules.next().unwrap());
@@ -1308,12 +1323,21 @@ fn parse_pattern(pair: Pair<Rule>) -> Pattern {
             Pattern::Pointer(Box::new(pattern))
         }
         Rule::pattern_wildcard => Pattern::Wildcard,
+        Rule::pattern_mut_symbol => {
+            let mut inner_rules = pair.into_inner();
+            let symbol = inner_rules.next().unwrap().as_str().to_string();
+            if symbol == "_" {
+                Pattern::Wildcard
+            } else {
+                Pattern::Symbol(Mutability::Mutable, symbol)
+            }
+        }
         Rule::pattern_symbol => {
             let symbol = pair.as_str().to_string();
             if symbol == "_" {
                 Pattern::Wildcard
             } else {
-                Pattern::Symbol(symbol)
+                Pattern::Symbol(Mutability::Immutable, symbol)
             }
         }
         Rule::pattern_alt => {

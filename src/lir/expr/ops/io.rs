@@ -16,9 +16,9 @@ impl UnaryOp for Get {
         Ok(ty
             .clone()
             .simplify_until_matches(env, Type::Any, |t, _env| {
-                if let Type::Pointer(x) = t.clone() {
+                if let Type::Pointer(mutability, x) = t.clone() {
                     match *x {
-                        Type::Char | Type::Int | Type::Float => Ok(true),
+                        Type::Char | Type::Int | Type::Float if mutability.is_mutable() => Ok(true),
                         _ => Ok(false),
                     }
                 } else {
@@ -45,11 +45,11 @@ impl UnaryOp for Get {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        if ty.equals(&Type::Pointer(Box::new(Type::Char)), env)? {
+        if ty.equals(&Type::Pointer(Mutability::Mutable, Box::new(Type::Char)), env)? {
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_char()));
-        } else if ty.equals(&Type::Pointer(Box::new(Type::Int)), env)? {
+        } else if ty.equals(&Type::Pointer(Mutability::Mutable, Box::new(Type::Int)), env)? {
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_int()));
-        } else if ty.equals(&Type::Pointer(Box::new(Type::Float)), env)? {
+        } else if ty.equals(&Type::Pointer(Mutability::Mutable, Box::new(Type::Float)), env)? {
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_float()));
         } else {
             return Err(Error::UnsupportedOperation(Expr::UnaryOp(
@@ -123,8 +123,13 @@ impl Put {
             ))
         })?;
         match t.clone() {
-            Type::Pointer(_) => {
-                for ch in "&(".to_string().chars() {
+            Type::Pointer(mutability, _) => {
+                let prefix = if mutability.is_mutable() {
+                    "&mut ("
+                } else {
+                    "&("
+                };
+                for ch in prefix.chars() {
                     output.op(CoreOp::Set(A, ch as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }

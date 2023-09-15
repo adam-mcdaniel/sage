@@ -154,6 +154,12 @@ pub enum Error {
         found: Type,
         expr: Expr,
     },
+    /// Mismatched mutability
+    MismatchedMutability {
+        expected: Mutability,
+        found: Mutability,
+        expr: Expr,
+    },
 
     /// A symbol was used, but not defined.
     SymbolNotDefined(String),
@@ -245,6 +251,17 @@ impl Display for Error {
                 write!(
                     f,
                     "mismatched types: expected {}, found {} in {}",
+                    expected, found, expr
+                )
+            }
+            Self::MismatchedMutability {
+                expected,
+                found,
+                expr,
+            } => {
+                write!(
+                    f,
+                    "mismatched mutability: expected {}, found {} in {}",
                     expected, found, expr
                 )
             }

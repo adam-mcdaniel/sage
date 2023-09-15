@@ -4,7 +4,7 @@
 //! defined in a given scope. It also stores the variables defined in the scope, and the their offsets
 //! with respect to the frame pointer.
 
-use super::{Compile, ConstExpr, Error, GetSize, Procedure, Type};
+use super::{Compile, ConstExpr, Error, GetSize, Procedure, Type, Mutability};
 use crate::asm::AssemblyProgram;
 use std::{collections::HashMap, rc::Rc};
 
@@ -19,7 +19,7 @@ pub struct Env {
     /// The procedures defined under the environment.
     procs: Rc<HashMap<String, Procedure>>,
     /// The variables defined under the environment.
-    vars: Rc<HashMap<String, (Type, isize)>>,
+    vars: Rc<HashMap<String, (Mutability, Type, isize)>>,
     /// The current offset of the frame pointer to assign to the next variable.
     /// This is incremented by the size of each variable as it is defined.
     fp_offset: isize,
@@ -126,26 +126,35 @@ impl Env {
     }
 
     /// Get a variable's type and its offset from the frame pointer in the current scope.
-    pub fn get_var(&self, var: &str) -> Option<&(Type, isize)> {
+    pub fn get_var(&self, var: &str) -> Option<&(Mutability, Type, isize)> {
         self.vars.get(var)
     }
 
+    /// Is the variable defined in scope as mutable?
+    pub fn is_defined_as_mutable(&self, var: &str) -> bool {
+        if let Some((mutability, _, _)) = self.vars.get(var) {
+            mutability.is_mutable()
+        } else {
+            false
+        }
+    }
+
     /// Define the arguments for the current scope (if this is a procedure).
-    pub fn define_args(&mut self, args: Vec<(String, Type)>) -> Result<usize, Error> {
+    pub fn define_args(&mut self, args: Vec<(String, Mutability, Type)>) -> Result<usize, Error> {
         self.fp_offset = 1;
         self.args_size = 0;
 
         // For each argument in reverse order (starting from the last argument)
-        for (name, t) in args.into_iter().rev() {
+        for (name, mutability, ty) in args.into_iter().rev() {
             // Get the size of the argument we're defining.
-            let size = t.get_size(self)?;
+            let size = ty.get_size(self)?;
             // Add the size of the argument to the total number of cells taken up by the arguments.
             self.args_size += size;
             // Decrement the frame pointer offset by the size of the argument
             // so that the FP + the offset is the address of the argument.
             self.fp_offset -= size as isize;
             // Store the argument's type and offset in the environment.
-            Rc::make_mut(&mut self.vars).insert(name, (t, self.fp_offset));
+            Rc::make_mut(&mut self.vars).insert(name, (mutability, ty, self.fp_offset));
         }
         // Set the frame pointer offset to `1` so that the first variable defined under the scope is at `[FP + 1]`.
         self.fp_offset = 1;
@@ -158,16 +167,16 @@ impl Env {
     /// Define a variable in the current scope.
     /// This will increment the scope's frame pointer offset by the size of the variable.
     /// This method returns the offset of the variable from the frame pointer under this scope.
-    pub fn define_var(&mut self, var: impl ToString, t: Type) -> Result<isize, Error> {
+    pub fn define_var(&mut self, var: impl ToString, mutability: Mutability, ty: Type) -> Result<isize, Error> {
         // Get the size of the variable we're defining.
-        let size = t.get_size(self)? as isize;
+        let size = ty.get_size(self)? as isize;
         // Remember the offset of the variable under the current scope.
         let offset = self.fp_offset;
         // Increment the frame pointer offset by the size of the variable
         // so that the next variable is allocated directly after this variable.
         self.fp_offset += size;
         // Store the variable's type and offset in the environment.
-        Rc::make_mut(&mut self.vars).insert(var.to_string(), (t, offset));
+        Rc::make_mut(&mut self.vars).insert(var.to_string(), (mutability, ty, offset));
         // Return the offset of the variable from the frame pointer.
         Ok(offset)
     }

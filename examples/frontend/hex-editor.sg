@@ -23,7 +23,7 @@ enum Command {
 }
 
 struct Memory {
-    data: &Int,
+    data: &mut Int,
     length: Int,
     capacity: Int,
 }
@@ -58,9 +58,9 @@ Commands:
 All numbers are hexadecimal.";
 
 def main() {
-    let m = Memory_default();
+    let mut m = Memory_default();
 
-    let is_done = False;
+    let mut is_done = False;
     while !is_done {
         let result = Command_read();
         print(result, "\n");
@@ -69,8 +69,8 @@ def main() {
                 start,
                 end=of Some(end)
             } => {
-                for let i=start; i<end; i+=1 {
-                    print_byte(Memory_get(&m, i));
+                for let mut i=start; i<end; i+=1 {
+                    print_byte(Memory_get(&mut m, i));
                     print(" ");
                 }
                 print("\n");
@@ -80,7 +80,7 @@ def main() {
                 start,
                 end=of Nothing
             } => {
-                print_byte(Memory_get(&m, start));
+                print_byte(Memory_get(&mut m, start));
                 print("\n");
             },
     
@@ -89,8 +89,8 @@ def main() {
                 end=of Some(end),
                 value
             } => {
-                for let i=start; i<end; i+=1 {
-                    Memory_set(&m, i, value);
+                for let mut i=start; i<end; i+=1 {
+                    Memory_set(&mut m, i, value);
                 }
             },
             
@@ -99,17 +99,17 @@ def main() {
                 end=of Nothing,
                 value
             } => {
-                Memory_set(&m, start, value);
+                Memory_set(&mut m, start, value);
             },
     
             of Clear(of Some(val)) => {
-                for let i=0; i<m.length; i+=1 {
+                for let mut i=0; i<m.length; i+=1 {
                     m.data[i] = val;
                 }
             },
     
             of Clear(of Nothing) => {
-                for let i=0; i<m.length; i+=1 {
+                for let mut i=0; i<m.length; i+=1 {
                     m.data[i] = 0;
                 }
             },
@@ -118,7 +118,7 @@ def main() {
                 if val < m.length {
                     print("Cannot grow memory to a smaller size ", val, "\n");
                 } else {
-                    Memory_extend(&m, val - m.length);
+                    Memory_extend(&mut m, val - m.length);
                 }
             },
     
@@ -126,7 +126,7 @@ def main() {
                 if val > m.length {
                     print("Cannot shrink memory to a greater size ", val, "\n");
                 } else {
-                    Memory_shrink(&m, m.length - val);
+                    Memory_shrink(&mut m, m.length - val);
                 }
             },
     
@@ -172,15 +172,15 @@ def is_digit(ch: Char): Bool {
 }
 
 def read_int(): Int {
-    let ch = ' ';
-    input(&ch);
+    let mut ch = ' ';
+    input(&mut ch);
     while ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' {
-        input(&ch);
+        input(&mut ch);
     }
 
-    let start = digit_to_int(ch);
+    let mut start = digit_to_int(ch);
     while is_digit(ch) {
-        input(&ch);
+        input(&mut ch);
         if is_digit(ch) {
             start = start * 16 + digit_to_int(ch);
         }
@@ -190,11 +190,11 @@ def read_int(): Int {
 }
 
 def Command_read(): Command {
-    let ch = ' ';
+    let mut ch = ' ';
     while ch {
-        input(&ch);
+        input(&mut ch);
         while ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' {
-            input(&ch);
+            input(&mut ch);
         }
 
         if ch as Int == -1 {
@@ -203,9 +203,9 @@ def Command_read(): Command {
 
         if is_digit(ch) {
             // Parse a hex number
-            let start = digit_to_int(ch);
+            let mut start = digit_to_int(ch);
             while is_digit(ch) {
-                input(&ch);
+                input(&mut ch);
                 if is_digit(ch) {
                     start = start * 16 + digit_to_int(ch);
                 }
@@ -214,10 +214,10 @@ def Command_read(): Command {
             // Check for a range
             if ch == '.' {
                 // Parse another int
-                input(&ch);
-                let end = digit_to_int(ch);
+                input(&mut ch);
+                let mut end = digit_to_int(ch);
                 while is_digit(ch) {
-                    input(&ch);
+                    input(&mut ch);
                     if is_digit(ch) {
                         end = end * 16 + digit_to_int(ch);
                     }
@@ -308,14 +308,14 @@ def Command_read(): Command {
     return Command of Unknown;
 }
 
-def copy<T>(dst: &T, src: &T, count: Int) {
-    for let i=0; i<count; i+=1 {
+def copy<T>(dst: &mut T, src: &T, count: Int) {
+    for let mut i=0; i<count; i+=1 {
         dst[i] = src[i];
     }
 }
 
-def allocate<T>(count: Int): &T {
-    return alloc(sizeof<T>() * count) as &T;
+def allocate<T>(count: Int): &mut T {
+    return alloc(sizeof<T>() * count) as &mut T;
 }
 
 def reallocate<T>(src: &T, old_size: Int, new_size: Int): &T {
@@ -325,7 +325,7 @@ def reallocate<T>(src: &T, old_size: Int, new_size: Int): &T {
     return dst;
 }
 
-def Memory_push(m: &Memory, value: Int) {
+def Memory_push(m: &mut Memory, value: Int) {
     while (m->length >= m->capacity) {
         m->capacity *= 2;
     }
@@ -334,7 +334,7 @@ def Memory_push(m: &Memory, value: Int) {
     m->length += 1;
 }
 
-def Memory_extend(m: &Memory, count: Int) {
+def Memory_extend(m: &mut Memory, count: Int) {
     while (m->length + count >= m->capacity) {
         m->capacity *= 2;
     }
@@ -342,7 +342,7 @@ def Memory_extend(m: &Memory, count: Int) {
     m->length += count;
 }
 
-def Memory_pop(m: &Memory): Int {
+def Memory_pop(m: &mut Memory): Int {
     if (m->length == 0) {
         return 0;
     }
@@ -350,7 +350,7 @@ def Memory_pop(m: &Memory): Int {
     return m->data[m->length];
 }
 
-def Memory_shrink(m: &Memory, count: Int) {
+def Memory_shrink(m: &mut Memory, count: Int) {
     if (m->length < count) {
         m->length = 0;
     } else {
@@ -358,18 +358,18 @@ def Memory_shrink(m: &Memory, count: Int) {
     }
 }
 
-def Memory_index(m: &Memory, index: Int): &Int {
+def Memory_index(m: &mut Memory, index: Int): &mut Int {
     if (index >= m->length) {
         Memory_extend(m, index - m->length + 1);
     }
-    return &(m->data[index]);
+    return &mut (m->data[index]);
 }
 
-def Memory_get(m: &Memory, index: Int): Int {
+def Memory_get(m: &mut Memory, index: Int): Int {
     return *(Memory_index(m, index));
 }
 
-def Memory_set(m: &Memory, index: Int, value: Int) {
+def Memory_set(m: &mut Memory, index: Int, value: Int) {
     *(Memory_index(m, index)) = value;
 }
 
@@ -389,14 +389,14 @@ def Memory_free(m: &Memory) {
     del m->data;
 }
 
-def print_byte(c: Int) {
+def print_byte(mut c: Int) {
     c = c & 0xFF;
     let hex = "0123456789ABCDEF";
     print(hex[(c / 16) & 0xF]);
     print(hex[c & 0xF]);
 }
 
-def print_addr(c: Int) {
+def print_addr(mut c: Int) {
     c = c & 0xFFFFFFFF;
     let hex = "0123456789ABCDEF";
     print(hex[(c / 0x10000000) & 0xF]);
@@ -414,7 +414,7 @@ def Memory_print(m: &Memory) {
     if (m->length == 0) {
         print("Empty\n");
     }
-    for let i=0; i<m->length; i+=1 {
+    for let mut i=0; i<m->length; i+=1 {
         // Print address
         if (i % 16 == 0) {
             print_addr(i);
@@ -426,7 +426,7 @@ def Memory_print(m: &Memory) {
         if i % 16 == 15 {
             // print ASCII
             print(" | ");
-            for let j=i-15; j<=i; j+=1 {
+            for let mut j=i-15; j<=i; j+=1 {
                 let c = m->data[j];
                 if (c >= 32 && c <= 126) {
                     print(c as Char);
@@ -442,11 +442,11 @@ def Memory_print(m: &Memory) {
     if (m->length % 16 != 0) {
         let i = m->length;
         let j = i - (i % 16);
-        for let k=i; k<j+16; k+=1 {
+        for let mut k=i; k<j+16; k+=1 {
             print("   ");
         }
         print(" | ");
-        for let k=j; k<i; k+=1 {
+        for let mut k=j; k<i; k+=1 {
             let c = m->data[k];
             if (c >= 32 && c <= 126) {
                 print(c as Char);

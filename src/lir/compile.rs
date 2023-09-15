@@ -315,7 +315,7 @@ impl Compile for Expr {
                 output.op(CoreOp::Return);
             }
             // Compile a let statement with a variable.
-            Self::LetVar(name, specifier, e, body) => {
+            Self::LetVar(name, mutability, specifier, e, body) => {
                 // Get the type of the variable using its specifier,
                 // or by deducing the type ourselves.
                 let t = if let Some(t) = specifier {
@@ -330,7 +330,7 @@ impl Compile for Expr {
                 let mut new_env = env.clone();
                 // Get the size of the variable we are writing to.
                 let var_size = t.get_size(env)?;
-                new_env.define_var(&name, t)?;
+                new_env.define_var(&name, mutability, t)?;
 
                 let result_type = body.get_type(&new_env)?;
                 let result_size = result_type.get_size(&new_env)?;
@@ -355,8 +355,8 @@ impl Compile for Expr {
                 let mut result = *body;
                 // Create an equivalent let statement with a single variable,
                 // for each variable in the list.
-                for (name, t, e) in vars.into_iter().rev() {
-                    result = Self::LetVar(name, t, Box::new(e), Box::new(result))
+                for (name, mutability,t, e) in vars.into_iter().rev() {
+                    result = Self::LetVar(name, mutability, t, Box::new(e), Box::new(result))
                 }
                 // Compile the resulting let statement.
                 result.compile_expr(env, output)?
@@ -404,7 +404,7 @@ impl Compile for Expr {
                 let ptr_type = ptr.get_type(env)?;
                 ptr.clone().compile_expr(env, output)?;
                 // If the pointer is a pointer, dereference it.
-                if let Type::Pointer(inner) = ptr_type {
+                if let Type::Pointer(_, inner) = ptr_type {
                     // Pop the address into A
                     output.op(CoreOp::Pop(Some(A), 1));
                     // Push all of the data at the address onto the stack.
@@ -540,9 +540,9 @@ impl Compile for Expr {
                         let optimized_idx = val
                             .clone()
                             // Reference the current
-                            .refer()
+                            .refer(Mutability::Immutable)
                             // Make the type a pointer to the inner element type
-                            .as_type(Type::Pointer(elem.clone()))
+                            .as_type(Type::Pointer(Mutability::Immutable, elem.clone()))
                             // Index the new pointer
                             .idx(*idx.clone());
                         // The optimized index *may not be possible* if the array is
@@ -597,7 +597,7 @@ impl Compile for Expr {
                         output.op(CoreOp::Pop(None, val_size - size));
                     }
                     // If the value being indexed is a pointer:
-                    Type::Pointer(elem) => {
+                    Type::Pointer(mutability, elem) => {
                         // Push the index onto the stack.
                         idx.compile_expr(env, output)?;
                         // Push the pointer being indexed onto the stack.
@@ -630,6 +630,11 @@ impl Compile for Expr {
 
             // Compile a member access operation.
             Self::Member(ref val, ref member) => {
+                if let Type::Pointer(_, _) = val.get_type(env)? {
+                    val.clone().deref().field(member.clone()).compile_expr(env, output)?;
+                    return Ok(());
+                }
+
                 // Get the size of the field we want to retrieve.
                 let size = self.get_size(env)?;
                 // Get the type of the value we want to get a field from.
@@ -654,20 +659,28 @@ impl Compile for Expr {
             }
 
             // Compile a reference operation (on a symbol or a field of a value).
-            Self::Refer(val) => match *val {
+            Self::Refer(expected_mutability, val) => match *val.clone() {
                 // Get the value being referenced
                 Expr::AnnotatedWithSource { expr, loc } => {
-                    Self::Refer(expr).compile_expr(env, output).map_err(|e| e.with_loc(&loc))?
+                    Self::Refer(expected_mutability, expr).compile_expr(env, output).map_err(|e| e.with_loc(&loc))?
                 }
 
                 Expr::ConstExpr(ConstExpr::AnnotatedWithSource { expr, loc }) => {
-                    Self::Refer(Box::new(Expr::ConstExpr(*expr))).compile_expr(env, output).map_err(|e| e.with_loc(&loc))?
+                    Self::Refer(expected_mutability, Box::new(Expr::ConstExpr(*expr))).compile_expr(env, output).map_err(|e| e.with_loc(&loc))?
                 }
 
                 // Get the reference of a variable.
                 Expr::ConstExpr(ConstExpr::Symbol(name)) => {
                     // Get the variable's offset from the frame pointer.
-                    if let Some((_, offset)) = env.get_var(&name) {
+                    if let Some((found_mutability, _, offset)) = env.get_var(&name) {
+                        if !found_mutability.can_decay_to(found_mutability) {
+                            return Err(Error::MismatchedMutability {
+                                found: *found_mutability,
+                                expected: expected_mutability,
+                                expr: Expr::ConstExpr(ConstExpr::Symbol(name)),
+                            });
+                        }
+
                         // Calculate the address of the variable from the offset
                         output.op(CoreOp::Many(vec![
                             CoreOp::Move { src: FP, dst: A },
@@ -697,7 +710,26 @@ impl Compile for Expr {
                     // Get the type of the value we want to get a field from.
                     let val_type = val.get_type(env)?;
                     // Push the address of the struct, tuple, or union onto the stack.
-                    Self::Refer(val.clone()).compile_expr(env, output)?;
+                    match val_type.simplify_until_has_members(env)? {
+                        Type::Struct(_) | Type::Tuple(_) | Type::Union(_) => {
+                            Self::Refer(expected_mutability, val.clone()).compile_expr(env, output)?;
+                        }
+                        Type::Pointer(found_mutability, _) => {
+                            if !found_mutability.can_decay_to(&expected_mutability) {
+                                return Err(Error::MismatchedMutability {
+                                    found: found_mutability,
+                                    expected: expected_mutability,
+                                    expr: Expr::Member(val, name),
+                                });
+                            }
+                            val.clone().compile_expr(env, output)?;
+                        }
+                        other => {
+                            eprintln!("val_type: {}", other);
+                            return Err(Error::InvalidRefer(Expr::Member(val, name)));
+                        }
+                    }
+
                     // Calculate the offset of the field from the address of the value.
                     let (_, offset) = val_type.get_member_offset(&name, &val, env)?;
 
@@ -721,7 +753,7 @@ impl Compile for Expr {
                         // If the value is an array:
                         Type::Array(ref elem, _) => {
                             // Push the address of the array onto the stack.
-                            Self::Refer(val.clone()).compile_expr(env, output)?;
+                            Self::Refer(expected_mutability, val.clone()).compile_expr(env, output)?;
                             // Push the index onto the stack.
                             idx.compile_expr(env, output)?;
 
@@ -749,7 +781,15 @@ impl Compile for Expr {
                             output.op(CoreOp::Push(C, 1));
                         }
                         // If the value is a pointer:
-                        Type::Pointer(elem) => {
+                        Type::Pointer(found_mutability, elem) => {
+                            if !found_mutability.can_decay_to(&expected_mutability) {
+                                return Err(Error::MismatchedMutability {
+                                    found: found_mutability,
+                                    expected: expected_mutability,
+                                    expr: Expr::Index(val, idx),
+                                });
+                            }
+
                             // Push the index onto the stack.
                             idx.compile_expr(env, output)?;
                             // Push the pointer onto the stack.
@@ -1083,7 +1123,7 @@ impl Compile for ConstExpr {
             // Compile a symbol.
             Self::Symbol(name) => {
                 // Compile a symbol.
-                if let Some((t, offset)) = env.get_var(&name) {
+                if let Some((_, t, offset)) = env.get_var(&name) {
                     // If the symbol is a variable, push it onto the stack.
                     output.op(CoreOp::Push(FP.deref().offset(*offset), t.get_size(env)?))
                 } else {

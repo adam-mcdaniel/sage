@@ -9,7 +9,7 @@
 //!
 //! Procedures are created by the `proc` keyword.
 use crate::asm::{AssemblyProgram, CoreOp, A, FP, SP};
-use crate::lir::{Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Type, TypeCheck};
+use crate::lir::{Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck};
 use core::fmt;
 use std::sync::Mutex;
 
@@ -30,7 +30,7 @@ pub struct Procedure {
     /// The generated name of the procedure created by the compiler to be unique.
     mangled_name: String,
     /// The arguments of the procedure, and their types.
-    args: Vec<(String, Type)>,
+    args: Vec<(String, Mutability, Type)>,
     /// The return type of the procedure
     ret: Type,
     /// The procedure's body expression
@@ -44,7 +44,7 @@ impl Procedure {
     /// a return type, and the body of the procedure.
     pub fn new(
         common_name: Option<String>,
-        args: Vec<(String, Type)>,
+        args: Vec<(String, Mutability, Type)>,
         ret: Type,
         body: impl Into<Expr>,
     ) -> Self {
@@ -90,7 +90,7 @@ impl Procedure {
 impl TypeCheck for Procedure {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
         // Typecheck the types of the arguments and return value
-        for (_, t) in &self.args {
+        for (_, _, t) in &self.args {
             t.type_check(env)?;
         }
         self.ret.type_check(env)?;
@@ -102,7 +102,7 @@ impl TypeCheck for Procedure {
 
         // Get the type of the procedure's body, and confirm that it matches the return type.
         let body_type = self.body.get_type(&new_env)?;
-        if !body_type.equals(&self.ret, env)? {
+        if !body_type.can_decay_to(&self.ret, env)? {
             Err(Error::MismatchedTypes {
                 expected: self.ret.clone(),
                 found: body_type,
@@ -118,13 +118,13 @@ impl TypeCheck for Procedure {
 impl GetType for Procedure {
     fn get_type_checked(&self, _env: &Env, _i: usize) -> Result<Type, Error> {
         Ok(Type::Proc(
-            self.args.iter().map(|(_, t)| t.clone()).collect(),
+            self.args.iter().map(|(_, _, t)| t.clone()).collect(),
             Box::new(self.ret.clone()),
         ))
     }
 
     fn substitute(&mut self, name: &str, ty: &Type) {
-        for (_, t) in &mut self.args {
+        for (_, _, t) in &mut self.args {
             *t = t.substitute(name, ty);
         }
         self.ret.substitute(name, ty);
@@ -187,7 +187,10 @@ impl Compile for Procedure {
 impl fmt::Display for Procedure {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "proc(")?;
-        for (i, (name, ty)) in self.args.iter().enumerate() {
+        for (i, (name, mutability, ty)) in self.args.iter().enumerate() {
+            if mutability.is_mutable() {
+                write!(f, "mut ")?;
+            }
             write!(f, "{name}: {ty}")?;
             if i < self.args.len() - 1 {
                 write!(f, ", ")?

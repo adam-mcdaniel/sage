@@ -187,10 +187,10 @@ impl GetType for Expr {
             }
 
             // Get the type of a resulting expression after a variable definition.
-            Self::LetVar(var, t, val, ret) => {
+            Self::LetVar(var, mutability, t, val, ret) => {
                 // Create a new environment with the variable
                 let mut new_env = env.clone();
-                new_env.define_var(var, t.clone().unwrap_or(val.get_type_checked(env, i)?))?;
+                new_env.define_var(var, *mutability, t.clone().unwrap_or(val.get_type_checked(env, i)?))?;
                 // Get the type of the return expression in the new environment.
                 ret.get_type_checked(&new_env, i)?
             }
@@ -199,10 +199,10 @@ impl GetType for Expr {
             Self::LetVars(vars, ret) => {
                 // Create a new environment with the variables
                 let mut new_env = env.clone();
-                for (var, t, val) in vars {
+                for (var, mutability, t, val) in vars {
                     // Define the variable in the new environment.
                     new_env
-                        .define_var(var, t.clone().unwrap_or(val.get_type_checked(&new_env, i)?))?;
+                        .define_var(var, *mutability, t.clone().unwrap_or(val.get_type_checked(&new_env, i)?))?;
                 }
                 // Get the type of the return expression in the new environment.
                 ret.get_type_checked(&new_env, i)?
@@ -248,16 +248,16 @@ impl GetType for Expr {
             }
 
             // Return the type of a reference to the expression.
-            Self::Refer(expr) => Type::Pointer(Box::new(expr.get_type_checked(env, i)?)),
+            Self::Refer(mutability, expr) => Type::Pointer(*mutability, Box::new(expr.get_type_checked(env, i)?)),
             // Return the type of the expression being dereferenced.
             Self::Deref(expr) => {
                 // Get the type of the expression.
                 let t = expr.get_type_checked(env, i)?;
                 // If the type is a pointer, return the inner type of the pointer.
-                if let Type::Pointer(inner) = t {
+                if let Type::Pointer(_, inner) = t {
                     // Return the inner type of the pointer.
                     *inner
-                } else if let Type::Pointer(inner) = t.simplify(env)? {
+                } else if let Type::Pointer(_, inner) = t.simplify(env)? {
                     // If the type *evaluates* to a pointer, return that inner type.
                     *inner
                 } else {
@@ -369,10 +369,11 @@ impl GetType for Expr {
                     |t, _env| {
                         Ok(matches!(
                             t,
-                            Type::Tuple(_) | Type::Struct(_) | Type::Union(_)
+                            Type::Tuple(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_, _)
                         ))
                     },
                 ) {
+                    Ok(Type::Pointer(_, t)) => t.get_member_offset(field, val, env)?.0,
                     // If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
                     // This is because tuples are accesed by integer index.
@@ -435,7 +436,7 @@ impl GetType for Expr {
             Self::Index(val, _) => match val.get_type_checked(env, i)?.simplify(env)? {
                 // Only arrays and pointers can be indexed.
                 Type::Array(item, _) => *item,
-                Type::Pointer(item) => *item,
+                Type::Pointer(_, item) => *item,
 
                 // If we're accessing an index of a type that is not an array or pointer,
                 // we cannot access an index.
@@ -472,7 +473,7 @@ impl GetType for Expr {
                 }
                 expr.substitute(name, ty)
             }
-            Self::LetVar(_var, t, val, ret) => {
+            Self::LetVar(_var, _, t, val, ret) => {
                 if let Some(t) = t {
                     *t = t.substitute(name, ty);
                 }
@@ -480,7 +481,7 @@ impl GetType for Expr {
                 ret.substitute(name, ty)
             }
             Self::LetVars(vars, ret) => {
-                for (_, t, val) in vars.iter_mut() {
+                for (_, _, t, val) in vars.iter_mut() {
                     if let Some(t) = t {
                         *t = t.substitute(name, ty);
                     }
@@ -554,7 +555,7 @@ impl GetType for Expr {
                 rhs.substitute(name, ty)
             }
 
-            Self::Refer(expr) => expr.substitute(name, ty),
+            Self::Refer(_, expr) => expr.substitute(name, ty),
 
             Self::Deref(expr) => expr.substitute(name, ty),
 

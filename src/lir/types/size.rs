@@ -100,7 +100,7 @@ impl GetSize for Type {
             | Self::Bool
             | Self::Cell
             | Self::Enum(_)
-            | Self::Pointer(_)
+            | Self::Pointer(_, _)
             | Self::Proc(_, _) => 1,
             
             // Tuple types are the sum of the sizes of their elements.
