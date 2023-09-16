@@ -10,7 +10,7 @@ use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::{collections::HashMap, rc::Rc};
 
 
-use log::{debug, warn, error};
+use log::{debug, trace, warn, error};
 
 /// An environment under which expressions and types are compiled and typechecked.
 /// This is essentially the scope of an expression.
@@ -80,11 +80,41 @@ impl Env {
                 warn!("Defining type {ty} to itself as {name}");
             }
             _ => {
+                trace!("Defining type {name} as {ty}");
+                Rc::make_mut(&mut self.types).insert(name, ty.clone());
+
                 if let Ok(size) = ty.get_size(self) {
                     self.set_precalculated_size(ty.clone(), size);
                 }
-    
-                Rc::make_mut(&mut self.types).insert(name, ty);
+            }
+        }
+    }
+
+    /// Define multiple types with the given names under this environment.
+    /// 
+    /// This must be used in situations where the different types depend on each other.
+    /// This is because the sizes of types are memoized, and this will interfere with 
+    /// the memoization process if the types are defined separately. It will lead to
+    /// typechecking errors if the environment does not already have a memoized size
+    /// for the type of a subexpression.
+    pub fn define_types(&mut self, types: Vec<(String, Type)>) {
+        for (name, ty) in &types {
+            match &ty {
+                Type::Symbol(sym) if sym == name => {
+                    warn!("Defining type {ty} to itself as {name}");
+                }
+                _ => {
+                    trace!("Defining type {name} as {ty}");
+                    Rc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
+                }
+            }
+        }
+
+        for (_, ty) in types {
+            if let Ok(size) = ty.get_size(self) {
+                self.set_precalculated_size(ty, size);
+            } else {
+                warn!("Failed to memoize type size for {ty}");
             }
         }
     }
@@ -96,7 +126,9 @@ impl Env {
 
     /// Define a constant with a given name under this environment.
     pub(super) fn define_const(&mut self, name: impl ToString, e: ConstExpr) {
-        Rc::make_mut(&mut self.consts).insert(name.to_string(), e);
+        let name = name.to_string();
+        trace!("Defining constant {name} as {e}");
+        Rc::make_mut(&mut self.consts).insert(name, e);
     }
 
     /// Get a constant definition from this environment.
@@ -106,7 +138,9 @@ impl Env {
 
     /// Define a procedure with a given name under this environment.
     pub(super) fn define_proc(&mut self, name: impl ToString, proc: Procedure) {
-        Rc::make_mut(&mut self.procs).insert(name.to_string(), proc);
+        let name = name.to_string();
+        trace!("Defining procedure {name} as {proc}");
+        Rc::make_mut(&mut self.procs).insert(name, proc);
     }
 
     /// Get a procedure definition from this environment.

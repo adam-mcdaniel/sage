@@ -55,6 +55,7 @@ impl TypeCheck for Type {
             Self::Let(name, t, ret) => {
                 // Create a new environment with the type defined.
                 let mut new_env = env.clone();
+                // Define the type in the environment.
                 new_env.define_type(name, *t.clone());
                 // Check the inner type and the return type.
                 t.type_check(&new_env)?;
@@ -106,9 +107,8 @@ impl TypeCheck for Type {
             Self::Poly(ty_params, template) => {
                 // Create a new environment with the type parameters defined.
                 let mut new_env = env.clone();
-                for param in ty_params {
-                    new_env.define_type(param, Type::Unit(param.clone(), Box::new(Type::Any)));
-                }
+                // Define the type parameters in the environment.
+                new_env.define_types(ty_params.clone().into_iter().map(|p| (p.clone(), Type::Unit(p, Box::new(Type::Any)))).collect());
                 // Check the template type.
                 template.type_check(&new_env)
             }
@@ -371,6 +371,7 @@ impl TypeCheck for Expr {
             Self::LetType(name, t, ret) => {
                 // Create a new environment with the type defined.
                 let mut new_env = env.clone();
+                // Define the type in the environment.
                 new_env.define_type(name.clone(), t.clone());
                 // Typecheck the type we're defining.
                 t.type_check(&new_env)?;
@@ -383,10 +384,9 @@ impl TypeCheck for Expr {
             Self::LetTypes(types, ret) => {
                 // Create a new environment with the types defined.
                 let mut new_env = env.clone();
-                for (name, ty) in types {
-                    // Define the type in the environment.
-                    new_env.define_type(name, ty.clone());
-                }
+                // Define the types in the environment.
+                new_env.define_types(types.clone());
+
                 // Typecheck the types we're defining.
                 for (_, t) in types {
                     // Typecheck the type in the new environment.
@@ -957,9 +957,9 @@ impl TypeCheck for ConstExpr {
 
             Self::LetTypes(bindings, expr) => {
                 let mut new_env = env.clone();
-                for (name, ty) in bindings {
-                    new_env.define_type(name.clone(), ty.clone());
-                }
+                // Define the types in the environment.
+                new_env.define_types(bindings.clone());
+
                 for (_, ty) in bindings {
                     ty.type_check(&new_env)?;
                 }

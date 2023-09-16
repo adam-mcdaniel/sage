@@ -167,10 +167,9 @@ impl TypeCheck for PolyProcedure {
         trace!("Type checking {self}");
         // Create a new scope for the procedure's body, and define the arguments for the scope.
         let mut new_env = env.new_scope();
-        for ty_param in &self.ty_params {
-            new_env.define_type(ty_param, Type::Unit(ty_param.clone(), Box::new(Type::None)));
-        }
-
+        // Define the type parameters of the procedure.
+        new_env.define_types(self.ty_params.clone().into_iter().map(|ty_param| (ty_param.clone(), Type::Unit(ty_param, Box::new(Type::None)))).collect());
+        // Define the arguments of the procedure.
         new_env.define_args(self.args.clone())?;
         new_env.set_expected_return_type(self.ret.clone());
 

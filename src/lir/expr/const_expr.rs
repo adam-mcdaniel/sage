@@ -147,9 +147,7 @@ impl ConstExpr {
 
                 Self::LetTypes(bindings, expr) => {
                     let mut new_env = env.clone();
-                    for (name, ty) in bindings {
-                        new_env.define_type(name, ty);
-                    }
+                    new_env.define_types(bindings);
                     expr.eval_checked(&new_env, i)
                 }
 
@@ -295,9 +293,7 @@ impl GetType for ConstExpr {
             }
             Self::LetTypes(bindings, expr) => {
                 let mut new_env = env.clone();
-                for (name, ty) in bindings {
-                    new_env.define_type(&name, ty);
-                }
+                new_env.define_types(bindings);
                 expr.get_type_checked(&new_env, i)?.simplify_until_type_checks(&new_env)?
             }
             Self::Monomorphize(expr, ty_args) => {

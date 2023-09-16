@@ -69,8 +69,7 @@ impl Pattern {
         env: &Env,
     ) -> Result<Type, Error> {
         // Get the type of the expression being matched.
-        let mut ty = expr.get_type(env)?;
-        ty = ty.simplify_until_concrete(env)?;
+        let ty = expr.get_type(env)?.simplify_until_concrete(env)?;
         // Get the bindings for the pattern.
         let bindings = self.get_bindings(expr, &ty, env)?;
         // Create a new environment with the bindings.
@@ -93,9 +92,7 @@ impl Pattern {
         matching_expr_ty: &Type,
         env: &Env,
     ) -> Result<bool, Error> {
-        let mut ty = matching_expr_ty.clone();
-        ty = ty.simplify_until_concrete(env)?;
-        let matching_expr_ty = &ty;
+        let matching_expr_ty = &matching_expr_ty.simplify_until_concrete(env)?;
         match matching_expr_ty {
             Type::Bool => {
                 // If the type is a boolean, the patterns are exhaustive if they match both `true` and `false`.
@@ -483,7 +480,7 @@ impl Pattern {
         // Create a new environment with the bindings
         let mut new_env = env.clone();
         // Get the type of the expression being matched
-        let mut match_type = expr.get_type(env)?;
+        let match_type = expr.get_type(env)?.simplify_until_concrete(env)?;
         // Define the variable in the new environment.
         // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
         //     match match_type {
@@ -493,7 +490,6 @@ impl Pattern {
         //         _ => break,
         //     }
         // }
-        match_type = match_type.simplify_until_concrete(env)?;
         new_env.define_var(var_name.clone(), Mutability::Immutable, match_type.clone())?;
         // Generate the expression which evaluates the `match` expression.
         let match_expr = Pattern::match_pattern_helper(&Expr::var(&var_name), branches, &new_env)?;

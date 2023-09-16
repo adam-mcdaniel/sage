@@ -15,7 +15,7 @@ use crate::asm::{
 };
 use crate::NULL;
 
-use log::{info, warn, error};
+use log::{trace, info, warn, error};
 
 /// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
@@ -65,6 +65,7 @@ pub trait Compile: TypeCheck {
 /// Compile an LIR expression into several core assembly instructions.
 impl Compile for Expr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        trace!("Compiling expression {self} in environment {env}");
         let mut debug_str = format!("{self:50}");
         debug_str.truncate(50);
         
@@ -217,10 +218,8 @@ impl Compile for Expr {
             Self::LetTypes(types, body) => {
                 // Declare a new scope for the types.
                 let mut new_env = env.clone();
-                for (name, ty) in types {
-                    // Define the type in the new scope.
-                    new_env.define_type(name, ty);
-                }
+                // Define the types in the new scope.
+                new_env.define_types(types);
                 // Compile under the new scope.
                 body.compile_expr(&mut new_env, output)?;
             }
@@ -849,6 +848,7 @@ impl Compile for Expr {
 /// Compile a constant expression.
 impl Compile for ConstExpr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        trace!("Compiling constant expression {self} in environment {env}");
         let mut debug_str = format!("{self}");
         debug_str.truncate(50);
 
@@ -860,9 +860,7 @@ impl Compile for ConstExpr {
             }
             Self::LetTypes(bindings, expr) => {
                 let mut new_env = env.clone();
-                for (name, ty) in bindings {
-                    new_env.define_type(name, ty);
-                }
+                new_env.define_types(bindings);
                 expr.compile_expr(&mut new_env, output)?;
             }
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
@@ -1046,12 +1044,10 @@ impl Compile for ConstExpr {
             }
 
             // Compile a variant of an enum.
-            Self::Of(mut enum_type, variant) => {
+            Self::Of(enum_type, variant) => {
                 // Only try to simplify the type 50 times at most.
                 // This is to prevent infinite loops and to keep recursion under control.
-                enum_type = enum_type.simplify_until_has_variants(env)?;
-
-                match enum_type.clone() {
+                match enum_type.simplify_until_has_variants(env)? {
                     // If the type is an enum, we can continue.
                     Type::Enum(variants) => {
                         // Get the index of the variant.
@@ -1088,52 +1084,6 @@ impl Compile for ConstExpr {
                         return Err(Error::VariantNotFound(enum_type, variant));
                     }
                 }
-                // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
-                //     // Simplify the type.
-                //     enum_type = enum_type.simplify(env)?;
-                //     // If the type is an enum, we can continue.
-                //     match enum_type.clone() {
-                //         // If the type is an enum, we can continue.
-                //         Type::Enum(variants) => {
-                //             // Get the index of the variant.
-                //             if let Some(index) = Type::variant_index(&variants, &variant) {
-                //                 // Push the index of the variant onto the stack.
-                //                 output.op(CoreOp::Set(A, index as i64));
-                //                 output.op(CoreOp::Push(A, 1));
-                //                 return Ok(());
-                //             } else {
-                //                 // If the variant is not found, return an error.
-                //                 return Err(Error::VariantNotFound(enum_type, variant));
-                //             }
-                //         }
-                //         // If the type is an enum union, we can continue.
-                //         Type::EnumUnion(variants)
-                //             if variants.get(&variant) == Some(&Type::None) =>
-                //         {
-                //             // Get the index of the variant.
-                //             if let Some(index) =
-                //                 Type::variant_index(&variants.into_keys().collect(), &variant)
-                //             {
-                //                 // Push the index of the variant onto the stack.
-                //                 // Allocate the size of the structure on the stack by
-                //                 // incrementing the stack pointer by the size of the structure.
-                //                 // Then, set the value under the stack pointer to the index of the variant.
-                //                 output
-                //                     .op(CoreOp::Next(SP, Some(enum_type.get_size(env)? as isize)));
-                //                 output.op(CoreOp::Set(SP.deref(), index as i64));
-                //                 return Ok(());
-                //             } else {
-                //                 // If the variant is not found, return an error.
-                //                 return Err(Error::VariantNotFound(enum_type, variant));
-                //             }
-                //         }
-                //         // If the type is a let expression or a symbol, simplify it again first
-                //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => continue,
-                //         // If the type isn't an enum, return an error.
-                //         _ => return Err(Error::VariantNotFound(enum_type, variant)),
-                //     }
-                // }
-                // return Err(Error::VariantNotFound(enum_type, variant));
             }
 
             // Compile a symbol.

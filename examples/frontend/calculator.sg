@@ -8,6 +8,30 @@ enum Expr {
     Group &Expr,
 }
 
+struct Input {
+    start: &Char,
+    loc: Int,
+    length: Int
+}
+
+enum ParseResult {
+    Ok (Input, &Expr),
+    Err Int
+}
+
+def main() {
+    let input = test();
+    match parse_expr(input) {
+        of Ok (input, n) => {
+            print_expr(n);
+            print("\n => ", eval(n), "\n");
+            free_expr(n);
+            free_input(input);
+        },
+        of Err n => print("\nCalculator: error while parsing at character: \n", input.start[n], "\n")
+    }
+}
+
 def eval(expr: &Expr): Float = match *expr {
     of Add (lhs, rhs) => eval(lhs) + eval(rhs),
     of Sub (lhs, rhs) => eval(lhs) - eval(rhs),
@@ -17,22 +41,6 @@ def eval(expr: &Expr): Float = match *expr {
     of Num n => n,
     of Group inner => eval(inner)
 };
-
-def free_expr(expr: &Expr) {
-    match *expr {
-        of Add (lhs, rhs)
-        | of Sub (lhs, rhs)
-        | of Mul (lhs, rhs)
-        | of Div (lhs, rhs)
-        | of Rem (lhs, rhs) => {
-            free_expr(lhs);
-            free_expr(rhs);
-        },
-        of Group inner => free_expr(inner),
-        _ => {}
-    }
-    del expr;
-}
 
 def print_expr(expr: &Expr) {
     match *expr {
@@ -70,27 +78,32 @@ def print_expr(expr: &Expr) {
     }
 }
 
-def is_between_inclusive(ch: Char, start: Char, end: Char): Bool {
-    let start = start as Int,
-        end = end as Int,
-        ch = ch as Int;
-
-    return start <= ch && ch <= end;
-}
-
-struct Input {
-    start: &Char,
-    loc: Int,
-    length: Int
+def free_expr(expr: &Expr) {
+    match *expr {
+        of Add (lhs, rhs)
+        | of Sub (lhs, rhs)
+        | of Mul (lhs, rhs)
+        | of Div (lhs, rhs)
+        | of Rem (lhs, rhs) => {
+            free_expr(lhs);
+            free_expr(rhs);
+        },
+        of Group inner => free_expr(inner),
+        _ => {}
+    }
+    del expr;
 }
 
 def free_input(input: Input) {
     del input.start;
 }
 
-enum ParseResult {
-    Ok (Input, &Expr),
-    Err Int
+def is_between_inclusive(ch: Char, start: Char, end: Char): Bool {
+    let start = start as Int,
+        end = end as Int,
+        ch = ch as Int;
+
+    return start <= ch && ch <= end;
 }
 
 def parse_float(mut input: Input): ParseResult {
@@ -341,13 +354,4 @@ def test(): Input {
     };
 }
 
-let input = test();
-match parse_expr(input) {
-    of Ok (input, n) => {
-        print_expr(n);
-        print("\n => ", eval(n), "\n");
-        free_expr(n);
-        free_input(input);
-    },
-    of Err n => print("\nCalculator: error while parsing at character: \n", input.start[n], "\n")
-}
+main();

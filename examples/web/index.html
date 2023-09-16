@@ -1676,10 +1676,6 @@ struct Input {
     length: Int
 }
 
-def free_input(input: Input) {
-    del input.start;
-}
-
 enum ParseResult {
     Ok (Input, &Expr),
     Err Int
@@ -1707,22 +1703,6 @@ def eval(expr: &Expr): Float = match *expr {
     of Num n => n,
     of Group inner => eval(inner)
 };
-
-def free_expr(expr: &Expr) {
-    match *expr {
-        of Add (lhs, rhs)
-        | of Sub (lhs, rhs)
-        | of Mul (lhs, rhs)
-        | of Div (lhs, rhs)
-        | of Rem (lhs, rhs) => {
-            free_expr(lhs);
-            free_expr(rhs);
-        },
-        of Group inner => free_expr(inner),
-        _ => {}
-    }
-    del expr;
-}
 
 def print_expr(expr: &Expr) {
     match *expr {
@@ -1758,6 +1738,26 @@ def print_expr(expr: &Expr) {
             print(")");
         }
     }
+}
+
+def free_expr(expr: &Expr) {
+    match *expr {
+        of Add (lhs, rhs)
+        | of Sub (lhs, rhs)
+        | of Mul (lhs, rhs)
+        | of Div (lhs, rhs)
+        | of Rem (lhs, rhs) => {
+            free_expr(lhs);
+            free_expr(rhs);
+        },
+        of Group inner => free_expr(inner),
+        _ => {}
+    }
+    del expr;
+}
+
+def free_input(input: Input) {
+    del input.start;
 }
 
 def is_between_inclusive(ch: Char, start: Char, end: Char): Bool {
@@ -2505,7 +2505,7 @@ print(fact(n));`);
 // (e.g.\`eval\` is surely not safe, but something like \`alert\` is generally safe.)
 
 extern alert(message: &Char);
-extern eval(code: &Char, size: Int);
+extern eval(code: &mut Char, size: Int);
 
 const BUFFER_SIZE = 1024;
 

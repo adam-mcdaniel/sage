@@ -163,7 +163,6 @@ impl GetType for Expr {
                 // Create a new environment with the type
                 let mut new_env = env.clone();
                 new_env.define_type(name, t.clone());
-                new_env.define_type(name, t.clone().simplify(&new_env)?);
                 // Get the type of the return expression in the new environment.
                 ret.get_type_checked(&new_env, i)?.simplify_until_type_checks(&new_env)?
             }
@@ -172,11 +171,7 @@ impl GetType for Expr {
             Self::LetTypes(types, ret) => {
                 // Create a new environment with the types
                 let mut new_env = env.clone();
-                for (name, ty) in types {
-                    // Define the type in the new environment.
-                    new_env.define_type(name, ty.clone());
-                    new_env.define_type(name, ty.clone().simplify(&new_env)?);
-                }
+                new_env.define_types(types.clone());
                 // Get the type of the return expression in the new environment.
                 ret.get_type_checked(&new_env, i)?.simplify_until_type_checks(&new_env)?
             }
@@ -269,8 +264,7 @@ impl GetType for Expr {
             // Get the type of a procedure call.
             Self::Apply(func, _) => {
                 // Get the type of the function.
-                let mut ty = func.get_type_checked(env, i)?;
-                ty = ty.simplify_until_concrete(env)?;
+                let ty = func.get_type_checked(env, i)?.simplify_until_concrete(env)?;
                 match ty {
                     Type::Proc(_, ret) => *ret,
                     Type::Let(name, t, result) => {

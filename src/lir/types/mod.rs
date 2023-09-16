@@ -1093,7 +1093,6 @@ impl Type {
 
             Type::Apply(_, _) | Type::Poly(_, _) => {
                 let t = self
-                    .clone()
                     .simplify_until_concrete(env)?;
                 t.get_member_offset(member, expr, env)
             }
@@ -1176,16 +1175,7 @@ impl Type {
 
             Type::Apply(_, _) | Type::Poly(_, _) => {
                 let t = self
-                    .clone()
-                    .simplify_until_matches(env, Type::Any, |t, _env| {
-                        Ok(!matches!(
-                            t,
-                            Type::Let(_, _, _)
-                                | Type::Symbol(_)
-                                | Type::Apply(_, _)
-                                | Type::Poly(_, _)
-                        ))
-                    })?;
+                    .simplify_until_concrete(env)?;
                 trace!("Simplified {self} to {t}");
                 t.type_check_member(member, expr, env)
             }
