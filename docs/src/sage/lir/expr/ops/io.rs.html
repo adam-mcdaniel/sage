@@ -502,43 +502,6 @@
 <a href="#502" id="502">502</a>
 <a href="#503" id="503">503</a>
 <a href="#504" id="504">504</a>
-<a href="#505" id="505">505</a>
-<a href="#506" id="506">506</a>
-<a href="#507" id="507">507</a>
-<a href="#508" id="508">508</a>
-<a href="#509" id="509">509</a>
-<a href="#510" id="510">510</a>
-<a href="#511" id="511">511</a>
-<a href="#512" id="512">512</a>
-<a href="#513" id="513">513</a>
-<a href="#514" id="514">514</a>
-<a href="#515" id="515">515</a>
-<a href="#516" id="516">516</a>
-<a href="#517" id="517">517</a>
-<a href="#518" id="518">518</a>
-<a href="#519" id="519">519</a>
-<a href="#520" id="520">520</a>
-<a href="#521" id="521">521</a>
-<a href="#522" id="522">522</a>
-<a href="#523" id="523">523</a>
-<a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use crate</span>::{
@@ -554,19 +517,16 @@
 <span class="kw">impl </span>UnaryOp <span class="kw">for </span>Get {
     <span class="doccomment">/// Can this unary operation be applied to the given type?
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
-        <span class="prelude-val">Ok</span>(ty
-            .clone()
-            .simplify_until_matches(env, Type::Any, |t, _env| {
-                <span class="kw">if let </span>Type::Pointer(x) = t.clone() {
-                    <span class="kw">match </span><span class="kw-2">*</span>x {
-                        Type::Char | Type::Int | Type::Float =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
-                        <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
-                    }
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
+        ty.simplify_until_concrete(env).map(|ty| {
+            <span class="kw">if let </span>Type::Pointer(mutability, x) = ty {
+                <span class="kw">match </span><span class="kw-2">*</span>x {
+                    Type::Char | Type::Int | Type::Float =&gt; mutability.is_mutable(),
+                    <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
                 }
-            })
-            .is_ok())
+            } <span class="kw">else </span>{
+                <span class="bool-val">false
+            </span>}
+        })
     }
 
     <span class="doccomment">/// Get the type of the result of applying this unary operation to the given type.
@@ -586,11 +546,11 @@
         env: <span class="kw-2">&amp;mut </span>Env,
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">if </span>ty.equals(<span class="kw-2">&amp;</span>Type::Pointer(Box::new(Type::Char)), env)<span class="question-mark">? </span>{
+        <span class="kw">if </span>ty.equals(<span class="kw-2">&amp;</span>Type::Pointer(Mutability::Mutable, Box::new(Type::Char)), env)<span class="question-mark">? </span>{
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_char()));
-        } <span class="kw">else if </span>ty.equals(<span class="kw-2">&amp;</span>Type::Pointer(Box::new(Type::Int)), env)<span class="question-mark">? </span>{
+        } <span class="kw">else if </span>ty.equals(<span class="kw-2">&amp;</span>Type::Pointer(Mutability::Mutable, Box::new(Type::Int)), env)<span class="question-mark">? </span>{
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_int()));
-        } <span class="kw">else if </span>ty.equals(<span class="kw-2">&amp;</span>Type::Pointer(Box::new(Type::Float)), env)<span class="question-mark">? </span>{
+        } <span class="kw">else if </span>ty.equals(<span class="kw-2">&amp;</span>Type::Pointer(Mutability::Mutable, Box::new(Type::Float)), env)<span class="question-mark">? </span>{
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_float()));
         } <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedOperation(Expr::UnaryOp(
@@ -599,29 +559,7 @@
             )));
         }
 
-        <span class="comment">// let ty = ty.clone().simplify_until_matches(env, Type::Any, |t, env| {
-        //     if let Type::Pointer(x) = t.clone() {
-        //         match *x {
-        //             Type::Char | Type::Int | Type::Float =&gt; Ok(true),
-        //             _ =&gt; Ok(false),
-        //         }
-        //     } else {
-        //         Ok(false)
-        //     }
-        // })?;
-        // match ty {
-        //     Type::Char =&gt; output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_char())),
-        //     Type::Int =&gt; output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_int())),
-        //     Type::Float =&gt; output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_float())),
-        //     _ =&gt; {
-        //         return Err(Error::UnsupportedOperation(Expr::UnaryOp(
-        //             self.clone_box(),
-        //             Box::new(Expr::ConstExpr(ConstExpr::None)),
-        //         )))
-        //     }
-        // }
-
-        </span>output.op(CoreOp::Pop(<span class="prelude-val">None</span>, <span class="number">1</span>));
+        output.op(CoreOp::Pop(<span class="prelude-val">None</span>, <span class="number">1</span>));
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -657,15 +595,15 @@
         env: <span class="kw-2">&amp;mut </span>Env,
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">let </span>t = t.clone().simplify_until_matches(env, Type::Any, |t, _env| {
-            <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
-                t,
-                Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
-            ))
-        })<span class="question-mark">?</span>;
-        <span class="kw">match </span>t.clone() {
-            Type::Pointer(<span class="kw">_</span>) =&gt; {
-                <span class="kw">for </span>ch <span class="kw">in </span><span class="string">&quot;&amp;(&quot;</span>.to_string().chars() {
+        <span class="kw">let </span>t = <span class="kw-2">&amp;</span>t.simplify_until_concrete(env)<span class="question-mark">?</span>;
+        <span class="kw">match </span>t {
+            Type::Pointer(mutability, <span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span>prefix = <span class="kw">if </span>mutability.is_mutable() {
+                    <span class="string">&quot;&amp;mut (&quot;
+                </span>} <span class="kw">else </span>{
+                    <span class="string">&quot;&amp;(&quot;
+                </span>};
+                <span class="kw">for </span>ch <span class="kw">in </span>prefix.chars() {
                     output.op(CoreOp::Set(A, ch <span class="kw">as </span>u8 <span class="kw">as </span>i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
@@ -746,7 +684,7 @@
             }
 
             Type::Array(ty, array_len_expr) =&gt; {
-                <span class="kw">let </span>array_len = array_len_expr.as_int(env)<span class="question-mark">?</span>;
+                <span class="kw">let </span>array_len = array_len_expr.clone().as_int(env)<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>ty_size = ty.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>isize;
 
@@ -879,7 +817,7 @@
                         <span class="self">Self</span>::debug(data_address.clone(), variant_t, env, output)<span class="question-mark">?</span>;
                         output.op(CoreOp::End);
                     } <span class="kw">else </span>{
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(t, name.clone()));
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(t.clone(), name.clone()));
                     }
                 }
             }
@@ -920,7 +858,7 @@
                 output.op(CoreOp::Put(A, Output::stdout_char()));
             }
 
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidUnaryOpTypes(Box::new(<span class="self">Self</span>::Debug), t)),
+            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidUnaryOpTypes(Box::new(<span class="self">Self</span>::Debug), t.clone())),
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -931,13 +869,8 @@
         env: <span class="kw-2">&amp;mut </span>Env,
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">let </span>t = <span class="kw-2">&amp;</span>t.clone().simplify_until_matches(env, Type::Any, |t, _env| {
-            <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
-                t,
-                Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
-            ))
-        })<span class="question-mark">?</span>;
-        <span class="kw">match </span>t.clone() {
+        <span class="kw">let </span>t = <span class="kw-2">&amp;</span>t.simplify_until_concrete(env)<span class="question-mark">?</span>;
+        <span class="kw">match </span>t {
             Type::Cell =&gt; {
                 output.op(CoreOp::Put(addr, Output::stdout_int()));
             }
@@ -971,7 +904,7 @@
             }
 
             Type::Array(ty, array_len_expr) =&gt; {
-                <span class="kw">let </span>array_len = array_len_expr.as_int(env)<span class="question-mark">?</span>;
+                <span class="kw">let </span>array_len = array_len_expr.clone().as_int(env)<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>ty_size = ty.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>isize;
                 <span class="kw">if </span>ty.equals(<span class="kw-2">&amp;</span>Type::Char, env)<span class="question-mark">? </span>{
@@ -1029,14 +962,7 @@
         <span class="comment">// Get the size of the type.
         </span><span class="kw">let </span>size = ty.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>isize;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>ty = ty.clone();
-        ty = ty.simplify_until_matches(env, Type::Any, |t, _env| {
-            <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
-                t,
-                Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
-            ))
-        })<span class="question-mark">?</span>;
-        <span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty;
+        <span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty.simplify_until_concrete(env)<span class="question-mark">?</span>;
 
         <span class="comment">// Calculate the address of the expression on the stack.
         </span><span class="kw">let </span>addr = SP.deref().offset(-size + <span class="number">1</span>);

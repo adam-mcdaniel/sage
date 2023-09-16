@@ -196,6 +196,22 @@
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
 <a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Mono-Procedure
 //!
 //! A procedure of LIR code which can be applied to a list of arguments.
@@ -207,9 +223,11 @@
 //!
 //! Procedures are created by the `proc` keyword.
 </span><span class="kw">use </span><span class="kw">crate</span>::asm::{AssemblyProgram, CoreOp, A, FP, SP};
-<span class="kw">use </span><span class="kw">crate</span>::lir::{Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Type, TypeCheck};
+<span class="kw">use </span><span class="kw">crate</span>::lir::{Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck};
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::sync::Mutex;
+
+<span class="kw">use </span>log::trace;
 
 <span class="comment">// TODO: Do this without lazy_static. This is used to create unique mangled IDs for each compiled function.
 </span><span class="kw">use </span>lazy_static::lazy_static;
@@ -228,7 +246,7 @@
     <span class="doccomment">/// The generated name of the procedure created by the compiler to be unique.
     </span>mangled_name: String,
     <span class="doccomment">/// The arguments of the procedure, and their types.
-    </span>args: Vec&lt;(String, Type)&gt;,
+    </span>args: Vec&lt;(String, Mutability, Type)&gt;,
     <span class="doccomment">/// The return type of the procedure
     </span>ret: Type,
     <span class="doccomment">/// The procedure&#39;s body expression
@@ -242,7 +260,7 @@
     /// a return type, and the body of the procedure.
     </span><span class="kw">pub fn </span>new(
         common_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
-        args: Vec&lt;(String, Type)&gt;,
+        args: Vec&lt;(String, Mutability, Type)&gt;,
         ret: Type,
         body: <span class="kw">impl </span>Into&lt;Expr&gt;,
     ) -&gt; <span class="self">Self </span>{
@@ -287,8 +305,9 @@
 
 <span class="kw">impl </span>TypeCheck <span class="kw">for </span>Procedure {
     <span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;type checking procedure: {}&quot;</span>, <span class="self">self</span>);
         <span class="comment">// Typecheck the types of the arguments and return value
-        </span><span class="kw">for </span>(<span class="kw">_</span>, t) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.args {
+        </span><span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, t) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.args {
             t.type_check(env)<span class="question-mark">?</span>;
         }
         <span class="self">self</span>.ret.type_check(env)<span class="question-mark">?</span>;
@@ -300,7 +319,7 @@
 
         <span class="comment">// Get the type of the procedure&#39;s body, and confirm that it matches the return type.
         </span><span class="kw">let </span>body_type = <span class="self">self</span>.body.get_type(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
-        <span class="kw">if </span>!body_type.equals(<span class="kw-2">&amp;</span><span class="self">self</span>.ret, env)<span class="question-mark">? </span>{
+        <span class="kw">if </span>!body_type.can_decay_to(<span class="kw-2">&amp;</span><span class="self">self</span>.ret, env)<span class="question-mark">? </span>{
             <span class="prelude-val">Err</span>(Error::MismatchedTypes {
                 expected: <span class="self">self</span>.ret.clone(),
                 found: body_type,
@@ -316,13 +335,13 @@
 <span class="kw">impl </span>GetType <span class="kw">for </span>Procedure {
     <span class="kw">fn </span>get_type_checked(<span class="kw-2">&amp;</span><span class="self">self</span>, _env: <span class="kw-2">&amp;</span>Env, _i: usize) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
         <span class="prelude-val">Ok</span>(Type::Proc(
-            <span class="self">self</span>.args.iter().map(|(<span class="kw">_</span>, t)| t.clone()).collect(),
+            <span class="self">self</span>.args.iter().map(|(<span class="kw">_</span>, <span class="kw">_</span>, t)| t.clone()).collect(),
             Box::new(<span class="self">self</span>.ret.clone()),
         ))
     }
 
     <span class="kw">fn </span>substitute(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str, ty: <span class="kw-2">&amp;</span>Type) {
-        <span class="kw">for </span>(<span class="kw">_</span>, t) <span class="kw">in </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.args {
+        <span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, t) <span class="kw">in </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.args {
             <span class="kw-2">*</span>t = t.substitute(name, ty);
         }
         <span class="self">self</span>.ret.substitute(name, ty);
@@ -353,9 +372,10 @@
 
         <span class="comment">// Declare the function body
         </span>output.op(CoreOp::Fn(<span class="self">self</span>.mangled_name.clone()));
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(common_name) = <span class="self">self</span>.common_name {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(common_name) = <span class="kw-2">&amp;</span><span class="self">self</span>.common_name {
             output.comment(<span class="macro">format!</span>(<span class="string">&quot;{}({})&quot;</span>, common_name, args_size));
         }
+        <span class="kw">let </span>current_instruction = output.current_instruction();
 
         <span class="comment">// Execute the body to leave the return value
         </span><span class="self">self</span>.body.compile_expr(<span class="kw-2">&amp;mut </span>new_env, output)<span class="question-mark">?</span>;
@@ -376,7 +396,16 @@
         <span class="comment">// Push the procedure label address onto the stack
         </span>output.op(CoreOp::SetLabel(A, <span class="self">self</span>.mangled_name.clone()));
         output.op(CoreOp::Push(A, <span class="number">1</span>));
-        output.comment(<span class="string">&quot;done&quot;</span>.to_string());
+
+        <span class="kw">let </span>name = <span class="self">self</span>.common_name.as_ref().map(|x| x.as_str()).unwrap_or_else(|| <span class="string">&quot;&lt;anonymous&gt;&quot;</span>);
+        <span class="comment">// Log the compiled procedure
+        </span><span class="kw">let </span>message = <span class="macro">format!</span>(<span class="string">&quot;Compiled procedure {common_name} to {mangled_name} with args of size {args_size} and return value of size {ret_size}&quot;</span>,
+            common_name = name,
+            mangled_name = <span class="self">self</span>.mangled_name,
+            args_size = args_size,
+            ret_size = ret_size,
+        );
+        output.log_instructions_after(name, <span class="kw-2">&amp;</span>message, current_instruction);
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -385,7 +414,10 @@
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>Procedure {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="macro">write!</span>(f, <span class="string">&quot;proc(&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">for </span>(i, (name, ty)) <span class="kw">in </span><span class="self">self</span>.args.iter().enumerate() {
+        <span class="kw">for </span>(i, (name, mutability, ty)) <span class="kw">in </span><span class="self">self</span>.args.iter().enumerate() {
+            <span class="kw">if </span>mutability.is_mutable() {
+                <span class="macro">write!</span>(f, <span class="string">&quot;mut &quot;</span>)<span class="question-mark">?</span>;
+            }
             <span class="macro">write!</span>(f, <span class="string">&quot;{name}: {ty}&quot;</span>)<span class="question-mark">?</span>;
             <span class="kw">if </span>i &lt; <span class="self">self</span>.args.len() - <span class="number">1 </span>{
                 <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?

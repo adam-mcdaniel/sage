@@ -324,7 +324,7 @@
                 <span class="self">self</span>.can_apply(a_type, b_type, env)
             }
             (a, <span class="self">Self</span>::Equal, b) | (a, <span class="self">Self</span>::NotEqual, b) =&gt; {
-                <span class="prelude-val">Ok</span>(a.equals(b, env)<span class="question-mark">? </span>&amp;&amp; a.get_size(env)<span class="question-mark">? </span>== <span class="number">1</span>)
+                <span class="prelude-val">Ok</span>(a.can_decay_to(b, env)<span class="question-mark">? </span>&amp;&amp; a.get_size(env)<span class="question-mark">? </span>== <span class="number">1</span>)
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
         }
@@ -494,11 +494,11 @@
                 <span class="kw">return </span><span class="self">self</span>.compile_types(a_type, b_type, env, output);
             }
 
-            (a, <span class="self">Self</span>::Equal, b) <span class="kw">if </span>a.equals(b, env)<span class="question-mark">? </span>=&gt; {
+            (a, <span class="self">Self</span>::Equal, b) <span class="kw">if </span>a.can_decay_to(b, env)<span class="question-mark">? </span>=&gt; {
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.op(core_op);
             }
-            (a, <span class="self">Self</span>::NotEqual, b) <span class="kw">if </span>a.equals(b, env)<span class="question-mark">? </span>=&gt; {
+            (a, <span class="self">Self</span>::NotEqual, b) <span class="kw">if </span>a.can_decay_to(b, env)<span class="question-mark">? </span>=&gt; {
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.op(core_op);
             }

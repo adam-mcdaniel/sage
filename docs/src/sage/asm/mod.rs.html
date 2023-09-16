@@ -112,6 +112,46 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Assembly Module
 //!
 //! This module contains a small assembly language implemented
@@ -141,6 +181,8 @@
 //! instructions for float operations, memory allocation, and I/O.
 </span><span class="kw">use </span>::std::collections::HashMap;
 
+<span class="kw">use </span>log::{debug, trace, warn, error};
+
 <span class="kw">pub mod </span>core;
 <span class="kw">pub mod </span>location;
 <span class="kw">pub mod </span>std;
@@ -169,6 +211,30 @@
     /// I.E., has a `CoreOp::Fn` with this label been inserted
     /// into the program code yet?
     </span><span class="kw">fn </span>is_defined(<span class="kw-2">&amp;</span><span class="self">self</span>, label: <span class="kw-2">&amp;</span>str) -&gt; bool;
+
+    <span class="doccomment">/// Get the current instruction number.
+    </span><span class="kw">fn </span>current_instruction(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
+
+    <span class="doccomment">/// Log all the instructions after the given instruction number.
+    /// The `target` is an identifier for the instructions being logged. This is used
+    /// to search for the log messages in the output.
+    /// The `message` is a message to be logged before the instructions. This tells some
+    /// context about the instructions being logged.
+    /// The `i` is the instruction number to start logging at.
+    /// This will log all instructions until the end of the program.
+    </span><span class="kw">fn </span>log_instructions_after(<span class="kw-2">&amp;</span><span class="self">self</span>, target: <span class="kw-2">&amp;</span>str, message: <span class="kw-2">&amp;</span>str, <span class="kw-2">mut </span>i: usize) {
+        <span class="macro">debug!</span>(target: target, <span class="string">&quot;{target}: {}&quot;</span>, message);
+        <span class="kw">while let </span><span class="prelude-val">Some</span>(op) = <span class="self">self</span>.get_op(i) {
+            <span class="kw">match </span>op {
+                <span class="prelude-val">Ok</span>(op) =&gt; <span class="macro">debug!</span>(target: target, <span class="string">&quot;{:04x}: {}&quot;</span>, i, op),
+                <span class="prelude-val">Err</span>(op) =&gt; <span class="macro">debug!</span>(target: target, <span class="string">&quot;{:04x}: {}&quot;</span>, i, op),
+            }
+            i += <span class="number">1</span>;
+        }
+    }
+
+    <span class="doccomment">/// Get the operation at the given instruction number.
+    </span><span class="kw">fn </span>get_op(<span class="kw-2">&amp;</span><span class="self">self</span>, start: usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="prelude-ty">Result</span>&lt;CoreOp, StandardOp&gt;&gt;;
 }
 
 <span class="doccomment">/// An environment used to assemble a program.
@@ -184,6 +250,11 @@
 <span class="kw">impl </span>Env {
     <span class="doccomment">/// Declare a new label
     </span><span class="kw">fn </span>declare(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) {
+        <span class="macro">trace!</span>(<span class="string">&quot;Declared label {}&quot;</span>, name);
+
+        <span class="kw">if </span><span class="self">self</span>.labels.contains_key(name) {
+            <span class="macro">warn!</span>(<span class="string">&quot;Label {} already declared&quot;</span>, name);
+        }
         <span class="self">self</span>.labels.insert(name.to_string(), <span class="self">self</span>.label);
         <span class="self">self</span>.label += <span class="number">1</span>;
     }
@@ -192,7 +263,10 @@
         <span class="self">self</span>.labels
             .get(name)
             .copied()
-            .ok_or_else(|| Error::UndefinedLabel(name.to_string(), current_instruction))
+            .ok_or_else(|| {
+                <span class="macro">error!</span>(<span class="string">&quot;Undefined label {} at instruction #{}&quot;</span>, name, current_instruction);
+                Error::UndefinedLabel(name.to_string(), current_instruction)
+            })
     }
 
     <span class="doccomment">/// Add a new instruction to be matched with `End`. For example,
@@ -214,11 +288,17 @@
 <span class="doccomment">/// An error generated by assembling some assembly language code.
 </span><span class="attr">#[derive(Clone, Debug, PartialEq, PartialOrd)]
 </span><span class="kw">pub enum </span>Error {
-    VirtualMachineError(<span class="kw">crate</span>::vm::Error),
-    UnsupportedInstruction(StandardOp),
-    UndefinedLabel(String, usize),
-    Unmatched(CoreOp, usize),
-    Unexpected(CoreOp, usize),
+    <span class="doccomment">/// An error generated by the virtual machine.
+    </span>VirtualMachineError(<span class="kw">crate</span>::vm::Error),
+    <span class="doccomment">/// Is this standard assembly operation supported by the target?
+    </span>UnsupportedInstruction(StandardOp),
+    <span class="doccomment">/// The given label was not defined.
+    </span>UndefinedLabel(String, usize),
+    <span class="doccomment">/// The given instruction did not have a matching &quot;end&quot;.
+    /// This is used for `If`, `Else`, `While`, `For`, and `Fn` statements.
+    </span>Unmatched(CoreOp, usize),
+    <span class="doccomment">/// The given instruction was not expected, or cannot be used in this context.
+    </span>Unexpected(CoreOp, usize),
 }
 
 <span class="kw">impl </span>From&lt;<span class="kw">crate</span>::vm::Error&gt; <span class="kw">for </span>Error {

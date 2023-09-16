@@ -579,38 +579,6 @@
 <a href="#579" id="579">579</a>
 <a href="#580" id="580">580</a>
 <a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a>
-<a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
-<a href="#605" id="605">605</a>
-<a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
-<a href="#608" id="608">608</a>
-<a href="#609" id="609">609</a>
-<a href="#610" id="610">610</a>
-<a href="#611" id="611">611</a>
-<a href="#612" id="612">612</a>
-<a href="#613" id="613">613</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Inference
 //!
 //! This module contains the type inference algorithm for the language.
@@ -623,6 +591,8 @@
 //! or stack overflow is a [bug that should be reported](https://github.com/adam-mcdaniel/sage/issues/new).
 
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
+
+<span class="kw">use </span>log::trace;
 
 <span class="doccomment">/// Get the type associated with a value under a given environment.
 </span><span class="kw">pub trait </span>GetType {
@@ -648,6 +618,7 @@
 <span class="doccomment">/// Infer the type associated with an expression under a given environment.
 </span><span class="kw">impl </span>GetType <span class="kw">for </span>Expr {
     <span class="kw">fn </span>get_type_checked(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env, i: usize) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Getting type of expression {}&quot;</span>, <span class="self">self</span>);
         <span class="kw">let </span>i = i + <span class="number">1</span>;
         <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::AnnotatedWithSource { expr, loc } =&gt; {
@@ -773,37 +744,24 @@
                 <span class="comment">// Create a new environment with the type
                 </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                 new_env.define_type(name, t.clone());
-                new_env.define_type(name, t.clone().simplify(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>);
                 <span class="comment">// Get the type of the return expression in the new environment.
-                </span>ret.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?</span>.simplify_until_matches(
-                    env,
-                    Type::Any,
-                    |t, env| t.type_check(env).map(|()| <span class="bool-val">true</span>),
-                )<span class="question-mark">?
+                </span>ret.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?</span>.simplify_until_type_checks(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?
             </span>}
 
             <span class="comment">// Get the type of a resulting expression after several type definitions.
             </span><span class="self">Self</span>::LetTypes(types, ret) =&gt; {
                 <span class="comment">// Create a new environment with the types
                 </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                <span class="kw">for </span>(name, ty) <span class="kw">in </span>types {
-                    <span class="comment">// Define the type in the new environment.
-                    </span>new_env.define_type(name, ty.clone());
-                    new_env.define_type(name, ty.clone().simplify(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>);
-                }
+                new_env.define_types(types.clone());
                 <span class="comment">// Get the type of the return expression in the new environment.
-                </span>ret.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?</span>.simplify_until_matches(
-                    env,
-                    Type::Any,
-                    |t, env| t.type_check(env).map(|()| <span class="bool-val">true</span>),
-                )<span class="question-mark">?
+                </span>ret.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?</span>.simplify_until_type_checks(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?
             </span>}
 
             <span class="comment">// Get the type of a resulting expression after a variable definition.
-            </span><span class="self">Self</span>::LetVar(var, t, val, ret) =&gt; {
+            </span><span class="self">Self</span>::LetVar(var, mutability, t, val, ret) =&gt; {
                 <span class="comment">// Create a new environment with the variable
                 </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                new_env.define_var(var, t.clone().unwrap_or(val.get_type_checked(env, i)<span class="question-mark">?</span>))<span class="question-mark">?</span>;
+                new_env.define_var(var, <span class="kw-2">*</span>mutability, t.clone().unwrap_or(val.get_type_checked(env, i)<span class="question-mark">?</span>))<span class="question-mark">?</span>;
                 <span class="comment">// Get the type of the return expression in the new environment.
                 </span>ret.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?
             </span>}
@@ -812,10 +770,10 @@
             </span><span class="self">Self</span>::LetVars(vars, ret) =&gt; {
                 <span class="comment">// Create a new environment with the variables
                 </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                <span class="kw">for </span>(var, t, val) <span class="kw">in </span>vars {
+                <span class="kw">for </span>(var, mutability, t, val) <span class="kw">in </span>vars {
                     <span class="comment">// Define the variable in the new environment.
                     </span>new_env
-                        .define_var(var, t.clone().unwrap_or(val.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?</span>))<span class="question-mark">?</span>;
+                        .define_var(var, <span class="kw-2">*</span>mutability, t.clone().unwrap_or(val.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?</span>))<span class="question-mark">?</span>;
                 }
                 <span class="comment">// Get the type of the return expression in the new environment.
                 </span>ret.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?
@@ -861,16 +819,16 @@
             </span>}
 
             <span class="comment">// Return the type of a reference to the expression.
-            </span><span class="self">Self</span>::Refer(expr) =&gt; Type::Pointer(Box::new(expr.get_type_checked(env, i)<span class="question-mark">?</span>)),
+            </span><span class="self">Self</span>::Refer(mutability, expr) =&gt; Type::Pointer(<span class="kw-2">*</span>mutability, Box::new(expr.get_type_checked(env, i)<span class="question-mark">?</span>)),
             <span class="comment">// Return the type of the expression being dereferenced.
             </span><span class="self">Self</span>::Deref(expr) =&gt; {
                 <span class="comment">// Get the type of the expression.
                 </span><span class="kw">let </span>t = expr.get_type_checked(env, i)<span class="question-mark">?</span>;
                 <span class="comment">// If the type is a pointer, return the inner type of the pointer.
-                </span><span class="kw">if let </span>Type::Pointer(inner) = t {
+                </span><span class="kw">if let </span>Type::Pointer(<span class="kw">_</span>, inner) = t {
                     <span class="comment">// Return the inner type of the pointer.
                     </span><span class="kw-2">*</span>inner
-                } <span class="kw">else if let </span>Type::Pointer(inner) = t.simplify(env)<span class="question-mark">? </span>{
+                } <span class="kw">else if let </span>Type::Pointer(<span class="kw">_</span>, inner) = t.simplify(env)<span class="question-mark">? </span>{
                     <span class="comment">// If the type *evaluates* to a pointer, return that inner type.
                     </span><span class="kw-2">*</span>inner
                 } <span class="kw">else </span>{
@@ -887,12 +845,7 @@
             <span class="comment">// Get the type of a procedure call.
             </span><span class="self">Self</span>::Apply(func, <span class="kw">_</span>) =&gt; {
                 <span class="comment">// Get the type of the function.
-                </span><span class="kw">let </span><span class="kw-2">mut </span>ty = func.get_type_checked(env, i)<span class="question-mark">?</span>;
-                ty = ty.simplify_until_matches(
-                    env,
-                    Type::Proc(<span class="macro">vec!</span>[], Box::new(Type::Any)),
-                    |t, _env| <span class="prelude-val">Ok</span>(t.is_simple()),
-                )<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>ty = func.get_type_checked(env, i)<span class="question-mark">?</span>.simplify_until_concrete(env)<span class="question-mark">?</span>;
                 <span class="kw">match </span>ty {
                     Type::Proc(<span class="kw">_</span>, ret) =&gt; <span class="kw-2">*</span>ret,
                     Type::Let(name, t, result) =&gt; {
@@ -976,16 +929,8 @@
                 <span class="comment">// Get the field to access (as an integer)
                 </span><span class="kw">let </span>as_int = field.clone().as_int(env);
                 <span class="comment">// Get the type of the value to get the member of.
-                </span><span class="kw">match </span>val.get_type_checked(env, i)<span class="question-mark">?</span>.simplify_until_matches(
-                    env,
-                    Type::Struct(BTreeMap::new()),
-                    |t, _env| {
-                        <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(
-                            t,
-                            Type::Tuple(<span class="kw">_</span>) | Type::Struct(<span class="kw">_</span>) | Type::Union(<span class="kw">_</span>)
-                        ))
-                    },
-                ) {
+                </span><span class="kw">match </span>val.get_type_checked(env, i)<span class="question-mark">?</span>.simplify_until_has_members(env) {
+                    <span class="prelude-val">Ok</span>(Type::Pointer(<span class="kw">_</span>, t)) =&gt; t.get_member_offset(field, val, env)<span class="question-mark">?</span>.<span class="number">0</span>,
                     <span class="comment">// If we&#39;re accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
                     // This is because tuples are accesed by integer index.
@@ -1027,19 +972,9 @@
                             </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(<span class="kw-2">*</span>val.clone(), field.clone()));
                         }
                     }
-                    <span class="comment">// // If we&#39;re accessing a member whose type is a more complex
-                    // // let-binding, we need to look up the type of the member using
-                    // // another environment.
-                    // Type::Let(name, t, ret) =&gt; {
-                    //     // Create a new environment with the type of the let-binding
-                    //     let mut new_env = env.clone();
-                    //     new_env.define_type(name, *t);
-                    //     // Get the type of the member in the new environment.
-                    //     ret.get_member_offset(field, val, &amp;new_env)?.0
-                    // }
 
-                    // If we&#39;re accessing a member of a type that is not a tuple,
-                    // struct, or union, we cannot access a member.
+                    <span class="comment">// If we&#39;re accessing a member of a type that is not a tuple,
+                    // struct, union, or pointer, we cannot access a member.
                     </span><span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(<span class="kw-2">*</span>val.clone(), field.clone())),
                 }
             }
@@ -1048,7 +983,7 @@
             </span><span class="self">Self</span>::Index(val, <span class="kw">_</span>) =&gt; <span class="kw">match </span>val.get_type_checked(env, i)<span class="question-mark">?</span>.simplify(env)<span class="question-mark">? </span>{
                 <span class="comment">// Only arrays and pointers can be indexed.
                 </span>Type::Array(item, <span class="kw">_</span>) =&gt; <span class="kw-2">*</span>item,
-                Type::Pointer(item) =&gt; <span class="kw-2">*</span>item,
+                Type::Pointer(<span class="kw">_</span>, item) =&gt; <span class="kw-2">*</span>item,
 
                 <span class="comment">// If we&#39;re accessing an index of a type that is not an array or pointer,
                 // we cannot access an index.
@@ -1059,6 +994,7 @@
 
     <span class="doccomment">/// Substitute a type in a given expression.
     </span><span class="kw">fn </span>substitute(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str, ty: <span class="kw-2">&amp;</span>Type) {
+        <span class="macro">trace!</span>(<span class="string">&quot;Substituting {name} for {ty} in {self}&quot;</span>);
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::AnnotatedWithSource { expr, .. } =&gt; {
                 expr.substitute(name, ty);
@@ -1085,7 +1021,7 @@
                 }
                 expr.substitute(name, ty)
             }
-            <span class="self">Self</span>::LetVar(_var, t, val, ret) =&gt; {
+            <span class="self">Self</span>::LetVar(_var, <span class="kw">_</span>, t, val, ret) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = t {
                     <span class="kw-2">*</span>t = t.substitute(name, ty);
                 }
@@ -1093,7 +1029,7 @@
                 ret.substitute(name, ty)
             }
             <span class="self">Self</span>::LetVars(vars, ret) =&gt; {
-                <span class="kw">for </span>(<span class="kw">_</span>, t, val) <span class="kw">in </span>vars.iter_mut() {
+                <span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, t, val) <span class="kw">in </span>vars.iter_mut() {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = t {
                         <span class="kw-2">*</span>t = t.substitute(name, ty);
                     }
@@ -1167,7 +1103,7 @@
                 rhs.substitute(name, ty)
             }
 
-            <span class="self">Self</span>::Refer(expr) =&gt; expr.substitute(name, ty),
+            <span class="self">Self</span>::Refer(<span class="kw">_</span>, expr) =&gt; expr.substitute(name, ty),
 
             <span class="self">Self</span>::Deref(expr) =&gt; expr.substitute(name, ty),
 

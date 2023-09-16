@@ -552,6 +552,7 @@
 <a href="#552" id="552">552</a>
 <a href="#553" id="553">553</a>
 <a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Constant Expressions
 //!
 //! Constant expressions are expressions that can be evaluated at compile time.
@@ -565,9 +566,11 @@
 
 </span><span class="kw">use </span><span class="kw">crate</span>::lir::{
     CoreBuiltin, Env, Error, Expr, GetSize, GetType, PolyProcedure, Procedure, Simplify,
-    StandardBuiltin, FFIProcedure, Type, TypeCheck,
+    StandardBuiltin, FFIProcedure, Type, Mutability,
 };
 <span class="kw">use </span><span class="kw">crate</span>::parse::SourceCodeLocation;
+
+<span class="kw">use </span>log::{trace, error};
 
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::collections::BTreeMap;
@@ -647,7 +650,7 @@
     <span class="doccomment">/// Construct a procedure.
     </span><span class="kw">pub fn </span>proc(
         common_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
-        args: Vec&lt;(String, Type)&gt;,
+        args: Vec&lt;(String, Mutability, Type)&gt;,
         ret: Type,
         body: <span class="kw">impl </span>Into&lt;Expr&gt;,
     ) -&gt; <span class="self">Self </span>{
@@ -676,8 +679,10 @@
     </span><span class="kw">fn </span>eval_checked(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env, i: usize) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
         <span class="kw">let </span>i = i + <span class="number">1</span>;
         <span class="kw">if </span>i &gt; <span class="number">500 </span>{
+            <span class="macro">error!</span>(<span class="string">&quot;Recursion depth exceeded while evaluating: {self}&quot;</span>);
             <span class="prelude-val">Err</span>(Error::RecursionDepthConst(<span class="self">self</span>))
         } <span class="kw">else </span>{
+            <span class="macro">trace!</span>(<span class="string">&quot;Evaluating constexpr: {self}&quot;</span>);
             <span class="kw">match </span><span class="self">self </span>{
                 <span class="self">Self</span>::AnnotatedWithSource { expr, loc } =&gt; expr.eval_checked(env, i).map_err(|e| e.with_loc(<span class="kw-2">&amp;</span>loc)),
 
@@ -697,9 +702,7 @@
 
                 <span class="self">Self</span>::LetTypes(bindings, expr) =&gt; {
                     <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                    <span class="kw">for </span>(name, ty) <span class="kw">in </span>bindings {
-                        new_env.define_type(name, ty);
-                    }
+                    new_env.define_types(bindings);
                     expr.eval_checked(<span class="kw-2">&amp;</span>new_env, i)
                 }
 
@@ -774,6 +777,7 @@
 
     <span class="doccomment">/// Try to get this constant expression as an integer.
     </span><span class="kw">pub fn </span>as_int(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;i64, Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Getting int from constexpr: {self}&quot;</span>);
         <span class="kw">match </span><span class="self">self</span>.eval_checked(env, <span class="number">0</span>) {
             <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Int(n)) =&gt; <span class="prelude-val">Ok</span>(n),
             <span class="prelude-val">Ok</span>(other) =&gt; <span class="prelude-val">Err</span>(Error::NonIntegralConst(other)),
@@ -783,6 +787,7 @@
 
     <span class="doccomment">/// Try to get this constant expression as a float.
     </span><span class="kw">pub fn </span>as_float(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;f64, Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Getting float from constexpr: {self}&quot;</span>);
         <span class="kw">match </span><span class="self">self</span>.eval_checked(env, <span class="number">0</span>) {
             <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Float(n)) =&gt; <span class="prelude-val">Ok</span>(n),
             <span class="prelude-val">Ok</span>(other) =&gt; <span class="prelude-val">Err</span>(Error::NonIntegralConst(other)),
@@ -792,6 +797,7 @@
 
     <span class="doccomment">/// Try to get this constant expression as a boolean value.
     </span><span class="kw">pub fn </span>as_bool(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Getting bool from constexpr: {self}&quot;</span>);
         <span class="kw">match </span><span class="self">self</span>.eval_checked(env, <span class="number">0</span>) {
             <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Bool(b)) =&gt; <span class="prelude-val">Ok</span>(b),
             <span class="prelude-val">Ok</span>(other) =&gt; <span class="prelude-val">Err</span>(Error::NonIntegralConst(other)),
@@ -801,6 +807,7 @@
 
     <span class="doccomment">/// Try to get this constant expression as a symbol (like in LISP).
     </span><span class="kw">pub fn </span>as_symbol(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;String, Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Getting symbol from constexpr: {self}&quot;</span>);
         <span class="kw">match </span><span class="self">self </span>{
             <span class="comment">// Check to see if the constexpr is already a symbol.
             </span><span class="self">Self</span>::Symbol(name) =&gt; <span class="prelude-val">Ok</span>(name),
@@ -821,6 +828,7 @@
 
 <span class="kw">impl </span>GetType <span class="kw">for </span>ConstExpr {
     <span class="kw">fn </span>get_type_checked(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env, i: usize) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Getting type from constexpr: {self}&quot;</span>);
         <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self</span>.clone() {
             <span class="self">Self</span>::AnnotatedWithSource { expr, loc } =&gt; {
                 expr.get_type_checked(env, i).map_err(|e| e.with_loc(<span class="kw-2">&amp;</span>loc))<span class="question-mark">?
@@ -840,14 +848,8 @@
             }
             <span class="self">Self</span>::LetTypes(bindings, expr) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                <span class="kw">for </span>(name, ty) <span class="kw">in </span>bindings {
-                    new_env.define_type(<span class="kw-2">&amp;</span>name, ty);
-                }
-                expr.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?</span>.simplify_until_matches(
-                    env,
-                    Type::Any,
-                    |t, env| t.type_check(env).map(|<span class="kw">_</span>| <span class="bool-val">true</span>),
-                )<span class="question-mark">?
+                new_env.define_types(bindings);
+                expr.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?</span>.simplify_until_type_checks(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?
             </span>}
             <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; {
                 <span class="comment">// Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::&lt;Result&lt;Vec&lt;Type&gt;, Error&gt;&gt;()?).perform_template_applications(env, &amp;mut HashMap::new(), 0)?
@@ -858,7 +860,7 @@
                 <span class="kw">let </span>size = expr.get_type_checked(env, i)<span class="question-mark">?</span>.to_string().len();
                 Type::Array(Box::new(Type::Char), Box::new(<span class="self">Self</span>::Int(size <span class="kw">as </span>i64)))
             }
-            <span class="self">Self</span>::Null =&gt; Type::Pointer(Box::new(Type::Any)),
+            <span class="self">Self</span>::Null =&gt; Type::Pointer(Mutability::Immutable, Box::new(Type::Any)),
             <span class="self">Self</span>::None =&gt; Type::None,
             <span class="self">Self</span>::SizeOfType(<span class="kw">_</span>) | <span class="self">Self</span>::SizeOfExpr(<span class="kw">_</span>) | <span class="self">Self</span>::Int(<span class="kw">_</span>) =&gt; Type::Int,
             <span class="self">Self</span>::Float(<span class="kw">_</span>) =&gt; Type::Float,
@@ -897,9 +899,9 @@
             <span class="self">Self</span>::FFIProcedure(ffi_proc) =&gt; ffi_proc.get_type_checked(env, i)<span class="question-mark">?</span>,
 
             <span class="self">Self</span>::Symbol(name) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>((t, <span class="kw">_</span>)) = env.get_var(<span class="kw-2">&amp;</span>name) {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, ty, <span class="kw">_</span>)) = env.get_var(<span class="kw-2">&amp;</span>name) {
                     <span class="comment">// If the symbol is a variable, get the variables type.
-                    </span>t.clone()
+                    </span>ty.clone()
                 } <span class="kw">else </span>{
                     <span class="comment">// Otherwise, evaluate the symbol as a constant.
                     </span><span class="kw">match </span><span class="self">Self</span>::Symbol(name).eval(env)<span class="question-mark">? </span>{

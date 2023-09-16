@@ -363,33 +363,55 @@ db=64
 dc=21
 dd=0
 r`;
-                    source.setValue(`enum Option<T> {
+                    source.setValue(`// Used to represent a value that may or may not exist
+enum Option<T> {
+    // Some value
     Some(T),
+    // No value
     Nothing,
 }
 
+// A command issued to the hex editor
 enum Command {
+    // Write some data to memory
     Write {
+        // Start address
         start: Int,
+        // End address
         end: Option<Int>,
+        // Value to write
         value: Int,
     },
+    // Examine some data in memory
     Examine {
+        // Start address
         start: Int,
+        // End address
         end: Option<Int>
     },
+    // Clear memory to an optional value (or zero)
     Clear(Option<Int>),
+    // Grow memory up to a specific size
     Grow(Int),
+    // Shrink memory down to a specific size
     Shrink(Int),
+    // Quit the program
     Quit,
+    // Print the current memory state
     Report,
+    // Print the help message
     Help,
+    // Unknown command
     Unknown,
 }
 
+// A memory buffer
 struct Memory {
+    // A pointer to the data in memory
     data: &mut Int,
+    // The number of bytes in memory
     length: Int,
+    // The number of bytes allocated in memory
     capacity: Int,
 }
 
@@ -1660,36 +1682,61 @@ print("Vector operations done!\\n");`);
 
                 case "calculator":
                     document.getElementById("input").value = "(4 + 6) * ((8 - 3) / 2) + (9 % 5)";
-                    source.setValue(`enum Expr {
+                    source.setValue(`// A mathematical expression for the calculator to evaluate.
+enum Expr {
+    // Addition of two sub-expressions.
     Add (&Expr, &Expr),
+    // Subtraction of two sub-expressions.
     Sub (&Expr, &Expr),
+    // Multiplication of two sub-expressions.
     Mul (&Expr, &Expr),
+    // Division of two sub-expressions.
     Div (&Expr, &Expr),
+    // Remainder of two sub-expressions.
     Rem (&Expr, &Expr),
+    // A number.
     Num Float,
+    // Parenthesized sub-expression.
     Group &Expr,
 }
 
+// The current input to the parser.
 struct Input {
+    // The start of the entire input.
     start: &Char,
+    // The current location in the input.
     loc: Int,
+    // The length of the input.
     length: Int
 }
 
+// The result of parsing an expression.
 enum ParseResult {
+    // A successful parse.
+    // This contains the remaining input and the parsed expression.
     Ok (Input, &Expr),
+    // An error while parsing.
+    // This contains the location of the error.
     Err Int
 }
 
+// Main code of the calculator.
 def main() {
+    // Read the input.
     let input = read();
+    // Parse the input.
     match parse_expr(input) {
+        // If the parse was successful, evaluate the expression.
         of Ok (input, n) => {
+            // Print the expression.
             print_expr(n);
+            // Print the result of the evaluation.
             print("\\n => ", eval(n), "\\n");
+            // Free the expression and the input.
             free_expr(n);
             free_input(input);
         },
+        // If the parse failed, print an error message.
         of Err n => print("\\nCalculator: error while parsing at character: \\n", input.start[n], "\\n")
     }
 }
@@ -2543,7 +2590,8 @@ alert(buf);`);
                     document.getElementById("input").value = "('b' + 'a' + + 'a' + 'a').toUpperCase()";
                     break;
                 case "hello world":
-                    source.setValue("print(\"Hello, world!\n\");");
+                    source.setValue(`print("Hello, world!\\n");`);
+                    document.getElementById("input").value = "";
                     break;
                 default:
                     console.log("Unknown example: " + example);
@@ -2565,15 +2613,15 @@ alert(buf);`);
         document.getElementById("run").addEventListener("click", compile_and_run, false);
         </script>
         <select id="example" style="height: 3em; float: left;">
-            <option value="hex-editor">Click to select example program (Default Hex Editor)</option>
+            <option value="hello world">Click to select example program (Default Hello World)</option>
             <option value="hex-editor">Hex Editor</option>
+            <option value="calculator">Calculator (Parser)</option>
+            <option value="ffi">Foreign Function Interface (JavaScript Example)</option>
             <option value="hashmap">HashMap (Generics)</option>
             <option value="vector">Vector (Generics)</option>
             <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
-            <option value="ffi">Foreign Function Interface (JavaScript Example)</option>
-            <option value="calculator">Calculator (Parser)</option>
-            <option value="result">Result Enum (Generics)</option>
             <option value="alloc">Allocator</option>
+            <option value="result">Result Enum (Generics)</option>
             <option value="list">Linked List Enum (Generics)</option>
             <option value="lisp">S-Expressions</option>
             <option value="tree">Tree (Generics)</option>
@@ -2600,5 +2648,8 @@ alert(buf);`);
             </select>
             <button id="run" style="height: 3em; float: left;">Compile</button>
         </div>
+        <script>
+            compile_and_run();
+        </script>
     </body>
 </html>

@@ -138,7 +138,7 @@
     <span class="doccomment">/// Get the type of the result of applying this unary operation to the given type.
     </span><span class="kw">fn </span>return_type(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
         <span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(Type::Pointer(Box::new(ty)))
+        <span class="prelude-val">Ok</span>(Type::Pointer(Mutability::Mutable, Box::new(ty)))
     }
 
     <span class="doccomment">/// Evaluate this unary operation on the given constant values.
@@ -199,7 +199,7 @@
 <span class="kw">impl </span>UnaryOp <span class="kw">for </span>Delete {
     <span class="doccomment">/// Can this unary operation be applied to the given type?
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
-        ty.equals(<span class="kw-2">&amp;</span>Type::Pointer(Box::new(Type::Any)), env)
+        ty.equals(<span class="kw-2">&amp;</span>Type::Pointer(Mutability::Any, Box::new(Type::Any)), env)
     }
 
     <span class="doccomment">/// Get the type of the result of applying this unary operation to the given type.

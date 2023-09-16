@@ -211,14 +211,24 @@
 <a href="#211" id="211">211</a>
 <a href="#212" id="212">212</a>
 <a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Poly-Procedure
 //!
 //! A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 //! This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 //! A procedure is compiled down to a label in the assembly code.
-</span><span class="kw">use </span><span class="kw">crate</span>::lir::{ConstExpr, Env, Error, Expr, GetSize, GetType, Type, TypeCheck};
+</span><span class="kw">use </span><span class="kw">crate</span>::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::{collections::HashMap, rc::Rc, sync::Mutex};
+
+<span class="kw">use </span>log::{debug, trace, error};
 
 <span class="kw">use </span><span class="kw">super</span>::Procedure;
 
@@ -232,7 +242,7 @@
     <span class="doccomment">/// The type parameters of the procedure.
     </span>ty_params: Vec&lt;String&gt;,
     <span class="doccomment">/// The arguments of the procedure.
-    </span>args: Vec&lt;(String, Type)&gt;,
+    </span>args: Vec&lt;(String, Mutability, Type)&gt;,
     <span class="doccomment">/// The return type of the procedure.
     </span>ret: Type,
     <span class="doccomment">/// The body of the procedure.
@@ -257,7 +267,7 @@
     </span><span class="kw">pub fn </span>new(
         name: String,
         ty_params: Vec&lt;String&gt;,
-        args: Vec&lt;(String, Type)&gt;,
+        args: Vec&lt;(String, Mutability, Type)&gt;,
         ret: Type,
         body: <span class="kw">impl </span>Into&lt;Expr&gt;,
     ) -&gt; <span class="self">Self </span>{
@@ -271,47 +281,43 @@
         }
     }
 
+    <span class="doccomment">/// Get the name of this polymorphic procedure.
+    /// This is not the mangled name, but the name known to the LIR front-end.
+    /// The mangled name is unique for each monomorph of the procedure.
+    </span><span class="kw">pub fn </span>get_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.name
+    }
+
     <span class="doccomment">/// Take some type arguments and produce a monomorphized version of the procedure.
     /// This monomorphized version can then be compiled directly. Additionally, the
     /// mono version of the procedure is memoized, so that it is only compiled once.
     </span><span class="kw">pub fn </span>monomorphize(<span class="kw-2">&amp;</span><span class="self">self</span>, ty_args: Vec&lt;Type&gt;, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Procedure, Error&gt; {
+        <span class="macro">debug!</span>(<span class="string">&quot;Monomorphizing {} with {:?}&quot;</span>, <span class="self">self</span>, ty_args);
+
         <span class="comment">// This is a helper function to distribute the defined type
         // arguments over the body and arguments of the function.
 
+        // Simplify all the type arguments until they are concrete
         </span><span class="kw">let </span>simplified_ty_args = ty_args
             .clone()
             .into_iter()
             .map(|ty| {
-                ty.simplify_until_matches(env, Type::Any, |t, env| {
-                    t.get_size(env).map(|<span class="kw">_</span>| t.is_simple())
-                })
+                <span class="comment">// Simplify the type until it is concrete
+                </span>ty.simplify_until_concrete(env)
             })
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, Error&gt;&gt;()<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>bind_type_args = |ty: Type| -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
-            <span class="comment">// for (name, arg) in self.ty_params.iter().zip(ty_args.iter()) {
-            //     // ty = Type::let_bind(name, if arg == &amp;Type::Symbol(name.clone()) {
-            //     //     Type::Unit(name.clone(), Box::new(Type::Any))
-            //     // } else {
-            //     //     arg.clone()
-            //     // }, ty)
-            //     ty = ty.clone().substitute(name, arg);
-            //     // ty = Type::let_bind(&amp;name, if arg == &amp;Type::Symbol(name.clone()) {
-            //     //     Type::Unit(name.clone(), Box::new(Type::Any))
-            //     // } else {
-            //     //     arg.clone()
-            //     // }, ty);
-            // }
-
-            // Type::Apply(Box::new(Type::Poly(self.ty_params.clone(), Box::new(ty))), ty_args.clone()).simplify(env)?.perform_template_applications(env, &amp;mut HashMap::new(), 0)
-
+        <span class="comment">// This is a helper function to bind the type arguments to the type parameters.
+        </span><span class="kw">let </span>bind_type_args = |ty: Type| -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
+            <span class="comment">// Add the type parameters to the given type,
+            // and apply the arguments.
             </span><span class="kw">let </span>ty = Type::Apply(
                 Box::new(Type::Poly(<span class="self">self</span>.ty_params.clone(), Box::new(ty))),
                 simplified_ty_args.clone(),
             );
-            ty.simplify_until_matches(env, Type::Any, |t, env| {
-                t.get_size(env).map(|<span class="kw">_</span>| t.is_simple())
-            })
+            <span class="comment">// Simplify the type until it is simple.
+            // This reduces to the concrete version of the type application.
+            </span>ty.simplify_until_concrete(env)
         };
 
         <span class="comment">// Distribute the type parameters over the body and arguments of the function.
@@ -319,13 +325,15 @@
             </span>.args
             .clone()
             .into_iter()
-            .map(|(name, t)| <span class="prelude-val">Ok</span>((name, bind_type_args(t)<span class="question-mark">?</span>)))
+            .map(|(name, mutability, t)| <span class="prelude-val">Ok</span>((name, mutability, bind_type_args(t)<span class="question-mark">?</span>)))
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, Error&gt;&gt;()<span class="question-mark">?</span>;
         <span class="kw">let </span>ret = bind_type_args(<span class="self">self</span>.ret.clone())<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>body = <span class="kw-2">*</span><span class="self">self</span>.body.clone();
-        <span class="comment">// eprintln!(&quot;Before substitution: {}&quot;, body);
+
+        <span class="comment">// Substitute the type arguments into the body of the function.
         </span>body.substitute_types(<span class="kw-2">&amp;</span><span class="self">self</span>.ty_params, <span class="kw-2">&amp;</span>simplified_ty_args);
-        <span class="comment">// eprintln!(&quot;After substitution: {}&quot;, body);
+
+        <span class="comment">// Wrap the body in a let expression to bind the type arguments.
         </span>body = Expr::LetTypes(
             <span class="self">self</span>.ty_params
                 .iter()
@@ -335,16 +343,20 @@
             Box::new(body),
         );
 
-        <span class="kw">let </span>mangled_name = <span class="macro">format!</span>(<span class="string">&quot;__MONOMORPHIZED_({ty_args:?}){}{args:?}{ret:?}&quot;</span>, <span class="self">self</span>.name);
+        <span class="comment">// Generate a mangled name for the monomorphized procedure.
+        </span><span class="kw">let </span>mangled_name = <span class="macro">format!</span>(<span class="string">&quot;__MONOMORPHIZED_({ty_args:?}){}{args:?}{ret:?}&quot;</span>, <span class="self">self</span>.name);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>monomorphs = <span class="self">self</span>.monomorphs.lock().unwrap();
-        <span class="kw">let </span>monomorph = monomorphs
+        <span class="comment">// Memoize the monomorphized procedure.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>monomorphs = <span class="self">self</span>.monomorphs.lock().unwrap();
+        <span class="comment">// If the monomorphized procedure has already been memoized, return it, otherwise memoize it.
+        </span><span class="kw">let </span>monomorph = monomorphs
             .entry(mangled_name.clone())
             .or_insert_with(|| Procedure::new(<span class="prelude-val">Some</span>(mangled_name.clone()), args, ret, body))
             .clone();
-        drop(monomorphs);
-        <span class="comment">// eprintln!(&quot;monomorphized: {}&quot;, monomorph);
+        <span class="comment">// Unlock the mutex to prevent a deadlock.
+        </span>drop(monomorphs);
 
+        <span class="comment">// Return the monomorphized procedure.
         </span><span class="prelude-val">Ok</span>(monomorph)
     }
 }
@@ -354,7 +366,7 @@
         <span class="prelude-val">Ok</span>(Type::Poly(
             <span class="self">self</span>.ty_params.clone(),
             Box::new(Type::Proc(
-                <span class="self">self</span>.args.iter().map(|(<span class="kw">_</span>, t)| t.clone()).collect(),
+                <span class="self">self</span>.args.iter().map(|(<span class="kw">_</span>, <span class="kw">_</span>, t)| t.clone()).collect(),
                 Box::new(<span class="self">self</span>.ret.clone()),
             )),
         ))
@@ -366,32 +378,34 @@
         }
         <span class="self">self</span>.args
             .iter_mut()
-            .for_each(|(<span class="kw">_</span>, t)| <span class="kw-2">*</span>t = t.substitute(name, ty));
+            .for_each(|(<span class="kw">_</span>, <span class="kw">_</span>, t)| <span class="kw-2">*</span>t = t.substitute(name, ty));
         <span class="self">self</span>.ret = <span class="self">self</span>.ret.substitute(name, ty);
     }
 }
 
 <span class="kw">impl </span>TypeCheck <span class="kw">for </span>PolyProcedure {
     <span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Type checking {self}&quot;</span>);
         <span class="comment">// Create a new scope for the procedure&#39;s body, and define the arguments for the scope.
         </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.new_scope();
-        <span class="kw">for </span>ty_param <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.ty_params {
-            new_env.define_type(ty_param, Type::Unit(ty_param.clone(), Box::new(Type::None)));
-        }
-
-        new_env.define_args(<span class="self">self</span>.args.clone())<span class="question-mark">?</span>;
+        <span class="comment">// Define the type parameters of the procedure.
+        </span>new_env.define_types(<span class="self">self</span>.ty_params.clone().into_iter().map(|ty_param| (ty_param.clone(), Type::Unit(ty_param, Box::new(Type::None)))).collect());
+        <span class="comment">// Define the arguments of the procedure.
+        </span>new_env.define_args(<span class="self">self</span>.args.clone())<span class="question-mark">?</span>;
         new_env.set_expected_return_type(<span class="self">self</span>.ret.clone());
 
         <span class="comment">// Typecheck the types of the arguments and return value
-        </span><span class="kw">for </span>(<span class="kw">_</span>, t) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.args {
+        </span><span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, t) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.args {
             t.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
         }
         <span class="self">self</span>.ret.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
 
         <span class="comment">// Get the type of the procedure&#39;s body, and confirm that it matches the return type.
         </span><span class="kw">let </span>body_type = <span class="self">self</span>.body.get_type(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
-        <span class="comment">// eprintln!(&quot;body_type: {}&quot;, body_type);
-        </span><span class="kw">if </span>!body_type.equals(<span class="kw-2">&amp;</span><span class="self">self</span>.ret, <span class="kw-2">&amp;</span>new_env)<span class="question-mark">? </span>{
+
+        <span class="kw">if </span>!body_type.can_decay_to(<span class="kw-2">&amp;</span><span class="self">self</span>.ret, <span class="kw-2">&amp;</span>new_env)<span class="question-mark">? </span>{
+            <span class="macro">error!</span>(<span class="string">&quot;Mismatched types: expected {}, found {}&quot;</span>, <span class="self">self</span>.ret, body_type);
+
             <span class="prelude-val">Err</span>(Error::MismatchedTypes {
                 expected: <span class="self">self</span>.ret.clone(),
                 found: body_type,
@@ -401,8 +415,7 @@
             <span class="comment">// Typecheck the procedure&#39;s body.
             </span><span class="self">self</span>.body.type_check(<span class="kw-2">&amp;</span>new_env)
         }
-        <span class="comment">// Ok(())
-    </span>}
+    }
 }
 
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>PolyProcedure {
@@ -415,7 +428,10 @@
             }
         }
         <span class="macro">write!</span>(f, <span class="string">&quot;](&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">for </span>(i, (name, ty)) <span class="kw">in </span><span class="self">self</span>.args.iter().enumerate() {
+        <span class="kw">for </span>(i, (name, mutability, ty)) <span class="kw">in </span><span class="self">self</span>.args.iter().enumerate() {
+            <span class="kw">if </span>mutability.is_mutable() {
+                <span class="macro">write!</span>(f, <span class="string">&quot;mut &quot;</span>)<span class="question-mark">?</span>;
+            }
             <span class="macro">write!</span>(f, <span class="string">&quot;{name}: {ty}&quot;</span>)<span class="question-mark">?</span>;
             <span class="kw">if </span>i &lt; <span class="self">self</span>.args.len() - <span class="number">1 </span>{
                 <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?

@@ -474,6 +474,19 @@
 <a href="#474" id="474">474</a>
 <a href="#475" id="475">475</a>
 <a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Standard Assembly Variant
 //!
 //! This variant of the assembly language is intended to be used
@@ -488,6 +501,8 @@
 <span class="kw">use </span><span class="kw">crate</span>::vm::{<span class="self">self</span>, VirtualMachineProgram};
 <span class="kw">use </span><span class="kw">crate</span>::side_effects::ffi::FFIBinding;
 <span class="kw">use </span>std::{collections::BTreeSet, fmt};
+
+<span class="kw">use </span>log::info;
 
 <span class="doccomment">/// A program composed of standard instructions, which can be assembled
 /// into the standard virtual machine instructions.
@@ -526,11 +541,14 @@
         <span class="kw">let </span><span class="kw-2">mut </span>env = Env::default();
         <span class="comment">// Create the stack of frame pointers starting directly after the last register
         </span>F.copy_address_to(<span class="kw-2">&amp;</span>FP_STACK, <span class="kw-2">&amp;mut </span>result);
+        <span class="macro">info!</span>(<span class="string">&quot;Frame pointer stack begins at {FP_STACK:?}, and is {} cells long.&quot;</span>, allowed_recursion_depth);
         <span class="comment">// Copy the address just after the allocated space to the stack pointer.
-        </span>FP_STACK
+        </span><span class="kw">let </span>starting_sp_addr = FP_STACK
             .deref()
-            .offset(allowed_recursion_depth <span class="kw">as </span>isize)
-            .copy_address_to(<span class="kw-2">&amp;</span>SP, <span class="kw-2">&amp;mut </span>result);
+            .offset(allowed_recursion_depth <span class="kw">as </span>isize);
+
+        starting_sp_addr.copy_address_to(<span class="kw-2">&amp;</span>SP, <span class="kw-2">&amp;mut </span>result);
+        <span class="macro">info!</span>(<span class="string">&quot;Stack pointer is initialized to point to {starting_sp_addr:?}.&quot;</span>);
 
         SP.copy_to(<span class="kw-2">&amp;</span>FP, <span class="kw-2">&amp;mut </span>result);
         <span class="kw">for </span>(i, op) <span class="kw">in </span><span class="self">self</span>.code.iter().enumerate() {
@@ -611,6 +629,14 @@
 
     <span class="kw">fn </span>is_defined(<span class="kw-2">&amp;</span><span class="self">self</span>, label: <span class="kw-2">&amp;</span>str) -&gt; bool {
         <span class="self">self</span>.labels.contains(label)
+    }
+
+    <span class="kw">fn </span>current_instruction(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.code.len()
+    }
+
+    <span class="kw">fn </span>get_op(<span class="kw-2">&amp;</span><span class="self">self</span>, start: usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="prelude-ty">Result</span>&lt;CoreOp, StandardOp&gt;&gt; {
+        <span class="self">self</span>.code.get(start).cloned().map(<span class="prelude-val">Err</span>)
     }
 }
 
