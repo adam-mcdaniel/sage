@@ -568,6 +568,8 @@ impl Type {
                 Ok(true)
             }
 
+            (Type::Cell, Type::Int) | (Type::Int, Type::Cell) => Ok(true),
+
             (a, b) => a.equals(b, env)
         }
     }
@@ -635,7 +637,8 @@ impl Type {
             (Self::Cell, Self::Float) | (Self::Float, Self::Cell) => Ok(true),
             (Self::Cell, Self::Char) | (Self::Char, Self::Cell) => Ok(true),
             (Self::Cell, Self::Bool) | (Self::Bool, Self::Cell) => Ok(true),
-            (Self::Cell, Self::Pointer(_, _)) | (Self::Pointer(_, _), Self::Cell) => Ok(true),
+
+            (Self::Pointer(_, _), Self::Cell) => Ok(true),
             (Self::Pointer(found, _), Self::Pointer(desired, _)) => Ok(found.can_decay_to(desired)),
 
             (Self::Any, _) | (_, Self::Any) => Ok(true),
