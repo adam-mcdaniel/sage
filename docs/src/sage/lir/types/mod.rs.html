@@ -1500,6 +1500,9 @@
 <a href="#1500" id="1500">1500</a>
 <a href="#1501" id="1501">1501</a>
 <a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
+<a href="#1505" id="1505">1505</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Types Module
 //!
 //! This module contains a collection of types and traits
@@ -2070,6 +2073,8 @@
                 </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
             }
 
+            (Type::Cell, Type::Int) | (Type::Int, Type::Cell) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
+
             (a, b) =&gt; a.equals(b, env)
         }
     }
@@ -2137,7 +2142,8 @@
             (<span class="self">Self</span>::Cell, <span class="self">Self</span>::Float) | (<span class="self">Self</span>::Float, <span class="self">Self</span>::Cell) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
             (<span class="self">Self</span>::Cell, <span class="self">Self</span>::Char) | (<span class="self">Self</span>::Char, <span class="self">Self</span>::Cell) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
             (<span class="self">Self</span>::Cell, <span class="self">Self</span>::Bool) | (<span class="self">Self</span>::Bool, <span class="self">Self</span>::Cell) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
-            (<span class="self">Self</span>::Cell, <span class="self">Self</span>::Pointer(<span class="kw">_</span>, <span class="kw">_</span>)) | (<span class="self">Self</span>::Pointer(<span class="kw">_</span>, <span class="kw">_</span>), <span class="self">Self</span>::Cell) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
+
+            (<span class="self">Self</span>::Pointer(<span class="kw">_</span>, <span class="kw">_</span>), <span class="self">Self</span>::Cell) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
             (<span class="self">Self</span>::Pointer(found, <span class="kw">_</span>), <span class="self">Self</span>::Pointer(desired, <span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(found.can_decay_to(desired)),
 
             (<span class="self">Self</span>::Any, <span class="kw">_</span>) | (<span class="kw">_</span>, <span class="self">Self</span>::Any) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
