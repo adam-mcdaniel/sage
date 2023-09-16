@@ -30,6 +30,8 @@ use super::frontend;
 use super::lir::Expr;
 use super::vm;
 
+use log::trace;
+
 use lalrpop_util::lalrpop_mod;
 use no_comment::{languages, IntoWithoutComments};
 
@@ -147,7 +149,9 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
 
 /// Parse frontend sage code into an LIR expression.
 pub fn parse_frontend(input: impl ToString, filename: Option<&str>) -> Result<Expr, String> {
-    frontend::parse(input, filename)
+    let result = frontend::parse(input, filename)?;
+    trace!(target: "parse", "Parsed frontend code: {result}");
+    Ok(result)
 }
 
 type SyntaxError<'a, T> = lalrpop_util::ParseError<usize, T, &'a str>;

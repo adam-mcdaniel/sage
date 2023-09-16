@@ -165,7 +165,7 @@ impl GetType for Expr {
                 new_env.define_type(name, t.clone());
                 new_env.define_type(name, t.clone().simplify(&new_env)?);
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?.simplify_until_type_checks(env)?
+                ret.get_type_checked(&new_env, i)?.simplify_until_type_checks(&new_env)?
             }
 
             // Get the type of a resulting expression after several type definitions.
@@ -178,7 +178,7 @@ impl GetType for Expr {
                     new_env.define_type(name, ty.clone().simplify(&new_env)?);
                 }
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?.simplify_until_type_checks(env)?
+                ret.get_type_checked(&new_env, i)?.simplify_until_type_checks(&new_env)?
             }
 
             // Get the type of a resulting expression after a variable definition.

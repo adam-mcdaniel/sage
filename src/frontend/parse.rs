@@ -562,7 +562,7 @@ fn parse_decl(pair: Pair<Rule>, filename: Option<&str>) -> Declaration {
                 match pair.as_rule() {
                     Rule::decl_proc_param => {
                         let mut inner_rules = pair.into_inner();
-                        let name = inner_rules.next().unwrap().as_str().to_string();
+                        let (_mutability, name) = parse_symbol(inner_rules.next().unwrap());
                         let ty = parse_type(inner_rules.next().unwrap());
                         args.push((Some(name), ty));
                     }

@@ -337,6 +337,7 @@ impl Compile for Expr {
                 };
                 // Compile the expression to leave the value on the stack.
                 e.compile_expr(env, output)?;
+                output.log_instructions_after(&name, &message, current_instruction);
 
                 // Create a new scope
                 let mut new_env = env.clone();
@@ -344,7 +345,6 @@ impl Compile for Expr {
                 let var_size = t.get_size(env)?;
                 new_env.define_var(&name, mutability, t)?;
 
-                output.log_instructions_after(&name, &message, current_instruction);
 
 
                 let result_type = body.get_type(&new_env)?;

@@ -6,6 +6,7 @@
 use super::{ConstExpr, Env, Error, Expr, Simplify};
 use core::fmt;
 use std::collections::{BTreeMap, HashMap, HashSet};
+
 mod check;
 mod inference;
 mod size;
