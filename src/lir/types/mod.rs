@@ -6,6 +6,7 @@
 use super::{ConstExpr, Env, Error, Expr, Simplify};
 use core::fmt;
 use std::collections::{BTreeMap, HashMap, HashSet};
+
 mod check;
 mod inference;
 mod size;
@@ -14,6 +15,94 @@ pub use inference::*;
 pub use size::*;
 
 use log::{trace, warn, error};
+
+/// Mutability of a pointer.
+/// This is used to provide type safety for pointers.
+/// A mutable pointer can be used to mutate the value it points to.
+/// An immutable pointer can only be used to read the value it points to.
+/// An `Any` pointer can be used to read or write the value it points to; this is
+/// used to override pointer access protections for compiler-builtins.
+#[derive(Copy, Clone, Default, Debug, Eq, PartialOrd, Ord, Hash)]
+pub enum Mutability {
+    /// Mutable access to a value.
+    Mutable,
+    /// Immutable access to a value.
+    /// This is the default way to access a value.
+    #[default]
+    Immutable,
+    /// Unchecked access to a value. This is used to override access protections.
+    Any,
+}
+
+impl Mutability {
+    /// Can a pointer of this mutability decay to a pointer of another mutability?
+    /// Mutable pointers can decay to immutable pointers, but immutable pointers
+    /// cannot decay to mutable pointers. `Any`  pointers are unchecked..
+    pub fn can_decay_to(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Mutable, _) => true,
+            (Self::Immutable, Self::Immutable) => true,
+            (Self::Any, _) => true,
+            (_, Self::Any) => true,
+            _ => false,
+        }
+    }
+
+    /// Can this data be accessed mutably?
+    pub fn is_mutable(&self) -> bool {
+        matches!(self, Self::Mutable) || matches!(self, Self::Any)
+    }
+
+    /// Is this data protected against mutation?
+    pub fn is_constant(&self) -> bool {
+        matches!(self, Self::Immutable) || matches!(self, Self::Any)
+    }
+}
+
+/// Convert a boolean into a mutability.
+/// True is mutable, false is immutable.
+impl From<bool> for Mutability {
+    fn from(b: bool) -> Self {
+        if b {
+            Self::Mutable
+        } else {
+            Self::Immutable
+        }
+    }
+}
+
+/// Convert a mutability into a boolean.
+/// It will return true if the data is mutable (or any), and false if it is immutable.
+impl From<Mutability> for bool {
+    fn from(m: Mutability) -> Self {
+        m.is_mutable()
+    }
+}
+
+/// Check if two access types are equal.
+impl PartialEq for Mutability {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            // Mutable is equal to mutable.
+            (Self::Mutable, Self::Mutable) => true,
+            // Immutable is equal to immutable.
+            (Self::Immutable, Self::Immutable) => true,
+            // Any is equal to any other mutability.
+            (Self::Any, _) | (_, Self::Any) => true,
+            _ => false,
+        }
+    }
+}
+
+impl fmt::Display for Mutability {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Mutable => write!(f, "mut"),
+            Self::Immutable => write!(f, "const"),
+            Self::Any => write!(f, "any"),
+        }
+    }
+}
 
 /// The representation of a type in the LIR type system.
 #[derive(Clone, Debug, PartialEq)]
@@ -70,7 +159,7 @@ pub enum Type {
     /// A procedure with a list of parameters and a return type.
     Proc(Vec<Type>, Box<Type>),
     /// A pointer to another type.
-    Pointer(Box<Self>),
+    Pointer(Mutability, Box<Self>),
     /// A type reserved by the compiler.
     /// This type is equal to any other type.
     /// The NULL pointer, for example, is of type `Pointer(Any)`.
@@ -121,7 +210,7 @@ impl Type {
             | Self::Array(_, _)
             | Self::Tuple(_)
             | Self::Unit(_, _)
-            | Self::Pointer(_) => true,
+            | Self::Pointer(_, _) => true,
         }
     }
 
@@ -140,7 +229,7 @@ impl Type {
             Self::Tuple(inner) => inner.iter().all(|t| t.is_atomic()),
             Self::Array(inner, _) => inner.is_atomic(),
             Self::Proc(args, ret) => args.iter().all(|t| t.is_atomic()) && ret.is_atomic(),
-            Self::Pointer(inner) => inner.is_atomic(),
+            Self::Pointer(_, inner) => inner.is_atomic(),
             Self::Struct(inner) => inner.iter().all(|(_, t)| t.is_atomic()),
             Self::EnumUnion(inner) => inner.iter().all(|(_, t)| t.is_atomic()),
             Self::Poly(_, _) | Self::Symbol(_) | Self::Apply(_, _) | Self::Let(_, _, _) => false,
@@ -148,10 +237,55 @@ impl Type {
         }
     }
 
+    /// Simplify until the type passes the type checker.
+    pub fn simplify_until_type_checks(&self, env: &Env) -> Result<Self, Error> {
+        self.clone().simplify_until_matches(
+            env,
+            Type::Any,
+            |t, env| t.type_check(env).map(|_| true),
+        )
+    }
+
+    /// Simplify a type until you can get its members.
+    pub fn simplify_until_has_members(&self, env: &Env) -> Result<Self, Error> {
+        self.clone().simplify_until_matches(env, Type::Any, |t, _| {
+            Ok(matches!(t, Type::Tuple(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_, _)))
+        })
+    }
+
+    /// Simplify a type until it's a union.
+    pub fn simplify_until_union(&self, env: &Env) -> Result<Self, Error> {
+        self.clone().simplify_until_matches(env, Type::Any, |t, _| {
+            Ok(matches!(t, Type::Union(_) | Type::EnumUnion(_)))
+        })
+    }
+
+    /// Simplify a type until you can get its variants.
+    pub fn simplify_until_has_variants(&self, env: &Env) -> Result<Self, Error> {
+        self.clone().simplify_until_matches(env, Type::Enum(vec![]), |t, _| {
+            Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_)))
+        })
+    }
+
+    /// Simplify until the type is a polymorphic type.
+    pub fn simplify_until_poly(&self, env: &Env) -> Result<Self, Error> {
+        self.clone().simplify_until_matches(
+            env,
+            Type::Poly(vec![], Box::new(Type::Any)),
+            |t, _| Ok(matches!(t, Type::Poly(_, _))),
+        )
+    }
+
+    /// Simplify until the type is concrete.
+    pub fn simplify_until_concrete(&self, env: &Env) -> Result<Self, Error> {
+        self.clone().simplify_until_matches(env, Type::Any, |t, _env| Ok(t.is_simple()))
+    }
+
     /// Simplify an expression until it matches a given function which "approves" of a type.
     /// This will perform template applications to simplify the type if possible as well.
     /// 
-    /// This is the **prefered** way to simplify a type into a concrete type.
+    /// This is usually too verbose to be used on its own, better to make a wrapper function
+    /// that calls this with a more specific use case/purpose.
     pub fn simplify_until_matches(
         self,
         env: &Env,
@@ -160,8 +294,6 @@ impl Type {
     ) -> Result<Self, Error> {
         let mut simplified = self;
         for _ in 0..Self::SIMPLIFY_RECURSION_LIMIT {
-            // eprintln!("STAGE {i}: {simplified}", i = i, simplified = simplified);
-            // if f(&simplified, env)? || matches!(simplified, Type::Never | Type::Int | Type::Any | Type::Cell | Type::Bool | Type::Float | Type::Char | Type::None | Type::Enum(_)) {
             if f(&simplified, env)? || simplified.is_atomic() {
                 return Ok(simplified);
             }
@@ -234,7 +366,7 @@ impl Type {
             Self::Proc(params, ret) => {
                 params.iter().any(|t| t.contains_symbol(name)) || ret.contains_symbol(name)
             }
-            Self::Pointer(t) => t.contains_symbol(name),
+            Self::Pointer(_, t) => t.contains_symbol(name),
         }
     }
 
@@ -334,7 +466,109 @@ impl Type {
                     .collect(),
                 Box::new(ret.substitute(name, substitution)),
             ),
-            Self::Pointer(ptr) => Self::Pointer(Box::new(ptr.substitute(name, substitution))),
+            Self::Pointer(mutability, ptr) => Self::Pointer(*mutability, Box::new(ptr.substitute(name, substitution))),
+        }
+    }
+
+    /// Does this type have an element type matching the supplied type?
+    /// If this type is an array of Integers, for example, then this function
+    /// will return true if the supplied type is an Integer.
+    pub fn has_element_type(&self, element: &Self, env: &Env) -> Result<bool, Error> {
+        match self {
+            Self::Array(inner, _) => inner.equals(element, env),
+            Self::Pointer(_, inner) => inner.equals(element, env),
+            _ => Ok(false),
+        }
+    }
+
+    /// Can this type decay into another type?
+    /// 
+    /// A type can decay into another type if the compiler can automatically convert the type
+    /// into the other type. *This is distinct from the compiler seeing the types as equal.*
+    /// The two types are *not* equal; the compiler will just automatically perform the conversion.
+    /// 
+    /// For all cases right now, a decay does nothing; the representations of the types
+    /// in the compiler are the same for all types of decay.
+    pub fn can_decay_to(&self, desired: &Self, env: &Env) -> Result<bool, Error> {
+        if self == desired {
+            return Ok(true);
+        }
+
+        match (self, desired) {
+            // Can we decay a pointer to a pointer?
+            (Self::Pointer(found_mutability, found_elem_ty), Self::Pointer(desired_mutabilty, desired_elem_ty)) => {
+                // Check if the mutabilities and element types can decay.
+                if found_mutability.can_decay_to(&desired_mutabilty) && found_elem_ty.can_decay_to(&desired_elem_ty, env)? {
+                    // If they can, then we can decay.
+                    return Ok(true)
+                }
+
+                // Check if the mutabilities are compatible, and check if this type points to an array of elements of the desired element type.
+                if found_mutability.can_decay_to(&desired_mutabilty) && found_elem_ty.has_element_type(desired_elem_ty, env)? {
+                    // If so, then we can decay.
+                    return Ok(true)
+                }
+
+                Ok(false)
+            }
+            
+            // Can a tuple decay to another tuple?
+            (Self::Tuple(found_fields), Self::Tuple(desired_fields)) => {
+                // If the tuples have different numbers of fields, then we can't decay.
+                if found_fields.len() != desired_fields.len() {
+                    return Ok(false);
+                }
+                // Check if each field can decay to the corresponding field in the other tuple.
+                for (found_field, desired_field) in found_fields.iter().zip(desired_fields.iter()) {
+                    if !found_field.can_decay_to(desired_field, env)? {
+                        // If any field can't decay, then we can't decay.
+                        return Ok(false);
+                    }
+                }
+                // If all fields can decay, then we can decay.
+                Ok(true)
+            }
+
+            // Can an array decay to another array?
+            (Self::Array(found_elem_ty, _), Self::Array(desired_elem_ty, _)) => {
+                // Check if the element types can decay, and if the sizes are equal.
+                if found_elem_ty.can_decay_to(desired_elem_ty, env)? && self.get_size(env)? == desired.get_size(env)? {
+                    return Ok(true)
+                }
+
+                // Check if the element types are compatible, and if the sizes are equal.
+                if found_elem_ty.has_element_type(desired_elem_ty, env)? && self.get_size(env)? == desired.get_size(env)? {
+                    return Ok(true)
+                }
+
+                Ok(false)
+            }
+
+            // Can a struct decay to another struct?
+            (Self::EnumUnion(found_fields), Self::EnumUnion(desired_fields))
+            | (Self::Union(found_fields), Self::Union(desired_fields))
+            | (Self::Struct(found_fields), Self::Struct(desired_fields)) => {
+                // If the structs have a different number of fields, then they can't be equal.
+                if found_fields.len() != desired_fields.len() {
+                    return Ok(false);
+                }
+                // For each name in the first struct, check that the second struct has the same name.
+                for (found_field_name, found_field_ty) in found_fields.iter() {
+                    if let Some(desired_field_ty) = desired_fields.get(found_field_name) {
+                        if !found_field_ty.can_decay_to(desired_field_ty, env)? {
+                            // If any field can't decay, then we can't decay.
+                            return Ok(false);
+                        }
+                    } else {
+                        // If there's a difference in the names of the fields, then we can't decay.
+                        return Ok(false);
+                    }
+                }
+                // If we've made it this far, we know all the fields match and can decay.
+                Ok(true)
+            }
+
+            (a, b) => a.equals(b, env)
         }
     }
 
@@ -401,8 +635,8 @@ impl Type {
             (Self::Cell, Self::Float) | (Self::Float, Self::Cell) => Ok(true),
             (Self::Cell, Self::Char) | (Self::Char, Self::Cell) => Ok(true),
             (Self::Cell, Self::Bool) | (Self::Bool, Self::Cell) => Ok(true),
-            (Self::Cell, Self::Pointer(_)) | (Self::Pointer(_), Self::Cell) => Ok(true),
-            (Self::Pointer(_), Self::Pointer(_)) => Ok(true),
+            (Self::Cell, Self::Pointer(_, _)) | (Self::Pointer(_, _), Self::Cell) => Ok(true),
+            (Self::Pointer(found, _), Self::Pointer(desired, _)) => Ok(found.can_decay_to(desired)),
 
             (Self::Any, _) | (_, Self::Any) => Ok(true),
 
@@ -465,7 +699,7 @@ impl Type {
             }
 
             (a, b) => {
-                if a.equals(b, env)? {
+                if a.can_decay_to(b, env)? {
                     Ok(true)
                 } else {
                     Ok(false)
@@ -532,6 +766,7 @@ impl Type {
                     }
                 }
             }
+            Self::Pointer(mutability, inner) => Self::Pointer(mutability, Box::new(inner.perform_template_applications(env, previous_applications)?)),
             other => other
         })
     }
@@ -730,8 +965,8 @@ impl Type {
                 ret1.equals_checked(ret2, compared_symbols, env, i)?
             }
 
-            (Self::Pointer(t1), Self::Pointer(t2)) => {
-                t1.equals_checked(t2, compared_symbols, env, i)?
+            (Self::Pointer(m1, t1), Self::Pointer(m2, t2)) => {
+                m1 == m2 && t1.equals_checked(t2, compared_symbols, env, i)?
             }
 
             (Self::Poly(ty_params1, template1), Self::Poly(ty_params2, template2)) => {
@@ -769,11 +1004,7 @@ impl Type {
                 } else {
                     // If the two polymorphic types are not equal, then we can't just compare the two
                     // types' parameters. We need to simplify the types first.
-                    other.clone().simplify_until_matches(
-                        env,
-                        Type::Any,
-                        |t, _env| Ok(t.is_simple()),
-                    )?.equals_checked(
+                    other.clone().simplify_until_concrete(env)?.equals_checked(
                         self,
                         compared_symbols,
                         env,
@@ -783,34 +1014,7 @@ impl Type {
             }
 
             (Self::Apply(poly, ty_args), b) | (b, Self::Apply(poly, ty_args)) => {
-                // If the type is a polymorphic type, then we need to simplify it first.
-                // let f = poly.clone().simplify_until_matches(
-                //     env,
-                //     Type::Poly(vec![], Box::new(Type::Any)),
-                //     |t, _env| Ok(matches!(t, Type::Poly(_, _))),
-                // )?;
-
-                // match f {
-                //     Self::Poly(ty_params, mut template) => {
-                //         // let mut new_env = env.clone();
-                //         for (name, ty) in ty_params.iter().zip(ty_args.iter()) {
-                //             // new_env.define_type(name, ty.clone());
-                //             *template = template.substitute(name, ty);
-                //         }
-                //         template.equals_checked(b, compared_symbols, env, i)?
-                //     }
-                //     _ => {
-                //         // If the type is not a polymorphic type, then we can compare it to the
-                //         // other type.
-                //         // return a.equals_checked(b, compared_symbols, env, i);
-                //         false
-                //     }
-                // }
-                Self::Apply(poly.clone(), ty_args.clone()).simplify_until_matches(
-                    env,
-                    Type::Any,
-                    |t, _env| Ok(t.is_simple()),
-                )?.equals_checked(b, compared_symbols, env, i)?
+                Self::Apply(poly.clone(), ty_args.clone()).simplify_until_concrete(env)?.equals_checked(b, compared_symbols, env, i)?
             }
 
             (a, b) => {
@@ -831,6 +1035,7 @@ impl Type {
     ) -> Result<(Type, usize), Error> {
         trace!("Getting offset of member {member} in expression {self} in the environment {env}");
         match self {
+            Type::Pointer(_, t) => t.get_member_offset(member, expr, env),
             Type::Struct(members) => {
                 let mut offset = 0;
                 for (k, t) in members.clone() {
@@ -888,16 +1093,7 @@ impl Type {
 
             Type::Apply(_, _) | Type::Poly(_, _) => {
                 let t = self
-                    .clone()
-                    .simplify_until_matches(env, Type::Any, |t, _env| {
-                        Ok(!matches!(
-                            t,
-                            Type::Let(_, _, _)
-                                | Type::Symbol(_)
-                                | Type::Apply(_, _)
-                                | Type::Poly(_, _)
-                        ))
-                    })?;
+                    .simplify_until_concrete(env)?;
                 t.get_member_offset(member, expr, env)
             }
 
@@ -920,6 +1116,8 @@ impl Type {
         env: &Env,
     ) -> Result<(), Error> {
         match self {
+            Type::Pointer(_, t) => t.type_check_member(member, expr, env),
+
             Type::Struct(members) => {
                 for (k, _) in members.clone() {
                     // If this element is the requested member
@@ -977,16 +1175,7 @@ impl Type {
 
             Type::Apply(_, _) | Type::Poly(_, _) => {
                 let t = self
-                    .clone()
-                    .simplify_until_matches(env, Type::Any, |t, _env| {
-                        Ok(!matches!(
-                            t,
-                            Type::Let(_, _, _)
-                                | Type::Symbol(_)
-                                | Type::Apply(_, _)
-                                | Type::Poly(_, _)
-                        ))
-                    })?;
+                    .simplify_until_concrete(env)?;
                 trace!("Simplified {self} to {t}");
                 t.type_check_member(member, expr, env)
             }
@@ -1022,7 +1211,7 @@ impl Simplify for Type {
             | Self::Cell
             | Self::Enum(_)
             | Self::Poly(_, _) => self.clone(),
-            Self::Pointer(inner) => Self::Pointer(Box::new(inner.simplify_checked(env, i)?)),
+            Self::Pointer(mutability, inner) => Self::Pointer(mutability, Box::new(inner.simplify_checked(env, i)?)),
 
             Self::Let(name, t, ret) => {
                 // Is the bound type recursive?
@@ -1110,7 +1299,13 @@ impl fmt::Display for Type {
         match self {
             Self::Any => write!(f, "Any"),
             Self::Never => write!(f, "Never"),
-            Self::Pointer(ty) => write!(f, "&{ty}"),
+            Self::Pointer(mutability, ty) => {
+                write!(f, "&")?;
+                if mutability.is_mutable() {
+                    write!(f, "mut ")?;
+                }
+                write!(f, "{ty}")
+            },
             Self::Bool => write!(f, "Bool"),
             Self::Char => write!(f, "Char"),
             Self::Cell => write!(f, "Cell"),
@@ -1224,8 +1419,9 @@ impl std::hash::Hash for Type {
             Self::Never => {
                 state.write_u8(1);
             }
-            Self::Pointer(ty) => {
+            Self::Pointer(m, ty) => {
                 state.write_u8(2);
+                m.hash(state);
                 ty.hash(state);
             }
             Self::Bool => {

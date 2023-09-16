@@ -14,9 +14,8 @@ use crate::asm::{
     AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
 };
 use crate::NULL;
-use std::collections::BTreeMap;
 
-use log::{info, warn};
+use log::{trace, info, warn, error};
 
 /// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
@@ -66,6 +65,7 @@ pub trait Compile: TypeCheck {
 /// Compile an LIR expression into several core assembly instructions.
 impl Compile for Expr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        trace!("Compiling expression {self} in environment {env}");
         let mut debug_str = format!("{self:50}");
         debug_str.truncate(50);
         
@@ -218,10 +218,8 @@ impl Compile for Expr {
             Self::LetTypes(types, body) => {
                 // Declare a new scope for the types.
                 let mut new_env = env.clone();
-                for (name, ty) in types {
-                    // Define the type in the new scope.
-                    new_env.define_type(name, ty);
-                }
+                // Define the types in the new scope.
+                new_env.define_types(types);
                 // Compile under the new scope.
                 body.compile_expr(&mut new_env, output)?;
             }
@@ -327,7 +325,7 @@ impl Compile for Expr {
                 output.op(CoreOp::Return);
             }
             // Compile a let statement with a variable.
-            Self::LetVar(name, specifier, e, body) => {
+            Self::LetVar(name, mutability, specifier, e, body) => {
                 let message = format!("Initializing '{name}' with expression '{e}'");
                 // Get the type of the variable using its specifier,
                 // or by deducing the type ourselves.
@@ -338,14 +336,14 @@ impl Compile for Expr {
                 };
                 // Compile the expression to leave the value on the stack.
                 e.compile_expr(env, output)?;
+                output.log_instructions_after(&name, &message, current_instruction);
 
                 // Create a new scope
                 let mut new_env = env.clone();
                 // Get the size of the variable we are writing to.
                 let var_size = t.get_size(env)?;
-                new_env.define_var(&name, t)?;
+                new_env.define_var(&name, mutability, t)?;
 
-                output.log_instructions_after(&name, &message, current_instruction);
 
 
                 let result_type = body.get_type(&new_env)?;
@@ -371,8 +369,8 @@ impl Compile for Expr {
                 let mut result = *body;
                 // Create an equivalent let statement with a single variable,
                 // for each variable in the list.
-                for (name, t, e) in vars.into_iter().rev() {
-                    result = Self::LetVar(name, t, Box::new(e), Box::new(result))
+                for (name, mutability,t, e) in vars.into_iter().rev() {
+                    result = Self::LetVar(name, mutability, t, Box::new(e), Box::new(result))
                 }
                 // Compile the resulting let statement.
                 result.compile_expr(env, output)?
@@ -420,7 +418,7 @@ impl Compile for Expr {
                 let ptr_type = ptr.get_type(env)?;
                 ptr.clone().compile_expr(env, output)?;
                 // If the pointer is a pointer, dereference it.
-                if let Type::Pointer(inner) = ptr_type {
+                if let Type::Pointer(_, inner) = ptr_type {
                     // Pop the address into A
                     output.op(CoreOp::Pop(Some(A), 1));
                     // Push all of the data at the address onto the stack.
@@ -494,15 +492,10 @@ impl Compile for Expr {
             }
 
             // Compile a tagged union literal.
-            Self::EnumUnion(mut t, variant, val) => {
+            Self::EnumUnion(t, variant, val) => {
                 // Get the size of the tagged union.
                 let result_size = t.get_size(env)?;
-                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
-                    Ok(!matches!(
-                        t,
-                        Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
-                    ))
-                })?;
+                let t = t.simplify_until_concrete(env)?;
                 if let Type::EnumUnion(fields) = t {
                     // Get the list of possible variant names.
                     let variants = fields.clone().into_keys().collect::<Vec<_>>();
@@ -556,9 +549,9 @@ impl Compile for Expr {
                         let optimized_idx = val
                             .clone()
                             // Reference the current
-                            .refer()
+                            .refer(Mutability::Immutable)
                             // Make the type a pointer to the inner element type
-                            .as_type(Type::Pointer(elem.clone()))
+                            .as_type(Type::Pointer(Mutability::Immutable, elem.clone()))
                             // Index the new pointer
                             .idx(*idx.clone());
                         // The optimized index *may not be possible* if the array is
@@ -613,7 +606,7 @@ impl Compile for Expr {
                         output.op(CoreOp::Pop(None, val_size - size));
                     }
                     // If the value being indexed is a pointer:
-                    Type::Pointer(elem) => {
+                    Type::Pointer(_, elem) => {
                         // Push the index onto the stack.
                         idx.compile_expr(env, output)?;
                         // Push the pointer being indexed onto the stack.
@@ -646,6 +639,13 @@ impl Compile for Expr {
 
             // Compile a member access operation.
             Self::Member(ref val, ref member) => {
+                // If the value we're getting a field from is a pointer,
+                // then dereference it and get the field from the value.
+                if let Type::Pointer(_, _) = val.get_type(env)? {
+                    val.clone().deref().field(member.clone()).compile_expr(env, output)?;
+                    return Ok(());
+                }
+
                 // Get the size of the field we want to retrieve.
                 let size = self.get_size(env)?;
                 // Get the type of the value we want to get a field from.
@@ -662,28 +662,33 @@ impl Compile for Expr {
                     dst: SP.deref().offset(1 - val_size as isize),
                     size,
                 });
-                // eprintln!("\n\nval_size: {val_size}\n => {val_type}");
-                // eprintln!("size: {size}\n => {}", self.get_type(env)?);
-                // eprintln!("{self}");
                 // Pop the remaining elements off the stack, so the field remains.
                 output.op(CoreOp::Pop(None, val_size - size));
             }
 
             // Compile a reference operation (on a symbol or a field of a value).
-            Self::Refer(val) => match *val {
+            Self::Refer(expected_mutability, val) => match *val.clone() {
                 // Get the value being referenced
                 Expr::AnnotatedWithSource { expr, loc } => {
-                    Self::Refer(expr).compile_expr(env, output).map_err(|e| e.with_loc(&loc))?
+                    Self::Refer(expected_mutability, expr).compile_expr(env, output).map_err(|e| e.with_loc(&loc))?
                 }
 
                 Expr::ConstExpr(ConstExpr::AnnotatedWithSource { expr, loc }) => {
-                    Self::Refer(Box::new(Expr::ConstExpr(*expr))).compile_expr(env, output).map_err(|e| e.with_loc(&loc))?
+                    Self::Refer(expected_mutability, Box::new(Expr::ConstExpr(*expr))).compile_expr(env, output).map_err(|e| e.with_loc(&loc))?
                 }
 
                 // Get the reference of a variable.
                 Expr::ConstExpr(ConstExpr::Symbol(name)) => {
                     // Get the variable's offset from the frame pointer.
-                    if let Some((_, offset)) = env.get_var(&name) {
+                    if let Some((found_mutability, _, offset)) = env.get_var(&name) {
+                        if !found_mutability.can_decay_to(found_mutability) {
+                            return Err(Error::MismatchedMutability {
+                                found: *found_mutability,
+                                expected: expected_mutability,
+                                expr: Expr::ConstExpr(ConstExpr::Symbol(name)),
+                            });
+                        }
+
                         // Calculate the address of the variable from the offset
                         output.op(CoreOp::Many(vec![
                             CoreOp::Move { src: FP, dst: A },
@@ -699,6 +704,7 @@ impl Compile for Expr {
                             CoreOp::Push(C, 1),
                         ]))
                     } else {
+                        error!("Tried to get the reference of a symbol that isn't a variable: {name} in environment {env}");
                         // Return an error if the symbol isn't defined.
                         return Err(Error::SymbolNotDefined(name.clone()));
                     }
@@ -713,7 +719,33 @@ impl Compile for Expr {
                     // Get the type of the value we want to get a field from.
                     let val_type = val.get_type(env)?;
                     // Push the address of the struct, tuple, or union onto the stack.
-                    Self::Refer(val.clone()).compile_expr(env, output)?;
+                    match val_type.simplify_until_has_members(env)? {
+                        // If the value is a struct, tuple, or union:
+                        Type::Struct(_) | Type::Tuple(_) | Type::Union(_) => {
+                            // Compile a reference to the inner value with the expected mutability.
+                            Self::Refer(expected_mutability, val.clone()).compile_expr(env, output)?;
+                        }
+                        // If the value is a pointer:
+                        Type::Pointer(found_mutability, _) => {
+                            // Confirm that the pointer can decay to the expected mutability.
+                            if !found_mutability.can_decay_to(&expected_mutability) {
+                                // If the pointer cannot decay to the expected mutability,
+                                // then return an error.
+                                return Err(Error::MismatchedMutability {
+                                    found: found_mutability,
+                                    expected: expected_mutability,
+                                    expr: Expr::Member(val, name),
+                                });
+                            }
+                            // Compile the pointer to get the address of the value.
+                            val.clone().compile_expr(env, output)?;
+                        }
+                        other => {
+                            error!("Tried to get a member {name} of a non-struct, non-tuple, non-union, non-pointer type: {other} of value {val} in environment {env}");
+                            return Err(Error::InvalidRefer(Expr::Member(val, name)));
+                        }
+                    }
+
                     // Calculate the offset of the field from the address of the value.
                     let (_, offset) = val_type.get_member_offset(&name, &val, env)?;
 
@@ -737,7 +769,7 @@ impl Compile for Expr {
                         // If the value is an array:
                         Type::Array(ref elem, _) => {
                             // Push the address of the array onto the stack.
-                            Self::Refer(val.clone()).compile_expr(env, output)?;
+                            Self::Refer(expected_mutability, val.clone()).compile_expr(env, output)?;
                             // Push the index onto the stack.
                             idx.compile_expr(env, output)?;
 
@@ -765,7 +797,15 @@ impl Compile for Expr {
                             output.op(CoreOp::Push(C, 1));
                         }
                         // If the value is a pointer:
-                        Type::Pointer(elem) => {
+                        Type::Pointer(found_mutability, elem) => {
+                            if !found_mutability.can_decay_to(&expected_mutability) {
+                                return Err(Error::MismatchedMutability {
+                                    found: found_mutability,
+                                    expected: expected_mutability,
+                                    expr: Expr::Index(val, idx),
+                                });
+                            }
+
                             // Push the index onto the stack.
                             idx.compile_expr(env, output)?;
                             // Push the pointer onto the stack.
@@ -808,6 +848,7 @@ impl Compile for Expr {
 /// Compile a constant expression.
 impl Compile for ConstExpr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        trace!("Compiling constant expression {self} in environment {env}");
         let mut debug_str = format!("{self}");
         debug_str.truncate(50);
 
@@ -819,9 +860,7 @@ impl Compile for ConstExpr {
             }
             Self::LetTypes(bindings, expr) => {
                 let mut new_env = env.clone();
-                for (name, ty) in bindings {
-                    new_env.define_type(name, ty);
-                }
+                new_env.define_types(bindings);
                 expr.compile_expr(&mut new_env, output)?;
             }
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
@@ -934,10 +973,7 @@ impl Compile for ConstExpr {
             Self::EnumUnion(t, variant, val) => {
                 // Get the size of the tagged union.
                 let result_size = t.get_size(env)?;
-                let t =
-                    t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
-                        Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_)))
-                    })?;
+                let t = t.simplify_until_has_variants(env)?;
 
                 // Get the inner list of variants and compile the expression using this information.
                 if let Type::EnumUnion(variants) = t.clone().simplify(env)? {
@@ -1008,16 +1044,10 @@ impl Compile for ConstExpr {
             }
 
             // Compile a variant of an enum.
-            Self::Of(mut enum_type, variant) => {
+            Self::Of(enum_type, variant) => {
                 // Only try to simplify the type 50 times at most.
                 // This is to prevent infinite loops and to keep recursion under control.
-                enum_type = enum_type.simplify_until_matches(
-                    env,
-                    Type::Enum(vec![variant.clone()]),
-                    |t, _env| Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_))),
-                )?;
-
-                match enum_type.clone() {
+                match enum_type.simplify_until_has_variants(env)? {
                     // If the type is an enum, we can continue.
                     Type::Enum(variants) => {
                         // Get the index of the variant.
@@ -1054,58 +1084,12 @@ impl Compile for ConstExpr {
                         return Err(Error::VariantNotFound(enum_type, variant));
                     }
                 }
-                // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
-                //     // Simplify the type.
-                //     enum_type = enum_type.simplify(env)?;
-                //     // If the type is an enum, we can continue.
-                //     match enum_type.clone() {
-                //         // If the type is an enum, we can continue.
-                //         Type::Enum(variants) => {
-                //             // Get the index of the variant.
-                //             if let Some(index) = Type::variant_index(&variants, &variant) {
-                //                 // Push the index of the variant onto the stack.
-                //                 output.op(CoreOp::Set(A, index as i64));
-                //                 output.op(CoreOp::Push(A, 1));
-                //                 return Ok(());
-                //             } else {
-                //                 // If the variant is not found, return an error.
-                //                 return Err(Error::VariantNotFound(enum_type, variant));
-                //             }
-                //         }
-                //         // If the type is an enum union, we can continue.
-                //         Type::EnumUnion(variants)
-                //             if variants.get(&variant) == Some(&Type::None) =>
-                //         {
-                //             // Get the index of the variant.
-                //             if let Some(index) =
-                //                 Type::variant_index(&variants.into_keys().collect(), &variant)
-                //             {
-                //                 // Push the index of the variant onto the stack.
-                //                 // Allocate the size of the structure on the stack by
-                //                 // incrementing the stack pointer by the size of the structure.
-                //                 // Then, set the value under the stack pointer to the index of the variant.
-                //                 output
-                //                     .op(CoreOp::Next(SP, Some(enum_type.get_size(env)? as isize)));
-                //                 output.op(CoreOp::Set(SP.deref(), index as i64));
-                //                 return Ok(());
-                //             } else {
-                //                 // If the variant is not found, return an error.
-                //                 return Err(Error::VariantNotFound(enum_type, variant));
-                //             }
-                //         }
-                //         // If the type is a let expression or a symbol, simplify it again first
-                //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) => continue,
-                //         // If the type isn't an enum, return an error.
-                //         _ => return Err(Error::VariantNotFound(enum_type, variant)),
-                //     }
-                // }
-                // return Err(Error::VariantNotFound(enum_type, variant));
             }
 
             // Compile a symbol.
             Self::Symbol(name) => {
                 // Compile a symbol.
-                if let Some((t, offset)) = env.get_var(&name) {
+                if let Some((_, t, offset)) = env.get_var(&name) {
                     // If the symbol is a variable, push it onto the stack.
                     output.op(CoreOp::Push(FP.deref().offset(*offset), t.get_size(env)?))
                 } else {

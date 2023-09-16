@@ -6,7 +6,7 @@
 //! which are then executed by the runtime.
 
 use super::ops::*;
-use crate::lir::{ConstExpr, Pattern, Procedure, Type};
+use crate::lir::{ConstExpr, Pattern, Procedure, Type, Mutability};
 use crate::parse::SourceCodeLocation;
 use core::fmt;
 use std::collections::BTreeMap;
@@ -50,10 +50,10 @@ pub enum Expr {
     LetTypes(Vec<(String, Type)>, Box<Self>),
     /// A `let` binding expression.
     /// Declare a variable under a new scope, and evaluate a subexpression in that scope.
-    LetVar(String, Option<Type>, Box<Self>, Box<Self>),
+    LetVar(String, Mutability, Option<Type>, Box<Self>, Box<Self>),
     /// A `let` binding expression.
     /// Declare multiple variables under a new scope, and evaluate a subexpression in that scope.
-    LetVars(Vec<(String, Option<Type>, Self)>, Box<Self>),
+    LetVars(Vec<(String, Mutability, Option<Type>, Self)>, Box<Self>),
 
     /// Create a while loop: while the first expression evaluates to true, evaluate the second expression.
     While(Box<Self>, Box<Self>),
@@ -90,7 +90,7 @@ pub enum Expr {
     AssignOp(Box<dyn AssignOp>, Box<Self>, Box<Self>),
 
     /// Reference this expression (i.e. get a pointer to it).
-    Refer(Box<Self>),
+    Refer(Mutability, Box<Self>),
     /// Dereference this expression (i.e. get the value it points to).
     Deref(Box<Self>),
     /// Store an expression to an address (a pointer).
@@ -296,18 +296,19 @@ impl Expr {
     /// When this expression is finished evaluating, `var` will be removed from the scope.
     pub fn let_var(
         var: impl ToString,
+        mutability: impl Into<Mutability>,
         t: Option<Type>,
-        e: impl Into<Self>,
+        expr: impl Into<Self>,
         ret: impl Into<Self>,
     ) -> Self {
-        Expr::LetVar(var.to_string(), t, Box::new(e.into()), Box::new(ret.into()))
+        Expr::LetVar(var.to_string(), mutability.into(), t, Box::new(expr.into()), Box::new(ret.into()))
     }
 
     /// Create a `let` binding for an expression, and define multiple variables.
-    pub fn let_vars(vars: Vec<(&str, Option<Type>, Self)>, ret: impl Into<Self>) -> Self {
+    pub fn let_vars(vars: Vec<(&str, Mutability, Option<Type>, Self)>, ret: impl Into<Self>) -> Self {
         Self::LetVars(
             vars.into_iter()
-                .map(|(name, t, e)| (name.to_string(), t, e))
+                .map(|(name, m, t, e)| (name.to_string(), m, t, e))
                 .collect(),
             Box::new(ret.into()),
         )
@@ -400,8 +401,8 @@ impl Expr {
     }
 
     /// Reference this expression (i.e. get a pointer to it).
-    pub fn refer(self) -> Self {
-        Expr::Refer(Box::new(self))
+    pub fn refer(self, mutability: impl Into<Mutability>) -> Self {
+        Expr::Refer(mutability.into(), Box::new(self))
     }
 
     /// Dereference this expression (i.e. get the value it points to).
@@ -461,8 +462,12 @@ impl fmt::Display for Expr {
                 }
                 write!(f, ")")
             }
-            Self::LetVar(name, ty, val, ret) => {
-                write!(f, "let {name}")?;
+            Self::LetVar(name, m, ty, val, ret) => {
+                write!(f, "let ")?;
+                if m.is_mutable() {
+                    write!(f, "mut ")?;
+                }
+                write!(f, "{name}")?;
                 if let Some(ty) = ty {
                     write!(f, ": {ty}")?
                 }
@@ -470,7 +475,10 @@ impl fmt::Display for Expr {
             }
             Self::LetVars(vars, ret) => {
                 write!(f, "let ")?;
-                for (i, (name, ty, val)) in vars.iter().enumerate() {
+                for (i, (name, m, ty, val)) in vars.iter().enumerate() {
+                    if m.is_mutable() {
+                        write!(f, "mut ")?;
+                    }
                     write!(f, "{name}")?;
                     if let Some(ty) = ty {
                         write!(f, ": {ty}")?
@@ -572,7 +580,13 @@ impl fmt::Display for Expr {
             Self::Index(val, idx) => write!(f, "{val}[{idx}]"),
 
             Self::Return(val) => write!(f, "return {val}"),
-            Self::Refer(val) => write!(f, "&{val}"),
+            Self::Refer(mutability, val) => {
+                write!(f, "&")?;
+                if mutability.is_mutable() {
+                    write!(f, "mut ")?;
+                }
+                write!(f, "{val}")
+            },
             Self::Deref(ptr) => write!(f, "*{ptr}"),
             Self::DerefMut(ptr, val) => write!(f, "(*{ptr}) = {val}"),
             Self::Apply(fun, args) => {
@@ -629,8 +643,8 @@ impl PartialEq for Expr {
             (LetTypes(types1, ret1), LetTypes(types2, ret2)) => types1 == types2 && ret1 == ret2,
             // A `let` binding expression.
             // Declare a variable under a new scope, and evaluate a subexpression in that scope.
-            (LetVar(name1, ty1, val1, ret1), LetVar(name2, ty2, val2, ret2)) => {
-                name1 == name2 && ty1 == ty2 && val1 == val2 && ret1 == ret2
+            (LetVar(name1, m1, ty1, val1, ret1), LetVar(name2, m2, ty2, val2, ret2)) => {
+                name1 == name2 && m1 == m2 && ty1 == ty2 && val1 == val2 && ret1 == ret2
             }
             // A `let` binding expression.
             // Declare multiple variables under a new scope, and evaluate a subexpression in that scope.
@@ -671,7 +685,7 @@ impl PartialEq for Expr {
             }
 
             // Reference this expression (i.e. get a pointer to it).
-            (Refer(val1), Refer(val2)) => val1 == val2,
+            (Refer(m1, val1), Refer(m2, val2)) => m1 == m2 && val1 == val2,
             // Dereference this expression (i.e. get the value it points to).
             (Deref(val1), Deref(val2)) => val1 == val2,
             // Store an expression to an address (a pointer).

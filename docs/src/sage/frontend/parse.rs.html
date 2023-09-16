@@ -1328,6 +1328,29 @@
 <a href="#1328" id="1328">1328</a>
 <a href="#1329" id="1329">1329</a>
 <a href="#1330" id="1330">1330</a>
+<a href="#1331" id="1331">1331</a>
+<a href="#1332" id="1332">1332</a>
+<a href="#1333" id="1333">1333</a>
+<a href="#1334" id="1334">1334</a>
+<a href="#1335" id="1335">1335</a>
+<a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
+<a href="#1344" id="1344">1344</a>
+<a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
+<a href="#1347" id="1347">1347</a>
+<a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{lir::<span class="kw-2">*</span>, parse::SourceCodeLocation};
 <span class="kw">use </span>pest::{
     error::Error,
@@ -1348,7 +1371,7 @@
         stmt: Box&lt;<span class="self">Self</span>&gt;,
         loc: SourceCodeLocation,
     },
-    Let(Vec&lt;(String, <span class="prelude-ty">Option</span>&lt;Type&gt;, Expr)&gt;),
+    Let(Vec&lt;(String, Mutability, <span class="prelude-ty">Option</span>&lt;Type&gt;, Expr)&gt;),
     Assign(Expr, <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>AssignOp + <span class="lifetime">&#39;static</span>&gt;&gt;, Expr),
     If(Expr, Box&lt;<span class="self">Self</span>&gt;, <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="self">Self</span>&gt;&gt;),
     IfLet(Pattern, Expr, Box&lt;<span class="self">Self</span>&gt;, <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="self">Self</span>&gt;&gt;),
@@ -1356,7 +1379,7 @@
     For(Box&lt;<span class="self">Self</span>&gt;, Expr, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
     Return(Expr),
     Block(Vec&lt;Declaration&gt;),
-    LetIn(Vec&lt;(String, <span class="prelude-ty">Option</span>&lt;Type&gt;, Expr)&gt;, Box&lt;<span class="self">Self</span>&gt;),
+    LetIn(Vec&lt;(String, Mutability, <span class="prelude-ty">Option</span>&lt;Type&gt;, Expr)&gt;, Box&lt;<span class="self">Self</span>&gt;),
     Expr(Expr),
 }
 
@@ -1370,9 +1393,9 @@
             },
             (<span class="self">Self</span>::Assign(lhs, op, rhs), <span class="kw">_</span>) =&gt; {
                 <span class="kw">match </span>op {
-                    <span class="prelude-val">Some</span>(op) =&gt; lhs.refer().assign(op, rhs),
+                    <span class="prelude-val">Some</span>(op) =&gt; lhs.refer(Mutability::Mutable).assign(op, rhs),
                     <span class="comment">// Some(op) =&gt; Expr::AssignOp(lhs, op, Box::new(rhs), rest_expr),
-                    </span><span class="prelude-val">None </span>=&gt; lhs.refer().deref_mut(rhs),
+                    </span><span class="prelude-val">None </span>=&gt; lhs.refer(Mutability::Mutable).deref_mut(rhs),
                 }
             }
             (<span class="self">Self</span>::If(cond, body, <span class="prelude-val">None</span>), <span class="kw">_</span>) =&gt; Expr::If(
@@ -1439,8 +1462,8 @@
             // }
             </span>(<span class="self">Self</span>::LetIn(defs, body), <span class="kw">_</span>) =&gt; Expr::LetVars(defs, Box::new(body.to_expr(<span class="prelude-val">None</span>))),
             (<span class="self">Self</span>::Let(defs), <span class="prelude-val">Some</span>(Expr::LetVars(<span class="kw-2">mut </span>vars, ret))) =&gt; {
-                <span class="kw">for </span>(name, ty, val) <span class="kw">in </span>defs.into_iter().rev() {
-                    vars.insert(<span class="number">0</span>, (name, ty, val));
+                <span class="kw">for </span>(name, mutability, ty, val) <span class="kw">in </span>defs.into_iter().rev() {
+                    vars.insert(<span class="number">0</span>, (name, mutability, ty, val));
                 }
                 <span class="kw">return </span>Expr::LetVars(vars, ret);
             }
@@ -1464,11 +1487,11 @@
     Extern(String, Vec&lt;(<span class="prelude-ty">Option</span>&lt;String&gt;, Type)&gt;, Type),
     Enum(String, Vec&lt;(String, <span class="prelude-ty">Option</span>&lt;Type&gt;)&gt;),
     Const(Vec&lt;(String, ConstExpr)&gt;),
-    Proc(String, Vec&lt;(String, Type)&gt;, <span class="prelude-ty">Option</span>&lt;Type&gt;, Box&lt;Statement&gt;),
+    Proc(String, Vec&lt;(String, Mutability, Type)&gt;, <span class="prelude-ty">Option</span>&lt;Type&gt;, Box&lt;Statement&gt;),
     PolyProc(
         String,
         Vec&lt;String&gt;,
-        Vec&lt;(String, Type)&gt;,
+        Vec&lt;(String, Mutability, Type)&gt;,
         <span class="prelude-ty">Option</span>&lt;Type&gt;,
         Box&lt;Statement&gt;,
     ),
@@ -1479,7 +1502,7 @@
 <span class="kw">impl </span>Declaration {
     <span class="kw">fn </span>proc_to_expr(
         name: String,
-        args: Vec&lt;(String, Type)&gt;,
+        args: Vec&lt;(String, Mutability, Type)&gt;,
         ret: <span class="prelude-ty">Option</span>&lt;Type&gt;,
         body: Statement,
     ) -&gt; Procedure {
@@ -1681,6 +1704,14 @@
     <span class="prelude-val">Ok</span>(parse_program(x.into_iter().next().unwrap(), filename).to_expr())
 }
 
+<span class="kw">fn </span>parse_symbol(pair: Pair&lt;Rule&gt;) -&gt; (Mutability, String) {
+    <span class="kw">if </span>pair.as_rule() == Rule::mut_symbol {
+        (Mutability::Mutable, pair.into_inner().next().unwrap().as_str().to_string())
+    } <span class="kw">else </span>{
+        (Mutability::Immutable, pair.as_str().to_string())
+    }
+}
+
 <span class="kw">fn </span>parse_program(pair: Pair&lt;Rule&gt;, filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; Program {
     Program(pair.into_inner().map(|x| parse_decl(x, filename)).collect())
 }
@@ -1711,9 +1742,9 @@
                 <span class="kw">match </span>pair.as_rule() {
                     Rule::decl_proc_param =&gt; {
                         <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
-                        <span class="kw">let </span>name = inner_rules.next().unwrap().as_str().to_string();
+                        <span class="kw">let </span>(mutability, name) = parse_symbol(inner_rules.next().unwrap());
                         <span class="kw">let </span>ty = parse_type(inner_rules.next().unwrap());
-                        params.push((name, ty));
+                        params.push((name, mutability, ty));
                     }
                     Rule::r#type =&gt; {
                         ret = <span class="prelude-val">Some</span>(parse_type(pair));
@@ -1884,7 +1915,7 @@
                 <span class="kw">match </span>pair.as_rule() {
                     Rule::decl_proc_param =&gt; {
                         <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
-                        <span class="kw">let </span>name = inner_rules.next().unwrap().as_str().to_string();
+                        <span class="kw">let </span>(_mutability, name) = parse_symbol(inner_rules.next().unwrap());
                         <span class="kw">let </span>ty = parse_type(inner_rules.next().unwrap());
                         args.push((<span class="prelude-val">Some</span>(name), ty));
                     }
@@ -2023,16 +2054,16 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
                 <span class="kw">let </span><span class="kw-2">mut </span>defs = <span class="macro">vec!</span>[];
                 <span class="kw">while </span>inner_rules.peek().is_some() {
-                    <span class="kw">let </span>symbol = inner_rules.next().unwrap().as_str().to_string();
+                    <span class="kw">let </span>(mutability, symbol) = parse_symbol(inner_rules.next().unwrap());
                     <span class="kw">let </span>ty = inner_rules.next().unwrap();
                     <span class="kw">if </span>ty.as_rule() == Rule::expr {
-                        defs.push((symbol, <span class="prelude-val">None</span>, parse_expr(ty)));
+                        defs.push((symbol, mutability,<span class="prelude-val">None</span>, parse_expr(ty)));
                         <span class="kw">continue</span>;
                     }
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(expr) = inner_rules.next() {
-                        defs.push((symbol, <span class="prelude-val">Some</span>(parse_type(ty)), parse_expr(expr)));
+                        defs.push((symbol, mutability,<span class="prelude-val">Some</span>(parse_type(ty)), parse_expr(expr)));
                     } <span class="kw">else </span>{
-                        defs.push((symbol, <span class="prelude-val">None</span>, parse_expr(ty)));
+                        defs.push((symbol, mutability, <span class="prelude-val">None</span>, parse_expr(ty)));
                     }
                 }
                 Statement::Let(defs)
@@ -2042,16 +2073,16 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
                 <span class="kw">let </span><span class="kw-2">mut </span>defs = <span class="macro">vec!</span>[];
                 <span class="kw">while </span>inner_rules.clone().count() &gt; <span class="number">1 </span>{
-                    <span class="kw">let </span>symbol = inner_rules.next().unwrap().as_str().to_string();
+                    <span class="kw">let </span>(mutability, symbol) = parse_symbol(inner_rules.next().unwrap());
                     <span class="kw">let </span>ty = inner_rules.next().unwrap();
                     <span class="kw">if </span>ty.as_rule() == Rule::expr {
-                        defs.push((symbol, <span class="prelude-val">None</span>, parse_expr(ty)));
+                        defs.push((symbol, mutability, <span class="prelude-val">None</span>, parse_expr(ty)));
                         <span class="kw">continue</span>;
                     }
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(expr) = inner_rules.next() {
-                        defs.push((symbol, <span class="prelude-val">Some</span>(parse_type(ty)), parse_expr(expr)));
+                        defs.push((symbol, mutability, <span class="prelude-val">Some</span>(parse_type(ty)), parse_expr(expr)));
                     } <span class="kw">else </span>{
-                        defs.push((symbol, <span class="prelude-val">None</span>, parse_expr(ty)));
+                        defs.push((symbol, mutability, <span class="prelude-val">None</span>, parse_expr(ty)));
                     }
                 }
                 <span class="kw">let </span>last = inner_rules.next().unwrap();
@@ -2204,7 +2235,8 @@
                         <span class="string">&quot;!&quot; </span>=&gt; result.not(),
                         <span class="string">&quot;-&quot; </span>=&gt; result.neg(),
                         <span class="string">&quot;~&quot; </span>=&gt; result.bitnot(),
-                        <span class="string">&quot;&amp;&quot; </span>=&gt; result.refer(),
+                        <span class="string">&quot;&amp;&quot; </span>=&gt; result.refer(Mutability::Immutable),
+                        <span class="string">&quot;&amp;mut&quot; </span>=&gt; result.refer(Mutability::Mutable),
                         <span class="string">&quot;new&quot; </span>=&gt; result.unop(New),
                         <span class="string">&quot;del&quot; </span>=&gt; result.unop(Delete),
                         <span class="string">&quot;*&quot; </span>=&gt; result.deref(),
@@ -2559,7 +2591,12 @@
         Rule::type_ptr =&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
             <span class="kw">let </span>ty = parse_type(inner_rules.next().unwrap());
-            Type::Pointer(Box::new(ty))
+            Type::Pointer(Mutability::Immutable, Box::new(ty))
+        }
+        Rule::type_mut_ptr =&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
+            <span class="kw">let </span>ty = parse_type(inner_rules.next().unwrap());
+            Type::Pointer(Mutability::Mutable, Box::new(ty))
         }
         Rule::type_proc =&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
@@ -2623,7 +2660,7 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
                 <span class="kw">let </span>symbol = inner_rules.next().unwrap().as_str().to_string();
                 <span class="kw">if </span>inner_rules.peek().is_none() {
-                    fields.push((symbol.clone(), Pattern::Symbol(symbol)));
+                    fields.push((symbol.clone(), Pattern::Symbol(Mutability::Immutable, symbol)));
                     <span class="kw">continue</span>;
                 }
                 <span class="comment">// let pattern = parse_pattern(inner_rules.next().unwrap());
@@ -2638,12 +2675,21 @@
             Pattern::Pointer(Box::new(pattern))
         }
         Rule::pattern_wildcard =&gt; Pattern::Wildcard,
+        Rule::pattern_mut_symbol =&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
+            <span class="kw">let </span>symbol = inner_rules.next().unwrap().as_str().to_string();
+            <span class="kw">if </span>symbol == <span class="string">&quot;_&quot; </span>{
+                Pattern::Wildcard
+            } <span class="kw">else </span>{
+                Pattern::Symbol(Mutability::Mutable, symbol)
+            }
+        }
         Rule::pattern_symbol =&gt; {
             <span class="kw">let </span>symbol = pair.as_str().to_string();
             <span class="kw">if </span>symbol == <span class="string">&quot;_&quot; </span>{
                 Pattern::Wildcard
             } <span class="kw">else </span>{
-                Pattern::Symbol(symbol)
+                Pattern::Symbol(Mutability::Immutable, symbol)
             }
         }
         Rule::pattern_alt =&gt; {

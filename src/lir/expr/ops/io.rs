@@ -13,19 +13,16 @@ pub struct Get;
 impl UnaryOp for Get {
     /// Can this unary operation be applied to the given type?
     fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
-        Ok(ty
-            .clone()
-            .simplify_until_matches(env, Type::Any, |t, _env| {
-                if let Type::Pointer(x) = t.clone() {
-                    match *x {
-                        Type::Char | Type::Int | Type::Float => Ok(true),
-                        _ => Ok(false),
-                    }
-                } else {
-                    Ok(false)
+        ty.simplify_until_concrete(env).map(|ty| {
+            if let Type::Pointer(mutability, x) = ty {
+                match *x {
+                    Type::Char | Type::Int | Type::Float => mutability.is_mutable(),
+                    _ => false,
                 }
-            })
-            .is_ok())
+            } else {
+                false
+            }
+        })
     }
 
     /// Get the type of the result of applying this unary operation to the given type.
@@ -45,11 +42,11 @@ impl UnaryOp for Get {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        if ty.equals(&Type::Pointer(Box::new(Type::Char)), env)? {
+        if ty.equals(&Type::Pointer(Mutability::Mutable, Box::new(Type::Char)), env)? {
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_char()));
-        } else if ty.equals(&Type::Pointer(Box::new(Type::Int)), env)? {
+        } else if ty.equals(&Type::Pointer(Mutability::Mutable, Box::new(Type::Int)), env)? {
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_int()));
-        } else if ty.equals(&Type::Pointer(Box::new(Type::Float)), env)? {
+        } else if ty.equals(&Type::Pointer(Mutability::Mutable, Box::new(Type::Float)), env)? {
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_float()));
         } else {
             return Err(Error::UnsupportedOperation(Expr::UnaryOp(
@@ -57,28 +54,6 @@ impl UnaryOp for Get {
                 Box::new(Expr::ConstExpr(ConstExpr::None)),
             )));
         }
-
-        // let ty = ty.clone().simplify_until_matches(env, Type::Any, |t, env| {
-        //     if let Type::Pointer(x) = t.clone() {
-        //         match *x {
-        //             Type::Char | Type::Int | Type::Float => Ok(true),
-        //             _ => Ok(false),
-        //         }
-        //     } else {
-        //         Ok(false)
-        //     }
-        // })?;
-        // match ty {
-        //     Type::Char => output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_char())),
-        //     Type::Int => output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_int())),
-        //     Type::Float => output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_float())),
-        //     _ => {
-        //         return Err(Error::UnsupportedOperation(Expr::UnaryOp(
-        //             self.clone_box(),
-        //             Box::new(Expr::ConstExpr(ConstExpr::None)),
-        //         )))
-        //     }
-        // }
 
         output.op(CoreOp::Pop(None, 1));
         Ok(())
@@ -116,15 +91,15 @@ impl Put {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        let t = t.clone().simplify_until_matches(env, Type::Any, |t, _env| {
-            Ok(!matches!(
-                t,
-                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
-            ))
-        })?;
-        match t.clone() {
-            Type::Pointer(_) => {
-                for ch in "&(".to_string().chars() {
+        let t = &t.simplify_until_concrete(env)?;
+        match t {
+            Type::Pointer(mutability, _) => {
+                let prefix = if mutability.is_mutable() {
+                    "&mut ("
+                } else {
+                    "&("
+                };
+                for ch in prefix.chars() {
                     output.op(CoreOp::Set(A, ch as u8 as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));
                 }
@@ -205,7 +180,7 @@ impl Put {
             }
 
             Type::Array(ty, array_len_expr) => {
-                let array_len = array_len_expr.as_int(env)?;
+                let array_len = array_len_expr.clone().as_int(env)?;
 
                 let ty_size = ty.get_size(env)? as isize;
 
@@ -338,7 +313,7 @@ impl Put {
                         Self::debug(data_address.clone(), variant_t, env, output)?;
                         output.op(CoreOp::End);
                     } else {
-                        return Err(Error::VariantNotFound(t, name.clone()));
+                        return Err(Error::VariantNotFound(t.clone(), name.clone()));
                     }
                 }
             }
@@ -379,7 +354,7 @@ impl Put {
                 output.op(CoreOp::Put(A, Output::stdout_char()));
             }
 
-            _ => return Err(Error::InvalidUnaryOpTypes(Box::new(Self::Debug), t)),
+            _ => return Err(Error::InvalidUnaryOpTypes(Box::new(Self::Debug), t.clone())),
         }
         Ok(())
     }
@@ -390,13 +365,8 @@ impl Put {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        let t = &t.clone().simplify_until_matches(env, Type::Any, |t, _env| {
-            Ok(!matches!(
-                t,
-                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
-            ))
-        })?;
-        match t.clone() {
+        let t = &t.simplify_until_concrete(env)?;
+        match t {
             Type::Cell => {
                 output.op(CoreOp::Put(addr, Output::stdout_int()));
             }
@@ -430,7 +400,7 @@ impl Put {
             }
 
             Type::Array(ty, array_len_expr) => {
-                let array_len = array_len_expr.as_int(env)?;
+                let array_len = array_len_expr.clone().as_int(env)?;
 
                 let ty_size = ty.get_size(env)? as isize;
                 if ty.equals(&Type::Char, env)? {
@@ -488,14 +458,7 @@ impl UnaryOp for Put {
         // Get the size of the type.
         let size = ty.get_size(env)? as isize;
 
-        let mut ty = ty.clone();
-        ty = ty.simplify_until_matches(env, Type::Any, |t, _env| {
-            Ok(!matches!(
-                t,
-                Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) | Type::Poly(_, _)
-            ))
-        })?;
-        let ty = &ty;
+        let ty = &ty.simplify_until_concrete(env)?;
 
         // Calculate the address of the expression on the stack.
         let addr = SP.deref().offset(-size + 1);

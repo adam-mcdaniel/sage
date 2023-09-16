@@ -21,15 +21,16 @@ impl Assign {
 impl AssignOp for Assign {
     /// Can this binary operation be applied to the given types?
     fn can_apply(&self, lhs: &Type, rhs: &Type, env: &Env) -> Result<bool, Error> {
-        if let Type::Pointer(t) = lhs.clone().simplify(env)? {
-            self.0.can_apply(&t, rhs, env)
-        } else {
-            Err(Error::InvalidAssignOpTypes(
-                self.clone_box(),
-                lhs.clone(),
-                rhs.clone(),
-            ))
+        if let Type::Pointer(mutability, t) = lhs.clone().simplify(env)? {
+            if mutability.is_mutable() {
+                return self.0.can_apply(&t, rhs, env)
+            }
         }
+        Err(Error::InvalidAssignOpTypes(
+            self.clone_box(),
+            lhs.clone(),
+            rhs.clone(),
+        ))
     }
 
     /// Get the type of the result of applying this binary operation to the given types.
@@ -56,11 +57,13 @@ impl AssignOp for Assign {
         let expr = Expr::let_var(
             // Create the lhs variable.
             lhs.to_string(),
+            Mutability::Any,
             None,
             lhs.clone(),
             Expr::let_var(
                 // Create the rhs variable.
                 rhs.to_string(),
+                Mutability::Any,
                 None,
                 rhs.clone(),
                 Expr::DerefMut(

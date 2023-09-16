@@ -15,7 +15,7 @@ struct Entry<K, V> {
 
 struct HashMap<K, V> {
     // The entries of the hashmap
-    entries: &Option<Entry<K, V>>,
+    entries: &mut Option<Entry<K, V>>,
     // The reserved size in memory of the entries
     count_allocated: Int,
     // The number of occupied entries
@@ -33,6 +33,14 @@ def refer<T>(opt: &Option<T>): Option<&T> {
         return Option<&T> of Nothing;
     }
     return Option<&T> of Some(inner);
+}
+
+def refer_mut<T>(opt: &mut Option<T>): Option<&mut T> {
+    let inner = opt as &mut T;
+    if let &of Nothing = opt {
+        return Option<&mut T> of Nothing;
+    }
+    return Option<&mut T> of Some(inner);
 }
 
 def exit(code: Int): ! {
@@ -57,8 +65,8 @@ def hash<T>(t: T): Int {
     let size = sizeof(t);
     let ptr = &t as &Int;
     
-    let hashValue = 5381;
-    def left_shift(a: Int, b: Int): Int = {
+    let mut hashValue = 5381;
+    def left_shift(mut a: Int, mut b: Int): Int = {
         while b {
             a *= 2;
             b -= 1;
@@ -66,8 +74,8 @@ def hash<T>(t: T): Int {
         return a;
     }
 
-    for let i = 0; i < size; i += 1 {
-        let value = ptr[i];
+    for let mut i = 0; i < size; i += 1 {
+        let mut value = ptr[i];
         while (value != 0) {
             let digit = value % 10;
             hashValue = (left_shift(hashValue, 5) + hashValue) + digit;
@@ -87,7 +95,7 @@ def eq<K>(a: K, b: K): Bool {
     let a_ptr = &a as &Int;
     let b_ptr = &b as &Int;
     
-    for let i=0; i<size; i+=1 {
+    for let mut i=0; i<size; i+=1 {
         if a_ptr[i] != b_ptr[i] {
             return False;
         }
@@ -96,58 +104,58 @@ def eq<K>(a: K, b: K): Bool {
 }
 
 def Entry_print<K, V>(self: &Entry<K, V>) {
-    print("hash: ", hash<K>(self->key), ", key: ", self->key, ", val: ", self->val);
+    print("hash: ", hash<K>(self.key), ", key: ", self.key, ", val: ", self.val);
 }
 
-def HashMap_clear<K, V>(self: &HashMap<K, V>) {
-    for let i=0; i < self->count_allocated; i+=1 {
-        self->entries[i] = Option<Entry<K, V>> of Nothing;
+def HashMap_clear<K, V>(self: &mut HashMap<K, V>) {
+    for let mut i=0; i < self.count_allocated; i+=1 {
+        self.entries[i] = Option<Entry<K, V>> of Nothing;
     }
-    self->count_occupied = 0;
+    self.count_occupied = 0;
 }
 
 
 def HashMap_new<K, V>(): HashMap<K, V> {
     let size = 1000 * sizeof<Option<Entry<K, V>>>();
-    let entries = alloc(size) as &Option<Entry<K, V>>;
-    let self = {
+    let entries = alloc(size) as &mut Option<Entry<K, V>>;
+    let mut self = {
         entries = entries,
         count_allocated = 1000,
         count_occupied = 0
     };
-    HashMap_clear<K, V>(&self);
+    HashMap_clear<K, V>(&mut self);
     return self;
 }
 
 def HashMap_get<K, V>(self: &HashMap<K, V>, key: K): Option<&V> {
-    let index = hash<K>(key) % self->count_allocated;
-    while is_some<Entry<K, V>>(self->entries[index]) {
-        let entry = unwrap<&Entry<K, V>>(refer<Entry<K, V>>(&(self->entries[index])));
-        if (eq<K>(entry->key, key)) {
-            return Option<&V> of Some(&(entry->val));
+    let mut index = hash<K>(key) % self.count_allocated;
+    while is_some<Entry<K, V>>(self.entries[index]) {
+        let entry = unwrap<&Entry<K, V>>(refer<Entry<K, V>>(&(self.entries[index])));
+        if (eq<K>(entry.key, key)) {
+            return Option<&V> of Some(&(entry.val));
         }
-        index = (index + 1) % self->count_allocated;  // Linear probing for collision resolution
+        index = (index + 1) % self.count_allocated;  // Linear probing for collision resolution
     }
     return Option<&V> of Nothing;
 }
 
-def HashMap_check_bounds<K, V>(self: &HashMap<K, V>) {
-    if (self->count_allocated - self->count_occupied) < 100 {
+def HashMap_check_bounds<K, V>(self: &mut HashMap<K, V>) {
+    if (self.count_allocated - self.count_occupied) < 100 {
         // Allocate new space
-        let old_size = self->count_allocated * sizeof(self->entries[0]);
-        let old_entries = self->entries;
+        let old_size = self.count_allocated * sizeof(self.entries[0]);
+        let old_entries = self.entries;
         let old_map = {
             entries = old_entries,
-            count_occupied = self->count_occupied,
-            count_allocated = self->count_allocated
+            count_occupied = self.count_occupied,
+            count_allocated = self.count_allocated
         };
 
         let new_size = old_size * 2;
-        self->count_allocated *= 2;
-        self->entries = alloc(new_size) as &Option<Entry<K, V>>;
+        self.count_allocated *= 2;
+        self.entries = alloc(new_size) as &Option<Entry<K, V>>;
         HashMap_clear<K, V>(self);
 
-        for let i=0; i<old_map.count_allocated; i+=1 {
+        for let mut i=0; i<old_map.count_allocated; i+=1 {
             if let of Some(old_entry) = old_entries[i] {
                 match HashMap_get<K, V>(&old_map, old_entry.key) {
                     of Some(val) => HashMap_put<K, V>(self, old_entry.key, *val),
@@ -158,35 +166,35 @@ def HashMap_check_bounds<K, V>(self: &HashMap<K, V>) {
     }
 }
 
-def HashMap_put<K, V>(self: &HashMap<K, V>, key: K, val: V) {
-    let index = hash<K>(key) % self->count_allocated;
-    while is_some<Entry<K, V>>(self->entries[index]) {
-        let entry = unwrap<&Entry<K, V>>(refer<Entry<K, V>>(&(self->entries[index])));
-        if (eq<K>(entry->key, key)) {
-            entry->val = val;  // Update value if key already exists
+def HashMap_put<K, V>(self: &mut HashMap<K, V>, key: K, val: V) {
+    let mut index = hash<K>(key) % self.count_allocated;
+    while is_some<Entry<K, V>>(self.entries[index]) {
+        let entry = unwrap<&mut Entry<K, V>>(refer_mut<Entry<K, V>>(&mut (self.entries[index])));
+        if (eq<K>(entry.key, key)) {
+            entry.val = val;  // Update value if key already exists
             return ();
         }
-        index = (index + 1) % self->count_allocated;  // Linear probing for collision resolution
+        index = (index + 1) % self.count_allocated;  // Linear probing for collision resolution
     }
 
-    self->entries[index] = Option<Entry<K, V>> of Some({
+    self.entries[index] = Option<Entry<K, V>> of Some({
         key = key,
         val = val
     });
-    self->count_occupied += 1;
+    self.count_occupied += 1;
     
     HashMap_check_bounds<K, V>(self);
 }
 
 def HashMap_print<K, V>(self: &HashMap<K, V>) {
-    let count = 0;
-    if self->count_occupied == 0 {
+    let mut count = 0;
+    if self.count_occupied == 0 {
         print("Empty\n");
         return ();
     }
     print("--------------------------------\n");
-    for let i=0; i < self->count_allocated; i+=1 {
-        if let of Some(entry) = self->entries[i] {
+    for let mut i=0; i < self.count_allocated; i+=1 {
+        if let of Some(entry) = self.entries[i] {
             Entry_print<K, V>(&entry);
             print("\n");
             count += 1;
@@ -196,8 +204,8 @@ def HashMap_print<K, V>(self: &HashMap<K, V>) {
 }
 
 def HashMap_drop<K, V>(self: &HashMap<K, V>) {
-    print("Freeing ", self->count_allocated, " HashMap Entries\n");
-    del self->entries;
+    print("Freeing ", self.count_allocated, " HashMap Entries\n");
+    del self.entries;
 }
 
 struct Point {
@@ -209,10 +217,8 @@ def f(x: Int): Point {
     return {x = x, y = x * x};
 }
 
-let map = HashMap_new<Point, &Char>();
-
 def putstr(s: &Char) {
-    let i = 0;
+    let mut i = 0;
     while s[i] != '\0' {
         print(s[i]);
         i += 1;
@@ -220,7 +226,7 @@ def putstr(s: &Char) {
 }
 
 def putstrln(s: &Char) {
-    let i = 0;
+    let mut i = 0;
     while s[i] != '\0' {
         print(s[i]);
         i += 1;
@@ -229,8 +235,8 @@ def putstrln(s: &Char) {
 }
 
 def make_x_str(x_count: Int): &Char {
-    let value = alloc((x_count + 32) * sizeof<Char>()) as &Char;
-    for let i=0; i<x_count; i+=1 {
+    let value = alloc((x_count + 32) * sizeof<Char>()) as &mut Char;
+    for let mut i=0; i<x_count; i+=1 {
         value[i] = 'x';
     }
     value[x_count] = '\0';
@@ -240,22 +246,24 @@ def make_x_str(x_count: Int): &Char {
 const INSERT_COUNT = 100;
 const CHECK_COUNT = 200;
 
+let mut map = HashMap_new<Point, &Char>();
+
 print("HashMap before inserting:\n");
 HashMap_print<Point, &Char>(&map);
 
-for let i=1; i<INSERT_COUNT; i+=1 {
+for let mut i=1; i<INSERT_COUNT; i+=1 {
     let point = f(i);
     let key = point as Point;
     let value = make_x_str(i);
     print("Inserting ", key, " -> ");
     putstrln(value);
-    HashMap_put<Point, &Char>(&map, key, value);
+    HashMap_put<Point, &Char>(&mut map, key, value);
 }
 
 print("HashMap after inserting:\n");
 HashMap_print<Point, &Char>(&map);
 
-for let i=1; i<CHECK_COUNT; i+=1 {
+for let mut i=1; i<CHECK_COUNT; i+=1 {
     let point = f(i);
     let key = point as Point;
     print("Retrieving ", key, ": ");

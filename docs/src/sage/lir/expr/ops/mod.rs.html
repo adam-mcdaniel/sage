@@ -467,6 +467,26 @@
 <a href="#467" id="467">467</a>
 <a href="#468" id="468">468</a>
 <a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Operations
 //!
 //! This module contains implementations of various
@@ -489,6 +509,7 @@
 <span class="kw">pub use </span>memory::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>tagged_union::<span class="kw-2">*</span>;
 
+<span class="kw">use </span>log::{trace, error};
 <span class="kw">use crate</span>::{asm::AssemblyProgram, lir::<span class="kw-2">*</span>};
 <span class="kw">use </span>std::cmp::Ordering;
 
@@ -498,9 +519,11 @@
 </span><span class="kw">pub trait </span>AssignOp: std::fmt::Debug + std::fmt::Display {
     <span class="doccomment">/// Typechecks the operation on the given expressions.
     </span><span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, dst: <span class="kw-2">&amp;</span>Expr, src: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Type checking assign op: {dst} {self} {src} ({self:?})&quot;</span>);
         <span class="kw">if </span><span class="self">self</span>.can_apply(<span class="kw-2">&amp;</span>dst.get_type(env)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span>src.get_type(env)<span class="question-mark">?</span>, env)<span class="question-mark">? </span>{
             dst.type_check(env).and(src.type_check(env))
         } <span class="kw">else </span>{
+            <span class="macro">error!</span>(<span class="string">&quot;Invalid assign op: {dst} {self} {src} ({self:?}) in environment {env}&quot;</span>);
             <span class="prelude-val">Err</span>(Error::InvalidAssignOp(
                 <span class="self">self</span>.clone_box(),
                 dst.clone(),
@@ -513,6 +536,7 @@
         <span class="kw">if </span><span class="self">self</span>.can_apply_exprs(dst, src, env)<span class="question-mark">? </span>{
             dst.get_type(env)
         } <span class="kw">else </span>{
+            <span class="macro">error!</span>(<span class="string">&quot;Invalid assign op: {dst} {self} {src} ({self:?}) in environment {env}&quot;</span>);
             <span class="prelude-val">Err</span>(Error::InvalidAssignOp(
                 <span class="self">self</span>.clone_box(),
                 dst.clone(),
@@ -543,6 +567,7 @@
         env: <span class="kw-2">&amp;mut </span>Env,
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Compiling assign op: {dst} {self} {src} ({self:?})&quot;</span>);
         dst.clone().compile_expr(env, output)<span class="question-mark">?</span>;
         src.clone().compile_expr(env, output)<span class="question-mark">?</span>;
         <span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>dst.get_type(env)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span>src.get_type(env)<span class="question-mark">?</span>, env, output)
@@ -563,9 +588,11 @@
 </span><span class="kw">pub trait </span>UnaryOp: std::fmt::Debug + std::fmt::Display {
     <span class="doccomment">/// Typechecks the operation on the given expression.
     </span><span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Type checking unary op: {self} {expr} ({self:?})&quot;</span>);
         <span class="kw">if </span><span class="self">self</span>.can_apply(<span class="kw-2">&amp;</span>expr.get_type(env)<span class="question-mark">?</span>, env)<span class="question-mark">? </span>{
             expr.type_check(env)
         } <span class="kw">else </span>{
+            <span class="macro">error!</span>(<span class="string">&quot;Invalid unary op: {self} {expr} ({self:?}) in environment {env}&quot;</span>);
             <span class="prelude-val">Err</span>(Error::InvalidUnaryOp(<span class="self">self</span>.clone_box(), expr.clone()))
         }
     }
@@ -574,6 +601,7 @@
         <span class="kw">if </span><span class="self">self</span>.can_apply_exprs(expr, env)<span class="question-mark">? </span>{
             <span class="prelude-val">Ok</span>(expr.get_type(env)<span class="question-mark">?</span>)
         } <span class="kw">else </span>{
+            <span class="macro">error!</span>(<span class="string">&quot;Invalid unary op: {self} {expr} ({self:?}) in environment {env}&quot;</span>);
             <span class="prelude-val">Err</span>(Error::InvalidUnaryOp(<span class="self">self</span>.clone_box(), expr.clone()))
         }
     }
@@ -598,8 +626,13 @@
         env: <span class="kw-2">&amp;mut </span>Env,
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Compiling unary op: {self} {expr} ({self:?})&quot;</span>);
+        <span class="kw">let </span>current_instruction = output.current_instruction();
         expr.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-        <span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>expr.get_type(env)<span class="question-mark">?</span>, env, output)
+        <span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>expr.get_type(env)<span class="question-mark">?</span>, env, output)<span class="question-mark">?</span>;
+        <span class="kw">let </span>message = <span class="macro">format!</span>(<span class="string">&quot;Compiled unary op: {self} &#39;{expr}&#39; (with operator {self:?})&quot;</span>);
+        output.log_instructions_after(<span class="kw-2">&amp;</span><span class="self">self</span>.display(expr), <span class="kw-2">&amp;</span>message, current_instruction);
+        <span class="prelude-val">Ok</span>(())
     }
     <span class="doccomment">/// Compiles the operation on the given type. (Generates the code for the operation.)
     </span><span class="kw">fn </span>compile_types(
@@ -616,9 +649,11 @@
 </span><span class="kw">pub trait </span>BinaryOp: std::fmt::Debug + std::fmt::Display {
     <span class="doccomment">/// Typechecks the operation on the given expressions.
     </span><span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, lhs: <span class="kw-2">&amp;</span>Expr, rhs: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Type checking binary op: {lhs} {self} {rhs} ({self:?})&quot;</span>);
         <span class="kw">if </span><span class="self">self</span>.can_apply(<span class="kw-2">&amp;</span>lhs.get_type(env)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span>rhs.get_type(env)<span class="question-mark">?</span>, env)<span class="question-mark">? </span>{
             lhs.type_check(env).and(rhs.type_check(env))
         } <span class="kw">else </span>{
+            <span class="macro">error!</span>(<span class="string">&quot;Invalid binary op: {lhs} {self} {rhs} ({self:?}) in environment {env}&quot;</span>);
             <span class="prelude-val">Err</span>(Error::InvalidBinaryOp(
                 <span class="self">self</span>.clone_box(),
                 lhs.clone(),
@@ -631,6 +666,7 @@
         <span class="kw">if </span><span class="self">self</span>.can_apply_exprs(lhs, rhs, env)<span class="question-mark">? </span>{
             lhs.get_type(env)
         } <span class="kw">else </span>{
+            <span class="macro">error!</span>(<span class="string">&quot;Invalid binary op: {lhs} {self} {rhs} ({self:?}) in environment {env}&quot;</span>);
             <span class="prelude-val">Err</span>(Error::InvalidBinaryOp(
                 <span class="self">self</span>.clone_box(),
                 lhs.clone(),
@@ -661,9 +697,11 @@
         env: <span class="kw-2">&amp;mut </span>Env,
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Compiling binary op: {lhs} {self} {rhs} ({self:?})&quot;</span>);
         lhs.clone().compile_expr(env, output)<span class="question-mark">?</span>;
         rhs.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-        <span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>lhs.get_type(env)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span>rhs.get_type(env)<span class="question-mark">?</span>, env, output)
+        <span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>lhs.get_type(env)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span>rhs.get_type(env)<span class="question-mark">?</span>, env, output)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
     }
     <span class="doccomment">/// Compiles the operation on the given types. (Generates the code for the operation.)
     </span><span class="kw">fn </span>compile_types(
@@ -740,6 +778,7 @@
         env: <span class="kw-2">&amp;mut </span>Env,
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Compiling ternary op: {a} {self} {b} {c} ({self:?})&quot;</span>);
         <span class="comment">// Evaluate the three expression on the stack.
         </span>a.clone().compile_expr(env, output)<span class="question-mark">?</span>;
         b.clone().compile_expr(env, output)<span class="question-mark">?</span>;
@@ -751,7 +790,8 @@
             <span class="kw-2">&amp;</span>c.get_type(env)<span class="question-mark">?</span>,
             env,
             output,
-        )
+        )<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
     }
     <span class="doccomment">/// Compiles the operation on the given types. (Generates the code for the operation.)
     </span><span class="kw">fn </span>compile_types(

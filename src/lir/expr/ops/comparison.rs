@@ -49,7 +49,7 @@ impl BinaryOp for Comparison {
                 self.can_apply(a_type, b_type, env)
             }
             (a, Self::Equal, b) | (a, Self::NotEqual, b) => {
-                Ok(a.equals(b, env)? && a.get_size(env)? == 1)
+                Ok(a.can_decay_to(b, env)? && a.get_size(env)? == 1)
             }
             _ => Ok(false),
         }
@@ -219,11 +219,11 @@ impl BinaryOp for Comparison {
                 return self.compile_types(a_type, b_type, env, output);
             }
 
-            (a, Self::Equal, b) if a.equals(b, env)? => {
+            (a, Self::Equal, b) if a.can_decay_to(b, env)? => {
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.op(core_op);
             }
-            (a, Self::NotEqual, b) if a.equals(b, env)? => {
+            (a, Self::NotEqual, b) if a.can_decay_to(b, env)? => {
                 output.op(CoreOp::Move { src: dst, dst: tmp });
                 output.op(core_op);
             }

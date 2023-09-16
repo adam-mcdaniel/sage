@@ -1102,6 +1102,12 @@
 <a href="#1102" id="1102">1102</a>
 <a href="#1103" id="1103">1103</a>
 <a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compile
 //!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
@@ -1118,7 +1124,8 @@
     AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
 };
 <span class="kw">use </span><span class="kw">crate</span>::NULL;
-<span class="kw">use </span>std::collections::BTreeMap;
+
+<span class="kw">use </span>log::{trace, info, warn, error};
 
 <span class="doccomment">/// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
@@ -1133,24 +1140,30 @@
     <span class="kw">where
         </span><span class="self">Self</span>: Sized + Clone,
     {
+        <span class="macro">info!</span>(<span class="string">&quot;Type checking...&quot;</span>);
         <span class="comment">// First, type check the expression.
         </span><span class="self">self</span>.type_check(<span class="kw-2">&amp;</span>Env::default())<span class="question-mark">?</span>;
+        <span class="macro">info!</span>(<span class="string">&quot;Type checked successfully.&quot;</span>);
         <span class="comment">// Then, attempt to compile the expression into a core assembly program.
         </span><span class="kw">let </span><span class="kw-2">mut </span>core_asm = CoreProgram::default();
-        <span class="kw">if </span><span class="self">self
+
+        <span class="macro">info!</span>(<span class="string">&quot;Compiling...&quot;</span>);
+        <span class="comment">// If the expression cannot be compiled into a core assembly program,
+        // then compile it into a standard assembly program.
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
             </span>.clone()
             <span class="comment">// Compile the expression into the core assembly program.
             </span>.compile_expr(<span class="kw-2">&amp;mut </span>Env::default(), <span class="kw-2">&amp;mut </span>core_asm)
-            <span class="comment">// If the expression cannot be compiled into a core assembly program,
-            </span>.is_err()
         {
-            <span class="comment">// then compile it into a standard assembly program.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>std_asm = StandardProgram::default();
+            <span class="macro">warn!</span>(<span class="string">&quot;Failed to compile into core assembly program: {err}, falling back on standard assembly&quot;</span>);
+            <span class="kw">let </span><span class="kw-2">mut </span>std_asm = StandardProgram::default();
             <span class="comment">// Compile the expression into the standard assembly program.
             </span><span class="self">self</span>.compile_expr(<span class="kw-2">&amp;mut </span>Env::default(), <span class="kw-2">&amp;mut </span>std_asm)<span class="question-mark">?</span>;
+            <span class="macro">info!</span>(<span class="string">&quot;Compiled to standard assembly successfully.&quot;</span>);
             <span class="comment">// Return the fallback standard assembly program.
             </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(std_asm))
         } <span class="kw">else </span>{
+            <span class="macro">info!</span>(<span class="string">&quot;Compiled to core assembly successfully.&quot;</span>);
             <span class="comment">// Return the successfully compiled core assembly program.
             </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(core_asm))
         }
@@ -1162,12 +1175,17 @@
 <span class="doccomment">/// Compile an LIR expression into several core assembly instructions.
 </span><span class="kw">impl </span>Compile <span class="kw">for </span>Expr {
     <span class="kw">fn </span>compile_expr(<span class="self">self</span>, env: <span class="kw-2">&amp;mut </span>Env, output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">&quot;Compiling expression {self} in environment {env}&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>debug_str = <span class="macro">format!</span>(<span class="string">&quot;{self:50}&quot;</span>);
+        debug_str.truncate(<span class="number">50</span>);
+        
         <span class="comment">// Write a little comment about what we&#39;re compiling.
         </span><span class="kw">if </span>!<span class="macro">matches!</span>(<span class="self">self</span>, <span class="self">Self</span>::ConstExpr(<span class="kw">_</span>)) {
             <span class="kw">let </span><span class="kw-2">mut </span>comment = <span class="macro">format!</span>(<span class="string">&quot;{self}&quot;</span>);
             comment.truncate(<span class="number">70</span>);
-            output.comment(<span class="macro">format!</span>(<span class="string">&quot;compiling `{comment}`&quot;</span>));
         }
+
+        <span class="kw">let </span>current_instruction = output.current_instruction();
 
         <span class="comment">// Compile the expression.
         </span><span class="kw">match </span><span class="self">self </span>{
@@ -1310,10 +1328,8 @@
             <span class="self">Self</span>::LetTypes(types, body) =&gt; {
                 <span class="comment">// Declare a new scope for the types.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                <span class="kw">for </span>(name, ty) <span class="kw">in </span>types {
-                    <span class="comment">// Define the type in the new scope.
-                    </span>new_env.define_type(name, ty);
-                }
+                <span class="comment">// Define the types in the new scope.
+                </span>new_env.define_types(types);
                 <span class="comment">// Compile under the new scope.
                 </span>body.compile_expr(<span class="kw-2">&amp;mut </span>new_env, output)<span class="question-mark">?</span>;
             }
@@ -1419,7 +1435,8 @@
                 output.op(CoreOp::Return);
             }
             <span class="comment">// Compile a let statement with a variable.
-            </span><span class="self">Self</span>::LetVar(name, specifier, e, body) =&gt; {
+            </span><span class="self">Self</span>::LetVar(name, mutability, specifier, e, body) =&gt; {
+                <span class="kw">let </span>message = <span class="macro">format!</span>(<span class="string">&quot;Initializing &#39;{name}&#39; with expression &#39;{e}&#39;&quot;</span>);
                 <span class="comment">// Get the type of the variable using its specifier,
                 // or by deducing the type ourselves.
                 </span><span class="kw">let </span>t = <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = specifier {
@@ -1429,12 +1446,15 @@
                 </span>};
                 <span class="comment">// Compile the expression to leave the value on the stack.
                 </span>e.compile_expr(env, output)<span class="question-mark">?</span>;
+                output.log_instructions_after(<span class="kw-2">&amp;</span>name, <span class="kw-2">&amp;</span>message, current_instruction);
 
                 <span class="comment">// Create a new scope
                 </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                 <span class="comment">// Get the size of the variable we are writing to.
                 </span><span class="kw">let </span>var_size = t.get_size(env)<span class="question-mark">?</span>;
-                new_env.define_var(<span class="kw-2">&amp;</span>name, t)<span class="question-mark">?</span>;
+                new_env.define_var(<span class="kw-2">&amp;</span>name, mutability, t)<span class="question-mark">?</span>;
+
+
 
                 <span class="kw">let </span>result_type = body.get_type(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
                 <span class="kw">let </span>result_size = result_type.get_size(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
@@ -1459,8 +1479,8 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="kw-2">*</span>body;
                 <span class="comment">// Create an equivalent let statement with a single variable,
                 // for each variable in the list.
-                </span><span class="kw">for </span>(name, t, e) <span class="kw">in </span>vars.into_iter().rev() {
-                    result = <span class="self">Self</span>::LetVar(name, t, Box::new(e), Box::new(result))
+                </span><span class="kw">for </span>(name, mutability,t, e) <span class="kw">in </span>vars.into_iter().rev() {
+                    result = <span class="self">Self</span>::LetVar(name, mutability, t, Box::new(e), Box::new(result))
                 }
                 <span class="comment">// Compile the resulting let statement.
                 </span>result.compile_expr(env, output)<span class="question-mark">?
@@ -1508,7 +1528,7 @@
                 </span><span class="kw">let </span>ptr_type = ptr.get_type(env)<span class="question-mark">?</span>;
                 ptr.clone().compile_expr(env, output)<span class="question-mark">?</span>;
                 <span class="comment">// If the pointer is a pointer, dereference it.
-                </span><span class="kw">if let </span>Type::Pointer(inner) = ptr_type {
+                </span><span class="kw">if let </span>Type::Pointer(<span class="kw">_</span>, inner) = ptr_type {
                     <span class="comment">// Pop the address into A
                     </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(A), <span class="number">1</span>));
                     <span class="comment">// Push all of the data at the address onto the stack.
@@ -1582,15 +1602,10 @@
             }
 
             <span class="comment">// Compile a tagged union literal.
-            </span><span class="self">Self</span>::EnumUnion(<span class="kw-2">mut </span>t, variant, val) =&gt; {
+            </span><span class="self">Self</span>::EnumUnion(t, variant, val) =&gt; {
                 <span class="comment">// Get the size of the tagged union.
                 </span><span class="kw">let </span>result_size = t.get_size(env)<span class="question-mark">?</span>;
-                t = t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
-                    <span class="prelude-val">Ok</span>(!<span class="macro">matches!</span>(
-                        t,
-                        Type::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) | Type::Symbol(<span class="kw">_</span>) | Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)
-                    ))
-                })<span class="question-mark">?</span>;
+                <span class="kw">let </span>t = t.simplify_until_concrete(env)<span class="question-mark">?</span>;
                 <span class="kw">if let </span>Type::EnumUnion(fields) = t {
                     <span class="comment">// Get the list of possible variant names.
                     </span><span class="kw">let </span>variants = fields.clone().into_keys().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
@@ -1644,9 +1659,9 @@
                         </span><span class="kw">let </span>optimized_idx = val
                             .clone()
                             <span class="comment">// Reference the current
-                            </span>.refer()
+                            </span>.refer(Mutability::Immutable)
                             <span class="comment">// Make the type a pointer to the inner element type
-                            </span>.as_type(Type::Pointer(elem.clone()))
+                            </span>.as_type(Type::Pointer(Mutability::Immutable, elem.clone()))
                             <span class="comment">// Index the new pointer
                             </span>.idx(<span class="kw-2">*</span>idx.clone());
                         <span class="comment">// The optimized index *may not be possible* if the array is
@@ -1701,7 +1716,7 @@
                         </span>output.op(CoreOp::Pop(<span class="prelude-val">None</span>, val_size - size));
                     }
                     <span class="comment">// If the value being indexed is a pointer:
-                    </span>Type::Pointer(elem) =&gt; {
+                    </span>Type::Pointer(<span class="kw">_</span>, elem) =&gt; {
                         <span class="comment">// Push the index onto the stack.
                         </span>idx.compile_expr(env, output)<span class="question-mark">?</span>;
                         <span class="comment">// Push the pointer being indexed onto the stack.
@@ -1734,6 +1749,13 @@
 
             <span class="comment">// Compile a member access operation.
             </span><span class="self">Self</span>::Member(<span class="kw-2">ref </span>val, <span class="kw-2">ref </span>member) =&gt; {
+                <span class="comment">// If the value we&#39;re getting a field from is a pointer,
+                // then dereference it and get the field from the value.
+                </span><span class="kw">if let </span>Type::Pointer(<span class="kw">_</span>, <span class="kw">_</span>) = val.get_type(env)<span class="question-mark">? </span>{
+                    val.clone().deref().field(member.clone()).compile_expr(env, output)<span class="question-mark">?</span>;
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                }
+
                 <span class="comment">// Get the size of the field we want to retrieve.
                 </span><span class="kw">let </span>size = <span class="self">self</span>.get_size(env)<span class="question-mark">?</span>;
                 <span class="comment">// Get the type of the value we want to get a field from.
@@ -1750,28 +1772,33 @@
                     dst: SP.deref().offset(<span class="number">1 </span>- val_size <span class="kw">as </span>isize),
                     size,
                 });
-                <span class="comment">// eprintln!(&quot;\n\nval_size: {val_size}\n =&gt; {val_type}&quot;);
-                // eprintln!(&quot;size: {size}\n =&gt; {}&quot;, self.get_type(env)?);
-                // eprintln!(&quot;{self}&quot;);
-                // Pop the remaining elements off the stack, so the field remains.
+                <span class="comment">// Pop the remaining elements off the stack, so the field remains.
                 </span>output.op(CoreOp::Pop(<span class="prelude-val">None</span>, val_size - size));
             }
 
             <span class="comment">// Compile a reference operation (on a symbol or a field of a value).
-            </span><span class="self">Self</span>::Refer(val) =&gt; <span class="kw">match </span><span class="kw-2">*</span>val {
+            </span><span class="self">Self</span>::Refer(expected_mutability, val) =&gt; <span class="kw">match </span><span class="kw-2">*</span>val.clone() {
                 <span class="comment">// Get the value being referenced
                 </span>Expr::AnnotatedWithSource { expr, loc } =&gt; {
-                    <span class="self">Self</span>::Refer(expr).compile_expr(env, output).map_err(|e| e.with_loc(<span class="kw-2">&amp;</span>loc))<span class="question-mark">?
+                    <span class="self">Self</span>::Refer(expected_mutability, expr).compile_expr(env, output).map_err(|e| e.with_loc(<span class="kw-2">&amp;</span>loc))<span class="question-mark">?
                 </span>}
 
                 Expr::ConstExpr(ConstExpr::AnnotatedWithSource { expr, loc }) =&gt; {
-                    <span class="self">Self</span>::Refer(Box::new(Expr::ConstExpr(<span class="kw-2">*</span>expr))).compile_expr(env, output).map_err(|e| e.with_loc(<span class="kw-2">&amp;</span>loc))<span class="question-mark">?
+                    <span class="self">Self</span>::Refer(expected_mutability, Box::new(Expr::ConstExpr(<span class="kw-2">*</span>expr))).compile_expr(env, output).map_err(|e| e.with_loc(<span class="kw-2">&amp;</span>loc))<span class="question-mark">?
                 </span>}
 
                 <span class="comment">// Get the reference of a variable.
                 </span>Expr::ConstExpr(ConstExpr::Symbol(name)) =&gt; {
                     <span class="comment">// Get the variable&#39;s offset from the frame pointer.
-                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, offset)) = env.get_var(<span class="kw-2">&amp;</span>name) {
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>((found_mutability, <span class="kw">_</span>, offset)) = env.get_var(<span class="kw-2">&amp;</span>name) {
+                        <span class="kw">if </span>!found_mutability.can_decay_to(found_mutability) {
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedMutability {
+                                found: <span class="kw-2">*</span>found_mutability,
+                                expected: expected_mutability,
+                                expr: Expr::ConstExpr(ConstExpr::Symbol(name)),
+                            });
+                        }
+
                         <span class="comment">// Calculate the address of the variable from the offset
                         </span>output.op(CoreOp::Many(<span class="macro">vec!</span>[
                             CoreOp::Move { src: FP, dst: A },
@@ -1787,6 +1814,7 @@
                             </span>CoreOp::Push(C, <span class="number">1</span>),
                         ]))
                     } <span class="kw">else </span>{
+                        <span class="macro">error!</span>(<span class="string">&quot;Tried to get the reference of a symbol that isn&#39;t a variable: {name} in environment {env}&quot;</span>);
                         <span class="comment">// Return an error if the symbol isn&#39;t defined.
                         </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::SymbolNotDefined(name.clone()));
                     }
@@ -1801,7 +1829,33 @@
                     <span class="comment">// Get the type of the value we want to get a field from.
                     </span><span class="kw">let </span>val_type = val.get_type(env)<span class="question-mark">?</span>;
                     <span class="comment">// Push the address of the struct, tuple, or union onto the stack.
-                    </span><span class="self">Self</span>::Refer(val.clone()).compile_expr(env, output)<span class="question-mark">?</span>;
+                    </span><span class="kw">match </span>val_type.simplify_until_has_members(env)<span class="question-mark">? </span>{
+                        <span class="comment">// If the value is a struct, tuple, or union:
+                        </span>Type::Struct(<span class="kw">_</span>) | Type::Tuple(<span class="kw">_</span>) | Type::Union(<span class="kw">_</span>) =&gt; {
+                            <span class="comment">// Compile a reference to the inner value with the expected mutability.
+                            </span><span class="self">Self</span>::Refer(expected_mutability, val.clone()).compile_expr(env, output)<span class="question-mark">?</span>;
+                        }
+                        <span class="comment">// If the value is a pointer:
+                        </span>Type::Pointer(found_mutability, <span class="kw">_</span>) =&gt; {
+                            <span class="comment">// Confirm that the pointer can decay to the expected mutability.
+                            </span><span class="kw">if </span>!found_mutability.can_decay_to(<span class="kw-2">&amp;</span>expected_mutability) {
+                                <span class="comment">// If the pointer cannot decay to the expected mutability,
+                                // then return an error.
+                                </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedMutability {
+                                    found: found_mutability,
+                                    expected: expected_mutability,
+                                    expr: Expr::Member(val, name),
+                                });
+                            }
+                            <span class="comment">// Compile the pointer to get the address of the value.
+                            </span>val.clone().compile_expr(env, output)<span class="question-mark">?</span>;
+                        }
+                        other =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;Tried to get a member {name} of a non-struct, non-tuple, non-union, non-pointer type: {other} of value {val} in environment {env}&quot;</span>);
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidRefer(Expr::Member(val, name)));
+                        }
+                    }
+
                     <span class="comment">// Calculate the offset of the field from the address of the value.
                     </span><span class="kw">let </span>(<span class="kw">_</span>, offset) = val_type.get_member_offset(<span class="kw-2">&amp;</span>name, <span class="kw-2">&amp;</span>val, env)<span class="question-mark">?</span>;
 
@@ -1825,7 +1879,7 @@
                         <span class="comment">// If the value is an array:
                         </span>Type::Array(<span class="kw-2">ref </span>elem, <span class="kw">_</span>) =&gt; {
                             <span class="comment">// Push the address of the array onto the stack.
-                            </span><span class="self">Self</span>::Refer(val.clone()).compile_expr(env, output)<span class="question-mark">?</span>;
+                            </span><span class="self">Self</span>::Refer(expected_mutability, val.clone()).compile_expr(env, output)<span class="question-mark">?</span>;
                             <span class="comment">// Push the index onto the stack.
                             </span>idx.compile_expr(env, output)<span class="question-mark">?</span>;
 
@@ -1853,7 +1907,15 @@
                             </span>output.op(CoreOp::Push(C, <span class="number">1</span>));
                         }
                         <span class="comment">// If the value is a pointer:
-                        </span>Type::Pointer(elem) =&gt; {
+                        </span>Type::Pointer(found_mutability, elem) =&gt; {
+                            <span class="kw">if </span>!found_mutability.can_decay_to(<span class="kw-2">&amp;</span>expected_mutability) {
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedMutability {
+                                    found: found_mutability,
+                                    expected: expected_mutability,
+                                    expr: Expr::Index(val, idx),
+                                });
+                            }
+
                             <span class="comment">// Push the index onto the stack.
                             </span>idx.compile_expr(env, output)<span class="question-mark">?</span>;
                             <span class="comment">// Push the pointer onto the stack.
@@ -1887,19 +1949,20 @@
                 </span>other =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidRefer(other)),
             },
         }
+
         <span class="comment">// Return success.
-        </span>output.comment(<span class="string">&quot;done&quot;</span>.to_string());
-        <span class="prelude-val">Ok</span>(())
+        </span><span class="prelude-val">Ok</span>(())
     }
 }
 
 <span class="doccomment">/// Compile a constant expression.
 </span><span class="kw">impl </span>Compile <span class="kw">for </span>ConstExpr {
     <span class="kw">fn </span>compile_expr(<span class="self">self</span>, env: <span class="kw-2">&amp;mut </span>Env, output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>comment = <span class="macro">format!</span>(<span class="string">&quot;{self}&quot;</span>);
-        comment.truncate(<span class="number">70</span>);
-        output.comment(<span class="macro">format!</span>(<span class="string">&quot;compiling constant `{comment}`&quot;</span>));
+        <span class="macro">trace!</span>(<span class="string">&quot;Compiling constant expression {self} in environment {env}&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>debug_str = <span class="macro">format!</span>(<span class="string">&quot;{self}&quot;</span>);
+        debug_str.truncate(<span class="number">50</span>);
 
+        <span class="kw">let </span>current_instruction = output.current_instruction();
         <span class="comment">// Compile the constant expression.
         </span><span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::AnnotatedWithSource { expr, loc } =&gt; {
@@ -1907,9 +1970,7 @@
             }
             <span class="self">Self</span>::LetTypes(bindings, expr) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                <span class="kw">for </span>(name, ty) <span class="kw">in </span>bindings {
-                    new_env.define_type(name, ty);
-                }
+                new_env.define_types(bindings);
                 expr.compile_expr(<span class="kw-2">&amp;mut </span>new_env, output)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; <span class="kw">match </span>expr.eval(env)<span class="question-mark">? </span>{
@@ -1919,12 +1980,18 @@
                         .into_iter()
                         .map(|ty| ty.simplify(env))
                         .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
+
+                    <span class="kw">let </span>common_name = poly_proc.get_name();
+                    <span class="kw">let </span>message = <span class="macro">format!</span>(<span class="string">&quot;Monomorphized {common_name} with type arguments {}&quot;</span>, ty_args.iter().map(|ty| <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, ty)).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().join(<span class="string">&quot;, &quot;</span>));
+                    <span class="kw">let </span>current_instruction = output.current_instruction();
                     <span class="comment">// Monomorphize the function
                     </span><span class="kw">let </span>proc = poly_proc.monomorphize(ty_args, env)<span class="question-mark">?</span>;
                     <span class="comment">// Typecheck the monomorphized function.
                     </span>proc.type_check(env)<span class="question-mark">?</span>;
                     <span class="comment">// Compile the monomorphized function.
                     </span>proc.compile_expr(env, output)<span class="question-mark">?</span>;
+
+                    output.log_instructions_after(<span class="kw-2">&amp;</span>common_name, <span class="kw-2">&amp;</span>message, current_instruction);
                 }
                 val =&gt; {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidMonomorphize(val));
@@ -2016,10 +2083,7 @@
             </span><span class="self">Self</span>::EnumUnion(t, variant, val) =&gt; {
                 <span class="comment">// Get the size of the tagged union.
                 </span><span class="kw">let </span>result_size = t.get_size(env)<span class="question-mark">?</span>;
-                <span class="kw">let </span>t =
-                    t.simplify_until_matches(env, Type::EnumUnion(BTreeMap::new()), |t, _env| {
-                        <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>)))
-                    })<span class="question-mark">?</span>;
+                <span class="kw">let </span>t = t.simplify_until_has_variants(env)<span class="question-mark">?</span>;
 
                 <span class="comment">// Get the inner list of variants and compile the expression using this information.
                 </span><span class="kw">if let </span>Type::EnumUnion(variants) = t.clone().simplify(env)<span class="question-mark">? </span>{
@@ -2090,16 +2154,10 @@
             </span>}
 
             <span class="comment">// Compile a variant of an enum.
-            </span><span class="self">Self</span>::Of(<span class="kw-2">mut </span>enum_type, variant) =&gt; {
+            </span><span class="self">Self</span>::Of(enum_type, variant) =&gt; {
                 <span class="comment">// Only try to simplify the type 50 times at most.
                 // This is to prevent infinite loops and to keep recursion under control.
-                </span>enum_type = enum_type.simplify_until_matches(
-                    env,
-                    Type::Enum(<span class="macro">vec!</span>[variant.clone()]),
-                    |t, _env| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>))),
-                )<span class="question-mark">?</span>;
-
-                <span class="kw">match </span>enum_type.clone() {
+                </span><span class="kw">match </span>enum_type.simplify_until_has_variants(env)<span class="question-mark">? </span>{
                     <span class="comment">// If the type is an enum, we can continue.
                     </span>Type::Enum(variants) =&gt; {
                         <span class="comment">// Get the index of the variant.
@@ -2136,58 +2194,12 @@
                         </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::VariantNotFound(enum_type, variant));
                     }
                 }
-                <span class="comment">// for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
-                //     // Simplify the type.
-                //     enum_type = enum_type.simplify(env)?;
-                //     // If the type is an enum, we can continue.
-                //     match enum_type.clone() {
-                //         // If the type is an enum, we can continue.
-                //         Type::Enum(variants) =&gt; {
-                //             // Get the index of the variant.
-                //             if let Some(index) = Type::variant_index(&amp;variants, &amp;variant) {
-                //                 // Push the index of the variant onto the stack.
-                //                 output.op(CoreOp::Set(A, index as i64));
-                //                 output.op(CoreOp::Push(A, 1));
-                //                 return Ok(());
-                //             } else {
-                //                 // If the variant is not found, return an error.
-                //                 return Err(Error::VariantNotFound(enum_type, variant));
-                //             }
-                //         }
-                //         // If the type is an enum union, we can continue.
-                //         Type::EnumUnion(variants)
-                //             if variants.get(&amp;variant) == Some(&amp;Type::None) =&gt;
-                //         {
-                //             // Get the index of the variant.
-                //             if let Some(index) =
-                //                 Type::variant_index(&amp;variants.into_keys().collect(), &amp;variant)
-                //             {
-                //                 // Push the index of the variant onto the stack.
-                //                 // Allocate the size of the structure on the stack by
-                //                 // incrementing the stack pointer by the size of the structure.
-                //                 // Then, set the value under the stack pointer to the index of the variant.
-                //                 output
-                //                     .op(CoreOp::Next(SP, Some(enum_type.get_size(env)? as isize)));
-                //                 output.op(CoreOp::Set(SP.deref(), index as i64));
-                //                 return Ok(());
-                //             } else {
-                //                 // If the variant is not found, return an error.
-                //                 return Err(Error::VariantNotFound(enum_type, variant));
-                //             }
-                //         }
-                //         // If the type is a let expression or a symbol, simplify it again first
-                //         Type::Let(_, _, _) | Type::Symbol(_) | Type::Apply(_, _) =&gt; continue,
-                //         // If the type isn&#39;t an enum, return an error.
-                //         _ =&gt; return Err(Error::VariantNotFound(enum_type, variant)),
-                //     }
-                // }
-                // return Err(Error::VariantNotFound(enum_type, variant));
-            </span>}
+            }
 
             <span class="comment">// Compile a symbol.
             </span><span class="self">Self</span>::Symbol(name) =&gt; {
                 <span class="comment">// Compile a symbol.
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>((t, offset)) = env.get_var(<span class="kw-2">&amp;</span>name) {
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, t, offset)) = env.get_var(<span class="kw-2">&amp;</span>name) {
                     <span class="comment">// If the symbol is a variable, push it onto the stack.
                     </span>output.op(CoreOp::Push(FP.deref().offset(<span class="kw-2">*</span>offset), t.get_size(env)<span class="question-mark">?</span>))
                 } <span class="kw">else </span>{
@@ -2202,7 +2214,7 @@
                 }
             }
         }
-        output.comment(<span class="string">&quot;done&quot;</span>.to_string());
+        output.log_instructions_after(<span class="kw-2">&amp;</span><span class="string">&quot;expr&quot;</span>, <span class="kw-2">&amp;</span>debug_str, current_instruction);
         <span class="prelude-val">Ok</span>(())
     }
 }

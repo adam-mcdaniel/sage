@@ -4,6 +4,8 @@ use std::{
     path::PathBuf,
 };
 
+use log::warn;
+
 const INPUT: &str = "2 4 8 16 32 64 128 256 512 1024 2048 4096";
 const CALL_STACK_SIZE: usize = 8192;
 
@@ -24,7 +26,7 @@ fn test_frontend_examples_helper() {
     for entry in read_dir("examples/frontend/").unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
-        eprintln!("Starting test for `{path:?}`");
+        warn!("Starting test for `{path:?}`");
         if path.is_file()
             && matches!(
                 path.extension().map(|p| p
@@ -46,7 +48,7 @@ fn test_frontend_examples_helper() {
             let correct_output_text = match read_to_string(&correct_output_path) {
                 Ok(contents) => contents.replace("\r\n", "\n"),
                 Err(_) => {
-                    eprintln!("WARNING: Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
+                    warn!("Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
                     continue;
                 }
             };
@@ -108,7 +110,7 @@ fn test_lir_examples_helper() {
     for entry in read_dir("examples/lir/").unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
-        eprintln!("Starting test for `{path:?}`");
+        warn!("Starting test for `{path:?}`");
         if path.is_file()
             && matches!(
                 path.extension().map(|p| p
@@ -130,7 +132,7 @@ fn test_lir_examples_helper() {
             let correct_output_text = match read_to_string(&correct_output_path) {
                 Ok(contents) => contents.replace("\r\n", "\n"),
                 Err(_) => {
-                    eprintln!("WARNING: Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
+                    warn!("Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
                     continue;
                 }
             };
@@ -212,7 +214,7 @@ fn test_asm_examples_helper() {
             let correct_output_text = match read_to_string(&correct_output_path) {
                 Ok(contents) => contents.replace("\r\n", "\n"),
                 Err(_) => {
-                    eprintln!("WARNING: Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
+                    warn!("Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
                     continue;
                 }
             };

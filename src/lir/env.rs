@@ -4,13 +4,13 @@
 //! defined in a given scope. It also stores the variables defined in the scope, and the their offsets
 //! with respect to the frame pointer.
 
-use super::{Compile, ConstExpr, Error, GetSize, Procedure, Type};
+use super::{Compile, ConstExpr, Error, GetSize, Procedure, Type, Mutability};
 use crate::asm::AssemblyProgram;
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::{collections::HashMap, rc::Rc};
 
 
-use log::{debug, warn, error};
+use log::{debug, trace, warn, error};
 
 /// An environment under which expressions and types are compiled and typechecked.
 /// This is essentially the scope of an expression.
@@ -23,7 +23,7 @@ pub struct Env {
     /// The procedures defined under the environment.
     procs: Rc<HashMap<String, Procedure>>,
     /// The variables defined under the environment.
-    vars: Rc<HashMap<String, (Type, isize)>>,
+    vars: Rc<HashMap<String, (Mutability, Type, isize)>>,
     /// The current offset of the frame pointer to assign to the next variable.
     /// This is incremented by the size of each variable as it is defined.
     fp_offset: isize,
@@ -80,11 +80,41 @@ impl Env {
                 warn!("Defining type {ty} to itself as {name}");
             }
             _ => {
+                trace!("Defining type {name} as {ty}");
+                Rc::make_mut(&mut self.types).insert(name, ty.clone());
+
                 if let Ok(size) = ty.get_size(self) {
                     self.set_precalculated_size(ty.clone(), size);
                 }
-    
-                Rc::make_mut(&mut self.types).insert(name, ty);
+            }
+        }
+    }
+
+    /// Define multiple types with the given names under this environment.
+    /// 
+    /// This must be used in situations where the different types depend on each other.
+    /// This is because the sizes of types are memoized, and this will interfere with 
+    /// the memoization process if the types are defined separately. It will lead to
+    /// typechecking errors if the environment does not already have a memoized size
+    /// for the type of a subexpression.
+    pub fn define_types(&mut self, types: Vec<(String, Type)>) {
+        for (name, ty) in &types {
+            match &ty {
+                Type::Symbol(sym) if sym == name => {
+                    warn!("Defining type {ty} to itself as {name}");
+                }
+                _ => {
+                    trace!("Defining type {name} as {ty}");
+                    Rc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
+                }
+            }
+        }
+
+        for (_, ty) in types {
+            if let Ok(size) = ty.get_size(self) {
+                self.set_precalculated_size(ty, size);
+            } else {
+                warn!("Failed to memoize type size for {ty}");
             }
         }
     }
@@ -96,7 +126,9 @@ impl Env {
 
     /// Define a constant with a given name under this environment.
     pub(super) fn define_const(&mut self, name: impl ToString, e: ConstExpr) {
-        Rc::make_mut(&mut self.consts).insert(name.to_string(), e);
+        let name = name.to_string();
+        trace!("Defining constant {name} as {e}");
+        Rc::make_mut(&mut self.consts).insert(name, e);
     }
 
     /// Get a constant definition from this environment.
@@ -106,7 +138,9 @@ impl Env {
 
     /// Define a procedure with a given name under this environment.
     pub(super) fn define_proc(&mut self, name: impl ToString, proc: Procedure) {
-        Rc::make_mut(&mut self.procs).insert(name.to_string(), proc);
+        let name = name.to_string();
+        trace!("Defining procedure {name} as {proc}");
+        Rc::make_mut(&mut self.procs).insert(name, proc);
     }
 
     /// Get a procedure definition from this environment.
@@ -139,28 +173,37 @@ impl Env {
     }
 
     /// Get a variable's type and its offset from the frame pointer in the current scope.
-    pub(super) fn get_var(&self, var: &str) -> Option<&(Type, isize)> {
+    pub(super) fn get_var(&self, var: &str) -> Option<&(Mutability, Type, isize)> {
         self.vars.get(var)
     }
 
+    /// Is the variable defined in scope as mutable?
+    pub(super) fn is_defined_as_mutable(&self, var: &str) -> bool {
+        if let Some((mutability, _, _)) = self.vars.get(var) {
+            mutability.is_mutable()
+        } else {
+            false
+        }
+    }
+
     /// Define the arguments for the current scope (if this is a procedure).
-    pub(super) fn define_args(&mut self, args: Vec<(String, Type)>) -> Result<usize, Error> {
+    pub(super) fn define_args(&mut self, args: Vec<(String, Mutability, Type)>) -> Result<usize, Error> {
         debug!("Defining arguments {args:?} in\n{self}");
         self.fp_offset = 1;
         self.args_size = 0;
 
         // For each argument in reverse order (starting from the last argument)
-        for (name, t) in args.into_iter().rev() {
+        for (name, mutability, ty) in args.into_iter().rev() {
             // Get the size of the argument we're defining.
-            let size = t.get_size(self)?;
+            let size = ty.get_size(self)?;
             // Add the size of the argument to the total number of cells taken up by the arguments.
             self.args_size += size;
             // Decrement the frame pointer offset by the size of the argument
             // so that the FP + the offset is the address of the argument.
             self.fp_offset -= size as isize;
             // Store the argument's type and offset in the environment.
-            debug!("Defined argument {name} of type {t} at offset {} in\n{self}", self.fp_offset);
-            Rc::make_mut(&mut self.vars).insert(name, (t, self.fp_offset));
+            debug!("Defined argument {name} of type {ty} at offset {} in\n{self}", self.fp_offset);
+            Rc::make_mut(&mut self.vars).insert(name, (mutability, ty, self.fp_offset));
         }
         // Set the frame pointer offset to `1` so that the first variable defined under the scope is at `[FP + 1]`.
         self.fp_offset = 1;
@@ -173,18 +216,18 @@ impl Env {
     /// Define a variable in the current scope.
     /// This will increment the scope's frame pointer offset by the size of the variable.
     /// This method returns the offset of the variable from the frame pointer under this scope.
-    pub(super) fn define_var(&mut self, var: impl ToString, t: Type) -> Result<isize, Error> {
+    pub fn define_var(&mut self, var: impl ToString, mutability: Mutability, ty: Type) -> Result<isize, Error> {
         let var = var.to_string();
         // Get the size of the variable we're defining.
-        let size = t.get_size(self)? as isize;
+        let size = ty.get_size(self)? as isize;
         // Remember the offset of the variable under the current scope.
         let offset = self.fp_offset;
         // Increment the frame pointer offset by the size of the variable
         // so that the next variable is allocated directly after this variable.
-        debug!("Defining variable {var} of type {t} at {offset} in\n{self}");
+        debug!("Defining variable {var} of type {ty} at {offset} in\n{self}");
         self.fp_offset += size;
         // Store the variable's type and offset in the environment.
-        Rc::make_mut(&mut self.vars).insert(var, (t, offset));
+        Rc::make_mut(&mut self.vars).insert(var, (mutability, ty, offset));
         // Return the offset of the variable from the frame pointer.
         Ok(offset)
     }
@@ -255,8 +298,8 @@ impl Display for Env {
             writeln!(f, "      {}: {}", name, proc)?;
         }
         writeln!(f, "   Variables:")?;
-        for (name, (ty, offset)) in self.vars.iter() {
-            writeln!(f, "      {}: {} (frame-offset {})", name, ty, offset)?;
+        for (name, (mutability, ty, offset)) in self.vars.iter() {
+            writeln!(f, "      {mutability} {}: {} (frame-offset {})", name, ty, offset)?;
         }
         Ok(())
     }

@@ -298,6 +298,12 @@
 <a href="#298" id="298">298</a>
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Targets Module
 //!
 //! This module contains the code dealing with building the virtual
@@ -341,6 +347,8 @@
 
 <span class="kw">pub mod </span>x86;
 <span class="kw">pub use </span>x86::<span class="kw-2">*</span>;
+
+<span class="kw">use </span>log::info;
 
 <span class="kw">use crate</span>::{
     side_effects::{Input, Output},
@@ -503,6 +511,7 @@
 
     <span class="doccomment">/// Compile the core variant of the machine code (must be implemented for every target).
     </span><span class="kw">fn </span>build_core(<span class="kw-2">&amp;mut </span><span class="self">self</span>, program: <span class="kw-2">&amp;</span>vm::CoreProgram) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
+        <span class="macro">info!</span>(<span class="string">&quot;Compiling core program for target {}&quot;</span>, <span class="self">self</span>.name());
         <span class="kw">let </span>(main_ops, function_defs) = program.clone().get_main_and_functions();
         <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="self">self</span>.prelude(<span class="bool-val">true</span>).unwrap_or(<span class="string">&quot;&quot;</span>.to_string());
 
@@ -547,11 +556,13 @@
             result += <span class="kw-2">&amp;</span><span class="self">self</span>.postop().unwrap_or(<span class="string">&quot;&quot;</span>.to_string());
         }
 
+        <span class="macro">info!</span>(<span class="string">&quot;Finished compiling core program for target {}&quot;</span>, <span class="self">self</span>.name());
         <span class="prelude-val">Ok</span>(result + <span class="kw-2">&amp;</span>tab + <span class="self">self</span>.postlude(<span class="bool-val">true</span>).unwrap_or(<span class="string">&quot;&quot;</span>.to_string()).as_str())
     }
 
     <span class="doccomment">/// Compile the standard variant of the machine code (should be implemented for every target possible).
     </span><span class="kw">fn </span>build_std(<span class="kw-2">&amp;mut </span><span class="self">self</span>, program: <span class="kw-2">&amp;</span>vm::StandardProgram) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
+        <span class="macro">info!</span>(<span class="string">&quot;Compiling standard program for target {}&quot;</span>, <span class="self">self</span>.name());
         <span class="kw">let </span>(main_ops, function_defs) = program.clone().get_main_and_functions();
         <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="self">self</span>.prelude(<span class="bool-val">false</span>).unwrap_or(<span class="string">&quot;&quot;</span>.to_string());
 
@@ -595,6 +606,7 @@
             result += <span class="kw-2">&amp;</span><span class="self">self</span>.postop().unwrap_or(<span class="string">&quot;&quot;</span>.to_string());
         }
 
+        <span class="macro">info!</span>(<span class="string">&quot;Finished compiling standard program for target {}&quot;</span>, <span class="self">self</span>.name());
         <span class="prelude-val">Ok</span>(result + <span class="kw-2">&amp;</span>tab + <span class="self">self</span>.postlude(<span class="bool-val">false</span>).unwrap_or(<span class="string">&quot;&quot;</span>.to_string()).as_str())
     }
 }

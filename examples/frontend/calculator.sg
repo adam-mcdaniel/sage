@@ -8,6 +8,30 @@ enum Expr {
     Group &Expr,
 }
 
+struct Input {
+    start: &Char,
+    loc: Int,
+    length: Int
+}
+
+enum ParseResult {
+    Ok (Input, &Expr),
+    Err Int
+}
+
+def main() {
+    let input = test();
+    match parse_expr(input) {
+        of Ok (input, n) => {
+            print_expr(n);
+            print("\n => ", eval(n), "\n");
+            free_expr(n);
+            free_input(input);
+        },
+        of Err n => print("\nCalculator: error while parsing at character: \n", input.start[n], "\n")
+    }
+}
+
 def eval(expr: &Expr): Float = match *expr {
     of Add (lhs, rhs) => eval(lhs) + eval(rhs),
     of Sub (lhs, rhs) => eval(lhs) - eval(rhs),
@@ -17,22 +41,6 @@ def eval(expr: &Expr): Float = match *expr {
     of Num n => n,
     of Group inner => eval(inner)
 };
-
-def free_expr(expr: &Expr) {
-    match *expr {
-        of Add (lhs, rhs)
-        | of Sub (lhs, rhs)
-        | of Mul (lhs, rhs)
-        | of Div (lhs, rhs)
-        | of Rem (lhs, rhs) => {
-            free_expr(lhs);
-            free_expr(rhs);
-        },
-        of Group inner => free_expr(inner),
-        _ => {}
-    }
-    del expr;
-}
 
 def print_expr(expr: &Expr) {
     match *expr {
@@ -70,6 +78,26 @@ def print_expr(expr: &Expr) {
     }
 }
 
+def free_expr(expr: &Expr) {
+    match *expr {
+        of Add (lhs, rhs)
+        | of Sub (lhs, rhs)
+        | of Mul (lhs, rhs)
+        | of Div (lhs, rhs)
+        | of Rem (lhs, rhs) => {
+            free_expr(lhs);
+            free_expr(rhs);
+        },
+        of Group inner => free_expr(inner),
+        _ => {}
+    }
+    del expr;
+}
+
+def free_input(input: Input) {
+    del input.start;
+}
+
 def is_between_inclusive(ch: Char, start: Char, end: Char): Bool {
     let start = start as Int,
         end = end as Int,
@@ -78,24 +106,9 @@ def is_between_inclusive(ch: Char, start: Char, end: Char): Bool {
     return start <= ch && ch <= end;
 }
 
-struct Input {
-    start: &Char,
-    loc: Int,
-    length: Int
-}
-
-def free_input(input: Input) {
-    del input.start;
-}
-
-enum ParseResult {
-    Ok (Input, &Expr),
-    Err Int
-}
-
-def parse_float(input: Input): ParseResult {
+def parse_float(mut input: Input): ParseResult {
     let save = input;
-    let n = 0.0;
+    let mut n = 0.0;
 
     if (input.loc == input.length) {
         return ParseResult of Err (input.loc);
@@ -112,7 +125,7 @@ def parse_float(input: Input): ParseResult {
 
     if (input.loc < input.length && input.start[input.loc] == '.') {
         input.loc += 1;
-        let m = 0.1;
+        let mut m = 0.1;
         for (); input.loc < input.length && is_between_inclusive(input.start[input.loc], '0', '9'); input.loc += 1 {
             n += (input.start[input.loc] as Int - '0' as Int) as Float * m;
             m *= 0.1;
@@ -123,7 +136,7 @@ def parse_float(input: Input): ParseResult {
 
 def binop(
     lhs: &Expr,
-    input: Input,
+    mut input: Input,
     op: Char,
     factor: Input -> ParseResult,
     cons: (&Expr, &Expr) -> &Expr): ParseResult {
@@ -149,7 +162,7 @@ def binop(
     }
 }
 
-def parse_expr(input: Input): ParseResult {
+def parse_expr(mut input: Input): ParseResult {
     let save = input;
 
     if (input.loc == input.length) {
@@ -164,7 +177,7 @@ def parse_expr(input: Input): ParseResult {
     }
 
     match parse_term(input) {
-        of Ok (new_input, lhs) => {
+        of Ok (new_input, mut lhs) => {
             input = new_input;
             while True {
                 lhs = match binop(lhs, input, '+', parse_term, add_cons) {
@@ -189,7 +202,7 @@ def parse_expr(input: Input): ParseResult {
     }
 }
 
-def parse_term(input: Input): ParseResult {
+def parse_term(mut input: Input): ParseResult {
     let save = input;
 
     if (input.loc == input.length) {
@@ -207,7 +220,7 @@ def parse_term(input: Input): ParseResult {
     }
 
     match parse_atom(input) {
-        of Ok (new_input, lhs) => {
+        of Ok (new_input, mut lhs) => {
             input = new_input;
             while True {
                 lhs = match binop(lhs, input, '*', parse_atom, mul_cons) {
@@ -253,7 +266,7 @@ def parse_atom(input: Input): ParseResult {
     return result;
 }
 
-def parse_group(input: Input): ParseResult {
+def parse_group(mut input: Input): ParseResult {
     let save = input;
 
     if (input.loc == input.length) {
@@ -268,7 +281,7 @@ def parse_group(input: Input): ParseResult {
     let input = parse_whitespaces(input);
 
     return match parse_expr(input) {
-        of Ok (input, expr) => {
+        of Ok (mut input, expr) => {
             input = parse_whitespaces(input);
             if (input.start[input.loc] != ')') {
                 return ParseResult of Err (input.loc);
@@ -280,7 +293,7 @@ def parse_group(input: Input): ParseResult {
     };
 }
 
-def parse_whitespaces(input: Input): Input {
+def parse_whitespaces(mut input: Input): Input {
     let save = input;
 
     if (input.loc == input.length) {
@@ -295,21 +308,21 @@ def parse_whitespaces(input: Input): Input {
 def is_done(input: Input): Bool = input.loc >= input.length;
 
 def strlen(ch: &Char): Int {
-    let i = 0;
+    let mut i = 0;
     for (); ch[i] != '\0'; i+=1 {}
     return i;
 }
 
 def getchar(): Char {
-    let ch = ' ';
-    input(&ch);
+    let mut ch = ' ';
+    input(&mut ch);
     return ch;
 }
 
-def readline(ch: &Char, len: Int): Int {
-    let i = len;
+def readline(ch: &mut Char, len: Int): Int {
+    let mut i = len;
 
-    let c = getchar();
+    let mut c = getchar();
     for (); c != '\n' && c != '\0'; i+=1 {
         ch[i] = c;
         c = getchar();
@@ -318,36 +331,27 @@ def readline(ch: &Char, len: Int): Int {
 }
 
 def read(): Input {
-    let buf = alloc(sizeof<Char>() * 1024) as &Char;
+    let buf = alloc(sizeof<Char>() * 1024) as &mut Char;
 
     print("? ");
     let len = readline(buf, 0);
     buf[len] = '\0';
 
     return {
-        start = buf,
+        start = buf as &Char,
         length = strlen(buf),
         loc = 0
     };
 }
 def test(): Input {
-    let buf = alloc(sizeof<Char>() * 34) as &Char;
-    *(buf as &[Char * 34]) = "(4 + 6) * ((8 - 3) / 2) + (9 % 5)\0";
+    let buf = alloc(sizeof<Char>() * 34) as &mut Char;
+    *(buf as &mut [Char * 34]) = "(4 + 6) * ((8 - 3) / 2) + (9 % 5)\0";
     
     return {
-        start = buf,
+        start = buf as &Char,
         length = strlen(buf),
         loc = 0
     };
 }
 
-let input = test();
-match parse_expr(input) {
-    of Ok (input, n) => {
-        print_expr(n);
-        print("\n => ", eval(n), "\n");
-        free_expr(n);
-        free_input(input);
-    },
-    of Err n => print("\nCalculator: error while parsing at character: \n", input.start[n], "\n")
-}
+main();

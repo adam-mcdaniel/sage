@@ -44,13 +44,11 @@ impl GetSize for Type {
     fn get_size_checked(&self, env: &Env, i: usize) -> Result<usize, Error> {
         let i = i + 1;
         trace!("Getting the size of type {self} in environment {env} with depth {i}");
-        // eprintln!("GetSize::get_size_checked: i = {i} {self}");
-        // eprintln!("Env: {env:?}");
+
         if i > Type::SIMPLIFY_RECURSION_LIMIT {
             error!("Recursion limit reached while calculating size of type {self}");
             return Err(Error::UnsizedType(self.clone()));
         }
-        // eprintln!("GetSize::get_size_checked: i = {i} {self}");
 
         if env.has_precalculated_size(self) {
             return env.get_precalculated_size(self).ok_or_else(|| {
@@ -106,7 +104,7 @@ impl GetSize for Type {
             | Self::Bool
             | Self::Cell
             | Self::Enum(_)
-            | Self::Pointer(_)
+            | Self::Pointer(_, _)
             | Self::Proc(_, _) => 1,
             
             // Tuple types are the sum of the sizes of their elements.
@@ -164,100 +162,12 @@ impl GetSize for Type {
                     return Ok(size);
                 }
 
-                let result = self.clone().simplify_until_matches(
-                    env,
-                    Type::Poly(vec![], Box::new(Type::Any)),
-                    |t, _env| Ok(t.is_simple()),
-                )?;
+                let result = self.clone().simplify_until_concrete(env)?;
 
                 result.get_size_checked(env, i)?
-
-                // match *poly.clone() {
-                //     Self::Poly(ty_params, template) => {
-                //         // If all the arguments are atomic, we can substitute them into the template
-                //         // and get the size of the result.
-                //         if ty_args.iter().all(|t| t.is_atomic()) {
-                //             // Create a new environment with the type parameters defined.
-                //             let mut result = *poly.clone();
-                //             for (name, ty) in ty_params.iter().zip(ty_args.iter()) {
-                //                 result = result.substitute(name, ty);
-                //             }
-                //             // Get the size of the resulting type.
-                //             result.get_size_checked(env, i)?
-                //         } else {
-                //             // If any of the arguments are not atomic, we can't substitute them into the template.
-                //             // So we return an error.
-                //             return Err(Error::UnsizedType(self.clone()));
-                //         }
-                //     }
-                //     _ => {
-                //         return Err(Error::ApplyNonTemplate(self.clone()))
-                //     }
-                // }
-                // return Err(Error::UnsizedType(self.clone()))
-
-                // self
-                //     .clone()
-                //     .simplify(env)?
-                //     .perform_template_applications(env, &mut HashMap::new(), i)?
-                //     .get_size_checked(env, i)?
-
-                // match poly.clone().simplify(env)? {
-                //     Self::Poly(ty_params, template) => {
-                //         // Make sure the number of type arguments matches the number of type parameters.
-                //         if ty_args.len() != ty_params.len() {
-                //             return Err(Error::InvalidTemplateArgs(self.clone()));
-                //         }
-                //         // Create a new environment with the type parameters defined.
-                //         let mut result = *template.clone();
-                //         for (name, ty) in ty_params.iter().zip(ty_args.iter()) {
-                //             // result = result.substitute(name, ty);
-                //             result = Type::let_bind(name, if Type::Symbol(name.clone()) == *ty {
-                //                 Type::Unit(name.clone(), Box::new(Type::Any))
-                //             } else {
-                //                 ty.clone()
-                //             }, result);
-                //         }
-                //         // Get the size of the resulting type.
-                //         result.get_size_checked(&env, i)?
-                //     }
-                //     Self::Let(name, t, ret) => {
-                //         // We need to create a new environment with the type defined in
-                //         // it, so that we can get the size of the resulting type.
-                //         let mut new_env = env.clone();
-                //         // new_env.define_type_size(*t.clone(), t.get_size_checked(env, i)?);
-                //         // new_env.define_type(name.clone(), *t.clone());
-                //         new_env.define_type(name, t.simplify_checked(env, i)?);
-                //         // Get the size of the resulting type.
-                //         ret.get_size_checked(&new_env, i)?
-                //     }
-                //     _ => {
-                //         return Err(Error::ApplyNonTemplate(self.clone()));
-                //     }
-                // }
             }
 
             Self::Poly(_ty_params, _template) => {
-                // let mut template = *template.clone();
-                // for ty_param in ty_params {
-                //     // template = template.substitute(ty_param, &Type::Unit(ty_param.clone(), Box::new(Type::Any)));
-                //     template = Type::let_bind(ty_param, Type::Unit(ty_param.clone(), Box::new(Type::Any)), template);
-                // }
-                // let mut new_env = env.clone();
-                // for ty_param in ty_params {
-                //     new_env.define_type(ty_param, Type::Unit(ty_param.clone(), Box::new(Type::Any)));
-                // }
-                // if let Ok(size) = template.get_size_checked(&new_env, i) {
-                //     return Ok(size);
-                // }
-
-                // let result = Self::Apply(
-                //     Box::new(self.clone()),
-                //     ty_params
-                //         .iter()
-                //         .map(|ty_param| Type::Unit(ty_param.clone(), Box::new(Type::Any)))
-                //         .collect(),
-                // ).get_size_checked(env, i);
                 return Err(Error::SizeOfTemplate(self.clone()));
             }
         })

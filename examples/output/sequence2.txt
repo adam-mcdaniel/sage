@@ -1,5 +1,5 @@
 Sequence of ints: [1, 2, 3, 4, 5, 10, 9, 8, 7, 6]
-Sequence of strings: [{cap=13, data=&(39019), len=13}, {cap=26, data=&(39045), len=14}, {cap=26, data=&(39084), len=15}, {cap=26, data=&(39123), len=16}, {cap=26, data=&(39162), len=17}, {cap=26, data=&(39162), len=17}, {cap=26, data=&(39123), len=16}, {cap=26, data=&(39084), len=15}, {cap=26, data=&(39045), len=14}, {cap=13, data=&(39019), len=13}]
+Sequence of strings: [{cap=13, data=&mut (39019), len=13}, {cap=26, data=&mut (39045), len=14}, {cap=26, data=&mut (39084), len=15}, {cap=26, data=&mut (39123), len=16}, {cap=26, data=&mut (39162), len=17}, {cap=26, data=&mut (39162), len=17}, {cap=26, data=&mut (39123), len=16}, {cap=26, data=&mut (39084), len=15}, {cap=26, data=&mut (39045), len=14}, {cap=13, data=&mut (39019), len=13}]
 0: Hello, world!
 1: Hello, world!!
 2: Hello, world!!!

@@ -11,7 +11,7 @@
 
 use crate::lir::{
     CoreBuiltin, Env, Error, Expr, GetSize, GetType, PolyProcedure, Procedure, Simplify,
-    StandardBuiltin, FFIProcedure, Type, TypeCheck,
+    StandardBuiltin, FFIProcedure, Type, Mutability,
 };
 use crate::parse::SourceCodeLocation;
 
@@ -95,7 +95,7 @@ impl ConstExpr {
     /// Construct a procedure.
     pub fn proc(
         common_name: Option<String>,
-        args: Vec<(String, Type)>,
+        args: Vec<(String, Mutability, Type)>,
         ret: Type,
         body: impl Into<Expr>,
     ) -> Self {
@@ -147,9 +147,7 @@ impl ConstExpr {
 
                 Self::LetTypes(bindings, expr) => {
                     let mut new_env = env.clone();
-                    for (name, ty) in bindings {
-                        new_env.define_type(name, ty);
-                    }
+                    new_env.define_types(bindings);
                     expr.eval_checked(&new_env, i)
                 }
 
@@ -295,14 +293,8 @@ impl GetType for ConstExpr {
             }
             Self::LetTypes(bindings, expr) => {
                 let mut new_env = env.clone();
-                for (name, ty) in bindings {
-                    new_env.define_type(&name, ty);
-                }
-                expr.get_type_checked(&new_env, i)?.simplify_until_matches(
-                    env,
-                    Type::Any,
-                    |t, env| t.type_check(env).map(|_| true),
-                )?
+                new_env.define_types(bindings);
+                expr.get_type_checked(&new_env, i)?.simplify_until_type_checks(&new_env)?
             }
             Self::Monomorphize(expr, ty_args) => {
                 // Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::<Result<Vec<Type>, Error>>()?).perform_template_applications(env, &mut HashMap::new(), 0)?
@@ -313,7 +305,7 @@ impl GetType for ConstExpr {
                 let size = expr.get_type_checked(env, i)?.to_string().len();
                 Type::Array(Box::new(Type::Char), Box::new(Self::Int(size as i64)))
             }
-            Self::Null => Type::Pointer(Box::new(Type::Any)),
+            Self::Null => Type::Pointer(Mutability::Immutable, Box::new(Type::Any)),
             Self::None => Type::None,
             Self::SizeOfType(_) | Self::SizeOfExpr(_) | Self::Int(_) => Type::Int,
             Self::Float(_) => Type::Float,
@@ -352,9 +344,9 @@ impl GetType for ConstExpr {
             Self::FFIProcedure(ffi_proc) => ffi_proc.get_type_checked(env, i)?,
 
             Self::Symbol(name) => {
-                if let Some((t, _)) = env.get_var(&name) {
+                if let Some((_, ty, _)) = env.get_var(&name) {
                     // If the symbol is a variable, get the variables type.
-                    t.clone()
+                    ty.clone()
                 } else {
                     // Otherwise, evaluate the symbol as a constant.
                     match Self::Symbol(name).eval(env)? {
