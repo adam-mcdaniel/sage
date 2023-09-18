@@ -328,7 +328,7 @@ expr_atom = {
 }
 expr_tuple = { "(" ~ (expr ~ ",")+ ~ expr? ~ ")" }
 expr_array = { "[" ~ (expr ~ ",")* ~ expr? ~ "]" }
-expr_struct = { "struct"? ~ "{" ~ (symbol ~ "=" ~ expr ~ ",")* ~ (symbol ~ "=" ~ expr)? ~ "}" }
+expr_struct = { "struct"? ~ "{" ~ (symbol ~ "=" ~ expr ~ ",")* ~ symbol ~ "=" ~ expr ~ ","? ~ "}" }
 expr_group = { "(" ~ expr ~ ")" }
 
 
