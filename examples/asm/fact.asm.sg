@@ -1,9 +1,9 @@
-fun fact
+fun @fact
     if [FP]
         mov [FP], A
         dec A
         push A
-        call fact
+        call @fact
         mul [FP + 1], [FP]
         pop
     else
@@ -12,6 +12,6 @@ fun fact
 end
 
 set A, 5 push A
-call fact
+call @fact
 pop A
 put-int A

@@ -170,7 +170,7 @@ impl TypeCheck for Type {
 /// Check the type-soundness of a given expression.
 impl TypeCheck for Expr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
-        trace!("Type checking expression: {self}");
+        // trace!("Type checking expression: {self}");
         match self {
             Self::AnnotatedWithSource { expr, loc } => {
                 // Check the inner expression.
@@ -452,6 +452,49 @@ impl TypeCheck for Expr {
                     new_env.define_var(var, *mutability, expected.clone().unwrap_or(found))?;
                 }
                 // Typecheck the resulting expression with the variables
+                // defined in the environment.
+                ret.type_check(&new_env)
+            }
+
+            Self::LetStaticVar(name, mutability, ty, const_val, ret) => {
+                // Typecheck the constant expression we're assigning to the variable.
+                let mut new_env = env.clone();
+                new_env.define_static_var(name, *mutability, ty.clone())?;
+                const_val.type_check(&new_env)?;
+
+                let const_val_type = const_val.get_type(&new_env)?;
+                if !const_val_type.can_decay_to(ty, &new_env)? {
+                    return Err(Error::MismatchedTypes {
+                        expected: ty.clone(),
+                        found: const_val_type,
+                        expr: self.clone(),
+                    });
+                }
+
+                // Typecheck the resulting expression with the constant
+                // defined in the environment.
+                ret.type_check(&new_env)
+            }
+
+            Self::LetStaticVars(vars, ret) => {
+                // Add all the constants to the scope.
+                let mut new_env = env.clone();
+                for (name, mutability, ty, const_val) in vars {
+                    // Define the constant in the environment.
+                    new_env.define_static_var(name, *mutability, ty.clone())?;
+                    // Typecheck the constant expression in the new environment.
+                    const_val.type_check(&new_env)?;
+
+                    let const_val_type = const_val.get_type(&new_env)?;
+                    if !const_val_type.can_decay_to(ty, &new_env)? {
+                        return Err(Error::MismatchedTypes {
+                            expected: ty.clone(),
+                            found: const_val_type,
+                            expr: self.clone(),
+                        });
+                    }
+                }
+                // Typecheck the resulting expression with the constants
                 // defined in the environment.
                 ret.type_check(&new_env)
             }
@@ -935,7 +978,7 @@ impl TypeCheck for Expr {
 // Typecheck a constant expression.
 impl TypeCheck for ConstExpr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
-        trace!("Typechecking constant expression: {}", self);
+        // trace!("Typechecking constant expression: {}", self);
         match self {
             Self::AnnotatedWithSource { expr, loc } => {
                 expr.type_check(env).map_err(|e| e.with_loc(loc))
@@ -1015,6 +1058,7 @@ impl TypeCheck for ConstExpr {
                 if env.get_const(name).is_some()
                     || env.get_proc(name).is_some()
                     || env.get_var(name).is_some()
+                    || env.get_static_var(name).is_some()
                 {
                     // Return success.
                     Ok(())

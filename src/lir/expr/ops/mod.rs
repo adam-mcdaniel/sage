@@ -30,7 +30,7 @@ use std::cmp::Ordering;
 pub trait AssignOp: std::fmt::Debug + std::fmt::Display {
     /// Typechecks the operation on the given expressions.
     fn type_check(&self, dst: &Expr, src: &Expr, env: &Env) -> Result<(), Error> {
-        trace!("Type checking assign op: {dst} {self} {src} ({self:?})");
+        // trace!("Type checking assign op: {dst} {self} {src} ({self:?})");
         if self.can_apply(&dst.get_type(env)?, &src.get_type(env)?, env)? {
             dst.type_check(env).and(src.type_check(env))
         } else {
@@ -78,7 +78,7 @@ pub trait AssignOp: std::fmt::Debug + std::fmt::Display {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        trace!("Compiling assign op: {dst} {self} {src} ({self:?})");
+        // trace!("Compiling assign op: {dst} {self} {src} ({self:?})");
         dst.clone().compile_expr(env, output)?;
         src.clone().compile_expr(env, output)?;
         self.compile_types(&dst.get_type(env)?, &src.get_type(env)?, env, output)
@@ -99,7 +99,7 @@ pub trait AssignOp: std::fmt::Debug + std::fmt::Display {
 pub trait UnaryOp: std::fmt::Debug + std::fmt::Display {
     /// Typechecks the operation on the given expression.
     fn type_check(&self, expr: &Expr, env: &Env) -> Result<(), Error> {
-        trace!("Type checking unary op: {self} {expr} ({self:?})");
+        // trace!("Type checking unary op: {self} {expr} ({self:?})");
         if self.can_apply(&expr.get_type(env)?, env)? {
             expr.type_check(env)
         } else {
@@ -137,7 +137,7 @@ pub trait UnaryOp: std::fmt::Debug + std::fmt::Display {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        trace!("Compiling unary op: {self} {expr} ({self:?})");
+        // trace!("Compiling unary op: {self} {expr} ({self:?})");
         let current_instruction = output.current_instruction();
         expr.clone().compile_expr(env, output)?;
         self.compile_types(&expr.get_type(env)?, env, output)?;
@@ -160,7 +160,7 @@ pub trait UnaryOp: std::fmt::Debug + std::fmt::Display {
 pub trait BinaryOp: std::fmt::Debug + std::fmt::Display {
     /// Typechecks the operation on the given expressions.
     fn type_check(&self, lhs: &Expr, rhs: &Expr, env: &Env) -> Result<(), Error> {
-        trace!("Type checking binary op: {lhs} {self} {rhs} ({self:?})");
+        // trace!("Type checking binary op: {lhs} {self} {rhs} ({self:?})");
         if self.can_apply(&lhs.get_type(env)?, &rhs.get_type(env)?, env)? {
             lhs.type_check(env).and(rhs.type_check(env))
         } else {
@@ -208,7 +208,7 @@ pub trait BinaryOp: std::fmt::Debug + std::fmt::Display {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        trace!("Compiling binary op: {lhs} {self} {rhs} ({self:?})");
+        // trace!("Compiling binary op: {lhs} {self} {rhs} ({self:?})");
         lhs.clone().compile_expr(env, output)?;
         rhs.clone().compile_expr(env, output)?;
         self.compile_types(&lhs.get_type(env)?, &rhs.get_type(env)?, env, output)?;
@@ -289,7 +289,7 @@ pub trait TernaryOp: std::fmt::Debug + std::fmt::Display {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        trace!("Compiling ternary op: {a} {self} {b} {c} ({self:?})");
+        // trace!("Compiling ternary op: {a} {self} {b} {c} ({self:?})");
         // Evaluate the three expression on the stack.
         a.clone().compile_expr(env, output)?;
         b.clone().compile_expr(env, output)?;

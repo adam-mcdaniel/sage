@@ -20,7 +20,7 @@ set B, 7
 
 bitwise-xor B, A
 
-fun put_bits
+fun @put_bits
     set A, 128 bitwise-and [SP], A
     if A
         set A, 49
@@ -81,4 +81,4 @@ fun put_bits
 end
 
 push A
-call put_bits
+call @put_bits

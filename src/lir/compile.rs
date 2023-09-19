@@ -11,7 +11,7 @@
 //! 3. If the expression cannot be compiled into a core assembly program, then compile it into a standard assembly program.
 use super::*;
 use crate::asm::{
-    AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
+    Location, AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
 };
 use crate::NULL;
 
@@ -65,7 +65,7 @@ pub trait Compile: TypeCheck {
 /// Compile an LIR expression into several core assembly instructions.
 impl Compile for Expr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        trace!("Compiling expression {self} in environment {env}");
+        // trace!("Compiling expression {self} in environment {env}");
         let mut debug_str = format!("{self:50}");
         debug_str.truncate(50);
         
@@ -376,6 +376,34 @@ impl Compile for Expr {
                 result.compile_expr(env, output)?
             }
 
+
+            Self::LetStaticVar(name, mutability, t, expr, body) => {
+                // Declare a new scope for the variable.
+                let mut new_env = env.clone();
+                // Define the variable in the new scope.
+                let location = new_env.define_static_var(&name, mutability, t.clone())?;
+                // Compile the expression to leave the value on the stack.
+                expr.compile_expr(env, output)?;
+                let size = t.get_size(env)?;
+                // Store the value in the variable.
+                output.op(CoreOp::Global { name: name.clone(), size });
+                output.op(CoreOp::Pop(Some(Location::Global(name.clone())), size));
+                // Compile under the new scope.
+                body.compile_expr(&mut new_env, output)?;
+            }
+
+            Self::LetStaticVars(static_vars, body) => {
+                let mut result = *body;
+
+                // Create an equivalent let statement with a single variable,
+                // for each variable in the list.
+                for (name, mutability, t, expr) in static_vars.into_iter().rev() {
+                    result = Self::LetStaticVar(name, mutability, t, expr, Box::new(result))
+                }
+
+                result.compile_expr(env, output)?
+            }
+
             // Compile a while loop.
             Self::While(cond, body) => {
                 // Eval the condition
@@ -681,7 +709,7 @@ impl Compile for Expr {
                 Expr::ConstExpr(ConstExpr::Symbol(name)) => {
                     // Get the variable's offset from the frame pointer.
                     if let Some((found_mutability, _, offset)) = env.get_var(&name) {
-                        if !found_mutability.can_decay_to(found_mutability) {
+                        if !found_mutability.can_decay_to(&expected_mutability) {
                             return Err(Error::MismatchedMutability {
                                 found: *found_mutability,
                                 expected: expected_mutability,
@@ -702,6 +730,24 @@ impl Compile for Expr {
                             },
                             // Push the address of the variable onto the stack.
                             CoreOp::Push(C, 1),
+                        ]))
+                    } else if let Some((found_mutability, ty, location)) = env.get_static_var(&name) {
+                        if !found_mutability.can_decay_to(&expected_mutability) {
+                            return Err(Error::MismatchedMutability {
+                                found: *found_mutability,
+                                expected: expected_mutability,
+                                expr: Expr::ConstExpr(ConstExpr::Symbol(name)),
+                            });
+                        }
+
+                        // Calculate the address of the variable from the offset
+                        output.op(CoreOp::Many(vec![
+                            // Push the address of the variable onto the stack.
+                            CoreOp::Next(SP, None),
+                            CoreOp::GetAddress {
+                                addr: location.clone(),
+                                dst: SP.deref(),
+                            },
                         ]))
                     } else {
                         error!("Tried to get the reference of a symbol that isn't a variable: {name} in environment {env}");
@@ -848,7 +894,7 @@ impl Compile for Expr {
 /// Compile a constant expression.
 impl Compile for ConstExpr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        trace!("Compiling constant expression {self} in environment {env}");
+        // trace!("Compiling constant expression {self} in environment {env}");
         let mut debug_str = format!("{self}");
         debug_str.truncate(50);
 
@@ -1092,6 +1138,9 @@ impl Compile for ConstExpr {
                 if let Some((_, t, offset)) = env.get_var(&name) {
                     // If the symbol is a variable, push it onto the stack.
                     output.op(CoreOp::Push(FP.deref().offset(*offset), t.get_size(env)?))
+                } else if let Some((_, t, location)) = env.get_static_var(&name) {
+                    // If the symbol is a static variable, push it onto the stack.
+                    output.op(CoreOp::Push(location.clone(), t.get_size(env)?))
                 } else {
                     // If the symbol is not a variable, evaluate it like a constant.
                     match Self::Symbol(name).eval(env)? {

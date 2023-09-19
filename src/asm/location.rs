@@ -63,34 +63,163 @@
 //!   ```
 use crate::{
     side_effects::{Input, Output},
+    asm::{self, CoreOp},
     vm::{self, Error, VirtualMachineProgram},
     NULL,
 };
+
+use std::collections::HashMap;
 use core::fmt;
+
+use log::{error, trace};
 
 /// The stack pointer register.
 pub const SP: Location = Location::Address(0);
 /// A volatile register. This register may be silently overwritten by
 /// some assembly instructions.
-pub(super) const TMP: Location = Location::Address(1);
+pub(crate) const TMP: Location = Location::Address(1);
 /// The frame pointer register.
 pub const FP: Location = Location::Address(2);
 /// The stack pointer register for the stack of frames.
 /// This always points to the parent frame's saved frame pointer.
 /// At the beginning of the program, this is allocated with a specified number of cells.
-pub(super) const FP_STACK: Location = Location::Address(3);
+pub(crate) const FP_STACK: Location = Location::Address(3);
+/// The Global Pointer register. This is used to access global variables.
+pub const GP: Location = Location::Address(4);
 /// The "A" general purpose register.
-pub const A: Location = Location::Address(4);
+pub const A: Location = Location::Address(5);
 /// The "B" general purpose register.
-pub const B: Location = Location::Address(5);
+pub const B: Location = Location::Address(6);
 /// The "C" general purpose register.
-pub const C: Location = Location::Address(6);
+pub const C: Location = Location::Address(7);
 /// The "D" general purpose register.
-pub const D: Location = Location::Address(7);
+pub const D: Location = Location::Address(8);
 /// The "E" general purpose register.
-pub const E: Location = Location::Address(8);
+pub const E: Location = Location::Address(9);
 /// The "F" general purpose register.
-pub const F: Location = Location::Address(9);
+pub const F: Location = Location::Address(10);
+
+pub const REGISTERS: [Location; 11] = [SP, TMP, FP, FP_STACK, GP, A, B, C, D, E, F];
+
+/// A lookup for all the global variables in an assembly program.
+#[derive(Clone, Debug)]
+pub struct Globals {
+    /// The locations, offsets, and sizes of global variables.
+    globals: HashMap<String, (Location, usize, usize)>,
+    /// The next available GP offset.
+    next_gp_offset: usize,
+    /// A cache of resolved locations.
+    memoized_resolutions: HashMap<Location, Location>,
+}
+
+impl Default for Globals {
+    fn default() -> Self {
+        Self {
+            globals: HashMap::new(),
+            next_gp_offset: 0,
+            memoized_resolutions: HashMap::new(),
+        }
+    }
+}
+
+impl Globals {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn resolve(&mut self, location: &Location) -> Result<Location, asm::Error> {
+        if let Some(loc) = self.memoized_resolutions.get(location) {
+            return Ok(loc.clone());
+        }
+        let result = match location {
+            Location::Address(n) => Location::Address(*n),
+            Location::Indirect(loc) => self.resolve(loc)?.deref(),
+            Location::Offset(loc, offset) => {
+                self.resolve(loc)?.offset(*offset)
+            }
+            Location::Global(name) => {
+                if let Some((loc, _, _)) = self.globals.get(name) {
+                    loc.clone()
+                } else {
+                    error!("Global variable {name} not found in environment {self}");
+                    Err(asm::Error::UndefinedGlobal(name.clone()))?
+                }
+            }
+        };
+        if location != &result {
+            trace!("Resolved {} to {}", location, result);
+        }
+        self.memoized_resolutions.insert(location.clone(), result.clone());
+
+        Ok(result)
+    }
+
+    /// Add a global variable to the list of globals.
+    pub fn add_global(&mut self, name: String, size: usize) -> Location {
+        if let Some((loc, _, _)) = self.globals.get(&name) {
+            return loc.clone();
+        }
+
+        trace!("Current GP offset: {}", self.next_gp_offset);
+        let offset = self.next_gp_offset;
+        self.next_gp_offset += size;
+        let loc = GP.deref().offset(offset as isize);
+        
+        trace!("Adding global variable {name} with size {size} at {loc}");
+        self.globals.insert(name, (loc.clone(), offset, size));
+        loc
+    }
+
+    /// Get the size of the global variables.
+    /// This is the number of cells that the global variables occupy.
+    pub fn get_size(&self) -> usize {
+        self.next_gp_offset
+    }
+
+    /// Get the location, and size of a global variable.
+    pub fn get_global(&self, name: &str) -> Option<&(Location, usize, usize)> {
+        self.globals.get(name)
+    }
+
+    /// Get the location of a global variable.
+    pub fn get_global_location(&mut self, name: &str) -> Option<Location> {
+        self.globals.get(name).cloned() // Get the global variable
+            // Resolve the location of the global variable
+            .and_then(|(loc, _, _)| self.resolve(&loc).ok()) 
+    }
+
+    /// Get the offset of a global variable.
+    /// This is the offset relative to GP.
+    fn get_global_offset(&self, name: &str) -> Option<usize> {
+        self.globals.get(name).map(|(_, offset, _)| *offset)
+    }
+
+    /// Get the size of a global variable.
+    /// This is the number of cells that the global variable occupies.
+    pub fn get_global_size(&self, name: &str) -> Option<usize> {
+        self.globals.get(name).map(|(_, _, size)| *size)
+    }
+}
+
+impl fmt::Display for Globals {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (name, (loc, offset, size)) in &self.globals {
+            writeln!(
+                f,
+                "{} // Location: {}, Offset: {}, Size: {}",
+                CoreOp::Global {
+                    name: name.clone(),
+                    size: *size
+                },
+                loc,
+                offset,
+                size
+            )?;
+        }
+        Ok(())
+    }
+}
+
 
 /// A location in memory (on the tape of the virtual machine).
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -103,22 +232,25 @@ pub enum Location {
     /// Go to a position in memory, and then move the pointer according to an offset.
     /// For example, `Offset(Address(8), -2)` is equivalent to `Address(6)`.
     Offset(Box<Self>, isize),
+    /// A global variable.
+    Global(String),
 }
 
 impl fmt::Display for Location {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Location::Address(addr) => match addr {
-                0 => write!(f, "SP"),
-                1 => write!(f, "TMP"),
-                2 => write!(f, "FP"),
-                3 => write!(f, "FP_STACK"),
-                4 => write!(f, "A"),
-                5 => write!(f, "B"),
-                6 => write!(f, "C"),
-                7 => write!(f, "D"),
-                8 => write!(f, "E"),
-                9 => write!(f, "F"),
+                _ if self == &SP => write!(f, "SP"),
+                _ if self == &FP => write!(f, "FP"),
+                _ if self == &FP_STACK => write!(f, "FP_STACK"),
+                _ if self == &GP => write!(f, "GP"),
+                _ if self == &A => write!(f, "A"),
+                _ if self == &B => write!(f, "B"),
+                _ if self == &C => write!(f, "C"),
+                _ if self == &D => write!(f, "D"),
+                _ if self == &E => write!(f, "E"),
+                _ if self == &F => write!(f, "F"),
+                _ if self == &TMP => write!(f, "TMP"),
                 other => write!(f, "{}", other),
             },
             Location::Indirect(loc) => write!(f, "[{}]", loc),
@@ -142,6 +274,7 @@ impl fmt::Display for Location {
                     )
                 }
             }
+            Location::Global(name) => write!(f, "{name}"),
         }
     }
 }
@@ -149,7 +282,8 @@ impl fmt::Display for Location {
 impl fmt::Debug for Location {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Location::Address(addr) if *addr <= 9 => write!(f, "{self} ({addr})"),
+            Location::Global(name) => write!(f, "{name}"),
+            Location::Address(addr) if *addr <= 10 => write!(f, "{self} ({addr})"),
             Location::Address(addr) => write!(f, "{addr}"),
             Location::Indirect(loc) => write!(f, "[{loc:?}]"),
             Location::Offset(loc, offset) => {
@@ -181,11 +315,16 @@ impl Location {
     /// For example, `Offset(Address(8), -2)` is equivalent to `Address(6)`.
     pub fn offset(&self, offset: isize) -> Self {
         if offset == 0 {
-            self.clone()
-        } else if let Self::Offset(addr, x) = self {
-            Location::Offset(addr.clone(), *x + offset)
-        } else {
-            Location::Offset(Box::new(self.clone()), offset)
+            return self.clone();
+        }
+
+        match self {
+            Location::Offset(loc, x) => Location::Offset(loc.clone(), *x + offset),
+            Location::Address(addr) => Location::Address((*addr as isize + offset) as usize),
+            Location::Indirect(_) => Location::Offset(Box::new(self.clone()), offset),
+            Location::Global(_) => {
+                Location::Offset(Box::new(self.clone()), offset)
+            }
         }
     }
 
@@ -226,6 +365,9 @@ impl Location {
                 loc.to(result);
                 result.move_pointer(*offset);
             }
+            Location::Global(name) => {
+                panic!("Cannot move pointer to global variable {}", name);
+            }
         }
     }
 
@@ -237,7 +379,6 @@ impl Location {
                 result.refer();
                 loc.from(result);
             }
-
             Location::Offset(loc, offset) => {
                 // If the offset is from a dereferenced pointer, then moving back before
                 // reversing the dereference does nothing, so we can skip it.
@@ -245,6 +386,9 @@ impl Location {
                     result.move_pointer(-*offset);
                 }
                 loc.from(result);
+            }
+            Location::Global(name) => {
+                panic!("Cannot move pointer from global variable {}", name);
             }
         }
     }

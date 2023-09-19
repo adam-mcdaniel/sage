@@ -7,7 +7,7 @@
 //!
 //! [***Click here to view opcodes!***](./enum.StandardOp.html)
 use super::{
-    location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, SP,
+    location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, GP, SP,
 };
 use crate::vm::{self, VirtualMachineProgram};
 use crate::side_effects::ffi::FFIBinding;
@@ -47,19 +47,42 @@ impl StandardProgram {
         Self { code, labels }
     }
 
+    /// Get the size of the globals.
+    fn get_size_of_globals(&self, env: &mut Env) -> Result<usize, Error> {
+        for op in &self.code {
+            match op {
+                StandardOp::CoreOp(CoreOp::Global { name, size }) => {
+                    env.declare_global(name, *size);
+                }
+                _ => {}
+            }
+        }
+
+        Ok(env.get_size_of_globals())
+    }
+
     pub fn assemble(&self, allowed_recursion_depth: usize) -> Result<vm::StandardProgram, Error> {
         let mut result = vm::StandardProgram(vec![]);
         let mut env = Env::default();
-        // Create the stack of frame pointers starting directly after the last register
-        F.copy_address_to(&FP_STACK, &mut result);
-        info!("Frame pointer stack begins at {FP_STACK:?}, and is {} cells long.", allowed_recursion_depth);
-        // Copy the address just after the allocated space to the stack pointer.
-        let starting_sp_addr = FP_STACK
-            .deref()
-            .offset(allowed_recursion_depth as isize);
+        
+        // Get the size of the globals
+        let size_of_globals = self.get_size_of_globals(&mut env)?;
 
-        starting_sp_addr.copy_address_to(&SP, &mut result);
+        // Create the stack of frame pointers starting directly after the last register
+        let start_of_fp_stack = F.offset(1);
+        start_of_fp_stack.copy_address_to(&FP_STACK, &mut result);
+        info!("Frame pointer stack begins at {FP_STACK:?}, and is {} cells long.", allowed_recursion_depth);
+        let end_of_fp_stack = start_of_fp_stack.offset(allowed_recursion_depth as isize);
+
+        // Copy the address just after the allocated space to the global pointer.
+        let starting_gp_addr = end_of_fp_stack;
+        starting_gp_addr.copy_address_to(&GP, &mut result);
+        info!("Global pointer is initialized to point to {starting_gp_addr:?}, and is {} cells long.", size_of_globals);
+
+        // Allocate the global variables
+        let starting_sp_addr = starting_gp_addr.offset(size_of_globals as isize);
         info!("Stack pointer is initialized to point to {starting_sp_addr:?}.");
+        starting_sp_addr.copy_address_to(&SP, &mut result);
 
         SP.copy_to(&FP, &mut result);
         for (i, op) in self.code.iter().enumerate() {

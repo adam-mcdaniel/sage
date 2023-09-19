@@ -1,0 +1,7 @@
+8203
+8216
+Hello world!
+9227
+9254
+This is a global variable!
+11275

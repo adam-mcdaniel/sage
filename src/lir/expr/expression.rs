@@ -54,6 +54,12 @@ pub enum Expr {
     /// A `let` binding expression.
     /// Declare multiple variables under a new scope, and evaluate a subexpression in that scope.
     LetVars(Vec<(String, Mutability, Option<Type>, Self)>, Box<Self>),
+    /// A `let` binding expression.
+    /// Declare a static variable under a new scope, and evaluate a subexpression in that scope.
+    LetStaticVar(String, Mutability, Type, ConstExpr, Box<Self>),
+    /// A `let` binding expression.
+    /// Declare multiple static variables under a new scope, and evaluate a subexpression in that scope.
+    LetStaticVars(Vec<(String, Mutability, Type, ConstExpr)>, Box<Self>),
 
     /// Create a while loop: while the first expression evaluates to true, evaluate the second expression.
     While(Box<Self>, Box<Self>),
@@ -140,6 +146,18 @@ impl Expr {
     /// Get the size of an expression.
     pub fn size_of(self) -> Self {
         Self::ConstExpr(ConstExpr::SizeOfExpr(Box::new(self)))
+    }
+
+    /// With a location, annotate this expression with a source code location.
+    pub fn with_loc(self, loc: SourceCodeLocation) -> Self {
+        // Check if we already have a source code location.
+        match self {
+            Self::AnnotatedWithSource { .. } => self,
+            _ => Self::AnnotatedWithSource {
+                expr: Box::new(self),
+                loc,
+            },
+        }
     }
 
     /// Cast an expression as another type.
@@ -484,6 +502,26 @@ impl fmt::Display for Expr {
                         write!(f, ": {ty}")?
                     }
                     write!(f, " = {val}")?;
+                    if i < vars.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, " in {ret}")
+            }
+            Self::LetStaticVar(name, m, ty, val, ret) => {
+                write!(f, "let static ")?;
+                if m.is_mutable() {
+                    write!(f, "mut ")?;
+                }
+                write!(f, "{name}: {ty} = {val} in {ret}")
+            }
+            Self::LetStaticVars(vars, ret) => {
+                write!(f, "let static ")?;
+                for (i, (name, m, ty, val)) in vars.iter().enumerate() {
+                    if m.is_mutable() {
+                        write!(f, "mut ")?;
+                    }
+                    write!(f, "{name}: {ty} = {val}")?;
                     if i < vars.len() - 1 {
                         write!(f, ", ")?
                     }

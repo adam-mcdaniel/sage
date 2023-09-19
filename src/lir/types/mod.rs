@@ -1021,7 +1021,7 @@ impl Type {
             }
 
             (a, b) => {
-                trace!("{} is not equal to {}", a, b);
+                // trace!("{} is not equal to {}", a, b);
                 false
             },
         })

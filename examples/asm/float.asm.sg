@@ -1,4 +1,4 @@
-fun test
+fun @test
     set-f A, 32.058
     put-float A
     set B, 10 put-char B
@@ -11,4 +11,4 @@ fun test
     set B, 10 put-char B
 end
 
-call test
+call @test

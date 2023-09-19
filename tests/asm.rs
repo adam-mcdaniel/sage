@@ -330,12 +330,12 @@ fn test_str() {
 #[test]
 fn test_factorial() {
     let factorial = r#"
-    fun fact
+    fun @fact
         if [FP]
             mov [FP], A
             dec A
             push A
-            call fact
+            call @fact
             mul [FP + 1], [FP]
             pop
         else
@@ -344,7 +344,7 @@ fn test_factorial() {
     end
 
     set A, 10 push A
-    call fact
+    call @fact
     pop A
     put-int A
     "#;

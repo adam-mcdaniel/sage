@@ -1,7 +1,7 @@
 use core::fmt::{Display, Formatter, Result as FmtResult};
 
 /// The different axes an input or output might use.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Axis {
     X,
     Y,
@@ -9,7 +9,7 @@ pub enum Axis {
 }
 
 /// The different directions a D-Pad a might use.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Direction {
     Up,
     Down,
@@ -18,7 +18,7 @@ pub enum Direction {
 }
 
 /// The different output colors a program might use.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Color {
     /// Black
     Black,
@@ -290,7 +290,7 @@ pub enum OutputMode {
 }
 
 /// The channel to use for a given I/O mode.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Channel(pub usize);
 
 /// An input source for a program.

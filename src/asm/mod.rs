@@ -35,7 +35,8 @@ pub mod std;
 
 pub use self::core::{CoreOp, CoreProgram};
 pub use self::std::{StandardOp, StandardProgram};
-pub use location::{Location, A, B, C, D, E, F, FP, SP};
+pub use location::{REGISTERS, Globals, Location, A, B, C, D, E, F, FP, SP, GP};
+pub(crate) use location::{TMP, FP_STACK};
 
 /// A frontend to both the `CoreProgram` and `StandardProgram` types.
 /// This allows the compiler to append `CoreOp`s to both programs
@@ -88,6 +89,7 @@ pub trait AssemblyProgram {
 /// as well as information about matching instructions to their `End` statements.
 #[derive(Default, Clone)]
 struct Env {
+    globals: Globals,
     labels: HashMap<String, usize>,
     label: usize,
     matching: Vec<(CoreOp, usize)>,
@@ -95,7 +97,7 @@ struct Env {
 
 impl Env {
     /// Declare a new label
-    fn declare(&mut self, name: &str) {
+    fn declare_label(&mut self, name: &str) {
         trace!("Declared label {}", name);
 
         if self.labels.contains_key(name) {
@@ -104,8 +106,29 @@ impl Env {
         self.labels.insert(name.to_string(), self.label);
         self.label += 1;
     }
+
+    fn declare_global(&mut self, name: &str, size: usize) {
+        trace!("Declared global {}", name);
+        self.globals.add_global(name.to_owned(), size);
+    }
+
+    fn resolve(&mut self, loc: &Location) -> Result<Location, Error> {
+        self.globals.resolve(loc)
+    }
+
+    fn get_size_of_globals(&self) -> usize {
+        self.globals.get_size()
+    }
+
+    fn get_location_of_global(&mut self, name: &str) -> Result<Location, Error> {
+        self.globals.get_global_location(name).ok_or_else(|| {
+            error!("Undefined global {}", name);
+            Error::UndefinedGlobal(name.to_string())
+        })
+    }
+
     /// Get the virtual machine ID of a label (which can be called as a function).
-    fn get(&self, name: &str, current_instruction: usize) -> Result<usize, Error> {
+    fn get_label(&self, name: &str, current_instruction: usize) -> Result<usize, Error> {
         self.labels
             .get(name)
             .copied()
@@ -140,6 +163,8 @@ pub enum Error {
     UnsupportedInstruction(StandardOp),
     /// The given label was not defined.
     UndefinedLabel(String, usize),
+    /// The given global was not defined.
+    UndefinedGlobal(String),
     /// The given instruction did not have a matching "end".
     /// This is used for `If`, `Else`, `While`, `For`, and `Fn` statements.
     Unmatched(CoreOp, usize),

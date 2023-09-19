@@ -37,12 +37,31 @@ pub trait GetType {
 /// Infer the type associated with an expression under a given environment.
 impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        trace!("Getting type of expression {}", self);
+        // trace!("Getting type of expression {}", self);
         let i = i + 1;
         Ok(match self {
             Self::AnnotatedWithSource { expr, loc } => {
                 // Get the type of the inner expression.
                 expr.get_type_checked(env, i).map_err(|e| e.with_loc(loc))?
+            }
+
+            Self::LetStaticVar(name, mutability, ty, const_val, ret) => {
+                // Create a new environment with the static variable.
+                let mut new_env = env.clone();
+                new_env.define_static_var(name, *mutability, ty.clone())?;
+                // Get the type of the return expression in the new environment.
+                ret.get_type_checked(&new_env, i)?
+            }
+
+            Self::LetStaticVars(vars, ret) => {
+                // Create a new environment with the static variables.
+                let mut new_env = env.clone();
+                for (name, mutability, ty, _const_expr) in vars {
+                    // Define the static variable in the new environment.
+                    new_env.define_static_var(name, *mutability, ty.clone())?;
+                }
+                // Get the type of the return expression in the new environment.
+                ret.get_type_checked(&new_env, i)?
             }
 
             Self::Match(expr, branches) => {
@@ -452,6 +471,18 @@ impl GetType for Expr {
                     if let Some(t) = t {
                         *t = t.substitute(name, ty);
                     }
+                    val.substitute(name, ty);
+                }
+                ret.substitute(name, ty)
+            }
+            Self::LetStaticVar(_name, _mutability, t, val, ret) => {
+                *t = t.substitute(name, ty);
+                val.substitute(name, ty);
+                ret.substitute(name, ty)
+            }
+            Self::LetStaticVars(vars, ret) => {
+                for (_, _, t, val) in vars.iter_mut() {
+                    *t = t.substitute(name, ty);
                     val.substitute(name, ty);
                 }
                 ret.substitute(name, ty)
