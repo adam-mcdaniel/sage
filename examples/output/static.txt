@@ -1,0 +1,38 @@
+[Before allocating z on stack]
+Debug
+   SP = 8207
+   TMP = 32
+   FP = 8207
+   FP_STACK = 11
+   GP = 8203
+   A = 0
+   B = 0
+   C = 0
+   D = 0
+   E = 0
+   F = 0
+[After allocating z on stack]
+Debug
+   SP = 8208
+   TMP = 32
+   FP = 8207
+   FP_STACK = 11
+   GP = 8203
+   A = 0
+   B = 0
+   C = 0
+   D = 0
+   E = 0
+   F = 0
+Stack pointer (GP + sizeof(A) + sizeof(B) + sizeof(x) + sizeof(y) + sizeof(z)): SP=&(8208), GP=&(8203), diff=5
+[&z == SP    ] z=7 ===> SP[0]=7
+Global pointer: &(8203)
+[&x == GP    ] x=5 ===> GP[0]=5
+[&y == GP + 1] y=6 ===> GP[1]=6
+Frame pointer: &(8207)
+[memory check ] A address: &(8205), B address: &(8206)
+[before A += 1] A: 100, B: 200
+[after  B += 1] A: 101, B: 200
+[before A += 1] A: 101, B: 200
+[after  B += 1] A: 101, B: 201
+[memory check ] A address: &(8205), B address: &(8206)

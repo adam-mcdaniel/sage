@@ -406,7 +406,7 @@ impl Display for Error {
                 write!(f, "tried to compile polymorphic procedure {}", proc)
             }
             Self::AssemblyError(e) => {
-                write!(f, "assembly error: {:?}", e)
+                write!(f, "assembly error: {}", e)
             }
             Self::InvalidMonomorphize(expr) => {
                 write!(

@@ -28,6 +28,11 @@ impl BinaryOp for Comparison {
             | (Type::Int, Self::GreaterThan, Type::Int)
             | (Type::Int, Self::GreaterThanOrEqual, Type::Int) => Ok(true),
 
+            (Type::Cell, Self::LessThan, Type::Cell)
+            | (Type::Cell, Self::LessThanOrEqual, Type::Cell)
+            | (Type::Cell, Self::GreaterThan, Type::Cell)
+            | (Type::Cell, Self::GreaterThanOrEqual, Type::Cell) => Ok(true),
+
             (Type::Float, Self::LessThan, Type::Float)
             | (Type::Float, Self::LessThan, Type::Int)
             | (Type::Int, Self::LessThan, Type::Float)

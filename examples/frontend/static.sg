@@ -13,7 +13,8 @@ let SP: &Cell = get_sp(),
     FP: &Cell = get_fp(),
     FP_STACK: &Cell = get_fp_stack();
 
-print("Stack pointer (GP + sizeof(A) + sizeof(B) + sizeof(x) + sizeof(y) + sizeof(z)): SP=", SP, ", GP=", GP, ", diff=", SP as Cell as Int - GP as Cell as Int, "\n");
+print("Stack pointer (GP + sizeof(A) + sizeof(B) + sizeof(x) + sizeof(y) + sizeof(z)): SP=",
+      SP, ", GP=", GP, ", diff=", SP as Cell as Int - GP as Cell as Int, "\n");
 print("[&z == SP    ] z=", z, " ===> SP[0]=", SP[0], "\n");
 
 print("Global pointer: ", GP, "\n");

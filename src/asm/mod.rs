@@ -26,6 +26,7 @@
 //! variant of the virtual machine. It is very portable: it only adds
 //! instructions for float operations, memory allocation, and I/O.
 use ::std::collections::HashMap;
+use ::core::fmt::{Display, Formatter, Result as FmtResult};
 
 use log::{debug, trace, warn, error};
 
@@ -175,5 +176,18 @@ pub enum Error {
 impl From<crate::vm::Error> for Error {
     fn from(e: crate::vm::Error) -> Self {
         Self::VirtualMachineError(e)
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match self {
+            Self::VirtualMachineError(e) => write!(f, "{}", e),
+            Self::UnsupportedInstruction(op) => write!(f, "Unsupported instruction: {}", op),
+            Self::UndefinedLabel(name, i) => write!(f, "Undefined label {} at instruction #{}", name, i),
+            Self::UndefinedGlobal(name) => write!(f, "Undefined global {}", name),
+            Self::Unmatched(op, i) => write!(f, "Unmatched {} at instruction #{}", op, i),
+            Self::Unexpected(op, i) => write!(f, "Unexpected {} at instruction #{}", op, i),
+        }
     }
 }
