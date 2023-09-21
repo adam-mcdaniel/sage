@@ -1,5 +1,5 @@
 
-use crate::asm::{self, GP, Location, CoreOp};
+use crate::asm::{GP, Error, Location, CoreOp};
 
 use std::collections::HashMap;
 use core::fmt;
@@ -35,7 +35,7 @@ impl Globals {
     }
 
     /// Resolve the global variables in a location to produce an addressable location.
-    pub fn resolve(&mut self, location: &Location) -> Result<Location, asm::Error> {
+    pub fn resolve(&mut self, location: &Location) -> Result<Location, Error> {
         // Check if the location has already been resolved
         if let Some(loc) = self.memoized_resolutions.get(location) {
             return Ok(loc.clone());
@@ -59,7 +59,7 @@ impl Globals {
                 } else {
                     // If the global variable is not found, return an error
                     error!("Global variable {name} not found in environment {self}");
-                    Err(asm::Error::UndefinedGlobal(name.clone()))?
+                    Err(Error::UndefinedGlobal(name.clone()))?
                 }
             }
         };
