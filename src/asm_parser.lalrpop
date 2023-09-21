@@ -145,10 +145,17 @@ StandardOp: StandardOp = {
 }
 
 Location: Location = {
-    "[" <deref: Location> "+" <offset: IntLit> "]" => deref.deref().offset(offset as isize),
-    "[" <deref: Location> "-" <offset: IntLit> "]" => deref.deref().offset(-offset as isize),
+    "[" <deref: Register> "+" <offset: IntLit> "]" => deref.deref().offset(offset as isize),
+    "[" <deref: Register> "-" <offset: IntLit> "]" => deref.deref().offset(-offset as isize),
     "[" <Location> "]" => <>.deref(),
 
+    <location: Location> "(" <offset: IntLit> ")" => location.offset(offset as isize),
+
+    <Global> => Location::Global(<>),
+    <Register> => <>
+}
+
+Register: Location = {
     "A" => A,
     "B" => B,
     "C" => C,
@@ -157,8 +164,7 @@ Location: Location = {
     "F" => F,
     "SP" => SP,
     "FP" => FP,
-    "GP" => GP,
-    <Global> => Location::Global(<>),
+    "GP" => GP
 }
 
 FFIBinding: FFIBinding = {

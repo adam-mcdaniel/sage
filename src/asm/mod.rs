@@ -33,10 +33,12 @@ use log::{debug, trace, warn, error};
 pub mod core;
 pub mod location;
 pub mod std;
+pub mod globals;
 
+pub use globals::Globals;
 pub use self::core::{CoreOp, CoreProgram};
 pub use self::std::{StandardOp, StandardProgram};
-pub use location::{REGISTERS, Globals, Location, A, B, C, D, E, F, FP, SP, GP};
+pub use location::{REGISTERS, Location, A, B, C, D, E, F, FP, SP, GP};
 pub(crate) use location::{TMP, FP_STACK};
 
 /// A frontend to both the `CoreProgram` and `StandardProgram` types.
@@ -108,26 +110,26 @@ impl Env {
         self.label += 1;
     }
 
+    /// Declare a new global variable in the environment with a given size.
+    /// 
+    /// A global variable is some fixed size, static data allocated by the assembler,
+    /// and is accessible by all functions. The user can declare a global variable
+    /// with the `global` keyword.
     fn declare_global(&mut self, name: &str, size: usize) {
         trace!("Declared global {}", name);
         self.globals.add_global(name.to_owned(), size);
     }
 
+    /// Resolve any global variables that may be used in an address calculation.
     fn resolve(&mut self, loc: &Location) -> Result<Location, Error> {
         self.globals.resolve(loc)
     }
 
+    /// Get the size that should be allocated to the global variables.
     fn get_size_of_globals(&self) -> usize {
         self.globals.get_size()
     }
-
-    fn get_location_of_global(&mut self, name: &str) -> Result<Location, Error> {
-        self.globals.get_global_location(name).ok_or_else(|| {
-            error!("Undefined global {}", name);
-            Error::UndefinedGlobal(name.to_string())
-        })
-    }
-
+    
     /// Get the virtual machine ID of a label (which can be called as a function).
     fn get_label(&self, name: &str, current_instruction: usize) -> Result<usize, Error> {
         self.labels

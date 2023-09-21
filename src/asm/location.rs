@@ -63,15 +63,11 @@
 //!   ```
 use crate::{
     side_effects::{Input, Output},
-    asm::{self, CoreOp},
     vm::{self, Error, VirtualMachineProgram},
     NULL,
 };
 
-use std::collections::HashMap;
 use core::fmt;
-
-use log::{error, trace};
 
 /// The stack pointer register.
 pub const SP: Location = Location::Address(0);
@@ -101,124 +97,6 @@ pub const F: Location = Location::Address(10);
 
 pub const REGISTERS: [Location; 11] = [SP, TMP, FP, FP_STACK, GP, A, B, C, D, E, F];
 
-/// A lookup for all the global variables in an assembly program.
-#[derive(Clone, Debug)]
-pub struct Globals {
-    /// The locations, offsets, and sizes of global variables.
-    globals: HashMap<String, (Location, usize, usize)>,
-    /// The next available GP offset.
-    next_gp_offset: usize,
-    /// A cache of resolved locations.
-    memoized_resolutions: HashMap<Location, Location>,
-}
-
-impl Default for Globals {
-    fn default() -> Self {
-        Self {
-            globals: HashMap::new(),
-            next_gp_offset: 0,
-            memoized_resolutions: HashMap::new(),
-        }
-    }
-}
-
-impl Globals {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn resolve(&mut self, location: &Location) -> Result<Location, asm::Error> {
-        if let Some(loc) = self.memoized_resolutions.get(location) {
-            return Ok(loc.clone());
-        }
-        let result = match location {
-            Location::Address(n) => Location::Address(*n),
-            Location::Indirect(loc) => self.resolve(loc)?.deref(),
-            Location::Offset(loc, offset) => {
-                self.resolve(loc)?.offset(*offset)
-            }
-            Location::Global(name) => {
-                if let Some((loc, _, _)) = self.globals.get(name) {
-                    loc.clone()
-                } else {
-                    error!("Global variable {name} not found in environment {self}");
-                    Err(asm::Error::UndefinedGlobal(name.clone()))?
-                }
-            }
-        };
-        if location != &result {
-            trace!("Resolved {} to {}", location, result);
-        }
-        self.memoized_resolutions.insert(location.clone(), result.clone());
-
-        Ok(result)
-    }
-
-    /// Add a global variable to the list of globals.
-    pub fn add_global(&mut self, name: String, size: usize) -> Location {
-        if let Some((loc, _, _)) = self.globals.get(&name) {
-            return loc.clone();
-        }
-
-        trace!("Current GP offset: {}", self.next_gp_offset);
-        let offset = self.next_gp_offset;
-        self.next_gp_offset += size;
-        let loc = GP.deref().offset(offset as isize);
-        
-        trace!("Adding global variable {name} with size {size} at {loc}");
-        self.globals.insert(name, (loc.clone(), offset, size));
-        loc
-    }
-
-    /// Get the size of the global variables.
-    /// This is the number of cells that the global variables occupy.
-    pub fn get_size(&self) -> usize {
-        self.next_gp_offset
-    }
-
-    /// Get the location, and size of a global variable.
-    pub fn get_global(&self, name: &str) -> Option<&(Location, usize, usize)> {
-        self.globals.get(name)
-    }
-
-    /// Get the location of a global variable.
-    pub fn get_global_location(&mut self, name: &str) -> Option<Location> {
-        self.globals.get(name).cloned() // Get the global variable
-            // Resolve the location of the global variable
-            .and_then(|(loc, _, _)| self.resolve(&loc).ok()) 
-    }
-
-    /// Get the offset of a global variable.
-    /// This is the offset relative to GP.
-    fn get_global_offset(&self, name: &str) -> Option<usize> {
-        self.globals.get(name).map(|(_, offset, _)| *offset)
-    }
-
-    /// Get the size of a global variable.
-    /// This is the number of cells that the global variable occupies.
-    pub fn get_global_size(&self, name: &str) -> Option<usize> {
-        self.globals.get(name).map(|(_, _, size)| *size)
-    }
-}
-
-impl fmt::Display for Globals {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (name, (loc, offset, size)) in &self.globals {
-            writeln!(
-                f,
-                "{} // Location: {}, Offset: {}, Size: {}",
-                CoreOp::Global {
-                    name: name.clone(),
-                    size: *size
-                },
-                loc,
-                offset,
-                size
-            )?;
-        }
-        Ok(())
-    }
-}
 
 
 /// A location in memory (on the tape of the virtual machine).
@@ -319,9 +197,13 @@ impl Location {
         }
 
         match self {
+            // If we are offsetting from another offset, then we can just add the offsets together.
             Location::Offset(loc, x) => Location::Offset(loc.clone(), *x + offset),
+            // If we are offsetting from a constant address, then we can just add the offset to the address.
             Location::Address(addr) => Location::Address((*addr as isize + offset) as usize),
+            // Offsetting from a dereferenced pointer.
             Location::Indirect(_) => Location::Offset(Box::new(self.clone()), offset),
+            // Offsetting from a global variable.
             Location::Global(_) => {
                 Location::Offset(Box::new(self.clone()), offset)
             }

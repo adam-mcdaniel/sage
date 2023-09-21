@@ -50,17 +50,21 @@ impl StandardProgram {
     /// Get the size of the globals.
     fn get_size_of_globals(&self, env: &mut Env) -> Result<usize, Error> {
         for op in &self.code {
-            match op {
-                StandardOp::CoreOp(CoreOp::Global { name, size }) => {
-                    env.declare_global(name, *size);
-                }
-                _ => {}
+            // Go through all the operations and declare the globals.
+            if let StandardOp::CoreOp(CoreOp::Global { name, size }) = op {
+                env.declare_global(name, *size);
             }
         }
-
+        
+        // Get the size of the globals in the environment after the declarations.
         Ok(env.get_size_of_globals())
     }
 
+    /// Assemble the program into a virtual machine program.
+    /// 
+    /// The `allowed_recursion_depth` is the size of the frame pointer stack.
+    /// The frame pointer stack is used to keep track of the frame pointers
+    /// of each function call.
     pub fn assemble(&self, allowed_recursion_depth: usize) -> Result<vm::StandardProgram, Error> {
         let mut result = vm::StandardProgram(vec![]);
         let mut env = Env::default();
@@ -144,6 +148,7 @@ impl fmt::Display for StandardProgram {
 }
 
 impl AssemblyProgram for StandardProgram {
+    /// Add a core operation to the program.
     fn op(&mut self, op: CoreOp) {
         // If the operation is a function label, add its label to the set of defined labels.
         if let CoreOp::Fn(label) = &op {
@@ -152,6 +157,7 @@ impl AssemblyProgram for StandardProgram {
         self.code.push(StandardOp::CoreOp(op))
     }
 
+    /// Add a standard operation to the program.
     fn std_op(&mut self, op: super::StandardOp) -> Result<(), Error> {
         // If the operation is a function label, add its label to the set of defined labels.
         if let StandardOp::CoreOp(CoreOp::Fn(label)) = &op {
@@ -161,14 +167,17 @@ impl AssemblyProgram for StandardProgram {
         Ok(())
     }
 
+    /// Is the given label defined yet in the operations?
     fn is_defined(&self, label: &str) -> bool {
         self.labels.contains(label)
     }
 
+    /// Get the current instruction number.
     fn current_instruction(&self) -> usize {
         self.code.len()
     }
 
+    /// Get the operation at the given instruction number.
     fn get_op(&self, start: usize) -> Option<Result<CoreOp, StandardOp>> {
         self.code.get(start).cloned().map(Err)
     }

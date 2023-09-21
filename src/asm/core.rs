@@ -36,7 +36,7 @@ use crate::{
 };
 use std::{collections::BTreeSet, fmt};
 
-use log::info;
+use log::{info, trace};
 
 /// An assembly program composed of core instructions, which can be assembled
 /// into the core virtual machine instructions.
@@ -71,15 +71,15 @@ impl CoreProgram {
 
     /// Get the size of the globals in the program.
     fn get_size_of_globals(&self, env: &mut Env) -> Result<usize, Error> {
+        trace!("Getting size of globals, this could be an expensive operation...");
         for op in &self.code {
-            match op {
-                CoreOp::Global { name, size } => {
-                    env.declare_global(name, *size);
-                }
-                _ => {}
+            // Go through all the operations and declare the globals.
+            if let CoreOp::Global { name, size } = op {
+                env.declare_global(name, *size);
             }
         }
 
+        // Get the size of the globals in the environment after the declarations.
         Ok(env.get_size_of_globals())
     }
 
@@ -207,8 +207,21 @@ impl AssemblyProgram for CoreProgram {
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum CoreOp {
     Comment(String),
+    /// Many instructions to execute; conveniently grouped together.
+    /// This is useful for code generation.
     Many(Vec<CoreOp>),
 
+    /// Declare a global variable.
+    /// 
+    /// This will allow the program to reference the global variable
+    /// using `$name` in the assembly code, where `name` is the name
+    /// of the global variable.
+    /// 
+    /// To access the first element of the global variable, use `$name`.
+    /// To access the second element of the global variable, use `$name + 1`.
+    /// 
+    /// To get the address of the first element of the global variable,
+    /// use `lea $name, $tmp`.
     Global {
         name: String,
         size: usize,
@@ -445,6 +458,7 @@ impl CoreOp {
         )
     }
 
+    /// Push a string literal as UTF-8 to the stack.
     pub fn push_string(msg: impl ToString) -> Self {
         let mut vals: Vec<i64> = msg.to_string().chars().map(|c| c as i64).collect();
         vals.push(0);
@@ -457,22 +471,8 @@ impl CoreOp {
             Self::Prev(SP, None),
         ])
     }
-
-    pub fn stack_alloc_cells(dst: Location, vals: Vec<i64>) -> Self {
-        Self::Many(vec![
-            Self::GetAddress {
-                addr: SP.deref().offset(1),
-                dst,
-            },
-            Self::Array {
-                src: SP.deref().offset(1),
-                vals,
-                dst: SP,
-            },
-            Self::Prev(SP, None),
-        ])
-    }
-
+    
+    /// Allocate a string on the stack, and store its address in a destination register.
     pub fn stack_alloc_string(dst: Location, text: impl ToString) -> Self {
         let mut vals: Vec<i64> = text.to_string().chars().map(|c| c as i64).collect();
         vals.push(0);
@@ -815,7 +815,11 @@ impl CoreOp {
                 }.assemble(current_instruction, env, result)?
             },
             CoreOp::Pop(dst, size) => {
-                let dst = dst.as_ref().and_then(|dst| env.resolve(dst).ok());
+                // If the destination is None, then we're just popping the stack into oblivion.
+                // Otherwise, we're popping the stack into `Some` destination.
+                // If we have a destination, resolve it. If we can't resolve it, return an error.
+                let dst = dst.as_ref().map(|dst| env.resolve(dst)).transpose()?;
+
                 CoreOp::PopFrom {
                     sp: SP,
                     dst,
