@@ -183,6 +183,17 @@ impl TypeCheck for Expr {
                 expr.type_check(env).map_err(|e| e.with_loc(loc))
             }
 
+            Self::Declare(declaration, body) => {
+                // Create a new environment with the declarations defined.
+                let mut new_env = env.clone();
+                // Check the declaration.
+                declaration.type_check(&new_env)?;
+                // Add the declarations to the environment.
+                new_env.add_declaration(&declaration)?;
+                // Check the body with the declarations defined.
+                body.type_check(&new_env)
+            }
+
             Self::UnaryOp(unop, expr) => {
                 // Check if the unary operator is sound with
                 // the given expression.

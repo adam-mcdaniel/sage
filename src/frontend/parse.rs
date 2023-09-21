@@ -13,6 +13,7 @@ pub enum Statement {
         stmt: Box<Self>,
         loc: SourceCodeLocation,
     },
+    LetPattern(Vec<(Pattern, Expr)>),
     Let(Vec<(String, Mutability, Option<Type>, Expr)>),
     LetStatic(Vec<(String, Mutability, Type, ConstExpr)>),
     Assign(Expr, Option<Box<dyn AssignOp + 'static>>, Expr),
@@ -116,20 +117,49 @@ impl Statement {
             // }
             (Self::LetIn(defs, body), _) => Expr::LetVars(defs, Box::new(body.to_expr(None))),
             (Self::LetStaticIn(defs, body), _) => {
-                Expr::LetStaticVars(defs, Box::new(body.to_expr(None)))
-            }
-            (Self::Let(defs), Some(Expr::LetVars(mut vars, ret))) => {
-                for (name, mutability, ty, val) in defs.into_iter().rev() {
-                    vars.insert(0, (name, mutability, ty, val));
+                // Expr::LetStaticVars(defs, Box::new(body.to_expr(None)))
+                let mut result = body.to_expr(None);
+                for (n, m, t, e) in defs.into_iter().rev() {
+                    result = result.with(crate::lir::Declaration::StaticVar(n, m, t, e));
                 }
-                return Expr::LetVars(vars, ret);
+                result
+            }
+            (Self::Let(defs), Some(Expr::LetVars(vars, ret))) => {
+                let mut result = *ret;
+                for (name, mutability, ty, val) in defs.into_iter().rev() {
+                    result = result.with(crate::lir::Declaration::Var(name, mutability, ty, val));
+                }
+                for (name, mutability, ty, val) in vars.into_iter().rev() {
+                    result = result.with(crate::lir::Declaration::Var(name, mutability, ty, val));
+                }
+                result
             }
             (Self::Let(defs), _) => return Expr::LetVars(defs, rest_expr),
-            (Self::LetStatic(defs), Some(Expr::LetStaticVars(mut vars, ret))) => {
-                for (name, mutability, ty, val) in defs.into_iter().rev() {
-                    vars.insert(0, (name, mutability, ty, val));
+            (Self::LetPattern(defs), Some(Expr::LetVars(vars, ret))) => {
+                let mut result = *ret;
+                for (pat, expr) in defs.into_iter().rev() {
+                    result = result.with(crate::lir::Declaration::VarPat(pat, expr));
                 }
-                return Expr::LetStaticVars(vars, ret);
+                for (name, mutability, ty, val) in vars.into_iter().rev() {
+                    result = result.with(crate::lir::Declaration::Var(name, mutability, ty, val));
+                }
+                result
+            }
+            (Self::LetPattern(defs), _) => return rest_expr.with(defs),
+            (Self::LetStatic(defs), Some(Expr::LetStaticVars(vars, ret))) => {
+                // for (name, mutability, ty, val) in defs.into_iter().rev() {
+                //     vars.insert(0, (name, mutability, ty, val));
+                // }
+
+                let mut result = *ret;
+                for (name, mutability, ty, val) in defs.into_iter().rev() {
+                    result = result.with(crate::lir::Declaration::StaticVar(name, mutability, ty, val));
+                }
+                for (name, mutability, ty, val) in vars.into_iter().rev() {
+                    result = result.with(crate::lir::Declaration::StaticVar(name, mutability, ty, val));
+                }
+                // return Expr::LetStaticVars(vars, ret);
+                result
             }
             (Self::LetStatic(defs), _) => return Expr::LetStaticVars(defs, rest_expr),
             (Self::Expr(e), _) => e,
@@ -283,43 +313,73 @@ impl Declaration {
                     )
                 }
             }
-            (Self::Const(mut consts), Some(Expr::LetConsts(mut defs, ret))) => {
-                for (name, value) in consts.drain(..).rev() {
-                    defs.insert(name, value);
+            (Self::Const(consts), Some(Expr::LetConsts(defs, ret))) => {
+                let mut result = *ret;
+                for (name, value) in consts.into_iter().rev() {
+                    result = result.with((name, value))
                 }
-                Expr::LetConsts(defs, ret)
+                for (name, value) in defs.into_iter().rev() {
+                    result = result.with((name, value))
+                }
+                result
+
+                // for (name, value) in consts.drain(..).rev() {
+                //     defs.insert(name, value);
+                // }
+                // Expr::LetConsts(defs, ret)
             }
             (Self::Const(consts), _) => {
-                let mut defs = BTreeMap::new();
-                for (name, value) in consts.into_iter().rev() {
-                    defs.insert(name, value);
-                }
-                Expr::LetConsts(defs, rest_expr)
+                rest_expr.with(consts)
             }
             (Self::Proc(name, params, ret, stmt), Some(Expr::LetProcs(mut procs, ret2))) => {
-                procs.push((name.clone(), Self::proc_to_expr(name, params, ret, *stmt)));
-                Expr::LetProcs(procs, ret2)
+                ret2.with((
+                    name.clone(),
+                    Self::proc_to_expr(name, params, ret, *stmt),
+                )).with(procs)
+                // procs.push((name.clone(), Self::proc_to_expr(name, params, ret, *stmt)));
+                // Expr::LetProcs(procs, ret2)
             }
             (Self::Proc(name, params, ret, stmt), Some(Expr::LetConsts(mut defs, ret2))) => {
-                defs.insert(
+                // defs.insert(
+                //     name.clone(),
+                //     ConstExpr::Proc(Self::proc_to_expr(name, params, ret, *stmt)),
+                // );
+                // Expr::LetConsts(defs, ret2)
+                
+                ret2.with((
                     name.clone(),
-                    ConstExpr::Proc(Self::proc_to_expr(name, params, ret, *stmt)),
-                );
-                Expr::LetConsts(defs, ret2)
+                    Self::proc_to_expr(name, params, ret, *stmt),
+                )).with(defs)
             }
             (Self::Proc(name, params, ret, stmt), _) => {
-                let mut defs = BTreeMap::new();
-                defs.insert(
+                // let mut defs = BTreeMap::new();
+                // defs.insert(
+                //     name.clone(),
+                //     ConstExpr::Proc(Self::proc_to_expr(name, params, ret, *stmt)),
+                // );
+                // Expr::LetConsts(defs, rest_expr)
+                rest_expr.with((
                     name.clone(),
-                    ConstExpr::Proc(Self::proc_to_expr(name, params, ret, *stmt)),
-                );
-                Expr::LetConsts(defs, rest_expr)
+                    Self::proc_to_expr(name, params, ret, *stmt),
+                ))
             }
             (
                 Self::PolyProc(name, ty_params, params, ret, stmt),
                 Some(Expr::LetConsts(mut consts, ret2)),
             ) => {
-                consts.insert(
+                // consts.insert(
+                //     name.clone(),
+                //     ConstExpr::PolyProc(PolyProcedure::new(
+                //         name,
+                //         ty_params,
+                //         params,
+                //         ret.unwrap_or(Type::None),
+                //         stmt.to_expr(None),
+                //     )),
+                // );
+                // Expr::LetConsts(consts, ret2)
+                let mut result = *ret2;
+                result = result.with((
                     name.clone(),
                     ConstExpr::PolyProc(PolyProcedure::new(
                         name,
@@ -328,12 +388,25 @@ impl Declaration {
                         ret.unwrap_or(Type::None),
                         stmt.to_expr(None),
                     )),
-                );
-                Expr::LetConsts(consts, ret2)
+                ));
+                
+                result.with(consts)
             }
             (Self::PolyProc(name, ty_params, params, ret, stmt), _) => {
-                let mut consts = BTreeMap::new();
-                consts.insert(
+                // let mut consts = BTreeMap::new();
+                // consts.insert(
+                //     name.clone(),
+                //     ConstExpr::PolyProc(PolyProcedure::new(
+                //         name,
+                //         ty_params,
+                //         params,
+                //         ret.unwrap_or(Type::None),
+                //         stmt.to_expr(None),
+                //     )),
+                // );
+                // Expr::LetConsts(consts, rest_expr)
+                let mut result = *rest_expr;
+                result = result.with((
                     name.clone(),
                     ConstExpr::PolyProc(PolyProcedure::new(
                         name,
@@ -342,14 +415,15 @@ impl Declaration {
                         ret.unwrap_or(Type::None),
                         stmt.to_expr(None),
                     )),
-                );
-                Expr::LetConsts(consts, rest_expr)
+                ));
+                result
             }
             (Self::Type(mut types), Some(Expr::LetTypes(mut types2, ret))) => {
-                types.append(&mut types2);
-                Expr::LetTypes(types, ret)
+                // types.append(&mut types2);
+                // Expr::LetTypes(types, ret)
+                ret.with(types).with(types2)
             }
-            (Self::Type(types), _) => Expr::LetTypes(types, rest_expr),
+            (Self::Type(types), _) => rest_expr.with(types),
             (Self::Statement(stmt), Some(rest)) => stmt.to_expr(Some(rest)),
             (Self::Statement(stmt), None) => stmt.to_expr(None),
         }
@@ -657,7 +731,7 @@ fn parse_stmt(pair: Pair<Rule>, filename: Option<&str>) -> Statement {
             }
             Statement::LetStatic(defs)
         }
-
+            
         Rule::stmt_let_static_in_expr | Rule::stmt_let_static_in_block => {
             let mut inner_rules = pair.into_inner();
             let mut defs = vec![];
@@ -771,6 +845,18 @@ fn parse_stmt(pair: Pair<Rule>, filename: Option<&str>) -> Statement {
             let body = parse_stmt(inner_rules.next().unwrap(), filename);
             Statement::For(Box::new(pre), cond, Box::new(post), Box::new(body))
         }
+
+        Rule::stmt_let_pat => {
+            let mut inner_rules = pair.into_inner();
+            let mut defs = vec![];
+            while inner_rules.peek().is_some() {
+                let pattern = parse_pattern(inner_rules.next().unwrap());
+                let expr = parse_expr(inner_rules.next().unwrap());
+                defs.push((pattern, expr));
+            }
+            Statement::LetPattern(defs)
+        }
+
 
         Rule::stmt_let => {
             let mut inner_rules = pair.into_inner();

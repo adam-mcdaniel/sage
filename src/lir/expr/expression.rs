@@ -6,7 +6,7 @@
 //! which are then executed by the runtime.
 
 use super::ops::*;
-use crate::lir::{ConstExpr, Mutability, Pattern, Procedure, Type};
+use crate::lir::{Declaration, ConstExpr, Mutability, Pattern, Procedure, Type};
 use crate::parse::SourceCodeLocation;
 use core::fmt;
 use std::collections::BTreeMap;
@@ -29,6 +29,10 @@ pub enum Expr {
     ConstExpr(ConstExpr),
     /// A block of expressions. The last expression in the block is the value of the block.
     Many(Vec<Self>),
+
+    /// Declare any number of variables, procedures, types, or constants.
+    /// Evaluate a subexpression in that scope.
+    Declare(Box<Declaration>, Box<Self>),
 
     /// A `const` binding expression.
     /// Declare a constant under a new scope, and evaluate a subexpression in that scope.
@@ -143,6 +147,35 @@ impl From<ConstExpr> for Expr {
 }
 
 impl Expr {
+    pub const NONE: Self = Self::ConstExpr(ConstExpr::None);
+
+    /// Return this expression, but with a given declaration in scope.
+    pub fn with(&self, decl: impl Into<Declaration>) -> Self {
+        match self {
+            Self::AnnotatedWithSource { expr, loc } => {
+                Self::AnnotatedWithSource {
+                    expr: Box::new(expr.with(decl)),
+                    loc: loc.clone(),
+                }
+            }
+
+            Self::Declare(declaration, expr) => {
+                if let Declaration::Many(ref decls) = **declaration {
+                    let mut result = vec![decl.into()];
+                    result.extend(decls.iter().cloned());
+                    Self::Declare(Box::new(Declaration::Many(result)), expr.clone())
+                } else {
+                    Self::Declare(
+                        Box::new(Declaration::Many(vec![decl.into(), *declaration.clone()])),
+                        expr.clone(),
+                    )
+                }
+            }
+
+            _ => Self::Declare(Box::new(decl.into()), Box::new(self.clone())),
+        }
+    }
+
     /// Get the size of an expression.
     pub fn size_of(self) -> Self {
         Self::ConstExpr(ConstExpr::SizeOfExpr(Box::new(self)))
@@ -165,6 +198,7 @@ impl Expr {
         Self::As(Box::new(self), t)
     }
 
+    /// Apply a unary operation to this expression.
     pub fn unop(self, op: impl UnaryOp + 'static) -> Self {
         Self::UnaryOp(Box::new(op), Box::new(self))
     }
@@ -319,13 +353,32 @@ impl Expr {
         expr: impl Into<Self>,
         ret: impl Into<Self>,
     ) -> Self {
-        Expr::LetVar(
-            var.to_string(),
-            mutability.into(),
-            t,
-            Box::new(expr.into()),
-            Box::new(ret.into()),
-        )
+        ret.into()
+            .with((var.to_string(), mutability.into(), t, expr.into()))
+        // [DEBUG x] 0000: next SP
+        // [DEBUG x] 0001: set [SP], 65536
+        // [DEBUG x] 0002: next SP
+        // [DEBUG x] 0003: set [SP], 2
+        // [DEBUG x] 0004: mov FP, A set B, 1 index A, B, C push C 
+        // [DEBUG x] 0005: copy [SP + 1], [SP - 1], 0
+        // [DEBUG x] 0006: pop 2
+        // [DEBUG x] 0007: next SP
+        // [DEBUG x] 0008: set [SP], 1
+        // [DEBUG x] 0009: mov FP, A set B, 1 index A, B, C push C 
+        // [DEBUG x] 000a: copy [SP + 1], [SP - 1], 0
+        // [DEBUG x] 000b: pop 2
+        // [DEBUG x] 000c: push [FP + 1]
+        // [DEBUG x] 000d: put-int [SP]
+        // [DEBUG x] 000e: pop [SP]
+        // [DEBUG x] 000f: copy [SP + 1], [SP], 0
+        // [DEBUG x] 0010: pop
+        // Expr::LetVar(
+        //     var.to_string(),
+        //     mutability.into(),
+        //     t,
+        //     Box::new(expr.into()),
+        //     Box::new(ret.into()),
+        // )
     }
 
     /// Create a `let` binding for an expression, and define multiple variables.
@@ -333,12 +386,11 @@ impl Expr {
         vars: Vec<(&str, Mutability, Option<Type>, Self)>,
         ret: impl Into<Self>,
     ) -> Self {
-        Self::LetVars(
-            vars.into_iter()
-                .map(|(name, m, t, e)| (name.to_string(), m, t, e))
-                .collect(),
-            Box::new(ret.into()),
-        )
+        let mut ret = ret.into();
+        for (name, m, t, e) in vars.into_iter().rev() {
+            ret = ret.with((name.to_string(), m, t, e));
+        }
+        ret
     }
 
     /// Create a `let` binding for an type.
@@ -349,14 +401,20 @@ impl Expr {
     ///
     /// When this expression is finished evaluating, `typename` will be removed from the scope.
     pub fn let_type(typename: impl ToString, t: Type, ret: impl Into<Self>) -> Self {
-        Expr::LetType(typename.to_string(), t, Box::new(ret.into()))
+        // Expr::LetType(typename.to_string(), t, Box::new(ret.into()))
+        ret.into().with((typename.to_string(), t))
     }
     /// Create several `type` bindings at onces.
     pub fn let_types(vars: Vec<(&str, Type)>, ret: impl Into<Self>) -> Self {
-        Self::LetTypes(
-            vars.into_iter().map(|(k, v)| (k.to_string(), v)).collect(),
-            Box::new(ret.into()),
-        )
+        // Self::LetTypes(
+        //     vars.into_iter().map(|(k, v)| (k.to_string(), v)).collect(),
+        //     Box::new(ret.into()),
+        // )
+        let mut ret = ret.into();
+        for (name, t) in vars.into_iter().rev() {
+            ret = ret.with((name.to_string(), t));
+        }
+        ret
     }
 
     /// Create a `let` binding for a constant expression.
@@ -366,18 +424,24 @@ impl Expr {
     ///
     /// When this expression is finished evaluating, `constname` will be removed from the scope.
     pub fn let_const(constname: impl ToString, e: ConstExpr, ret: impl Into<Self>) -> Self {
-        Expr::LetConst(constname.to_string(), e, Box::new(ret.into()))
+        // Expr::LetConst(constname.to_string(), e, Box::new(ret.into()))
+        ret.into().with((constname.to_string(), e))
     }
 
     /// Create several `const` bindings at onces.
     pub fn let_consts(constants: Vec<(&str, ConstExpr)>, ret: impl Into<Self>) -> Self {
-        Self::LetConsts(
-            constants
-                .into_iter()
-                .map(|(k, v)| (k.to_string(), v))
-                .collect(),
-            Box::new(ret.into()),
-        )
+        // Self::LetConsts(
+        //     constants
+        //         .into_iter()
+        //         .map(|(k, v)| (k.to_string(), v))
+        //         .collect(),
+        //     Box::new(ret.into()),
+        // )
+        let mut ret = ret.into();
+        for (name, e) in constants.into_iter().rev() {
+            ret = ret.with((name.to_string(), e));
+        }
+        ret
     }
 
     /// Create a `proc` binding for a procedure.
@@ -387,15 +451,21 @@ impl Expr {
     ///
     /// When this expression is finished evaluating, `proc` will be removed from the scope.
     pub fn let_proc(procname: impl ToString, proc: Procedure, ret: impl Into<Self>) -> Self {
-        Expr::LetProc(procname.to_string(), proc, Box::new(ret.into()))
+        // Expr::LetProc(procname.to_string(), proc, Box::new(ret.into()))
+        ret.into().with((procname.to_string(), proc))
     }
 
     /// Create several `proc` bindings at onces.
     pub fn let_procs(procs: BTreeMap<&str, Procedure>, ret: impl Into<Self>) -> Self {
-        Self::LetProcs(
-            procs.into_iter().map(|(k, v)| (k.to_string(), v)).collect(),
-            Box::new(ret.into()),
-        )
+        // Self::LetProcs(
+        //     procs.into_iter().map(|(k, v)| (k.to_string(), v)).collect(),
+        //     Box::new(ret.into()),
+        // )
+        let mut ret = ret.into();
+        for (name, proc) in procs.into_iter().rev() {
+            ret = ret.with((name.to_string(), proc));
+        }
+        ret
     }
 
     /// Create a structure of fields to expressions.
@@ -457,6 +527,9 @@ impl Expr {
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Self::Declare(declaration, result) => {
+                write!(f, "let {declaration} in {result}")
+            }
             Self::AnnotatedWithSource { expr, .. } => write!(f, "{expr}"),
             Self::ConstExpr(expr) => write!(f, "{expr}"),
             Self::Many(exprs) => {

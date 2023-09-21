@@ -15,7 +15,7 @@ use crate::asm::{
 };
 use crate::NULL;
 
-use log::{error, info, warn};
+use log::{trace, debug, error, info, warn};
 
 /// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
@@ -65,7 +65,7 @@ pub trait Compile: TypeCheck {
 /// Compile an LIR expression into several core assembly instructions.
 impl Compile for Expr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        // trace!("Compiling expression {self} in environment {env}");
+        trace!("Compiling expression {self} in environment {env}");
         let mut debug_str = format!("{self:50}");
         debug_str.truncate(50);
 
@@ -339,7 +339,6 @@ impl Compile for Expr {
                 };
                 // Compile the expression to leave the value on the stack.
                 e.compile_expr(env, output)?;
-                output.log_instructions_after(&name, &message, current_instruction);
 
                 // Create a new scope
                 let mut new_env = env.clone();
@@ -363,6 +362,7 @@ impl Compile for Expr {
                     size: result_size,
                 });
                 output.op(CoreOp::Pop(None, var_size));
+                output.log_instructions_after(&name, &message, current_instruction);
             }
 
             // Compile a let statement with multiple variables.
@@ -375,6 +375,33 @@ impl Compile for Expr {
                 }
                 // Compile the resulting let statement.
                 result.compile_expr(env, output)?
+            }
+
+            Self::Declare(declaration, body) => {
+                // Create a new scope
+                let mut new_env = env.clone();
+                
+                let var_size = declaration.compile(&body, &mut new_env, output)?;
+                
+                // The type and size of the result expression of the declaration block.
+                let result_type = body.get_type(&new_env)?;
+                let result_size = result_type.get_size(&new_env)?;
+
+                // Compile the body under the new scope
+                body.compile_expr(&mut new_env, output)?;
+
+                // Copy the return value over where the arguments were stored,
+                // so that when we pop the stack, it's as if we popped the variables
+                // and arguments, and pushed our return value.
+                debug!("Destroying {var_size} cells of stack, leaving {result_size} cells of stack");
+                output.op(CoreOp::Copy {
+                    src: SP.deref().offset(1 - result_size as isize),
+                    dst: SP
+                        .deref()
+                        .offset(1 - var_size as isize - result_size as isize),
+                    size: result_size,
+                });
+                output.op(CoreOp::Pop(None, var_size));
             }
 
             Self::LetStaticVar(name, mutability, t, expr, body) => {

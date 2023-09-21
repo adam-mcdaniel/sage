@@ -1,0 +1,24 @@
+
+let (x, y) = (5, 6);
+print("Printing tuple members: ", x, " ", y, "\n");
+
+let {a, b} = {a=20, b=30};
+print("Printing struct members: ", a, " ", b, "\n");
+
+let (a, {x, c, b}, d) = (1, {b=2, c=3, x="hello world!"}, 4);
+print("Printing nested struct and tuple members: ",
+    a, " ",
+    b, " ",
+    c, " ",
+    d, " ",
+    x, "\n");
+
+let {a, b, c} = {a=1, b=2, c=3};
+print("Printing struct members: ", a, " ", b, " ", c, "\n");
+
+
+let (a, b, c, d) = (1, 2) + (3, 4);
+print("Printing tuple members: ", a, " ", b, " ", c, " ", d, "\n");
+
+let {d, b, a, c} = {a=1, c=3} + {b=2, d=4};
+print("Printing struct members: ", a, " ", b, " ", c, " ", d, "\n");

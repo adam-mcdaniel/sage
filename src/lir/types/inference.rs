@@ -45,6 +45,15 @@ impl GetType for Expr {
                 expr.get_type_checked(env, i).map_err(|e| e.with_loc(loc))?
             }
 
+            Self::Declare(declaration, body) => {
+                // Create a new environment with the declarations.
+                let mut new_env = env.clone();
+                // Add the declarations to the environment.
+                new_env.add_declaration(&declaration)?;
+                // Get the type of the body in the new environment.
+                body.get_type_checked(&new_env, i)?
+            }
+
             Self::LetStaticVar(name, mutability, ty, _const_val, ret) => {
                 // Create a new environment with the static variable.
                 let mut new_env = env.clone();
@@ -452,6 +461,11 @@ impl GetType for Expr {
         match self {
             Self::AnnotatedWithSource { expr, .. } => {
                 expr.substitute(name, ty);
+            }
+
+            Self::Declare(declaration, body) => {
+                declaration.substitute(name, ty);
+                body.substitute(name, ty);
             }
 
             Self::ConstExpr(cexpr) => cexpr.substitute(name, ty),
