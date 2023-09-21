@@ -22,3 +22,8 @@ print("Printing tuple members: ", a, " ", b, " ", c, " ", d, "\n");
 
 let {d, b, a, c} = {a=1, c=3} + {b=2, d=4};
 print("Printing struct members: ", a, " ", b, " ", c, " ", d, "\n");
+
+let (mut testing1, {x=mut testing2}) = (1, {x=2});
+testing1 += 5;
+testing2 += 5;
+print("Printing tuple members: ", testing1, " ", testing2, "\n");
