@@ -20,8 +20,8 @@ pub use logic::*;
 pub use memory::*;
 pub use tagged_union::*;
 
-use log::{trace, error};
 use crate::{asm::AssemblyProgram, lir::*};
+use log::error;
 use std::cmp::Ordering;
 
 /// A trait used to implemented an assignment operation.

@@ -398,25 +398,37 @@ impl Pattern {
                 return Err(Error::MismatchedTypes {
                     expected,
                     found,
-                    expr: Expr::Match(Box::new(matching_expr.clone()), vec![(self.clone(), branch.clone())]),
+                    expr: Expr::Match(
+                        Box::new(matching_expr.clone()),
+                        vec![(self.clone(), branch.clone())],
+                    ),
                 });
-            },
+            }
             Err(Error::InvalidBinaryOpTypes(_, expected, found)) => {
                 return Err(Error::MismatchedTypes {
                     expected,
                     found,
-                    expr: Expr::Match(Box::new(matching_expr.clone()), vec![(self.clone(), branch.clone())]),
+                    expr: Expr::Match(
+                        Box::new(matching_expr.clone()),
+                        vec![(self.clone(), branch.clone())],
+                    ),
                 })
-            },
-            _ => return Err(Error::MismatchedTypes {
-                expected,
-                found: matching_ty,
-                expr: Expr::Match(Box::new(matching_expr.clone()), vec![(self.clone(), branch.clone())])
-            })
-            // Err(e) => return Err(Error::InvalidPatternForExpr(matching_expr.clone(), self.clone())),
+            }
+            _ => {
+                return Err(Error::MismatchedTypes {
+                    expected,
+                    found: matching_ty,
+                    expr: Expr::Match(
+                        Box::new(matching_expr.clone()),
+                        vec![(self.clone(), branch.clone())],
+                    ),
+                })
+            } // Err(e) => return Err(Error::InvalidPatternForExpr(matching_expr.clone(), self.clone())),
         }
         // Generate an expression with the bindings defined for the branch.
-        let result_expr = self.bind(matching_expr, &matching_ty, branch, env).map_err(|_| Error::InvalidPatternForExpr(matching_expr.clone(), self.clone()))?;
+        let result_expr = self
+            .bind(matching_expr, &matching_ty, branch, env)
+            .map_err(|_| Error::InvalidPatternForExpr(matching_expr.clone(), self.clone()))?;
         // Type-check the expression generated to bind the pattern.
         result_expr.type_check(env)?;
         // Get the type of the expression generated to bind the pattern.
@@ -495,7 +507,13 @@ impl Pattern {
         let match_expr = Pattern::match_pattern_helper(&Expr::var(&var_name), branches, &new_env)?;
 
         // Define the variable in the generated expression.
-        let result = Expr::let_var(var_name, Mutability::Immutable, Some(match_type), expr.clone(), match_expr);
+        let result = Expr::let_var(
+            var_name,
+            Mutability::Immutable,
+            Some(match_type),
+            expr.clone(),
+            match_expr,
+        );
         Ok(result)
     }
 
@@ -910,9 +928,13 @@ impl Pattern {
             }
 
             // If the pattern is a symbol, then bind the symbol to the expression.
-            (Self::Symbol(mutability, name), ty) => {
-                Expr::let_var(name.clone(), *mutability, Some(ty.clone()), expr.clone(), ret.clone())
-            }
+            (Self::Symbol(mutability, name), ty) => Expr::let_var(
+                name.clone(),
+                *mutability,
+                Some(ty.clone()),
+                expr.clone(),
+                ret.clone(),
+            ),
 
             (Self::Pointer(pattern), Type::Pointer(_, item_type)) => {
                 pattern.bind(&expr.clone().deref(), item_type, ret, env)?
@@ -926,7 +948,13 @@ impl Pattern {
             // we choose.
             (Self::Alt(patterns), _) => {
                 // Bind the first pattern.
-                patterns.first().map(|x| x.bind(expr, ty, ret, env)).unwrap_or(Err(Error::InvalidPatternForExpr(expr.clone(), self.clone())))?
+                patterns
+                    .first()
+                    .map(|x| x.bind(expr, ty, ret, env))
+                    .unwrap_or(Err(Error::InvalidPatternForExpr(
+                        expr.clone(),
+                        self.clone(),
+                    )))?
             }
 
             _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone())),
@@ -970,7 +998,7 @@ impl Display for Pattern {
                     write!(f, "mut ")?;
                 }
                 write!(f, "{name}")
-            },
+            }
 
             Self::ConstExpr(const_expr) => write!(f, "{}", const_expr),
 

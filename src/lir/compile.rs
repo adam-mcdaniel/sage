@@ -11,11 +11,11 @@
 //! 3. If the expression cannot be compiled into a core assembly program, then compile it into a standard assembly program.
 use super::*;
 use crate::asm::{
-    Location, AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
+    AssemblyProgram, CoreOp, CoreProgram, Location, StandardOp, StandardProgram, A, B, C, FP, SP,
 };
 use crate::NULL;
 
-use log::{trace, info, warn, error};
+use log::{error, info, warn};
 
 /// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
@@ -68,7 +68,7 @@ impl Compile for Expr {
         // trace!("Compiling expression {self} in environment {env}");
         let mut debug_str = format!("{self:50}");
         debug_str.truncate(50);
-        
+
         // Write a little comment about what we're compiling.
         if !matches!(self, Self::ConstExpr(_)) {
             let mut comment = format!("{self}");
@@ -81,7 +81,8 @@ impl Compile for Expr {
         match self {
             Self::AnnotatedWithSource { expr, loc } => {
                 // Compile the expression.
-                expr.compile_expr(env, output).map_err(|e| e.with_loc(&loc))?;
+                expr.compile_expr(env, output)
+                    .map_err(|e| e.with_loc(&loc))?;
             }
 
             Self::Match(expr, branches) => {
@@ -227,11 +228,13 @@ impl Compile for Expr {
             Self::Apply(f, args) => {
                 if let Self::AnnotatedWithSource { expr, loc } = *f {
                     // Compile the inner expression.
-                    return Self::Apply(expr, args).compile_expr(env, output).map_err(|e| {
-                        // If the inner expression fails to compile,
-                        // then add the source location to the error.
-                        e.with_loc(&loc)
-                    });
+                    return Self::Apply(expr, args)
+                        .compile_expr(env, output)
+                        .map_err(|e| {
+                            // If the inner expression fails to compile,
+                            // then add the source location to the error.
+                            e.with_loc(&loc)
+                        });
                 }
 
                 // Push the arguments to the procedure on the stack.
@@ -344,8 +347,6 @@ impl Compile for Expr {
                 let var_size = t.get_size(env)?;
                 new_env.define_var(&name, mutability, t)?;
 
-
-
                 let result_type = body.get_type(&new_env)?;
                 let result_size = result_type.get_size(&new_env)?;
                 // Compile the body under the new scope
@@ -369,24 +370,26 @@ impl Compile for Expr {
                 let mut result = *body;
                 // Create an equivalent let statement with a single variable,
                 // for each variable in the list.
-                for (name, mutability,t, e) in vars.into_iter().rev() {
+                for (name, mutability, t, e) in vars.into_iter().rev() {
                     result = Self::LetVar(name, mutability, t, Box::new(e), Box::new(result))
                 }
                 // Compile the resulting let statement.
                 result.compile_expr(env, output)?
             }
 
-
             Self::LetStaticVar(name, mutability, t, expr, body) => {
                 // Declare a new scope for the variable.
                 let mut new_env = env.clone();
                 // Define the variable in the new scope.
-                let location = new_env.define_static_var(&name, mutability, t.clone())?;
+                new_env.define_static_var(&name, mutability, t.clone())?;
                 // Compile the expression to leave the value on the stack.
                 expr.compile_expr(env, output)?;
                 let size = t.get_size(env)?;
                 // Store the value in the variable.
-                output.op(CoreOp::Global { name: name.clone(), size });
+                output.op(CoreOp::Global {
+                    name: name.clone(),
+                    size,
+                });
                 output.op(CoreOp::Pop(Some(Location::Global(name.clone())), size));
                 // Compile under the new scope.
                 body.compile_expr(&mut new_env, output)?;
@@ -670,7 +673,10 @@ impl Compile for Expr {
                 // If the value we're getting a field from is a pointer,
                 // then dereference it and get the field from the value.
                 if let Type::Pointer(_, _) = val.get_type(env)? {
-                    val.clone().deref().field(member.clone()).compile_expr(env, output)?;
+                    val.clone()
+                        .deref()
+                        .field(member.clone())
+                        .compile_expr(env, output)?;
                     return Ok(());
                 }
 
@@ -697,18 +703,20 @@ impl Compile for Expr {
             // Compile a reference operation (on a symbol or a field of a value).
             Self::Refer(expected_mutability, val) => match *val.clone() {
                 // Get the value being referenced
-                Expr::AnnotatedWithSource { expr, loc } => {
-                    Self::Refer(expected_mutability, expr).compile_expr(env, output).map_err(|e| e.with_loc(&loc))?
-                }
+                Expr::AnnotatedWithSource { expr, loc } => Self::Refer(expected_mutability, expr)
+                    .compile_expr(env, output)
+                    .map_err(|e| e.with_loc(&loc))?,
 
                 Expr::ConstExpr(ConstExpr::AnnotatedWithSource { expr, loc }) => {
-                    Self::Refer(expected_mutability, Box::new(Expr::ConstExpr(*expr))).compile_expr(env, output).map_err(|e| e.with_loc(&loc))?
+                    Self::Refer(expected_mutability, Box::new(Expr::ConstExpr(*expr)))
+                        .compile_expr(env, output)
+                        .map_err(|e| e.with_loc(&loc))?
                 }
 
                 // Get the reference of a variable.
                 Expr::ConstExpr(ConstExpr::Symbol(name)) => {
                     // Get the variable's offset from the frame pointer.
-                    if let Some((found_mutability, _, offset)) = env.get_var(&name) {
+                    if let Some((found_mutability, _ty, offset)) = env.get_var(&name) {
                         if !found_mutability.can_decay_to(&expected_mutability) {
                             return Err(Error::MismatchedMutability {
                                 found: *found_mutability,
@@ -731,7 +739,9 @@ impl Compile for Expr {
                             // Push the address of the variable onto the stack.
                             CoreOp::Push(C, 1),
                         ]))
-                    } else if let Some((found_mutability, ty, location)) = env.get_static_var(&name) {
+                    } else if let Some((found_mutability, _ty, location)) =
+                        env.get_static_var(&name)
+                    {
                         if !found_mutability.can_decay_to(&expected_mutability) {
                             return Err(Error::MismatchedMutability {
                                 found: *found_mutability,
@@ -769,7 +779,8 @@ impl Compile for Expr {
                         // If the value is a struct, tuple, or union:
                         Type::Struct(_) | Type::Tuple(_) | Type::Union(_) => {
                             // Compile a reference to the inner value with the expected mutability.
-                            Self::Refer(expected_mutability, val.clone()).compile_expr(env, output)?;
+                            Self::Refer(expected_mutability, val.clone())
+                                .compile_expr(env, output)?;
                         }
                         // If the value is a pointer:
                         Type::Pointer(found_mutability, _) => {
@@ -815,7 +826,8 @@ impl Compile for Expr {
                         // If the value is an array:
                         Type::Array(ref elem, _) => {
                             // Push the address of the array onto the stack.
-                            Self::Refer(expected_mutability, val.clone()).compile_expr(env, output)?;
+                            Self::Refer(expected_mutability, val.clone())
+                                .compile_expr(env, output)?;
                             // Push the index onto the stack.
                             idx.compile_expr(env, output)?;
 
@@ -902,7 +914,8 @@ impl Compile for ConstExpr {
         // Compile the constant expression.
         match self {
             Self::AnnotatedWithSource { expr, loc } => {
-                expr.compile_expr(env, output).map_err(|err| err.with_loc(&loc))?;
+                expr.compile_expr(env, output)
+                    .map_err(|err| err.with_loc(&loc))?;
             }
             Self::LetTypes(bindings, expr) => {
                 let mut new_env = env.clone();
@@ -918,7 +931,14 @@ impl Compile for ConstExpr {
                         .collect::<Result<Vec<_>, _>>()?;
 
                     let common_name = poly_proc.get_name();
-                    let message = format!("Monomorphized {common_name} with type arguments {}", ty_args.iter().map(|ty| format!("{}", ty)).collect::<Vec<_>>().join(", "));
+                    let message = format!(
+                        "Monomorphized {common_name} with type arguments {}",
+                        ty_args
+                            .iter()
+                            .map(|ty| format!("{}", ty))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
                     let current_instruction = output.current_instruction();
                     // Monomorphize the function
                     let proc = poly_proc.monomorphize(ty_args, env)?;
@@ -1110,9 +1130,10 @@ impl Compile for ConstExpr {
                     // If the type is an enum union, we can continue.
                     Type::EnumUnion(variants) if variants.get(&variant) == Some(&Type::None) => {
                         // Get the index of the variant.
-                        if let Some(index) =
-                            Type::variant_index(variants.into_keys().collect::<Vec<_>>().as_slice(), &variant)
-                        {
+                        if let Some(index) = Type::variant_index(
+                            variants.into_keys().collect::<Vec<_>>().as_slice(),
+                            &variant,
+                        ) {
                             // Push the index of the variant onto the stack.
                             // Allocate the size of the structure on the stack by
                             // incrementing the stack pointer by the size of the structure.

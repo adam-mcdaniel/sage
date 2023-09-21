@@ -2,8 +2,8 @@ use super::*;
 
 use crate::{
     asm::{AssemblyProgram, CoreOp, Location, A, B, C, SP},
-    side_effects::*,
     lir::*,
+    side_effects::*,
 };
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
@@ -42,11 +42,20 @@ impl UnaryOp for Get {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        if ty.equals(&Type::Pointer(Mutability::Mutable, Box::new(Type::Char)), env)? {
+        if ty.equals(
+            &Type::Pointer(Mutability::Mutable, Box::new(Type::Char)),
+            env,
+        )? {
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_char()));
-        } else if ty.equals(&Type::Pointer(Mutability::Mutable, Box::new(Type::Int)), env)? {
+        } else if ty.equals(
+            &Type::Pointer(Mutability::Mutable, Box::new(Type::Int)),
+            env,
+        )? {
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_int()));
-        } else if ty.equals(&Type::Pointer(Mutability::Mutable, Box::new(Type::Float)), env)? {
+        } else if ty.equals(
+            &Type::Pointer(Mutability::Mutable, Box::new(Type::Float)),
+            env,
+        )? {
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_float()));
         } else {
             return Err(Error::UnsupportedOperation(Expr::UnaryOp(

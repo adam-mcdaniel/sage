@@ -12,7 +12,7 @@
 use super::*;
 use crate::lir::Pattern;
 
-use log::{trace, error};
+use log::{error, trace};
 
 /// A trait used to enforce type checking.
 ///
@@ -108,7 +108,13 @@ impl TypeCheck for Type {
                 // Create a new environment with the type parameters defined.
                 let mut new_env = env.clone();
                 // Define the type parameters in the environment.
-                new_env.define_types(ty_params.clone().into_iter().map(|p| (p.clone(), Type::Unit(p, Box::new(Type::Any)))).collect());
+                new_env.define_types(
+                    ty_params
+                        .clone()
+                        .into_iter()
+                        .map(|p| (p.clone(), Type::Unit(p, Box::new(Type::Any))))
+                        .collect(),
+                );
                 // Check the template type.
                 template.type_check(&new_env)
             }
@@ -142,7 +148,7 @@ impl TypeCheck for Type {
                             _ => {
                                 error!("Type {name} is not a template in environment {env}");
                                 Err(Error::ApplyNonTemplate(self.clone()))?
-                            },
+                            }
                         }
                     }
                     Type::Poly(ty_params, _) => {
@@ -155,7 +161,7 @@ impl TypeCheck for Type {
                     _ => {
                         error!("Type {self} is not a template in environment {env}");
                         Err(Error::ApplyNonTemplate(self.clone()))?
-                    },
+                    }
                 }
                 // Return success if all the types are sound.
                 Ok(())
@@ -203,7 +209,7 @@ impl TypeCheck for Expr {
                 expr.type_check(env)?;
                 let ty = expr.get_type(env)?;
 
-                if ty == Type::Never || ty == Type::Any  {
+                if ty == Type::Never || ty == Type::Any {
                     // If the expression is an opaque type like `Any` or `Never`, then
                     // throw an `InvalidMatchExpr` error. We do this
                     // because `Never` is an opaque type, and we can't
@@ -460,9 +466,11 @@ impl TypeCheck for Expr {
                 // Typecheck the constant expression we're assigning to the variable.
                 let mut new_env = env.clone();
                 new_env.define_static_var(name, *mutability, ty.clone())?;
+                // Typecheck the constant expression in the new environment.
                 const_val.type_check(&new_env)?;
-
                 let const_val_type = const_val.get_type(&new_env)?;
+
+                // Confirm that the constant expression can be decayed to the expected type.
                 if !const_val_type.can_decay_to(ty, &new_env)? {
                     return Err(Error::MismatchedTypes {
                         expected: ty.clone(),
@@ -540,9 +548,9 @@ impl TypeCheck for Expr {
 
             // Typecheck a reference to a value.
             Self::Refer(expected_mutability, e) => match *e.clone() {
-                Expr::AnnotatedWithSource { expr, loc } => {
-                    Self::Refer(*expected_mutability, expr).type_check(env).map_err(|e| e.with_loc(&loc))
-                }
+                Expr::AnnotatedWithSource { expr, loc } => Self::Refer(*expected_mutability, expr)
+                    .type_check(env)
+                    .map_err(|e| e.with_loc(&loc)),
                 Expr::ConstExpr(ConstExpr::Symbol(name)) => {
                     // Check if the symbol is defined as mutable
                     if env.is_defined_as_mutable(&name) {
@@ -558,8 +566,7 @@ impl TypeCheck for Expr {
                         Err(Error::InvalidRefer(self.clone()))
                     }
                 }
-                Expr::Deref(inner)
-                | Expr::Index(inner, _) => {
+                Expr::Deref(inner) | Expr::Index(inner, _) => {
                     // Confirm that the inner expression can be referenced.
                     match inner.get_type(env)? {
                         // If we are dereferencing/indexing a pointer,
@@ -572,10 +579,10 @@ impl TypeCheck for Expr {
                                     expected: *expected_mutability,
                                     found: found_mutability,
                                     expr: self.clone(),
-                                })
+                                });
                             }
                         }
-                        
+
                         // If we are indexing an array, confirm that the inner array can be referenced with the expected mutability.
                         Type::Array(_, _) => {
                             inner.refer(*expected_mutability).type_check(env)?;
@@ -585,7 +592,7 @@ impl TypeCheck for Expr {
                     }
 
                     e.type_check(env)
-                },
+                }
                 Expr::Member(inner, _) => {
                     // // Confirm that the inner expression can be referenced.
                     match inner.get_type(env)? {
@@ -604,7 +611,7 @@ impl TypeCheck for Expr {
                                     expected: *expected_mutability,
                                     found: found_mutability,
                                     expr: self.clone(),
-                                })
+                                });
                             }
                         }
                         _ => {}
@@ -612,7 +619,7 @@ impl TypeCheck for Expr {
 
                     // If so, then make sure the expression being accessed is also sound.
                     e.type_check(env)
-                },
+                }
                 other => Err(Error::InvalidRefer(other)),
             },
             // Typecheck a dereference of a pointer.
@@ -656,7 +663,11 @@ impl TypeCheck for Expr {
                         if mutability.is_mutable() {
                             Ok(())
                         } else {
-                            Err(Error::MismatchedMutability { expected: Mutability::Mutable, found: mutability, expr: self.clone() })
+                            Err(Error::MismatchedMutability {
+                                expected: Mutability::Mutable,
+                                found: mutability,
+                                expr: self.clone(),
+                            })
                         }
                     } else {
                         // If it isn't, return an error.
@@ -703,7 +714,9 @@ impl TypeCheck for Expr {
                         }
                         // If the function is a procedure, confirm that the type of each
                         // argument matches the the type of the supplied value.
-                        for (expected, found) in expected_arg_tys.into_iter().zip(found_arg_tys.into_iter()) {
+                        for (expected, found) in
+                            expected_arg_tys.into_iter().zip(found_arg_tys.into_iter())
+                        {
                             // If the types don't match, return an error.
                             if !found.can_decay_to(&expected, env)? {
                                 return Err(Error::MismatchedTypes {
@@ -810,12 +823,10 @@ impl TypeCheck for Expr {
                             ))
                         }
                     }
-                    _ => {
-                        Err(Error::MemberNotFound(
-                            self.clone(),
-                            ConstExpr::Symbol(field.clone()),
-                        ))
-                    }
+                    _ => Err(Error::MemberNotFound(
+                        self.clone(),
+                        ConstExpr::Symbol(field.clone()),
+                    )),
                 }
                 // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
                 //     t = t.clone().simplify(env)?;
@@ -994,9 +1005,7 @@ impl TypeCheck for ConstExpr {
             | Self::Char(_)
             | Self::Bool(_) => Ok(()),
 
-            Self::SizeOfType(t) => {
-                t.type_check(env)
-            }
+            Self::SizeOfType(t) => t.type_check(env),
 
             Self::LetTypes(bindings, expr) => {
                 let mut new_env = env.clone();
@@ -1071,11 +1080,9 @@ impl TypeCheck for ConstExpr {
 
             // Typecheck a variant of an enum.
             Self::Of(t, variant) => {
-                let t = t.simplify_until_has_variants(env).map_err(
-                |_| Error::VariantNotFound(
-                    t.clone(),
-                    variant.clone(),
-                ))?;
+                let t = t
+                    .simplify_until_has_variants(env)
+                    .map_err(|_| Error::VariantNotFound(t.clone(), variant.clone()))?;
 
                 match t {
                     Type::Enum(variants) => {
@@ -1137,7 +1144,9 @@ impl TypeCheck for ConstExpr {
                         // Confirm that the type of the item is the same as the
                         // last item.
                         if !last_type.can_decay_to(&item_type, env)? {
-                            error!("Mismatched types: {last_type} != {item_type} in environment {env}");
+                            error!(
+                                "Mismatched types: {last_type} != {item_type} in environment {env}"
+                            );
                             // If it isn't, return an error.
                             return Err(Error::MismatchedTypes {
                                 expected: last_type,
@@ -1223,7 +1232,9 @@ impl TypeCheck for ConstExpr {
                             }
                             Ok(())
                         } else {
-                            error!("Variant {variant} not found in type {self} in environment {env}");
+                            error!(
+                                "Variant {variant} not found in type {self} in environment {env}"
+                            );
                             Err(Error::VariantNotFound(
                                 Type::EnumUnion(fields),
                                 variant.clone(),

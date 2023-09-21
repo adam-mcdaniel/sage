@@ -6,7 +6,7 @@
 //! which are then executed by the runtime.
 
 use super::ops::*;
-use crate::lir::{ConstExpr, Pattern, Procedure, Type, Mutability};
+use crate::lir::{ConstExpr, Mutability, Pattern, Procedure, Type};
 use crate::parse::SourceCodeLocation;
 use core::fmt;
 use std::collections::BTreeMap;
@@ -22,7 +22,7 @@ pub enum Expr {
         // The expression itself.
         expr: Box<Self>,
         /// The source code location of the expression.
-        loc: SourceCodeLocation
+        loc: SourceCodeLocation,
     },
 
     /// A constant expression.
@@ -319,11 +319,20 @@ impl Expr {
         expr: impl Into<Self>,
         ret: impl Into<Self>,
     ) -> Self {
-        Expr::LetVar(var.to_string(), mutability.into(), t, Box::new(expr.into()), Box::new(ret.into()))
+        Expr::LetVar(
+            var.to_string(),
+            mutability.into(),
+            t,
+            Box::new(expr.into()),
+            Box::new(ret.into()),
+        )
     }
 
     /// Create a `let` binding for an expression, and define multiple variables.
-    pub fn let_vars(vars: Vec<(&str, Mutability, Option<Type>, Self)>, ret: impl Into<Self>) -> Self {
+    pub fn let_vars(
+        vars: Vec<(&str, Mutability, Option<Type>, Self)>,
+        ret: impl Into<Self>,
+    ) -> Self {
         Self::LetVars(
             vars.into_iter()
                 .map(|(name, m, t, e)| (name.to_string(), m, t, e))
@@ -624,7 +633,7 @@ impl fmt::Display for Expr {
                     write!(f, "mut ")?;
                 }
                 write!(f, "{val}")
-            },
+            }
             Self::Deref(ptr) => write!(f, "*{ptr}"),
             Self::DerefMut(ptr, val) => write!(f, "(*{ptr}) = {val}"),
             Self::Apply(fun, args) => {
@@ -645,7 +654,8 @@ impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         use Expr::*;
         match (self, other) {
-            (Self::AnnotatedWithSource { expr, .. }, other) | (other, Self::AnnotatedWithSource { expr, .. })  => &**expr == other,
+            (Self::AnnotatedWithSource { expr, .. }, other)
+            | (other, Self::AnnotatedWithSource { expr, .. }) => &**expr == other,
             // A constant expression.
             (ConstExpr(a), ConstExpr(b)) => a == b,
             // A block of expressions. The last expression in the block is the value of the block.

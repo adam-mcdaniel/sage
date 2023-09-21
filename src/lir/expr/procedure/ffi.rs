@@ -2,11 +2,11 @@
 //!
 //! A typed procedure which calls a foreign function.
 //! This is compiled down to a standard assembly `Call` instruction.
-//! The label is the name of the foreign function. The types determine the 
+//! The label is the name of the foreign function. The types determine the
 //! size of the cells for the arguments and return value.
-use crate::side_effects::FFIBinding;
 use crate::asm::{AssemblyProgram, StandardOp};
 use crate::lir::{Compile, Env, Error, GetSize, GetType, Type, TypeCheck};
+use crate::side_effects::FFIBinding;
 use core::fmt::{Display, Formatter, Result as FmtResult};
 
 use log::debug;
@@ -31,7 +31,6 @@ impl FFIProcedure {
         Self { name, args, ret }
     }
 }
-
 
 impl TypeCheck for FFIProcedure {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
@@ -67,7 +66,9 @@ impl Compile for FFIProcedure {
         }
         let ret_size = self.ret.get_size(env)?;
 
-        output.std_op(StandardOp::Call(FFIBinding::new(self.name, args_size, ret_size)))?;
+        output.std_op(StandardOp::Call(FFIBinding::new(
+            self.name, args_size, ret_size,
+        )))?;
 
         Ok(())
     }

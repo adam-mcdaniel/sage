@@ -10,12 +10,12 @@
 //! - Enum variants
 
 use crate::lir::{
-    CoreBuiltin, Env, Error, Expr, GetSize, GetType, PolyProcedure, Procedure, Simplify,
-    StandardBuiltin, FFIProcedure, Type, Mutability,
+    CoreBuiltin, Env, Error, Expr, FFIProcedure, GetSize, GetType, Mutability, PolyProcedure,
+    Procedure, Simplify, StandardBuiltin, Type,
 };
 use crate::parse::SourceCodeLocation;
 
-use log::{trace, error};
+use log::error;
 
 use core::fmt;
 use std::collections::BTreeMap;
@@ -141,7 +141,9 @@ impl ConstExpr {
         } else {
             // trace!("Evaluating constexpr: {self}");
             match self {
-                Self::AnnotatedWithSource { expr, loc } => expr.eval_checked(env, i).map_err(|e| e.with_loc(&loc)),
+                Self::AnnotatedWithSource { expr, loc } => {
+                    expr.eval_checked(env, i).map_err(|e| e.with_loc(&loc))
+                }
 
                 Self::None
                 | Self::Null
@@ -287,9 +289,9 @@ impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
         // trace!("Getting type from constexpr: {self}");
         Ok(match self.clone() {
-            Self::AnnotatedWithSource { expr, loc } => {
-                expr.get_type_checked(env, i).map_err(|e| e.with_loc(&loc))?
-            }
+            Self::AnnotatedWithSource { expr, loc } => expr
+                .get_type_checked(env, i)
+                .map_err(|e| e.with_loc(&loc))?,
 
             Self::As(expr, cast_ty) => {
                 let found = expr.get_type_checked(env, i)?;
@@ -306,11 +308,12 @@ impl GetType for ConstExpr {
             Self::LetTypes(bindings, expr) => {
                 let mut new_env = env.clone();
                 new_env.define_types(bindings);
-                expr.get_type_checked(&new_env, i)?.simplify_until_type_checks(&new_env)?
+                expr.get_type_checked(&new_env, i)?
+                    .simplify_until_type_checks(&new_env)?
             }
             Self::Monomorphize(expr, ty_args) => {
                 // Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::<Result<Vec<Type>, Error>>()?).perform_template_applications(env, &mut HashMap::new(), 0)?
-                
+
                 Type::Apply(Box::new(expr.get_type_checked(env, i)?), ty_args)
             }
             Self::TypeOf(expr) => {

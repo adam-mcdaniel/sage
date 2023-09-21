@@ -12,15 +12,13 @@ impl UnaryOp for Tag {
     /// Can this unary operation be applied to the given type?
     fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
         let ty = ty.clone().simplify(env)?;
-        Ok(ty
-            .simplify_until_has_variants(env)
-            .is_ok())
+        Ok(ty.simplify_until_has_variants(env).is_ok())
     }
 
     /// Get the type of the result of applying this unary operation to the given type.
     fn return_type(&self, expr: &Expr, env: &Env) -> Result<Type, Error> {
         let ty = expr.get_type(env)?.simplify_until_has_variants(env)?;
-        
+
         match ty {
             Type::EnumUnion(variants) => Ok(Type::Enum(variants.into_keys().collect())),
             found => Err(Error::MismatchedTypes {
@@ -103,15 +101,13 @@ impl UnaryOp for Data {
     /// Can this unary operation be applied to the given type?
     fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
         let ty = ty.clone().simplify(env)?;
-        Ok(ty
-            .simplify_until_has_variants(env)
-            .is_ok())
+        Ok(ty.simplify_until_has_variants(env).is_ok())
     }
 
     /// Get the type of the result of applying this unary operation to the given type.
     fn return_type(&self, expr: &Expr, env: &Env) -> Result<Type, Error> {
         let ty = expr.get_type(env)?.simplify_until_has_variants(env)?;
-        
+
         match ty {
             Type::EnumUnion(variants) => Ok(Type::Union(variants)),
             found => Err(Error::MismatchedTypes {

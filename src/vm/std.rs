@@ -36,9 +36,9 @@
 //! cannot be confused with custom encoded instructions sent to and from the I/O device
 //! using `Put` and `Get`.
 use super::{CoreOp, CoreProgram, Error, VirtualMachineProgram};
+use crate::side_effects::*;
 use core::fmt;
 use std::collections::HashMap;
-use crate::side_effects::*;
 
 impl VirtualMachineProgram for StandardProgram {
     fn op(&mut self, op: CoreOp) {
@@ -294,7 +294,7 @@ pub enum StandardOp {
     /// Get a value from the input interface / device and store it in the register.
     /// This is intended to function something like system calls for using any external
     /// functionality that can't be implemented in the virtual machine, such as I/O or OS operations.
-    /// 
+    ///
     /// Whenever a value is returned from the foreign function interface, it is stored in the
     /// FFI buffer of cells. Whenever an FFI function is called, it will receive its arguments
     /// from this buffer.

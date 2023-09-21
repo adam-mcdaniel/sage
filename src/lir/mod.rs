@@ -221,11 +221,11 @@ impl Error {
                     loc.filename = location.filename.clone();
                 }
                 self
-            },
+            }
             _ => Self::AnnotatedWithSource {
                 err: Box::new(self),
                 loc: location.clone(),
-            }
+            },
         }
     }
 }

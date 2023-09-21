@@ -24,7 +24,7 @@
 //! |`enum {A, B, ...}`|1|
 
 use super::*;
-use log::{error, trace};
+use log::error;
 
 /// Get the size of something in memory (number of cells).
 pub trait GetSize {
@@ -66,9 +66,7 @@ impl GetSize for Type {
             // don't know what it is yet. So we return an error.
             //
             // **Its size is undefined.**
-            Self::Any => {
-                return Err(Error::UnsizedType(self.clone()))
-            },
+            Self::Any => return Err(Error::UnsizedType(self.clone())),
 
             // Get the size of an inline type.
             Self::Let(name, t, ret) => {
@@ -106,7 +104,7 @@ impl GetSize for Type {
             | Self::Enum(_)
             | Self::Pointer(_, _)
             | Self::Proc(_, _) => 1,
-            
+
             // Tuple types are the sum of the sizes of their elements.
             Self::Tuple(items) => items.iter().flat_map(|t| t.get_size_checked(env, i)).sum(),
             // Array types are the size of their element type times the size of

@@ -1,8 +1,7 @@
+use crate::asm::{CoreOp, Error, Location, GP};
 
-use crate::asm::{GP, Error, Location, CoreOp};
-
-use std::collections::HashMap;
 use core::fmt;
+use std::collections::HashMap;
 
 use log::{error, trace};
 
@@ -47,9 +46,7 @@ impl Globals {
             // If the location is indirect, resolve the location it points to
             Location::Indirect(loc) => self.resolve(loc)?.deref(),
             // If the location is an offset, resolve the location it's offset from
-            Location::Offset(loc, offset) => {
-                self.resolve(loc)?.offset(*offset)
-            }
+            Location::Offset(loc, offset) => self.resolve(loc)?.offset(*offset),
             // If the location is a global variable, resolve the location of the global variable
             // with its offset from GP
             Location::Global(name) => {
@@ -70,7 +67,8 @@ impl Globals {
         }
 
         // Insert the resolved location into the cache for quick lookup later
-        self.memoized_resolutions.insert(location.clone(), result.clone());
+        self.memoized_resolutions
+            .insert(location.clone(), result.clone());
 
         Ok(result)
     }
@@ -85,7 +83,7 @@ impl Globals {
         let offset = self.next_gp_offset;
         self.next_gp_offset += size;
         let loc = GP.deref().offset(offset as isize);
-        
+
         trace!("Adding global variable {name} with size {size} at {loc}");
         self.globals.insert(name, (loc.clone(), offset, size));
         loc
@@ -104,9 +102,11 @@ impl Globals {
 
     /// Get the location of a global variable.
     pub fn get_global_location(&mut self, name: &str) -> Option<Location> {
-        self.globals.get(name).cloned() // Get the global variable
+        self.globals
+            .get(name)
+            .cloned() // Get the global variable
             // Resolve the location of the global variable
-            .and_then(|(loc, _, _)| self.resolve(&loc).ok()) 
+            .and_then(|(loc, _, _)| self.resolve(&loc).ok())
     }
 
     /// Get the size of a global variable.

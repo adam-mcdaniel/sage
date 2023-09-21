@@ -36,7 +36,7 @@ enum LogLevel {
     Trace,
     /// Display no messages
     #[default]
-    Off
+    Off,
 }
 
 /// The target options to compile the given source code to.
@@ -115,7 +115,7 @@ enum Error {
     WithSourceCode {
         loc: SourceCodeLocation,
         source_code: String,
-        err: Box<Self>
+        err: Box<Self>,
     },
     /// Error in reading source or writing generated code.
     IO(std::io::Error),
@@ -136,10 +136,12 @@ enum Error {
 impl Error {
     pub fn annotate_with_source(self, code: &str) -> Self {
         match self {
-            Self::LirError(lir::Error::AnnotatedWithSource { err, loc }) => {
-                Self::WithSourceCode { loc, source_code: code.to_owned(), err: Box::new(Error::LirError(*err)) }
-            }
-            _ => self
+            Self::LirError(lir::Error::AnnotatedWithSource { err, loc }) => Self::WithSourceCode {
+                loc,
+                source_code: code.to_owned(),
+                err: Box::new(Error::LirError(*err)),
+            },
+            _ => self,
         }
     }
 }
@@ -151,15 +153,28 @@ impl fmt::Debug for Error {
             Error::Parse(e) => write!(f, "Parse error: {}", e),
             Error::AsmError(e) => write!(f, "Assembly error: {:?}", e),
             Error::LirError(e) => write!(f, "LIR error: {}", e),
-            Error::WithSourceCode { loc, source_code, err } => {
-                // use codespan_reporting::files::SimpleFiles; 
+            Error::WithSourceCode {
+                loc,
+                source_code,
+                err,
+            } => {
+                // use codespan_reporting::files::SimpleFiles;
                 use codespan_reporting::diagnostic::{Diagnostic, Label};
                 use codespan_reporting::files::SimpleFiles;
-                use codespan_reporting::term::{emit, termcolor::{ColorChoice, StandardStream}};
+                use codespan_reporting::term::{
+                    emit,
+                    termcolor::{ColorChoice, StandardStream},
+                };
                 use no_comment::{languages, IntoWithoutComments};
-                
-                let SourceCodeLocation { line, column, filename, offset, length } = loc;
-                
+
+                let SourceCodeLocation {
+                    line,
+                    column,
+                    filename,
+                    offset,
+                    length,
+                } = loc;
+
                 let mut files = SimpleFiles::new();
 
                 let source_code = source_code
@@ -168,7 +183,10 @@ impl fmt::Debug for Error {
                     .without_comments(languages::rust())
                     .collect::<String>();
 
-                let file_id = files.add(filename.clone().unwrap_or("unknown".to_string()), source_code);
+                let file_id = files.add(
+                    filename.clone().unwrap_or("unknown".to_string()),
+                    source_code,
+                );
                 match filename {
                     Some(filename) => {
                         let loc = format!("{}:{}:{}:{}", filename, line, column, offset);
@@ -176,22 +194,28 @@ impl fmt::Debug for Error {
                         // write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)?
                         let diagnostic = Diagnostic::error()
                             .with_message(format!("Error at {}", loc))
-                            .with_labels(vec![Label::primary(file_id, *offset..*offset + length.unwrap_or(0))
-                                .with_message(format!("{err:?}"))]);
+                            .with_labels(vec![Label::primary(
+                                file_id,
+                                *offset..*offset + length.unwrap_or(0),
+                            )
+                            .with_message(format!("{err:?}"))]);
 
                         let writer = StandardStream::stderr(ColorChoice::Always);
                         let config = codespan_reporting::term::Config::default();
 
                         emit(&mut writer.lock(), &config, &files, &diagnostic).unwrap();
-                    },
+                    }
                     None => {
                         let loc = format!("unknown:{}:{}:{}", line, column, offset);
                         // let code = format!("{}\n{}^", code, " ".repeat(*column - 1));
                         // write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)?
                         let diagnostic = Diagnostic::error()
                             .with_message(format!("Error at {}", loc))
-                            .with_labels(vec![Label::primary(file_id, *offset..*offset + length.unwrap_or(0))
-                                .with_message(format!("{err:?}"))]);
+                            .with_labels(vec![Label::primary(
+                                file_id,
+                                *offset..*offset + length.unwrap_or(0),
+                            )
+                            .with_message(format!("{err:?}"))]);
 
                         let writer = StandardStream::stderr(ColorChoice::Always);
                         let config = codespan_reporting::term::Config::default();
@@ -202,9 +226,8 @@ impl fmt::Debug for Error {
                 Ok(())
                 // let loc = format!("{}:{}:{}:{}", filename, line, column, offset);
 
-
                 // write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)
-            },
+            }
             Error::InterpreterError(e) => write!(f, "Interpreter error: {}", e),
             Error::BuildError(e) => write!(f, "Build error: {}", e),
             Error::InvalidSource(e) => write!(f, "Invalid source: {}", e),
@@ -381,7 +404,8 @@ fn compile(
         )?,
         // If the target is core virtual machine code, then try to compile the source to the core variant.
         // If not possible, throw an error.
-        TargetType::CoreVM => match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
+        TargetType::CoreVM => match compile_source_to_vm(filename, src, src_type, call_stack_size)?
+        {
             Ok(vm_code) if debug => write_file(
                 format!("{output}.vm.sg"),
                 format!("{:#}", vm_code.flatten()),

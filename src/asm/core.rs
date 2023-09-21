@@ -28,7 +28,7 @@
 //! using `Put`, and assuming-standard out, to display the integer in decimal.
 use super::{
     location::{FP_STACK, TMP},
-    AssemblyProgram, Env, Error, Location, F, GP, FP, SP, StandardOp,
+    AssemblyProgram, Env, Error, Location, StandardOp, F, FP, GP, SP,
 };
 use crate::{
     side_effects::{Input, InputMode, Output, OutputMode},
@@ -94,20 +94,25 @@ impl CoreProgram {
         // Get the size of the globals
         let size_of_globals = self.get_size_of_globals(&mut env)?;
 
-
         // Create the bootstrap code.
         result.comment("BEGIN BOOTSTRAP");
 
         // Create the stack of frame pointers starting directly after the last register
         let start_of_fp_stack = F.offset(1);
         start_of_fp_stack.copy_address_to(&FP_STACK, &mut result);
-        info!("Frame pointer stack begins at {start_of_fp_stack:?}, and is {} cells long.", allowed_recursion_depth);
+        info!(
+            "Frame pointer stack begins at {start_of_fp_stack:?}, and is {} cells long.",
+            allowed_recursion_depth
+        );
         let end_of_fp_stack = start_of_fp_stack.offset(allowed_recursion_depth as isize);
 
         // Copy the address just after the allocated space to the global pointer.
         let starting_gp_addr = end_of_fp_stack;
         starting_gp_addr.copy_address_to(&GP, &mut result);
-        info!("Global pointer is initialized to point to {starting_gp_addr:?}, and is {} cells long.", size_of_globals);
+        info!(
+            "Global pointer is initialized to point to {starting_gp_addr:?}, and is {} cells long.",
+            size_of_globals
+        );
 
         // Allocate the global variables
         let starting_sp_addr = starting_gp_addr.offset(size_of_globals as isize);
@@ -212,14 +217,14 @@ pub enum CoreOp {
     Many(Vec<CoreOp>),
 
     /// Declare a global variable.
-    /// 
+    ///
     /// This will allow the program to reference the global variable
     /// using `$name` in the assembly code, where `name` is the name
     /// of the global variable.
-    /// 
+    ///
     /// To access the first element of the global variable, use `$name`.
     /// To access the second element of the global variable, use `$name + 1`.
-    /// 
+    ///
     /// To get the address of the first element of the global variable,
     /// use `lea $name, $tmp`.
     Global {
@@ -471,7 +476,7 @@ impl CoreOp {
             Self::Prev(SP, None),
         ])
     }
-    
+
     /// Allocate a string on the stack, and store its address in a destination register.
     pub fn stack_alloc_string(dst: Location, text: impl ToString) -> Self {
         let mut vals: Vec<i64> = text.to_string().chars().map(|c| c as i64).collect();
@@ -537,19 +542,19 @@ impl CoreOp {
             CoreOp::GetAddress { addr, dst } => {
                 let addr = env.resolve(addr)?;
                 let dst = env.resolve(dst)?;
-                
+
                 addr.copy_address_to(&dst, result)
-            },
+            }
             CoreOp::Next(dst, count) => {
                 let dst = env.resolve(dst)?;
 
                 dst.next(count.unwrap_or(1), result)
-            },
+            }
             CoreOp::Prev(dst, count) => {
                 let dst = env.resolve(dst)?;
 
                 dst.prev(count.unwrap_or(1), result)
-            },
+            }
             CoreOp::Index { src, offset, dst } => {
                 let src = env.resolve(src)?;
                 let offset = env.resolve(offset)?;
@@ -570,7 +575,7 @@ impl CoreOp {
             CoreOp::Set(dst, value) => {
                 let dst = env.resolve(dst)?;
                 dst.set(*value, result)
-            },
+            }
             CoreOp::SetLabel(dst, name) => {
                 let dst = env.resolve(dst)?;
                 dst.set(env.get_label(name, current_instruction)? as i64, result)
@@ -665,7 +670,7 @@ impl CoreOp {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
                 src.copy_to(&dst, result)
-            },
+            }
 
             CoreOp::Swap(a, b) => {
                 let a = env.resolve(a)?;
@@ -812,8 +817,9 @@ impl CoreOp {
                     sp: SP,
                     src,
                     size: *size,
-                }.assemble(current_instruction, env, result)?
-            },
+                }
+                .assemble(current_instruction, env, result)?
+            }
             CoreOp::Pop(dst, size) => {
                 // If the destination is None, then we're just popping the stack into oblivion.
                 // Otherwise, we're popping the stack into `Some` destination.
@@ -824,46 +830,46 @@ impl CoreOp {
                     sp: SP,
                     dst,
                     size: *size,
-                }.assemble(current_instruction, env, result)?
+                }
+                .assemble(current_instruction, env, result)?
             }
-            
 
             CoreOp::IsGreater { dst, a, b } => {
                 let dst = env.resolve(dst)?;
                 let a = env.resolve(a)?;
                 let b = env.resolve(b)?;
                 a.is_greater_than(&b, &dst, result)
-            },
+            }
             CoreOp::IsGreaterEqual { dst, a, b } => {
                 let dst = env.resolve(dst)?;
                 let a = env.resolve(a)?;
                 let b = env.resolve(b)?;
                 a.is_greater_or_equal_to(&b, &dst, result)
-            },
+            }
             CoreOp::IsLess { dst, a, b } => {
                 let dst = env.resolve(dst)?;
                 let a = env.resolve(a)?;
                 let b = env.resolve(b)?;
                 a.is_less_than(&b, &dst, result)
-            },
+            }
             CoreOp::IsLessEqual { dst, a, b } => {
                 let dst = env.resolve(dst)?;
                 let a = env.resolve(a)?;
                 let b = env.resolve(b)?;
                 a.is_less_or_equal_to(&b, &dst, result)
-            },
+            }
             CoreOp::IsEqual { dst, a, b } => {
                 let dst = env.resolve(dst)?;
                 let a = env.resolve(a)?;
                 let b = env.resolve(b)?;
                 a.is_equal(&b, &dst, result)
-            },
+            }
             CoreOp::IsNotEqual { dst, a, b } => {
                 let dst = env.resolve(dst)?;
                 let a = env.resolve(a)?;
                 let b = env.resolve(b)?;
                 a.is_not_equal(&b, &dst, result)
-            },
+            }
 
             CoreOp::Compare { dst, a, b } => {
                 let dst = &env.resolve(dst)?;

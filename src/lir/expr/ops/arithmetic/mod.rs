@@ -39,9 +39,8 @@ impl BinaryOp for Arithmetic {
             (Type::Int, Type::Float) | (Type::Float, Type::Int) | (Type::Float, Type::Float) => {
                 Ok(true)
             }
-            (Type::Int | Type::Float | Type::Cell, Type::Cell) | (Type::Cell, Type::Int | Type::Float) => {
-                Ok(true)
-            }
+            (Type::Int | Type::Float | Type::Cell, Type::Cell)
+            | (Type::Cell, Type::Int | Type::Float) => Ok(true),
             (Type::Unit(name1, a_type), Type::Unit(name2, b_type)) => {
                 // Make sure that the two units are the same.
                 if name1 != name2 {
@@ -66,9 +65,8 @@ impl BinaryOp for Arithmetic {
             (Type::Int, Type::Float) | (Type::Float, Type::Int) | (Type::Float, Type::Float) => {
                 Type::Float
             }
-            (Type::Int | Type::Float | Type::Cell, Type::Cell) | (Type::Cell, Type::Int | Type::Float) => {
-                Type::Cell
-            }
+            (Type::Int | Type::Float | Type::Cell, Type::Cell)
+            | (Type::Cell, Type::Int | Type::Float) => Type::Cell,
 
             (Type::Unit(name1, a_type), Type::Unit(name2, b_type)) => {
                 // Make sure that the two units are the same.
@@ -213,10 +211,7 @@ impl BinaryOp for Arithmetic {
                 },
                 CoreOp::Set(dst.clone(), 1),
                 CoreOp::While(src.clone()),
-                CoreOp::Mul {
-                    src: tmp,
-                    dst,
-                },
+                CoreOp::Mul { src: tmp, dst },
                 CoreOp::Dec(src),
                 CoreOp::End,
             ]),

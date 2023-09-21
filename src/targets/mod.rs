@@ -300,7 +300,10 @@ pub trait CompiledTarget: Architecture {
             result += &self.postop().unwrap_or("".to_string());
         }
 
-        info!("Finished compiling standard program for target {}", self.name());
+        info!(
+            "Finished compiling standard program for target {}",
+            self.name()
+        );
         Ok(result + &tab + self.postlude(false).unwrap_or("".to_string()).as_str())
     }
 }

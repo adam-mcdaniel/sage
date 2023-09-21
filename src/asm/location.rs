@@ -97,8 +97,6 @@ pub const F: Location = Location::Address(10);
 
 pub const REGISTERS: [Location; 11] = [SP, TMP, FP, FP_STACK, GP, A, B, C, D, E, F];
 
-
-
 /// A location in memory (on the tape of the virtual machine).
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Location {
@@ -204,9 +202,7 @@ impl Location {
             // Offsetting from a dereferenced pointer.
             Location::Indirect(_) => Location::Offset(Box::new(self.clone()), offset),
             // Offsetting from a global variable.
-            Location::Global(_) => {
-                Location::Offset(Box::new(self.clone()), offset)
-            }
+            Location::Global(_) => Location::Offset(Box::new(self.clone()), offset),
         }
     }
 

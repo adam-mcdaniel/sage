@@ -9,8 +9,8 @@
 use super::{
     location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, GP, SP,
 };
-use crate::vm::{self, VirtualMachineProgram};
 use crate::side_effects::ffi::FFIBinding;
+use crate::vm::{self, VirtualMachineProgram};
 use std::{collections::BTreeSet, fmt};
 
 use log::info;
@@ -55,33 +55,39 @@ impl StandardProgram {
                 env.declare_global(name, *size);
             }
         }
-        
+
         // Get the size of the globals in the environment after the declarations.
         Ok(env.get_size_of_globals())
     }
 
     /// Assemble the program into a virtual machine program.
-    /// 
+    ///
     /// The `allowed_recursion_depth` is the size of the frame pointer stack.
     /// The frame pointer stack is used to keep track of the frame pointers
     /// of each function call.
     pub fn assemble(&self, allowed_recursion_depth: usize) -> Result<vm::StandardProgram, Error> {
         let mut result = vm::StandardProgram(vec![]);
         let mut env = Env::default();
-        
+
         // Get the size of the globals
         let size_of_globals = self.get_size_of_globals(&mut env)?;
 
         // Create the stack of frame pointers starting directly after the last register
         let start_of_fp_stack = F.offset(1);
         start_of_fp_stack.copy_address_to(&FP_STACK, &mut result);
-        info!("Frame pointer stack begins at {FP_STACK:?}, and is {} cells long.", allowed_recursion_depth);
+        info!(
+            "Frame pointer stack begins at {FP_STACK:?}, and is {} cells long.",
+            allowed_recursion_depth
+        );
         let end_of_fp_stack = start_of_fp_stack.offset(allowed_recursion_depth as isize);
 
         // Copy the address just after the allocated space to the global pointer.
         let starting_gp_addr = end_of_fp_stack;
         starting_gp_addr.copy_address_to(&GP, &mut result);
-        info!("Global pointer is initialized to point to {starting_gp_addr:?}, and is {} cells long.", size_of_globals);
+        info!(
+            "Global pointer is initialized to point to {starting_gp_addr:?}, and is {} cells long.",
+            size_of_globals
+        );
 
         // Allocate the global variables
         let starting_sp_addr = starting_gp_addr.offset(size_of_globals as isize);
@@ -443,7 +449,9 @@ impl StandardOp {
                         result.move_pointer(1);
                     }
                 }
-                first_input_cell.offset(input_cells as isize - 1).from(result);
+                first_input_cell
+                    .offset(input_cells as isize - 1)
+                    .from(result);
 
                 // Call the foreign function.
                 result.ffi_call(binding.clone())?;

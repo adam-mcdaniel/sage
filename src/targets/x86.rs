@@ -19,8 +19,6 @@ pub struct X86 {
     float_defs: Vec<f64>,
 }
 
-
-
 impl Architecture for X86 {
     fn supports_input(&self, i: &Input) -> bool {
         matches!(i.mode, InputMode::StdinChar)

@@ -8,7 +8,7 @@
 //! and capture the output to test against the predicted output.
 use crate::side_effects::{FFIBinding, Input, InputMode, Output, OutputMode};
 
-use log::{trace, warn, error};
+use log::{error, trace, warn};
 
 mod core;
 pub use self::core::*;
@@ -16,7 +16,7 @@ mod std;
 pub use self::std::*;
 
 use ::std::{
-    collections::{VecDeque, HashMap},
+    collections::{HashMap, VecDeque},
     io::{stdin, stdout, Read, Write},
 };
 
@@ -107,7 +107,6 @@ impl TestingDevice {
     }
 
     fn get_int(&mut self) -> Result<i64, String> {
-
         let mut result: i64 = 0;
         loop {
             if self.input.is_empty() {
@@ -156,7 +155,12 @@ impl TestingDevice {
             self.get_char()?;
             let fractional_part = self.get_int()? as f64;
             let digits = fractional_part.log10() as i32 + 1;
-            trace!("Got float input: {}.{:0digits$}", whole_part, fractional_part, digits=digits as usize);
+            trace!(
+                "Got float input: {}.{:0digits$}",
+                whole_part,
+                fractional_part,
+                digits = digits as usize
+            );
             Ok(whole_part
                 + if digits > 1 {
                     fractional_part / 10.0_f64.powi(digits)
@@ -164,7 +168,6 @@ impl TestingDevice {
                     0.0
                 })
         } else {
-
             trace!("Got float input: {}", whole_part);
             Ok(whole_part)
         }
@@ -262,11 +265,14 @@ impl Default for StandardDevice {
             ffi: HashMap::new(),
             ffi_channel: VecDeque::new(),
         };
-        
-        result.add_binding(FFIBinding::new("square_root".to_string(), 1, 1), |channel, _| {
-            let val = as_float(channel.pop_front().unwrap());
-            channel.push_back(as_int(val.sqrt()));
-        });
+
+        result.add_binding(
+            FFIBinding::new("square_root".to_string(), 1, 1),
+            |channel, _| {
+                let val = as_float(channel.pop_front().unwrap());
+                channel.push_back(as_int(val.sqrt()));
+            },
+        );
 
         result.add_binding(FFIBinding::new("add".to_string(), 2, 1), |channel, _| {
             let a = as_float(channel.pop_front().unwrap());
@@ -279,7 +285,11 @@ impl Default for StandardDevice {
 }
 
 impl StandardDevice {
-    pub fn add_binding(&mut self, ffi: FFIBinding, f: fn(&mut VecDeque<i64>, Option<&mut Vec<i64>>)) {
+    pub fn add_binding(
+        &mut self,
+        ffi: FFIBinding,
+        f: fn(&mut VecDeque<i64>, Option<&mut Vec<i64>>),
+    ) {
         trace!("Adding ffi binding to VM interpreter: {}", ffi);
         self.ffi.insert(ffi, f);
     }

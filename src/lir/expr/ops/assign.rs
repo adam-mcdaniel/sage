@@ -23,7 +23,7 @@ impl AssignOp for Assign {
     fn can_apply(&self, lhs: &Type, rhs: &Type, env: &Env) -> Result<bool, Error> {
         if let Type::Pointer(mutability, t) = lhs.clone().simplify(env)? {
             if mutability.is_mutable() {
-                return self.0.can_apply(&t, rhs, env)
+                return self.0.can_apply(&t, rhs, env);
             }
         }
         Err(Error::InvalidAssignOpTypes(

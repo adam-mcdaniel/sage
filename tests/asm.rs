@@ -1,7 +1,7 @@
 use sage::{
     asm::*,
-    side_effects::{Input, Output},
     parse::parse_asm,
+    side_effects::{Input, Output},
     vm::{CoreInterpreter, TestingDevice},
 };
 

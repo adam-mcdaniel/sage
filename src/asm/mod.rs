@@ -25,21 +25,21 @@
 //! The standard variant is intended to be used with the standard
 //! variant of the virtual machine. It is very portable: it only adds
 //! instructions for float operations, memory allocation, and I/O.
-use ::std::collections::HashMap;
 use ::core::fmt::{Display, Formatter, Result as FmtResult};
+use ::std::collections::HashMap;
 
-use log::{debug, trace, warn, error};
+use log::{debug, error, trace, warn};
 
 pub mod core;
+pub mod globals;
 pub mod location;
 pub mod std;
-pub mod globals;
 
-pub use globals::Globals;
 pub use self::core::{CoreOp, CoreProgram};
 pub use self::std::{StandardOp, StandardProgram};
-pub use location::{REGISTERS, Location, A, B, C, D, E, F, FP, SP, GP};
-pub(crate) use location::{TMP, FP_STACK};
+pub use globals::Globals;
+pub use location::{Location, A, B, C, D, E, F, FP, GP, REGISTERS, SP};
+pub(crate) use location::{FP_STACK, TMP};
 
 /// A frontend to both the `CoreProgram` and `StandardProgram` types.
 /// This allows the compiler to append `CoreOp`s to both programs
@@ -111,7 +111,7 @@ impl Env {
     }
 
     /// Declare a new global variable in the environment with a given size.
-    /// 
+    ///
     /// A global variable is some fixed size, static data allocated by the assembler,
     /// and is accessible by all functions. The user can declare a global variable
     /// with the `global` keyword.
@@ -129,16 +129,16 @@ impl Env {
     fn get_size_of_globals(&self) -> usize {
         self.globals.get_size()
     }
-    
+
     /// Get the virtual machine ID of a label (which can be called as a function).
     fn get_label(&self, name: &str, current_instruction: usize) -> Result<usize, Error> {
-        self.labels
-            .get(name)
-            .copied()
-            .ok_or_else(|| {
-                error!("Undefined label {} at instruction #{}", name, current_instruction);
-                Error::UndefinedLabel(name.to_string(), current_instruction)
-            })
+        self.labels.get(name).copied().ok_or_else(|| {
+            error!(
+                "Undefined label {} at instruction #{}",
+                name, current_instruction
+            );
+            Error::UndefinedLabel(name.to_string(), current_instruction)
+        })
     }
 
     /// Add a new instruction to be matched with `End`. For example,
@@ -186,7 +186,9 @@ impl Display for Error {
         match self {
             Self::VirtualMachineError(e) => write!(f, "{}", e),
             Self::UnsupportedInstruction(op) => write!(f, "Unsupported instruction: {}", op),
-            Self::UndefinedLabel(name, i) => write!(f, "Undefined label {} at instruction #{}", name, i),
+            Self::UndefinedLabel(name, i) => {
+                write!(f, "Undefined label {} at instruction #{}", name, i)
+            }
             Self::UndefinedGlobal(name) => write!(f, "Undefined global {}", name),
             Self::Unmatched(op, i) => write!(f, "Unmatched {} at instruction #{}", op, i),
             Self::Unexpected(op, i) => write!(f, "Unexpected {} at instruction #{}", op, i),

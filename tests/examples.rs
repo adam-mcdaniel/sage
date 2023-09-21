@@ -60,8 +60,8 @@ fn test_frontend_examples_helper() {
 
             let frontend_src = read_to_string(&path)
                 .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
-            let frontend_code =
-                parse_frontend(&frontend_src, path.to_str()).unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
+            let frontend_code = parse_frontend(&frontend_src, path.to_str())
+                .unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
             drop(frontend_src);
             let asm_code = frontend_code
                 .compile()
@@ -144,7 +144,8 @@ fn test_lir_examples_helper() {
 
             let lir_src = read_to_string(&path)
                 .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
-            let lir_code = parse_lir(&lir_src).unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
+            let lir_code =
+                parse_lir(&lir_src).unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
             drop(lir_src);
             let asm_code = lir_code
                 .compile()
@@ -226,7 +227,8 @@ fn test_asm_examples_helper() {
 
             let asm_src = read_to_string(&path)
                 .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
-            let asm_code = parse_asm(&asm_src).unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
+            let asm_code =
+                parse_asm(&asm_src).unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
             drop(asm_src);
 
             let vm_code = match asm_code {
