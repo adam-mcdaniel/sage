@@ -37,12 +37,31 @@ pub trait GetType {
 /// Infer the type associated with an expression under a given environment.
 impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        trace!("Getting type of expression {}", self);
+        // trace!("Getting type of expression {}", self);
         let i = i + 1;
         Ok(match self {
             Self::AnnotatedWithSource { expr, loc } => {
                 // Get the type of the inner expression.
                 expr.get_type_checked(env, i).map_err(|e| e.with_loc(loc))?
+            }
+
+            Self::LetStaticVar(name, mutability, ty, _const_val, ret) => {
+                // Create a new environment with the static variable.
+                let mut new_env = env.clone();
+                new_env.define_static_var(name, *mutability, ty.clone())?;
+                // Get the type of the return expression in the new environment.
+                ret.get_type_checked(&new_env, i)?
+            }
+
+            Self::LetStaticVars(vars, ret) => {
+                // Create a new environment with the static variables.
+                let mut new_env = env.clone();
+                for (name, mutability, ty, _const_expr) in vars {
+                    // Define the static variable in the new environment.
+                    new_env.define_static_var(name, *mutability, ty.clone())?;
+                }
+                // Get the type of the return expression in the new environment.
+                ret.get_type_checked(&new_env, i)?
             }
 
             Self::Match(expr, branches) => {
@@ -164,7 +183,8 @@ impl GetType for Expr {
                 let mut new_env = env.clone();
                 new_env.define_type(name, t.clone());
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?.simplify_until_type_checks(&new_env)?
+                ret.get_type_checked(&new_env, i)?
+                    .simplify_until_type_checks(&new_env)?
             }
 
             // Get the type of a resulting expression after several type definitions.
@@ -173,14 +193,19 @@ impl GetType for Expr {
                 let mut new_env = env.clone();
                 new_env.define_types(types.clone());
                 // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?.simplify_until_type_checks(&new_env)?
+                ret.get_type_checked(&new_env, i)?
+                    .simplify_until_type_checks(&new_env)?
             }
 
             // Get the type of a resulting expression after a variable definition.
             Self::LetVar(var, mutability, t, val, ret) => {
                 // Create a new environment with the variable
                 let mut new_env = env.clone();
-                new_env.define_var(var, *mutability, t.clone().unwrap_or(val.get_type_checked(env, i)?))?;
+                new_env.define_var(
+                    var,
+                    *mutability,
+                    t.clone().unwrap_or(val.get_type_checked(env, i)?),
+                )?;
                 // Get the type of the return expression in the new environment.
                 ret.get_type_checked(&new_env, i)?
             }
@@ -191,8 +216,11 @@ impl GetType for Expr {
                 let mut new_env = env.clone();
                 for (var, mutability, t, val) in vars {
                     // Define the variable in the new environment.
-                    new_env
-                        .define_var(var, *mutability, t.clone().unwrap_or(val.get_type_checked(&new_env, i)?))?;
+                    new_env.define_var(
+                        var,
+                        *mutability,
+                        t.clone().unwrap_or(val.get_type_checked(&new_env, i)?),
+                    )?;
                 }
                 // Get the type of the return expression in the new environment.
                 ret.get_type_checked(&new_env, i)?
@@ -216,7 +244,7 @@ impl GetType for Expr {
                     }
                     _ => Type::None,
                 }
-            },
+            }
 
             // An if statement returns the type of the expression
             // that is evaluated if the condition is true (which must
@@ -228,7 +256,7 @@ impl GetType for Expr {
                 } else {
                     ty
                 }
-            },
+            }
             // When statements return either the type of the expression
             // that is evaluated if the condition is true or the else branch.
             Self::When(c, t, e) => {
@@ -238,7 +266,9 @@ impl GetType for Expr {
             }
 
             // Return the type of a reference to the expression.
-            Self::Refer(mutability, expr) => Type::Pointer(*mutability, Box::new(expr.get_type_checked(env, i)?)),
+            Self::Refer(mutability, expr) => {
+                Type::Pointer(*mutability, Box::new(expr.get_type_checked(env, i)?))
+            }
             // Return the type of the expression being dereferenced.
             Self::Deref(expr) => {
                 // Get the type of the expression.
@@ -264,7 +294,9 @@ impl GetType for Expr {
             // Get the type of a procedure call.
             Self::Apply(func, _) => {
                 // Get the type of the function.
-                let ty = func.get_type_checked(env, i)?.simplify_until_concrete(env)?;
+                let ty = func
+                    .get_type_checked(env, i)?
+                    .simplify_until_concrete(env)?;
                 match ty {
                     Type::Proc(_, ret) => *ret,
                     Type::Let(name, t, result) => {
@@ -348,7 +380,10 @@ impl GetType for Expr {
                 // Get the field to access (as an integer)
                 let as_int = field.clone().as_int(env);
                 // Get the type of the value to get the member of.
-                match val.get_type_checked(env, i)?.simplify_until_has_members(env) {
+                match val
+                    .get_type_checked(env, i)?
+                    .simplify_until_has_members(env)
+                {
                     Ok(Type::Pointer(_, t)) => t.get_member_offset(field, val, env)?.0,
                     // If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
@@ -452,6 +487,18 @@ impl GetType for Expr {
                     if let Some(t) = t {
                         *t = t.substitute(name, ty);
                     }
+                    val.substitute(name, ty);
+                }
+                ret.substitute(name, ty)
+            }
+            Self::LetStaticVar(_name, _mutability, t, val, ret) => {
+                *t = t.substitute(name, ty);
+                val.substitute(name, ty);
+                ret.substitute(name, ty)
+            }
+            Self::LetStaticVars(vars, ret) => {
+                for (_, _, t, val) in vars.iter_mut() {
+                    *t = t.substitute(name, ty);
                     val.substitute(name, ty);
                 }
                 ret.substitute(name, ty)

@@ -384,9 +384,9 @@
 //! cannot be confused with custom encoded instructions sent to and from the I/O device
 //! using `Put` and `Get`.
 </span><span class="kw">use super</span>::{CoreOp, CoreProgram, Error, VirtualMachineProgram};
+<span class="kw">use </span><span class="kw">crate</span>::side_effects::<span class="kw-2">*</span>;
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::collections::HashMap;
-<span class="kw">use </span><span class="kw">crate</span>::side_effects::<span class="kw-2">*</span>;
 
 <span class="kw">impl </span>VirtualMachineProgram <span class="kw">for </span>StandardProgram {
     <span class="kw">fn </span>op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: CoreOp) {
@@ -642,7 +642,7 @@
     <span class="doccomment">/// Get a value from the input interface / device and store it in the register.
     /// This is intended to function something like system calls for using any external
     /// functionality that can&#39;t be implemented in the virtual machine, such as I/O or OS operations.
-    /// 
+    ///
     /// Whenever a value is returned from the foreign function interface, it is stored in the
     /// FFI buffer of cells. Whenever an FFI function is called, it will receive its arguments
     /// from this buffer.

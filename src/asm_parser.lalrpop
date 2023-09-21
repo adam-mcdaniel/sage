@@ -10,25 +10,38 @@ grammar;
 pub CoreProgram: CoreProgram = CoreOp* => CoreProgram::new(<>);
 pub StandardProgram: StandardProgram = StandardOp* => StandardProgram::new(<>);
 
+Label: String = "@" <Symbol> => <>.to_string();
+Global: String = "$" <Symbol> => <>.to_string();
+
 CoreOp: CoreOp = {
     "set" <Location> "," <IntLit> => CoreOp::Set(<>),
     "set" <loc: Location> "," <ch: CharLit> => CoreOp::Set(loc, ch as i64),
-    "set" <Location> "," <Symbol> => CoreOp::SetLabel(<>),
+    "set" <Location> "," <Label> => CoreOp::SetLabel(<>),
+    "global" <name: Global> "," <size: IntLit> => CoreOp::Global {
+        name,
+        size: size as usize,
+    },
+    "." <name: Global> "," <size: IntLit> => CoreOp::Global {
+        name,
+        size: size as usize,
+    },
 
     "lea" <addr: Location> "," <dst: Location> => CoreOp::GetAddress { addr, dst },
 
     "call" <Location> => CoreOp::Call(<>),
-    "call" <Symbol> => CoreOp::CallLabel(<>),
+    "call" <Label> => CoreOp::CallLabel(<>),
 
     "ret" => CoreOp::Return,
 
-    "fun" <Symbol> => CoreOp::Fn(<>),
+    "fun" <Label> => CoreOp::Fn(<>),
     "while" <Location> => CoreOp::While(<>),
     "if" <Location> => CoreOp::If(<>),
     "else" => CoreOp::Else,
     "end" => CoreOp::End,
     
+    /// WARNING: `mov` is deprecated, use `copy` instead
     "mov" <src: Location> "," <dst: Location> => CoreOp::Move { src, dst },
+    "copy" <src: Location> "," <dst: Location> => CoreOp::Copy { src, dst, size: 1 },
     "copy" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::Copy { src, dst, size: size as usize },
     
     "bitwise-nand" <src: Location> "," <dst: Location> => CoreOp::BitwiseNand { src, dst },
@@ -132,10 +145,17 @@ StandardOp: StandardOp = {
 }
 
 Location: Location = {
-    "[" <deref: Location> "+" <offset: IntLit> "]" => deref.deref().offset(offset as isize),
-    "[" <deref: Location> "-" <offset: IntLit> "]" => deref.deref().offset(-offset as isize),
+    "[" <deref: Register> "+" <offset: IntLit> "]" => deref.deref().offset(offset as isize),
+    "[" <deref: Register> "-" <offset: IntLit> "]" => deref.deref().offset(-offset as isize),
     "[" <Location> "]" => <>.deref(),
 
+    <location: Location> "(" <offset: IntLit> ")" => location.offset(offset as isize),
+
+    <Global> => Location::Global(<>),
+    <Register> => <>
+}
+
+Register: Location = {
     "A" => A,
     "B" => B,
     "C" => C,
@@ -144,6 +164,7 @@ Location: Location = {
     "F" => F,
     "SP" => SP,
     "FP" => FP,
+    "GP" => GP
 }
 
 FFIBinding: FFIBinding = {

@@ -304,11 +304,6 @@
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Arithmetic Operations
 //!
 //! This module implements several arithmetic operations:
@@ -350,9 +345,8 @@
             (Type::Int, Type::Float) | (Type::Float, Type::Int) | (Type::Float, Type::Float) =&gt; {
                 <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
             }
-            (Type::Int | Type::Float, Type::Cell) | (Type::Cell, Type::Int | Type::Float) =&gt; {
-                <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
-            }
+            (Type::Int | Type::Float | Type::Cell, Type::Cell)
+            | (Type::Cell, Type::Int | Type::Float) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
             (Type::Unit(name1, a_type), Type::Unit(name2, b_type)) =&gt; {
                 <span class="comment">// Make sure that the two units are the same.
                 </span><span class="kw">if </span>name1 != name2 {
@@ -377,9 +371,8 @@
             (Type::Int, Type::Float) | (Type::Float, Type::Int) | (Type::Float, Type::Float) =&gt; {
                 Type::Float
             }
-            (Type::Int | Type::Float, Type::Cell) | (Type::Cell, Type::Int | Type::Float) =&gt; {
-                Type::Cell
-            }
+            (Type::Int | Type::Float | Type::Cell, Type::Cell)
+            | (Type::Cell, Type::Int | Type::Float) =&gt; Type::Cell,
 
             (Type::Unit(name1, a_type), Type::Unit(name2, b_type)) =&gt; {
                 <span class="comment">// Make sure that the two units are the same.
@@ -524,10 +517,7 @@
                 },
                 CoreOp::Set(dst.clone(), <span class="number">1</span>),
                 CoreOp::While(src.clone()),
-                CoreOp::Mul {
-                    src: tmp,
-                    dst,
-                },
+                CoreOp::Mul { src: tmp, dst },
                 CoreOp::Dec(src),
                 CoreOp::End,
             ]),

@@ -10,12 +10,12 @@
 //! - Enum variants
 
 use crate::lir::{
-    CoreBuiltin, Env, Error, Expr, GetSize, GetType, PolyProcedure, Procedure, Simplify,
-    StandardBuiltin, FFIProcedure, Type, Mutability,
+    CoreBuiltin, Env, Error, Expr, FFIProcedure, GetSize, GetType, Mutability, PolyProcedure,
+    Procedure, Simplify, StandardBuiltin, Type,
 };
 use crate::parse::SourceCodeLocation;
 
-use log::{trace, error};
+use log::error;
 
 use core::fmt;
 use std::collections::BTreeMap;
@@ -102,6 +102,18 @@ impl ConstExpr {
         Self::Proc(Procedure::new(common_name, args, ret, body))
     }
 
+    /// Annotate this constant expression with a source code location.
+    pub fn with_loc(self, loc: &SourceCodeLocation) -> Self {
+        // Check to see if the expression is already annotated.
+        match self {
+            Self::AnnotatedWithSource { .. } => self,
+            _ => Self::AnnotatedWithSource {
+                expr: Box::new(self),
+                loc: loc.clone(),
+            },
+        }
+    }
+
     /// Apply this procedure or builtin to a list of expressions *at runtime*.
     pub fn app(self, args: Vec<Expr>) -> Expr {
         Expr::from(self).app(args)
@@ -127,9 +139,11 @@ impl ConstExpr {
             error!("Recursion depth exceeded while evaluating: {self}");
             Err(Error::RecursionDepthConst(self))
         } else {
-            trace!("Evaluating constexpr: {self}");
+            // trace!("Evaluating constexpr: {self}");
             match self {
-                Self::AnnotatedWithSource { expr, loc } => expr.eval_checked(env, i).map_err(|e| e.with_loc(&loc)),
+                Self::AnnotatedWithSource { expr, loc } => {
+                    expr.eval_checked(env, i).map_err(|e| e.with_loc(&loc))
+                }
 
                 Self::None
                 | Self::Null
@@ -222,7 +236,7 @@ impl ConstExpr {
 
     /// Try to get this constant expression as an integer.
     pub fn as_int(self, env: &Env) -> Result<i64, Error> {
-        trace!("Getting int from constexpr: {self}");
+        // trace!("Getting int from constexpr: {self}");
         match self.eval_checked(env, 0) {
             Ok(Self::Int(n)) => Ok(n),
             Ok(other) => Err(Error::NonIntegralConst(other)),
@@ -232,7 +246,7 @@ impl ConstExpr {
 
     /// Try to get this constant expression as a float.
     pub fn as_float(self, env: &Env) -> Result<f64, Error> {
-        trace!("Getting float from constexpr: {self}");
+        // trace!("Getting float from constexpr: {self}");
         match self.eval_checked(env, 0) {
             Ok(Self::Float(n)) => Ok(n),
             Ok(other) => Err(Error::NonIntegralConst(other)),
@@ -242,7 +256,7 @@ impl ConstExpr {
 
     /// Try to get this constant expression as a boolean value.
     pub fn as_bool(self, env: &Env) -> Result<bool, Error> {
-        trace!("Getting bool from constexpr: {self}");
+        // trace!("Getting bool from constexpr: {self}");
         match self.eval_checked(env, 0) {
             Ok(Self::Bool(b)) => Ok(b),
             Ok(other) => Err(Error::NonIntegralConst(other)),
@@ -252,7 +266,7 @@ impl ConstExpr {
 
     /// Try to get this constant expression as a symbol (like in LISP).
     pub fn as_symbol(self, env: &Env) -> Result<String, Error> {
-        trace!("Getting symbol from constexpr: {self}");
+        // trace!("Getting symbol from constexpr: {self}");
         match self {
             // Check to see if the constexpr is already a symbol.
             Self::Symbol(name) => Ok(name),
@@ -273,11 +287,11 @@ impl Simplify for ConstExpr {
 
 impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        trace!("Getting type from constexpr: {self}");
+        // trace!("Getting type from constexpr: {self}");
         Ok(match self.clone() {
-            Self::AnnotatedWithSource { expr, loc } => {
-                expr.get_type_checked(env, i).map_err(|e| e.with_loc(&loc))?
-            }
+            Self::AnnotatedWithSource { expr, loc } => expr
+                .get_type_checked(env, i)
+                .map_err(|e| e.with_loc(&loc))?,
 
             Self::As(expr, cast_ty) => {
                 let found = expr.get_type_checked(env, i)?;
@@ -294,11 +308,12 @@ impl GetType for ConstExpr {
             Self::LetTypes(bindings, expr) => {
                 let mut new_env = env.clone();
                 new_env.define_types(bindings);
-                expr.get_type_checked(&new_env, i)?.simplify_until_type_checks(&new_env)?
+                expr.get_type_checked(&new_env, i)?
+                    .simplify_until_type_checks(&new_env)?
             }
             Self::Monomorphize(expr, ty_args) => {
                 // Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::<Result<Vec<Type>, Error>>()?).perform_template_applications(env, &mut HashMap::new(), 0)?
-                
+
                 Type::Apply(Box::new(expr.get_type_checked(env, i)?), ty_args)
             }
             Self::TypeOf(expr) => {
@@ -347,6 +362,9 @@ impl GetType for ConstExpr {
                 if let Some((_, ty, _)) = env.get_var(&name) {
                     // If the symbol is a variable, get the variables type.
                     ty.clone()
+                } else if let Some((_, t, _)) = env.get_static_var(&name) {
+                    // If the symbol is a static variable, push it onto the stack.
+                    t.clone()
                 } else {
                     // Otherwise, evaluate the symbol as a constant.
                     match Self::Symbol(name).eval(env)? {

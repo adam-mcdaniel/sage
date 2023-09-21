@@ -7,7 +7,7 @@ use crate::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeChe
 use core::fmt;
 use std::{collections::HashMap, rc::Rc, sync::Mutex};
 
-use log::{debug, trace, error};
+use log::{debug, error, trace};
 
 use super::Procedure;
 
@@ -168,7 +168,13 @@ impl TypeCheck for PolyProcedure {
         // Create a new scope for the procedure's body, and define the arguments for the scope.
         let mut new_env = env.new_scope();
         // Define the type parameters of the procedure.
-        new_env.define_types(self.ty_params.clone().into_iter().map(|ty_param| (ty_param.clone(), Type::Unit(ty_param, Box::new(Type::None)))).collect());
+        new_env.define_types(
+            self.ty_params
+                .clone()
+                .into_iter()
+                .map(|ty_param| (ty_param.clone(), Type::Unit(ty_param, Box::new(Type::None))))
+                .collect(),
+        );
         // Define the arguments of the procedure.
         new_env.define_args(self.args.clone())?;
         new_env.set_expected_return_type(self.ret.clone());
@@ -183,7 +189,10 @@ impl TypeCheck for PolyProcedure {
         let body_type = self.body.get_type(&new_env)?;
 
         if !body_type.can_decay_to(&self.ret, &new_env)? {
-            error!("Mismatched types: expected {}, found {}", self.ret, body_type);
+            error!(
+                "Mismatched types: expected {}, found {}",
+                self.ret, body_type
+            );
 
             Err(Error::MismatchedTypes {
                 expected: self.ret.clone(),

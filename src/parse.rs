@@ -67,7 +67,6 @@ impl SourceCodeLocation {
             } else {
                 column_number += 1;
             }
-
         }
 
         code

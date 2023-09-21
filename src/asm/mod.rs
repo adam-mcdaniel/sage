@@ -25,17 +25,21 @@
 //! The standard variant is intended to be used with the standard
 //! variant of the virtual machine. It is very portable: it only adds
 //! instructions for float operations, memory allocation, and I/O.
+use ::core::fmt::{Display, Formatter, Result as FmtResult};
 use ::std::collections::HashMap;
 
-use log::{debug, trace, warn, error};
+use log::{debug, error, trace, warn};
 
 pub mod core;
+pub mod globals;
 pub mod location;
 pub mod std;
 
 pub use self::core::{CoreOp, CoreProgram};
 pub use self::std::{StandardOp, StandardProgram};
-pub use location::{Location, A, B, C, D, E, F, FP, SP};
+pub use globals::Globals;
+pub use location::{Location, A, B, C, D, E, F, FP, GP, REGISTERS, SP};
+pub(crate) use location::{FP_STACK, TMP};
 
 /// A frontend to both the `CoreProgram` and `StandardProgram` types.
 /// This allows the compiler to append `CoreOp`s to both programs
@@ -88,6 +92,7 @@ pub trait AssemblyProgram {
 /// as well as information about matching instructions to their `End` statements.
 #[derive(Default, Clone)]
 struct Env {
+    globals: Globals,
     labels: HashMap<String, usize>,
     label: usize,
     matching: Vec<(CoreOp, usize)>,
@@ -95,7 +100,7 @@ struct Env {
 
 impl Env {
     /// Declare a new label
-    fn declare(&mut self, name: &str) {
+    fn declare_label(&mut self, name: &str) {
         trace!("Declared label {}", name);
 
         if self.labels.contains_key(name) {
@@ -104,15 +109,36 @@ impl Env {
         self.labels.insert(name.to_string(), self.label);
         self.label += 1;
     }
+
+    /// Declare a new global variable in the environment with a given size.
+    ///
+    /// A global variable is some fixed size, static data allocated by the assembler,
+    /// and is accessible by all functions. The user can declare a global variable
+    /// with the `global` keyword.
+    fn declare_global(&mut self, name: &str, size: usize) {
+        trace!("Declared global {}", name);
+        self.globals.add_global(name.to_owned(), size);
+    }
+
+    /// Resolve any global variables that may be used in an address calculation.
+    fn resolve(&mut self, loc: &Location) -> Result<Location, Error> {
+        self.globals.resolve(loc)
+    }
+
+    /// Get the size that should be allocated to the global variables.
+    fn get_size_of_globals(&self) -> usize {
+        self.globals.get_size()
+    }
+
     /// Get the virtual machine ID of a label (which can be called as a function).
-    fn get(&self, name: &str, current_instruction: usize) -> Result<usize, Error> {
-        self.labels
-            .get(name)
-            .copied()
-            .ok_or_else(|| {
-                error!("Undefined label {} at instruction #{}", name, current_instruction);
-                Error::UndefinedLabel(name.to_string(), current_instruction)
-            })
+    fn get_label(&self, name: &str, current_instruction: usize) -> Result<usize, Error> {
+        self.labels.get(name).copied().ok_or_else(|| {
+            error!(
+                "Undefined label {} at instruction #{}",
+                name, current_instruction
+            );
+            Error::UndefinedLabel(name.to_string(), current_instruction)
+        })
     }
 
     /// Add a new instruction to be matched with `End`. For example,
@@ -140,6 +166,8 @@ pub enum Error {
     UnsupportedInstruction(StandardOp),
     /// The given label was not defined.
     UndefinedLabel(String, usize),
+    /// The given global was not defined.
+    UndefinedGlobal(String),
     /// The given instruction did not have a matching "end".
     /// This is used for `If`, `Else`, `While`, `For`, and `Fn` statements.
     Unmatched(CoreOp, usize),
@@ -150,5 +178,20 @@ pub enum Error {
 impl From<crate::vm::Error> for Error {
     fn from(e: crate::vm::Error) -> Self {
         Self::VirtualMachineError(e)
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match self {
+            Self::VirtualMachineError(e) => write!(f, "{}", e),
+            Self::UnsupportedInstruction(op) => write!(f, "Unsupported instruction: {}", op),
+            Self::UndefinedLabel(name, i) => {
+                write!(f, "Undefined label {} at instruction #{}", name, i)
+            }
+            Self::UndefinedGlobal(name) => write!(f, "Undefined global {}", name),
+            Self::Unmatched(op, i) => write!(f, "Unmatched {} at instruction #{}", op, i),
+            Self::Unexpected(op, i) => write!(f, "Unexpected {} at instruction #{}", op, i),
+        }
     }
 }

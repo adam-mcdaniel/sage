@@ -4,7 +4,7 @@ array [A], "Hello world!", B
 array [B], "How are you?", C
 array [C], "I am good!", D
 
-fun putstr
+fun @putstr
     mov [FP], F
     while [F]
         put-char [F]
@@ -12,19 +12,19 @@ fun putstr
     end
 end
 
-fun putstrln
-    call putstr
+fun @putstrln
+    call @putstr
     set F, 10 put-char F
 end
 
 push A
 put-int [SP]
-call putstrln
+call @putstrln
 push B
 put-int [SP]
-call putstrln
+call @putstrln
 push C
 put-int [SP]
-call putstrln
+call @putstrln
 
 free A

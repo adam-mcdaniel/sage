@@ -15,12 +15,12 @@
 //!
 //! Polymorphic procedures take a list of type arguments, and produce a monomorphized
 //! version of the procedure. This can then be compiled directly to assembly.
-mod mono;
-mod poly;
 mod builtin;
 mod ffi;
+mod mono;
+mod poly;
 
-pub use mono::*;
-pub use poly::*;
 pub use builtin::*;
 pub use ffi::*;
+pub use mono::*;
+pub use poly::*;

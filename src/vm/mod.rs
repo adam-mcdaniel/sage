@@ -53,7 +53,8 @@
 //! 16 bit ints + no floats for a hardware implementation would suffice.
 //! Infinitely large ints and floats are also supported, but the implementation
 //! must be able to handle them.
-use crate::side_effects::{Input, Output, FFIBinding};
+use crate::side_effects::{FFIBinding, Input, Output};
+use ::core::fmt::{Display, Formatter, Result as FmtResult};
 
 mod core;
 pub use self::core::*;
@@ -73,6 +74,15 @@ pub enum Error {
     /// When the virtual machine attempts to get the program as core,
     /// but finds standard instructions, this error is triggered.
     ExpectedCore(StandardOp),
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match self {
+            Self::UnsupportedInstruction(op) => write!(f, "Unsupported instruction: {}", op),
+            Self::ExpectedCore(op) => write!(f, "Expected core instruction, found: {}", op),
+        }
+    }
 }
 
 /// An interface to conveniently create virtual machine programs,

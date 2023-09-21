@@ -123,16 +123,22 @@ long_stmt = {
     | stmt_when
     | stmt_while
     | stmt_for
+    | stmt_let_static_in
     | stmt_let_in
     | stmt_match) ~ ";"*
 }
 short_stmt = {
-    (stmt_let | stmt_return | stmt_assign | expr) ~ ";"+
+    (stmt_let_static | stmt_let | stmt_return | stmt_assign | expr) ~ ";"+
 }
 stmt_let = {
     // stmt_let_typed
     // | stmt_let_untyped
     "let" ~ ((mut_symbol | symbol) ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ (mut_symbol | symbol) ~ (":" ~ type)? ~ "=" ~ expr
+}
+stmt_let_static = {
+    // stmt_let_typed
+    // | stmt_let_untyped
+    "let" ~ "static" ~ ((mut_symbol | symbol) ~ (":" ~ type) ~ "=" ~ const ~ ",")* ~ (mut_symbol | symbol) ~ (":" ~ type) ~ "=" ~ const
 }
 // stmt_let_untyped = {
 //     "let" ~ symbol ~ "=" ~ expr
@@ -206,12 +212,21 @@ stmt_while = {
 stmt_for = {
     "for" ~ short_stmt ~ expr ~ ";" ~ (stmt_assign | expr) ~ stmt_block
 }
+
 stmt_let_in = {
     stmt_let_in_block
     | stmt_let_in_expr
 }
 stmt_let_in_block = { "let" ~ ((mut_symbol | symbol) ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ (mut_symbol | symbol) ~ (":" ~ type)? ~ "=" ~ expr ~ "in" ~ stmt_block }
 stmt_let_in_expr = { "let" ~ ((mut_symbol | symbol) ~ (":" ~ type)? ~ "=" ~ expr ~ ",")* ~ (mut_symbol | symbol) ~ (":" ~ type)? ~ "=" ~ expr ~ "in" ~ expr ~ ";"+ }
+
+stmt_let_static_in = {
+    stmt_let_static_in_block
+    | stmt_let_static_in_expr
+}
+stmt_let_static_in_block = { "let" ~ "static" ~ ((mut_symbol | symbol) ~ (":" ~ type) ~ "=" ~ const ~ ",")* ~ (mut_symbol | symbol) ~ (":" ~ type) ~ "=" ~ const ~ "in" ~ stmt_block }
+stmt_let_static_in_expr = { "let" ~ "static" ~ ((mut_symbol | symbol) ~ (":" ~ type) ~ "=" ~ const ~ ",")* ~ (mut_symbol | symbol) ~ (":" ~ type) ~ "=" ~ const ~ "in" ~ const ~ ";"+ }
+
 
 // stmt_type_in = {
 //     stmt_type_in_block

@@ -1,7 +1,7 @@
 use sage::{
     asm::*,
-    side_effects::{Input, Output},
     parse::parse_asm,
+    side_effects::{Input, Output},
     vm::{CoreInterpreter, TestingDevice},
 };
 
@@ -303,7 +303,14 @@ fn test_str() {
         Pop(None, 1),
         Dec(D),
         End,
-        CoreOp::stack_alloc_cells(C, vec![0].repeat(1024)),
+        Global {
+            name: String::from("testing"),
+            size: 1024,
+        },
+        GetAddress {
+            addr: Location::Global(String::from("testing")),
+            dst: C,
+        },
         CoreOp::put_string(">> ", Output::stdout_char()),
         Push(C, 1),
         CallLabel(String::from("getstr")),
@@ -330,12 +337,12 @@ fn test_str() {
 #[test]
 fn test_factorial() {
     let factorial = r#"
-    fun fact
+    fun @fact
         if [FP]
             mov [FP], A
             dec A
             push A
-            call fact
+            call @fact
             mul [FP + 1], [FP]
             pop
         else
@@ -344,7 +351,7 @@ fn test_factorial() {
     end
 
     set A, 10 push A
-    call fact
+    call @fact
     pop A
     put-int A
     "#;

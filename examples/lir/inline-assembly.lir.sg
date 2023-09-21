@@ -1,11 +1,11 @@
 proc asm_init() = core {
-    fun FACT
+    fun @FACT
         set A, 0
         gt [SP], A, B
         if B
             push [SP]
             dec [SP]
-            call FACT
+            call @FACT
             mul [SP], [SP - 1]
             pop
         else
@@ -15,7 +15,7 @@ proc asm_init() = core {
 } in
 
 proc fact(n: Int) -> Int = core {
-    call FACT
+    call @FACT
 } in {
     asm_init();
 

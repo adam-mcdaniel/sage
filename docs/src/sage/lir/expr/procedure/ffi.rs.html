@@ -85,15 +85,16 @@
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # FFI-Procedure
 //!
 //! A typed procedure which calls a foreign function.
 //! This is compiled down to a standard assembly `Call` instruction.
-//! The label is the name of the foreign function. The types determine the 
+//! The label is the name of the foreign function. The types determine the
 //! size of the cells for the arguments and return value.
-</span><span class="kw">use </span><span class="kw">crate</span>::side_effects::FFIBinding;
-<span class="kw">use </span><span class="kw">crate</span>::asm::{AssemblyProgram, StandardOp};
+</span><span class="kw">use </span><span class="kw">crate</span>::asm::{AssemblyProgram, StandardOp};
 <span class="kw">use </span><span class="kw">crate</span>::lir::{Compile, Env, Error, GetSize, GetType, Type, TypeCheck};
+<span class="kw">use </span><span class="kw">crate</span>::side_effects::FFIBinding;
 <span class="kw">use </span>core::fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 
 <span class="kw">use </span>log::debug;
@@ -118,7 +119,6 @@
         <span class="self">Self </span>{ name, args, ret }
     }
 }
-
 
 <span class="kw">impl </span>TypeCheck <span class="kw">for </span>FFIProcedure {
     <span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
@@ -154,7 +154,9 @@
         }
         <span class="kw">let </span>ret_size = <span class="self">self</span>.ret.get_size(env)<span class="question-mark">?</span>;
 
-        output.std_op(StandardOp::Call(FFIBinding::new(<span class="self">self</span>.name, args_size, ret_size)))<span class="question-mark">?</span>;
+        output.std_op(StandardOp::Call(FFIBinding::new(
+            <span class="self">self</span>.name, args_size, ret_size,
+        )))<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -171,4 +173,5 @@
         }
         <span class="macro">write!</span>(f, <span class="string">&quot;) -&gt; {}&quot;</span>, <span class="self">self</span>.ret)
     }
-}</code></pre></div></section></main></body></html>
+}
+</code></pre></div></section></main></body></html>

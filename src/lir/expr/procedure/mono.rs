@@ -9,7 +9,9 @@
 //!
 //! Procedures are created by the `proc` keyword.
 use crate::asm::{AssemblyProgram, CoreOp, A, FP, SP};
-use crate::lir::{Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck};
+use crate::lir::{
+    Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck,
+};
 use core::fmt;
 use std::sync::Mutex;
 
@@ -183,7 +185,11 @@ impl Compile for Procedure {
         output.op(CoreOp::SetLabel(A, self.mangled_name.clone()));
         output.op(CoreOp::Push(A, 1));
 
-        let name = self.common_name.as_ref().map(|x| x.as_str()).unwrap_or_else(|| "<anonymous>");
+        let name = self
+            .common_name
+            .as_ref()
+            .map(|x| x.as_str())
+            .unwrap_or_else(|| "<anonymous>");
         // Log the compiled procedure
         let message = format!("Compiled procedure {common_name} to {mangled_name} with args of size {args_size} and return value of size {ret_size}",
             common_name = name,

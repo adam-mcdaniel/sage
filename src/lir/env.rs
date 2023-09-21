@@ -4,13 +4,16 @@
 //! defined in a given scope. It also stores the variables defined in the scope, and the their offsets
 //! with respect to the frame pointer.
 
-use super::{Compile, ConstExpr, Error, GetSize, Procedure, Type, Mutability};
-use crate::asm::AssemblyProgram;
+use super::{Compile, ConstExpr, Error, GetSize, Mutability, Procedure, Type};
+use crate::asm::{AssemblyProgram, Globals, Location};
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
-use std::{collections::HashMap, rc::Rc};
+use std::{
+    collections::HashMap,
+    rc::Rc,
+    sync::{Mutex, RwLock},
+};
 
-
-use log::{debug, trace, warn, error};
+use log::{debug, error, trace, warn};
 
 /// An environment under which expressions and types are compiled and typechecked.
 /// This is essentially the scope of an expression.
@@ -24,6 +27,11 @@ pub struct Env {
     procs: Rc<HashMap<String, Procedure>>,
     /// The variables defined under the environment.
     vars: Rc<HashMap<String, (Mutability, Type, isize)>>,
+    /// The static variables defined under the environment.
+    static_vars: Rc<HashMap<String, (Mutability, Type, Location)>>,
+    /// A lookup for the offsets of global variables.
+    globals: Rc<Mutex<Globals>>,
+
     /// The current offset of the frame pointer to assign to the next variable.
     /// This is incremented by the size of each variable as it is defined.
     fp_offset: isize,
@@ -36,7 +44,7 @@ pub struct Env {
     expected_ret: Option<Type>,
 
     /// Memoized type sizes.
-    type_sizes: Rc<HashMap<Type, usize>>,
+    type_sizes: Rc<RwLock<HashMap<Type, usize>>>,
 }
 
 impl Default for Env {
@@ -45,10 +53,13 @@ impl Default for Env {
             // It is important that we use reference counting for the tables because the environment
             // will be copied many times during the compilation process to create new scopes.
             types: Rc::new(HashMap::new()),
-            type_sizes: Rc::new(HashMap::new()),
+            type_sizes: Rc::new(RwLock::new(HashMap::new())),
             consts: Rc::new(HashMap::new()),
             procs: Rc::new(HashMap::new()),
             vars: Rc::new(HashMap::new()),
+            static_vars: Rc::new(HashMap::new()),
+            globals: Rc::new(Mutex::new(Globals::new())),
+
             // The last argument is stored at `[FP]`, so our first variable must be at `[FP + 1]`.
             fp_offset: 1,
             args_size: 0,
@@ -65,11 +76,34 @@ impl Env {
             types: self.types.clone(),
             consts: self.consts.clone(),
             procs: self.procs.clone(),
+            static_vars: self.static_vars.clone(),
             type_sizes: self.type_sizes.clone(),
+            globals: self.globals.clone(),
 
             // The rest are the same as a new environment.
             ..Env::default()
         }
+    }
+
+    /// Define a static variable with a given name under this environment.
+    pub(super) fn define_static_var(
+        &mut self,
+        name: impl ToString,
+        mutability: Mutability,
+        ty: Type,
+    ) -> Result<Location, Error> {
+        let name = name.to_string();
+        let size = ty.get_size(self)?;
+        let mut globals = self.globals.lock().unwrap();
+        let location = globals.add_global(name.clone(), size);
+
+        trace!("Defining static variable {name} of type {ty} at {location}");
+        Rc::make_mut(&mut self.static_vars).insert(name, (mutability, ty, location.clone()));
+        Ok(location)
+    }
+
+    pub(super) fn get_static_var(&self, name: &str) -> Option<&(Mutability, Type, Location)> {
+        self.static_vars.get(name)
     }
 
     /// Define a type with a given name under this environment.
@@ -91,9 +125,9 @@ impl Env {
     }
 
     /// Define multiple types with the given names under this environment.
-    /// 
+    ///
     /// This must be used in situations where the different types depend on each other.
-    /// This is because the sizes of types are memoized, and this will interfere with 
+    /// This is because the sizes of types are memoized, and this will interfere with
     /// the memoization process if the types are defined separately. It will lead to
     /// typechecking errors if the environment does not already have a memoized size
     /// for the type of a subexpression.
@@ -154,7 +188,11 @@ impl Env {
     }
 
     /// Push a procedure defined in the environment onto the stack.
-    pub(super) fn push_proc(&mut self, name: &str, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    pub(super) fn push_proc(
+        &mut self,
+        name: &str,
+        output: &mut dyn AssemblyProgram,
+    ) -> Result<(), Error> {
         // Check if the procedure is defined.
         if let Some(proc) = Rc::make_mut(&mut self.procs).get_mut(name) {
             debug!("Pushing procedure {} onto the stack", name);
@@ -181,13 +219,18 @@ impl Env {
     pub(super) fn is_defined_as_mutable(&self, var: &str) -> bool {
         if let Some((mutability, _, _)) = self.vars.get(var) {
             mutability.is_mutable()
+        } else if let Some((mutability, _, _)) = self.static_vars.get(var) {
+            mutability.is_mutable()
         } else {
             false
         }
     }
 
     /// Define the arguments for the current scope (if this is a procedure).
-    pub(super) fn define_args(&mut self, args: Vec<(String, Mutability, Type)>) -> Result<usize, Error> {
+    pub(super) fn define_args(
+        &mut self,
+        args: Vec<(String, Mutability, Type)>,
+    ) -> Result<usize, Error> {
         debug!("Defining arguments {args:?} in\n{self}");
         self.fp_offset = 1;
         self.args_size = 0;
@@ -202,7 +245,10 @@ impl Env {
             // so that the FP + the offset is the address of the argument.
             self.fp_offset -= size as isize;
             // Store the argument's type and offset in the environment.
-            debug!("Defined argument {name} of type {ty} at offset {} in\n{self}", self.fp_offset);
+            debug!(
+                "Defined argument {name} of type {ty} at offset {} in\n{self}",
+                self.fp_offset
+            );
             Rc::make_mut(&mut self.vars).insert(name, (mutability, ty, self.fp_offset));
         }
         // Set the frame pointer offset to `1` so that the first variable defined under the scope is at `[FP + 1]`.
@@ -216,7 +262,12 @@ impl Env {
     /// Define a variable in the current scope.
     /// This will increment the scope's frame pointer offset by the size of the variable.
     /// This method returns the offset of the variable from the frame pointer under this scope.
-    pub fn define_var(&mut self, var: impl ToString, mutability: Mutability, ty: Type) -> Result<isize, Error> {
+    pub fn define_var(
+        &mut self,
+        var: impl ToString,
+        mutability: Mutability,
+        ty: Type,
+    ) -> Result<isize, Error> {
         let var = var.to_string();
         // Get the size of the variable we're defining.
         let size = ty.get_size(self)? as isize;
@@ -250,7 +301,7 @@ impl Env {
     /// This helps the compiler memoize the size of types so that it doesn't have to
     /// recalculate the size of the same type multiple times.
     pub(super) fn has_precalculated_size(&self, ty: &Type) -> bool {
-        self.type_sizes.contains_key(ty)
+        self.type_sizes.read().unwrap().contains_key(ty)
     }
 
     /// Get the precalculated size of the given type.
@@ -258,7 +309,8 @@ impl Env {
     /// recalculate the size of the same type multiple times.
     pub(super) fn get_precalculated_size(&self, ty: &Type) -> Option<usize> {
         // Get the precalculated size of the given type.
-        let size = self.type_sizes.get(ty).copied()?;
+        // let size = self.type_sizes.get(ty).copied()?;
+        let size = self.type_sizes.read().unwrap().get(ty).copied()?;
         // Log the size of the type.
         debug!(target: "size", "Getting memoized type size for {ty} => {size}");
         // Return the size of the type.
@@ -270,15 +322,15 @@ impl Env {
     /// recalculate the size of the same type multiple times.
     pub(super) fn set_precalculated_size(&mut self, ty: Type, size: usize) {
         debug!(target: "size", "Memoizing type size {ty} with size {size}");
-        if let Some(old_size) = self.type_sizes.get(&ty) {
-            if *old_size == size {
+        if let Some(old_size) = self.get_precalculated_size(&ty) {
+            if old_size == size {
                 debug!(target: "size", "Type size {ty} was already memoized with size {size}");
                 return;
             } else {
                 warn!(target: "size", "Type size {ty} was already memoized with size {old_size}, but we memoized it with size {size}");
             }
         }
-        Rc::make_mut(&mut self.type_sizes).insert(ty, size);
+        self.type_sizes.write().unwrap().insert(ty, size);
     }
 }
 
@@ -297,9 +349,13 @@ impl Display for Env {
         for (name, proc) in self.procs.iter() {
             writeln!(f, "      {}: {}", name, proc)?;
         }
+        writeln!(f, "   Globals:")?;
+        for (name, (mutability, ty, location)) in self.static_vars.iter() {
+            writeln!(f, "      {mutability} {name}: {ty} (location {location})")?;
+        }
         writeln!(f, "   Variables:")?;
         for (name, (mutability, ty, offset)) in self.vars.iter() {
-            writeln!(f, "      {mutability} {}: {} (frame-offset {})", name, ty, offset)?;
+            writeln!(f, "      {mutability} {name}: {ty} (frame-offset {offset})")?;
         }
         Ok(())
     }

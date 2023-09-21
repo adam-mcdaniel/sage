@@ -1,12 +1,7 @@
 use crate::{lir::*, parse::SourceCodeLocation};
-use pest::{
-    error::Error,
-    iterators::Pair,
-    Parser,
-};
+use pest::{error::Error, iterators::Pair, Parser};
 use pest_derive::Parser;
 use std::collections::BTreeMap;
-
 
 #[derive(Parser)]
 #[grammar = "frontend/parse.pest"] // relative to src
@@ -19,6 +14,7 @@ pub enum Statement {
         loc: SourceCodeLocation,
     },
     Let(Vec<(String, Mutability, Option<Type>, Expr)>),
+    LetStatic(Vec<(String, Mutability, Type, ConstExpr)>),
     Assign(Expr, Option<Box<dyn AssignOp + 'static>>, Expr),
     If(Expr, Box<Self>, Option<Box<Self>>),
     IfLet(Pattern, Expr, Box<Self>, Option<Box<Self>>),
@@ -27,17 +23,28 @@ pub enum Statement {
     Return(Expr),
     Block(Vec<Declaration>),
     LetIn(Vec<(String, Mutability, Option<Type>, Expr)>, Box<Self>),
+    LetStaticIn(Vec<(String, Mutability, Type, ConstExpr)>, Box<Self>),
     Expr(Expr),
 }
 
 impl Statement {
+    fn with_loc(self, loc: SourceCodeLocation) -> Self {
+        match self {
+            Self::AnnotatedWithSource { .. } => self,
+            _ => Self::AnnotatedWithSource {
+                stmt: Box::new(self),
+                loc,
+            },
+        }
+    }
+
     fn to_expr(self, rest: Option<Expr>) -> Expr {
         let rest_expr = Box::new(rest.clone().unwrap_or(Expr::ConstExpr(ConstExpr::None)));
 
         let stmt = match (self, rest.clone()) {
             (Self::AnnotatedWithSource { stmt, loc }, _) => {
-                return Expr::AnnotatedWithSource { expr: Box::new(stmt.to_expr(rest)), loc };
-            },
+                return stmt.to_expr(rest).with_loc(loc);
+            }
             (Self::Assign(lhs, op, rhs), _) => {
                 match op {
                     Some(op) => lhs.refer(Mutability::Mutable).assign(op, rhs),
@@ -108,6 +115,9 @@ impl Statement {
             //     return Expr::LetVars(vars, Box::new(Expr::Many(vec![body.to_expr(Some(*ret))])))
             // }
             (Self::LetIn(defs, body), _) => Expr::LetVars(defs, Box::new(body.to_expr(None))),
+            (Self::LetStaticIn(defs, body), _) => {
+                Expr::LetStaticVars(defs, Box::new(body.to_expr(None)))
+            }
             (Self::Let(defs), Some(Expr::LetVars(mut vars, ret))) => {
                 for (name, mutability, ty, val) in defs.into_iter().rev() {
                     vars.insert(0, (name, mutability, ty, val));
@@ -115,6 +125,13 @@ impl Statement {
                 return Expr::LetVars(vars, ret);
             }
             (Self::Let(defs), _) => return Expr::LetVars(defs, rest_expr),
+            (Self::LetStatic(defs), Some(Expr::LetStaticVars(mut vars, ret))) => {
+                for (name, mutability, ty, val) in defs.into_iter().rev() {
+                    vars.insert(0, (name, mutability, ty, val));
+                }
+                return Expr::LetStaticVars(vars, ret);
+            }
+            (Self::LetStatic(defs), _) => return Expr::LetStaticVars(defs, rest_expr),
             (Self::Expr(e), _) => e,
         };
         if let Some(Expr::Many(mut stmts)) = rest {
@@ -134,7 +151,12 @@ pub enum Declaration {
     Extern(String, Vec<(Option<String>, Type)>, Type),
     Enum(String, Vec<(String, Option<Type>)>),
     Const(Vec<(String, ConstExpr)>),
-    Proc(String, Vec<(String, Mutability, Type)>, Option<Type>, Box<Statement>),
+    Proc(
+        String,
+        Vec<(String, Mutability, Type)>,
+        Option<Type>,
+        Box<Statement>,
+    ),
     PolyProc(
         String,
         Vec<String>,
@@ -164,9 +186,15 @@ impl Declaration {
     fn to_expr(self, rest: Option<Expr>) -> Expr {
         let rest_expr = Box::new(rest.clone().unwrap_or(Expr::ConstExpr(ConstExpr::None)));
         match (self, rest) {
-            (Self::Extern(name, args, ret), rest) => {
-                Self::Const(vec![(name.clone(), ConstExpr::FFIProcedure(FFIProcedure::new(name, args.into_iter().map(|(_, x)| x).collect(), ret)))]).to_expr(rest)
-            }
+            (Self::Extern(name, args, ret), rest) => Self::Const(vec![(
+                name.clone(),
+                ConstExpr::FFIProcedure(FFIProcedure::new(
+                    name,
+                    args.into_iter().map(|(_, x)| x).collect(),
+                    ret,
+                )),
+            )])
+            .to_expr(rest),
             (Self::Struct(name, fields), Some(Expr::LetTypes(mut types, ret))) => {
                 types.push((name, Type::Struct(fields.into_iter().collect())));
                 Expr::LetTypes(types, ret)
@@ -353,7 +381,10 @@ pub fn parse_frontend(code: &str, filename: Option<&str>) -> Result<Expr, Box<Er
 
 fn parse_symbol(pair: Pair<Rule>) -> (Mutability, String) {
     if pair.as_rule() == Rule::mut_symbol {
-        (Mutability::Mutable, pair.into_inner().next().unwrap().as_str().to_string())
+        (
+            Mutability::Mutable,
+            pair.into_inner().next().unwrap().as_str().to_string(),
+        )
     } else {
         (Mutability::Immutable, pair.as_str().to_string())
     }
@@ -365,7 +396,11 @@ fn parse_program(pair: Pair<Rule>, filename: Option<&str>) -> Program {
 
 fn parse_decl(pair: Pair<Rule>, filename: Option<&str>) -> Declaration {
     match pair.as_rule() {
-        Rule::decl | Rule::decl_proc => pair.into_inner().map(|x| parse_decl(x, filename)).next().unwrap(),
+        Rule::decl | Rule::decl_proc => pair
+            .into_inner()
+            .map(|x| parse_decl(x, filename))
+            .next()
+            .unwrap(),
         Rule::decl_proc_block | Rule::decl_proc_expr => {
             let mut inner_rules = pair.into_inner();
             let name = inner_rules.next().unwrap().as_str().to_string();
@@ -603,177 +638,217 @@ fn parse_stmt(pair: Pair<Rule>, filename: Option<&str>) -> Statement {
         length: Some(length),
         offset,
     };
-    
-    Statement::AnnotatedWithSource {
-        loc,
-        stmt: Box::new(match pair.as_rule() {
-            Rule::stmt | Rule::long_stmt | Rule::short_stmt | Rule::stmt_let_in => {
-                pair.into_inner().map(|x| parse_stmt(x, filename)).next().unwrap()
+
+    match pair.as_rule() {
+        Rule::stmt | Rule::long_stmt | Rule::short_stmt | Rule::stmt_let_in => pair
+            .into_inner()
+            .map(|x| parse_stmt(x, filename))
+            .next()
+            .unwrap(),
+
+        Rule::stmt_let_static => {
+            let mut inner_rules = pair.into_inner();
+            let mut defs = vec![];
+            while inner_rules.peek().is_some() {
+                let (mutability, symbol) = parse_symbol(inner_rules.next().unwrap());
+                let ty = parse_type(inner_rules.next().unwrap());
+                let expr = parse_const(inner_rules.next().unwrap());
+                defs.push((symbol, mutability, ty, expr));
             }
+            Statement::LetStatic(defs)
+        }
 
-            Rule::stmt_match => Statement::Expr(parse_match(pair)),
-
-            Rule::stmt_block => {
-                let inner_rules = pair.into_inner();
-                let mut stmts = Vec::new();
-                for stmt in inner_rules {
-                    stmts.push(parse_decl(stmt, filename));
+        Rule::stmt_let_static_in_expr | Rule::stmt_let_static_in_block => {
+            let mut inner_rules = pair.into_inner();
+            let mut defs = vec![];
+            while inner_rules.clone().count() > 1 {
+                let (mutability, symbol) = parse_symbol(inner_rules.next().unwrap());
+                let ty = parse_type(inner_rules.next().unwrap());
+                let expr = parse_const(inner_rules.next().unwrap());
+                defs.push((symbol, mutability, ty, expr));
+            }
+            let last = inner_rules.next().unwrap();
+            match last.as_rule() {
+                Rule::stmt_block => {
+                    Statement::LetStaticIn(defs, Box::new(parse_stmt(last, filename)))
                 }
-                Statement::Block(stmts)
-            }
-
-            Rule::stmt_if => {
-                let mut inner_rules = pair.into_inner();
-                let cond = parse_expr(inner_rules.next().unwrap());
-                let body = parse_stmt(inner_rules.next().unwrap(), filename);
-                let else_body = inner_rules.next().map(|x| Box::new(parse_stmt(x, filename)));
-                Statement::If(cond, Box::new(body), else_body)
-            }
-
-            Rule::stmt_if_elif => {
-                let mut inner_rules = pair.into_inner();
-                let mut elifs = vec![];
-                for _ in 0..inner_rules.clone().count() / 2 {
-                    let cond = inner_rules.next().unwrap();
-                    let body = inner_rules.next().unwrap();
-                    elifs.push((parse_expr(cond), parse_stmt(body, filename)));
+                Rule::expr => {
+                    Statement::LetStaticIn(defs, Box::new(Statement::Expr(parse_expr(last))))
                 }
+                other => unreachable!("Unexpected rule {:?}", other),
+            }
+        }
+        Rule::stmt_match => Statement::Expr(parse_match(pair)),
 
-                let mut else_body = inner_rules
-                    .next()
-                    .map(|x| parse_stmt(x, filename))
-                    .unwrap_or(Statement::Block(vec![]));
+        Rule::stmt_block => {
+            let inner_rules = pair.into_inner();
+            let mut stmts = Vec::new();
+            for stmt in inner_rules {
+                stmts.push(parse_decl(stmt, filename));
+            }
+            Statement::Block(stmts)
+        }
 
-                for (cond, body) in elifs.into_iter().rev() {
-                    else_body = Statement::If(cond, Box::new(body), Some(Box::new(else_body)));
+        Rule::stmt_if => {
+            let mut inner_rules = pair.into_inner();
+            let cond = parse_expr(inner_rules.next().unwrap());
+            let body = parse_stmt(inner_rules.next().unwrap(), filename);
+            let else_body = inner_rules
+                .next()
+                .map(|x| Box::new(parse_stmt(x, filename)));
+            Statement::If(cond, Box::new(body), else_body)
+        }
+
+        Rule::stmt_if_elif => {
+            let mut inner_rules = pair.into_inner();
+            let mut elifs = vec![];
+            for _ in 0..inner_rules.clone().count() / 2 {
+                let cond = inner_rules.next().unwrap();
+                let body = inner_rules.next().unwrap();
+                elifs.push((parse_expr(cond), parse_stmt(body, filename)));
+            }
+
+            let mut else_body = inner_rules
+                .next()
+                .map(|x| parse_stmt(x, filename))
+                .unwrap_or(Statement::Block(vec![]));
+
+            for (cond, body) in elifs.into_iter().rev() {
+                else_body = Statement::If(cond, Box::new(body), Some(Box::new(else_body)));
+            }
+
+            else_body
+        }
+
+        Rule::stmt_if_let => {
+            let mut inner_rules = pair.into_inner();
+            let pat = parse_pattern(inner_rules.next().unwrap());
+            let expr = parse_expr(inner_rules.next().unwrap());
+            let body = parse_stmt(inner_rules.next().unwrap(), filename);
+            let else_body = inner_rules
+                .next()
+                .map(|x| Box::new(parse_stmt(x, filename)));
+            Statement::IfLet(pat, expr, Box::new(body), else_body)
+        }
+        Rule::stmt_if_elif_let => {
+            let mut inner_rules = pair.into_inner();
+            let mut elifs = vec![];
+            while inner_rules.clone().count() > 3 {
+                let pat = inner_rules.next().unwrap();
+                let expr = inner_rules.next().unwrap();
+                let body = inner_rules.next().unwrap();
+                elifs.push((
+                    parse_pattern(pat),
+                    parse_expr(expr),
+                    parse_stmt(body, filename),
+                ));
+            }
+
+            let mut else_body = inner_rules
+                .next()
+                .map(|x| parse_stmt(x, filename))
+                .unwrap_or(Statement::Block(vec![]));
+
+            for (pat, expr, body) in elifs.into_iter().rev() {
+                else_body = Statement::IfLet(pat, expr, Box::new(body), Some(Box::new(else_body)));
+            }
+
+            else_body
+        }
+
+        Rule::stmt_while => {
+            let mut inner_rules = pair.into_inner();
+            let cond = parse_expr(inner_rules.next().unwrap());
+            let body = parse_stmt(inner_rules.next().unwrap(), filename);
+            Statement::While(cond, Box::new(body))
+        }
+
+        Rule::stmt_for => {
+            let mut inner_rules = pair.into_inner();
+            let pre = parse_stmt(inner_rules.next().unwrap(), filename);
+            let cond = parse_expr(inner_rules.next().unwrap());
+            let post = parse_stmt(inner_rules.next().unwrap(), filename);
+            let body = parse_stmt(inner_rules.next().unwrap(), filename);
+            Statement::For(Box::new(pre), cond, Box::new(post), Box::new(body))
+        }
+
+        Rule::stmt_let => {
+            let mut inner_rules = pair.into_inner();
+            let mut defs = vec![];
+            while inner_rules.peek().is_some() {
+                let (mutability, symbol) = parse_symbol(inner_rules.next().unwrap());
+                let ty = inner_rules.next().unwrap();
+                if ty.as_rule() == Rule::expr {
+                    defs.push((symbol, mutability, None, parse_expr(ty)));
+                    continue;
                 }
-
-                else_body
-            }
-
-            Rule::stmt_if_let => {
-                let mut inner_rules = pair.into_inner();
-                let pat = parse_pattern(inner_rules.next().unwrap());
-                let expr = parse_expr(inner_rules.next().unwrap());
-                let body = parse_stmt(inner_rules.next().unwrap(), filename);
-                let else_body = inner_rules.next().map(|x| Box::new(parse_stmt(x, filename)));
-                Statement::IfLet(pat, expr, Box::new(body), else_body)
-            }
-            Rule::stmt_if_elif_let => {
-                let mut inner_rules = pair.into_inner();
-                let mut elifs = vec![];
-                while inner_rules.clone().count() > 3 {
-                    let pat = inner_rules.next().unwrap();
-                    let expr = inner_rules.next().unwrap();
-                    let body = inner_rules.next().unwrap();
-                    elifs.push((parse_pattern(pat), parse_expr(expr), parse_stmt(body, filename)));
-                }
-
-                let mut else_body = inner_rules
-                    .next()
-                    .map(|x| parse_stmt(x, filename))
-                    .unwrap_or(Statement::Block(vec![]));
-
-                for (pat, expr, body) in elifs.into_iter().rev() {
-                    else_body = Statement::IfLet(pat, expr, Box::new(body), Some(Box::new(else_body)));
-                }
-
-                else_body
-            }
-
-            Rule::stmt_while => {
-                let mut inner_rules = pair.into_inner();
-                let cond = parse_expr(inner_rules.next().unwrap());
-                let body = parse_stmt(inner_rules.next().unwrap(), filename);
-                Statement::While(cond, Box::new(body))
-            }
-
-            Rule::stmt_for => {
-                let mut inner_rules = pair.into_inner();
-                let pre = parse_stmt(inner_rules.next().unwrap(), filename);
-                let cond = parse_expr(inner_rules.next().unwrap());
-                let post = parse_stmt(inner_rules.next().unwrap(), filename);
-                let body = parse_stmt(inner_rules.next().unwrap(), filename);
-                Statement::For(Box::new(pre), cond, Box::new(post), Box::new(body))
-            }
-
-            Rule::stmt_let => {
-                let mut inner_rules = pair.into_inner();
-                let mut defs = vec![];
-                while inner_rules.peek().is_some() {
-                    let (mutability, symbol) = parse_symbol(inner_rules.next().unwrap());
-                    let ty = inner_rules.next().unwrap();
-                    if ty.as_rule() == Rule::expr {
-                        defs.push((symbol, mutability,None, parse_expr(ty)));
-                        continue;
-                    }
-                    if let Some(expr) = inner_rules.next() {
-                        defs.push((symbol, mutability,Some(parse_type(ty)), parse_expr(expr)));
-                    } else {
-                        defs.push((symbol, mutability, None, parse_expr(ty)));
-                    }
-                }
-                Statement::Let(defs)
-            }
-
-            Rule::stmt_let_in_expr | Rule::stmt_let_in_block => {
-                let mut inner_rules = pair.into_inner();
-                let mut defs = vec![];
-                while inner_rules.clone().count() > 1 {
-                    let (mutability, symbol) = parse_symbol(inner_rules.next().unwrap());
-                    let ty = inner_rules.next().unwrap();
-                    if ty.as_rule() == Rule::expr {
-                        defs.push((symbol, mutability, None, parse_expr(ty)));
-                        continue;
-                    }
-                    if let Some(expr) = inner_rules.next() {
-                        defs.push((symbol, mutability, Some(parse_type(ty)), parse_expr(expr)));
-                    } else {
-                        defs.push((symbol, mutability, None, parse_expr(ty)));
-                    }
-                }
-                let last = inner_rules.next().unwrap();
-                match last.as_rule() {
-                    Rule::stmt_block => Statement::LetIn(defs, Box::new(parse_stmt(last, filename))),
-                    Rule::expr => Statement::LetIn(defs, Box::new(Statement::Expr(parse_expr(last)))),
-                    other => unreachable!("Unexpected rule {:?}", other),
+                if let Some(expr) = inner_rules.next() {
+                    defs.push((symbol, mutability, Some(parse_type(ty)), parse_expr(expr)));
+                } else {
+                    defs.push((symbol, mutability, None, parse_expr(ty)));
                 }
             }
+            Statement::Let(defs)
+        }
 
-            Rule::stmt_assign => {
-                let mut inner_rules = pair.into_inner();
-                let lhs = parse_expr(inner_rules.next().unwrap());
-                let op = inner_rules.next().unwrap().as_str();
-                let rhs = parse_expr(inner_rules.next().unwrap());
-                Statement::Assign(
-                    lhs,
-                    match op {
-                        "=" => None,
-                        "+=" => Some(Box::new(Assign::new(Add))),
-                        "-=" => Some(Box::new(Assign::new(Arithmetic::Subtract))),
-                        "*=" => Some(Box::new(Assign::new(Arithmetic::Multiply))),
-                        "/=" => Some(Box::new(Assign::new(Arithmetic::Divide))),
-                        "%=" => Some(Box::new(Assign::new(Arithmetic::Remainder))),
-                        "&=" => Some(Box::new(Assign::new(BitwiseAnd))),
-                        "^=" => Some(Box::new(Assign::new(BitwiseXor))),
-                        "|=" => Some(Box::new(Assign::new(BitwiseOr))),
-                        _ => unreachable!(),
-                    },
-                    rhs,
-                )
+        Rule::stmt_let_in_expr | Rule::stmt_let_in_block => {
+            let mut inner_rules = pair.into_inner();
+            let mut defs = vec![];
+            while inner_rules.clone().count() > 1 {
+                let (mutability, symbol) = parse_symbol(inner_rules.next().unwrap());
+                let ty = inner_rules.next().unwrap();
+                if ty.as_rule() == Rule::expr {
+                    defs.push((symbol, mutability, None, parse_expr(ty)));
+                    continue;
+                }
+                if let Some(expr) = inner_rules.next() {
+                    defs.push((symbol, mutability, Some(parse_type(ty)), parse_expr(expr)));
+                } else {
+                    defs.push((symbol, mutability, None, parse_expr(ty)));
+                }
             }
-
-            Rule::stmt_return => {
-                let mut inner_rules = pair.into_inner();
-                let expr = inner_rules.next().map(parse_expr);
-                Statement::Return(expr.unwrap_or(Expr::ConstExpr(ConstExpr::None)))
+            let last = inner_rules.next().unwrap();
+            match last.as_rule() {
+                Rule::stmt_block => Statement::LetIn(defs, Box::new(parse_stmt(last, filename))),
+                Rule::expr => Statement::LetIn(defs, Box::new(Statement::Expr(parse_expr(last)))),
+                other => unreachable!("Unexpected rule {:?}", other),
             }
+        }
 
-            Rule::expr => Statement::Expr(parse_expr(pair)),
+        Rule::stmt_assign => {
+            let mut inner_rules = pair.into_inner();
+            let lhs = parse_expr(inner_rules.next().unwrap());
+            let op = inner_rules.next().unwrap().as_str();
+            let rhs = parse_expr(inner_rules.next().unwrap());
+            Statement::Assign(
+                lhs,
+                match op {
+                    "=" => None,
+                    "+=" => Some(Box::new(Assign::new(Add))),
+                    "-=" => Some(Box::new(Assign::new(Arithmetic::Subtract))),
+                    "*=" => Some(Box::new(Assign::new(Arithmetic::Multiply))),
+                    "/=" => Some(Box::new(Assign::new(Arithmetic::Divide))),
+                    "%=" => Some(Box::new(Assign::new(Arithmetic::Remainder))),
+                    "&=" => Some(Box::new(Assign::new(BitwiseAnd))),
+                    "^=" => Some(Box::new(Assign::new(BitwiseXor))),
+                    "|=" => Some(Box::new(Assign::new(BitwiseOr))),
+                    _ => unreachable!(),
+                },
+                rhs,
+            )
+        }
 
-            other => panic!("Unexpected rule: {:?}: {:?}", other, pair),
-        })
+        Rule::stmt_return => {
+            let mut inner_rules = pair.into_inner();
+            let expr = inner_rules.next().map(parse_expr);
+            Statement::Return(expr.unwrap_or(Expr::ConstExpr(ConstExpr::None)))
+        }
+
+        Rule::expr => Statement::Expr(parse_expr(pair)),
+
+        other => panic!("Unexpected rule: {:?}: {:?}", other, pair),
     }
+    .with_loc(loc)
 }
 
 // fn parse_let(pair: Pair<Rule>) -> Statement {
@@ -902,7 +977,8 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
         other => panic!("Unexpected rule: {:?}: {:?}", other, pair),
     };
     // result
-    Expr::AnnotatedWithSource { expr: Box::new(result), loc }
+    // Expr::AnnotatedWithSource { expr: Box::new(result), loc }
+    result.with_loc(loc)
 }
 
 fn parse_expr_term(pair: Pair<Rule>) -> Expr {
@@ -1094,8 +1170,12 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
         ),
         Rule::const_none => ConstExpr::None,
         Rule::const_null => ConstExpr::Null,
-        Rule::const_size_of_type => ConstExpr::SizeOfType(parse_type(pair.into_inner().next().unwrap())),
-        Rule::const_size_of_expr => ConstExpr::SizeOfExpr(parse_expr(pair.into_inner().next().unwrap()).into()),
+        Rule::const_size_of_type => {
+            ConstExpr::SizeOfType(parse_type(pair.into_inner().next().unwrap()))
+        }
+        Rule::const_size_of_expr => {
+            ConstExpr::SizeOfExpr(parse_expr(pair.into_inner().next().unwrap()).into())
+        }
         other => panic!("Unexpected rule: {:?}: {:?}", other, pair),
     }
 }
@@ -1307,7 +1387,10 @@ fn parse_pattern(pair: Pair<Rule>) -> Pattern {
                 let mut inner_rules = pair.into_inner();
                 let symbol = inner_rules.next().unwrap().as_str().to_string();
                 if inner_rules.peek().is_none() {
-                    fields.push((symbol.clone(), Pattern::Symbol(Mutability::Immutable, symbol)));
+                    fields.push((
+                        symbol.clone(),
+                        Pattern::Symbol(Mutability::Immutable, symbol),
+                    ));
                     continue;
                 }
                 // let pattern = parse_pattern(inner_rules.next().unwrap());

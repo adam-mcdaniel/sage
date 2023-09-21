@@ -79,9 +79,9 @@
 //! | Worldly                | `GetChar`        | `PutChar` | `GetInt`        | `PutInt`   | `GetFloat`  | `PutFloat`   |
 pub mod asm;
 pub mod frontend;
-pub mod side_effects;
 pub mod lir;
 pub mod parse;
+pub mod side_effects;
 pub mod targets;
 pub mod vm;
 

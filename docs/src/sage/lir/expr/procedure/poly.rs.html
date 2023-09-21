@@ -219,6 +219,15 @@
 <a href="#219" id="219">219</a>
 <a href="#220" id="220">220</a>
 <a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Poly-Procedure
 //!
 //! A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
@@ -228,7 +237,7 @@
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::{collections::HashMap, rc::Rc, sync::Mutex};
 
-<span class="kw">use </span>log::{debug, trace, error};
+<span class="kw">use </span>log::{debug, error, trace};
 
 <span class="kw">use </span><span class="kw">super</span>::Procedure;
 
@@ -389,7 +398,13 @@
         <span class="comment">// Create a new scope for the procedure&#39;s body, and define the arguments for the scope.
         </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.new_scope();
         <span class="comment">// Define the type parameters of the procedure.
-        </span>new_env.define_types(<span class="self">self</span>.ty_params.clone().into_iter().map(|ty_param| (ty_param.clone(), Type::Unit(ty_param, Box::new(Type::None)))).collect());
+        </span>new_env.define_types(
+            <span class="self">self</span>.ty_params
+                .clone()
+                .into_iter()
+                .map(|ty_param| (ty_param.clone(), Type::Unit(ty_param, Box::new(Type::None))))
+                .collect(),
+        );
         <span class="comment">// Define the arguments of the procedure.
         </span>new_env.define_args(<span class="self">self</span>.args.clone())<span class="question-mark">?</span>;
         new_env.set_expected_return_type(<span class="self">self</span>.ret.clone());
@@ -404,7 +419,10 @@
         </span><span class="kw">let </span>body_type = <span class="self">self</span>.body.get_type(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
 
         <span class="kw">if </span>!body_type.can_decay_to(<span class="kw-2">&amp;</span><span class="self">self</span>.ret, <span class="kw-2">&amp;</span>new_env)<span class="question-mark">? </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;Mismatched types: expected {}, found {}&quot;</span>, <span class="self">self</span>.ret, body_type);
+            <span class="macro">error!</span>(
+                <span class="string">&quot;Mismatched types: expected {}, found {}&quot;</span>,
+                <span class="self">self</span>.ret, body_type
+            );
 
             <span class="prelude-val">Err</span>(Error::MismatchedTypes {
                 expected: <span class="self">self</span>.ret.clone(),

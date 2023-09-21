@@ -1,0 +1,48 @@
+global $STRING1, 1024
+global $STRING2, 2048
+
+fun @putstr
+    pop F
+    while [F]
+        put-char [F]
+        next F
+    end
+end
+
+fun @putstrln
+    call @putstr
+    set F, 10 put-char F
+end
+
+lea $STRING1, A
+put-int A
+set A, 10
+put-char A
+
+array $STRING1, "Hello world!", A
+put-int A
+set A, 10
+put-char A
+
+lea $STRING1, A
+push A
+call @putstrln
+
+
+lea $STRING2, A
+put-int A
+set A, 10
+put-char A
+
+array $STRING2, "This is a global variable!", A
+put-int A
+set A, 10
+put-char A
+
+lea $STRING2, A
+push A
+call @putstrln
+
+put-int SP
+set A, 10
+put-char A

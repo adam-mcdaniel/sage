@@ -66,31 +66,36 @@ use crate::{
     vm::{self, Error, VirtualMachineProgram},
     NULL,
 };
+
 use core::fmt;
 
 /// The stack pointer register.
 pub const SP: Location = Location::Address(0);
 /// A volatile register. This register may be silently overwritten by
 /// some assembly instructions.
-pub(super) const TMP: Location = Location::Address(1);
+pub(crate) const TMP: Location = Location::Address(1);
 /// The frame pointer register.
 pub const FP: Location = Location::Address(2);
 /// The stack pointer register for the stack of frames.
 /// This always points to the parent frame's saved frame pointer.
 /// At the beginning of the program, this is allocated with a specified number of cells.
-pub(super) const FP_STACK: Location = Location::Address(3);
+pub(crate) const FP_STACK: Location = Location::Address(3);
+/// The Global Pointer register. This is used to access global variables.
+pub const GP: Location = Location::Address(4);
 /// The "A" general purpose register.
-pub const A: Location = Location::Address(4);
+pub const A: Location = Location::Address(5);
 /// The "B" general purpose register.
-pub const B: Location = Location::Address(5);
+pub const B: Location = Location::Address(6);
 /// The "C" general purpose register.
-pub const C: Location = Location::Address(6);
+pub const C: Location = Location::Address(7);
 /// The "D" general purpose register.
-pub const D: Location = Location::Address(7);
+pub const D: Location = Location::Address(8);
 /// The "E" general purpose register.
-pub const E: Location = Location::Address(8);
+pub const E: Location = Location::Address(9);
 /// The "F" general purpose register.
-pub const F: Location = Location::Address(9);
+pub const F: Location = Location::Address(10);
+
+pub const REGISTERS: [Location; 11] = [SP, TMP, FP, FP_STACK, GP, A, B, C, D, E, F];
 
 /// A location in memory (on the tape of the virtual machine).
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -103,22 +108,25 @@ pub enum Location {
     /// Go to a position in memory, and then move the pointer according to an offset.
     /// For example, `Offset(Address(8), -2)` is equivalent to `Address(6)`.
     Offset(Box<Self>, isize),
+    /// A global variable.
+    Global(String),
 }
 
 impl fmt::Display for Location {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Location::Address(addr) => match addr {
-                0 => write!(f, "SP"),
-                1 => write!(f, "TMP"),
-                2 => write!(f, "FP"),
-                3 => write!(f, "FP_STACK"),
-                4 => write!(f, "A"),
-                5 => write!(f, "B"),
-                6 => write!(f, "C"),
-                7 => write!(f, "D"),
-                8 => write!(f, "E"),
-                9 => write!(f, "F"),
+                _ if self == &SP => write!(f, "SP"),
+                _ if self == &FP => write!(f, "FP"),
+                _ if self == &FP_STACK => write!(f, "FP_STACK"),
+                _ if self == &GP => write!(f, "GP"),
+                _ if self == &A => write!(f, "A"),
+                _ if self == &B => write!(f, "B"),
+                _ if self == &C => write!(f, "C"),
+                _ if self == &D => write!(f, "D"),
+                _ if self == &E => write!(f, "E"),
+                _ if self == &F => write!(f, "F"),
+                _ if self == &TMP => write!(f, "TMP"),
                 other => write!(f, "{}", other),
             },
             Location::Indirect(loc) => write!(f, "[{}]", loc),
@@ -142,6 +150,7 @@ impl fmt::Display for Location {
                     )
                 }
             }
+            Location::Global(name) => write!(f, "{name}"),
         }
     }
 }
@@ -149,7 +158,8 @@ impl fmt::Display for Location {
 impl fmt::Debug for Location {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Location::Address(addr) if *addr <= 9 => write!(f, "{self} ({addr})"),
+            Location::Global(name) => write!(f, "{name}"),
+            Location::Address(addr) if *addr <= 10 => write!(f, "{self} ({addr})"),
             Location::Address(addr) => write!(f, "{addr}"),
             Location::Indirect(loc) => write!(f, "[{loc:?}]"),
             Location::Offset(loc, offset) => {
@@ -181,11 +191,18 @@ impl Location {
     /// For example, `Offset(Address(8), -2)` is equivalent to `Address(6)`.
     pub fn offset(&self, offset: isize) -> Self {
         if offset == 0 {
-            self.clone()
-        } else if let Self::Offset(addr, x) = self {
-            Location::Offset(addr.clone(), *x + offset)
-        } else {
-            Location::Offset(Box::new(self.clone()), offset)
+            return self.clone();
+        }
+
+        match self {
+            // If we are offsetting from another offset, then we can just add the offsets together.
+            Location::Offset(loc, x) => Location::Offset(loc.clone(), *x + offset),
+            // If we are offsetting from a constant address, then we can just add the offset to the address.
+            Location::Address(addr) => Location::Address((*addr as isize + offset) as usize),
+            // Offsetting from a dereferenced pointer.
+            Location::Indirect(_) => Location::Offset(Box::new(self.clone()), offset),
+            // Offsetting from a global variable.
+            Location::Global(_) => Location::Offset(Box::new(self.clone()), offset),
         }
     }
 
@@ -226,6 +243,9 @@ impl Location {
                 loc.to(result);
                 result.move_pointer(*offset);
             }
+            Location::Global(name) => {
+                panic!("Cannot move pointer to global variable {}", name);
+            }
         }
     }
 
@@ -237,7 +257,6 @@ impl Location {
                 result.refer();
                 loc.from(result);
             }
-
             Location::Offset(loc, offset) => {
                 // If the offset is from a dereferenced pointer, then moving back before
                 // reversing the dereference does nothing, so we can skip it.
@@ -245,6 +264,9 @@ impl Location {
                     result.move_pointer(-*offset);
                 }
                 loc.from(result);
+            }
+            Location::Global(name) => {
+                panic!("Cannot move pointer from global variable {}", name);
             }
         }
     }

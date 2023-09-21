@@ -989,6 +989,34 @@
 <a href="#989" id="989">989</a>
 <a href="#990" id="990">990</a>
 <a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
+<a href="#994" id="994">994</a>
+<a href="#995" id="995">995</a>
+<a href="#996" id="996">996</a>
+<a href="#997" id="997">997</a>
+<a href="#998" id="998">998</a>
+<a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
+<a href="#1003" id="1003">1003</a>
+<a href="#1004" id="1004">1004</a>
+<a href="#1005" id="1005">1005</a>
+<a href="#1006" id="1006">1006</a>
+<a href="#1007" id="1007">1007</a>
+<a href="#1008" id="1008">1008</a>
+<a href="#1009" id="1009">1009</a>
+<a href="#1010" id="1010">1010</a>
+<a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
+<a href="#1014" id="1014">1014</a>
+<a href="#1015" id="1015">1015</a>
+<a href="#1016" id="1016">1016</a>
+<a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::lir::<span class="kw-2">*</span>;
 <span class="kw">use </span>core::fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 <span class="kw">use </span>std::collections::HashMap;
@@ -1389,25 +1417,37 @@
                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                     expected,
                     found,
-                    expr: Expr::Match(Box::new(matching_expr.clone()), <span class="macro">vec!</span>[(<span class="self">self</span>.clone(), branch.clone())]),
+                    expr: Expr::Match(
+                        Box::new(matching_expr.clone()),
+                        <span class="macro">vec!</span>[(<span class="self">self</span>.clone(), branch.clone())],
+                    ),
                 });
-            },
+            }
             <span class="prelude-val">Err</span>(Error::InvalidBinaryOpTypes(<span class="kw">_</span>, expected, found)) =&gt; {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                     expected,
                     found,
-                    expr: Expr::Match(Box::new(matching_expr.clone()), <span class="macro">vec!</span>[(<span class="self">self</span>.clone(), branch.clone())]),
+                    expr: Expr::Match(
+                        Box::new(matching_expr.clone()),
+                        <span class="macro">vec!</span>[(<span class="self">self</span>.clone(), branch.clone())],
+                    ),
                 })
-            },
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
-                expected,
-                found: matching_ty,
-                expr: Expr::Match(Box::new(matching_expr.clone()), <span class="macro">vec!</span>[(<span class="self">self</span>.clone(), branch.clone())])
-            })
-            <span class="comment">// Err(e) =&gt; return Err(Error::InvalidPatternForExpr(matching_expr.clone(), self.clone())),
+            }
+            <span class="kw">_ </span>=&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
+                    expected,
+                    found: matching_ty,
+                    expr: Expr::Match(
+                        Box::new(matching_expr.clone()),
+                        <span class="macro">vec!</span>[(<span class="self">self</span>.clone(), branch.clone())],
+                    ),
+                })
+            } <span class="comment">// Err(e) =&gt; return Err(Error::InvalidPatternForExpr(matching_expr.clone(), self.clone())),
         </span>}
         <span class="comment">// Generate an expression with the bindings defined for the branch.
-        </span><span class="kw">let </span>result_expr = <span class="self">self</span>.bind(matching_expr, <span class="kw-2">&amp;</span>matching_ty, branch, env).map_err(|<span class="kw">_</span>| Error::InvalidPatternForExpr(matching_expr.clone(), <span class="self">self</span>.clone()))<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>result_expr = <span class="self">self
+            </span>.bind(matching_expr, <span class="kw-2">&amp;</span>matching_ty, branch, env)
+            .map_err(|<span class="kw">_</span>| Error::InvalidPatternForExpr(matching_expr.clone(), <span class="self">self</span>.clone()))<span class="question-mark">?</span>;
         <span class="comment">// Type-check the expression generated to bind the pattern.
         </span>result_expr.type_check(env)<span class="question-mark">?</span>;
         <span class="comment">// Get the type of the expression generated to bind the pattern.
@@ -1486,7 +1526,13 @@
         </span><span class="kw">let </span>match_expr = Pattern::match_pattern_helper(<span class="kw-2">&amp;</span>Expr::var(<span class="kw-2">&amp;</span>var_name), branches, <span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
 
         <span class="comment">// Define the variable in the generated expression.
-        </span><span class="kw">let </span>result = Expr::let_var(var_name, Mutability::Immutable, <span class="prelude-val">Some</span>(match_type), expr.clone(), match_expr);
+        </span><span class="kw">let </span>result = Expr::let_var(
+            var_name,
+            Mutability::Immutable,
+            <span class="prelude-val">Some</span>(match_type),
+            expr.clone(),
+            match_expr,
+        );
         <span class="prelude-val">Ok</span>(result)
     }
 
@@ -1901,9 +1947,13 @@
             }
 
             <span class="comment">// If the pattern is a symbol, then bind the symbol to the expression.
-            </span>(<span class="self">Self</span>::Symbol(mutability, name), ty) =&gt; {
-                Expr::let_var(name.clone(), <span class="kw-2">*</span>mutability, <span class="prelude-val">Some</span>(ty.clone()), expr.clone(), ret.clone())
-            }
+            </span>(<span class="self">Self</span>::Symbol(mutability, name), ty) =&gt; Expr::let_var(
+                name.clone(),
+                <span class="kw-2">*</span>mutability,
+                <span class="prelude-val">Some</span>(ty.clone()),
+                expr.clone(),
+                ret.clone(),
+            ),
 
             (<span class="self">Self</span>::Pointer(pattern), Type::Pointer(<span class="kw">_</span>, item_type)) =&gt; {
                 pattern.bind(<span class="kw-2">&amp;</span>expr.clone().deref(), item_type, ret, env)<span class="question-mark">?
@@ -1917,7 +1967,13 @@
             // we choose.
             </span>(<span class="self">Self</span>::Alt(patterns), <span class="kw">_</span>) =&gt; {
                 <span class="comment">// Bind the first pattern.
-                </span>patterns.first().map(|x| x.bind(expr, ty, ret, env)).unwrap_or(<span class="prelude-val">Err</span>(Error::InvalidPatternForExpr(expr.clone(), <span class="self">self</span>.clone())))<span class="question-mark">?
+                </span>patterns
+                    .first()
+                    .map(|x| x.bind(expr, ty, ret, env))
+                    .unwrap_or(<span class="prelude-val">Err</span>(Error::InvalidPatternForExpr(
+                        expr.clone(),
+                        <span class="self">self</span>.clone(),
+                    )))<span class="question-mark">?
             </span>}
 
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidPatternForExpr(expr.clone(), <span class="self">self</span>.clone())),
@@ -1961,7 +2017,7 @@
                     <span class="macro">write!</span>(f, <span class="string">&quot;mut &quot;</span>)<span class="question-mark">?</span>;
                 }
                 <span class="macro">write!</span>(f, <span class="string">&quot;{name}&quot;</span>)
-            },
+            }
 
             <span class="self">Self</span>::ConstExpr(const_expr) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, const_expr),
 

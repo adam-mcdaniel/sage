@@ -1503,6 +1503,40 @@
 <a href="#1503" id="1503">1503</a>
 <a href="#1504" id="1504">1504</a>
 <a href="#1505" id="1505">1505</a>
+<a href="#1506" id="1506">1506</a>
+<a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
+<a href="#1517" id="1517">1517</a>
+<a href="#1518" id="1518">1518</a>
+<a href="#1519" id="1519">1519</a>
+<a href="#1520" id="1520">1520</a>
+<a href="#1521" id="1521">1521</a>
+<a href="#1522" id="1522">1522</a>
+<a href="#1523" id="1523">1523</a>
+<a href="#1524" id="1524">1524</a>
+<a href="#1525" id="1525">1525</a>
+<a href="#1526" id="1526">1526</a>
+<a href="#1527" id="1527">1527</a>
+<a href="#1528" id="1528">1528</a>
+<a href="#1529" id="1529">1529</a>
+<a href="#1530" id="1530">1530</a>
+<a href="#1531" id="1531">1531</a>
+<a href="#1532" id="1532">1532</a>
+<a href="#1533" id="1533">1533</a>
+<a href="#1534" id="1534">1534</a>
+<a href="#1535" id="1535">1535</a>
+<a href="#1536" id="1536">1536</a>
+<a href="#1537" id="1537">1537</a>
+<a href="#1538" id="1538">1538</a>
+<a href="#1539" id="1539">1539</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Types Module
 //!
 //! This module contains a collection of types and traits
@@ -1519,7 +1553,7 @@
 <span class="kw">pub use </span>inference::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>size::<span class="kw-2">*</span>;
 
-<span class="kw">use </span>log::{trace, warn, error};
+<span class="kw">use </span>log::{error, trace, warn};
 
 <span class="doccomment">/// Mutability of a pointer.
 /// This is used to provide type safety for pointers.
@@ -1744,17 +1778,17 @@
 
     <span class="doccomment">/// Simplify until the type passes the type checker.
     </span><span class="kw">pub fn </span>simplify_until_type_checks(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
-        <span class="self">self</span>.clone().simplify_until_matches(
-            env,
-            Type::Any,
-            |t, env| t.type_check(env).map(|<span class="kw">_</span>| <span class="bool-val">true</span>),
-        )
+        <span class="self">self</span>.clone()
+            .simplify_until_matches(env, Type::Any, |t, env| t.type_check(env).map(|<span class="kw">_</span>| <span class="bool-val">true</span>))
     }
 
     <span class="doccomment">/// Simplify a type until you can get its members.
     </span><span class="kw">pub fn </span>simplify_until_has_members(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
         <span class="self">self</span>.clone().simplify_until_matches(env, Type::Any, |t, <span class="kw">_</span>| {
-            <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Tuple(<span class="kw">_</span>) | Type::Struct(<span class="kw">_</span>) | Type::Union(<span class="kw">_</span>) | Type::Pointer(<span class="kw">_</span>, <span class="kw">_</span>)))
+            <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(
+                t,
+                Type::Tuple(<span class="kw">_</span>) | Type::Struct(<span class="kw">_</span>) | Type::Union(<span class="kw">_</span>) | Type::Pointer(<span class="kw">_</span>, <span class="kw">_</span>)
+            ))
         })
     }
 
@@ -1767,28 +1801,29 @@
 
     <span class="doccomment">/// Simplify a type until you can get its variants.
     </span><span class="kw">pub fn </span>simplify_until_has_variants(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
-        <span class="self">self</span>.clone().simplify_until_matches(env, Type::Enum(<span class="macro">vec!</span>[]), |t, <span class="kw">_</span>| {
-            <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>)))
-        })
+        <span class="self">self</span>.clone()
+            .simplify_until_matches(env, Type::Enum(<span class="macro">vec!</span>[]), |t, <span class="kw">_</span>| {
+                <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Enum(<span class="kw">_</span>) | Type::EnumUnion(<span class="kw">_</span>)))
+            })
     }
 
     <span class="doccomment">/// Simplify until the type is a polymorphic type.
     </span><span class="kw">pub fn </span>simplify_until_poly(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
-        <span class="self">self</span>.clone().simplify_until_matches(
-            env,
-            Type::Poly(<span class="macro">vec!</span>[], Box::new(Type::Any)),
-            |t, <span class="kw">_</span>| <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>))),
-        )
+        <span class="self">self</span>.clone()
+            .simplify_until_matches(env, Type::Poly(<span class="macro">vec!</span>[], Box::new(Type::Any)), |t, <span class="kw">_</span>| {
+                <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(t, Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>)))
+            })
     }
 
     <span class="doccomment">/// Simplify until the type is concrete.
     </span><span class="kw">pub fn </span>simplify_until_concrete(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
-        <span class="self">self</span>.clone().simplify_until_matches(env, Type::Any, |t, _env| <span class="prelude-val">Ok</span>(t.is_simple()))
+        <span class="self">self</span>.clone()
+            .simplify_until_matches(env, Type::Any, |t, _env| <span class="prelude-val">Ok</span>(t.is_simple()))
     }
 
     <span class="doccomment">/// Simplify an expression until it matches a given function which &quot;approves&quot; of a type.
     /// This will perform template applications to simplify the type if possible as well.
-    /// 
+    ///
     /// This is usually too verbose to be used on its own, better to make a wrapper function
     /// that calls this with a more specific use case/purpose.
     </span><span class="kw">pub fn </span>simplify_until_matches(
@@ -1802,7 +1837,9 @@
             <span class="kw">if </span>f(<span class="kw-2">&amp;</span>simplified, env)<span class="question-mark">? </span>|| simplified.is_atomic() {
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(simplified);
             }
-            simplified = simplified.simplify(env)<span class="question-mark">?</span>.perform_template_applications(env, <span class="kw-2">&amp;mut </span>HashMap::new())<span class="question-mark">?
+            simplified = simplified
+                .simplify(env)<span class="question-mark">?
+                </span>.perform_template_applications(env, <span class="kw-2">&amp;mut </span>HashMap::new())<span class="question-mark">?
         </span>}
         <span class="prelude-val">Err</span>(Error::CouldntSimplify(simplified, expected))
     }
@@ -1902,7 +1939,10 @@
                     </span><span class="self">self</span>.clone()
                 } <span class="kw">else </span>{
                     <span class="comment">// Does the inner symbol use this type variable?
-                    </span><span class="self">Self</span>::Poly(ty_params.clone(), template.substitute(name, substitution).into())
+                    </span><span class="self">Self</span>::Poly(
+                        ty_params.clone(),
+                        template.substitute(name, substitution).into(),
+                    )
                 }
             }
             <span class="self">Self</span>::Apply(poly, ty_args) =&gt; <span class="self">Self</span>::Apply(
@@ -1971,7 +2011,9 @@
                     .collect(),
                 Box::new(ret.substitute(name, substitution)),
             ),
-            <span class="self">Self</span>::Pointer(mutability, ptr) =&gt; <span class="self">Self</span>::Pointer(<span class="kw-2">*</span>mutability, Box::new(ptr.substitute(name, substitution))),
+            <span class="self">Self</span>::Pointer(mutability, ptr) =&gt; {
+                <span class="self">Self</span>::Pointer(<span class="kw-2">*</span>mutability, Box::new(ptr.substitute(name, substitution)))
+            }
         }
     }
 
@@ -1987,11 +2029,11 @@
     }
 
     <span class="doccomment">/// Can this type decay into another type?
-    /// 
+    ///
     /// A type can decay into another type if the compiler can automatically convert the type
     /// into the other type. *This is distinct from the compiler seeing the types as equal.*
     /// The two types are *not* equal; the compiler will just automatically perform the conversion.
-    /// 
+    ///
     /// For all cases right now, a decay does nothing; the representations of the types
     /// in the compiler are the same for all types of decay.
     </span><span class="kw">pub fn </span>can_decay_to(<span class="kw-2">&amp;</span><span class="self">self</span>, desired: <span class="kw-2">&amp;</span><span class="self">Self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
@@ -2001,22 +2043,29 @@
 
         <span class="kw">match </span>(<span class="self">self</span>, desired) {
             <span class="comment">// Can we decay a pointer to a pointer?
-            </span>(<span class="self">Self</span>::Pointer(found_mutability, found_elem_ty), <span class="self">Self</span>::Pointer(desired_mutabilty, desired_elem_ty)) =&gt; {
+            </span>(
+                <span class="self">Self</span>::Pointer(found_mutability, found_elem_ty),
+                <span class="self">Self</span>::Pointer(desired_mutabilty, desired_elem_ty),
+            ) =&gt; {
                 <span class="comment">// Check if the mutabilities and element types can decay.
-                </span><span class="kw">if </span>found_mutability.can_decay_to(<span class="kw-2">&amp;</span>desired_mutabilty) &amp;&amp; found_elem_ty.can_decay_to(<span class="kw-2">&amp;</span>desired_elem_ty, env)<span class="question-mark">? </span>{
+                </span><span class="kw">if </span>found_mutability.can_decay_to(<span class="kw-2">&amp;</span>desired_mutabilty)
+                    &amp;&amp; found_elem_ty.can_decay_to(<span class="kw-2">&amp;</span>desired_elem_ty, env)<span class="question-mark">?
+                </span>{
                     <span class="comment">// If they can, then we can decay.
-                    </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
+                    </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
                 }
 
                 <span class="comment">// Check if the mutabilities are compatible, and check if this type points to an array of elements of the desired element type.
-                </span><span class="kw">if </span>found_mutability.can_decay_to(<span class="kw-2">&amp;</span>desired_mutabilty) &amp;&amp; found_elem_ty.has_element_type(desired_elem_ty, env)<span class="question-mark">? </span>{
+                </span><span class="kw">if </span>found_mutability.can_decay_to(<span class="kw-2">&amp;</span>desired_mutabilty)
+                    &amp;&amp; found_elem_ty.has_element_type(desired_elem_ty, env)<span class="question-mark">?
+                </span>{
                     <span class="comment">// If so, then we can decay.
-                    </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
+                    </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
                 }
 
                 <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
             }
-            
+
             <span class="comment">// Can a tuple decay to another tuple?
             </span>(<span class="self">Self</span>::Tuple(found_fields), <span class="self">Self</span>::Tuple(desired_fields)) =&gt; {
                 <span class="comment">// If the tuples have different numbers of fields, then we can&#39;t decay.
@@ -2037,13 +2086,17 @@
             <span class="comment">// Can an array decay to another array?
             </span>(<span class="self">Self</span>::Array(found_elem_ty, <span class="kw">_</span>), <span class="self">Self</span>::Array(desired_elem_ty, <span class="kw">_</span>)) =&gt; {
                 <span class="comment">// Check if the element types can decay, and if the sizes are equal.
-                </span><span class="kw">if </span>found_elem_ty.can_decay_to(desired_elem_ty, env)<span class="question-mark">? </span>&amp;&amp; <span class="self">self</span>.get_size(env)<span class="question-mark">? </span>== desired.get_size(env)<span class="question-mark">? </span>{
-                    <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
+                </span><span class="kw">if </span>found_elem_ty.can_decay_to(desired_elem_ty, env)<span class="question-mark">?
+                    </span>&amp;&amp; <span class="self">self</span>.get_size(env)<span class="question-mark">? </span>== desired.get_size(env)<span class="question-mark">?
+                </span>{
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
                 }
 
                 <span class="comment">// Check if the element types are compatible, and if the sizes are equal.
-                </span><span class="kw">if </span>found_elem_ty.has_element_type(desired_elem_ty, env)<span class="question-mark">? </span>&amp;&amp; <span class="self">self</span>.get_size(env)<span class="question-mark">? </span>== desired.get_size(env)<span class="question-mark">? </span>{
-                    <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
+                </span><span class="kw">if </span>found_elem_ty.has_element_type(desired_elem_ty, env)<span class="question-mark">?
+                    </span>&amp;&amp; <span class="self">self</span>.get_size(env)<span class="question-mark">? </span>== desired.get_size(env)<span class="question-mark">?
+                </span>{
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
                 }
 
                 <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
@@ -2075,7 +2128,7 @@
 
             (Type::Cell, Type::Int) | (Type::Int, Type::Cell) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
 
-            (a, b) =&gt; a.equals(b, env)
+            (a, b) =&gt; a.equals(b, env),
         }
     }
 
@@ -2095,7 +2148,10 @@
 
         <span class="kw">let </span>i = i + <span class="number">1</span>;
         <span class="kw">if </span>i &gt; <span class="self">Self</span>::SIMPLIFY_RECURSION_LIMIT {
-            <span class="macro">error!</span>(<span class="string">&quot;Recursion depth limit reached while checking if {} can be cast to {}&quot;</span>, <span class="self">self</span>, other);
+            <span class="macro">error!</span>(
+                <span class="string">&quot;Recursion depth limit reached while checking if {} can be cast to {}&quot;</span>,
+                <span class="self">self</span>, other
+            );
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::RecursionDepthTypeEquality(
                 <span class="self">self</span>.clone(),
                 other.clone(),
@@ -2216,7 +2272,7 @@
         }<span class="question-mark">?</span>;
 
         <span class="macro">trace!</span>(<span class="string">&quot;Can cast? {} -&gt; {}: {}&quot;</span>, <span class="self">self</span>, other, result);
-        
+
         <span class="prelude-val">Ok</span>(result)
     }
 
@@ -2238,17 +2294,21 @@
         </span><span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self</span>.clone().simplify(env)<span class="question-mark">? </span>{
             <span class="self">Self</span>::Apply(poly, ty_args) =&gt; {
                 <span class="kw">let </span>pair = (
-                    poly.simplify(env)<span class="question-mark">?</span>.perform_template_applications(env, previous_applications)<span class="question-mark">?</span>,
+                    poly.simplify(env)<span class="question-mark">?
+                        </span>.perform_template_applications(env, previous_applications)<span class="question-mark">?</span>,
                     ty_args
                         .into_iter()
-                        .map(|t| t.simplify(env)<span class="question-mark">?</span>.perform_template_applications(env, previous_applications))
+                        .map(|t| {
+                            t.simplify(env)<span class="question-mark">?
+                                </span>.perform_template_applications(env, previous_applications)
+                        })
                         .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
                 );
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = previous_applications.get(<span class="kw-2">&amp;</span>pair) {
                     t.clone()
                 } <span class="kw">else </span>{
                     <span class="kw">let </span>(poly, ty_args) = pair;
-    
+
                     <span class="kw">match </span>poly {
                         <span class="self">Self</span>::Poly(params, template) =&gt; {
                             <span class="kw">let </span><span class="kw-2">mut </span>template = <span class="kw-2">*</span>template;
@@ -2257,25 +2317,26 @@
                             }
                             template
                         }
-                        <span class="self">Self</span>::Symbol(s) =&gt; {
-                            <span class="kw">match </span>env.get_type(s.as_str()).cloned() {
-                                <span class="prelude-val">Some</span>(<span class="self">Self</span>::Poly(params, template)) =&gt; {
-                                    <span class="kw">let </span><span class="kw-2">mut </span>template = <span class="kw-2">*</span>template;
-                                    <span class="kw">for </span>(param, ty_arg) <span class="kw">in </span>params.iter().zip(ty_args.iter()) {
-                                        template = template.substitute(param, ty_arg);
-                                    }
-                                    template
+                        <span class="self">Self</span>::Symbol(s) =&gt; <span class="kw">match </span>env.get_type(s.as_str()).cloned() {
+                            <span class="prelude-val">Some</span>(<span class="self">Self</span>::Poly(params, template)) =&gt; {
+                                <span class="kw">let </span><span class="kw-2">mut </span>template = <span class="kw-2">*</span>template;
+                                <span class="kw">for </span>(param, ty_arg) <span class="kw">in </span>params.iter().zip(ty_args.iter()) {
+                                    template = template.substitute(param, ty_arg);
                                 }
-                                <span class="prelude-val">Some</span>(other) =&gt; <span class="self">Self</span>::Apply(Box::new(other), ty_args),
-                                <span class="prelude-val">None </span>=&gt; <span class="self">self</span>.clone(),
+                                template
                             }
-                        }
+                            <span class="prelude-val">Some</span>(other) =&gt; <span class="self">Self</span>::Apply(Box::new(other), ty_args),
+                            <span class="prelude-val">None </span>=&gt; <span class="self">self</span>.clone(),
+                        },
                         <span class="kw">_ </span>=&gt; <span class="self">self</span>.clone(),
                     }
                 }
             }
-            <span class="self">Self</span>::Pointer(mutability, inner) =&gt; <span class="self">Self</span>::Pointer(mutability, Box::new(inner.perform_template_applications(env, previous_applications)<span class="question-mark">?</span>)),
-            other =&gt; other
+            <span class="self">Self</span>::Pointer(mutability, inner) =&gt; <span class="self">Self</span>::Pointer(
+                mutability,
+                Box::new(inner.perform_template_applications(env, previous_applications)<span class="question-mark">?</span>),
+            ),
+            other =&gt; other,
         })
     }
 
@@ -2293,7 +2354,10 @@
         }
 
         <span class="kw">if </span>i &gt;= <span class="self">Self</span>::SIMPLIFY_RECURSION_LIMIT {
-            <span class="macro">warn!</span>(<span class="string">&quot;Recursion depth limit reached while checking if {} equals {}&quot;</span>, <span class="self">self</span>, other);
+            <span class="macro">warn!</span>(
+                <span class="string">&quot;Recursion depth limit reached while checking if {} equals {}&quot;</span>,
+                <span class="self">self</span>, other
+            );
             <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
         }
 
@@ -2316,7 +2380,9 @@
                     <span class="comment">// If the two types have the same name, they must equal the same type
                     // under the same environment.
                     </span><span class="bool-val">true
-                </span>} <span class="kw">else if </span>i &gt; <span class="self">Self</span>::SIMPLIFY_RECURSION_LIMIT / <span class="number">2 </span>&amp;&amp; compared_symbols.contains(<span class="kw-2">&amp;</span>(a.clone(), b.clone())) {
+                </span>} <span class="kw">else if </span>i &gt; <span class="self">Self</span>::SIMPLIFY_RECURSION_LIMIT / <span class="number">2
+                    </span>&amp;&amp; compared_symbols.contains(<span class="kw-2">&amp;</span>(a.clone(), b.clone()))
+                {
                     <span class="comment">// If we&#39;ve seen this comparison of these two symbols before, and we&#39;ve done
                     // lots of symbol replacements (indicated by `i`), then we&#39;re probably trying
                     // to compare two distinct types which are asymptotically unequal.
@@ -2522,13 +2588,15 @@
             }
 
             (<span class="self">Self</span>::Apply(poly, ty_args), b) | (b, <span class="self">Self</span>::Apply(poly, ty_args)) =&gt; {
-                <span class="self">Self</span>::Apply(poly.clone(), ty_args.clone()).simplify_until_concrete(env)<span class="question-mark">?</span>.equals_checked(b, compared_symbols, env, i)<span class="question-mark">?
+                <span class="self">Self</span>::Apply(poly.clone(), ty_args.clone())
+                    .simplify_until_concrete(env)<span class="question-mark">?
+                    </span>.equals_checked(b, compared_symbols, env, i)<span class="question-mark">?
             </span>}
 
-            (a, b) =&gt; {
-                <span class="macro">trace!</span>(<span class="string">&quot;{} is not equal to {}&quot;</span>, a, b);
-                <span class="bool-val">false
-            </span>},
+            <span class="kw">_ </span>=&gt; {
+                <span class="comment">// trace!(&quot;{} is not equal to {}&quot;, a, b);
+                </span><span class="bool-val">false
+            </span>}
         })
     }
 
@@ -2600,8 +2668,7 @@
             Type::Unit(_unit_name, t) =&gt; t.get_member_offset(member, expr, env),
 
             Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>t = <span class="self">self
-                    </span>.simplify_until_concrete(env)<span class="question-mark">?</span>;
+                <span class="kw">let </span>t = <span class="self">self</span>.simplify_until_concrete(env)<span class="question-mark">?</span>;
                 t.get_member_offset(member, expr, env)
             }
 
@@ -2682,8 +2749,7 @@
             }
 
             Type::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Poly(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>t = <span class="self">self
-                    </span>.simplify_until_concrete(env)<span class="question-mark">?</span>;
+                <span class="kw">let </span>t = <span class="self">self</span>.simplify_until_concrete(env)<span class="question-mark">?</span>;
                 <span class="macro">trace!</span>(<span class="string">&quot;Simplified {self} to {t}&quot;</span>);
                 t.type_check_member(member, expr, env)
             }
@@ -2719,7 +2785,9 @@
             | <span class="self">Self</span>::Cell
             | <span class="self">Self</span>::Enum(<span class="kw">_</span>)
             | <span class="self">Self</span>::Poly(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="self">self</span>.clone(),
-            <span class="self">Self</span>::Pointer(mutability, inner) =&gt; <span class="self">Self</span>::Pointer(mutability, Box::new(inner.simplify_checked(env, i)<span class="question-mark">?</span>)),
+            <span class="self">Self</span>::Pointer(mutability, inner) =&gt; {
+                <span class="self">Self</span>::Pointer(mutability, Box::new(inner.simplify_checked(env, i)<span class="question-mark">?</span>))
+            }
 
             <span class="self">Self</span>::Let(name, t, ret) =&gt; {
                 <span class="comment">// Is the bound type recursive?
@@ -2813,7 +2881,7 @@
                     <span class="macro">write!</span>(f, <span class="string">&quot;mut &quot;</span>)<span class="question-mark">?</span>;
                 }
                 <span class="macro">write!</span>(f, <span class="string">&quot;{ty}&quot;</span>)
-            },
+            }
             <span class="self">Self</span>::Bool =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Bool&quot;</span>),
             <span class="self">Self</span>::Char =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Char&quot;</span>),
             <span class="self">Self</span>::Cell =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Cell&quot;</span>),

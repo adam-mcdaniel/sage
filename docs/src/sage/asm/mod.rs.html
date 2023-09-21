@@ -152,6 +152,49 @@
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Assembly Module
 //!
 //! This module contains a small assembly language implemented
@@ -179,17 +222,21 @@
 //! The standard variant is intended to be used with the standard
 //! variant of the virtual machine. It is very portable: it only adds
 //! instructions for float operations, memory allocation, and I/O.
-</span><span class="kw">use </span>::std::collections::HashMap;
+</span><span class="kw">use </span>::core::fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
+<span class="kw">use </span>::std::collections::HashMap;
 
-<span class="kw">use </span>log::{debug, trace, warn, error};
+<span class="kw">use </span>log::{debug, error, trace, warn};
 
 <span class="kw">pub mod </span>core;
+<span class="kw">pub mod </span>globals;
 <span class="kw">pub mod </span>location;
 <span class="kw">pub mod </span>std;
 
 <span class="kw">pub use </span><span class="self">self</span>::core::{CoreOp, CoreProgram};
 <span class="kw">pub use </span><span class="self">self</span>::std::{StandardOp, StandardProgram};
-<span class="kw">pub use </span>location::{Location, A, B, C, D, E, F, FP, SP};
+<span class="kw">pub use </span>globals::Globals;
+<span class="kw">pub use </span>location::{Location, A, B, C, D, E, F, FP, GP, REGISTERS, SP};
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>location::{FP_STACK, TMP};
 
 <span class="doccomment">/// A frontend to both the `CoreProgram` and `StandardProgram` types.
 /// This allows the compiler to append `CoreOp`s to both programs
@@ -242,6 +289,7 @@
 /// as well as information about matching instructions to their `End` statements.
 </span><span class="attr">#[derive(Default, Clone)]
 </span><span class="kw">struct </span>Env {
+    globals: Globals,
     labels: HashMap&lt;String, usize&gt;,
     label: usize,
     matching: Vec&lt;(CoreOp, usize)&gt;,
@@ -249,7 +297,7 @@
 
 <span class="kw">impl </span>Env {
     <span class="doccomment">/// Declare a new label
-    </span><span class="kw">fn </span>declare(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) {
+    </span><span class="kw">fn </span>declare_label(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) {
         <span class="macro">trace!</span>(<span class="string">&quot;Declared label {}&quot;</span>, name);
 
         <span class="kw">if </span><span class="self">self</span>.labels.contains_key(name) {
@@ -258,15 +306,36 @@
         <span class="self">self</span>.labels.insert(name.to_string(), <span class="self">self</span>.label);
         <span class="self">self</span>.label += <span class="number">1</span>;
     }
+
+    <span class="doccomment">/// Declare a new global variable in the environment with a given size.
+    ///
+    /// A global variable is some fixed size, static data allocated by the assembler,
+    /// and is accessible by all functions. The user can declare a global variable
+    /// with the `global` keyword.
+    </span><span class="kw">fn </span>declare_global(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str, size: usize) {
+        <span class="macro">trace!</span>(<span class="string">&quot;Declared global {}&quot;</span>, name);
+        <span class="self">self</span>.globals.add_global(name.to_owned(), size);
+    }
+
+    <span class="doccomment">/// Resolve any global variables that may be used in an address calculation.
+    </span><span class="kw">fn </span>resolve(<span class="kw-2">&amp;mut </span><span class="self">self</span>, loc: <span class="kw-2">&amp;</span>Location) -&gt; <span class="prelude-ty">Result</span>&lt;Location, Error&gt; {
+        <span class="self">self</span>.globals.resolve(loc)
+    }
+
+    <span class="doccomment">/// Get the size that should be allocated to the global variables.
+    </span><span class="kw">fn </span>get_size_of_globals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.globals.get_size()
+    }
+
     <span class="doccomment">/// Get the virtual machine ID of a label (which can be called as a function).
-    </span><span class="kw">fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str, current_instruction: usize) -&gt; <span class="prelude-ty">Result</span>&lt;usize, Error&gt; {
-        <span class="self">self</span>.labels
-            .get(name)
-            .copied()
-            .ok_or_else(|| {
-                <span class="macro">error!</span>(<span class="string">&quot;Undefined label {} at instruction #{}&quot;</span>, name, current_instruction);
-                Error::UndefinedLabel(name.to_string(), current_instruction)
-            })
+    </span><span class="kw">fn </span>get_label(<span class="kw-2">&amp;</span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str, current_instruction: usize) -&gt; <span class="prelude-ty">Result</span>&lt;usize, Error&gt; {
+        <span class="self">self</span>.labels.get(name).copied().ok_or_else(|| {
+            <span class="macro">error!</span>(
+                <span class="string">&quot;Undefined label {} at instruction #{}&quot;</span>,
+                name, current_instruction
+            );
+            Error::UndefinedLabel(name.to_string(), current_instruction)
+        })
     }
 
     <span class="doccomment">/// Add a new instruction to be matched with `End`. For example,
@@ -294,6 +363,8 @@
     </span>UnsupportedInstruction(StandardOp),
     <span class="doccomment">/// The given label was not defined.
     </span>UndefinedLabel(String, usize),
+    <span class="doccomment">/// The given global was not defined.
+    </span>UndefinedGlobal(String),
     <span class="doccomment">/// The given instruction did not have a matching &quot;end&quot;.
     /// This is used for `If`, `Else`, `While`, `For`, and `Fn` statements.
     </span>Unmatched(CoreOp, usize),
@@ -304,6 +375,21 @@
 <span class="kw">impl </span>From&lt;<span class="kw">crate</span>::vm::Error&gt; <span class="kw">for </span>Error {
     <span class="kw">fn </span>from(e: <span class="kw">crate</span>::vm::Error) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::VirtualMachineError(e)
+    }
+}
+
+<span class="kw">impl </span>Display <span class="kw">for </span>Error {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::VirtualMachineError(e) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, e),
+            <span class="self">Self</span>::UnsupportedInstruction(op) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Unsupported instruction: {}&quot;</span>, op),
+            <span class="self">Self</span>::UndefinedLabel(name, i) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">&quot;Undefined label {} at instruction #{}&quot;</span>, name, i)
+            }
+            <span class="self">Self</span>::UndefinedGlobal(name) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Undefined global {}&quot;</span>, name),
+            <span class="self">Self</span>::Unmatched(op, i) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Unmatched {} at instruction #{}&quot;</span>, op, i),
+            <span class="self">Self</span>::Unexpected(op, i) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Unexpected {} at instruction #{}&quot;</span>, op, i),
+        }
     }
 }
 </code></pre></div></section></main></body></html>

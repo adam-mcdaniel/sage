@@ -28,7 +28,7 @@
 //! using `Put`, and assuming-standard out, to display the integer in decimal.
 use super::{
     location::{FP_STACK, TMP},
-    AssemblyProgram, Env, Error, Location, F, FP, SP, StandardOp,
+    AssemblyProgram, Env, Error, Location, StandardOp, F, FP, GP, SP,
 };
 use crate::{
     side_effects::{Input, InputMode, Output, OutputMode},
@@ -36,7 +36,7 @@ use crate::{
 };
 use std::{collections::BTreeSet, fmt};
 
-use log::info;
+use log::{info, trace};
 
 /// An assembly program composed of core instructions, which can be assembled
 /// into the core virtual machine instructions.
@@ -69,32 +69,71 @@ impl CoreProgram {
         Self { code, labels }
     }
 
+    /// Get the size of the globals in the program.
+    fn get_size_of_globals(&self, env: &mut Env) -> Result<usize, Error> {
+        trace!("Getting size of globals, this could be an expensive operation...");
+        for op in &self.code {
+            // Go through all the operations and declare the globals.
+            if let CoreOp::Global { name, size } = op {
+                env.declare_global(name, *size);
+            }
+        }
+
+        // Get the size of the globals in the environment after the declarations.
+        Ok(env.get_size_of_globals())
+    }
+
     /// Assemble a program of core assembly instructions into the
     /// core virtual machine instructions.
     pub fn assemble(&self, allowed_recursion_depth: usize) -> Result<vm::CoreProgram, Error> {
+        // Create the result program.
         let mut result = vm::CoreProgram(vec![]);
+        // Create the environment in which to assemble the program.
         let mut env = Env::default();
 
+        // Get the size of the globals
+        let size_of_globals = self.get_size_of_globals(&mut env)?;
+
+        // Create the bootstrap code.
+        result.comment("BEGIN BOOTSTRAP");
+
         // Create the stack of frame pointers starting directly after the last register
-        F.copy_address_to(&FP_STACK, &mut result);
-        info!("Frame pointer stack begins at {FP_STACK:?}, and is {} cells long.", allowed_recursion_depth);
-        // Copy the address just after the allocated space to the stack pointer.
-        let starting_sp_addr = FP_STACK
-            .deref()
-            .offset(allowed_recursion_depth as isize);
+        let start_of_fp_stack = F.offset(1);
+        start_of_fp_stack.copy_address_to(&FP_STACK, &mut result);
+        info!(
+            "Frame pointer stack begins at {start_of_fp_stack:?}, and is {} cells long.",
+            allowed_recursion_depth
+        );
+        let end_of_fp_stack = start_of_fp_stack.offset(allowed_recursion_depth as isize);
 
-        starting_sp_addr.copy_address_to(&SP, &mut result);
+        // Copy the address just after the allocated space to the global pointer.
+        let starting_gp_addr = end_of_fp_stack;
+        starting_gp_addr.copy_address_to(&GP, &mut result);
+        info!(
+            "Global pointer is initialized to point to {starting_gp_addr:?}, and is {} cells long.",
+            size_of_globals
+        );
+
+        // Allocate the global variables
+        let starting_sp_addr = starting_gp_addr.offset(size_of_globals as isize);
         info!("Stack pointer is initialized to point to {starting_sp_addr:?}.");
+        starting_sp_addr.copy_address_to(&SP, &mut result);
 
+        result.comment("END BOOTSTRAP");
+
+        // Copy the stack pointer to the frame pointer
         SP.copy_to(&FP, &mut result);
+        // For all the operations in the program, assemble them.
         for (i, op) in self.code.iter().enumerate() {
             op.assemble(i, &mut env, &mut result)?
         }
 
+        // If there are any unmatched instructions, return an error.
         if let Ok((unmatched, last_instruction)) = env.pop_matching(self.code.len()) {
             return Err(Error::Unmatched(unmatched, last_instruction));
         }
 
+        // Return the result.
         Ok(result.flatten())
     }
 }
@@ -173,7 +212,25 @@ impl AssemblyProgram for CoreProgram {
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum CoreOp {
     Comment(String),
+    /// Many instructions to execute; conveniently grouped together.
+    /// This is useful for code generation.
     Many(Vec<CoreOp>),
+
+    /// Declare a global variable.
+    ///
+    /// This will allow the program to reference the global variable
+    /// using `$name` in the assembly code, where `name` is the name
+    /// of the global variable.
+    ///
+    /// To access the first element of the global variable, use `$name`.
+    /// To access the second element of the global variable, use `$name + 1`.
+    ///
+    /// To get the address of the first element of the global variable,
+    /// use `lea $name, $tmp`.
+    Global {
+        name: String,
+        size: usize,
+    },
 
     /// Set the value of a register, or any location in memory, to a given constant.
     Set(Location, i64),
@@ -406,6 +463,7 @@ impl CoreOp {
         )
     }
 
+    /// Push a string literal as UTF-8 to the stack.
     pub fn push_string(msg: impl ToString) -> Self {
         let mut vals: Vec<i64> = msg.to_string().chars().map(|c| c as i64).collect();
         vals.push(0);
@@ -419,21 +477,7 @@ impl CoreOp {
         ])
     }
 
-    pub fn stack_alloc_cells(dst: Location, vals: Vec<i64>) -> Self {
-        Self::Many(vec![
-            Self::GetAddress {
-                addr: SP.deref().offset(1),
-                dst,
-            },
-            Self::Array {
-                src: SP.deref().offset(1),
-                vals,
-                dst: SP,
-            },
-            Self::Prev(SP, None),
-        ])
-    }
-
+    /// Allocate a string on the stack, and store its address in a destination register.
     pub fn stack_alloc_string(dst: Location, text: impl ToString) -> Self {
         let mut vals: Vec<i64> = text.to_string().chars().map(|c| c as i64).collect();
         vals.push(0);
@@ -463,9 +507,17 @@ impl CoreOp {
                     op.assemble(current_instruction, env, result)?
                 }
             }
+
             CoreOp::Comment(comment) => result.comment(comment),
+            CoreOp::Global { name, size } => {
+                // Declare the global in the environment.
+                env.declare_global(name, *size);
+            }
 
             CoreOp::Array { src, vals, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
                 // For every character in the message
                 // Go to the top of the stack, and push the ASCII value of the character
                 src.to(result);
@@ -487,10 +539,27 @@ impl CoreOp {
                 dst.from(result);
             }
 
-            CoreOp::GetAddress { addr, dst } => addr.copy_address_to(dst, result),
-            CoreOp::Next(dst, count) => dst.next(count.unwrap_or(1), result),
-            CoreOp::Prev(dst, count) => dst.prev(count.unwrap_or(1), result),
+            CoreOp::GetAddress { addr, dst } => {
+                let addr = env.resolve(addr)?;
+                let dst = env.resolve(dst)?;
+
+                addr.copy_address_to(&dst, result)
+            }
+            CoreOp::Next(dst, count) => {
+                let dst = env.resolve(dst)?;
+
+                dst.next(count.unwrap_or(1), result)
+            }
+            CoreOp::Prev(dst, count) => {
+                let dst = env.resolve(dst)?;
+
+                dst.prev(count.unwrap_or(1), result)
+            }
             CoreOp::Index { src, offset, dst } => {
+                let src = env.resolve(src)?;
+                let offset = env.resolve(offset)?;
+                let dst = env.resolve(dst)?;
+
                 // Store the address to index in the register
                 src.restore_from(result);
                 // Goto the offset
@@ -503,18 +572,23 @@ impl CoreOp {
                 dst.save_to(result);
             }
 
-            CoreOp::Set(dst, value) => dst.set(*value, result),
+            CoreOp::Set(dst, value) => {
+                let dst = env.resolve(dst)?;
+                dst.set(*value, result)
+            }
             CoreOp::SetLabel(dst, name) => {
-                dst.set(env.get(name, current_instruction)? as i64, result)
+                let dst = env.resolve(dst)?;
+                dst.set(env.get_label(name, current_instruction)? as i64, result)
             }
 
             CoreOp::Call(src) => {
+                let src = env.resolve(src)?;
                 src.restore_from(result);
                 result.call();
             }
 
             CoreOp::CallLabel(name) => {
-                result.set_register(env.get(name, current_instruction)? as i64);
+                result.set_register(env.get_label(name, current_instruction)? as i64);
                 result.call();
             }
 
@@ -525,7 +599,7 @@ impl CoreOp {
 
             CoreOp::Fn(name) => {
                 // Declare the function in the environment.
-                env.declare(name);
+                env.declare_label(name);
                 // Push this instruction to the stack of instructions
                 // matched with `End`.
                 env.push_matching(self, current_instruction);
@@ -537,6 +611,8 @@ impl CoreOp {
                 SP.copy_to(&FP, result);
             }
             CoreOp::While(src) => {
+                let src = env.resolve(src)?;
+
                 // Read the condition
                 src.restore_from(result);
                 // Begin the while loop
@@ -546,6 +622,8 @@ impl CoreOp {
                 env.push_matching(self, current_instruction);
             }
             CoreOp::If(src) => {
+                let src = env.resolve(src)?;
+
                 // Read the condition
                 src.restore_from(result);
                 // Begin the if statement
@@ -588,29 +666,40 @@ impl CoreOp {
                 result.end();
             }
 
-            CoreOp::Move { src, dst } => src.copy_to(dst, result),
-
-            CoreOp::Swap(a, b) => {
-                a.copy_to(&TMP, result);
-                b.copy_to(a, result);
-                TMP.copy_to(b, result);
+            CoreOp::Move { src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+                src.copy_to(&dst, result)
             }
 
-            CoreOp::Inc(dst) => dst.inc(result),
-            CoreOp::Dec(dst) => dst.dec(result),
+            CoreOp::Swap(a, b) => {
+                let a = env.resolve(a)?;
+                let b = env.resolve(b)?;
+                a.copy_to(&TMP, result);
+                b.copy_to(&a, result);
+                TMP.copy_to(&b, result);
+            }
 
-            CoreOp::Add { src, dst } => dst.add(src, result),
-            CoreOp::Sub { src, dst } => dst.sub(src, result),
-            CoreOp::Mul { src, dst } => dst.mul(src, result),
-            CoreOp::Div { src, dst } => dst.div(src, result),
-            CoreOp::Rem { src, dst } => dst.rem(src, result),
+            CoreOp::Inc(dst) => env.resolve(dst)?.inc(result),
+            CoreOp::Dec(dst) => env.resolve(dst)?.dec(result),
+
+            CoreOp::Add { src, dst } => env.resolve(dst)?.add(src, result),
+            CoreOp::Sub { src, dst } => env.resolve(dst)?.sub(src, result),
+            CoreOp::Mul { src, dst } => env.resolve(dst)?.mul(src, result),
+            CoreOp::Div { src, dst } => env.resolve(dst)?.div(src, result),
+            CoreOp::Rem { src, dst } => env.resolve(dst)?.rem(src, result),
             CoreOp::DivRem { src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
                 src.copy_to(&TMP, result);
-                dst.copy_to(src, result);
+                dst.copy_to(&src, result);
                 dst.div(&TMP, result);
                 src.rem(&TMP, result);
             }
             CoreOp::Neg(dst) => {
+                let dst = env.resolve(dst)?;
+
                 result.set_register(-1);
                 dst.to(result);
                 result.op(vm::CoreOp::Mul);
@@ -619,17 +708,26 @@ impl CoreOp {
             }
 
             Self::BitwiseNand { src, dst } => {
-                dst.bitwise_nand(src, result);
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.bitwise_nand(&src, result);
             }
             Self::BitwiseXor { src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
                 src.copy_to(&TMP, result);
-                TMP.bitwise_nand(dst, result);
-                TMP.bitwise_nand(dst, result);
-                dst.bitwise_nand(src, result);
-                dst.bitwise_nand(src, result);
+                TMP.bitwise_nand(&dst, result);
+                TMP.bitwise_nand(&dst, result);
+                dst.bitwise_nand(&src, result);
+                dst.bitwise_nand(&src, result);
                 dst.bitwise_nand(&TMP, result);
             }
             Self::BitwiseOr { src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
                 dst.to(result);
                 result.restore();
                 result.bitwise_nand();
@@ -645,6 +743,9 @@ impl CoreOp {
                 dst.from(result);
             }
             Self::BitwiseNor { src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
                 dst.to(result);
                 result.restore();
                 result.bitwise_nand();
@@ -659,6 +760,9 @@ impl CoreOp {
                 dst.from(result);
             }
             Self::BitwiseAnd { src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
                 src.restore_from(result);
                 dst.to(result);
                 result.bitwise_nand();
@@ -668,6 +772,8 @@ impl CoreOp {
                 dst.from(result);
             }
             Self::BitwiseNot(dst) => {
+                let dst = env.resolve(dst)?;
+
                 dst.to(result);
                 result.restore();
                 result.bitwise_nand();
@@ -675,48 +781,100 @@ impl CoreOp {
                 dst.from(result);
             }
 
-            CoreOp::Not(dst) => dst.not(result),
-            CoreOp::And { src, dst } => dst.and(src, result),
-            CoreOp::Or { src, dst } => dst.or(src, result),
+            CoreOp::Not(dst) => env.resolve(dst)?.not(result),
+            CoreOp::And { src, dst } => env.resolve(dst)?.and(&env.resolve(src)?, result),
+            CoreOp::Or { src, dst } => env.resolve(dst)?.or(&env.resolve(src)?, result),
 
             CoreOp::PushTo { sp, src, size } => {
-                for i in 0..*size {
+                let sp = env.resolve(sp)?;
+                let src = env.resolve(src)?;
+                let size = *size;
+
+                for i in 0..size {
                     src.offset(i as isize)
                         .copy_to(&sp.deref().offset(i as isize + 1), result);
                 }
-                sp.next(*size as isize, result);
+                sp.next(size as isize, result);
             }
 
             CoreOp::PopFrom { sp, dst, size } => {
+                let sp = env.resolve(sp)?;
+                let size = *size as isize;
+
                 if let Some(dst) = dst {
-                    for i in 1..=*size {
-                        dst.offset((*size - i) as isize).pop_from(sp, result)
+                    let dst = env.resolve(dst)?;
+                    for i in 1..=size {
+                        dst.offset(size - i).pop_from(&sp, result)
                     }
                 } else {
-                    sp.prev(*size as isize, result)
+                    sp.prev(size, result)
                 }
             }
-            CoreOp::Push(src, size) => CoreOp::PushTo {
-                sp: SP,
-                src: src.clone(),
-                size: *size,
-            }
-            .assemble(current_instruction, env, result)?,
-            CoreOp::Pop(dst, size) => CoreOp::PopFrom {
-                sp: SP,
-                dst: dst.clone(),
-                size: *size,
-            }
-            .assemble(current_instruction, env, result)?,
+            CoreOp::Push(src, size) => {
+                let src = env.resolve(src)?;
 
-            CoreOp::IsGreater { dst, a, b } => a.is_greater_than(b, dst, result),
-            CoreOp::IsGreaterEqual { dst, a, b } => a.is_greater_or_equal_to(b, dst, result),
-            CoreOp::IsLess { dst, a, b } => a.is_less_than(b, dst, result),
-            CoreOp::IsLessEqual { dst, a, b } => a.is_less_or_equal_to(b, dst, result),
-            CoreOp::IsEqual { dst, a, b } => a.is_equal(b, dst, result),
-            CoreOp::IsNotEqual { dst, a, b } => a.is_not_equal(b, dst, result),
+                CoreOp::PushTo {
+                    sp: SP,
+                    src,
+                    size: *size,
+                }
+                .assemble(current_instruction, env, result)?
+            }
+            CoreOp::Pop(dst, size) => {
+                // If the destination is None, then we're just popping the stack into oblivion.
+                // Otherwise, we're popping the stack into `Some` destination.
+                // If we have a destination, resolve it. If we can't resolve it, return an error.
+                let dst = dst.as_ref().map(|dst| env.resolve(dst)).transpose()?;
+
+                CoreOp::PopFrom {
+                    sp: SP,
+                    dst,
+                    size: *size,
+                }
+                .assemble(current_instruction, env, result)?
+            }
+
+            CoreOp::IsGreater { dst, a, b } => {
+                let dst = env.resolve(dst)?;
+                let a = env.resolve(a)?;
+                let b = env.resolve(b)?;
+                a.is_greater_than(&b, &dst, result)
+            }
+            CoreOp::IsGreaterEqual { dst, a, b } => {
+                let dst = env.resolve(dst)?;
+                let a = env.resolve(a)?;
+                let b = env.resolve(b)?;
+                a.is_greater_or_equal_to(&b, &dst, result)
+            }
+            CoreOp::IsLess { dst, a, b } => {
+                let dst = env.resolve(dst)?;
+                let a = env.resolve(a)?;
+                let b = env.resolve(b)?;
+                a.is_less_than(&b, &dst, result)
+            }
+            CoreOp::IsLessEqual { dst, a, b } => {
+                let dst = env.resolve(dst)?;
+                let a = env.resolve(a)?;
+                let b = env.resolve(b)?;
+                a.is_less_or_equal_to(&b, &dst, result)
+            }
+            CoreOp::IsEqual { dst, a, b } => {
+                let dst = env.resolve(dst)?;
+                let a = env.resolve(a)?;
+                let b = env.resolve(b)?;
+                a.is_equal(&b, &dst, result)
+            }
+            CoreOp::IsNotEqual { dst, a, b } => {
+                let dst = env.resolve(dst)?;
+                let a = env.resolve(a)?;
+                let b = env.resolve(b)?;
+                a.is_not_equal(&b, &dst, result)
+            }
 
             CoreOp::Compare { dst, a, b } => {
+                let dst = &env.resolve(dst)?;
+                let a = &env.resolve(a)?;
+                let b = &env.resolve(b)?;
                 a.is_greater_than(b, dst, result);
                 dst.restore_from(result);
                 result.begin_if();
@@ -734,17 +892,22 @@ impl CoreOp {
             }
 
             CoreOp::Get(dst, input) => {
+                let dst = env.resolve(dst)?;
                 // result.get(input.clone());
                 // dst.save_to(result)
                 dst.get(input.clone(), result)
             }
-            CoreOp::Put(dst, output) => {
+            CoreOp::Put(src, output) => {
+                let src = env.resolve(src)?;
                 // dst.restore_from(result);
                 // result.put(output.clone())
-                dst.put(output.clone(), result)
+                src.put(output.clone(), result)
             }
 
             CoreOp::Copy { src, dst, size } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
                 for i in 0..*size {
                     src.offset(i as isize)
                         .copy_to(&dst.offset(i as isize), result);
@@ -766,6 +929,7 @@ impl fmt::Display for CoreOp {
                 Ok(())
             }
             Self::Comment(comment) => write!(f, "// {comment}"),
+            Self::Global { name, size } => write!(f, "global {name}, {size}"),
 
             Self::PushTo { src, sp, size } => {
                 write!(f, "push-to {src}, {sp}, {size}")

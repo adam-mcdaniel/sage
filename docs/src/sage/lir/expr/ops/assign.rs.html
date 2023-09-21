@@ -135,7 +135,7 @@
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, lhs: <span class="kw-2">&amp;</span>Type, rhs: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
         <span class="kw">if let </span>Type::Pointer(mutability, t) = lhs.clone().simplify(env)<span class="question-mark">? </span>{
             <span class="kw">if </span>mutability.is_mutable() {
-                <span class="kw">return </span><span class="self">self</span>.<span class="number">0</span>.can_apply(<span class="kw-2">&amp;</span>t, rhs, env)
+                <span class="kw">return </span><span class="self">self</span>.<span class="number">0</span>.can_apply(<span class="kw-2">&amp;</span>t, rhs, env);
             }
         }
         <span class="prelude-val">Err</span>(Error::InvalidAssignOpTypes(
