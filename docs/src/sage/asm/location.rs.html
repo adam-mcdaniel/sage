@@ -666,6 +666,28 @@
 <a href="#666" id="666">666</a>
 <a href="#667" id="667">667</a>
 <a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Assembly Memory Location
 //!
 //! This module contains the `Location` type, which represents a memory
@@ -734,31 +756,36 @@
     vm::{<span class="self">self</span>, Error, VirtualMachineProgram},
     NULL,
 };
+
 <span class="kw">use </span>core::fmt;
 
 <span class="doccomment">/// The stack pointer register.
 </span><span class="kw">pub const </span>SP: Location = Location::Address(<span class="number">0</span>);
 <span class="doccomment">/// A volatile register. This register may be silently overwritten by
 /// some assembly instructions.
-</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">const </span>TMP: Location = Location::Address(<span class="number">1</span>);
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>TMP: Location = Location::Address(<span class="number">1</span>);
 <span class="doccomment">/// The frame pointer register.
 </span><span class="kw">pub const </span>FP: Location = Location::Address(<span class="number">2</span>);
 <span class="doccomment">/// The stack pointer register for the stack of frames.
 /// This always points to the parent frame&#39;s saved frame pointer.
 /// At the beginning of the program, this is allocated with a specified number of cells.
-</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">const </span>FP_STACK: Location = Location::Address(<span class="number">3</span>);
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>FP_STACK: Location = Location::Address(<span class="number">3</span>);
+<span class="doccomment">/// The Global Pointer register. This is used to access global variables.
+</span><span class="kw">pub const </span>GP: Location = Location::Address(<span class="number">4</span>);
 <span class="doccomment">/// The &quot;A&quot; general purpose register.
-</span><span class="kw">pub const </span>A: Location = Location::Address(<span class="number">4</span>);
+</span><span class="kw">pub const </span>A: Location = Location::Address(<span class="number">5</span>);
 <span class="doccomment">/// The &quot;B&quot; general purpose register.
-</span><span class="kw">pub const </span>B: Location = Location::Address(<span class="number">5</span>);
+</span><span class="kw">pub const </span>B: Location = Location::Address(<span class="number">6</span>);
 <span class="doccomment">/// The &quot;C&quot; general purpose register.
-</span><span class="kw">pub const </span>C: Location = Location::Address(<span class="number">6</span>);
+</span><span class="kw">pub const </span>C: Location = Location::Address(<span class="number">7</span>);
 <span class="doccomment">/// The &quot;D&quot; general purpose register.
-</span><span class="kw">pub const </span>D: Location = Location::Address(<span class="number">7</span>);
+</span><span class="kw">pub const </span>D: Location = Location::Address(<span class="number">8</span>);
 <span class="doccomment">/// The &quot;E&quot; general purpose register.
-</span><span class="kw">pub const </span>E: Location = Location::Address(<span class="number">8</span>);
+</span><span class="kw">pub const </span>E: Location = Location::Address(<span class="number">9</span>);
 <span class="doccomment">/// The &quot;F&quot; general purpose register.
-</span><span class="kw">pub const </span>F: Location = Location::Address(<span class="number">9</span>);
+</span><span class="kw">pub const </span>F: Location = Location::Address(<span class="number">10</span>);
+
+<span class="kw">pub const </span>REGISTERS: [Location; <span class="number">11</span>] = [SP, TMP, FP, FP_STACK, GP, A, B, C, D, E, F];
 
 <span class="doccomment">/// A location in memory (on the tape of the virtual machine).
 </span><span class="attr">#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -771,22 +798,25 @@
     <span class="doccomment">/// Go to a position in memory, and then move the pointer according to an offset.
     /// For example, `Offset(Address(8), -2)` is equivalent to `Address(6)`.
     </span>Offset(Box&lt;<span class="self">Self</span>&gt;, isize),
+    <span class="doccomment">/// A global variable.
+    </span>Global(String),
 }
 
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>Location {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
             Location::Address(addr) =&gt; <span class="kw">match </span>addr {
-                <span class="number">0 </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;SP&quot;</span>),
-                <span class="number">1 </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;TMP&quot;</span>),
-                <span class="number">2 </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;FP&quot;</span>),
-                <span class="number">3 </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;FP_STACK&quot;</span>),
-                <span class="number">4 </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;A&quot;</span>),
-                <span class="number">5 </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;B&quot;</span>),
-                <span class="number">6 </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;C&quot;</span>),
-                <span class="number">7 </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;D&quot;</span>),
-                <span class="number">8 </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;E&quot;</span>),
-                <span class="number">9 </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;F&quot;</span>),
+                <span class="kw">_ if </span><span class="self">self </span>== <span class="kw-2">&amp;</span>SP =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;SP&quot;</span>),
+                <span class="kw">_ if </span><span class="self">self </span>== <span class="kw-2">&amp;</span>FP =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;FP&quot;</span>),
+                <span class="kw">_ if </span><span class="self">self </span>== <span class="kw-2">&amp;</span>FP_STACK =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;FP_STACK&quot;</span>),
+                <span class="kw">_ if </span><span class="self">self </span>== <span class="kw-2">&amp;</span>GP =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;GP&quot;</span>),
+                <span class="kw">_ if </span><span class="self">self </span>== <span class="kw-2">&amp;</span>A =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;A&quot;</span>),
+                <span class="kw">_ if </span><span class="self">self </span>== <span class="kw-2">&amp;</span>B =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;B&quot;</span>),
+                <span class="kw">_ if </span><span class="self">self </span>== <span class="kw-2">&amp;</span>C =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;C&quot;</span>),
+                <span class="kw">_ if </span><span class="self">self </span>== <span class="kw-2">&amp;</span>D =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;D&quot;</span>),
+                <span class="kw">_ if </span><span class="self">self </span>== <span class="kw-2">&amp;</span>E =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;E&quot;</span>),
+                <span class="kw">_ if </span><span class="self">self </span>== <span class="kw-2">&amp;</span>F =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;F&quot;</span>),
+                <span class="kw">_ if </span><span class="self">self </span>== <span class="kw-2">&amp;</span>TMP =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;TMP&quot;</span>),
                 other =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, other),
             },
             Location::Indirect(loc) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;[{}]&quot;</span>, loc),
@@ -810,6 +840,7 @@
                     )
                 }
             }
+            Location::Global(name) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{name}&quot;</span>),
         }
     }
 }
@@ -817,7 +848,8 @@
 <span class="kw">impl </span>fmt::Debug <span class="kw">for </span>Location {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
-            Location::Address(addr) <span class="kw">if </span><span class="kw-2">*</span>addr &lt;= <span class="number">9 </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{self} ({addr})&quot;</span>),
+            Location::Global(name) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{name}&quot;</span>),
+            Location::Address(addr) <span class="kw">if </span><span class="kw-2">*</span>addr &lt;= <span class="number">10 </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{self} ({addr})&quot;</span>),
             Location::Address(addr) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{addr}&quot;</span>),
             Location::Indirect(loc) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;[{loc:?}]&quot;</span>),
             Location::Offset(loc, offset) =&gt; {
@@ -849,11 +881,18 @@
     /// For example, `Offset(Address(8), -2)` is equivalent to `Address(6)`.
     </span><span class="kw">pub fn </span>offset(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: isize) -&gt; <span class="self">Self </span>{
         <span class="kw">if </span>offset == <span class="number">0 </span>{
-            <span class="self">self</span>.clone()
-        } <span class="kw">else if let </span><span class="self">Self</span>::Offset(addr, x) = <span class="self">self </span>{
-            Location::Offset(addr.clone(), <span class="kw-2">*</span>x + offset)
-        } <span class="kw">else </span>{
-            Location::Offset(Box::new(<span class="self">self</span>.clone()), offset)
+            <span class="kw">return </span><span class="self">self</span>.clone();
+        }
+
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="comment">// If we are offsetting from another offset, then we can just add the offsets together.
+            </span>Location::Offset(loc, x) =&gt; Location::Offset(loc.clone(), <span class="kw-2">*</span>x + offset),
+            <span class="comment">// If we are offsetting from a constant address, then we can just add the offset to the address.
+            </span>Location::Address(addr) =&gt; Location::Address((<span class="kw-2">*</span>addr <span class="kw">as </span>isize + offset) <span class="kw">as </span>usize),
+            <span class="comment">// Offsetting from a dereferenced pointer.
+            </span>Location::Indirect(<span class="kw">_</span>) =&gt; Location::Offset(Box::new(<span class="self">self</span>.clone()), offset),
+            <span class="comment">// Offsetting from a global variable.
+            </span>Location::Global(<span class="kw">_</span>) =&gt; Location::Offset(Box::new(<span class="self">self</span>.clone()), offset),
         }
     }
 
@@ -894,6 +933,9 @@
                 loc.to(result);
                 result.move_pointer(<span class="kw-2">*</span>offset);
             }
+            Location::Global(name) =&gt; {
+                <span class="macro">panic!</span>(<span class="string">&quot;Cannot move pointer to global variable {}&quot;</span>, name);
+            }
         }
     }
 
@@ -905,7 +947,6 @@
                 result.refer();
                 loc.from(result);
             }
-
             Location::Offset(loc, offset) =&gt; {
                 <span class="comment">// If the offset is from a dereferenced pointer, then moving back before
                 // reversing the dereference does nothing, so we can skip it.
@@ -913,6 +954,9 @@
                     result.move_pointer(-<span class="kw-2">*</span>offset);
                 }
                 loc.from(result);
+            }
+            Location::Global(name) =&gt; {
+                <span class="macro">panic!</span>(<span class="string">&quot;Cannot move pointer from global variable {}&quot;</span>, name);
             }
         }
     }

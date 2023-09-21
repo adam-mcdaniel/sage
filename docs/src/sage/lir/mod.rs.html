@@ -641,11 +641,11 @@
                     loc.filename = location.filename.clone();
                 }
                 <span class="self">self
-            </span>},
+            </span>}
             <span class="kw">_ </span>=&gt; <span class="self">Self</span>::AnnotatedWithSource {
                 err: Box::new(<span class="self">self</span>),
                 loc: location.clone(),
-            }
+            },
         }
     }
 }
@@ -826,7 +826,7 @@
                 <span class="macro">write!</span>(f, <span class="string">&quot;tried to compile polymorphic procedure {}&quot;</span>, proc)
             }
             <span class="self">Self</span>::AssemblyError(e) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;assembly error: {:?}&quot;</span>, e)
+                <span class="macro">write!</span>(f, <span class="string">&quot;assembly error: {}&quot;</span>, e)
             }
             <span class="self">Self</span>::InvalidMonomorphize(expr) =&gt; {
                 <span class="macro">write!</span>(

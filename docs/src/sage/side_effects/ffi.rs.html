@@ -24,10 +24,14 @@
 <a href="#24" id="24">24</a>
 <a href="#25" id="25">25</a>
 <a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 
 <span class="doccomment">/// This is an FFI binding, which is used to call a foreign function in the virtual machine code.
-/// 
+///
 /// The name is the symbol for the foreign function. The input cells is the number of cells that
 /// the foreign function will read from the FFI channel. The output cells is the number of cells
 /// that the foreign function will write to the FFI channel.
@@ -35,13 +39,17 @@
 </span><span class="kw">pub struct </span>FFIBinding {
     <span class="kw">pub </span>name: String,
     <span class="kw">pub </span>input_cells: usize,
-    <span class="kw">pub </span>output_cells: usize
+    <span class="kw">pub </span>output_cells: usize,
 }
 
 <span class="kw">impl </span>FFIBinding {
     <span class="doccomment">/// Create a new FFI binding.
     </span><span class="kw">pub fn </span>new(name: String, input_cells: usize, output_cells: usize) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{ name, input_cells, output_cells }
+        <span class="self">Self </span>{
+            name,
+            input_cells,
+            output_cells,
+        }
     }
 }
 
@@ -49,4 +57,5 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
         <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.name)
     }
-}</code></pre></div></section></main></body></html>
+}
+</code></pre></div></section></main></body></html>

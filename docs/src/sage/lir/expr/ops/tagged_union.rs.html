@@ -171,10 +171,6 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -189,15 +185,13 @@
     <span class="doccomment">/// Can this unary operation be applied to the given type?
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
         <span class="kw">let </span>ty = ty.clone().simplify(env)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(ty
-            .simplify_until_has_variants(env)
-            .is_ok())
+        <span class="prelude-val">Ok</span>(ty.simplify_until_has_variants(env).is_ok())
     }
 
     <span class="doccomment">/// Get the type of the result of applying this unary operation to the given type.
     </span><span class="kw">fn </span>return_type(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
         <span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>.simplify_until_has_variants(env)<span class="question-mark">?</span>;
-        
+
         <span class="kw">match </span>ty {
             Type::EnumUnion(variants) =&gt; <span class="prelude-val">Ok</span>(Type::Enum(variants.into_keys().collect())),
             found =&gt; <span class="prelude-val">Err</span>(Error::MismatchedTypes {
@@ -280,15 +274,13 @@
     <span class="doccomment">/// Can this unary operation be applied to the given type?
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
         <span class="kw">let </span>ty = ty.clone().simplify(env)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(ty
-            .simplify_until_has_variants(env)
-            .is_ok())
+        <span class="prelude-val">Ok</span>(ty.simplify_until_has_variants(env).is_ok())
     }
 
     <span class="doccomment">/// Get the type of the result of applying this unary operation to the given type.
     </span><span class="kw">fn </span>return_type(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
         <span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>.simplify_until_has_variants(env)<span class="question-mark">?</span>;
-        
+
         <span class="kw">match </span>ty {
             Type::EnumUnion(variants) =&gt; <span class="prelude-val">Ok</span>(Type::Union(variants)),
             found =&gt; <span class="prelude-val">Err</span>(Error::MismatchedTypes {

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["A","B","C","D","E","F","FP","SP"],"enum":["Location"]};
+window.SIDEBAR_ITEMS = {"constant":["A","B","C","D","E","F","FP","GP","REGISTERS","SP"],"enum":["Location"]};

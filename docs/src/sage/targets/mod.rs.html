@@ -304,6 +304,9 @@
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Targets Module
 //!
 //! This module contains the code dealing with building the virtual
@@ -606,7 +609,10 @@
             result += <span class="kw-2">&amp;</span><span class="self">self</span>.postop().unwrap_or(<span class="string">&quot;&quot;</span>.to_string());
         }
 
-        <span class="macro">info!</span>(<span class="string">&quot;Finished compiling standard program for target {}&quot;</span>, <span class="self">self</span>.name());
+        <span class="macro">info!</span>(
+            <span class="string">&quot;Finished compiling standard program for target {}&quot;</span>,
+            <span class="self">self</span>.name()
+        );
         <span class="prelude-val">Ok</span>(result + <span class="kw-2">&amp;</span>tab + <span class="self">self</span>.postlude(<span class="bool-val">false</span>).unwrap_or(<span class="string">&quot;&quot;</span>.to_string()).as_str())
     }
 }

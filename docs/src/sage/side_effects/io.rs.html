@@ -706,7 +706,7 @@
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 
 <span class="doccomment">/// The different axes an input or output might use.
-</span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 </span><span class="kw">pub enum </span>Axis {
     X,
     Y,
@@ -714,7 +714,7 @@
 }
 
 <span class="doccomment">/// The different directions a D-Pad a might use.
-</span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 </span><span class="kw">pub enum </span>Direction {
     Up,
     Down,
@@ -723,7 +723,7 @@
 }
 
 <span class="doccomment">/// The different output colors a program might use.
-</span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 </span><span class="kw">pub enum </span>Color {
     <span class="doccomment">/// Black
     </span>Black,
@@ -995,7 +995,7 @@
 }
 
 <span class="doccomment">/// The channel to use for a given I/O mode.
-</span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 </span><span class="kw">pub struct </span>Channel(<span class="kw">pub </span>usize);
 
 <span class="doccomment">/// An input source for a program.

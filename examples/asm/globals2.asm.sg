@@ -1,0 +1,74 @@
+global $X, 3
+global $Y, 3
+global $TMP, 1
+
+set $X, 1
+set $X(1), 2
+set $X(2), 3
+
+lea $X, $TMP
+put-int $TMP
+set A, 10
+put-char A
+
+lea $X(1), $TMP
+put-int $TMP
+set A, 10
+put-char A
+
+lea $X(2), $TMP
+put-int $TMP
+set A, 10
+put-char A
+
+
+put-int $X
+set A, 10
+put-char A
+
+put-int $X(1)
+set A, 10
+put-char A
+
+put-int $X(2)
+set A, 10
+put-char A
+
+
+
+set $Y, 4
+set $Y(1), 5
+set $Y(2), 6
+
+lea $Y, $TMP
+put-int $TMP
+set A, 10
+put-char A
+
+lea $Y(1), $TMP
+put-int $TMP
+set A, 10
+put-char A
+
+lea $Y(2), $TMP
+put-int $TMP
+set A, 10
+put-char A
+
+
+put-int $Y
+set A, 10
+put-char A
+
+put-int $Y(1)
+set A, 10
+put-char A
+
+put-int $Y(2)
+set A, 10
+put-char A
+
+
+put-int GP
+set A, 10
+put-char A

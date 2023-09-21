@@ -412,6 +412,12 @@
 <a href="#412" id="412">412</a>
 <a href="#413" id="413">413</a>
 <a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Standard Interpreter Module
 //!
 //! This module implements an interpreter for the Standard virtual machine
@@ -726,9 +732,15 @@
                     CoreOp::BitwiseNand =&gt; {
                         <span class="self">self</span>.register = !(<span class="self">self</span>.register &amp; <span class="kw-2">*</span><span class="self">self</span>.get_cell());
                     }
-                    CoreOp::Add =&gt; <span class="self">self</span>.register = <span class="self">self</span>.register.overflowing_add(<span class="kw-2">*</span><span class="self">self</span>.get_cell()).<span class="number">0</span>,
-                    CoreOp::Sub =&gt; <span class="self">self</span>.register = <span class="self">self</span>.register.overflowing_sub(<span class="kw-2">*</span><span class="self">self</span>.get_cell()).<span class="number">0</span>,
-                    CoreOp::Mul =&gt; <span class="self">self</span>.register = <span class="self">self</span>.register.overflowing_mul(<span class="kw-2">*</span><span class="self">self</span>.get_cell()).<span class="number">0</span>,
+                    CoreOp::Add =&gt; {
+                        <span class="self">self</span>.register = <span class="self">self</span>.register.overflowing_add(<span class="kw-2">*</span><span class="self">self</span>.get_cell()).<span class="number">0
+                    </span>}
+                    CoreOp::Sub =&gt; {
+                        <span class="self">self</span>.register = <span class="self">self</span>.register.overflowing_sub(<span class="kw-2">*</span><span class="self">self</span>.get_cell()).<span class="number">0
+                    </span>}
+                    CoreOp::Mul =&gt; {
+                        <span class="self">self</span>.register = <span class="self">self</span>.register.overflowing_mul(<span class="kw-2">*</span><span class="self">self</span>.get_cell()).<span class="number">0
+                    </span>}
                     CoreOp::Div =&gt; {
                         <span class="kw">let </span>d = <span class="kw-2">*</span><span class="self">self</span>.get_cell();
                         <span class="kw">if </span>d != <span class="number">0 </span>{

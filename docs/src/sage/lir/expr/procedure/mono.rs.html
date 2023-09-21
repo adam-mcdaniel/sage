@@ -212,6 +212,12 @@
 <a href="#212" id="212">212</a>
 <a href="#213" id="213">213</a>
 <a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Mono-Procedure
 //!
 //! A procedure of LIR code which can be applied to a list of arguments.
@@ -223,7 +229,9 @@
 //!
 //! Procedures are created by the `proc` keyword.
 </span><span class="kw">use </span><span class="kw">crate</span>::asm::{AssemblyProgram, CoreOp, A, FP, SP};
-<span class="kw">use </span><span class="kw">crate</span>::lir::{Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck};
+<span class="kw">use </span><span class="kw">crate</span>::lir::{
+    Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck,
+};
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::sync::Mutex;
 
@@ -397,7 +405,11 @@
         </span>output.op(CoreOp::SetLabel(A, <span class="self">self</span>.mangled_name.clone()));
         output.op(CoreOp::Push(A, <span class="number">1</span>));
 
-        <span class="kw">let </span>name = <span class="self">self</span>.common_name.as_ref().map(|x| x.as_str()).unwrap_or_else(|| <span class="string">&quot;&lt;anonymous&gt;&quot;</span>);
+        <span class="kw">let </span>name = <span class="self">self
+            </span>.common_name
+            .as_ref()
+            .map(|x| x.as_str())
+            .unwrap_or_else(|| <span class="string">&quot;&lt;anonymous&gt;&quot;</span>);
         <span class="comment">// Log the compiled procedure
         </span><span class="kw">let </span>message = <span class="macro">format!</span>(<span class="string">&quot;Compiled procedure {common_name} to {mangled_name} with args of size {args_size} and return value of size {ret_size}&quot;</span>,
             common_name = name,

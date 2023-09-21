@@ -176,6 +176,16 @@
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Virtual Machine Module
 //!
 //! This module contains all things related to the virtual machine.
@@ -231,7 +241,8 @@
 //! 16 bit ints + no floats for a hardware implementation would suffice.
 //! Infinitely large ints and floats are also supported, but the implementation
 //! must be able to handle them.
-</span><span class="kw">use </span><span class="kw">crate</span>::side_effects::{Input, Output, FFIBinding};
+</span><span class="kw">use </span><span class="kw">crate</span>::side_effects::{FFIBinding, Input, Output};
+<span class="kw">use </span>::core::fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 
 <span class="kw">mod </span>core;
 <span class="kw">pub use </span><span class="self">self</span>::core::<span class="kw-2">*</span>;
@@ -251,6 +262,15 @@
     <span class="doccomment">/// When the virtual machine attempts to get the program as core,
     /// but finds standard instructions, this error is triggered.
     </span>ExpectedCore(StandardOp),
+}
+
+<span class="kw">impl </span>Display <span class="kw">for </span>Error {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::UnsupportedInstruction(op) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Unsupported instruction: {}&quot;</span>, op),
+            <span class="self">Self</span>::ExpectedCore(op) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Expected core instruction, found: {}&quot;</span>, op),
+        }
+    }
 }
 
 <span class="doccomment">/// An interface to conveniently create virtual machine programs,

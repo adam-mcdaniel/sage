@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Error"],"mod":["core","location","std"],"trait":["AssemblyProgram"]};
+window.SIDEBAR_ITEMS = {"enum":["Error"],"mod":["core","globals","location","std"],"trait":["AssemblyProgram"]};

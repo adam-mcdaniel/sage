@@ -317,8 +317,6 @@
 <a href="#317" id="317">317</a>
 <a href="#318" id="318">318</a>
 <a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # x86 Target
 //!
 //! An implementation of the virtual machine for x86.
@@ -339,8 +337,6 @@
     branch_match: Vec&lt;String&gt;,
     float_defs: Vec&lt;f64&gt;,
 }
-
-
 
 <span class="kw">impl </span>Architecture <span class="kw">for </span>X86 {
     <span class="kw">fn </span>supports_input(<span class="kw-2">&amp;</span><span class="self">self</span>, i: <span class="kw-2">&amp;</span>Input) -&gt; bool {
