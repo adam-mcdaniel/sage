@@ -6,3 +6,6 @@ gmon.out
 a.out
 redirect.html
 out.*
+massif.out.*
+/*.txt
+/*.sg
