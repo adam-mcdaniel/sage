@@ -42,15 +42,23 @@ fn test_frontend_examples_helper() {
                 .to_str()
                 .unwrap_or_else(|| panic!("Could not get file name of path `{path:?}`"))
                 .to_string();
-            let correct_output_path = PathBuf::from("examples/output")
-                .join(file_name)
+            let correct_output_path = PathBuf::from("examples/test-output")
+                .join(file_name.clone())
                 .with_extension("txt");
+            let correct_error_path = PathBuf::from("examples/test-output")
+                .join(file_name)
+                .with_extension("error.txt");
+            let correct_error = match read_to_string(&correct_error_path) {
+                Ok(contents) => Some(contents.replace("\r\n", "\n")),
+                Err(_) => None
+            };
             let correct_output_text = match read_to_string(&correct_output_path) {
                 Ok(contents) => contents.replace("\r\n", "\n"),
-                Err(_) => {
+                Err(_) if correct_error.is_none() => {
                     warn!("Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
                     continue;
                 }
+                Err(_) => String::new()
             };
             let correct_output = correct_output_text
                 .as_bytes()
@@ -58,23 +66,32 @@ fn test_frontend_examples_helper() {
                 .map(|byte| *byte as i64)
                 .collect::<Vec<_>>();
 
+
             let frontend_src = read_to_string(&path)
                 .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
             let frontend_code = parse_frontend(&frontend_src, path.to_str())
                 .unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
             drop(frontend_src);
-            let asm_code = frontend_code
-                .compile()
-                .unwrap_or_else(|_| panic!("Could not compile LIR code in `{path:?}`"));
+            let asm_code = frontend_code.compile();
+            
+            if let Err(ref e) = asm_code {
+                if let Some(correct_error) = correct_error {
+                    let text = e.to_string();
+                    if text != correct_error {
+                        panic!("{text:?} != {correct_error:?}, error did not match correct error for program {path:?}")
+                    } else {
+                        continue;
+                    }
+                } else {
+                    panic!("Could not assemble code in `{path:?}`: {e}")
+                }
+            }
+            let asm_code = asm_code.unwrap();
 
             let vm_code = match asm_code {
-                Ok(core_asm_code) => Ok(core_asm_code
-                    .assemble(CALL_STACK_SIZE)
-                    .unwrap_or_else(|_| panic!("Could not assemble code in `{path:?}`"))),
-                Err(std_asm_code) => Err(std_asm_code
-                    .assemble(CALL_STACK_SIZE)
-                    .unwrap_or_else(|_| panic!("Could not assemble code in `{path:?}`"))),
-            };
+                Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
+                Err(std_asm_code) => std_asm_code.assemble(CALL_STACK_SIZE).map(Err),
+            }.unwrap();
 
             let device = match vm_code {
                 Ok(vm_code) => CoreInterpreter::new(TestingDevice::new(INPUT))
@@ -88,6 +105,10 @@ fn test_frontend_examples_helper() {
             let output_text = device.output_str();
             if device.output_vals() != correct_output {
                 panic!("{output_text:?} != {correct_output_text:?}, device output did not match correct output for program {path:?}")
+            }
+
+            if let Some(correct_error) = correct_error {
+                panic!("Expected error `{correct_error:?}` but got output `{output_text:?}` for program `{path:?}`")
             }
         }
     }
@@ -126,15 +147,24 @@ fn test_lir_examples_helper() {
                 .to_str()
                 .unwrap_or_else(|| panic!("Could not get file name of path `{path:?}`"))
                 .to_string();
-            let correct_output_path = PathBuf::from("examples/output")
-                .join(file_name)
+            let correct_output_path = PathBuf::from("examples/test-output")
+                .join(file_name.clone())
                 .with_extension("txt");
+            let correct_error_path = PathBuf::from("examples/test-output")
+                .join(file_name)
+                .with_extension("error.txt");
+
+            let correct_error = match read_to_string(&correct_error_path) {
+                Ok(contents) => Some(contents.replace("\r\n", "\n")),
+                Err(_) => None
+            };
             let correct_output_text = match read_to_string(&correct_output_path) {
                 Ok(contents) => contents.replace("\r\n", "\n"),
-                Err(_) => {
+                Err(_) if correct_error.is_none() => {
                     warn!("Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
                     continue;
                 }
+                Err(_) => String::new()
             };
             let correct_output = correct_output_text
                 .as_bytes()
@@ -145,20 +175,29 @@ fn test_lir_examples_helper() {
             let lir_src = read_to_string(&path)
                 .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
             let lir_code =
-                parse_lir(&lir_src).unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
+                parse_lir(&lir_src)
+                .unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
             drop(lir_src);
-            let asm_code = lir_code
-                .compile()
-                .unwrap_or_else(|_| panic!("Could not compile LIR code in `{path:?}`"));
+            let asm_code = lir_code.compile();
+            
+            if let Err(ref e) = asm_code {
+                let text = e.to_string();
+                if let Some(correct_error) = correct_error {
+                    if text != correct_error {
+                        panic!("{text:?} != {correct_error:?}, error did not match correct error for program {path:?}")
+                    } else {
+                        continue;
+                    }
+                } else {
+                    panic!("Could not assemble code in `{path:?}`: {text:?}")
+                }
+            }
+            let asm_code = asm_code.unwrap();
 
             let vm_code = match asm_code {
-                Ok(core_asm_code) => Ok(core_asm_code
-                    .assemble(CALL_STACK_SIZE)
-                    .unwrap_or_else(|_| panic!("Could not assemble code in `{path:?}`"))),
-                Err(std_asm_code) => Err(std_asm_code
-                    .assemble(CALL_STACK_SIZE)
-                    .unwrap_or_else(|_| panic!("Could not assemble code in `{path:?}`"))),
-            };
+                Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
+                Err(std_asm_code) => std_asm_code.assemble(CALL_STACK_SIZE).map(Err),
+            }.unwrap();
 
             let device = match vm_code {
                 Ok(vm_code) => CoreInterpreter::new(TestingDevice::new(INPUT))
@@ -172,6 +211,10 @@ fn test_lir_examples_helper() {
             let output_text = device.output_str();
             if device.output_vals() != correct_output {
                 panic!("{output_text:?} != {correct_output_text:?}, device output did not match correct output for program {path:?}")
+            }
+
+            if let Some(correct_error) = correct_error {
+                panic!("Expected error `{correct_error:?}` but got output `{output_text:?}` for program `{path:?}`")
             }
         }
     }
@@ -209,15 +252,24 @@ fn test_asm_examples_helper() {
                 .to_str()
                 .unwrap_or_else(|| panic!("Could not get file name of path `{path:?}`"))
                 .to_string();
-            let correct_output_path = PathBuf::from("examples/output")
-                .join(file_name)
+            let correct_output_path = PathBuf::from("examples/test-output")
+                .join(file_name.clone())
                 .with_extension("txt");
+            let correct_error_path = PathBuf::from("examples/test-output")
+                .join(file_name)
+                .with_extension("error.txt");
+
+            let correct_error = match read_to_string(&correct_error_path) {
+                Ok(contents) => Some(contents.replace("\r\n", "\n")),
+                Err(_) => None
+            };
             let correct_output_text = match read_to_string(&correct_output_path) {
                 Ok(contents) => contents.replace("\r\n", "\n"),
-                Err(_) => {
+                Err(_) if correct_error.is_none() => {
                     warn!("Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
                     continue;
                 }
+                Err(_) => String::new()
             };
             let correct_output = correct_output_text
                 .as_bytes()
@@ -232,13 +284,24 @@ fn test_asm_examples_helper() {
             drop(asm_src);
 
             let vm_code = match asm_code {
-                Ok(core_asm_code) => Ok(core_asm_code
-                    .assemble(CALL_STACK_SIZE)
-                    .unwrap_or_else(|_| panic!("Could not assemble code in `{path:?}`"))),
-                Err(std_asm_code) => Err(std_asm_code
-                    .assemble(CALL_STACK_SIZE)
-                    .unwrap_or_else(|_| panic!("Could not assemble code in `{path:?}`"))),
+                Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
+                Err(std_asm_code) => std_asm_code.assemble(CALL_STACK_SIZE).map(Err),
             };
+
+            if let Err(ref e) = vm_code {
+                let text = e.to_string();
+                if let Some(correct_error) = correct_error {
+                    if text != correct_error {
+                        panic!("{text:?} != {correct_error:?}, error did not match correct error for program {path:?}")
+                    } else {
+                        continue;
+                    }
+                } else {
+                    panic!("Could not assemble code in `{path:?}`: {text:?}")
+                }
+            }
+
+            let vm_code = vm_code.unwrap();
 
             let device = match vm_code {
                 Ok(vm_code) => CoreInterpreter::new(TestingDevice::new(INPUT))
@@ -252,6 +315,10 @@ fn test_asm_examples_helper() {
             let output_text = device.output_str();
             if device.output_vals() != correct_output {
                 panic!("{output_text:?} != {correct_output_text:?}, device output did not match correct output for program {path:?}")
+            }
+
+            if let Some(correct_error) = correct_error {
+                panic!("Expected error `{correct_error:?}` but got output `{output_text:?}` for program `{path:?}`")
             }
         }
     }

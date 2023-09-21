@@ -240,8 +240,8 @@ impl From<crate::asm::Error> for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            Self::AnnotatedWithSource { err, loc } => {
-                write!(f, "{}\n{:?}", err, loc)
+            Self::AnnotatedWithSource { err, .. } => {
+                write!(f, "{err}")
             }
             Self::MismatchedTypes {
                 expected,
