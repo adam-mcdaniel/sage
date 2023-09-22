@@ -6,8 +6,7 @@
 //! which are then executed by the runtime.
 
 use super::ops::*;
-use crate::lir::{Declaration, ConstExpr, Mutability, Pattern, Procedure, Type};
-use crate::parse::SourceCodeLocation;
+use crate::lir::{Annotation, Declaration, ConstExpr, Mutability, Pattern, Procedure, Type};
 use core::fmt;
 use std::collections::BTreeMap;
 
@@ -18,12 +17,7 @@ use std::collections::BTreeMap;
 pub enum Expr {
     /// An expression along with data about its source code location.
     /// This is used for error reporting.
-    AnnotatedWithSource {
-        // The expression itself.
-        expr: Box<Self>,
-        /// The source code location of the expression.
-        loc: SourceCodeLocation,
-    },
+    Annotated(Box<Self>, Annotation),
 
     /// A constant expression.
     ConstExpr(ConstExpr),
@@ -122,16 +116,25 @@ impl Expr {
     /// every time we want to use `None`.
     pub const NONE: Self = Self::ConstExpr(ConstExpr::None);
 
+    /// An annotated expression with some metadata.
+    pub fn annotate(&self, annotation: impl Into<Annotation>) -> Self {
+        match self {
+            Self::Annotated(expr, metadata) => {
+                let mut result = annotation.into();
+                result |= metadata.clone();
+                Self::Annotated(expr.clone(), result)
+            },
+            _ => Self::Annotated(Box::new(self.clone()), annotation.into()),
+        }
+    }
+
     /// Return this expression, but with a given declaration in scope.
     pub fn with(&self, older_decls: impl Into<Declaration>) -> Self {
         match self {
             // If the expression is an annotated expression, we need to unwrap it.
-            Self::AnnotatedWithSource { expr, loc } => {
+            Self::Annotated(expr, annotation) => {
                 // Just unwrap the expression and recurse.
-                Self::AnnotatedWithSource {
-                    expr: Box::new(expr.with(older_decls)),
-                    loc: loc.clone(),
-                }
+                expr.with(older_decls).annotate(annotation.clone())
             }
 
             // If the expression is a declaration, we need to merge the declarations.
@@ -152,18 +155,6 @@ impl Expr {
     /// Get the size of an expression.
     pub fn size_of(self) -> Self {
         Self::ConstExpr(ConstExpr::SizeOfExpr(Box::new(self)))
-    }
-
-    /// With a location, annotate this expression with a source code location.
-    pub fn with_loc(self, loc: SourceCodeLocation) -> Self {
-        // Check if we already have a source code location.
-        match self {
-            Self::AnnotatedWithSource { .. } => self,
-            _ => Self::AnnotatedWithSource {
-                expr: Box::new(self),
-                loc,
-            },
-        }
     }
 
     /// Cast an expression as another type.
@@ -445,7 +436,7 @@ impl fmt::Display for Expr {
             Self::Declare(declaration, result) => {
                 write!(f, "let {declaration} in {result}")
             }
-            Self::AnnotatedWithSource { expr, .. } => write!(f, "{expr}"),
+            Self::Annotated(expr, _) => write!(f, "{expr}"),
             Self::ConstExpr(expr) => write!(f, "{expr}"),
             Self::Many(exprs) => {
                 write!(f, "{{ ")?;
@@ -555,8 +546,8 @@ impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         use Expr::*;
         match (self, other) {
-            (Self::AnnotatedWithSource { expr, .. }, other)
-            | (other, Self::AnnotatedWithSource { expr, .. }) => &**expr == other,
+            (Self::Annotated(expr, _), other)
+            | (other, Self::Annotated(expr, _)) => &**expr == other,
             // A constant expression.
             (ConstExpr(a), ConstExpr(b)) => a == b,
             // A block of expressions. The last expression in the block is the value of the block.

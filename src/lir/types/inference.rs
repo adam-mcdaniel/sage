@@ -40,9 +40,9 @@ impl GetType for Expr {
         // trace!("Getting type of expression {}", self);
         let i = i + 1;
         Ok(match self {
-            Self::AnnotatedWithSource { expr, loc } => {
+            Self::Annotated(expr, annotation) => {
                 // Get the type of the inner expression.
-                expr.get_type_checked(env, i).map_err(|e| e.with_loc(loc))?
+                expr.get_type_checked(env, i).map_err(|e| e.annotate(annotation.clone()))?
             }
 
             Self::Declare(declaration, body) => {
@@ -128,7 +128,7 @@ impl GetType for Expr {
             // A while loop returns the None value.
             Self::While(cond, _) => {
                 let mut cond = *cond.clone();
-                while let Expr::AnnotatedWithSource { expr, .. } = cond {
+                while let Expr::Annotated(expr, _) = cond {
                     cond = *expr;
                 }
 
@@ -323,7 +323,7 @@ impl GetType for Expr {
     fn substitute(&mut self, name: &str, ty: &Type) {
         trace!("Substituting {name} for {ty} in {self}");
         match self {
-            Self::AnnotatedWithSource { expr, .. } => {
+            Self::Annotated(expr, _) => {
                 expr.substitute(name, ty);
             }
 

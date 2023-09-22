@@ -136,10 +136,16 @@ enum Error {
 impl Error {
     pub fn annotate_with_source(self, code: &str) -> Self {
         match self {
-            Self::LirError(lir::Error::AnnotatedWithSource { err, loc }) => Self::WithSourceCode {
-                loc,
-                source_code: code.to_owned(),
-                err: Box::new(Error::LirError(*err)),
+            Self::LirError(lir::Error::Annotated(ref err, ref metadata)) => {
+                if let Some(loc) = metadata.location().cloned() {
+                    Self::WithSourceCode {
+                        loc,
+                        source_code: code.to_owned(),
+                        err: Box::new(Error::LirError(*err.clone())),
+                    }
+                } else {
+                    self
+                }
             },
             _ => self,
         }

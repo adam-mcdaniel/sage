@@ -37,7 +37,7 @@ use no_comment::{languages, IntoWithoutComments};
 
 /// A struct representing a location in the source code.
 /// This is used to format errors properly.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SourceCodeLocation {
     pub line: usize,
     pub column: usize,
