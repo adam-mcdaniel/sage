@@ -11,11 +11,11 @@
 //! 3. If the expression cannot be compiled into a core assembly program, then compile it into a standard assembly program.
 use super::*;
 use crate::asm::{
-    AssemblyProgram, CoreOp, CoreProgram, Location, StandardOp, StandardProgram, A, B, C, FP, SP,
+    AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
 };
 use crate::NULL;
 
-use log::{trace, debug, error, info, warn};
+use log::{trace, error, info, warn};
 
 /// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
@@ -74,8 +74,6 @@ impl Compile for Expr {
             let mut comment = format!("{self}");
             comment.truncate(70);
         }
-
-        let current_instruction = output.current_instruction();
 
         // Compile the expression.
         match self {
@@ -151,80 +149,7 @@ impl Compile for Expr {
                     }
                 }
             }
-
-            // Compile a constant declaration.
-            Self::LetConst(name, mut expr, body) => {
-                // Declare a new scope for the constant.
-                let mut new_env = env.clone();
-                // If the constant is a procedure,
-                // then set its common name to reflect
-                // the constant name.
-                if let ConstExpr::Proc(p) = &mut expr {
-                    p.set_common_name(&name);
-                }
-                new_env.define_const(name, expr);
-                // Compile under the new scope.
-                body.compile_expr(&mut new_env, output)?;
-            }
-
-            // Compile several constant declarations.
-            Self::LetConsts(constants, body) => {
-                // Declare a new scope for the constants.
-                let mut new_env = env.clone();
-                for (name, mut c) in constants {
-                    // If the constant is a procedure,
-                    // then set its common name to reflect
-                    // the constant name.
-                    if let ConstExpr::Proc(p) = &mut c {
-                        p.set_common_name(&name);
-                    }
-                    // Define the constant in the new scope.
-                    new_env.define_const(name, c);
-                }
-                // Compile under the new scope.
-                body.compile_expr(&mut new_env, output)?;
-            }
-
-            // Compile a procedure declaration.
-            Self::LetProc(name, proc, body) => {
-                // Declare a new scope for the procedure.
-                let mut new_env = env.clone();
-                new_env.define_proc(name, proc);
-
-                // Compile under the new scope.
-                body.compile_expr(&mut new_env, output)?;
-            }
-            // Compile several procedure declarations.
-            Self::LetProcs(procs, body) => {
-                // Declare a new scope for the procedures.
-                let mut new_env = env.clone();
-                for (name, proc) in procs {
-                    // Define the procedure in the new scope.
-                    new_env.define_proc(name, proc);
-                }
-
-                // Compile under the new scope.
-                body.compile_expr(&mut new_env, output)?;
-            }
-
-            // Compile a type declaration.
-            Self::LetType(name, t, body) => {
-                // Declare a new scope for the type.
-                let mut new_env = env.clone();
-                // Define the type in the new scope.
-                new_env.define_type(name, t);
-                // Compile under the new scope.
-                body.compile_expr(&mut new_env, output)?;
-            }
-            Self::LetTypes(types, body) => {
-                // Declare a new scope for the types.
-                let mut new_env = env.clone();
-                // Define the types in the new scope.
-                new_env.define_types(types);
-                // Compile under the new scope.
-                body.compile_expr(&mut new_env, output)?;
-            }
-
+            
             Self::Apply(f, args) => {
                 if let Self::AnnotatedWithSource { expr, loc } = *f {
                     // Compile the inner expression.
@@ -327,111 +252,11 @@ impl Compile for Expr {
                 ));
                 output.op(CoreOp::Return);
             }
-            // Compile a let statement with a variable.
-            Self::LetVar(name, mutability, specifier, e, body) => {
-                let message = format!("Initializing '{name}' with expression '{e}'");
-                // Get the type of the variable using its specifier,
-                // or by deducing the type ourselves.
-                let t = if let Some(t) = specifier {
-                    t
-                } else {
-                    e.get_type(env)?
-                };
-                // Compile the expression to leave the value on the stack.
-                e.compile_expr(env, output)?;
 
-                // Create a new scope
-                let mut new_env = env.clone();
-                // Get the size of the variable we are writing to.
-                let var_size = t.get_size(env)?;
-                new_env.define_var(&name, mutability, t)?;
-
-                let result_type = body.get_type(&new_env)?;
-                let result_size = result_type.get_size(&new_env)?;
-                // Compile the body under the new scope
-                body.compile_expr(&mut new_env, output)?;
-
-                // Copy the return value over where the arguments were stored,
-                // so that when we pop the stack, it's as if we popped the variables
-                // and arguments, and pushed our return value.
-                output.op(CoreOp::Copy {
-                    src: SP.deref().offset(1 - result_size as isize),
-                    dst: SP
-                        .deref()
-                        .offset(1 - var_size as isize - result_size as isize),
-                    size: result_size,
-                });
-                output.op(CoreOp::Pop(None, var_size));
-                output.log_instructions_after(&name, &message, current_instruction);
-            }
-
-            // Compile a let statement with multiple variables.
-            Self::LetVars(vars, body) => {
-                let mut result = *body;
-                // Create an equivalent let statement with a single variable,
-                // for each variable in the list.
-                for (name, mutability, t, e) in vars.into_iter().rev() {
-                    result = Self::LetVar(name, mutability, t, Box::new(e), Box::new(result))
-                }
-                // Compile the resulting let statement.
-                result.compile_expr(env, output)?
-            }
-
+            // Compile a declaration statement.
             Self::Declare(declaration, body) => {
                 // Create a new scope
-                let mut new_env = env.clone();
-                
-                let var_size = declaration.compile(&body, &mut new_env, output)?;
-                
-                // The type and size of the result expression of the declaration block.
-                let result_type = body.get_type(&new_env)?;
-                let result_size = result_type.get_size(&new_env)?;
-
-                // Compile the body under the new scope
-                body.compile_expr(&mut new_env, output)?;
-
-                // Copy the return value over where the arguments were stored,
-                // so that when we pop the stack, it's as if we popped the variables
-                // and arguments, and pushed our return value.
-                debug!("Destroying {var_size} cells of stack, leaving {result_size} cells of stack");
-                output.op(CoreOp::Copy {
-                    src: SP.deref().offset(1 - result_size as isize),
-                    dst: SP
-                        .deref()
-                        .offset(1 - var_size as isize - result_size as isize),
-                    size: result_size,
-                });
-                output.op(CoreOp::Pop(None, var_size));
-            }
-
-            Self::LetStaticVar(name, mutability, t, expr, body) => {
-                // Declare a new scope for the variable.
-                let mut new_env = env.clone();
-                // Define the variable in the new scope.
-                new_env.define_static_var(&name, mutability, t.clone())?;
-                // Compile the expression to leave the value on the stack.
-                expr.compile_expr(env, output)?;
-                let size = t.get_size(env)?;
-                // Store the value in the variable.
-                output.op(CoreOp::Global {
-                    name: name.clone(),
-                    size,
-                });
-                output.op(CoreOp::Pop(Some(Location::Global(name.clone())), size));
-                // Compile under the new scope.
-                body.compile_expr(&mut new_env, output)?;
-            }
-
-            Self::LetStaticVars(static_vars, body) => {
-                let mut result = *body;
-
-                // Create an equivalent let statement with a single variable,
-                // for each variable in the list.
-                for (name, mutability, t, expr) in static_vars.into_iter().rev() {
-                    result = Self::LetStaticVar(name, mutability, t, expr, Box::new(result))
-                }
-
-                result.compile_expr(env, output)?
+                declaration.compile(*body, env, output)?;
             }
 
             // Compile a while loop.
@@ -944,9 +769,9 @@ impl Compile for ConstExpr {
                 expr.compile_expr(env, output)
                     .map_err(|err| err.with_loc(&loc))?;
             }
-            Self::LetTypes(bindings, expr) => {
+            Self::Declare(bindings, expr) => {
                 let mut new_env = env.clone();
-                new_env.define_types(bindings);
+                new_env.add_compile_time_declaration(&bindings)?;
                 expr.compile_expr(&mut new_env, output)?;
             }
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {

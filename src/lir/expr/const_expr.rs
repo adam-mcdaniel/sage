@@ -10,7 +10,7 @@
 //! - Enum variants
 
 use crate::lir::{
-    CoreBuiltin, Env, Error, Expr, FFIProcedure, GetSize, GetType, Mutability, PolyProcedure,
+    Declaration, CoreBuiltin, Env, Error, Expr, FFIProcedure, GetSize, GetType, Mutability, PolyProcedure,
     Procedure, Simplify, StandardBuiltin, Type,
 };
 use crate::parse::SourceCodeLocation;
@@ -30,7 +30,7 @@ pub enum ConstExpr {
     },
 
     /// Bind a list of types in a constant expression.
-    LetTypes(Vec<(String, Type)>, Box<Self>),
+    Declare(Box<Declaration>, Box<Self>),
 
     /// The unit, or "void" instance.
     None,
@@ -159,9 +159,9 @@ impl ConstExpr {
                 | Self::Proc(_)
                 | Self::PolyProc(_) => Ok(self),
 
-                Self::LetTypes(bindings, expr) => {
+                Self::Declare(bindings, expr) => {
                     let mut new_env = env.clone();
-                    new_env.define_types(bindings);
+                    new_env.add_compile_time_declaration(&bindings)?;
                     expr.eval_checked(&new_env, i)
                 }
 
@@ -305,9 +305,9 @@ impl GetType for ConstExpr {
 
                 cast_ty
             }
-            Self::LetTypes(bindings, expr) => {
+            Self::Declare(bindings, expr) => {
                 let mut new_env = env.clone();
-                new_env.define_types(bindings);
+                new_env.add_compile_time_declaration(&bindings)?;
                 expr.get_type_checked(&new_env, i)?
                     .simplify_until_type_checks(&new_env)?
             }
@@ -396,13 +396,11 @@ impl GetType for ConstExpr {
                 expr.substitute(name, ty);
                 *cast_ty = cast_ty.substitute(name, ty);
             }
-            Self::LetTypes(bindings, expr) => {
+            Self::Declare(bindings, expr) => {
                 // if bindings.iter().map(|(n, _)| n).any(|n| n == name) {
                 //     return;
                 // }
-                for (_, ty_bind) in bindings {
-                    *ty_bind = ty_bind.substitute(name, ty);
-                }
+                bindings.substitute(name, ty);
                 expr.substitute(name, ty);
             }
             Self::Monomorphize(expr, ty_args) => {
@@ -497,15 +495,8 @@ impl fmt::Display for ConstExpr {
             Self::PolyProc(proc) => {
                 write!(f, "{proc}")
             }
-            Self::LetTypes(bindings, expr) => {
-                write!(f, "type ")?;
-                for (i, (name, ty)) in bindings.iter().enumerate() {
-                    write!(f, "{name} = {ty}")?;
-                    if i < bindings.len() - 1 {
-                        write!(f, ", ")?
-                    }
-                }
-                write!(f, " in {expr}")
+            Self::Declare(bindings, expr) => {
+                write!(f, "let {bindings} in {expr}")
             }
             Self::Monomorphize(expr, ty_args) => {
                 write!(f, "{expr}<")?;

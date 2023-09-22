@@ -44,8 +44,27 @@ impl Declaration {
         }
     }
 
+    /// Does this declaration include a local variable declaration?
+    pub(crate) fn has_local_variable_declaration(&self) -> bool {
+        match self {
+            Self::Var(..) => true,
+            Self::VarPat(..) => true,
+            Self::Many(decls) => decls.iter().any(|decl| decl.has_local_variable_declaration()),
+            _ => false,
+        }
+    }
+
+    /// Compile a declaration with a body in a new scope. This will copy the old environment,
+    /// and add the declaration to the new environment.
+    pub(crate) fn compile(&self, body: Expr, env: &Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        self.compile_helper(Some(body), &mut env.clone(), output).map(|_| ())
+    }
+
     /// Compile a declaration, and return how many cells were allocated for variables.
-    pub(crate) fn compile(&self, body: &Expr, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<usize, Error> {
+    /// This will modify the environment to add the declaration. If there is a body,
+    /// it will be compiled under a new scope, and will be popped off the stack when
+    /// the declaration is finished.
+    fn compile_helper(&self, body: Option<Expr>, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<usize, Error> {
         env.add_compile_time_declaration(self)?;
         let mut var_size = 0;
         match self {
@@ -90,26 +109,49 @@ impl Declaration {
             }
             Declaration::Many(decls) => {
                 for decl in decls {
-                    var_size += decl.compile(body, env, output)?;
+                    var_size += decl.compile_helper(None, env, output)?;
                 }
             }
             _ => {}
         }
+
+        if let Some(body) = body {
+            // The type and size of the result expression of the declaration block.
+            let result_type = body.get_type(env)?;
+            let result_size = result_type.get_size(env)?;
+
+            // Compile the body under the new scope
+            body.compile_expr(env, output)?;
+
+            // Copy the return value over where the arguments were stored,
+            // so that when we pop the stack, it's as if we popped the variables
+            // and arguments, and pushed our return value.
+            debug!("Destroying {var_size} cells of stack, leaving {result_size} cells of stack");
+            output.op(CoreOp::Copy {
+                src: SP.deref().offset(1 - result_size as isize),
+                dst: SP
+                    .deref()
+                    .offset(1 - var_size as isize - result_size as isize),
+                size: result_size,
+            });
+            output.op(CoreOp::Pop(None, var_size));
+        }
+
         Ok(var_size)
     }
 
-    pub(crate) fn join(mut self, other: Self) -> Self {
-        match (&mut self, other) {
+    pub(crate) fn join(mut self, other: impl Into<Self>) -> Self {
+        match (&mut self, other.into()) {
             (Self::Many(decls), Self::Many(other_decls)) => {
                 decls.extend(other_decls);
                 self
             }
             (Self::Many(decls), other) => {
-                decls.push(other);
+                decls.extend(other.flatten());
                 self
             }
             (self_, Self::Many(mut other_decls)) => {
-                other_decls.push(self_.clone());
+                other_decls.extend(self_.clone().flatten());
                 Self::Many(other_decls)
             }
             (self_, other) => {
@@ -346,6 +388,11 @@ impl From<(Pattern, Expr)> for Declaration {
 impl From<(String, FFIProcedure)> for Declaration {
     fn from((name, proc): (String, FFIProcedure)) -> Self {
         Self::ExternProc(name, proc)
+    }
+}
+impl From<Box<Declaration>> for Declaration {
+    fn from(x: Box<Self>) -> Self {
+        *x
     }
 }
 

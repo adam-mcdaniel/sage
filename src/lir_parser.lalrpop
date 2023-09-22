@@ -118,41 +118,42 @@ ConstAtom: ConstExpr = {
 pub Expr: Expr = {
     <defs: List<"let", (<Symbol> <(":" <Type>)?> "=" <Logic>), ",", "in">> <e: Expr> => {
         let defs: Vec<_> = defs.into_iter().map(|(name, t, val)| (name, Mutability::Mutable, t, val)).collect();
-        Expr::LetVars(defs, Box::new(e))
+        // Expr::LetVars(defs, Box::new(e))
+        e.with(defs)
     },
     <defs: List<"type", (<Symbol> "=" <Type>), ",", "in">> <e: Expr> => {
-        Expr::LetTypes(defs, Box::new(e))
+        e.with(defs)
     },
     <defs: List<"const", (<Symbol> "=" <ConstExpr>), ",", "in">> <e: Expr> => {
-        Expr::LetConsts(defs.into_iter().collect(), Box::new(e))
+        e.with(defs)
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <body: Block> "in" <e: Expr> => {
         let args = args.into_iter().map(|(name, t)| (name, Mutability::Any, t)).collect();
-        Expr::LetProc(name, Procedure::new(None, args, ret, body), Box::new(e))
+        e.with((name, Procedure::new(None, args, ret, body)))
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <mut body: CoreAsm> "in" <e: Expr> => {
         body.args = args;
         body.ret = ret;
-        Expr::LetConst(name, ConstExpr::CoreBuiltin(body), Box::new(e))
+        e.with((name, ConstExpr::CoreBuiltin(body)))
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "=" <mut body: CoreAsm> "in" <e: Expr> => {
         body.args = args;
         body.ret = Type::None;
-        Expr::LetConst(name, ConstExpr::CoreBuiltin(body), Box::new(e))
+        e.with((name, ConstExpr::CoreBuiltin(body)))
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "->" <ret: Type> "=" <mut body: StandardAsm> "in" <e: Expr> => {
         body.args = args;
         body.ret = ret;
-        Expr::LetConst(name, ConstExpr::StandardBuiltin(body), Box::new(e))
+        e.with((name, ConstExpr::StandardBuiltin(body)))
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "=" <mut body: StandardAsm> "in" <e: Expr> => {
         body.args = args;
         body.ret = Type::None;
-        Expr::LetConst(name, ConstExpr::StandardBuiltin(body), Box::new(e))
+        e.with((name, ConstExpr::StandardBuiltin(body)))
     },
     "proc" <name: Symbol> <args: List<"(", (<Symbol> ":" <Type>), ",", ")">> "=" <body: Block> "in" <e: Expr> => {
         let args = args.into_iter().map(|(name, t)| (name, Mutability::Any, t)).collect();
-        Expr::LetProc(name, Procedure::new(None, args, Type::None, body), Box::new(e))
+        e.with((name, Procedure::new(None, args, Type::None, body)))
     },
     "while" <cond: Expr> <body: Block> => Expr::While(Box::new(cond), Box::new(body)),
     <x: Pointer> "=" <val: Expr> => x.refer(Mutability::Any).deref_mut(val),
