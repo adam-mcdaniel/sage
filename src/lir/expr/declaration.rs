@@ -65,12 +65,19 @@ impl Declaration {
     /// it will be compiled under a new scope, and will be popped off the stack when
     /// the declaration is finished.
     fn compile_helper(&self, body: Option<Expr>, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<usize, Error> {
+        // Add all the compile time declarations to the environment so that they can be used
+        // in these declarations.
         env.add_compile_time_declaration(self)?;
+        // The size of the variables declared.
+        // This is used to pop the stack when we're done.
         let mut var_size = 0;
         match self {
             Declaration::Var(name, _mutability, specifier, expr) => {
+                // Get the current instruction (for logging)
                 let current_instruction = output.current_instruction();
-                let message = format!("Initializing '{name}' with expression '{expr}'");
+                // A log message
+                let log_message = format!("Initializing '{name}' with expression '{expr}'");
+
                 // Get the type of the variable using its specifier,
                 // or by deducing the type ourselves.
                 let var_ty = if let Some(specified_ty) = specifier {
@@ -78,43 +85,64 @@ impl Declaration {
                 } else {
                     expr.get_type(env)?
                 };
+                // Get the size of the variables for the body of the declaration.
                 var_size = var_ty.get_size(env)?;
                 // Compile the expression to leave the value on the stack.
                 expr.clone().compile_expr(env, output)?;
 
-                // Get the size of the variable we are writing to.
+                // Add the variable to the environment, so that it can be used in the body.
                 env.add_local_variable_declaration(self)?;
-                output.log_instructions_after(&name, &message, current_instruction);
+                // Log the instructions for the declaration.
+                output.log_instructions_after(&name, &log_message, current_instruction);
             }
             Declaration::VarPat(pat, expr) => {
+                // Get the type of the expression being assigned to the pattern.
                 let expr_ty = expr.get_type(env)?;
-                var_size = expr_ty.get_size(env)?;
+                // The size of all the variables is the size of the expression.
+                var_size = expr.get_size(env)?;
+                // Compile the expression to leave the value on the stack.
                 expr.clone().compile_expr(env, output)?;
+                // Add the variable to the environment, so that it can be used in the body.
                 pat.declare_let_bind(&expr, &expr_ty, env)?;
             }
             Declaration::StaticVar(name, _mutability, ty, expr) => {
+                // Get the current instruction (for logging)
                 let current_instruction = output.current_instruction();
-                let message = format!("Initializing static variable '{name}' with expression '{expr}'");
+                // A log message
+                let log_message = format!("Initializing static variable '{name}' with expression '{expr}'");
+
+                // Get the type of the variable.
                 let var_ty = ty.clone();
+                // Get the size of the variable.
                 var_size = var_ty.get_size(env)?;
+                // Compile the expression to leave the value on the stack.
                 expr.clone().compile_expr(env, output)?;
-                let size = var_ty.get_size(env)?;
-                // Store the value in the variable.
+                // Allocate the global variable.
                 output.op(CoreOp::Global {
                     name: name.clone(),
-                    size,
+                    size: var_size,
                 });
-                output.op(CoreOp::Pop(Some(Location::Global(name.clone())), size));
-                output.log_instructions_after(&name, &message, current_instruction);
+                // Write the value of the expression to the global variable.
+                output.op(CoreOp::Pop(Some(Location::Global(name.clone())), var_size));
+                // Log the instructions for the declaration.
+                output.log_instructions_after(&name, &log_message, current_instruction);
             }
             Declaration::Many(decls) => {
                 for decl in decls {
+                    // Compile all the sub-declarations,
+                    // and leave their variables on the stack.
+                    // Add their variable sizes to the total variable size.
+                    // This will be used to pop the stack when we're done.
                     var_size += decl.compile_helper(None, env, output)?;
                 }
             }
             _ => {}
         }
 
+        // If there is some body to execute under the new scope,
+        // then compile it and pop the stack when we're done.
+        // Otherwise, leave the stack unpopped with all the variables
+        // still on the stack.
         if let Some(body) = body {
             // The type and size of the result expression of the declaration block.
             let result_type = body.get_type(env)?;
@@ -128,10 +156,13 @@ impl Declaration {
             // and arguments, and pushed our return value.
             debug!("Destroying {var_size} cells of stack, leaving {result_size} cells of stack");
             output.op(CoreOp::Copy {
+                // The address of the return value (the values we pushed)
                 src: SP.deref().offset(1 - result_size as isize),
+                // The address of the arguments (the values we want to write over)
                 dst: SP
                     .deref()
                     .offset(1 - var_size as isize - result_size as isize),
+                // The size of the return value
                 size: result_size,
             });
             output.op(CoreOp::Pop(None, var_size));
