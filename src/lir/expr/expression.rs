@@ -117,32 +117,28 @@ impl From<ConstExpr> for Expr {
 }
 
 impl Expr {
+    /// A constant expression that evaluates to `None`.
+    /// This constant is defined so that we don't have to write `Expr::ConstExpr`
+    /// every time we want to use `None`.
     pub const NONE: Self = Self::ConstExpr(ConstExpr::None);
 
     /// Return this expression, but with a given declaration in scope.
-    pub fn with(&self, decl: impl Into<Declaration>) -> Self {
+    pub fn with(&self, older_decls: impl Into<Declaration>) -> Self {
         match self {
             Self::AnnotatedWithSource { expr, loc } => {
                 Self::AnnotatedWithSource {
-                    expr: Box::new(expr.with(decl)),
+                    expr: Box::new(expr.with(older_decls)),
                     loc: loc.clone(),
                 }
             }
 
-            Self::Declare(declaration, expr) => {
-                if let Declaration::Many(ref decls) = **declaration {
-                    let mut result = vec![decl.into()];
-                    result.extend(decls.iter().cloned());
-                    Self::Declare(Box::new(Declaration::Many(result)), expr.clone())
-                } else {
-                    Self::Declare(
-                        Box::new(Declaration::Many(vec![decl.into(), *declaration.clone()])),
-                        expr.clone(),
-                    )
-                }
+            Self::Declare(younger_decls, expr) => {
+                let mut result = older_decls.into();
+                result.append(*younger_decls.clone());
+                Self::Declare(Box::new(result), expr.clone())
             }
 
-            _ => Self::Declare(Box::new(decl.into()), Box::new(self.clone())),
+            _ => Self::Declare(Box::new(older_decls.into()), Box::new(self.clone())),
         }
     }
 

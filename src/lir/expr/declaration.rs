@@ -2,8 +2,7 @@ use crate::{lir::{Expr, Env, Compile, Error, GetType, Type, TypeCheck, Mutabilit
 use super::{Procedure, PolyProcedure};
 
 use std::collections::BTreeMap;
-use core::ops::Add;
-use core::fmt::{Display, Formatter, Result as FmtResult};
+use core::{ops::{Add, AddAssign}, fmt::{Display, Formatter, Result as FmtResult}};
 use log::debug;
 
 /// A declaration of a variable, function, type, etc.
@@ -36,7 +35,7 @@ impl Declaration {
             Self::Many(decls) => {
                 let mut flattened = Vec::new();
                 for decl in decls {
-                    flattened.extend(decl.flatten());
+                    flattened.append(&mut decl.flatten());
                 }
                 flattened
             }
@@ -172,22 +171,30 @@ impl Declaration {
     }
 
     /// Merge two declarations into one, while preserving the order of the declarations.
-    pub(crate) fn join(mut self, other: impl Into<Self>) -> Self {
-        match (&mut self, other.into()) {
-            (Self::Many(decls), Self::Many(other_decls)) => {
-                decls.extend(other_decls);
-                self
+    /// This will not mutate the declaration, but will return a new declaration.
+    pub(crate) fn join(&self, other: impl Into<Self>) -> Self {
+        let mut result = self.clone();
+        result.append(other.into());
+        result
+    }
+
+    /// Merge two declarations into one, while preserving the order of the declarations.
+    /// This will merge the declarations into a multi-declaration.
+    pub(crate) fn append(&mut self, other: impl Into<Self>) {
+        match (self, other.into()) {
+            (Self::Many(decls), Self::Many(mut other_decls)) => {
+                decls.append(&mut other_decls);
             }
             (Self::Many(decls), other) => {
-                decls.extend(other.flatten());
-                self
+                decls.append(&mut other.flatten());
             }
             (self_, Self::Many(mut other_decls)) => {
-                other_decls.extend(self_.clone().flatten());
-                Self::Many(other_decls)
+                let mut result = self_.clone().flatten();
+                result.append(&mut other_decls);
+                *self_ = Self::Many(result)
             }
             (self_, other) => {
-                Self::Many(vec![self_.clone(), other])
+                *self_ = Self::Many(vec![self_.clone(), other])
             }
         }
     }
@@ -357,8 +364,8 @@ impl Display for Declaration {
             Self::StaticVar(name, mutability, ty, expr) => {
                 write!(f, "static {mutability} {name}: {ty} = {expr}")?;
             },
-            Self::Var(name, mutability, ty, expr) => {
-                write!(f, "{} {} = {}", mutability, name, expr)?;
+            Self::Var(name, _mutability, ty, expr) => {
+                write!(f, "{} = {}", name, expr)?;
                 if let Some(ty) = ty {
                     write!(f, ": {}", ty)?;
                 }
@@ -531,6 +538,12 @@ impl<T> Add<T> for Declaration where T: Into<Declaration> {
     type Output = Self;
 
     fn add(self, other: T) -> Self::Output {
-        self.join(other.into())
+        self.join(other)
+    }
+}
+
+impl<T> AddAssign<T> for Declaration where T: Into<Declaration> {
+    fn add_assign(&mut self, other: T) {
+        self.append(other.into());
     }
 }
