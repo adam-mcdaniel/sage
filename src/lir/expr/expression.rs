@@ -125,19 +125,26 @@ impl Expr {
     /// Return this expression, but with a given declaration in scope.
     pub fn with(&self, older_decls: impl Into<Declaration>) -> Self {
         match self {
+            // If the expression is an annotated expression, we need to unwrap it.
             Self::AnnotatedWithSource { expr, loc } => {
+                // Just unwrap the expression and recurse.
                 Self::AnnotatedWithSource {
                     expr: Box::new(expr.with(older_decls)),
                     loc: loc.clone(),
                 }
             }
 
+            // If the expression is a declaration, we need to merge the declarations.
             Self::Declare(younger_decls, expr) => {
+                // Start with the older declarations.
                 let mut result = older_decls.into();
+                // Add the younder declarations to the older declarations.
                 result.append(*younger_decls.clone());
+                // Return the merged declaration.
                 Self::Declare(Box::new(result), expr.clone())
             }
 
+            // Return the expression with the declaration in scope.
             _ => Self::Declare(Box::new(older_decls.into()), Box::new(self.clone())),
         }
     }
