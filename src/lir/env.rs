@@ -453,22 +453,22 @@ impl Env {
 impl Display for Env {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         writeln!(f, "Env")?;
-        // writeln!(f, "   Types:")?;
-        // for (name, ty) in self.types.iter() {
-        //     writeln!(f, "      {}: {}", name, ty)?;
-        // }
-        // writeln!(f, "   Constants:")?;
-        // for (name, e) in self.consts.iter() {
-        //     writeln!(f, "      {}: {}", name, e)?;
-        // }
-        // writeln!(f, "   Procedures:")?;
-        // for (name, proc) in self.procs.iter() {
-        //     writeln!(f, "      {}: {}", name, proc)?;
-        // }
-        // writeln!(f, "   Globals:")?;
-        // for (name, (mutability, ty, location)) in self.static_vars.iter() {
-        //     writeln!(f, "      {mutability} {name}: {ty} (location {location})")?;
-        // }
+        writeln!(f, "   Types:")?;
+        for (name, ty) in self.types.iter() {
+            writeln!(f, "      {}: {}", name, ty)?;
+        }
+        writeln!(f, "   Constants:")?;
+        for (name, e) in self.consts.iter() {
+            writeln!(f, "      {}: {}", name, e)?;
+        }
+        writeln!(f, "   Procedures:")?;
+        for (name, proc) in self.procs.iter() {
+            writeln!(f, "      {}: {}", name, proc)?;
+        }
+        writeln!(f, "   Globals:")?;
+        for (name, (mutability, ty, location)) in self.static_vars.iter() {
+            writeln!(f, "      {mutability} {name}: {ty} (location {location})")?;
+        }
         writeln!(f, "   Variables:")?;
         for (name, (mutability, ty, offset)) in self.vars.iter() {
             writeln!(f, "      {mutability} {name}: {ty} (frame-offset {offset})")?;
