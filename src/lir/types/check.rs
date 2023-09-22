@@ -760,13 +760,19 @@ impl TypeCheck for ConstExpr {
             Self::SizeOfType(t) => t.type_check(env),
 
             Self::Declare(bindings, expr) => {
+                // Create a new environment with the declarations defined.
                 let mut new_env = env.clone();
+                // If this binding declares a local variable,
+                // throw an error.
                 if bindings.has_local_variable_declaration() {
                     // Cannot declare local variables in a constant expression.
                     return Err(Error::InvalidConstExpr(self.clone()));
                 }
+                // Add all the bindings to the environment.
                 new_env.add_compile_time_declaration(bindings)?;
+                // Typecheck the bindings
                 bindings.type_check(&new_env)?;
+                // Typecheck the expression with the bindings defined.
                 expr.type_check(&new_env)
             }
             Self::Monomorphize(expr, ty_args) => {
