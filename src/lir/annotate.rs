@@ -107,25 +107,36 @@ impl Annotation {
     /// Remove any existing location from this annotation.
     fn purge_existing_location(&mut self) {
         match self {
+            // If this is a location, remove it.
             Annotation::Location(_) => *self = Annotation::None,
+            // If this is a list of annotations, remove any existing locations.
             Annotation::Many(annotations) => {
+                // The new list of annotations.
                 let mut result = BTreeSet::new();
-                for annotation in annotations.clone() {
+                // Iterate over the annotations.
+                for mut annotation in annotations.clone() {
+                    // If this is a location, or none, skip it.
                     if annotation.is_location() || annotation.is_none() {
                         continue;
                     }
-                    let mut annotation = annotation.clone();
+                    // Otherwise, remove any sub-locations it might have.
                     annotation.purge_existing_location();
+                    // Check if it's none again.
                     if annotation.is_none() || annotation.has_location() {
                         continue;
                     }
+                    // Otherwise, insert it into the result.
                     result.insert(annotation);
                 }
+                // Set the result.
                 *self = if result.is_empty() {
+                    // If the result is empty, set it to none.
                     Annotation::None
                 } else if result.len() == 1 {
+                    // If the result has one element, set it to that element.
                     result.into_iter().next().unwrap()
                 } else {
+                    // Otherwise, return the list of annotations.
                     Annotation::Many(result)
                 };
             }
@@ -146,34 +157,44 @@ impl BitOr for Annotation {
 
 impl BitOrAssign for Annotation {
     fn bitor_assign(&mut self, rhs: Self) {
+        // If both have locations, remove the existing location in favor of the incoming one.
         if self.has_location() && rhs.has_location() {
             self.purge_existing_location();
         }
 
+        // If the incoming annotation is none, skip it.
         if rhs.is_none() {
             return;
         }
 
+        // If this annotation is none, set it to the incoming one.
         if self.is_none() {
             *self = rhs;
             return;
         }
 
+        // Otherwise, merge the annotations.
         match (self, rhs) {
             (Annotation::Many(a), Annotation::Many(b)) => {
+                // If both are many, concatenate them.
                 a.append(&mut b.clone());
             }
             (Annotation::Many(a), b) => {
+                // If this is many, insert the incoming annotation.
                 a.insert(b);
             }
             (a, Annotation::Many(mut b)) => {
+                // If the incoming annotation is many, insert this one into it.
                 b.insert(a.clone());
                 *a = Annotation::Many(b);
             }
             (a, b) => {
+                // Otherwise, create a new set and insert both.
                 let mut set = BTreeSet::new();
+                // Insert both.
                 set.insert(a.clone());
                 set.insert(b);
+                // Set the result.
                 *a = Annotation::Many(set);
             }
         }
@@ -182,6 +203,7 @@ impl BitOrAssign for Annotation {
 
 impl From<SourceCodeLocation> for Annotation {
     fn from(value: SourceCodeLocation) -> Self {
+        // Create a location annotation.
         Annotation::Location(value)
     }
 }
