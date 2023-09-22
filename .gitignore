@@ -9,3 +9,5 @@ out.*
 massif.out.*
 /*.txt
 /*.sg
+/benches/temp
+/benches/temp.c
