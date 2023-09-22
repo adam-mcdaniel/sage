@@ -128,7 +128,10 @@ long_stmt = {
     | stmt_match) ~ ";"*
 }
 short_stmt = {
-    (stmt_let_static | stmt_let | stmt_return | stmt_assign | expr) ~ ";"+
+    (stmt_let_static | stmt_let | stmt_let_pat | stmt_return | stmt_assign | expr) ~ ";"+
+}
+stmt_let_pat = {
+    "let" ~ (pattern_term ~ "=" ~ expr ~ ",")* ~ pattern_term ~ "=" ~ expr
 }
 stmt_let = {
     // stmt_let_typed

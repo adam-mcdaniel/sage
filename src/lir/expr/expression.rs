@@ -6,7 +6,7 @@
 //! which are then executed by the runtime.
 
 use super::ops::*;
-use crate::lir::{ConstExpr, Mutability, Pattern, Procedure, Type};
+use crate::lir::{Declaration, ConstExpr, Mutability, Pattern, Procedure, Type};
 use crate::parse::SourceCodeLocation;
 use core::fmt;
 use std::collections::BTreeMap;
@@ -30,36 +30,9 @@ pub enum Expr {
     /// A block of expressions. The last expression in the block is the value of the block.
     Many(Vec<Self>),
 
-    /// A `const` binding expression.
-    /// Declare a constant under a new scope, and evaluate a subexpression in that scope.
-    LetConst(String, ConstExpr, Box<Self>),
-    /// A `const` binding expression.
-    /// Declare multiple constants under a new scope, and evaluate a subexpression in that scope.
-    LetConsts(BTreeMap<String, ConstExpr>, Box<Self>),
-    /// A `proc` binding expression.
-    /// Declare a procedure under a new scope, and evaluate a subexpression in that scope.
-    LetProc(String, Procedure, Box<Self>),
-    /// A `proc` binding expression.
-    /// Declare multiple procedures under a new scope, and evaluate a subexpression in that scope.
-    LetProcs(Vec<(String, Procedure)>, Box<Self>),
-    /// A `type` binding expression.
-    /// Declare a type under a new scope, and evaluate a subexpression in that scope.
-    LetType(String, Type, Box<Self>),
-    /// A `type` binding expression.
-    /// Declare multiple types under a new scope, and evaluate a subexpression in that scope.
-    LetTypes(Vec<(String, Type)>, Box<Self>),
-    /// A `let` binding expression.
-    /// Declare a variable under a new scope, and evaluate a subexpression in that scope.
-    LetVar(String, Mutability, Option<Type>, Box<Self>, Box<Self>),
-    /// A `let` binding expression.
-    /// Declare multiple variables under a new scope, and evaluate a subexpression in that scope.
-    LetVars(Vec<(String, Mutability, Option<Type>, Self)>, Box<Self>),
-    /// A `let` binding expression.
-    /// Declare a static variable under a new scope, and evaluate a subexpression in that scope.
-    LetStaticVar(String, Mutability, Type, ConstExpr, Box<Self>),
-    /// A `let` binding expression.
-    /// Declare multiple static variables under a new scope, and evaluate a subexpression in that scope.
-    LetStaticVars(Vec<(String, Mutability, Type, ConstExpr)>, Box<Self>),
+    /// Declare any number of variables, procedures, types, or constants.
+    /// Evaluate a sub-expression in that scope.
+    Declare(Box<Declaration>, Box<Self>),
 
     /// Create a while loop: while the first expression evaluates to true, evaluate the second expression.
     While(Box<Self>, Box<Self>),
@@ -122,6 +95,7 @@ pub enum Expr {
     /// The `String` field is the variant the tagged union is being initialized with.
     /// The `Box<Self>` field is the value of the union's data we want to initialize.
     EnumUnion(Type, String, Box<Self>),
+
     /// A structure of fields to expressions.
     Struct(BTreeMap<String, Self>),
 
@@ -143,6 +117,38 @@ impl From<ConstExpr> for Expr {
 }
 
 impl Expr {
+    /// A constant expression that evaluates to `None`.
+    /// This constant is defined so that we don't have to write `Expr::ConstExpr`
+    /// every time we want to use `None`.
+    pub const NONE: Self = Self::ConstExpr(ConstExpr::None);
+
+    /// Return this expression, but with a given declaration in scope.
+    pub fn with(&self, older_decls: impl Into<Declaration>) -> Self {
+        match self {
+            // If the expression is an annotated expression, we need to unwrap it.
+            Self::AnnotatedWithSource { expr, loc } => {
+                // Just unwrap the expression and recurse.
+                Self::AnnotatedWithSource {
+                    expr: Box::new(expr.with(older_decls)),
+                    loc: loc.clone(),
+                }
+            }
+
+            // If the expression is a declaration, we need to merge the declarations.
+            Self::Declare(younger_decls, expr) => {
+                // Start with the older declarations.
+                let mut result = older_decls.into();
+                // Add the younder declarations to the older declarations.
+                result.append(*younger_decls.clone());
+                // Return the merged declaration.
+                Self::Declare(Box::new(result), expr.clone())
+            }
+
+            // Return the expression with the declaration in scope.
+            _ => Self::Declare(Box::new(older_decls.into()), Box::new(self.clone())),
+        }
+    }
+
     /// Get the size of an expression.
     pub fn size_of(self) -> Self {
         Self::ConstExpr(ConstExpr::SizeOfExpr(Box::new(self)))
@@ -165,6 +171,7 @@ impl Expr {
         Self::As(Box::new(self), t)
     }
 
+    /// Apply a unary operation to this expression.
     pub fn unop(self, op: impl UnaryOp + 'static) -> Self {
         Self::UnaryOp(Box::new(op), Box::new(self))
     }
@@ -319,13 +326,8 @@ impl Expr {
         expr: impl Into<Self>,
         ret: impl Into<Self>,
     ) -> Self {
-        Expr::LetVar(
-            var.to_string(),
-            mutability.into(),
-            t,
-            Box::new(expr.into()),
-            Box::new(ret.into()),
-        )
+        ret.into()
+            .with((var.to_string(), mutability.into(), t, expr.into()))
     }
 
     /// Create a `let` binding for an expression, and define multiple variables.
@@ -333,12 +335,7 @@ impl Expr {
         vars: Vec<(&str, Mutability, Option<Type>, Self)>,
         ret: impl Into<Self>,
     ) -> Self {
-        Self::LetVars(
-            vars.into_iter()
-                .map(|(name, m, t, e)| (name.to_string(), m, t, e))
-                .collect(),
-            Box::new(ret.into()),
-        )
+        ret.into().with(vars)
     }
 
     /// Create a `let` binding for an type.
@@ -349,14 +346,11 @@ impl Expr {
     ///
     /// When this expression is finished evaluating, `typename` will be removed from the scope.
     pub fn let_type(typename: impl ToString, t: Type, ret: impl Into<Self>) -> Self {
-        Expr::LetType(typename.to_string(), t, Box::new(ret.into()))
+        ret.into().with((typename.to_string(), t))
     }
     /// Create several `type` bindings at onces.
     pub fn let_types(vars: Vec<(&str, Type)>, ret: impl Into<Self>) -> Self {
-        Self::LetTypes(
-            vars.into_iter().map(|(k, v)| (k.to_string(), v)).collect(),
-            Box::new(ret.into()),
-        )
+        ret.into().with(vars)
     }
 
     /// Create a `let` binding for a constant expression.
@@ -366,18 +360,12 @@ impl Expr {
     ///
     /// When this expression is finished evaluating, `constname` will be removed from the scope.
     pub fn let_const(constname: impl ToString, e: ConstExpr, ret: impl Into<Self>) -> Self {
-        Expr::LetConst(constname.to_string(), e, Box::new(ret.into()))
+        ret.into().with((constname.to_string(), e))
     }
 
     /// Create several `const` bindings at onces.
     pub fn let_consts(constants: Vec<(&str, ConstExpr)>, ret: impl Into<Self>) -> Self {
-        Self::LetConsts(
-            constants
-                .into_iter()
-                .map(|(k, v)| (k.to_string(), v))
-                .collect(),
-            Box::new(ret.into()),
-        )
+        ret.into().with(constants)
     }
 
     /// Create a `proc` binding for a procedure.
@@ -387,15 +375,12 @@ impl Expr {
     ///
     /// When this expression is finished evaluating, `proc` will be removed from the scope.
     pub fn let_proc(procname: impl ToString, proc: Procedure, ret: impl Into<Self>) -> Self {
-        Expr::LetProc(procname.to_string(), proc, Box::new(ret.into()))
+        ret.into().with((procname.to_string(), proc))
     }
 
     /// Create several `proc` bindings at onces.
     pub fn let_procs(procs: BTreeMap<&str, Procedure>, ret: impl Into<Self>) -> Self {
-        Self::LetProcs(
-            procs.into_iter().map(|(k, v)| (k.to_string(), v)).collect(),
-            Box::new(ret.into()),
-        )
+        ret.into().with(procs)
     }
 
     /// Create a structure of fields to expressions.
@@ -457,6 +442,9 @@ impl Expr {
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Self::Declare(declaration, result) => {
+                write!(f, "let {declaration} in {result}")
+            }
             Self::AnnotatedWithSource { expr, .. } => write!(f, "{expr}"),
             Self::ConstExpr(expr) => write!(f, "{expr}"),
             Self::Many(exprs) => {
@@ -488,93 +476,6 @@ impl fmt::Display for Expr {
                     }
                 }
                 write!(f, ")")
-            }
-            Self::LetVar(name, m, ty, val, ret) => {
-                write!(f, "let ")?;
-                if m.is_mutable() {
-                    write!(f, "mut ")?;
-                }
-                write!(f, "{name}")?;
-                if let Some(ty) = ty {
-                    write!(f, ": {ty}")?
-                }
-                write!(f, " = {val} in {ret}")
-            }
-            Self::LetVars(vars, ret) => {
-                write!(f, "let ")?;
-                for (i, (name, m, ty, val)) in vars.iter().enumerate() {
-                    if m.is_mutable() {
-                        write!(f, "mut ")?;
-                    }
-                    write!(f, "{name}")?;
-                    if let Some(ty) = ty {
-                        write!(f, ": {ty}")?
-                    }
-                    write!(f, " = {val}")?;
-                    if i < vars.len() - 1 {
-                        write!(f, ", ")?
-                    }
-                }
-                write!(f, " in {ret}")
-            }
-            Self::LetStaticVar(name, m, ty, val, ret) => {
-                write!(f, "let static ")?;
-                if m.is_mutable() {
-                    write!(f, "mut ")?;
-                }
-                write!(f, "{name}: {ty} = {val} in {ret}")
-            }
-            Self::LetStaticVars(vars, ret) => {
-                write!(f, "let static ")?;
-                for (i, (name, m, ty, val)) in vars.iter().enumerate() {
-                    if m.is_mutable() {
-                        write!(f, "mut ")?;
-                    }
-                    write!(f, "{name}: {ty} = {val}")?;
-                    if i < vars.len() - 1 {
-                        write!(f, ", ")?
-                    }
-                }
-                write!(f, " in {ret}")
-            }
-            Self::LetConst(name, val, ret) => {
-                write!(f, "const {name} = {val} in {ret}")
-            }
-            Self::LetConsts(consts, ret) => {
-                write!(f, "const ")?;
-                for (i, (name, val)) in consts.iter().enumerate() {
-                    write!(f, "{name} = {val}")?;
-                    if i < consts.len() - 1 {
-                        write!(f, ", ")?
-                    }
-                }
-                write!(f, " in {ret}")
-            }
-            Self::LetProc(name, val, ret) => {
-                write!(f, "const {name} = {val} in {ret}")
-            }
-            Self::LetProcs(consts, ret) => {
-                write!(f, "const ")?;
-                for (i, (name, val)) in consts.iter().enumerate() {
-                    write!(f, "{name} = {val}")?;
-                    if i < consts.len() - 1 {
-                        write!(f, ", ")?
-                    }
-                }
-                write!(f, " in {ret}")
-            }
-            Self::LetType(name, ty, ret) => {
-                write!(f, "type {name} = {ty} in {ret}")
-            }
-            Self::LetTypes(types, ret) => {
-                write!(f, "type ")?;
-                for (i, (name, ty)) in types.iter().enumerate() {
-                    write!(f, "{name} = {ty}")?;
-                    if i < types.len() - 1 {
-                        write!(f, ", ")?
-                    }
-                }
-                write!(f, " in {ret}")
             }
 
             Self::While(cond, body) => {
@@ -661,45 +562,9 @@ impl PartialEq for Expr {
             // A block of expressions. The last expression in the block is the value of the block.
             (Many(a), Many(b)) => a == b,
 
-            // A `const` binding expression.
-            // Declare a constant under a new scope, and evaluate a subexpression in that scope.
-            (LetConst(name1, const_expr1, ret1), LetConst(name2, const_expr2, ret2)) => {
-                name1 == name2 && const_expr1 == const_expr2 && ret1 == ret2
-            }
-
-            // A `const` binding expression.
-            // Declare multiple constants under a new scope, and evaluate a subexpression in that scope.
-            (LetConsts(consts1, ret1), LetConsts(consts2, ret2)) => {
-                consts1 == consts2 && ret1 == ret2
-            }
-
-            // A `proc` binding expression.
-            // Declare a procedure under a new scope, and evaluate a subexpression in that scope.
-            (LetProc(name1, proc1, ret1), LetProc(name2, proc2, ret2)) => {
-                name1 == name2 && proc1 == proc2 && ret1 == ret2
-            }
-            // A `proc` binding expression.
-            // Declare multiple procedures under a new scope, and evaluate a subexpression in that scope.
-            (LetProcs(procs1, ret1), LetProcs(procs2, ret2)) => procs1 == procs2 && ret1 == ret2,
-            // A `type` binding expression.
-            // Declare a type under a new scope, and evaluate a subexpression in that scope.
-            (LetType(name1, ty1, ret1), LetType(name2, ty2, ret2)) => {
-                name1 == name2 && ty1 == ty2 && ret1 == ret2
-            }
-            // A `type` binding expression.
-            // Declare multiple types under a new scope, and evaluate a subexpression in that scope.
-            (LetTypes(types1, ret1), LetTypes(types2, ret2)) => types1 == types2 && ret1 == ret2,
-            // A `let` binding expression.
-            // Declare a variable under a new scope, and evaluate a subexpression in that scope.
-            (LetVar(name1, m1, ty1, val1, ret1), LetVar(name2, m2, ty2, val2, ret2)) => {
-                name1 == name2 && m1 == m2 && ty1 == ty2 && val1 == val2 && ret1 == ret2
-            }
-            // A `let` binding expression.
-            // Declare multiple variables under a new scope, and evaluate a subexpression in that scope.
-            (LetVars(vars1, ret1), LetVars(vars2, ret2)) => vars1 == vars2 && ret1 == ret2,
-
             // Create a while loop: while the first expression evaluates to true, evaluate the second expression.
             (While(cond1, body1), While(cond2, body2)) => cond1 == cond2 && body1 == body2,
+            
             // An if-then-else expression.
             //
             // Evaluate a condition.

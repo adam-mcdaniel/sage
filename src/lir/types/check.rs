@@ -183,6 +183,17 @@ impl TypeCheck for Expr {
                 expr.type_check(env).map_err(|e| e.with_loc(loc))
             }
 
+            Self::Declare(declaration, body) => {
+                // Create a new environment with the declarations defined.
+                let mut new_env = env.clone();
+                // Check the declaration.
+                declaration.type_check(&new_env)?;
+                // Add the declarations to the environment.
+                new_env.add_declaration(&declaration)?;
+                // Check the body with the declarations defined.
+                body.type_check(&new_env)
+            }
+
             Self::UnaryOp(unop, expr) => {
                 // Check if the unary operator is sound with
                 // the given expression.
@@ -313,198 +324,6 @@ impl TypeCheck for Expr {
                 }
                 // Return success if all the expressions are sound.
                 Ok(())
-            }
-
-            // Typecheck a declaration of a constant.
-            Self::LetConst(name, e, ret) => {
-                // Typecheck the constant expression we're assigning to the variable.
-                let mut new_env = env.clone();
-                new_env.define_const(name.clone(), e.clone());
-                e.type_check(&new_env)?;
-                // Typecheck the resulting expression with the constant
-                // defined in the environment.
-                ret.type_check(&new_env)
-            }
-
-            // Typecheck a declaration of multiple constants.
-            Self::LetConsts(constants, ret) => {
-                // Add all the constants to the scope.
-                let mut new_env = env.clone();
-                for (name, c) in constants {
-                    // Define the constant in the environment.
-                    new_env.define_const(name, c.clone());
-                }
-                // Typecheck the constant expression we're assigning to each name.
-                for c in constants.values() {
-                    // Typecheck the constant expression in the new environment.
-                    c.type_check(&new_env)?;
-                }
-                // Typecheck the resulting expression with the constants
-                // defined in the environment.
-                ret.type_check(&new_env)
-            }
-
-            // Typecheck a declaration of a procedure.
-            Self::LetProc(var, proc, ret) => {
-                // Create a new environment with the procedure defined.
-                let mut new_env = env.clone();
-                new_env.define_proc(var.clone(), proc.clone());
-                // Typecheck the procedure we're defining.
-                proc.type_check(&new_env)?;
-                // Typecheck the resulting expression with the procedure
-                // defined in the environment.
-                ret.type_check(&new_env)
-            }
-
-            Self::LetProcs(procs, ret) => {
-                // Create a new environment with the procedures defined.
-                let mut new_env = env.clone();
-                for (name, proc) in procs {
-                    // Define the procedure in the environment.
-                    new_env.define_proc(name, proc.clone());
-                }
-                // Typecheck the procedures we're defining.
-                for (_, proc) in procs {
-                    // Typecheck the procedure in the new environment.
-                    proc.type_check(&new_env)?;
-                }
-                // Typecheck the resulting expression with the procedures
-                // defined in the environment.
-                ret.type_check(&new_env)
-            }
-
-            // Typecheck a declaration of a type.
-            Self::LetType(name, t, ret) => {
-                // Create a new environment with the type defined.
-                let mut new_env = env.clone();
-                // Define the type in the environment.
-                new_env.define_type(name.clone(), t.clone());
-                // Typecheck the type we're defining.
-                t.type_check(&new_env)?;
-                // Typecheck the resulting expression with the type
-                // defined in the environment.
-                ret.type_check(&new_env)
-            }
-
-            // Typecheck a declaration of multiple types.
-            Self::LetTypes(types, ret) => {
-                // Create a new environment with the types defined.
-                let mut new_env = env.clone();
-                // Define the types in the environment.
-                new_env.define_types(types.clone());
-
-                // Typecheck the types we're defining.
-                for (_, t) in types {
-                    // Typecheck the type in the new environment.
-                    t.type_check(&new_env)?;
-                }
-                // Typecheck the resulting expression with the types
-                // defined in the environment.
-                ret.type_check(&new_env)
-            }
-
-            // Typecheck a declaration of a variable.
-            Self::LetVar(var, mutability, expected_ty, e, ret) => {
-                // Typecheck the expression we're assigning to the variable.
-                e.type_check(env)?;
-                // Get the inferred type of the expression.
-                let found_ty = e.get_type(env)?;
-                // If there's a type specification for the variable, check it.
-                if let Some(expected_ty) = expected_ty {
-                    // Typecheck the type.
-                    expected_ty.type_check(env)?;
-
-                    // Check that the inferred type is compatible with the type specified.
-                    if !found_ty.can_decay_to(expected_ty, env)? {
-                        return Err(Error::MismatchedTypes {
-                            expected: expected_ty.clone(),
-                            found: found_ty,
-                            expr: self.clone(),
-                        });
-                    }
-                }
-
-                // Create a new environment with the variable defined.
-                let mut new_env = env.clone();
-                new_env.define_var(var, *mutability, expected_ty.clone().unwrap_or(found_ty))?;
-                // Typecheck the resulting expression with the variable
-                // defined in the environment.
-                ret.type_check(&new_env)
-            }
-
-            // Typecheck a declaration of multiple variables.
-            Self::LetVars(vars, ret) => {
-                let mut new_env = env.clone();
-                for (var, mutability, expected, e) in vars {
-                    // Typecheck the expression we're assigning to the variable.
-                    e.type_check(&new_env)?;
-                    // Get the inferred type of the expression.
-                    let found = e.get_type(&new_env)?;
-                    // If there's a type specification for the variable, check it.
-                    if let Some(expected) = expected {
-                        // Typecheck the type.
-                        expected.type_check(env)?;
-
-                        // Check that the inferred type is compatible with the type specified.
-                        if !found.can_decay_to(expected, env)? {
-                            return Err(Error::MismatchedTypes {
-                                expected: expected.clone(),
-                                found,
-                                expr: self.clone(),
-                            });
-                        }
-                    }
-                    // Define the variable in the environment.
-                    new_env.define_var(var, *mutability, expected.clone().unwrap_or(found))?;
-                }
-                // Typecheck the resulting expression with the variables
-                // defined in the environment.
-                ret.type_check(&new_env)
-            }
-
-            Self::LetStaticVar(name, mutability, ty, const_val, ret) => {
-                // Typecheck the constant expression we're assigning to the variable.
-                let mut new_env = env.clone();
-                new_env.define_static_var(name, *mutability, ty.clone())?;
-                // Typecheck the constant expression in the new environment.
-                const_val.type_check(&new_env)?;
-                let const_val_type = const_val.get_type(&new_env)?;
-
-                // Confirm that the constant expression can be decayed to the expected type.
-                if !const_val_type.can_decay_to(ty, &new_env)? {
-                    return Err(Error::MismatchedTypes {
-                        expected: ty.clone(),
-                        found: const_val_type,
-                        expr: self.clone(),
-                    });
-                }
-
-                // Typecheck the resulting expression with the constant
-                // defined in the environment.
-                ret.type_check(&new_env)
-            }
-
-            Self::LetStaticVars(vars, ret) => {
-                // Add all the constants to the scope.
-                let mut new_env = env.clone();
-                for (name, mutability, ty, const_val) in vars {
-                    // Define the constant in the environment.
-                    new_env.define_static_var(name, *mutability, ty.clone())?;
-                    // Typecheck the constant expression in the new environment.
-                    const_val.type_check(&new_env)?;
-
-                    let const_val_type = const_val.get_type(&new_env)?;
-                    if !const_val_type.can_decay_to(ty, &new_env)? {
-                        return Err(Error::MismatchedTypes {
-                            expected: ty.clone(),
-                            found: const_val_type,
-                            expr: self.clone(),
-                        });
-                    }
-                }
-                // Typecheck the resulting expression with the constants
-                // defined in the environment.
-                ret.type_check(&new_env)
             }
 
             Self::While(cond, body) => {
@@ -828,43 +647,6 @@ impl TypeCheck for Expr {
                         ConstExpr::Symbol(field.clone()),
                     )),
                 }
-                // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
-                //     t = t.clone().simplify(env)?;
-                //     match t {
-                //         Type::Union(fields) => {
-                //             // Confirm that the variant is a valid variant.
-                //             if let Some(ty) = fields.get(field) {
-                //                 // Typecheck the value assigned to the variant.
-                //                 val.type_check(env)?;
-                //                 let found = val.get_type(env)?;
-                //                 if !ty.equals(&found, env)? {
-                //                     return Err(Error::MismatchedTypes {
-                //                         expected: ty.clone(),
-                //                         found,
-                //                         expr: self.clone(),
-                //                     });
-                //                 }
-                //                 return Ok(());
-                //             } else {
-                //                 return Err(Error::MemberNotFound(
-                //                     self.clone(),
-                //                     ConstExpr::Symbol(field.clone()),
-                //                 ));
-                //             }
-                //         }
-                //         Type::Symbol(_) | Type::Let(_, _, _) | Type::Apply(_, _) => continue,
-                //         _ => {
-                //             return Err(Error::MemberNotFound(
-                //                 self.clone(),
-                //                 ConstExpr::Symbol(field.clone()),
-                //             ))
-                //         }
-                //     }
-                // }
-                // Err(Error::MemberNotFound(
-                //     self.clone(),
-                //     ConstExpr::Symbol(field.clone()),
-                // ))
             }
 
             // Typecheck a tagged union literal.
@@ -897,36 +679,6 @@ impl TypeCheck for Expr {
                     }
                     t => Err(Error::VariantNotFound(t, variant.clone())),
                 }
-
-                // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
-                //     t = t.clone().simplify(env)?;
-                //     match t {
-                //         Type::EnumUnion(fields) => {
-                //             // Confirm that the variant is a valid variant.
-                //             if let Some(ty) = fields.get(variant) {
-                //                 // Typecheck the value assigned to the variant.
-                //                 val.type_check(env)?;
-                //                 let found = val.get_type(env)?;
-                //                 if !ty.equals(&found, env)? {
-                //                     return Err(Error::MismatchedTypes {
-                //                         expected: ty.clone(),
-                //                         found,
-                //                         expr: self.clone(),
-                //                     });
-                //                 }
-                //                 return Ok(());
-                //             } else {
-                //                 return Err(Error::VariantNotFound(
-                //                     Type::EnumUnion(fields),
-                //                     variant.clone(),
-                //                 ));
-                //             }
-                //         }
-                //         Type::Symbol(_) | Type::Let(_, _, _) | Type::Apply(_, _) => continue,
-                //         _ => return Err(Error::VariantNotFound(t.clone(), variant.clone())),
-                //     }
-                // }
-                // Err(Error::VariantNotFound(t.clone(), variant.clone()))
             }
 
             // Typecheck a type-cast.
@@ -1007,14 +759,20 @@ impl TypeCheck for ConstExpr {
 
             Self::SizeOfType(t) => t.type_check(env),
 
-            Self::LetTypes(bindings, expr) => {
+            Self::Declare(bindings, expr) => {
+                // Create a new environment with the declarations defined.
                 let mut new_env = env.clone();
-                // Define the types in the environment.
-                new_env.define_types(bindings.clone());
-
-                for (_, ty) in bindings {
-                    ty.type_check(&new_env)?;
+                // If this binding declares a local variable,
+                // throw an error.
+                if bindings.has_local_variable_declaration() {
+                    // Cannot declare local variables in a constant expression.
+                    return Err(Error::InvalidConstExpr(self.clone()));
                 }
+                // Add all the bindings to the environment.
+                new_env.add_compile_time_declaration(bindings)?;
+                // Typecheck the bindings
+                bindings.type_check(&new_env)?;
+                // Typecheck the expression with the bindings defined.
                 expr.type_check(&new_env)
             }
             Self::Monomorphize(expr, ty_args) => {

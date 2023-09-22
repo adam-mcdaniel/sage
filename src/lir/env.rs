@@ -4,7 +4,7 @@
 //! defined in a given scope. It also stores the variables defined in the scope, and the their offsets
 //! with respect to the frame pointer.
 
-use super::{Compile, ConstExpr, Error, GetSize, Mutability, Procedure, Type};
+use super::{Compile, ConstExpr, Declaration, Error, GetType, GetSize, Mutability, FFIProcedure, PolyProcedure, Procedure, Type};
 use crate::asm::{AssemblyProgram, Globals, Location};
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::{
@@ -85,6 +85,103 @@ impl Env {
         }
     }
 
+    /// Add all the declarations to this environment.
+    pub(super) fn add_declaration(&mut self, declaration: &Declaration) -> Result<(), Error> {
+        self.add_compile_time_declaration(declaration)?;
+        self.add_local_variable_declaration(declaration)?;
+        Ok(())
+    }
+
+    /// Add all the compile-time declarations to this environment. These are declarations
+    /// for types, constants, and procedures that are defined at compile-time. Variables
+    /// are not included because they are defined at runtime.
+    pub(super) fn add_compile_time_declaration(&mut self, declaration: &Declaration) -> Result<(), Error> {
+        match declaration {
+            Declaration::Type(name, ty) => {
+                self.define_type(name, ty.clone());
+            }
+            Declaration::Const(name, e) => {
+                self.define_const(name, e.clone());
+            }
+            Declaration::Proc(name, proc) => {
+                self.define_proc(name, proc.clone());
+            }
+            Declaration::PolyProc(name, proc) => {
+                self.define_poly_proc(name, proc.clone());
+            }
+            Declaration::ExternProc(name, proc) => {
+                self.define_ffi_proc(name, proc.clone());
+            }
+            Declaration::StaticVar(name, mutability, ty, _expr) => {
+                self.define_static_var(name, *mutability, ty.clone())?;
+            }
+            Declaration::Var(_, _, _, _) => {
+                // Variables are not defined at compile-time.
+            }
+            Declaration::VarPat(_, _) => {
+                // Variables are not defined at compile-time.
+            }
+            Declaration::Many(decls) => {
+                for decl in decls {
+                    self.add_compile_time_declaration(decl)?;
+                }
+                for decl in decls {
+                    if let Declaration::Type(name, ty) = decl {
+                        if let Ok(size) = ty.get_size(self) {
+                            self.set_precalculated_size(ty.clone(), size);
+                        } else {
+                            warn!("Failed to memoize type size for {name} = {ty}");
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Add a single variable declaration to this environment. These are declarations
+    /// for variables that are defined at runtime. Types, constants, and procedures
+    /// are not included because they are defined at compile-time.
+    pub(super) fn add_local_variable_declaration(&mut self, declaration: &Declaration) -> Result<(), Error> {
+        match declaration {
+            Declaration::Type(_, _) => {
+                // Types are not defined at runtime.
+            }
+            Declaration::Const(_, _) => {
+                // Constants are not defined at runtime.
+            }
+            Declaration::Proc(_, _) => {
+                // Procedures are not defined at runtime.
+            }
+            Declaration::PolyProc(_, _) => {
+                // Polymorphic procedures are not defined at runtime.
+            }
+            Declaration::ExternProc(_, _) => {
+                // FFI procedures are not defined at runtime.
+            }
+            Declaration::StaticVar(_, _, _, _) => {
+                // Static variables are not defined at runtime.
+            }
+            Declaration::Var(name, mutability, ty, expr) => {
+                let ty = match ty {
+                    Some(ty) => ty.clone(),
+                    None => expr.get_type(self)?,
+                };
+                self.define_var(name, *mutability, ty)?;
+            }
+            Declaration::VarPat(pat, expr) => {
+                let ty = expr.get_type(self)?;
+                pat.declare_let_bind(expr, &ty, self)?;
+            }
+            Declaration::Many(decls) => {
+                for decl in decls {
+                    self.add_local_variable_declaration(decl)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Define a static variable with a given name under this environment.
     pub(super) fn define_static_var(
         &mut self,
@@ -102,6 +199,11 @@ impl Env {
         Ok(location)
     }
 
+    /// Get a static variable definition from this environment.
+    /// This contains:
+    /// 1. The mutability of the variable.
+    /// 2. The type of the variable.
+    /// 3. The location of the variable in memory.
     pub(super) fn get_static_var(&self, name: &str) -> Option<&(Mutability, Type, Location)> {
         self.static_vars.get(name)
     }
@@ -175,6 +277,20 @@ impl Env {
         let name = name.to_string();
         trace!("Defining procedure {name} as {proc}");
         Rc::make_mut(&mut self.procs).insert(name, proc);
+    }
+
+    /// Define a polymorphic procedure with a given name under this environment.
+    pub(super) fn define_poly_proc(&mut self, name: impl ToString, proc: PolyProcedure) {
+        let name = name.to_string();
+        trace!("Defining polymorphic procedure {name} as {proc}");
+        Rc::make_mut(&mut self.consts).insert(name, ConstExpr::PolyProc(proc));
+    }
+
+    /// Define an FFI procedure with a given name under this environment.
+    pub(super) fn define_ffi_proc(&mut self, name: impl ToString, proc: FFIProcedure) {
+        let name = name.to_string();
+        trace!("Defining FFI procedure {name} as {proc}");
+        Rc::make_mut(&mut self.consts).insert(name, ConstExpr::FFIProcedure(proc));
     }
 
     /// Get a procedure definition from this environment.

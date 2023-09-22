@@ -113,13 +113,12 @@ impl PolyProcedure {
         body.substitute_types(&self.ty_params, &simplified_ty_args);
 
         // Wrap the body in a let expression to bind the type arguments.
-        body = Expr::LetTypes(
+        body = body.with(
             self.ty_params
                 .iter()
                 .zip(simplified_ty_args.iter())
                 .map(|(a, b)| (a.clone(), b.clone()))
-                .collect(),
-            Box::new(body),
+                .collect::<Vec<_>>(),
         );
 
         // Generate a mangled name for the monomorphized procedure.

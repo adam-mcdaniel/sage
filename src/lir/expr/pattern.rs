@@ -83,6 +83,11 @@ impl Pattern {
         branch.get_type(&new_env)
     }
 
+    /// Is this pattern exhaustive?
+    pub fn is_exhaustive(&self, expr: &Expr, ty: &Type, env: &Env) -> Result<bool, Error> {
+        Self::are_patterns_exhaustive(&expr, &[self.clone()], &ty, &env)
+    }
+
     /// This associated function returns whether or not a set of patterns is exhaustive,
     /// that is, whether or not it matches all possible values of a given type.
     /// This is used to check if a `match` expression is exhaustive.
@@ -423,7 +428,8 @@ impl Pattern {
                         vec![(self.clone(), branch.clone())],
                     ),
                 })
-            } // Err(e) => return Err(Error::InvalidPatternForExpr(matching_expr.clone(), self.clone())),
+            }
+            // Err(e) => return Err(Error::InvalidPatternForExpr(matching_expr.clone(), self.clone())),
         }
         // Generate an expression with the bindings defined for the branch.
         let result_expr = self
@@ -494,14 +500,6 @@ impl Pattern {
         // Get the type of the expression being matched
         let match_type = expr.get_type(env)?.simplify_until_concrete(env)?;
         // Define the variable in the new environment.
-        // for _ in 0..Type::SIMPLIFY_RECURSION_LIMIT {
-        //     match match_type {
-        //         Type::Let(_, _, _) | Type::Symbol(_) => {
-        //             match_type = match_type.simplify(env)?;
-        //         }
-        //         _ => break,
-        //     }
-        // }
         new_env.define_var(var_name.clone(), Mutability::Immutable, match_type.clone())?;
         // Generate the expression which evaluates the `match` expression.
         let match_expr = Pattern::match_pattern_helper(&Expr::var(&var_name), branches, &new_env)?;
@@ -551,12 +549,21 @@ impl Pattern {
     /// For example `(a, b)` binds the variables `a` and `b` to the first and second
     /// elements of the tuple respectively. This function would return a map with
     /// the keys `a` and `b` and the values being their types.
-    pub fn get_bindings(
+    pub fn get_bindings(&self, expr: &Expr, ty: &Type, env: &Env) -> Result<HashMap<String, (Mutability, Type)>, Error> {
+        Ok(self.get_bindings_with_offset(expr, ty, env, 0)?
+            .into_iter()
+            .map(|(k, (m, t, _))| (k, (m, t)))
+            .collect())
+    }
+
+    /// Get the map of new variables, their types which are bound by this pattern, and their offsets in the expression.
+    fn get_bindings_with_offset(
         &self,
         expr: &Expr,
         ty: &Type,
         env: &Env,
-    ) -> Result<HashMap<String, (Mutability, Type)>, Error> {
+        mut origin: usize,
+    ) -> Result<HashMap<String, (Mutability, Type, usize)>, Error> {
         let ty = &ty.simplify_until_concrete(env)?;
         Ok(match (self, ty) {
             // If the pattern is a tuple, and the type is a tuple, then
@@ -569,13 +576,15 @@ impl Pattern {
                     // Get the bindings for the pattern and add them to the result.
                     result.extend(
                         pattern
-                            .get_bindings(
+                            .get_bindings_with_offset(
                                 &expr.clone().field(ConstExpr::Int(i as i64)),
                                 item_type,
                                 env,
+                                origin,
                             )?
                             .into_iter(),
-                    )
+                    );
+                    origin += item_type.get_size(env)?;
                 }
                 // Return the result.
                 result
@@ -590,13 +599,14 @@ impl Pattern {
                 }
                 // If no error was thrown, the variant is an option which can be matched.
                 // Now, check if the tag matches the variant.
-                pattern.get_bindings(
+                pattern.get_bindings_with_offset(
                     &expr
                         .clone()
                         .unop(super::ops::Data)
                         .field(ConstExpr::Symbol(name.clone())),
                     &variants[name],
                     env,
+                    origin,
                 )?
             }
 
@@ -604,21 +614,26 @@ impl Pattern {
             // get the bindings for each field of the struct.
             (Self::Struct(patterns), Type::Struct(item_types)) => {
                 let mut result = HashMap::new();
+
+                let save = origin;
                 // Iterate over the field names and patterns of the struct.
                 for (name, pattern) in patterns.iter() {
+                    let symbol = ConstExpr::Symbol(name.clone());
                     // If the struct has a field with the given name, then
                     // get the bindings for the pattern and add them to the result.
                     if let Some(item_type) = item_types.get(name) {
                         // Get the bindings for the pattern and add them to the result.
+                        origin = save + ty.get_member_offset(&symbol, expr, env)?.1;
                         result.extend(
                             pattern
-                                .get_bindings(
-                                    &expr.clone().field(ConstExpr::Symbol(name.clone())),
+                                .get_bindings_with_offset(
+                                    &expr.clone().field(symbol),
                                     item_type,
                                     env,
+                                    origin,
                                 )?
                                 .into_iter(),
-                        )
+                        );
                     } else {
                         // If the struct does not have a field with the given name, then
                         // return an error.
@@ -632,7 +647,7 @@ impl Pattern {
             (Self::Symbol(mutability, name), ty) => {
                 let mut result = HashMap::new();
                 // Add the symbol to the result with the type of the expression.
-                result.insert(name.clone(), (*mutability, ty.clone()));
+                result.insert(name.clone(), (*mutability, ty.clone(), origin));
                 result
             }
 
@@ -643,7 +658,7 @@ impl Pattern {
             | (Self::ConstExpr(_), _) => HashMap::new(),
 
             (Self::Pointer(pattern), Type::Pointer(_, item_type)) => {
-                pattern.get_bindings(&expr.clone().deref(), item_type, env)?
+                pattern.get_bindings_with_offset(&expr.clone().deref(), item_type, env, origin)?
             }
 
             // If the pattern is an alternative, then get the bindings for each pattern
@@ -652,14 +667,28 @@ impl Pattern {
                 // Iterate over the patterns.
                 for (i, pattern) in patterns.iter().enumerate() {
                     // Get the bindings for the pattern and add them to the result.
-                    let bindings = pattern.get_bindings(expr, ty, env)?;
+                    let bindings = pattern.get_bindings_with_offset(expr, ty, env, origin)?;
                     // If this is the first pattern, then set the result to the bindings.
                     if i == 0 {
                         result = bindings;
-                    } else if result != bindings {
+                    } else {
+                        // Compare the mutability and types of the bindings for this pattern
+                        for (var, (mutability, ty, _)) in bindings {
+                            // If the variable is not in the result, then add it.
+                            if !result.contains_key(&var) {
+                                return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
+                            } else {
+                                // If the variable is in the result, then check if the mutability and type match.
+                                let (prev_mutability, prev_ty, _) = &result[&var];
+                                if *prev_mutability != mutability || *prev_ty != ty {
+                                    // If the bindings for this pattern are different to the previous patterns,
+                                    // then return an error.
+                                    return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
+                                }
+                            }
+                        }
                         // If the bindings for this pattern are different to the previous patterns,
                         // then return an error.
-                        return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
                     }
                 }
                 // Return the result.
@@ -825,6 +854,31 @@ impl Pattern {
 
             _ => return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone())),
         })
+    }
+
+    /// Let-bind the pattern to the given expression. This will define all the bindings
+    /// in the environment, and then assign the bound expression to all the pattern bindings.
+    /// 
+    /// This function works by sorting out where the bindings are in the expression, and then
+    /// defining the bindings in the environment to map to the correct position in the stack
+    /// relative to the expression. ***If the expression and pattern differ in size or type,
+    /// then this will not work correctly. This function does not check the arguments.***
+    pub fn declare_let_bind(&self, expr: &Expr, ty: &Type, env: &mut Env) -> Result<(), Error> {
+        // Get the type of the expression being matched.
+        let ty = &ty.simplify_until_concrete(env)?;
+        // Get the variable bindings for the pattern.
+        // This tells us the type and mutability of each variable.
+        let bindings = self.get_bindings_with_offset(expr, ty, env, 0)?;
+        let mut bindings: Vec<_> = bindings.into_iter().collect();
+        // Sort the bindings by their offset.
+        // This will give us the order in which the bindings should be defined
+        // on the stack.
+        bindings.sort_by_key(|(_, (_, _, offset))| *offset);
+        // Define all the bindings in the environment.
+        for (name, (mutability, ty, _)) in &bindings {
+            env.define_var(name, *mutability, ty.clone())?;
+        }
+        Ok(())
     }
 
     /// Bind the pattern to the given expression.
