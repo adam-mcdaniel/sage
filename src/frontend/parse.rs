@@ -1102,16 +1102,12 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
             ConstExpr::Array(exprs)
         }
         Rule::const_struct => {
-            let inner_rules = pair.into_inner();
+            let mut inner_rules = pair.into_inner();
             let mut fields = Vec::new();
-            for pair in inner_rules {
-                let mut inner_rules = pair.into_inner();
-                if inner_rules.peek().is_none() {
-                    break;
-                }
-                let name = inner_rules.next().unwrap().as_str().to_string();
-                let expr = parse_const(inner_rules.next().unwrap());
-                fields.push((name, expr));
+            while inner_rules.peek().is_some() {
+                let field = inner_rules.next().unwrap().as_str().to_string();
+                let val = parse_const(inner_rules.next().unwrap());
+                fields.push((field, val));
             }
             ConstExpr::Struct(fields.into_iter().collect())
         }

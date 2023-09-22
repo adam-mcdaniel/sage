@@ -17,7 +17,7 @@ regex = { version = "1.8.1", features = ["unicode"] }
 maplit = "1.0.2"
 lazy_static = "1.4.0"
 lalrpop-util = "0.19.8"
-lalrpop = { version = "=0.19.9", features = [ "lexer" ] }
+lalrpop = { version = "=0.19.9", features = ["lexer"] }
 clap = { version ="4.2.4", features = ["derive", "cargo"] }
 no-comment = "0.0.3"
 pest = "2.6.0"
@@ -30,4 +30,4 @@ env_logger = "0.10.0"
 # Add a build-time dependency on the lalrpop library:
 [build-dependencies]
 regex = { version = "1.8.1", features = ["unicode"] }
-lalrpop = { version = "=0.19.9", features = [ "lexer",  ] }
+lalrpop = { version = "=0.19.9", features = ["lexer"] }
