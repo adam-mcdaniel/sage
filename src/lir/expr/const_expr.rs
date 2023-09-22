@@ -10,11 +10,9 @@
 //! - Enum variants
 
 use crate::lir::{
-    Declaration, CoreBuiltin, Env, Error, Expr, FFIProcedure, GetSize, GetType, Mutability, PolyProcedure,
+    Annotation, Declaration, CoreBuiltin, Env, Error, Expr, FFIProcedure, GetSize, GetType, Mutability, PolyProcedure,
     Procedure, Simplify, StandardBuiltin, Type,
 };
-use crate::parse::SourceCodeLocation;
-
 use log::error;
 
 use core::fmt;
@@ -24,10 +22,7 @@ use std::collections::BTreeMap;
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConstExpr {
     // A constant expression annotated with its source code location.
-    AnnotatedWithSource {
-        expr: Box<Self>,
-        loc: SourceCodeLocation,
-    },
+    Annotated(Box<Self>, Annotation),
 
     /// Bind a list of types in a constant expression.
     Declare(Box<Declaration>, Box<Self>),
@@ -103,14 +98,16 @@ impl ConstExpr {
     }
 
     /// Annotate this constant expression with a source code location.
-    pub fn with_loc(self, loc: &SourceCodeLocation) -> Self {
+    pub fn annotate(self, annotation: Annotation) -> Self {
         // Check to see if the expression is already annotated.
         match self {
-            Self::AnnotatedWithSource { .. } => self,
-            _ => Self::AnnotatedWithSource {
-                expr: Box::new(self),
-                loc: loc.clone(),
-            },
+            Self::Annotated(expr, mut annotations) => {
+                // If it is, add the new annotation to the list of annotations.
+                annotations |= annotation;
+                Self::Annotated(expr, annotations)
+            }
+            // Otherwise, create a new annotation.
+            expr => Self::Annotated(Box::new(expr), annotation),
         }
     }
 
@@ -141,8 +138,8 @@ impl ConstExpr {
         } else {
             // trace!("Evaluating constexpr: {self}");
             match self {
-                Self::AnnotatedWithSource { expr, loc } => {
-                    expr.eval_checked(env, i).map_err(|e| e.with_loc(&loc))
+                Self::Annotated(expr, metadata) => {
+                    expr.eval_checked(env, i).map_err(|e| e.annotate(metadata.clone()))
                 }
 
                 Self::None
@@ -289,9 +286,9 @@ impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
         // trace!("Getting type from constexpr: {self}");
         Ok(match self.clone() {
-            Self::AnnotatedWithSource { expr, loc } => expr
+            Self::Annotated(expr, metadata) => expr
                 .get_type_checked(env, i)
-                .map_err(|e| e.with_loc(&loc))?,
+                .map_err(|e| e.annotate(metadata))?,
 
             Self::As(expr, cast_ty) => {
                 let found = expr.get_type_checked(env, i)?;
@@ -389,7 +386,7 @@ impl GetType for ConstExpr {
 
     fn substitute(&mut self, name: &str, ty: &Type) {
         match self {
-            Self::AnnotatedWithSource { expr, .. } => {
+            Self::Annotated(expr, _) => {
                 expr.substitute(name, ty);
             }
             Self::As(expr, cast_ty) => {
@@ -471,11 +468,11 @@ impl GetType for ConstExpr {
 impl fmt::Display for ConstExpr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Self::Annotated(expr, _) => {
+                write!(f, "{expr}")
+            }
             Self::FFIProcedure(ffi_proc) => {
                 write!(f, "{ffi_proc}")
-            }
-            Self::AnnotatedWithSource { expr, .. } => {
-                write!(f, "{expr}")
             }
             Self::CoreBuiltin(builtin) => {
                 write!(f, "{builtin}")

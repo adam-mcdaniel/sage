@@ -43,7 +43,7 @@ impl Statement {
 
         let stmt = match (self, rest.clone()) {
             (Self::AnnotatedWithSource { stmt, loc }, _) => {
-                return stmt.to_expr(rest).with_loc(loc);
+                return stmt.to_expr(rest).annotate(loc);
             }
             (Self::Assign(lhs, op, rhs), _) => {
                 match op {
@@ -970,7 +970,7 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
     };
     // result
     // Expr::AnnotatedWithSource { expr: Box::new(result), loc }
-    result.with_loc(loc)
+    result.annotate(loc)
 }
 
 fn parse_expr_term(pair: Pair<Rule>) -> Expr {

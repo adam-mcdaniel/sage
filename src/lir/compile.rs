@@ -77,10 +77,10 @@ impl Compile for Expr {
 
         // Compile the expression.
         match self {
-            Self::AnnotatedWithSource { expr, loc } => {
+            Self::Annotated(expr, metdata) => {
                 // Compile the expression.
                 expr.compile_expr(env, output)
-                    .map_err(|e| e.with_loc(&loc))?;
+                    .map_err(|e| e.annotate(metdata))?;
             }
 
             Self::Match(expr, branches) => {
@@ -151,14 +151,14 @@ impl Compile for Expr {
             }
             
             Self::Apply(f, args) => {
-                if let Self::AnnotatedWithSource { expr, loc } = *f {
+                if let Self::Annotated(expr, metdata) = *f {
                     // Compile the inner expression.
                     return Self::Apply(expr, args)
                         .compile_expr(env, output)
                         .map_err(|e| {
                             // If the inner expression fails to compile,
                             // then add the source location to the error.
-                            e.with_loc(&loc)
+                            e.annotate(metdata)
                         });
                 }
 
@@ -555,14 +555,14 @@ impl Compile for Expr {
             // Compile a reference operation (on a symbol or a field of a value).
             Self::Refer(expected_mutability, val) => match *val.clone() {
                 // Get the value being referenced
-                Expr::AnnotatedWithSource { expr, loc } => Self::Refer(expected_mutability, expr)
+                Expr::Annotated(expr, metdata) => Self::Refer(expected_mutability, expr)
                     .compile_expr(env, output)
-                    .map_err(|e| e.with_loc(&loc))?,
+                    .map_err(|e| e.annotate(metdata))?,
 
-                Expr::ConstExpr(ConstExpr::AnnotatedWithSource { expr, loc }) => {
+                Expr::ConstExpr(ConstExpr::Annotated(expr, metdata)) => {
                     Self::Refer(expected_mutability, Box::new(Expr::ConstExpr(*expr)))
                         .compile_expr(env, output)
-                        .map_err(|e| e.with_loc(&loc))?
+                        .map_err(|e| e.annotate(metdata))?
                 }
 
                 // Get the reference of a variable.
@@ -765,9 +765,9 @@ impl Compile for ConstExpr {
         let current_instruction = output.current_instruction();
         // Compile the constant expression.
         match self {
-            Self::AnnotatedWithSource { expr, loc } => {
+            Self::Annotated(expr, metadata) => {
                 expr.compile_expr(env, output)
-                    .map_err(|err| err.with_loc(&loc))?;
+                    .map_err(|err| err.annotate(metadata))?;
             }
             Self::Declare(bindings, expr) => {
                 bindings.compile(Expr::ConstExpr(*expr), env, output)?;

@@ -1,5 +1,5 @@
 use crate::lir::*;
-use core::fmt::{Display, Formatter, Result as FmtResult};
+use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::collections::HashMap;
 
 use log::trace;

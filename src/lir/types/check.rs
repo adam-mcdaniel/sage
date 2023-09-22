@@ -178,9 +178,9 @@ impl TypeCheck for Expr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
         // trace!("Type checking expression: {self}");
         match self {
-            Self::AnnotatedWithSource { expr, loc } => {
+            Self::Annotated(expr, metadata) => {
                 // Check the inner expression.
-                expr.type_check(env).map_err(|e| e.with_loc(loc))
+                expr.type_check(env).map_err(|e| e.annotate(metadata.clone()))
             }
 
             Self::Declare(declaration, body) => {
@@ -367,9 +367,9 @@ impl TypeCheck for Expr {
 
             // Typecheck a reference to a value.
             Self::Refer(expected_mutability, e) => match *e.clone() {
-                Expr::AnnotatedWithSource { expr, loc } => Self::Refer(*expected_mutability, expr)
+                Expr::Annotated(expr, metadata) => Self::Refer(*expected_mutability, expr)
                     .type_check(env)
-                    .map_err(|e| e.with_loc(&loc)),
+                    .map_err(|e| e.annotate(metadata)),
                 Expr::ConstExpr(ConstExpr::Symbol(name)) => {
                     // Check if the symbol is defined as mutable
                     if env.is_defined_as_mutable(&name) {
@@ -743,8 +743,8 @@ impl TypeCheck for ConstExpr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
         // trace!("Typechecking constant expression: {}", self);
         match self {
-            Self::AnnotatedWithSource { expr, loc } => {
-                expr.type_check(env).map_err(|e| e.with_loc(loc))
+            Self::Annotated(expr, metadata) => {
+                expr.type_check(env).map_err(|e| e.annotate(metadata.clone()))
             }
 
             // These are all guaranteed to be valid, or
