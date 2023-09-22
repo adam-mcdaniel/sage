@@ -770,9 +770,7 @@ impl Compile for ConstExpr {
                     .map_err(|err| err.with_loc(&loc))?;
             }
             Self::Declare(bindings, expr) => {
-                let mut new_env = env.clone();
-                new_env.add_compile_time_declaration(&bindings)?;
-                expr.compile_expr(&mut new_env, output)?;
+                bindings.compile(Expr::ConstExpr(*expr), env, output)?;
             }
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
                 Self::PolyProc(poly_proc) => {

@@ -140,6 +140,7 @@ impl Declaration {
         Ok(var_size)
     }
 
+    /// Merge two declarations into one, while preserving the order of the declarations.
     pub(crate) fn join(mut self, other: impl Into<Self>) -> Self {
         match (&mut self, other.into()) {
             (Self::Many(decls), Self::Many(other_decls)) => {
@@ -203,10 +204,16 @@ impl Declaration {
 impl TypeCheck for Declaration {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
         match self {
+            // Typecheck a variable declaration.
             Self::Var(_name, _mutability, expected_ty, expr) => {
+                // Get the type of the expression.
                 let found_ty = expr.get_type(env)?;
+                // If there is a type specified, then make sure the type of the expression
+                // can decay to the specified type.
                 if let Some(expected_ty) = expected_ty {
+                    // Typecheck the specified type.
                     expected_ty.type_check(env)?;
+                    // Make sure the type of the expression can decay to the specified type.
                     if !found_ty.can_decay_to(expected_ty, env)? {
                         return Err(Error::MismatchedTypes {
                             expected: expected_ty.clone(),
@@ -218,34 +225,45 @@ impl TypeCheck for Declaration {
 
                 expr.type_check(env)?;
             }
+            // Typecheck a procedure declaration.
             Self::Proc(name, proc) => {
                 let mut new_env = env.clone();
                 new_env.define_proc(name, proc.clone());
                 proc.type_check(&new_env)?;
             }
+            // Typecheck a polymorphic procedure declaration.
             Self::PolyProc(name, proc) => {
                 let mut new_env = env.clone();
                 new_env.define_poly_proc(name, proc.clone());
                 proc.type_check(&new_env)?;
             }
+            // Typecheck a type declaration.
             Self::Type(name, ty) => {
                 let mut new_env = env.clone();
                 new_env.define_type(name, ty.clone());
                 ty.type_check(&new_env)?;
             }
+            // Typecheck a constant expression.
             Self::Const(name, expr) => {
                 let mut new_env = env.clone();
                 new_env.define_const(name, expr.clone());
                 expr.type_check(&new_env)?;
             }
+            // Typecheck a static variable declaration.
             Self::StaticVar(name, mutability, expected_ty, expr) => {
+                // Create a new environment with the static variable declared.
                 let mut new_env = env.clone();
                 new_env.define_static_var(name, *mutability, expected_ty.clone())?;
-                let found_ty = expr.get_type(&new_env)?;
-                expected_ty.type_check(&new_env)?;
-                expr.type_check(&new_env)?;
 
+                // Typecheck the specified type of the variable.
+                expected_ty.type_check(&new_env)?;
+                // Typecheck the expression assigned to the variable.
+                expr.type_check(&new_env)?;
+                let found_ty = expr.get_type(&new_env)?;
+
+                // Make sure the type of the expression matches the type of the variable.
                 if !found_ty.can_decay_to(expected_ty, &new_env)? {
+                    // If it does not, then we throw an error.
                     return Err(Error::MismatchedTypes {
                         expected: expected_ty.clone(),
                         found: found_ty.clone(),
@@ -253,32 +271,47 @@ impl TypeCheck for Declaration {
                     });
                 }
             }
+            // Typecheck a variable declaration with a pattern.
             Self::VarPat(pat, expr) => {
+                // Typecheck the pattern in the environment.
+                pat.type_check(&expr, &Expr::NONE, env)?;
+                // Typecheck the expression assigned to the pattern in the environment.
+                expr.type_check(env)?;
+
+                // Get the type of the expression.
                 let ty = expr.get_type(env)?;
+                // Get the size of the expression.
                 let size = ty.get_size(env)?;
                 if !pat.is_exhaustive(&expr, &ty, env)? {
+                    // Make sure the pattern is exhaustive.
+                    // If it is not, then we throw an error.
                     return Err(Error::NonExhaustivePatterns {
                         patterns: vec![pat.clone()],
                         expr: Expr::NONE.with(self.clone()),
                     });
                 }
+                // Get the bindings of the variables under the pattern
                 let bindings = pat.get_bindings(&expr, &ty, env)?;
+                // Get the size of all the bindings
                 let size_of_bindings = bindings.iter().map(|(_name, (_mut, ty))| ty.get_size(env).unwrap_or(0)).sum::<usize>();
+                // Make sure the size of the bindings is the same as the size of the expression.
                 if size_of_bindings != size {
                     return Err(Error::InvalidPatternForExpr(Expr::NONE.with(self.clone()), pat.clone()));
                 }
-                
-                pat.type_check(&expr, &Expr::NONE, env)?;
-                expr.type_check(env)?;
             }
+            // Typecheck a foreign function declaration.
             Self::ExternProc(_name, proc) => {
                 proc.type_check(env)?;
             }
+            // Typecheck a multi-declaration.
             Self::Many(decls) => {
                 let mut new_env = env.clone();
+                // Add all the compile-time declarations to the environment.
                 new_env.add_compile_time_declaration(&self.clone())?;
                 for decl in decls {
+                    // Typecheck any variable declarations in the old scope
                     decl.type_check(&new_env)?;
+                    // Add them to the new scope.
                     new_env.add_declaration(decl)?;
                 }
             }
