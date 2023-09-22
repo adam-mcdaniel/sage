@@ -95,7 +95,7 @@ pub enum Expr {
     /// The `String` field is the variant the tagged union is being initialized with.
     /// The `Box<Self>` field is the value of the union's data we want to initialize.
     EnumUnion(Type, String, Box<Self>),
-    
+
     /// A structure of fields to expressions.
     Struct(BTreeMap<String, Self>),
 
@@ -332,11 +332,7 @@ impl Expr {
         vars: Vec<(&str, Mutability, Option<Type>, Self)>,
         ret: impl Into<Self>,
     ) -> Self {
-        let mut ret = ret.into();
-        for (name, m, t, e) in vars.into_iter().rev() {
-            ret = ret.with((name.to_string(), m, t, e));
-        }
-        ret
+        ret.into().with(vars)
     }
 
     /// Create a `let` binding for an type.
@@ -351,11 +347,7 @@ impl Expr {
     }
     /// Create several `type` bindings at onces.
     pub fn let_types(vars: Vec<(&str, Type)>, ret: impl Into<Self>) -> Self {
-        let mut ret = ret.into();
-        for (name, t) in vars.into_iter().rev() {
-            ret = ret.with((name.to_string(), t));
-        }
-        ret
+        ret.into().with(vars)
     }
 
     /// Create a `let` binding for a constant expression.
@@ -370,11 +362,7 @@ impl Expr {
 
     /// Create several `const` bindings at onces.
     pub fn let_consts(constants: Vec<(&str, ConstExpr)>, ret: impl Into<Self>) -> Self {
-        let mut ret = ret.into();
-        for (name, e) in constants.into_iter().rev() {
-            ret = ret.with((name.to_string(), e));
-        }
-        ret
+        ret.into().with(constants)
     }
 
     /// Create a `proc` binding for a procedure.
@@ -389,11 +377,7 @@ impl Expr {
 
     /// Create several `proc` bindings at onces.
     pub fn let_procs(procs: BTreeMap<&str, Procedure>, ret: impl Into<Self>) -> Self {
-        let mut ret = ret.into();
-        for (name, proc) in procs.into_iter().rev() {
-            ret = ret.with((name.to_string(), proc));
-        }
-        ret
+        ret.into().with(procs)
     }
 
     /// Create a structure of fields to expressions.

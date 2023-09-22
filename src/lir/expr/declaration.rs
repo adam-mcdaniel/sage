@@ -401,9 +401,21 @@ impl From<(String, Type)> for Declaration {
     }
 }
 
+impl From<(&str, Type)> for Declaration {
+    fn from((name, expr): (&str, Type)) -> Self {
+        Self::Type(name.to_string(), expr)
+    }
+}
+
 impl From<(String, Expr)> for Declaration {
     fn from((name, expr): (String, Expr)) -> Self {
         Self::Var(name, Mutability::Immutable, None, expr)
+    }
+}
+
+impl From<(&str, Expr)> for Declaration {
+    fn from((name, expr): (&str, Expr)) -> Self {
+        Self::Var(name.to_string(), Mutability::Immutable, None, expr)
     }
 }
 
@@ -413,9 +425,21 @@ impl From<(String, Mutability, Expr)> for Declaration {
     }
 }
 
+impl From<(&str, Mutability, Expr)> for Declaration {
+    fn from((name, mutability, expr): (&str, Mutability, Expr)) -> Self {
+        Self::Var(name.to_string(), mutability, None, expr)
+    }
+}
+
 impl From<(String, Mutability, Type, Expr)> for Declaration {
     fn from((name, mutability, ty, expr): (String, Mutability, Type, Expr)) -> Self {
         Self::Var(name, mutability, Some(ty), expr)
+    }
+}
+
+impl From<(&str, Mutability, Type, Expr)> for Declaration {
+    fn from((name, mutability, ty, expr): (&str, Mutability, Type, Expr)) -> Self {
+        Self::Var(name.to_string(), mutability, Some(ty), expr)
     }
 }
 
@@ -425,9 +449,21 @@ impl From<(String, Mutability, Option<Type>, Expr)> for Declaration {
     }
 }
 
+impl From<(&str, Mutability, Option<Type>, Expr)> for Declaration {
+    fn from((name, mutability, ty, expr): (&str, Mutability, Option<Type>, Expr)) -> Self {
+        Self::Var(name.to_string(), mutability, ty, expr)
+    }
+}
+
 impl From<(String, Procedure)> for Declaration {
     fn from((name, proc): (String, Procedure)) -> Self {
         Self::Proc(name, proc)
+    }
+}
+
+impl From<(&str, Procedure)> for Declaration {
+    fn from((name, proc): (&str, Procedure)) -> Self {
+        Self::Proc(name.to_string(), proc)
     }
 }
 
@@ -437,9 +473,21 @@ impl From<(String, PolyProcedure)> for Declaration {
     }
 }
 
+impl From<(&str, PolyProcedure)> for Declaration {
+    fn from((name, proc): (&str, PolyProcedure)) -> Self {
+        Self::PolyProc(name.to_string(), proc)
+    }
+}
+
 impl From<(String, ConstExpr)> for Declaration {
     fn from((name, expr): (String, ConstExpr)) -> Self {
         Self::Const(name, expr)
+    }
+}
+
+impl From<(&str, ConstExpr)> for Declaration {
+    fn from((name, proc): (&str, ConstExpr)) -> Self {
+        Self::Const(name.to_string(), proc)
     }
 }
 
@@ -454,6 +502,7 @@ impl From<(String, FFIProcedure)> for Declaration {
         Self::ExternProc(name, proc)
     }
 }
+
 impl From<Box<Declaration>> for Declaration {
     fn from(x: Box<Self>) -> Self {
         *x
@@ -463,6 +512,12 @@ impl From<Box<Declaration>> for Declaration {
 impl<K, V> From<BTreeMap<K, V>> for Declaration where (K, V): Into<Declaration> {
     fn from(bt: BTreeMap<K, V>) -> Self {
         Self::Many(bt.into_iter().map(|(k, v)| (k, v).into()).collect())
+    }
+}
+
+impl From<(&str, FFIProcedure)> for Declaration {
+    fn from((name, proc): (&str, FFIProcedure)) -> Self {
+        Self::ExternProc(name.to_string(), proc)
     }
 }
 
