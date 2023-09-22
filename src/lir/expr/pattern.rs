@@ -362,33 +362,6 @@ impl Pattern {
                 Ok(found.iter().all(|b| *b))
             }
 
-            // Is the inner pattern exhaustive?
-            Type::Pointer(_mutability, elem_ty) => {
-                // If the type is a pointer, the patterns are exhaustive if the inner pattern is exhaustive.
-                for pattern in patterns {
-                    match pattern {
-                        Pattern::Pointer(inner) => {
-                            // If there's a pattern which matches a pointer, check if the inner pattern is exhaustive.
-                            if Self::are_patterns_exhaustive(expr, &[*inner.clone()], elem_ty, env)? {
-                                // If it is exhaustive, return `true`.
-                                return Ok(true);
-                            }
-                        }
-                        Pattern::Wildcard | Pattern::Symbol(_, _) => return Ok(true),
-                        Pattern::Alt(branches) => {
-                            // If there's an alternate pattern, check if it's exhaustive.
-                            if Self::are_patterns_exhaustive(expr, branches, matching_expr_ty, env)?
-                            {
-                                // If it is exhaustive, return `true`.
-                                return Ok(true);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                Ok(false)
-            }
-
             // For any other type, only a default pattern is exhaustive.
             _ => {
                 for pattern in patterns {
