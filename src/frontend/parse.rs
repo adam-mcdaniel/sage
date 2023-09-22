@@ -1,7 +1,6 @@
 use crate::{lir::*, parse::SourceCodeLocation};
 use pest::{error::Error, iterators::Pair, Parser};
 use pest_derive::Parser;
-use std::collections::BTreeMap;
 
 #[derive(Parser)]
 #[grammar = "frontend/parse.pest"] // relative to src
@@ -13,6 +12,7 @@ pub enum Statement {
         stmt: Box<Self>,
         loc: SourceCodeLocation,
     },
+    LetPattern(Vec<(Pattern, Expr)>),
     Let(Vec<(String, Mutability, Option<Type>, Expr)>),
     LetStatic(Vec<(String, Mutability, Type, ConstExpr)>),
     Assign(Expr, Option<Box<dyn AssignOp + 'static>>, Expr),
@@ -114,24 +114,20 @@ impl Statement {
             //     }
             //     return Expr::LetVars(vars, Box::new(Expr::Many(vec![body.to_expr(Some(*ret))])))
             // }
-            (Self::LetIn(defs, body), _) => Expr::LetVars(defs, Box::new(body.to_expr(None))),
+            (Self::Let(defs), _) => return rest_expr.with(defs),
+            (Self::LetPattern(defs), _) => return rest_expr.with(defs),
+            (Self::LetStatic(defs), _) => return rest_expr.with(defs.into_iter().map(|(a, b, c, d)| crate::lir::Declaration::StaticVar(a, b, c, d)).collect::<Vec<crate::lir::Declaration>>()),
+            
+            (Self::LetIn(defs, body), _) => body.to_expr(None).with(defs),
             (Self::LetStaticIn(defs, body), _) => {
-                Expr::LetStaticVars(defs, Box::new(body.to_expr(None)))
-            }
-            (Self::Let(defs), Some(Expr::LetVars(mut vars, ret))) => {
-                for (name, mutability, ty, val) in defs.into_iter().rev() {
-                    vars.insert(0, (name, mutability, ty, val));
+                // Expr::LetStaticVars(defs, Box::new(body.to_expr(None)))
+                let mut result = body.to_expr(None);
+                for (n, m, t, e) in defs.into_iter().rev() {
+                    result = result.with(crate::lir::Declaration::StaticVar(n, m, t, e));
                 }
-                return Expr::LetVars(vars, ret);
+                result
             }
-            (Self::Let(defs), _) => return Expr::LetVars(defs, rest_expr),
-            (Self::LetStatic(defs), Some(Expr::LetStaticVars(mut vars, ret))) => {
-                for (name, mutability, ty, val) in defs.into_iter().rev() {
-                    vars.insert(0, (name, mutability, ty, val));
-                }
-                return Expr::LetStaticVars(vars, ret);
-            }
-            (Self::LetStatic(defs), _) => return Expr::LetStaticVars(defs, rest_expr),
+
             (Self::Expr(e), _) => e,
         };
         if let Some(Expr::Many(mut stmts)) = rest {
@@ -195,15 +191,11 @@ impl Declaration {
                 )),
             )])
             .to_expr(rest),
-            (Self::Struct(name, fields), Some(Expr::LetTypes(mut types, ret))) => {
-                types.push((name, Type::Struct(fields.into_iter().collect())));
-                Expr::LetTypes(types, ret)
+            (Self::Struct(name, fields), Some(Expr::Declare(types, ret))) => {
+                ret.with(types.join((name, Type::Struct(fields.into_iter().collect()))))
             }
-            (Self::Struct(name, fields), _) => Expr::LetTypes(
-                vec![(name, Type::Struct(fields.into_iter().collect()))],
-                rest_expr,
-            ),
-            (Self::Enum(name, variants), Some(Expr::LetTypes(mut types, ret))) => {
+            (Self::Struct(name, fields), _) => rest_expr.with((name, Type::Struct(fields.into_iter().collect()))),
+            (Self::Enum(name, variants), Some(Expr::Declare(types, ret))) => {
                 let mut simple = true;
                 for (_, value) in variants.iter() {
                     if value.is_some() {
@@ -211,15 +203,15 @@ impl Declaration {
                         break;
                     }
                 }
-                if simple {
+                ret.with(types.join(if simple {
                     // If we're using a simple enum, then we can just use a simple enum
-                    types.push((
+                    (
                         name,
                         Type::Enum(variants.into_iter().map(|(a, _)| a).collect()),
-                    ));
+                    )
                 } else {
                     // Otherwise, we need to use a tagged union
-                    types.push((
+                    (
                         name,
                         Type::EnumUnion(
                             variants
@@ -235,10 +227,8 @@ impl Declaration {
                                 })
                                 .collect(),
                         ),
-                    ));
-                }
-
-                Expr::LetTypes(types, ret)
+                    )
+                }))
             }
             (Self::Enum(name, variants), _) => {
                 // If none of the variants have a value, then we can just use a simple enum
@@ -250,76 +240,68 @@ impl Declaration {
                         break;
                     }
                 }
-                if simple {
+                
+                rest_expr.with(if simple {
                     // If we're using a simple enum, then we can just use a simple enum
-                    Expr::LetTypes(
-                        vec![(
-                            name,
-                            Type::Enum(variants.into_iter().map(|(a, _)| a).collect()),
-                        )],
-                        rest_expr,
+                    (
+                        name,
+                        Type::Enum(variants.into_iter().map(|(a, _)| a).collect()),
                     )
                 } else {
                     // Otherwise, we need to use a tagged union
-                    Expr::LetTypes(
-                        vec![(
-                            name,
-                            Type::EnumUnion(
-                                variants
-                                    .into_iter()
-                                    .map(|(a, b)| {
-                                        (
-                                            a,
-                                            match b {
-                                                Some(x) => x,
-                                                None => Type::None,
-                                            },
-                                        )
-                                    })
-                                    .collect(),
-                            ),
-                        )],
-                        rest_expr,
+                    (
+                        name,
+                        Type::EnumUnion(
+                            variants
+                                .into_iter()
+                                .map(|(a, b)| {
+                                    (
+                                        a,
+                                        match b {
+                                            Some(x) => x,
+                                            None => Type::None,
+                                        },
+                                    )
+                                })
+                                .collect(),
+                        ),
                     )
-                }
+                })
             }
-            (Self::Const(mut consts), Some(Expr::LetConsts(mut defs, ret))) => {
-                for (name, value) in consts.drain(..).rev() {
-                    defs.insert(name, value);
+            (Self::Const(consts), Some(Expr::Declare(defs, ret))) => {
+                let mut result = *ret;
+                for (name, value) in consts.into_iter().rev() {
+                    result = result.with((name, value))
                 }
-                Expr::LetConsts(defs, ret)
+                result.with(*defs)
+
+                // for (name, value) in consts.drain(..).rev() {
+                //     defs.insert(name, value);
+                // }
+                // Expr::LetConsts(defs, ret)
             }
             (Self::Const(consts), _) => {
-                let mut defs = BTreeMap::new();
-                for (name, value) in consts.into_iter().rev() {
-                    defs.insert(name, value);
-                }
-                Expr::LetConsts(defs, rest_expr)
+                rest_expr.with(consts)
             }
-            (Self::Proc(name, params, ret, stmt), Some(Expr::LetProcs(mut procs, ret2))) => {
-                procs.push((name.clone(), Self::proc_to_expr(name, params, ret, *stmt)));
-                Expr::LetProcs(procs, ret2)
-            }
-            (Self::Proc(name, params, ret, stmt), Some(Expr::LetConsts(mut defs, ret2))) => {
-                defs.insert(
+            (Self::Proc(name, params, ret, stmt), Some(Expr::Declare(procs, ret2))) => {
+                ret2.with((
                     name.clone(),
-                    ConstExpr::Proc(Self::proc_to_expr(name, params, ret, *stmt)),
-                );
-                Expr::LetConsts(defs, ret2)
+                    Self::proc_to_expr(name, params, ret, *stmt),
+                )).with(*procs)
+                // procs.push((name.clone(), Self::proc_to_expr(name, params, ret, *stmt)));
+                // Expr::LetProcs(procs, ret2)
             }
             (Self::Proc(name, params, ret, stmt), _) => {
-                let mut defs = BTreeMap::new();
-                defs.insert(
+                rest_expr.with((
                     name.clone(),
-                    ConstExpr::Proc(Self::proc_to_expr(name, params, ret, *stmt)),
-                );
-                Expr::LetConsts(defs, rest_expr)
+                    Self::proc_to_expr(name, params, ret, *stmt),
+                ))
             }
             (
                 Self::PolyProc(name, ty_params, params, ret, stmt),
-                Some(Expr::LetConsts(mut consts, ret2)),
+                Some(Expr::Declare(decls, ret2)),
             ) => {
-                consts.insert(
+                ret2.with((
                     name.clone(),
                     ConstExpr::PolyProc(PolyProcedure::new(
                         name,
@@ -328,12 +310,10 @@ impl Declaration {
                         ret.unwrap_or(Type::None),
                         stmt.to_expr(None),
                     )),
-                );
-                Expr::LetConsts(consts, ret2)
+                )).with(*decls)
             }
             (Self::PolyProc(name, ty_params, params, ret, stmt), _) => {
-                let mut consts = BTreeMap::new();
-                consts.insert(
+                rest_expr.with((
                     name.clone(),
                     ConstExpr::PolyProc(PolyProcedure::new(
                         name,
@@ -342,14 +322,14 @@ impl Declaration {
                         ret.unwrap_or(Type::None),
                         stmt.to_expr(None),
                     )),
-                );
-                Expr::LetConsts(consts, rest_expr)
+                ))
             }
-            (Self::Type(mut types), Some(Expr::LetTypes(mut types2, ret))) => {
-                types.append(&mut types2);
-                Expr::LetTypes(types, ret)
+            (Self::Type(types), Some(Expr::Declare(types2, ret))) => {
+                // types.append(&mut types2);
+                // Expr::LetTypes(types, ret)
+                ret.with(types).with(types2)
             }
-            (Self::Type(types), _) => Expr::LetTypes(types, rest_expr),
+            (Self::Type(types), _) => rest_expr.with(types),
             (Self::Statement(stmt), Some(rest)) => stmt.to_expr(Some(rest)),
             (Self::Statement(stmt), None) => stmt.to_expr(None),
         }
@@ -657,7 +637,7 @@ fn parse_stmt(pair: Pair<Rule>, filename: Option<&str>) -> Statement {
             }
             Statement::LetStatic(defs)
         }
-
+            
         Rule::stmt_let_static_in_expr | Rule::stmt_let_static_in_block => {
             let mut inner_rules = pair.into_inner();
             let mut defs = vec![];
@@ -771,6 +751,18 @@ fn parse_stmt(pair: Pair<Rule>, filename: Option<&str>) -> Statement {
             let body = parse_stmt(inner_rules.next().unwrap(), filename);
             Statement::For(Box::new(pre), cond, Box::new(post), Box::new(body))
         }
+
+        Rule::stmt_let_pat => {
+            let mut inner_rules = pair.into_inner();
+            let mut defs = vec![];
+            while inner_rules.peek().is_some() {
+                let pattern = parse_pattern(inner_rules.next().unwrap());
+                let expr = parse_expr(inner_rules.next().unwrap());
+                defs.push((pattern, expr));
+            }
+            Statement::LetPattern(defs)
+        }
+
 
         Rule::stmt_let => {
             let mut inner_rules = pair.into_inner();
@@ -1102,16 +1094,12 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
             ConstExpr::Array(exprs)
         }
         Rule::const_struct => {
-            let inner_rules = pair.into_inner();
+            let mut inner_rules = pair.into_inner();
             let mut fields = Vec::new();
-            for pair in inner_rules {
-                let mut inner_rules = pair.into_inner();
-                if inner_rules.peek().is_none() {
-                    break;
-                }
-                let name = inner_rules.next().unwrap().as_str().to_string();
-                let expr = parse_const(inner_rules.next().unwrap());
-                fields.push((name, expr));
+            while inner_rules.peek().is_some() {
+                let field = inner_rules.next().unwrap().as_str().to_string();
+                let val = parse_const(inner_rules.next().unwrap());
+                fields.push((field, val));
             }
             ConstExpr::Struct(fields.into_iter().collect())
         }

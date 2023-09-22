@@ -45,23 +45,13 @@ impl GetType for Expr {
                 expr.get_type_checked(env, i).map_err(|e| e.with_loc(loc))?
             }
 
-            Self::LetStaticVar(name, mutability, ty, _const_val, ret) => {
-                // Create a new environment with the static variable.
+            Self::Declare(declaration, body) => {
+                // Create a new environment with the declarations.
                 let mut new_env = env.clone();
-                new_env.define_static_var(name, *mutability, ty.clone())?;
-                // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
-            }
-
-            Self::LetStaticVars(vars, ret) => {
-                // Create a new environment with the static variables.
-                let mut new_env = env.clone();
-                for (name, mutability, ty, _const_expr) in vars {
-                    // Define the static variable in the new environment.
-                    new_env.define_static_var(name, *mutability, ty.clone())?;
-                }
-                // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
+                // Add the declarations to the environment.
+                new_env.add_declaration(&declaration)?;
+                // Get the type of the body in the new environment.
+                body.get_type_checked(&new_env, i)?
             }
 
             Self::Match(expr, branches) => {
@@ -134,97 +124,6 @@ impl GetType for Expr {
 
             // The resulting type of a type cast is the type being cast to.
             Self::As(_, t) => t.clone(),
-
-            // Get the type of a resulting expression after a constant definition.
-            Self::LetConst(name, expr, ret) => {
-                // Create a new environment with the constant
-                let mut new_env = env.clone();
-                new_env.define_const(name, expr.clone());
-                // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)? //.simplify(&new_env)?
-            }
-
-            // Get the type of a resulting expression after several constant definitions.
-            Self::LetConsts(constants, ret) => {
-                // Create a new environment with the constants
-                let mut new_env = env.clone();
-                for (name, c) in constants {
-                    // Define the constant in the new environment.
-                    new_env.define_const(name, c.clone());
-                }
-                // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)? //.simplify(&new_env)?
-            }
-
-            // Get the type of a resulting expression after a procedure definition.
-            Self::LetProc(name, proc, ret) => {
-                // Create a new environment with the procedure
-                let mut new_env = env.clone();
-                new_env.define_proc(name, proc.clone());
-                // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)? //.simplify(&new_env)?
-            }
-
-            // Get the type of a resulting expression after several procedure definitions.
-            Self::LetProcs(procs, ret) => {
-                // Create a new environment with the procedures
-                let mut new_env = env.clone();
-                for (name, proc) in procs {
-                    // Define the procedure in the new environment.
-                    new_env.define_proc(name, proc.clone());
-                }
-                // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)? //.simplify(&new_env)?
-            }
-
-            // Get the type of a resulting expression after a type definition.
-            Self::LetType(name, t, ret) => {
-                // Create a new environment with the type
-                let mut new_env = env.clone();
-                new_env.define_type(name, t.clone());
-                // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
-                    .simplify_until_type_checks(&new_env)?
-            }
-
-            // Get the type of a resulting expression after several type definitions.
-            Self::LetTypes(types, ret) => {
-                // Create a new environment with the types
-                let mut new_env = env.clone();
-                new_env.define_types(types.clone());
-                // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
-                    .simplify_until_type_checks(&new_env)?
-            }
-
-            // Get the type of a resulting expression after a variable definition.
-            Self::LetVar(var, mutability, t, val, ret) => {
-                // Create a new environment with the variable
-                let mut new_env = env.clone();
-                new_env.define_var(
-                    var,
-                    *mutability,
-                    t.clone().unwrap_or(val.get_type_checked(env, i)?),
-                )?;
-                // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
-            }
-
-            // Get the type of a resulting expression after several variable definitions.
-            Self::LetVars(vars, ret) => {
-                // Create a new environment with the variables
-                let mut new_env = env.clone();
-                for (var, mutability, t, val) in vars {
-                    // Define the variable in the new environment.
-                    new_env.define_var(
-                        var,
-                        *mutability,
-                        t.clone().unwrap_or(val.get_type_checked(&new_env, i)?),
-                    )?;
-                }
-                // Get the type of the return expression in the new environment.
-                ret.get_type_checked(&new_env, i)?
-            }
 
             // A while loop returns the None value.
             Self::While(cond, _) => {
@@ -299,34 +198,8 @@ impl GetType for Expr {
                     .simplify_until_concrete(env)?;
                 match ty {
                     Type::Proc(_, ret) => *ret,
-                    Type::Let(name, t, result) => {
-                        let mut new_env = env.clone();
-                        new_env.define_type(name, *t);
-                        if let Type::Proc(_args, ret) = *result {
-                            *ret
-                        } else {
-                            return Err(Error::ApplyNonProc(self.clone()));
-                        }
-                    }
-                    // // Get the type of an polymorphic type.
-                    // Type::Apply(poly, ty_args) => {
-                    //     if let Type::Poly(_, ret) = poly {
-                    //         // Get the type of the return type after applying the type arguments.
-                    //         ret.apply_type_args(ty_args, env)?
-                    //     } else {
-                    //         // If the type is not a polymorphic type, we cannot apply it.
-                    //         return Err(Error::ApplyNonProc(self.clone()));
-                    //     }
-                    // }
                     _ => return Err(Error::ApplyNonProc(self.clone())),
                 }
-                // if let Type::Proc(_, ret) = func.get_type_checked(env, i)?.simplify(env)? {
-                //     // Get the return type of the procedure.
-                //     *ret
-                // } else {
-                //     // If the value is not a procedure, we cannot apply it.
-                //     return Err(Error::ApplyNonProc(self.clone()));
-                // }
             }
 
             // Get the type of a tuple literal.
@@ -454,55 +327,12 @@ impl GetType for Expr {
                 expr.substitute(name, ty);
             }
 
+            Self::Declare(declaration, body) => {
+                declaration.substitute(name, ty);
+                body.substitute(name, ty);
+            }
+
             Self::ConstExpr(cexpr) => cexpr.substitute(name, ty),
-            Self::LetConst(name, cexpr, expr) => {
-                cexpr.substitute(name, ty);
-                expr.substitute(name, ty)
-            }
-            Self::LetConsts(cexprs, expr) => {
-                for cexpr in cexprs.values_mut() {
-                    cexpr.substitute(name, ty);
-                }
-                expr.substitute(name, ty)
-            }
-            Self::LetProc(name, proc, expr) => {
-                proc.substitute(name, ty);
-                expr.substitute(name, ty)
-            }
-            Self::LetProcs(procs, expr) => {
-                for (_, proc) in procs.iter_mut() {
-                    proc.substitute(name, ty);
-                }
-                expr.substitute(name, ty)
-            }
-            Self::LetVar(_var, _, t, val, ret) => {
-                if let Some(t) = t {
-                    *t = t.substitute(name, ty);
-                }
-                val.substitute(name, ty);
-                ret.substitute(name, ty)
-            }
-            Self::LetVars(vars, ret) => {
-                for (_, _, t, val) in vars.iter_mut() {
-                    if let Some(t) = t {
-                        *t = t.substitute(name, ty);
-                    }
-                    val.substitute(name, ty);
-                }
-                ret.substitute(name, ty)
-            }
-            Self::LetStaticVar(_name, _mutability, t, val, ret) => {
-                *t = t.substitute(name, ty);
-                val.substitute(name, ty);
-                ret.substitute(name, ty)
-            }
-            Self::LetStaticVars(vars, ret) => {
-                for (_, _, t, val) in vars.iter_mut() {
-                    *t = t.substitute(name, ty);
-                    val.substitute(name, ty);
-                }
-                ret.substitute(name, ty)
-            }
 
             Self::If(cond, then, els) => {
                 cond.substitute(name, ty);
@@ -513,20 +343,7 @@ impl GetType for Expr {
                 cond.substitute(name, ty);
                 body.substitute(name, ty)
             }
-            Self::LetType(type_name, t, expr) => {
-                if type_name != name {
-                    *t = t.substitute(name, ty);
-                    expr.substitute(name, ty)
-                }
-            }
-            Self::LetTypes(types, expr) => {
-                if !types.iter().map(|(a, _)| a == name).any(|i| i) {
-                    for (_, t) in types.iter_mut() {
-                        *t = t.substitute(name, ty);
-                    }
-                    expr.substitute(name, ty)
-                }
-            }
+            
             Self::Many(exprs) => {
                 for expr in exprs.iter_mut() {
                     expr.substitute(name, ty);

@@ -189,6 +189,12 @@ impl AssemblyProgram for StandardProgram {
     }
 }
 
+impl From<CoreProgram> for StandardProgram {
+    fn from(core: CoreProgram) -> Self {
+        Self::new(core.code.into_iter().map(StandardOp::CoreOp).collect())
+    }
+}
+
 /// A standard instruction of the assembly language. These are instructions
 /// that should be implemented for every target possible. Standard instructions
 /// should only not be implemented for targets like physical hardware, where the
@@ -519,11 +525,5 @@ impl fmt::Display for StandardOp {
             // Self::Poke(loc) => write!(f, "poke {loc}"),
             Self::Call(binding) => write!(f, "call {}", binding),
         }
-    }
-}
-
-impl From<CoreProgram> for StandardProgram {
-    fn from(core: CoreProgram) -> Self {
-        Self::new(core.code.into_iter().map(StandardOp::CoreOp).collect())
     }
 }

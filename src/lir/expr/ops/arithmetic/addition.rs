@@ -143,6 +143,7 @@ impl BinaryOp for Add {
             (Type::Struct(lhs_fields), Type::Struct(rhs_fields)) => {
                 // Get the new struct type so we can actually set the elements in the right layout
                 let result = self.return_type_from_types(lhs, rhs, env)?;
+                let result_size = result.get_size(env)?;
 
                 // Get the offsets of each element
                 let mut lhs_offsets = BTreeMap::new();
@@ -161,23 +162,25 @@ impl BinaryOp for Add {
 
                 let lhs_size = lhs.get_size(env)?;
                 let rhs_size = rhs.get_size(env)?;
+                assert_eq!(lhs_size + rhs_size, result_size);
+
                 output.op(CoreOp::Move { src: SP, dst: A });
                 let rhs_bp = A.deref().offset(1 - rhs_size as isize);
                 let lhs_bp = rhs_bp.offset(-(lhs_size as isize));
 
                 if let Type::Struct(result_fields) = &result {
                     for (name, ty) in result_fields {
+                        // The size of the struct element
+                        let field_size = ty.get_size(env)?;
+
+                        // If its in the left hand side, push it from the left hand side
                         if let Some(offset) = lhs_offsets.get(name) {
-                            output.op(CoreOp::Push(
-                                lhs_bp.offset(*offset as isize),
-                                ty.clone().get_size(env)?,
-                            ));
+                            output.op(CoreOp::Push(lhs_bp.offset(*offset as isize), field_size));
                         } else if let Some(offset) = rhs_offsets.get(name) {
-                            output.op(CoreOp::Push(
-                                rhs_bp.offset(*offset as isize),
-                                ty.clone().get_size(env)?,
-                            ));
+                            // Otherwise, push it from the right hand side
+                            output.op(CoreOp::Push(rhs_bp.offset(*offset as isize), field_size));
                         } else {
+                            // If it doesn't exist in either, then we have a problem
                             return Err(Error::InvalidBinaryOpTypes(
                                 self.clone_box(),
                                 lhs.clone(),
@@ -186,14 +189,16 @@ impl BinaryOp for Add {
                         }
                     }
 
+                    // Copy the result over the old arguments
                     output.op(CoreOp::Copy {
-                        src: SP.deref().offset(1 - result.get_size(env)? as isize),
+                        src: SP.deref().offset(1 - result_size as isize),
                         dst: lhs_bp,
-                        size: result.get_size(env)?,
+                        size: result_size,
                     });
+                    // Pop the copied result
                     output.op(CoreOp::Pop(
                         None,
-                        lhs_size + rhs_size - result.get_size(env)?,
+                        result_size
                     ));
                     return Ok(());
                 }
