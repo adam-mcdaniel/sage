@@ -11,7 +11,7 @@ use log::trace;
 /// When `match`ing, the pattern just checks if the expression matches the pattern.
 /// When `bind`ing, the pattern binds the expression to corresponding variables in the
 /// pattern, and evaluates an expression with those variables.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Pattern {
     Tuple(Vec<Pattern>),
     Struct(HashMap<String, Pattern>),
@@ -1069,5 +1069,11 @@ impl Display for Pattern {
 
             Self::Wildcard => write!(f, "_"),
         }
+    }
+}
+
+impl Debug for Pattern {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(f, "{self}")
     }
 }

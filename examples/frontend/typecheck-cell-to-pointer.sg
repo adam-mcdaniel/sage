@@ -1,0 +1,1 @@
+let x = 1 as Cell as &Int;
