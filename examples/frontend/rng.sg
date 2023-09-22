@@ -1,0 +1,21 @@
+// A random number generator
+let static mut STATE: Int = 0;
+
+def seed(n: Int) {
+    STATE = n;
+}
+
+def rand(): Int {
+    STATE = (STATE * 1103515245 + 12345) % 2147483648;
+    return STATE;
+}
+
+def main() {
+    seed(1);
+    for let mut i=0; i<100; i+=1 {
+        let n = rand() % 0x100;
+        print(i, "| ", n as Char, " -> ", n, "\n");
+    }
+}
+
+main();
