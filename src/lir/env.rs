@@ -88,7 +88,7 @@ impl Env {
     /// Add all the declarations to this environment.
     pub(super) fn add_declaration(&mut self, declaration: &Declaration) -> Result<(), Error> {
         self.add_compile_time_declaration(declaration)?;
-        self.add_variable_declaration(declaration)?;
+        self.add_local_variable_declaration(declaration)?;
         Ok(())
     }
 
@@ -142,7 +142,7 @@ impl Env {
     /// Add a single variable declaration to this environment. These are declarations
     /// for variables that are defined at runtime. Types, constants, and procedures
     /// are not included because they are defined at compile-time.
-    pub(super) fn add_variable_declaration(&mut self, declaration: &Declaration) -> Result<(), Error> {
+    pub(super) fn add_local_variable_declaration(&mut self, declaration: &Declaration) -> Result<(), Error> {
         match declaration {
             Declaration::Type(_, _) => {
                 // Types are not defined at runtime.
@@ -175,7 +175,7 @@ impl Env {
             }
             Declaration::Many(decls) => {
                 for decl in decls {
-                    self.add_variable_declaration(decl)?;
+                    self.add_local_variable_declaration(decl)?;
                 }
             }
         }

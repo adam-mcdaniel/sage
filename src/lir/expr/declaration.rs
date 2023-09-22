@@ -83,7 +83,7 @@ impl Declaration {
                 expr.clone().compile_expr(env, output)?;
 
                 // Get the size of the variable we are writing to.
-                env.add_variable_declaration(self)?;
+                env.add_local_variable_declaration(self)?;
                 output.log_instructions_after(&name, &message, current_instruction);
             }
             Declaration::VarPat(pat, expr) => {
