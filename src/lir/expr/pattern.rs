@@ -858,11 +858,21 @@ impl Pattern {
 
     /// Let-bind the pattern to the given expression. This will define all the bindings
     /// in the environment, and then assign the bound expression to all the pattern bindings.
+    /// 
+    /// This function works by sorting out where the bindings are in the expression, and then
+    /// defining the bindings in the environment to map to the correct position in the stack
+    /// relative to the expression. ***If the expression and pattern differ in size or type,
+    /// then this will not work correctly. This function does not check the arguments.***
     pub fn declare_let_bind(&self, expr: &Expr, ty: &Type, env: &mut Env) -> Result<(), Error> {
+        // Get the type of the expression being matched.
         let ty = &ty.simplify_until_concrete(env)?;
+        // Get the variable bindings for the pattern.
+        // This tells us the type and mutability of each variable.
         let bindings = self.get_bindings_with_offset(expr, ty, env, 0)?;
-        // Sort the bindings by their offset.
         let mut bindings: Vec<_> = bindings.into_iter().collect();
+        // Sort the bindings by their offset.
+        // This will give us the order in which the bindings should be defined
+        // on the stack.
         bindings.sort_by_key(|(_, (_, _, offset))| *offset);
         // Define all the bindings in the environment.
         for (name, (mutability, ty, _)) in &bindings {
