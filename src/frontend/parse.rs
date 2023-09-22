@@ -114,6 +114,10 @@ impl Statement {
             //     }
             //     return Expr::LetVars(vars, Box::new(Expr::Many(vec![body.to_expr(Some(*ret))])))
             // }
+            (Self::Let(defs), _) => return rest_expr.with(defs),
+            (Self::LetPattern(defs), _) => return rest_expr.with(defs),
+            (Self::LetStatic(defs), _) => return rest_expr.with(defs.into_iter().map(|(a, b, c, d)| crate::lir::Declaration::StaticVar(a, b, c, d)).collect::<Vec<crate::lir::Declaration>>()),
+            
             (Self::LetIn(defs, body), _) => body.to_expr(None).with(defs),
             (Self::LetStaticIn(defs, body), _) => {
                 // Expr::LetStaticVars(defs, Box::new(body.to_expr(None)))
@@ -123,23 +127,7 @@ impl Statement {
                 }
                 result
             }
-            (Self::Let(defs), Some(Expr::Declare(vars, ret))) => {
-                let mut result = *ret;
-                for (name, mutability, ty, val) in defs.into_iter().rev() {
-                    result = result.with(crate::lir::Declaration::Var(name, mutability, ty, val));
-                }
-                result.with(vars)
-            }
-            (Self::Let(defs), _) => return rest_expr.with(defs),
-            (Self::LetPattern(defs), Some(Expr::Declare(vars, ret))) => {
-                let mut result = *ret;
-                for (pat, expr) in defs.into_iter().rev() {
-                    result = result.with(crate::lir::Declaration::VarPat(pat, expr));
-                }
-                result.with(vars)
-            }
-            (Self::LetPattern(defs), _) => return rest_expr.with(defs),
-            (Self::LetStatic(defs), _) => return rest_expr.with(defs.into_iter().map(|(a, b, c, d)| crate::lir::Declaration::StaticVar(a, b, c, d)).collect::<Vec<crate::lir::Declaration>>()),
+
             (Self::Expr(e), _) => e,
         };
         if let Some(Expr::Many(mut stmts)) = rest {
@@ -203,11 +191,11 @@ impl Declaration {
                 )),
             )])
             .to_expr(rest),
-            (Self::Struct(name, fields), Some(Expr::Declare(mut types, ret))) => {
+            (Self::Struct(name, fields), Some(Expr::Declare(types, ret))) => {
                 ret.with(types.join((name, Type::Struct(fields.into_iter().collect()))))
             }
             (Self::Struct(name, fields), _) => rest_expr.with((name, Type::Struct(fields.into_iter().collect()))),
-            (Self::Enum(name, variants), Some(Expr::Declare(mut types, ret))) => {
+            (Self::Enum(name, variants), Some(Expr::Declare(types, ret))) => {
                 let mut simple = true;
                 for (_, value) in variants.iter() {
                     if value.is_some() {
@@ -295,7 +283,7 @@ impl Declaration {
             (Self::Const(consts), _) => {
                 rest_expr.with(consts)
             }
-            (Self::Proc(name, params, ret, stmt), Some(Expr::Declare(mut procs, ret2))) => {
+            (Self::Proc(name, params, ret, stmt), Some(Expr::Declare(procs, ret2))) => {
                 ret2.with((
                     name.clone(),
                     Self::proc_to_expr(name, params, ret, *stmt),
@@ -311,7 +299,7 @@ impl Declaration {
             }
             (
                 Self::PolyProc(name, ty_params, params, ret, stmt),
-                Some(Expr::Declare(mut decls, ret2)),
+                Some(Expr::Declare(decls, ret2)),
             ) => {
                 ret2.with((
                     name.clone(),
@@ -336,7 +324,7 @@ impl Declaration {
                     )),
                 ))
             }
-            (Self::Type(mut types), Some(Expr::Declare(mut types2, ret))) => {
+            (Self::Type(types), Some(Expr::Declare(types2, ret))) => {
                 // types.append(&mut types2);
                 // Expr::LetTypes(types, ret)
                 ret.with(types).with(types2)

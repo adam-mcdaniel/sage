@@ -31,7 +31,7 @@ pub enum Expr {
     Many(Vec<Self>),
 
     /// Declare any number of variables, procedures, types, or constants.
-    /// Evaluate a subexpression in that scope.
+    /// Evaluate a sub-expression in that scope.
     Declare(Box<Declaration>, Box<Self>),
 
     /// Create a while loop: while the first expression evaluates to true, evaluate the second expression.
