@@ -397,9 +397,6 @@ impl GetType for ConstExpr {
                 *cast_ty = cast_ty.substitute(name, ty);
             }
             Self::Declare(bindings, expr) => {
-                // if bindings.iter().map(|(n, _)| n).any(|n| n == name) {
-                //     return;
-                // }
                 bindings.substitute(name, ty);
                 expr.substitute(name, ty);
             }

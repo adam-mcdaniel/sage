@@ -95,6 +95,7 @@ pub enum Expr {
     /// The `String` field is the variant the tagged union is being initialized with.
     /// The `Box<Self>` field is the value of the union's data we want to initialize.
     EnumUnion(Type, String, Box<Self>),
+    
     /// A structure of fields to expressions.
     Struct(BTreeMap<String, Self>),
 
