@@ -831,6 +831,7 @@ impl TypeCheck for ConstExpr {
                     || env.get_proc(name).is_some()
                     || env.get_var(name).is_some()
                     || env.get_static_var(name).is_some()
+                    || env.get_type(name).is_some()
                 {
                     // Return success.
                     Ok(())

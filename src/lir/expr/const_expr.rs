@@ -197,6 +197,8 @@ impl ConstExpr {
                 Self::Symbol(name) => {
                     if let Some(c) = env.get_const(&name) {
                         c.clone().eval_checked(env, i)
+                    } else if let Some(t) = env.get_type(&name){
+                        Ok(Self::Type(t.clone()))
                     } else {
                         Ok(Self::Symbol(name))
                     }
@@ -271,7 +273,7 @@ impl ConstExpr {
             // Check to see if the constexpr is already a symbol.
             Self::Symbol(name) => Ok(name),
             // If not, evaluate it and see if it's a symbol.
-            other => match other.eval_checked(env, 0)? {
+            other => match other.eval(env)? {
                 Self::Symbol(name) => Ok(name),
                 other => Err(Error::NonSymbol(other)),
             },
@@ -367,6 +369,9 @@ impl GetType for ConstExpr {
                 } else if let Some((_, t, _)) = env.get_static_var(&name) {
                     // If the symbol is a static variable, push it onto the stack.
                     t.clone()
+                } else if let Some(t) = env.get_type(&name) {
+                    // If this is the name of a type, then the type of the symbol is the type itself.
+                    Type::Type(t.clone().into())
                 } else {
                     // Otherwise, evaluate the symbol as a constant.
                     match Self::Symbol(name).eval(env)? {
@@ -468,7 +473,9 @@ impl GetType for ConstExpr {
             Self::FFIProcedure(ffi_proc) => {
                 ffi_proc.substitute(name, subsitution);
             }
-            Self::Symbol(_) => {}
+            Self::Symbol(_) => {
+                // A constant symbol cannot be substituted for a type variable.
+            }
         }
     }
 }
