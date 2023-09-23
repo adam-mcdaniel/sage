@@ -765,6 +765,9 @@ impl Compile for ConstExpr {
         let current_instruction = output.current_instruction();
         // Compile the constant expression.
         match self {
+            Self::Type(_) => {
+                // Do nothing.
+            }
             Self::Annotated(expr, metadata) => {
                 expr.compile_expr(env, output)
                     .map_err(|err| err.annotate(metadata))?;

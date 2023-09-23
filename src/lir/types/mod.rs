@@ -10,9 +10,11 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 mod check;
 mod inference;
 mod size;
+mod traits;
 pub use check::*;
 pub use inference::*;
 pub use size::*;
+pub use traits::*;
 
 use log::{error, trace, warn};
 
@@ -141,13 +143,19 @@ pub enum Type {
     Array(Box<Self>, Box<ConstExpr>),
     /// A tuple with named members. This is a product type.
     Struct(BTreeMap<String, Self>),
-
     /// An enumeration of a list of possible types. This is a sum type.
     /// The enum union is essentially a regular union type, but with a tag
     /// to guarantee typesafety of accessing members.
     ///
     /// The tag is stored at the very beginning of the value.
     EnumUnion(BTreeMap<String, Self>),
+
+    /// A trait object. This is internally represented as an `EnumUnion` over the possible
+    /// types that can be stored in the trait object.
+    // TraitObject(TraitObject),
+
+    /// A type. This converts a type into a value.
+    Type(Box<Type>),
 
     /// A union of a list of possible types mapped to named members.
     /// A union's value is reinterpreted as a single type, depending on the member accessed.
@@ -210,6 +218,7 @@ impl Type {
             | Self::Array(_, _)
             | Self::Tuple(_)
             | Self::Unit(_, _)
+            | Self::Type(_)
             | Self::Pointer(_, _) => true,
         }
     }
@@ -225,7 +234,8 @@ impl Type {
             | Self::Bool
             | Self::Any
             | Self::Never
-            | Self::Enum(_) => true,
+            | Self::Enum(_)
+            | Self::Type(_) => true,
             Self::Tuple(inner) => inner.iter().all(|t| t.is_atomic()),
             Self::Array(inner, _) => inner.is_atomic(),
             Self::Proc(args, ret) => args.iter().all(|t| t.is_atomic()) && ret.is_atomic(),
@@ -329,6 +339,7 @@ impl Type {
                 // Does the inner symbol use this type variable?
                 t.contains_symbol(name)
             }
+            Self::Type(t) => t.contains_symbol(name),
             Self::Poly(ty_params, template) => {
                 if ty_params.contains(&name.to_string()) {
                     // This type variable is shadowed by a template variable.
@@ -377,6 +388,7 @@ impl Type {
     /// This will not traverse into let-bindings when the symbol is overshadowed.
     pub fn substitute(&self, name: &str, substitution: &Self) -> Self {
         match self {
+            Self::Type(t) => Self::Type(Box::new(t.substitute(name, substitution))),
             Self::Let(typename, binding, ret) => Self::Let(
                 typename.clone(),
                 if typename == name {
@@ -1236,6 +1248,8 @@ impl Simplify for Type {
 
         let _s = self.to_string();
         let result = match self {
+            Self::Type(t) => Self::Type(t.simplify_checked(env, i)?.into()),
+
             Self::None
             | Self::Never
             | Self::Any
@@ -1334,6 +1348,7 @@ impl Simplify for Type {
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Self::Type(t) => write!(f, "{t}"),
             Self::Any => write!(f, "Any"),
             Self::Never => write!(f, "Never"),
             Self::Pointer(mutability, ty) => {
@@ -1533,6 +1548,10 @@ impl std::hash::Hash for Type {
                 name.hash(state);
                 ty.hash(state);
                 ret.hash(state);
+            }
+            Self::Type(t) => {
+                state.write_u8(21);
+                t.hash(state);
             }
         }
     }

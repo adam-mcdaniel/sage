@@ -39,6 +39,8 @@ impl TypeCheck for Type {
             | Self::Char
             | Self::Enum(_) => Ok(()),
 
+            Self::Type(t) => t.type_check(env),
+
             // Units are sound if their inner type is sound.
             Self::Unit(_unit_name, t) => t.type_check(env),
 
@@ -746,6 +748,9 @@ impl TypeCheck for ConstExpr {
             Self::Annotated(expr, metadata) => {
                 expr.type_check(env).map_err(|e| e.annotate(metadata.clone()))
             }
+
+            // Typecheck a type expression.
+            Self::Type(t) => t.type_check(env),
 
             // These are all guaranteed to be valid, or
             // to fail at compile time.

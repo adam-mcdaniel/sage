@@ -66,7 +66,7 @@ impl GetSize for Type {
             // don't know what it is yet. So we return an error.
             //
             // **Its size is undefined.**
-            Self::Any => return Err(Error::UnsizedType(self.clone())),
+            Self::Type(_) | Self::Any => return Err(Error::UnsizedType(self.clone())),
 
             // Get the size of an inline type.
             Self::Let(name, t, ret) => {
