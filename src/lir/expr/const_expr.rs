@@ -13,7 +13,7 @@ use crate::lir::{
     Annotation, Declaration, CoreBuiltin, Env, Error, Expr, FFIProcedure, GetSize, GetType, Mutability, PolyProcedure,
     Procedure, Simplify, StandardBuiltin, Type,
 };
-use log::error;
+use log::{trace, error};
 
 use core::fmt;
 use std::collections::BTreeMap;
@@ -289,7 +289,7 @@ impl Simplify for ConstExpr {
 
 impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        // trace!("Getting type from constexpr: {self}");
+        trace!("Getting type from constexpr: {self}");
         Ok(match self.clone() {
             Self::Type(t) => Type::Type(t.into()),
 
@@ -317,7 +317,6 @@ impl GetType for ConstExpr {
             }
             Self::Monomorphize(expr, ty_args) => {
                 // Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::<Result<Vec<Type>, Error>>()?).perform_template_applications(env, &mut HashMap::new(), 0)?
-
                 Type::Apply(Box::new(expr.get_type_checked(env, i)?), ty_args)
             }
             Self::TypeOf(expr) => {

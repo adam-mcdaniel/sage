@@ -524,12 +524,24 @@ impl Compile for Expr {
             Self::Member(ref val, ref member) => {
                 // If the value we're getting a field from is a pointer,
                 // then dereference it and get the field from the value.
-                if let Type::Pointer(_, _) = val.get_type(env)? {
-                    val.clone()
-                        .deref()
-                        .field(member.clone())
-                        .compile_expr(env, output)?;
-                    return Ok(());
+                match val.get_type(env)? {
+                    Type::Pointer(_, _) => {
+                        val.clone()
+                            .deref()
+                            .field(member.clone())
+                            .compile_expr(env, output)?;
+                        return Ok(());
+                    }
+                    Type::Type(ty) => {
+                        let member_as_symbol = member.clone().as_symbol(env)?;
+
+                        if let Some(constant) = env.get_associated_const(&ty, &member_as_symbol) {
+                            return constant.clone().compile_expr(env, output);
+                        } else {
+                            return Err(Error::SymbolNotDefined(member_as_symbol));
+                        }
+                    }
+                    _ => {}
                 }
 
                 // Get the size of the field we want to retrieve.

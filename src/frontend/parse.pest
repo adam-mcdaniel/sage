@@ -7,7 +7,7 @@ keyword = @{
     | "return" | "struct" | "enum" | "as" | "of" | "sizeof"
     | "def" | "let" | "const" | "type" | "core" | "std"
     | "Int" | "Float" | "Bool" | "Char" | "Cell" | "None" | "Null" | "Never"
-    | "True" | "False" | "new" | "mut"
+    | "True" | "False" | "new" | "mut" | "impl" | "extern"
 }
 
 operator = @{
@@ -68,6 +68,7 @@ decl = {
     | decl_type
     | decl_struct
     | decl_enum
+    | decl_impl
     | decl_const
     | decl_extern
     | stmt
@@ -75,6 +76,12 @@ decl = {
 decl_proc = {
     decl_proc_block
     | decl_proc_expr
+}
+decl_impl = {
+    "impl" ~ type ~ "{" ~ decl_imp_child_decl* ~ "}"
+}
+decl_imp_child_decl = {
+    decl_const | decl_proc | decl_type | decl_struct | decl_enum
 }
 decl_proc_block = { "def" ~ symbol ~ type_parameters? ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ "="? ~ stmt_block }
 decl_proc_expr = { "def" ~ symbol ~ type_parameters? ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ "=" ~ expr ~ ";"+ }

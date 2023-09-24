@@ -24,6 +24,8 @@ pub enum Declaration {
     VarPat(Pattern, Expr),
     /// A foreign function declaration.
     ExternProc(String, FFIProcedure),
+    /// Declare associated constants and procedures for a type.
+    Impl(Type, Vec<(String, ConstExpr)>),
     /// Many declarations.
     Many(Vec<Declaration>),
 }
@@ -200,39 +202,44 @@ impl Declaration {
     }
 
     /// Substitute a type symbol for a type.
-    pub(crate) fn substitute(&mut self, name: &str, ty: &Type) {
+    pub(crate) fn substitute(&mut self, substitution_name: &str, substitution_ty: &Type) {
         match self {
             Self::StaticVar(name, _mutability, expected_ty, expr) => {
-                expr.substitute(name, ty);
-                expected_ty.substitute(name, ty);
+                expr.substitute(substitution_name, substitution_ty);
+                expected_ty.substitute(substitution_name, substitution_ty);
             }
             Self::Var(name, _mutability, expected_ty, expr) => {
-                expr.substitute(name, ty);
+                expr.substitute(substitution_name, substitution_ty);
                 if let Some(expected_ty) = expected_ty {
-                    expected_ty.substitute(name, ty);
+                    *expected_ty = expected_ty.substitute(substitution_name, substitution_ty);
                 }
             }
-            Self::Proc(name, proc) => {
-                proc.substitute(name, ty);
+            Self::Proc(_name, proc) => {
+                proc.substitute(substitution_name, substitution_ty);
             }
-            Self::PolyProc(name, proc) => {
-                proc.substitute(name, ty);
+            Self::PolyProc(_name, proc) => {
+                proc.substitute(substitution_name, substitution_ty);
             }
-            Self::Type(name, ty) => {
-                ty.substitute(name, ty);
+            Self::Type(_name, ty) => {
+                *ty = ty.substitute(substitution_name, substitution_ty);
             }
-            Self::Const(name, expr) => {
-                expr.substitute(name, ty);
+            Self::Const(_name, expr) => {
+                expr.substitute(substitution_name, substitution_ty);
             }
             Self::VarPat(_pat, expr) => {
-                expr.substitute(name, ty);
+                expr.substitute(substitution_name, substitution_ty);
             }
-            Self::ExternProc(name, proc) => {
-                proc.substitute(name, ty);
+            Self::ExternProc(_name, proc) => {
+                proc.substitute(substitution_name, substitution_ty);
+            }
+            Self::Impl(name, impls) => {
+                for (name, expr) in impls {
+                    expr.substitute(substitution_name, substitution_ty);
+                }
             }
             Self::Many(decls) => {
                 for decl in decls {
-                    decl.substitute(name, ty);
+                    decl.substitute(substitution_name, substitution_ty);
                 }
             }
         }
@@ -341,6 +348,11 @@ impl TypeCheck for Declaration {
             Self::ExternProc(_name, proc) => {
                 proc.type_check(env)?;
             }
+            Self::Impl(_name, impls) => {
+                for (_name, expr) in impls {
+                    expr.type_check(env)?;
+                }
+            }
             // Typecheck a multi-declaration.
             Self::Many(decls) => {
                 let mut new_env = env.clone();
@@ -391,6 +403,14 @@ impl Display for Declaration {
             Self::ExternProc(name, proc) => {
                 write!(f, "extern {}", proc)?;
                 write!(f, " {}", name)?;
+            },
+            Self::Impl(name, impls) => {
+                write!(f, "impl {}", name)?;
+                write!(f, " {{")?;
+                for (name, expr) in impls {
+                    write!(f, "{} = {}", name, expr)?;
+                }
+                write!(f, "}}")?;
             },
             Self::Many(decls) => {
                 for decl in decls {

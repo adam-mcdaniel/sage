@@ -143,6 +143,7 @@ impl Statement {
 
 #[derive(Clone, Debug)]
 pub enum Declaration {
+    Impl(Type, Vec<(String, ConstExpr)>),
     Struct(String, Vec<(String, Type)>),
     Extern(String, Vec<(Option<String>, Type)>, Type),
     Enum(String, Vec<(String, Option<Type>)>),
@@ -191,6 +192,7 @@ impl Declaration {
                 )),
             )])
             .to_expr(rest),
+            (Self::Impl(ty, methods), _) => return rest_expr.with(crate::lir::Declaration::Impl(ty, methods)),
             (Self::Struct(name, fields), Some(Expr::Declare(types, ret))) => {
                 ret.with(types.join((name, Type::Struct(fields.into_iter().collect()))))
             }
@@ -381,6 +383,48 @@ fn parse_decl(pair: Pair<Rule>, filename: Option<&str>) -> Declaration {
             .map(|x| parse_decl(x, filename))
             .next()
             .unwrap(),
+        
+        Rule::decl_impl => {
+            let mut inner_rules = pair.into_inner();
+            let ty = parse_type(inner_rules.next().unwrap());
+            let mut constants = vec![];
+            while inner_rules.peek().is_some() {
+                let decl = parse_decl(inner_rules.next().unwrap(), filename);
+                match decl {
+                    Declaration::Const(mut decls) => {
+                        constants.append(&mut decls)
+                    }
+                    Declaration::Proc(name, args, ret, body) => {
+                        constants.push((name.clone(), ConstExpr::Proc(Procedure::new(Some(name), args, ret.unwrap_or(Type::None), body.to_expr(None)))))
+                    }
+                    Declaration::PolyProc(name, ty_params, args, ret, body) => {
+                        constants.push((name.clone(), ConstExpr::PolyProc(PolyProcedure::new(name, ty_params, args, ret.unwrap_or(Type::None), body.to_expr(None)))))
+                    }
+                    Declaration::Type(types) => {
+                        for (name, ty) in types {
+                            constants.push((name, ConstExpr::Type(ty)))
+                        }
+                    }
+                    Declaration::Enum(name, variants) => {
+                        constants.push((name.clone(), ConstExpr::Type(Type::EnumUnion(variants.into_iter().map(|(a, x)| {
+                            (a, x.unwrap_or(Type::None))
+                        }).collect()))))
+                    }
+                    Declaration::Struct(name, fields) => {
+                        constants.push((name.clone(), ConstExpr::Type(Type::Struct(fields.into_iter().collect()))))
+                    }
+                    _ => {
+                        panic!("Unexpected declaration in impl: {:?}", decl)
+                    }
+                }
+            }
+            Declaration::Impl(ty, constants)
+        }
+
+        Rule::decl_imp_child_decl => {
+            parse_decl(pair.into_inner().next().unwrap(), filename)
+        }
+
         Rule::decl_proc_block | Rule::decl_proc_expr => {
             let mut inner_rules = pair.into_inner();
             let name = inner_rules.next().unwrap().as_str().to_string();
@@ -1012,6 +1056,12 @@ fn parse_expr_term(pair: Pair<Rule>) -> Expr {
                 if head == Expr::ConstExpr(ConstExpr::Symbol("print".to_string())) {
                     let mut exprs: Vec<Expr> =
                         args.into_iter().map(|val| val.unop(Put::Display)).collect();
+                    exprs.push(Expr::ConstExpr(ConstExpr::None));
+                    Expr::Many(exprs)
+                } else if head == Expr::ConstExpr(ConstExpr::Symbol("println".to_string())) {
+                    let mut exprs: Vec<Expr> =
+                        args.into_iter().map(|val| val.unop(Put::Display)).collect();
+                    exprs.push(Expr::ConstExpr(ConstExpr::Char('\n')).unop(Put::Display));
                     exprs.push(Expr::ConstExpr(ConstExpr::None));
                     Expr::Many(exprs)
                 } else if head == Expr::ConstExpr(ConstExpr::Symbol("input".to_string())) {

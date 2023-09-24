@@ -31,6 +31,8 @@ pub struct Env {
     static_vars: Rc<HashMap<String, (Mutability, Type, Location)>>,
     /// A lookup for the offsets of global variables.
     globals: Rc<Mutex<Globals>>,
+    /// Associated constants for types.
+    associated_constants: Rc<HashMap<Type, HashMap<String, ConstExpr>>>,
 
     /// The current offset of the frame pointer to assign to the next variable.
     /// This is incremented by the size of each variable as it is defined.
@@ -59,6 +61,7 @@ impl Default for Env {
             vars: Rc::new(HashMap::new()),
             static_vars: Rc::new(HashMap::new()),
             globals: Rc::new(Mutex::new(Globals::new())),
+            associated_constants: Rc::new(HashMap::new()),
 
             // The last argument is stored at `[FP]`, so our first variable must be at `[FP + 1]`.
             fp_offset: 1,
@@ -79,10 +82,73 @@ impl Env {
             static_vars: self.static_vars.clone(),
             type_sizes: self.type_sizes.clone(),
             globals: self.globals.clone(),
+            associated_constants: self.associated_constants.clone(),
 
             // The rest are the same as a new environment.
             ..Env::default()
         }
+    }
+
+    pub fn get_associated_const(&self, ty: &Type, name: &str) -> Option<&ConstExpr> {
+        trace!("Getting associated const {name} of type {ty} in {self}");
+        if let Some(consts) = self.associated_constants.get(ty).and_then(|consts| consts.get(name)) {
+            return Some(consts);
+        }
+        // Go through all the types and see if any equals the given type.
+        for (other_ty, consts) in self.associated_constants.iter() {
+            if !ty.can_decay_to(other_ty, self).unwrap_or(false) {
+                trace!("Type {other_ty} does not equal {ty}");
+                continue;
+            }
+            trace!("Found eligible type {other_ty} for {ty}");
+            if let Some(const_expr) = consts.get(name) {
+                return Some(const_expr);
+            }
+        }
+        None
+    }
+
+    pub fn has_associated_const(&self, ty: &Type, name: &str) -> bool {
+        self.get_associated_const(ty, name).is_some()
+    }
+
+    pub fn get_all_associated_consts(&self, ty: &Type) -> Vec<(&str, &ConstExpr)> {
+        trace!("Getting all associated constants of type {ty}");
+        let mut result = Vec::new();
+        if let Some(consts) = self.associated_constants.get(ty) {
+            for (name, const_expr) in consts.iter() {
+                result.push((name.as_str(), const_expr));
+            }
+        }
+        // Go through all the types and see if any equals the given type.
+        for (other_ty, consts) in self.associated_constants.iter() {
+            if ty == other_ty {
+                continue;
+            }
+            if !ty.can_decay_to(other_ty, self).unwrap_or(false) {
+                trace!("Type {other_ty} does not equal {ty}");
+                continue;
+            }
+            trace!("Found eligible type {other_ty} for {ty}");
+            for (name, const_expr) in consts.iter() {
+                result.push((name.as_str(), const_expr));
+            }
+        }
+        result
+    }
+
+    pub fn add_associated_const(
+        &mut self,
+        ty: Type,
+        associated_const_name: impl ToString,
+        expr: ConstExpr,
+    ) {
+        let associated_const_name = associated_const_name.to_string();
+        trace!("Defining associated const {associated_const_name} as {expr} to type {ty}");
+        Rc::make_mut(&mut self.associated_constants)
+            .entry(ty)
+            .or_default()
+            .insert(associated_const_name, expr);
     }
 
     /// Add all the declarations to this environment.
@@ -114,6 +180,11 @@ impl Env {
             }
             Declaration::StaticVar(name, mutability, ty, _expr) => {
                 self.define_static_var(name, *mutability, ty.clone())?;
+            }
+            Declaration::Impl(ty, impls) => {
+                for (name, associated_const) in impls {
+                    self.add_associated_const(ty.clone(), name, associated_const.clone());
+                }
             }
             Declaration::Var(_, _, _, _) => {
                 // Variables are not defined at compile-time.
@@ -161,6 +232,9 @@ impl Env {
             }
             Declaration::StaticVar(_, _, _, _) => {
                 // Static variables are not defined at runtime.
+            }
+            Declaration::Impl(_, _) => {
+                // Implementations are not defined at runtime.
             }
             Declaration::Var(name, mutability, ty, expr) => {
                 let ty = match ty {
@@ -456,6 +530,14 @@ impl Display for Env {
         writeln!(f, "   Types:")?;
         for (name, ty) in self.types.iter() {
             writeln!(f, "      {}: {}", name, ty)?;
+            let constants = self.get_all_associated_consts(ty);
+            if constants.is_empty() {
+                continue;
+            }
+            writeln!(f, "         Associated constants:")?;
+            for (name, cexpr) in constants {
+                writeln!(f, "            {}: {}", name, cexpr)?;
+            }
         }
         writeln!(f, "   Constants:")?;
         for (name, e) in self.consts.iter() {

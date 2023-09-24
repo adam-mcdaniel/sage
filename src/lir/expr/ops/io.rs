@@ -102,6 +102,22 @@ impl Put {
     ) -> Result<(), Error> {
         let t = &t.simplify_until_concrete(env)?;
         match t {
+            Type::Type(t) => {
+                for c in format!("{}", t).chars() {
+                    output.op(CoreOp::Set(A, c as u8 as i64));
+                    output.op(CoreOp::Put(A, Output::stdout_char()));
+                }
+
+                // Print associated constants
+                for (name, constant) in env.get_all_associated_consts(t) {
+                    for c in format!(" const {name} = {constant};")
+                        .chars()
+                    {
+                        output.op(CoreOp::Set(A, c as u8 as i64));
+                        output.op(CoreOp::Put(A, Output::stdout_char()));
+                    }
+                }
+            }
             Type::Pointer(mutability, _) => {
                 let prefix = if mutability.is_mutable() {
                     "&mut ("

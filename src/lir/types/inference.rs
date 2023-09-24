@@ -257,6 +257,12 @@ impl GetType for Expr {
                     .get_type_checked(env, i)?
                     .simplify_until_has_members(env)
                 {
+                    Ok(Type::Type(ty)) => {
+                        // Get the associated constant expression's type.
+                        env.get_associated_const(&ty, &as_symbol?)
+                            .ok_or(Error::MemberNotFound(*val.clone(), field.clone()))?
+                            .get_type_checked(env, i)?
+                    }
                     Ok(Type::Pointer(_, t)) => t.get_member_offset(field, val, env)?.0,
                     // If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.

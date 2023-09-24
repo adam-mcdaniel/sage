@@ -1,0 +1,42 @@
+// A point with x and y coordinates
+struct Point {
+    x: Int,
+    y: Int
+}
+
+impl Point {
+    // Associated constant for `Point` type
+    const ORIGIN = {x=0, y=0};
+
+    // Return a new point moved by dx, dy
+    def move(mut self: Point, dx: Int, dy: Int): Point {
+        self.x += dx;
+        self.y += dy;
+        return self;
+    }
+
+    // Shift the point by dx, dy.
+    // This will mutate the point, and will not return a new point.
+    def shift(self: &mut Point, dx: Int, dy: Int) {
+        self.x += dx;
+        self.y += dy;
+    }
+}
+
+// Print out the type
+println("Type: ", Point);
+// Print out the origin
+println("Origin: ", Point.ORIGIN);
+// Create a new point
+let mut p = {x=1, y=2};
+// Print out the point moved by 2, -3
+println(Point.move(p, 2, -3));
+// Mutate the point by 2, -3
+Point.shift(&mut p, 2, -3);
+// Print out the mutated point (should be the same)
+println(p);
+
+def exit(): ! {
+    println("Exiting...");
+    while True {}
+}

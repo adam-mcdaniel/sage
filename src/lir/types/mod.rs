@@ -258,7 +258,7 @@ impl Type {
         self.clone().simplify_until_matches(env, Type::Any, |t, _| {
             Ok(matches!(
                 t,
-                Type::Tuple(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_, _)
+                Type::Tuple(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_, _) | Type::Type(_)
             ))
         })
     }
@@ -1164,6 +1164,17 @@ impl Type {
         env: &Env,
     ) -> Result<(), Error> {
         match self {
+            Type::Type(ty) => {
+                let name = member.clone().as_symbol(env)?;
+                
+                if env.has_associated_const(ty, &name) {
+                    Ok(())
+                } else {
+                    error!("Type {self} does not have member {member}");
+                    Err(Error::MemberNotFound(expr.clone(), member.clone()))
+                }
+            }
+
             Type::Pointer(_, t) => t.type_check_member(member, expr, env),
 
             Type::Struct(members) => {

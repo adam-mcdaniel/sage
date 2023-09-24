@@ -60,13 +60,13 @@ impl GetSize for Type {
         Ok(match self {
             // None or Never are not real types, so they have no size.
             // They are not represented with data. They have zero size.
-            Self::None | Self::Never => 0,
+            Self::Type(_) | Self::None | Self::Never => 0,
             // The `Any` type is really a placeholder for a type that is not yet
             // known. It *does* have a size, unlike `None` and `Never`, but we
             // don't know what it is yet. So we return an error.
             //
             // **Its size is undefined.**
-            Self::Type(_) | Self::Any => return Err(Error::UnsizedType(self.clone())),
+            Self::Any => return Err(Error::UnsizedType(self.clone())),
 
             // Get the size of an inline type.
             Self::Let(name, t, ret) => {
