@@ -1,8 +1,95 @@
+impl Int {
+    const ZERO = 0;
+
+    def inc(self: &mut Int) {
+        *self += 1;
+    }
+
+    def log(mut self: Int, base: Int): Int {
+        let mut result = 0;
+        while self > 1 {
+            self /= base;
+            result += 1;
+        }
+        return result;
+    }
+
+    def log2(self: Int): Int {
+        return self.log(2);
+    }
+
+    def log10(self: Int): Int {
+        return self.log(10);
+    }
+}
+
+impl Cell {
+    def inc(self: &mut Cell) {
+        *(self as &mut Int) += 1;
+    }
+
+    def dec(self: &mut Cell) {
+        *(self as &mut Int) -= 1;
+    }
+
+    def print_byte(self: Cell) {
+        let first_digit = self / 16;
+        let second_digit = self % 16;
+
+        def print_hex_digit(digit: Int) {
+            if digit < 10 {
+                print(digit);
+            } else {
+                print((digit - 10 + 'A' as Int) as Char);
+            }
+        }
+
+        if self as Int <= 0xf {
+            print_hex_digit(second_digit);
+        } else {
+            print_hex_digit(first_digit);
+            print_hex_digit(second_digit);
+        }
+    }
+
+    def print_byteln(self: Cell) {
+        let first_digit = self / 16;
+        let second_digit = self % 16;
+
+        def print_hex_digit(digit: Int) {
+            if digit < 10 {
+                print(digit);
+            } else {
+                print((digit - 10 + 'A' as Int) as Char);
+            }
+        }
+
+        if self as Int <= 0xf {
+            print_hex_digit(second_digit);
+        } else {
+            print_hex_digit(first_digit);
+            print_hex_digit(second_digit);
+        }
+
+        println();
+    }
+}
+
+let mut x = 29 as Cell;
+x.inc();
+x.print_byteln();
+// // How many bits are needed to represent 1024?
+// println((1024).log2());
+// // How many digits are needed to represent 100001?
+// println((100001).log10());
+
 // A point with x and y coordinates
 struct Point {
     x: Int,
     y: Int
 }
+
+
 
 impl Point {
     // Associated constant for `Point` type
@@ -32,9 +119,14 @@ let mut p = {x=1, y=2};
 // Print out the point moved by 2, -3
 println(Point.move(p, 2, -3));
 // Mutate the point by 2, -3
-Point.shift(&mut p, 2, -3);
+// Point.shift(&mut p, 2, -3);
+p.shift(2, -3);
+p.shift(2, -3);
 // Print out the mutated point (should be the same)
 println(p);
+println(p.move(2, 3));
+println(p);
+
 
 def exit(): ! {
     println("Exiting...");

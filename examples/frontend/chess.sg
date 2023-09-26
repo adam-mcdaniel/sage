@@ -1,0 +1,219 @@
+
+def main() {
+    let board = Board.default();
+    board.print();
+    
+    println("Size of square: ", sizeof<Square>());
+
+    let (row, col) = Square.WHITE_QUEEN;
+    match board.get_square(row, col) {
+        of Occupied(piece_type, color) => {
+            println("Piece ", piece_type.to_char(color), " is at ", (row, col), " and owned by ", color);
+        },
+        of Empty => {
+            println("Square at ", (row, col), " is empty");
+        }
+    }
+}
+
+enum PieceType {
+    Pawn,
+    Knight,
+    Bishop,
+    Rook,
+    Queen,
+    King
+}
+
+impl PieceType {
+    def to_char(self: PieceType, color: Color): Char {
+        match color {
+            of White => match self {
+                of Pawn => 'P',
+                of Knight => 'N',
+                of Bishop => 'B',
+                of Rook => 'R',
+                of Queen => 'Q',
+                of King => 'K'
+            },
+            of Black => match self {
+                of Pawn => 'p',
+                of Knight => 'n',
+                of Bishop => 'b',
+                of Rook => 'r',
+                of Queen => 'q',
+                of King => 'k'
+            }
+        }
+    }
+}
+
+enum Color {
+    White,
+    Black
+}
+
+impl Color {
+    def opposite(self: Color): Color {
+        match self {
+            of White => Color of Black,
+            of Black => Color of White
+        }
+    }
+
+    def print_foreground(self: Color) {
+        match self {
+            of White => print(27 as Char, "[37m"),
+            of Black => print(27 as Char, "[30m")
+        }
+    }
+
+    def print_background(self: Color) {
+        match self {
+            of White => print(27 as Char, "[46m"),
+            of Black => print(27 as Char, "[45m")
+        }
+    }
+
+    def print_reset() {
+        print(27 as Char, "[0m");
+    }
+}
+
+enum Square {
+    Occupied(PieceType, Color),
+    Empty
+}
+
+impl Square {
+    const WHITE_QUEEN = (0, 3);
+    const WHITE_KING = (0, 4);
+
+    const BLACK_QUEEN = (7, 3);
+    const BLACK_KING = (7, 4);
+
+    def occupied(ty: PieceType, color: Color): Square {
+        return Square of Occupied(ty, color);
+    }
+
+    def empty(): Square {
+        return Square of Empty;
+    }
+
+    def get_color(row: Int, col: Int): Color {
+        if (row + col) % 2 == 0 {
+            return Color of White;
+        } else {
+            return Color of Black;
+        }
+    }
+}
+
+type Board = [Square * 64];
+
+impl Board {
+    def default(): Board {
+        return [
+            Square.occupied(PieceType of Rook, Color of White),
+            Square.occupied(PieceType of Knight, Color of White),
+            Square.occupied(PieceType of Bishop, Color of White),
+            Square.occupied(PieceType of Queen, Color of White),
+            Square.occupied(PieceType of King, Color of White),
+            Square.occupied(PieceType of Bishop, Color of White),
+            Square.occupied(PieceType of Knight, Color of White),
+            Square.occupied(PieceType of Rook, Color of White),
+            Square.occupied(PieceType of Pawn, Color of White),
+            Square.occupied(PieceType of Pawn, Color of White),
+            Square.occupied(PieceType of Pawn, Color of White),
+            Square.occupied(PieceType of Pawn, Color of White),
+            Square.occupied(PieceType of Pawn, Color of White),
+            Square.occupied(PieceType of Pawn, Color of White),
+            Square.occupied(PieceType of Pawn, Color of White),
+            Square.occupied(PieceType of Pawn, Color of White),
+
+            Square.empty(),
+            Square.empty(),  
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            
+            Square.empty(),
+            Square.empty(),  
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            
+            Square.empty(),
+            Square.empty(),  
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            
+            Square.empty(),
+            Square.empty(),  
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+            Square.empty(),
+
+            Square.occupied(PieceType of Pawn, Color of Black),
+            Square.occupied(PieceType of Pawn, Color of Black),
+            Square.occupied(PieceType of Pawn, Color of Black),
+            Square.occupied(PieceType of Pawn, Color of Black),
+            Square.occupied(PieceType of Pawn, Color of Black),
+            Square.occupied(PieceType of Pawn, Color of Black),
+            Square.occupied(PieceType of Pawn, Color of Black),
+            Square.occupied(PieceType of Pawn, Color of Black),
+            Square.occupied(PieceType of Rook, Color of Black),
+            Square.occupied(PieceType of Knight, Color of Black),
+            Square.occupied(PieceType of Bishop, Color of Black),
+            Square.occupied(PieceType of Queen, Color of Black),
+            Square.occupied(PieceType of King, Color of Black),
+            Square.occupied(PieceType of Bishop, Color of Black),
+            Square.occupied(PieceType of Knight, Color of Black),
+            Square.occupied(PieceType of Rook, Color of Black),
+        ];
+    }
+
+    def get_square(self: &Board, row: Int, col: Int): Square {
+        return (self as &Square)[row * 8 + col];
+    }
+
+    def print(self: &Board) {
+        for let mut row = 7; row >= 0; row -= 1 {
+            for let mut col = 0; col < 8; col += 1 {
+                let square = self.get_square(row, col);
+                match square {
+                    of Occupied(ty, color) => {
+                        let bg_color = Square.get_color(row, col);
+                        bg_color.print_background();
+                        color.print_foreground();
+                        print(ty.to_char(color));
+                        print(" ");
+                    },
+                    of Empty => {
+                        let color = Square.get_color(row, col);
+                        color.print_background();
+                        print("  ");
+                    }
+                }
+            }
+            Color.print_reset();
+            println();
+        }
+        Color.print_reset();
+    }
+}
+
+main();

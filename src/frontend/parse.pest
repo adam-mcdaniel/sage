@@ -326,7 +326,7 @@ expr_term = {
     expr_keyword_unary_op* ~ expr_term_non_keyword
 }
 expr_term_non_keyword = {
-    expr_unary ~ (expr_int_field | expr_symbol_field | expr_int_deref_field | expr_symbol_deref_field | expr_index | expr_as_type | expr_call)*
+    expr_unary ~ (expr_int_field | expr_symbol_field | expr_index | expr_as_type | expr_call)*
 }
 expr_keyword_unary_op = @{ ("new" | "del") ~ !symbol }
 expr_unary = {
@@ -337,8 +337,6 @@ expr_variant = { type_term ~ "of" ~ symbol ~ expr_atom? }
 
 expr_int_field = { "." ~ decimal }
 expr_symbol_field = { "." ~ symbol }
-expr_int_deref_field = { "->" ~ decimal }
-expr_symbol_deref_field = { "->" ~ symbol }
 expr_index = { "[" ~ expr ~ "]" }
 expr_as_type = { "as" ~ type_atom }
 expr_call = { "(" ~ (expr ~ ",")* ~ expr? ~ ")" }

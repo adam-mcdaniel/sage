@@ -1034,18 +1034,6 @@ fn parse_expr_term(pair: Pair<Rule>) -> Expr {
             Rule::expr_symbol_field => head.field(ConstExpr::Symbol(
                 suffix.into_inner().next().unwrap().as_str().to_string(),
             )),
-            Rule::expr_int_deref_field => head.deref().field(ConstExpr::Int(
-                suffix
-                    .into_inner()
-                    .next()
-                    .unwrap()
-                    .as_str()
-                    .parse()
-                    .unwrap(),
-            )),
-            Rule::expr_symbol_deref_field => head.deref().field(ConstExpr::Symbol(
-                suffix.into_inner().next().unwrap().as_str().to_string(),
-            )),
             Rule::expr_index => head.idx(parse_expr(suffix)),
             Rule::expr_call => {
                 let inner_rules = suffix.into_inner();

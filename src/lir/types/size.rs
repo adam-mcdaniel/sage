@@ -86,7 +86,6 @@ impl GetSize for Type {
                     // Get the size of the type.
                     t.get_size_checked(env, i)?
                 } else {
-                    error!("Type {name} not defined in environment {env}");
                     // If the type is not defined, return an error.
                     return Err(Error::TypeNotDefined(name.clone()));
                 }

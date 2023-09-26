@@ -84,6 +84,9 @@ pub enum ConstExpr {
     /// Monomorphize a constant expression with some type arguments.
     Monomorphize(Box<Self>, Vec<Type>),
 
+    /// Get an attribute of a constant expression.
+    Member(Box<Self>, Box<Self>),
+
     /// Cast a constant expression to another type.
     As(Box<Self>, Type),
 }
@@ -169,6 +172,53 @@ impl ConstExpr {
                     expr.eval_checked(env, i).map_err(|e| e.annotate(metadata.clone()))
                 }
 
+                Self::Member(container, member) => {
+                    let container_ty = container.get_type_checked(env, i)?;
+                    Ok(match (container.clone().eval(env)?, member.clone().eval(env)?) {
+                        (Self::Tuple(tuple), Self::Int(n)) => {
+                            // If the index is out of bounds, return an error.
+                            if n >= tuple.len() as i64 || n < 0 {
+                                return Err(Error::MemberNotFound(
+                                    (*container).into(),
+                                    (*member).into(),
+                                ));
+                            }
+                            tuple[n as usize].clone()
+                        }
+                        (Self::Struct(fields), Self::Symbol(name)) => {
+                            // If the field is not in the struct, return an error.
+                            if !fields.contains_key(&name) {
+                                if let Some(constant) = env.get_associated_const(&container_ty, &name) {
+                                    return constant.clone().eval_checked(env, i);
+                                }
+                                return Err(Error::MemberNotFound(
+                                    (*container).into(),
+                                    (*member).into(),
+                                ));
+                            }
+                            fields[&name].clone()
+                        }
+                        (Self::Type(ty), Self::Symbol(name)) => {
+                            if let Some(constant) = env.get_associated_const(&ty, &name) {
+                                constant.clone()
+                            } else {
+                                if let Ok(Some(constant)) = member.clone().as_symbol(env).and_then(|name| Ok(env.get_associated_const(&container_ty, &name))) {
+                                    return constant.clone().eval_checked(env, i);
+                                }
+                                return Err(Error::SymbolNotDefined(name));
+                            }
+                        }
+                        _ => {
+                            if let Ok(Some(constant)) = member.clone().as_symbol(env).and_then(|name| Ok(env.get_associated_const(&container_ty, &name))) {
+                                return constant.clone().eval_checked(env, i);
+                            }
+                            return Err(Error::MemberNotFound(
+                                (*container).into(),
+                                (*member).into(),
+                            ));
+                        }
+                    })
+                }
                 Self::None
                 | Self::Null
                 | Self::Cell(_)
@@ -318,6 +368,85 @@ impl GetType for ConstExpr {
         Ok(match self.clone() {
             Self::Type(t) => Type::Type(t.into()),
 
+            Self::Member(val, field) => {
+                // Get the field to access (as a symbol)
+                let as_symbol = field.clone().as_symbol(env);
+                // Get the field to access (as an integer)
+                let as_int = field.clone().as_int(env);
+
+                let val_type = val.get_type_checked(env, i)?;
+                // Get the type of the value to get the member of.
+                match val_type.simplify_until_has_members(env)
+                {
+                    Ok(Type::Type(ty)) => {
+                        // Get the associated constant expression's type.
+                        env.get_associated_const(&ty, &as_symbol?)
+                            .ok_or(Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into()))?
+                            .get_type_checked(env, i)?
+                    }
+                    // If we're accessing a member of a tuple,
+                    // we use the `as_int` interpretation of the field.
+                    // This is because tuples are accesed by integer index.
+                    Ok(Type::Tuple(items)) => {
+                        // Get the index of the field.
+                        let n = as_int? as usize;
+                        // If the index is in range, return the type of the field.
+                        if n < items.len() {
+                            // Return the type of the field.
+                            items[n].clone()
+                        } else {
+                            return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
+                                .get_type(env).map_err(
+                                    |e| Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into())
+                                );
+                        }
+                    }
+                    // If we're accessing a member of a struct,
+                    // we use the `as_symbol` interpretation of the field.
+                    // This is because struct members are accessed by name.
+                    Ok(Type::Struct(fields)) => {
+                        // Get the type of the field.
+                        if let Some(t) = fields.get(&as_symbol?) {
+                            // Return the type of the field.
+                            t.clone()
+                        } else {
+                            // If the field is not in the struct, return an error.
+                            return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
+                            .get_type(env).map_err(
+                                |e| Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into())
+                            );
+                        }
+                    }
+                    // If we're accessing a member of a union,
+                    // we use the `as_symbol` interpretation of the field.
+                    // This is because union members are accessed by name.
+                    Ok(Type::Union(types)) => {
+                        // Get the type of the field.
+                        if let Some(t) = types.get(&as_symbol?) {
+                            // Return the type of the field.
+                            t.clone()
+                        } else {
+                            // If the field is not in the union, return an error.
+                            // return Err(Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into()));
+
+                            return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
+                                .get_type(env).map_err(
+                                    |e| Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into())
+                                );
+                        }
+                    }
+
+                    // If we're accessing a member of a type that is not a tuple,
+                    // struct, union, or pointer, we cannot access a member.
+                    _ => {
+                        return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
+                        .get_type(env).map_err(
+                            |e| Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into())
+                        );
+                    }
+                }
+            }
+
             Self::Annotated(expr, metadata) => expr
                 .get_type_checked(env, i)
                 .map_err(|e| e.annotate(metadata))?,
@@ -423,6 +552,10 @@ impl GetType for ConstExpr {
             Self::Type(t) => {
                 *t = t.substitute(name, subsitution);
             }
+            Self::Member(container, member) => {
+                container.substitute(name, subsitution);
+                member.substitute(name, subsitution);
+            }
             Self::Annotated(expr, _) => {
                 expr.substitute(name, subsitution);
             }
@@ -509,6 +642,9 @@ impl fmt::Display for ConstExpr {
         match self {
             Self::Type(t) => {
                 write!(f, "{t}")
+            }
+            Self::Member(container, member) => {
+                write!(f, "{container}.{member}")
             }
             Self::Annotated(expr, _) => {
                 write!(f, "{expr}")

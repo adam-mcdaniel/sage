@@ -151,24 +151,28 @@ impl Compile for Expr {
             }
             
             Self::Apply(f, args) => {
-                if let Self::Annotated(expr, metdata) = *f {
+                let self_clone = Self::Apply(f.clone(), args.clone());
+                if let Self::Annotated(expr, metadata) = *f {
                     // Compile the inner expression.
                     return Self::Apply(expr, args)
                         .compile_expr(env, output)
                         .map_err(|e| {
                             // If the inner expression fails to compile,
                             // then add the source location to the error.
-                            e.annotate(metdata)
+                            e.annotate(metadata)
                         });
                 }
 
-                // Push the arguments to the procedure on the stack.
-                for arg in args {
-                    // Compile the argument (push it on the stack)
-                    arg.compile_expr(env, output)?;
+                if !matches!(*f, Expr::Member(_, _)) {
+                    // Push the arguments to the procedure on the stack.
+                    for arg in &args {
+                        // Compile the argument (push it on the stack)
+                        arg.clone().compile_expr(env, output)?;
+                    }
                 }
+
                 // Apply the procedure to the arguments on the stack.
-                match *f {
+                match *f.clone() {
                     // If the procedure is a core builtin,
                     Expr::ConstExpr(ConstExpr::CoreBuiltin(builtin)) => {
                         // Apply the core builtin to the arguments on the stack.
@@ -208,6 +212,56 @@ impl Compile for Expr {
                                 // Call the procedure on the arguments.
                                 output.op(CoreOp::Call(A));
                             }
+                        }
+                    }
+                    Expr::Member(val, name) => {
+                        // Check if the value actually has a member with this name.
+                        let val_type = val.get_type(env)?;
+                        trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
+                        // Try to get the member of the underlying type.
+                        if self_clone.is_method_call(env)? {
+                            // If the value has a member with this name,
+                            trace!(target: "member", "WHOOP WHOOP");
+                            let mut new_args = vec![];
+                            // let f = ConstExpr::Member(ConstExpr::Type(val_type).into(), name.into());
+                            let as_symbol = name.clone().as_symbol(env)?;
+                            trace!(target: "member", "got symbol: {as_symbol}");
+                            let f = env.get_associated_const(&val_type, &as_symbol).ok_or(Error::SymbolNotDefined(as_symbol))?.clone();
+                            trace!(target: "member", "function value: {f} in {env}");
+
+                            // Get the type of the function
+                            let f_type = f.get_type(env)?;
+                            trace!(target: "member", "got function type: {}", f_type);
+                            // Get the first argument's type
+                            trace!(target: "member", "got first arg type: {:?}", f_type.get_first_arg_ref_mutability(env));
+                            if let Some(expected_mutability) = f_type.get_first_arg_ref_mutability(env) {
+                                if val_type.equals(&Type::Pointer(expected_mutability, Type::Any.into()), env)? {
+                                    new_args.push(*val.clone());
+                                } else {
+                                    new_args.push(val.refer(expected_mutability));
+                                }
+                            } else {
+                                new_args.push(*val.clone());
+                            }
+                            new_args.extend(args.clone());
+                            let result = Self::Apply(Expr::ConstExpr(f).into(), new_args);
+                            trace!(target: "member", "RESULT: {}", result);
+                            // Compile the new function call
+                            result.compile_expr(env, output)?;
+                        } else {
+                            // Push the arguments to the procedure on the stack.
+                            for arg in &args {
+                                // Compile the argument (push it on the stack)
+                                arg.clone().compile_expr(env, output)?;
+                            }
+
+                            // Compile it normally:
+                            // Push the procedure on the stack.
+                            val.field(name).compile_expr(env, output)?;
+                            // Pop the "function pointer" from the stack.
+                            output.op(CoreOp::Pop(Some(A), 1));
+                            // Call the procedure on the arguments.
+                            output.op(CoreOp::Call(A));
                         }
                     }
                     // Otherwise, it must be a procedure.
@@ -530,7 +584,6 @@ impl Compile for Expr {
                             .deref()
                             .field(member.clone())
                             .compile_expr(env, output)?;
-                        return Ok(());
                     }
                     Type::Type(ty) => {
                         let member_as_symbol = member.clone().as_symbol(env)?;
@@ -541,27 +594,32 @@ impl Compile for Expr {
                             return Err(Error::SymbolNotDefined(member_as_symbol));
                         }
                     }
-                    _ => {}
+                    _ => {
+                        // Get the size of the field we want to retrieve.
+                        let size = self.get_size(env)?;
+                        // Get the type of the value we want to get a field from.
+                        let val_type = val.get_type(env)?;
+                        // Get the size of the value we want to get a field from.
+                        let val_size = val_type.get_size(env)?;
+                        // Get the offset of the field from the address of the value.
+                        if let Ok((_, offset)) = val_type.get_member_offset(member, &self, env) {
+                            // Evaluate the value and push it onto the stack.
+                            val.clone().compile_expr(env, output)?;
+                            // Copy the contents of the field over top of the value on the stack.
+                            output.op(CoreOp::Copy {
+                                src: SP.deref().offset(1 - val_size as isize + offset as isize),
+                                dst: SP.deref().offset(1 - val_size as isize),
+                                size,
+                            });
+                            // Pop the remaining elements off the stack, so the field remains.
+                            output.op(CoreOp::Pop(None, val_size - size));
+                        } else {
+                            // Try to get the member of the underlying type.
+                            return ConstExpr::Member(ConstExpr::Type(val_type).into(), member.clone().into())
+                                .compile_expr(env, output);
+                        }
+                    }
                 }
-
-                // Get the size of the field we want to retrieve.
-                let size = self.get_size(env)?;
-                // Get the type of the value we want to get a field from.
-                let val_type = val.get_type(env)?;
-                // Get the size of the value we want to get a field from.
-                let val_size = val_type.get_size(env)?;
-                // Get the offset of the field from the address of the value.
-                let (_, offset) = val_type.get_member_offset(member, &self, env)?;
-                // Evaluate the value and push it onto the stack.
-                val.clone().compile_expr(env, output)?;
-                // Copy the contents of the field over top of the value on the stack.
-                output.op(CoreOp::Copy {
-                    src: SP.deref().offset(1 - val_size as isize + offset as isize),
-                    dst: SP.deref().offset(1 - val_size as isize),
-                    size,
-                });
-                // Pop the remaining elements off the stack, so the field remains.
-                output.op(CoreOp::Pop(None, val_size - size));
             }
 
             // Compile a reference operation (on a symbol or a field of a value).
@@ -779,6 +837,43 @@ impl Compile for ConstExpr {
         match self {
             Self::Type(_) => {
                 // Do nothing.
+            }
+            Self::Member(container, member) => {
+                match (container.clone().eval(env)?, member.clone().eval(env)?) {
+                    (Self::Tuple(tuple), Self::Int(n)) => {
+                        // If the index is out of bounds, return an error.
+                        if n >= tuple.len() as i64 || n < 0 {
+                            return Err(Error::MemberNotFound(
+                                (*container).into(),
+                                (*member).into(),
+                            ));
+                        }
+                        tuple[n as usize].clone().compile_expr(env, output)?
+                    }
+                    (Self::Struct(fields), Self::Symbol(name)) => {
+                        // If the field is not in the struct, return an error.
+                        if !fields.contains_key(&name) {
+                            return Err(Error::MemberNotFound(
+                                (*container).into(),
+                                (*member).into(),
+                            ));
+                        }
+                        fields[&name].clone().compile_expr(env, output)?
+                    }
+                    (Self::Type(ty), Self::Symbol(name)) => {
+                        if let Some(constant) = env.get_associated_const(&ty, &name) {
+                            return constant.clone().compile_expr(env, output);
+                        } else {
+                            return Err(Error::SymbolNotDefined(name));
+                        }
+                    }
+                    _ => {
+                        return Err(Error::MemberNotFound(
+                            (*container).into(),
+                            (*member).into(),
+                        ));
+                    }
+                }
             }
             Self::Annotated(expr, metadata) => {
                 expr.compile_expr(env, output)

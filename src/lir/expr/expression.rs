@@ -6,7 +6,7 @@
 //! which are then executed by the runtime.
 
 use super::ops::*;
-use crate::lir::{Annotation, Declaration, ConstExpr, Mutability, Pattern, Procedure, Type};
+use crate::lir::{Annotation, GetType, Error, Env, Declaration, ConstExpr, Mutability, Pattern, Procedure, Type};
 use core::fmt;
 use std::collections::BTreeMap;
 
@@ -115,6 +115,81 @@ impl Expr {
     /// This constant is defined so that we don't have to write `Expr::ConstExpr`
     /// every time we want to use `None`.
     pub const NONE: Self = Self::ConstExpr(ConstExpr::None);
+
+    pub fn is_method_call(&self, env: &Env) -> Result<bool, Error> {
+        match self.get_method_call_mutability(env) {
+            Ok(Some(_)) => Ok(true),
+            Ok(None) => Ok(true),
+            Err(Error::MemberNotFound(_, ConstExpr::None)) => Ok(false),
+            Err(e) => Err(e)
+        }
+    }
+
+    pub fn get_method_call_mutability(&self, env: &Env) -> Result<Option<Mutability>, Error> {
+        match self {
+            Self::Annotated(inner, annotation) => {
+                return inner.get_method_call_mutability(env).map_err(|e| e.annotate(annotation.clone()))
+            }
+
+            Self::Apply(fun, args) => {
+                match *fun.clone() {
+                    Self::Member(val, name) => {
+                        // Check if the value actually has a member with this name.
+                        let val_type = val.get_type(env)?;
+                        return Ok(val_type.get_first_arg_ref_mutability(env))
+                    }
+                    Self::ConstExpr(ConstExpr::Member(val, name)) => {
+                        let val_type = val.get_type(env)?;
+                        return Ok(val_type.get_first_arg_ref_mutability(env))
+                    }
+                    _ => return Err(Error::MemberNotFound(self.clone(), ConstExpr::None))
+                }
+            }
+
+            _ => return Err(Error::MemberNotFound(self.clone(), ConstExpr::None))
+        }
+
+        // Expr::Member(val, name) => {
+        //     // Check if the value actually has a member with this name.
+        //     let val_type = val.get_type(env)?;
+        //     trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
+        //     // Try to get the member of the underlying type.
+        //     match name.clone().as_symbol(env).and_then(|name| Ok(env.has_associated_const(&val_type, &name))) {
+        //         // If the value has a member with this name,
+        //         Ok(true) => {
+        //             trace!(target: "member", "WHOOP WHOOP");
+        //             let mut new_args = vec![];
+        //             let f = ConstExpr::Member(ConstExpr::Type(val_type).into(), name.into());
+        //             // Get the type of the function
+        //             let f_type = f.get_type(env)?.simplify_until_concrete(env)?;
+        //             trace!(target: "member", "got function type: {:#?}", f_type);
+        //             // Get the first argument's type
+        //             trace!(target: "member", "got first arg type: {:#?}", f_type.get_first_arg_ref_mutability(env));
+        //             if let Some(mutability) = f_type.get_first_arg_ref_mutability(env) {
+        //                 new_args.push(val.refer(mutability));
+        //             } else {
+        //                 new_args.push(*val.clone());
+        //             }
+        //             new_args.extend(args.clone());
+        //             let result = Self::Apply(Expr::ConstExpr(f).into(), new_args);
+        //             trace!(target: "member", "RESULT: {:#?}", result);
+        //             // Compile the new function call
+        //             return result.compile_expr(env, output);
+        //         }
+        //         // If the value does not have a member with this name,
+        //         _ => {
+        //             compile_args()?;
+        //             // Compile it normally:
+        //             // Push the procedure on the stack.
+        //             val.field(name).compile_expr(env, output)?;
+        //             // Pop the "function pointer" from the stack.
+        //             output.op(CoreOp::Pop(Some(A), 1));
+        //             // Call the procedure on the arguments.
+        //             output.op(CoreOp::Call(A));
+        //         }
+        //     }
+        // }
+    }
 
     /// An annotated expression with some metadata.
     pub fn annotate(&self, annotation: impl Into<Annotation>) -> Self {

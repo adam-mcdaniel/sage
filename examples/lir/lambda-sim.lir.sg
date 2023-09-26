@@ -22,7 +22,7 @@ proc add(n: Int) -> Op = {
 } in
 
 proc app(op: Op, y: Int) -> Int = {
-    op.apply(op.state, y)
+    let f = op.apply in f(op.state, y)
 } in
 
 proc putdec(n: Int) = {

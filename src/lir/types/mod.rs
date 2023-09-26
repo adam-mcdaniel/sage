@@ -247,6 +247,34 @@ impl Type {
         }
     }
 
+    /// Is first argument of function a reference?
+    pub fn is_first_arg_ref(&self, env: &Env) -> Result<bool, Error> {
+        Ok(match self.simplify_until_concrete(env)? {
+            Self::Proc(args, _) => {
+                if let Some(Self::Pointer(_, _)) = args.first() {
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        })
+    }
+
+    /// Get the first argument's mutability (if it is a pointer)
+    pub fn get_first_arg_ref_mutability(&self, env: &Env) -> Option<Mutability> {
+        match self.simplify_until_concrete(env) {
+            Ok(Self::Proc(args, _)) => {
+                if let Some(Self::Pointer(mutability, _)) = args.first() {
+                    Some(*mutability)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     /// Simplify until the type passes the type checker.
     pub fn simplify_until_type_checks(&self, env: &Env) -> Result<Self, Error> {
         self.clone()
@@ -1170,7 +1198,6 @@ impl Type {
                 if env.has_associated_const(ty, &name) {
                     Ok(())
                 } else {
-                    error!("Type {self} does not have member {member}");
                     Err(Error::MemberNotFound(expr.clone(), member.clone()))
                 }
             }
@@ -1244,7 +1271,16 @@ impl Type {
                 Ok(())
             }
 
-            _ => Err(Error::MemberNotFound(expr.clone(), member.clone())),
+            other => {
+                // Check if type has an associated constant with the given name
+                let name = member.clone().as_symbol(env)?;
+                if env.has_associated_const(other, &name) {
+                    Ok(())
+                } else {
+                    error!("Type {self} does not have member {member}");
+                    Err(Error::MemberNotFound(expr.clone(), member.clone()))
+                }
+            },
         }
     }
 }

@@ -91,8 +91,9 @@ impl Env {
 
     pub fn get_associated_const(&self, ty: &Type, name: &str) -> Option<&ConstExpr> {
         trace!("Getting associated const {name} of type {ty} in {self}");
-        if let Some(consts) = self.associated_constants.get(ty).and_then(|consts| consts.get(name)) {
-            return Some(consts);
+        if let Some(constant) = self.associated_constants.get(ty).and_then(|consts| consts.get(name)) {
+            trace!("Found associated const {name} of type {ty} in {self}");
+            return Some(constant);
         }
         // Go through all the types and see if any equals the given type.
         for (other_ty, consts) in self.associated_constants.iter() {
@@ -103,6 +104,18 @@ impl Env {
             trace!("Found eligible type {other_ty} for {ty}");
             if let Some(const_expr) = consts.get(name) {
                 return Some(const_expr);
+            }
+        }
+
+        trace!("Could not find associated const {name} of type {ty} in {self}");
+        if let Type::Type(inner_ty) = ty {
+            if let Some(constant) = self.get_associated_const(inner_ty, name) {
+                return Some(constant);
+            }
+        }
+        if let Type::Pointer(_, inner_ty) = ty {
+            if let Some(constant) = self.get_associated_const(inner_ty, name) {
+                return Some(constant);
             }
         }
         None
@@ -539,22 +552,22 @@ impl Display for Env {
                 writeln!(f, "            {}: {}", name, cexpr)?;
             }
         }
-        writeln!(f, "   Constants:")?;
-        for (name, e) in self.consts.iter() {
-            writeln!(f, "      {}: {}", name, e)?;
-        }
-        writeln!(f, "   Procedures:")?;
-        for (name, proc) in self.procs.iter() {
-            writeln!(f, "      {}: {}", name, proc)?;
-        }
-        writeln!(f, "   Globals:")?;
-        for (name, (mutability, ty, location)) in self.static_vars.iter() {
-            writeln!(f, "      {mutability} {name}: {ty} (location {location})")?;
-        }
-        writeln!(f, "   Variables:")?;
-        for (name, (mutability, ty, offset)) in self.vars.iter() {
-            writeln!(f, "      {mutability} {name}: {ty} (frame-offset {offset})")?;
-        }
+        // writeln!(f, "   Constants:")?;
+        // for (name, e) in self.consts.iter() {
+        //     writeln!(f, "      {}: {}", name, e)?;
+        // }
+        // writeln!(f, "   Procedures:")?;
+        // for (name, proc) in self.procs.iter() {
+        //     writeln!(f, "      {}: {}", name, proc)?;
+        // }
+        // writeln!(f, "   Globals:")?;
+        // for (name, (mutability, ty, location)) in self.static_vars.iter() {
+        //     writeln!(f, "      {mutability} {name}: {ty} (location {location})")?;
+        // }
+        // writeln!(f, "   Variables:")?;
+        // for (name, (mutability, ty, offset)) in self.vars.iter() {
+        //     writeln!(f, "      {mutability} {name}: {ty} (frame-offset {offset})")?;
+        // }
         Ok(())
     }
 }

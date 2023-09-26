@@ -2,7 +2,7 @@ use crate::lir::*;
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::collections::HashMap;
 
-use log::trace;
+use log::{trace, error};
 
 /// A pattern which can be matched against an expression.
 ///
@@ -696,6 +696,8 @@ impl Pattern {
             }
 
             (_pat, _ty) => {
+                error!("Pattern: {}", self);
+                error!("Type: {}", ty);
                 // If the pattern does not match the type, then return an error.
                 return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
             }

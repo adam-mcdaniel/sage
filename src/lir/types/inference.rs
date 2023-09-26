@@ -253,9 +253,8 @@ impl GetType for Expr {
                 // Get the field to access (as an integer)
                 let as_int = field.clone().as_int(env);
                 // Get the type of the value to get the member of.
-                match val
-                    .get_type_checked(env, i)?
-                    .simplify_until_has_members(env)
+                let val_type = val.get_type_checked(env, i)?;
+                match val_type.simplify_until_has_members(env)
                 {
                     Ok(Type::Type(ty)) => {
                         // Get the associated constant expression's type.
@@ -263,7 +262,17 @@ impl GetType for Expr {
                             .ok_or(Error::MemberNotFound(*val.clone(), field.clone()))?
                             .get_type_checked(env, i)?
                     }
-                    Ok(Type::Pointer(_, t)) => t.get_member_offset(field, val, env)?.0,
+                    Ok(Type::Pointer(_, t)) => {
+                        match t.get_member_offset(field, val, env) {
+                            Ok((t, _)) => t,
+                            Err(_)=> {
+                                return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
+                                    .get_type(env).map_err(
+                                        |e| Error::MemberNotFound(*val.clone(), field.clone())
+                                    );
+                            }
+                        }
+                    },
                     // If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
                     // This is because tuples are accesed by integer index.
@@ -276,7 +285,10 @@ impl GetType for Expr {
                             items[n].clone()
                         } else {
                             // Otherwise, the field is out of range.
-                            return Err(Error::MemberNotFound(*val.clone(), field.clone()));
+                            return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
+                                .get_type(env).map_err(
+                                    |e| Error::MemberNotFound(*val.clone(), field.clone())
+                                );
                         }
                     }
                     // If we're accessing a member of a struct,
@@ -289,7 +301,10 @@ impl GetType for Expr {
                             t.clone()
                         } else {
                             // If the field is not in the struct, return an error.
-                            return Err(Error::MemberNotFound(*val.clone(), field.clone()));
+                            return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
+                                .get_type(env).map_err(
+                                    |e| Error::MemberNotFound(*val.clone(), field.clone())
+                                );
                         }
                     }
                     // If we're accessing a member of a union,
@@ -302,13 +317,29 @@ impl GetType for Expr {
                             t.clone()
                         } else {
                             // If the field is not in the union, return an error.
-                            return Err(Error::MemberNotFound(*val.clone(), field.clone()));
+                            return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
+                                .get_type(env).map_err(
+                                    |e| Error::MemberNotFound(*val.clone(), field.clone())
+                                );
                         }
                     }
 
                     // If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
-                    _ => return Err(Error::MemberNotFound(*val.clone(), field.clone())),
+                    Ok(val_type) => {
+                        // Try to get the member of the underlying type.
+                        return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
+                            .get_type(env).map_err(
+                                |e| Error::MemberNotFound(*val.clone(), field.clone())
+                            );
+                    },
+                    Err(e) => {
+                        // Try to get the member of the underlying type.
+                        return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
+                            .get_type(env).map_err(
+                                |e| Error::MemberNotFound(*val.clone(), field.clone())
+                            );
+                    }
                 }
             }
 

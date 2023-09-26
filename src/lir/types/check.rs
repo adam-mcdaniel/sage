@@ -178,7 +178,7 @@ impl TypeCheck for Type {
 /// Check the type-soundness of a given expression.
 impl TypeCheck for Expr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
-        // trace!("Type checking expression: {self}");
+        trace!("Type checking expression: {self}");
         match self {
             Self::Annotated(expr, metadata) => {
                 // Check the inner expression.
@@ -510,6 +510,10 @@ impl TypeCheck for Expr {
 
             // Typecheck a function application.
             Self::Apply(f, args) => {
+                if self.is_method_call(env)? {
+                    return Ok(());
+                }
+
                 // Typecheck the expression we want to call as a procedure.
                 f.type_check(env)?;
                 // Typecheck the supplied arguments.
@@ -707,7 +711,15 @@ impl TypeCheck for Expr {
                 // Get the type of the expression.
                 let e_type = e.get_type(env)?;
                 // Typecheck the member we want to access.
-                e_type.type_check_member(field, e, env)
+                match e_type.type_check_member(field, e, env) {
+                    Ok(_) => Ok(()),
+                    Err(e) => {
+                        match field.clone().as_symbol(env).and_then(|name| Ok(env.get_associated_const(&e_type, &name))) {
+                            Ok(_) => Ok(()),
+                            Err(_) => Err(e),
+                        }
+                    }
+                }
             }
 
             // Typecheck an index access.
@@ -751,6 +763,24 @@ impl TypeCheck for ConstExpr {
 
             // Typecheck a type expression.
             Self::Type(t) => t.type_check(env),
+
+            // Typecheck a member access.
+            Self::Member(e, field) => {
+                // Typecheck the expression we want to access a member of.
+                e.type_check(env)?;
+                // Get the type of the expression.
+                let e_type = e.get_type(env)?;
+                // Typecheck the member we want to access.
+                match e_type.type_check_member(field, &Expr::ConstExpr(*e.clone()), env) {
+                    Ok(_) => Ok(()),
+                    Err(e) => {
+                        match field.clone().as_symbol(env).and_then(|name| Ok(env.get_associated_const(&e_type, &name))) {
+                            Ok(_) => Ok(()),
+                            Err(_) => Err(e),
+                        }
+                    }
+                }
+            }
 
             // These are all guaranteed to be valid, or
             // to fail at compile time.

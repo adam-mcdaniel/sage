@@ -204,11 +204,11 @@ impl Declaration {
     /// Substitute a type symbol for a type.
     pub(crate) fn substitute(&mut self, substitution_name: &str, substitution_ty: &Type) {
         match self {
-            Self::StaticVar(name, _mutability, expected_ty, expr) => {
+            Self::StaticVar(_name, _mutability, expected_ty, expr) => {
                 expr.substitute(substitution_name, substitution_ty);
                 expected_ty.substitute(substitution_name, substitution_ty);
             }
-            Self::Var(name, _mutability, expected_ty, expr) => {
+            Self::Var(_name, _mutability, expected_ty, expr) => {
                 expr.substitute(substitution_name, substitution_ty);
                 if let Some(expected_ty) = expected_ty {
                     *expected_ty = expected_ty.substitute(substitution_name, substitution_ty);
@@ -232,8 +232,8 @@ impl Declaration {
             Self::ExternProc(_name, proc) => {
                 proc.substitute(substitution_name, substitution_ty);
             }
-            Self::Impl(name, impls) => {
-                for (name, expr) in impls {
+            Self::Impl(_name, impls) => {
+                for (_name, expr) in impls {
                     expr.substitute(substitution_name, substitution_ty);
                 }
             }
