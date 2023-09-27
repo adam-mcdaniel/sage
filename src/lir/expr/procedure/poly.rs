@@ -5,7 +5,7 @@
 //! A procedure is compiled down to a label in the assembly code.
 use crate::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
 use core::fmt;
-use std::{collections::HashMap, rc::Rc, sync::Mutex};
+use std::{collections::HashMap, rc::Rc, sync::RwLock};
 
 use log::{debug, error, trace};
 
@@ -27,7 +27,7 @@ pub struct PolyProcedure {
     /// The body of the procedure.
     body: Box<Expr>,
     /// The monomorphs of the procedure.
-    monomorphs: Rc<Mutex<HashMap<String, Procedure>>>,
+    monomorphs: Rc<RwLock<HashMap<String, Procedure>>>,
 }
 
 impl PartialEq for PolyProcedure {
@@ -56,7 +56,7 @@ impl PolyProcedure {
             args,
             ret,
             body: Box::new(body.into()),
-            monomorphs: Rc::new(Mutex::new(HashMap::new())),
+            monomorphs: Rc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -71,7 +71,7 @@ impl PolyProcedure {
     /// This monomorphized version can then be compiled directly. Additionally, the
     /// mono version of the procedure is memoized, so that it is only compiled once.
     pub fn monomorphize(&self, ty_args: Vec<Type>, env: &Env) -> Result<Procedure, Error> {
-        debug!("Monomorphizing {} with {:?}", self, ty_args);
+        debug!(target: "mono", "Monomorphizing {} with {:?}", self, ty_args);
 
         // This is a helper function to distribute the defined type
         // arguments over the body and arguments of the function.
@@ -86,6 +86,7 @@ impl PolyProcedure {
             })
             .collect::<Result<Vec<_>, Error>>()?;
 
+        debug!(target: "mono", "Simplified type arguments: {:?}", simplified_ty_args);
         // This is a helper function to bind the type arguments to the type parameters.
         let bind_type_args = |ty: Type| -> Result<Type, Error> {
             // Add the type parameters to the given type,
@@ -98,42 +99,57 @@ impl PolyProcedure {
             // This reduces to the concrete version of the type application.
             ty.simplify_until_concrete(env)
         };
-
         // Distribute the type parameters over the body and arguments of the function.
+        debug!(target: "mono", "Distributing type arguments over the arguments of the function {}", self.name);
         let args = self
             .args
             .clone()
             .into_iter()
             .map(|(name, mutability, t)| Ok((name, mutability, bind_type_args(t)?)))
             .collect::<Result<Vec<_>, Error>>()?;
+        debug!(target: "mono", "Distributed type arguments over the return type of the function {}", self.name);
         let ret = bind_type_args(self.ret.clone())?;
-        let mut body = *self.body.clone();
-
-        // Substitute the type arguments into the body of the function.
-        body.substitute_types(&self.ty_params, &simplified_ty_args);
-
-        // Wrap the body in a let expression to bind the type arguments.
-        body = body.with(
-            self.ty_params
-                .iter()
-                .zip(simplified_ty_args.iter())
-                .map(|(a, b)| (a.clone(), b.clone()))
-                .collect::<Vec<_>>(),
-        );
-
         // Generate a mangled name for the monomorphized procedure.
         let mangled_name = format!("__MONOMORPHIZED_({ty_args:?}){}{args:?}{ret:?}", self.name);
+        // Check if the procedure has already been memoized. 
+        debug!(target: "mono", "Checking if monomorphized procedure {} has already been memoized", mangled_name);
+        let monomorphs = self.monomorphs.read().unwrap();
+        if monomorphs.contains_key(&mangled_name) {
+            debug!(target: "mono", "Monomorphized procedure {} has already been memoized", mangled_name);
+            // If the monomorphized procedure has already been memoized, return it.
+            return Ok(monomorphs.get(&mangled_name).unwrap().clone());
+        }
+        debug!(target: "mono", "Monomorphized procedure {} has not been memoized yet", mangled_name);
+        // Otherwise, we need to memoize the monomorphized procedure.
+        drop(monomorphs);
+        let mut monomorphs = self.monomorphs.write().unwrap();
 
-        // Memoize the monomorphized procedure.
-        let mut monomorphs = self.monomorphs.lock().unwrap();
         // If the monomorphized procedure has already been memoized, return it, otherwise memoize it.
+        debug!(target: "mono", "Inserting entry for {}", mangled_name);
         let monomorph = monomorphs
             .entry(mangled_name.clone())
-            .or_insert_with(|| Procedure::new(Some(mangled_name.clone()), args, ret, body))
+            .or_insert_with(|| {
+                debug!(target: "mono", "Memoizing monomorphized procedure {}", mangled_name);
+                let mut body = *self.body.clone();
+        
+                // Substitute the type arguments into the body of the function.
+                body.substitute_types(&self.ty_params, &simplified_ty_args);
+        
+                // Wrap the body in a let expression to bind the type arguments.
+                body = body.with(
+                    self.ty_params
+                        .iter()
+                        .zip(simplified_ty_args.iter())
+                        .map(|(a, b)| (a.clone(), b.clone()))
+                        .collect::<Vec<_>>(),
+                );
+
+                Procedure::new(Some(mangled_name.clone()), args, ret, body)
+            })
             .clone();
+
         // Unlock the mutex to prevent a deadlock.
         drop(monomorphs);
-
         // Return the monomorphized procedure.
         Ok(monomorph)
     }

@@ -13,7 +13,7 @@ use crate::lir::{
     Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck,
 };
 use core::fmt;
-use std::sync::Mutex;
+use std::{sync::{RwLock, Mutex}, rc::Rc};
 
 use log::trace;
 
@@ -27,7 +27,7 @@ lazy_static! {
 /// A monomorphic procedure of LIR code which can be applied to a list of arguments.
 /// A procedure is compiled down to a label in the assembly code.
 /// The label is called with the `Call` instruction.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Procedure {
     /// The name of the procedure, if it was given one.
     common_name: Option<String>,
@@ -39,8 +39,16 @@ pub struct Procedure {
     ret: Type,
     /// The procedure's body expression
     body: Box<Expr>,
-    /// Has this procedure been compiled yet?
-    pub compiled: bool,
+}
+
+impl PartialEq for Procedure {
+    fn eq(&self, other: &Self) -> bool {
+        self.common_name == other.common_name
+            && self.mangled_name == other.mangled_name
+            && self.args == other.args
+            && self.ret == other.ret
+            && self.body == other.body
+    }
 }
 
 impl Procedure {
@@ -60,7 +68,6 @@ impl Procedure {
             args,
             ret,
             body: Box::new(body.into()),
-            compiled: false,
         }
     }
 

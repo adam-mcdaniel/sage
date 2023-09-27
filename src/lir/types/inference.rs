@@ -37,7 +37,7 @@ pub trait GetType {
 /// Infer the type associated with an expression under a given environment.
 impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        // trace!("Getting type of expression {}", self);
+        trace!("Getting type of expression {}", self);
         let i = i + 1;
         Ok(match self {
             Self::Annotated(expr, annotation) => {
@@ -104,12 +104,6 @@ impl GetType for Expr {
             Self::ConstExpr(c) => c.get_type_checked(env, i)?,
             // Get the type of the result of the block of expressions.
             Self::Many(exprs) => {
-                for expr in exprs {
-                    if expr.get_type_checked(env, i)? == Type::Never {
-                        return Ok(Type::Never);
-                    }
-                }
-
                 // Get the type of the last expression in the block.
                 if let Some(expr) = exprs.last() {
                     // If the last expression returns a value,
@@ -253,23 +247,20 @@ impl GetType for Expr {
                 // Get the field to access (as an integer)
                 let as_int = field.clone().as_int(env);
                 // Get the type of the value to get the member of.
-                let val_type = val.get_type_checked(env, i)?;
-                match val_type.simplify_until_has_members(env)
+                let val_type = val.get_type_checked(env, i)?.simplify_until_has_members(env);
+                match val_type
                 {
                     Ok(Type::Type(ty)) => {
                         // Get the associated constant expression's type.
-                        env.get_associated_const(&ty, &as_symbol?)
+                        env.get_type_of_associated_const(&ty, &as_symbol?)
                             .ok_or(Error::MemberNotFound(*val.clone(), field.clone()))?
-                            .get_type_checked(env, i)?
                     }
-                    Ok(Type::Pointer(_, t)) => {
+                    Ok(Type::Pointer(found_mutability, t)) => {
                         match t.get_member_offset(field, val, env) {
                             Ok((t, _)) => t,
                             Err(_)=> {
-                                return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
-                                    .get_type(env).map_err(
-                                        |e| Error::MemberNotFound(*val.clone(), field.clone())
-                                    );
+                                return env.get_type_of_associated_const(&Type::Pointer(found_mutability, t), &as_symbol?)
+                                    .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
                             }
                         }
                     },
@@ -284,11 +275,7 @@ impl GetType for Expr {
                             // Return the type of the field.
                             items[n].clone()
                         } else {
-                            // Otherwise, the field is out of range.
-                            return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
-                                .get_type(env).map_err(
-                                    |e| Error::MemberNotFound(*val.clone(), field.clone())
-                                );
+                            return Err(Error::MemberNotFound(*val.clone(), field.clone()));
                         }
                     }
                     // If we're accessing a member of a struct,
@@ -296,15 +283,14 @@ impl GetType for Expr {
                     // This is because struct members are accessed by name.
                     Ok(Type::Struct(fields)) => {
                         // Get the type of the field.
-                        if let Some(t) = fields.get(&as_symbol?) {
+                        let name = as_symbol?;
+                        if let Some(t) = fields.get(&name) {
                             // Return the type of the field.
                             t.clone()
                         } else {
                             // If the field is not in the struct, return an error.
-                            return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
-                                .get_type(env).map_err(
-                                    |e| Error::MemberNotFound(*val.clone(), field.clone())
-                                );
+                            return env.get_type_of_associated_const(&Type::Struct(fields), &name)
+                                .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
                         }
                     }
                     // If we're accessing a member of a union,
@@ -312,15 +298,14 @@ impl GetType for Expr {
                     // This is because union members are accessed by name.
                     Ok(Type::Union(types)) => {
                         // Get the type of the field.
-                        if let Some(t) = types.get(&as_symbol?) {
+                        let name = as_symbol?;
+                        if let Some(t) = types.get(&name) {
                             // Return the type of the field.
                             t.clone()
                         } else {
                             // If the field is not in the union, return an error.
-                            return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
-                                .get_type(env).map_err(
-                                    |e| Error::MemberNotFound(*val.clone(), field.clone())
-                                );
+                            return env.get_type_of_associated_const(&Type::Union(types), &name)
+                                .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
                         }
                     }
 
@@ -328,17 +313,12 @@ impl GetType for Expr {
                     // struct, union, or pointer, we cannot access a member.
                     Ok(val_type) => {
                         // Try to get the member of the underlying type.
-                        return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
-                            .get_type(env).map_err(
-                                |e| Error::MemberNotFound(*val.clone(), field.clone())
-                            );
+                        return env.get_type_of_associated_const(&val_type, &as_symbol?)
+                            .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
                     },
                     Err(e) => {
                         // Try to get the member of the underlying type.
-                        return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
-                            .get_type(env).map_err(
-                                |e| Error::MemberNotFound(*val.clone(), field.clone())
-                            );
+                        return Err(e);
                     }
                 }
             }

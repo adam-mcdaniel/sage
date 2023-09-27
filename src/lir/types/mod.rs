@@ -248,7 +248,7 @@ impl Type {
     }
 
     /// Is first argument of function a reference?
-    pub fn is_first_arg_ref(&self, env: &Env) -> Result<bool, Error> {
+    pub fn is_self_param_reference(&self, env: &Env) -> Result<bool, Error> {
         Ok(match self.simplify_until_concrete(env)? {
             Self::Proc(args, _) => {
                 if let Some(Self::Pointer(_, _)) = args.first() {
@@ -262,7 +262,7 @@ impl Type {
     }
 
     /// Get the first argument's mutability (if it is a pointer)
-    pub fn get_first_arg_ref_mutability(&self, env: &Env) -> Option<Mutability> {
+    pub fn get_self_param_mutability(&self, env: &Env) -> Option<Mutability> {
         match self.simplify_until_concrete(env) {
             Ok(Self::Proc(args, _)) => {
                 if let Some(Self::Pointer(mutability, _)) = args.first() {
@@ -1213,7 +1213,7 @@ impl Type {
                         return Ok(());
                     }
                 }
-                error!("{} does not have member {}", self, member);
+                // error!("{} does not have member {}", self, member);
                 Err(Error::MemberNotFound(expr.clone(), member.clone()))
             }
             Type::Tuple(items) => {
@@ -1225,7 +1225,7 @@ impl Type {
                         return Ok(());
                     }
                 }
-                error!("{} does not have member {}", self, member);
+                // error!("{} does not have member {}", self, member);
                 Err(Error::MemberNotFound(expr.clone(), member.clone()))
             }
             Type::Union(types) => match types.get(&member.clone().as_symbol(env)?) {
@@ -1254,7 +1254,7 @@ impl Type {
                 if let Some(t) = env.get_type(name) {
                     t.type_check_member(member, expr, env)
                 } else {
-                    error!("Type {self} not defined in environment {env}");
+                    // error!("Type {self} not defined in environment {env}");
                     Err(Error::TypeNotDefined(name.clone()))
                 }
             }
@@ -1277,7 +1277,7 @@ impl Type {
                 if env.has_associated_const(other, &name) {
                     Ok(())
                 } else {
-                    error!("Type {self} does not have member {member}");
+                    // error!("Type {self} does not have member {member}");
                     Err(Error::MemberNotFound(expr.clone(), member.clone()))
                 }
             },

@@ -1,27 +1,200 @@
-impl Int {
-    const ZERO = 0;
 
-    def inc(self: &mut Int) {
-        *self += 1;
+def main() {
+    let text = "Hello, world!";
+    let mut s = String.from(&text);
+
+    let text2 = " This is a test! ";
+    let s2 = String.from(&text2);
+
+    // s2.push('!'); // This causes an error because s2 is immutable!
+    s.concat(&s2);
+    s.repeat(5);
+
+    s.println();
+}
+
+
+def main() {
+    let mut test = Vec.default();
+    for let mut i=0; i<1000; i+=1 {
+        test.push(i / 100.0);
+    }
+    test.print();
+    test.drop();
+    println();
+}
+
+struct Vec<T> {
+    data: &mut T,
+    len: Int,
+    capacity: Int,
+}
+
+
+def allocate<T>(count: Int): &mut T {
+    let size = count * sizeof<T>();
+    return alloc(size) as &mut T;
+}
+
+def memcpy<T>(dst: &mut T, src: &T, count: Int) {
+    for let mut i=0; i<count; i+=1 {
+        dst[i] = src[i];
+    }
+}
+
+impl Vec {
+    def default<T>(): Vec<T> {
+        // Allocate 128 elements
+        let element_size = sizeof<T>();
+        let capacity = 128;
+        let len = 0;
+        let data = allocate<T>(capacity);
+        return {
+            data=data,
+            len=len,
+            capacity=capacity
+        };
     }
 
-    def log(mut self: Int, base: Int): Int {
-        let mut result = 0;
-        while self > 1 {
-            self /= base;
-            result += 1;
+    def push<T>(self: &mut Vec<T>, value: T) {
+        if self.len == self.capacity {
+            Vec.reserve<T>(self, self.capacity * 2);
+        }
+        self.data[self.len] = value;
+        self.len += 1;
+    }
+
+    def reserve<T>(self: &mut Vec<T>, new_capacity: Int) {
+        if new_capacity <= self.capacity {
+            return ();
+        }
+
+        let new_data = allocate<T>(new_capacity);
+        memcpy<T>(new_data, self.data, self.len);
+        del self.data;
+        self.data = new_data;
+        self.capacity = new_capacity;
+    }
+
+    def print<T>(self: &Vec<T>) {
+        print("[");
+        for let mut i=0; i<self.len; i+=1 {
+            print(self.data[i]);
+            if i < self.len - 1 {
+                print(", ");
+            }
+        }
+        print("]");
+    }
+
+    def drop<T>(self: &mut Vec<T>) {
+        del self.data;
+    }
+}
+
+struct String {
+    contents: Vec<Char>,
+}
+
+impl String {
+    def empty(): String {
+        return {
+            contents=Vec.default<Char>()
+        };
+    }
+
+    def push(self: &mut String, c: Char) {
+        Vec.push<Char>(&mut (self.contents), c);
+    }
+
+    def from(cstr: &Char): String {
+        let mut result = String.empty();
+        for let mut i=0; cstr[i] != '\0'; i += 1 {
+            result.push(cstr[i]);
         }
         return result;
     }
 
-    def log2(self: Int): Int {
-        return self.log(2);
+    def concat(self: &mut String, other: &String) {
+        for let mut i=0; i<other.contents.len; i+=1 {
+            self.push(other.contents.data[i]);
+        }
     }
 
-    def log10(self: Int): Int {
-        return self.log(10);
+    def clone(self: &String): String {
+        let mut result = String.empty();
+        for let mut i=0; i<self.contents.len; i+=1 {
+            result.push(self.contents.data[i]);
+        }
+        return result;
+    }
+
+    def repeat(self: &mut String, count: Int) {
+        let mut copy = self.clone();
+        for let mut i=0; i<count; i+=1 {
+            self.concat(&copy);
+        }
+        copy.drop();
+    }
+
+    def drop(self: &mut String) {
+        Vec.drop<Char>(&mut (self.contents));
+    }
+
+    def print(self: &String) {
+        for let mut i=0; i<self.contents.len; i+=1 {
+            print(self.contents.data[i]);
+        }
+    }
+
+    def println(self: &String) {
+        for let mut i=0; i<self.contents.len; i+=1 {
+            print(self.contents.data[i]);
+        }
+        println();
     }
 }
+
+
+return ();
+when False {
+    println("This should not be printed");
+}
+
+const ADD_LOG_OPERATIONS = True;
+
+when ADD_LOG_OPERATIONS {
+    impl Int {
+        const ZERO = 0;
+
+        def inc(self: &mut Int) {
+            *self += 1;
+        }
+
+        def log(mut self: Int, base: Int): Int {
+            let mut result = 0;
+            while self > 1 {
+                self /= base;
+                result += 1;
+            }
+            return result;
+        }
+
+        def log2(self: Int): Int {
+            return self.log(2);
+        }
+
+        def log10(self: Int): Int {
+            return self.log(10);
+        }
+    }
+    // How many bits are needed to represent 1024?
+    println("Bits to represent 1024 = ", (1024).log2());
+} else {
+    println("ADD_LOG_OPERATIONS is False");
+}
+
+
 
 impl Cell {
     def inc(self: &mut Cell) {

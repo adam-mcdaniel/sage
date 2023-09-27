@@ -1,4 +1,24 @@
 
+
+impl Int {
+    def inc(self: &mut Int) { *self += 1; }
+
+    def fact(self: Int): Int {
+        if self <= 1 {
+            return 1;
+        } else {
+            return self * (self - 1).fact();
+        }
+    }
+}
+
+let mut x = 5;
+print("Enter a number: ");
+input(&mut x);
+x.inc();
+println("Factorial of ", x, " is ", x.fact());
+
+
 def main() {
     let board = Board.default();
     board.print();

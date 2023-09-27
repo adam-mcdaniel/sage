@@ -215,39 +215,9 @@ impl Compile for Expr {
                         }
                     }
                     Expr::Member(val, name) => {
-                        // Check if the value actually has a member with this name.
-                        let val_type = val.get_type(env)?;
-                        trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
                         // Try to get the member of the underlying type.
                         if self_clone.is_method_call(env)? {
-                            // If the value has a member with this name,
-                            trace!(target: "member", "WHOOP WHOOP");
-                            let mut new_args = vec![];
-                            // let f = ConstExpr::Member(ConstExpr::Type(val_type).into(), name.into());
-                            let as_symbol = name.clone().as_symbol(env)?;
-                            trace!(target: "member", "got symbol: {as_symbol}");
-                            let f = env.get_associated_const(&val_type, &as_symbol).ok_or(Error::SymbolNotDefined(as_symbol))?.clone();
-                            trace!(target: "member", "function value: {f} in {env}");
-
-                            // Get the type of the function
-                            let f_type = f.get_type(env)?;
-                            trace!(target: "member", "got function type: {}", f_type);
-                            // Get the first argument's type
-                            trace!(target: "member", "got first arg type: {:?}", f_type.get_first_arg_ref_mutability(env));
-                            if let Some(expected_mutability) = f_type.get_first_arg_ref_mutability(env) {
-                                if val_type.equals(&Type::Pointer(expected_mutability, Type::Any.into()), env)? {
-                                    new_args.push(*val.clone());
-                                } else {
-                                    new_args.push(val.refer(expected_mutability));
-                                }
-                            } else {
-                                new_args.push(*val.clone());
-                            }
-                            new_args.extend(args.clone());
-                            let result = Self::Apply(Expr::ConstExpr(f).into(), new_args);
-                            trace!(target: "member", "RESULT: {}", result);
-                            // Compile the new function call
-                            result.compile_expr(env, output)?;
+                            self_clone.transform_method_call(env)?.compile_expr(env, output)?;
                         } else {
                             // Push the arguments to the procedure on the stack.
                             for arg in &args {
@@ -594,11 +564,9 @@ impl Compile for Expr {
                             return Err(Error::SymbolNotDefined(member_as_symbol));
                         }
                     }
-                    _ => {
+                    val_type => {
                         // Get the size of the field we want to retrieve.
                         let size = self.get_size(env)?;
-                        // Get the type of the value we want to get a field from.
-                        let val_type = val.get_type(env)?;
                         // Get the size of the value we want to get a field from.
                         let val_size = val_type.get_size(env)?;
                         // Get the offset of the field from the address of the value.
@@ -615,8 +583,13 @@ impl Compile for Expr {
                             output.op(CoreOp::Pop(None, val_size - size));
                         } else {
                             // Try to get the member of the underlying type.
-                            return ConstExpr::Member(ConstExpr::Type(val_type).into(), member.clone().into())
-                                .compile_expr(env, output);
+                            let name = member.clone().as_symbol(env)?;
+                            return env.get_associated_const(&val_type, &name).ok_or_else(|| {
+                                // If we could not find the member return an error.
+                                Error::MemberNotFound(self.clone(), member.clone())
+                            }).and_then(|constant| {
+                                constant.clone().compile_expr(env, output)
+                            });
                         }
                     }
                 }
@@ -828,7 +801,7 @@ impl Compile for Expr {
 /// Compile a constant expression.
 impl Compile for ConstExpr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        // trace!("Compiling constant expression {self} in environment {env}");
+        trace!("Compiling constant expression {self} in environment {env}");
         let mut debug_str = format!("{self}");
         debug_str.truncate(50);
 

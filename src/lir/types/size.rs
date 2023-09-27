@@ -43,7 +43,7 @@ pub trait GetSize {
 impl GetSize for Type {
     fn get_size_checked(&self, env: &Env, i: usize) -> Result<usize, Error> {
         let i = i + 1;
-        // trace!("Getting the size of type {self} in environment {env} with depth {i}");
+        trace!("Getting the size of type {self} in environment {env} with depth {i}");
 
         if i > Type::SIMPLIFY_RECURSION_LIMIT {
             error!("Recursion limit reached while calculating size of type {self}");

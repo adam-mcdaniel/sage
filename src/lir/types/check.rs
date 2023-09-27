@@ -360,11 +360,16 @@ impl TypeCheck for Expr {
             Self::When(cond, t, e) => {
                 // Typecheck the condition.
                 cond.type_check(env)?;
-                // Typecheck the then and else branches.
-                t.type_check(env)?;
-                e.type_check(env)
+                if cond.clone().as_bool(env)? {
+                    // Typecheck the then branch.
+                    t.type_check(env)?;
+                } else {
+                    // Typecheck the else branch.
+                    e.type_check(env)?;
+                }
                 // Since `when` expressions are computed at compile time,
                 // we don't have to care about matching the types of the then and else branches.
+                Ok(())
             }
 
             // Typecheck a reference to a value.
@@ -511,6 +516,57 @@ impl TypeCheck for Expr {
             // Typecheck a function application.
             Self::Apply(f, args) => {
                 if self.is_method_call(env)? {
+                    // Get the type of the object we're calling the method on.
+                    let method_call = self.transform_method_call(env)?;
+
+                    if let Self::Apply(f, args) = method_call.clone() {
+                        // Typecheck the supplied arguments.
+                        for arg in &args {
+                            arg.type_check(env)?;
+                        }
+
+                        // Get the type of the function.
+                        let f_type = f.get_type(env)?.simplify_until_concrete(env)?;
+                        // Infer the types of the supplied arguments.
+                        let mut found_arg_tys = vec![];
+                        for arg in args {
+                            found_arg_tys.push(arg.get_type(env)?);
+                        }
+                        match f_type {
+                            Type::Proc(expected_arg_tys, ret_ty) => {
+                                // If the number of arguments is incorrect, then return an error.
+                                if expected_arg_tys.len() != found_arg_tys.len() {
+                                    return Err(Error::MismatchedTypes {
+                                        expected: Type::Proc(expected_arg_tys, ret_ty.clone()),
+                                        found: Type::Proc(found_arg_tys, ret_ty),
+                                        expr: self.clone(),
+                                    });
+                                }
+                                // If the function is a procedure, confirm that the type of each
+                                // argument matches the the type of the supplied value.
+                                for (expected, found) in
+                                    expected_arg_tys.into_iter().zip(found_arg_tys.into_iter())
+                                {
+                                    // If the types don't match, return an error.
+                                    if !found.can_decay_to(&expected, env)? {
+                                        return Err(Error::MismatchedTypes {
+                                            expected,
+                                            found,
+                                            expr: self.clone(),
+                                        });
+                                    }
+                                }
+                                return Ok(())
+                            }
+                            // If the function is not a procedure, return an error.
+                            _ => return Err(Error::MismatchedTypes {
+                                expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
+                                found: f_type,
+                                expr: self.clone(),
+                            }),
+                        }
+                    }
+
                     return Ok(());
                 }
 
@@ -520,6 +576,7 @@ impl TypeCheck for Expr {
                 for arg in args {
                     arg.type_check(env)?;
                 }
+
                 // Get the type of the function.
                 let f_type = f.get_type(env)?.simplify_until_concrete(env)?;
                 // Infer the types of the supplied arguments.
@@ -755,7 +812,7 @@ impl TypeCheck for Expr {
 // Typecheck a constant expression.
 impl TypeCheck for ConstExpr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
-        // trace!("Typechecking constant expression: {}", self);
+        trace!("Typechecking constant expression: {}", self);
         match self {
             Self::Annotated(expr, metadata) => {
                 expr.type_check(env).map_err(|e| e.annotate(metadata.clone()))

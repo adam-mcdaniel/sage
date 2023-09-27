@@ -10,6 +10,8 @@ use crate::lir::{Annotation, GetType, Error, Env, Declaration, ConstExpr, Mutabi
 use core::fmt;
 use std::collections::BTreeMap;
 
+use log::trace;
+
 /// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
 ///       This way, we don't overflow the stack with several clones of the environment.
 /// A runtime expression.
@@ -117,12 +119,154 @@ impl Expr {
     pub const NONE: Self = Self::ConstExpr(ConstExpr::None);
 
     pub fn is_method_call(&self, env: &Env) -> Result<bool, Error> {
-        match self.get_method_call_mutability(env) {
-            Ok(Some(_)) => Ok(true),
-            Ok(None) => Ok(true),
-            Err(Error::MemberNotFound(_, ConstExpr::None)) => Ok(false),
-            Err(e) => Err(e)
+        Ok(match self {
+            Self::Annotated(inner, annotation) => {
+                return inner.is_method_call(env).map_err(|e| e.annotate(annotation.clone()))
+            }
+
+            Self::Apply(fun, args) => {
+                match *fun.clone() {
+                    Self::Annotated(inner, annotation) => {
+                        return Self::Apply(inner, args.clone()).is_method_call(env).map_err(|e| e.annotate(annotation.clone()))
+                    }
+
+                    Self::Member(val, name) => {
+                        let val_type = val.get_type(env)?;
+                        // Is this an associated function?
+                        match val_type {
+                            Type::Type(_) => {
+                                false
+                            }
+                            _ => {
+                                if let Ok(name) = name.as_symbol(env) {
+                                    env.has_associated_const(&val_type, &name)
+                                } else {
+                                    false
+                                }
+                            }
+                        }
+                    }
+                    Self::ConstExpr(ConstExpr::Member(val, name)) => {
+                        let val_type = val.get_type(env)?;
+                        // Is this an associated function?
+                        match val_type {
+                            Type::Type(_) => {
+                                false
+                            }
+                            _ => {
+                                if let Ok(name) = name.as_symbol(env) {
+                                    env.has_associated_const(&val_type, &name)
+                                } else {
+                                    false
+                                }
+                            }
+                        }
+                    }
+                    _ => false
+                }
+            }
+
+            _ => false
+        })
+    }
+
+    pub fn transform_method_call(&self, env: &Env) -> Result<Self, Error> {
+        if !self.is_method_call(env)? {
+            return Ok(self.clone())
         }
+
+        match self {
+            Self::Annotated(inner, metadata) => {
+                inner.transform_method_call(env).map_err(|e| e.annotate(metadata.clone()))
+            }
+            Self::Apply(f, args) => {
+                match *f.clone() {
+                    Self::Annotated(inner, metadata) => {
+                        inner.transform_method_call(env).map_err(|e| e.annotate(metadata.clone()))
+                    }
+
+                    Self::ConstExpr(ConstExpr::Member(val, member)) => {
+                        let name = member.as_symbol(env);
+                        if self.is_method_call(env)? {
+                            let name = name?;
+                            // Check if the value actually has a member with this name.
+                            let val_type = val.get_type(env)?;
+                            trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
+                            // If the value has a member with this name,
+                            trace!(target: "member", "WHOOP WHOOP");
+                            let associated_function = env.get_associated_const(&val_type, &name).ok_or_else(|| Error::SymbolNotDefined(name.clone()))?.clone();
+                            trace!(target: "member", "function value: {associated_function} in {env}");
+                
+                            // Get the type of the function
+                            let associated_function_type = env.get_type_of_associated_const(&val_type, &name).ok_or_else(|| Error::SymbolNotDefined(name))?.clone();
+                            trace!(target: "member", "got function type: {}", associated_function_type);
+                            // Get the first argument's type
+                            let mut new_args = vec![];
+                            if let Some(expected_mutability) = associated_function_type.get_self_param_mutability(env) {
+                                if val_type.can_decay_to(&Type::Pointer(expected_mutability, Type::Any.into()), env)? {
+                                    trace!(target: "member", "decaying {val} to {expected_mutability} pointer");
+                                    new_args.push(Expr::ConstExpr(*val.clone()));
+                                } else {
+                                    trace!(target: "member", "referencing {val} as {expected_mutability} pointer");
+                                    new_args.push(Expr::ConstExpr(*val.clone()).refer(expected_mutability));
+                                }
+                            } else {
+                                trace!(target: "member", "passing by value {val}");
+                                new_args.push(Expr::ConstExpr(*val.clone()));
+                            }
+                            new_args.extend(args.clone());
+                            Ok(Self::Apply(Expr::ConstExpr(associated_function).into(), new_args))
+                        } else {
+                            // Compile it normally:
+                            // Push the procedure on the stack.
+                            Ok(self.clone())
+                        }
+                    }
+
+                    Self::Member(val, member) => {
+                        // Try to get the member of the underlying type.
+                        let name = member.as_symbol(env);
+                        if self.is_method_call(env)? {
+                            let name = name?;
+                            // Check if the value actually has a member with this name.
+                            let val_type = val.get_type(env)?;
+                            trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
+                            // If the value has a member with this name,
+                            trace!(target: "member", "WHOOP WHOOP");
+                            let associated_function = env.get_associated_const(&val_type, &name).ok_or_else(|| Error::SymbolNotDefined(name.clone()))?.clone();
+                            trace!(target: "member", "function value: {associated_function} in {env}");
+                
+                            // Get the type of the function
+                            let associated_function_type = env.get_type_of_associated_const(&val_type, &name).ok_or_else(|| Error::SymbolNotDefined(name))?.clone();
+                            trace!(target: "member", "got function type: {}", associated_function_type);
+                            // Get the first argument's type
+                            let mut new_args = vec![];
+                            if let Some(expected_mutability) = associated_function_type.get_self_param_mutability(env) {
+                                if val_type.can_decay_to(&Type::Pointer(expected_mutability, Type::Any.into()), env)? {
+                                    trace!(target: "member", "decaying {val} to {expected_mutability} pointer");
+                                    new_args.push(*val.clone());
+                                } else {
+                                    trace!(target: "member", "referencing {val} as {expected_mutability} pointer");
+                                    new_args.push(val.refer(expected_mutability));
+                                }
+                            } else {
+                                trace!(target: "member", "passing by value {val}");
+                                new_args.push(*val.clone());
+                            }
+                            new_args.extend(args.clone());
+                            Ok(Self::Apply(Expr::ConstExpr(associated_function).into(), new_args))
+                        } else {
+                            // Compile it normally:
+                            // Push the procedure on the stack.
+                            Ok(self.clone())
+                        }
+                    }
+                    _ => Err(Error::MemberNotFound(self.clone(), ConstExpr::None))
+                }
+            }
+            _ => Ok(self.clone())
+        }
+
     }
 
     pub fn get_method_call_mutability(&self, env: &Env) -> Result<Option<Mutability>, Error> {
@@ -132,15 +276,19 @@ impl Expr {
             }
 
             Self::Apply(fun, args) => {
+                let fun_type = fun.get_type(env)?;
                 match *fun.clone() {
+                    Self::Annotated(inner, annotation) => {
+                        return Self::Apply(inner, args.clone()).get_method_call_mutability(env).map_err(|e| e.annotate(annotation.clone()))
+                    }
                     Self::Member(val, name) => {
                         // Check if the value actually has a member with this name.
-                        let val_type = val.get_type(env)?;
-                        return Ok(val_type.get_first_arg_ref_mutability(env))
+                        // let val_type = val.get_type(env)?;
+                        return Ok(fun_type.get_self_param_mutability(env))
                     }
                     Self::ConstExpr(ConstExpr::Member(val, name)) => {
-                        let val_type = val.get_type(env)?;
-                        return Ok(val_type.get_first_arg_ref_mutability(env))
+                        // let val_type = val.get_type(env)?;
+                        return Ok(fun_type.get_self_param_mutability(env))
                     }
                     _ => return Err(Error::MemberNotFound(self.clone(), ConstExpr::None))
                 }
@@ -148,47 +296,6 @@ impl Expr {
 
             _ => return Err(Error::MemberNotFound(self.clone(), ConstExpr::None))
         }
-
-        // Expr::Member(val, name) => {
-        //     // Check if the value actually has a member with this name.
-        //     let val_type = val.get_type(env)?;
-        //     trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
-        //     // Try to get the member of the underlying type.
-        //     match name.clone().as_symbol(env).and_then(|name| Ok(env.has_associated_const(&val_type, &name))) {
-        //         // If the value has a member with this name,
-        //         Ok(true) => {
-        //             trace!(target: "member", "WHOOP WHOOP");
-        //             let mut new_args = vec![];
-        //             let f = ConstExpr::Member(ConstExpr::Type(val_type).into(), name.into());
-        //             // Get the type of the function
-        //             let f_type = f.get_type(env)?.simplify_until_concrete(env)?;
-        //             trace!(target: "member", "got function type: {:#?}", f_type);
-        //             // Get the first argument's type
-        //             trace!(target: "member", "got first arg type: {:#?}", f_type.get_first_arg_ref_mutability(env));
-        //             if let Some(mutability) = f_type.get_first_arg_ref_mutability(env) {
-        //                 new_args.push(val.refer(mutability));
-        //             } else {
-        //                 new_args.push(*val.clone());
-        //             }
-        //             new_args.extend(args.clone());
-        //             let result = Self::Apply(Expr::ConstExpr(f).into(), new_args);
-        //             trace!(target: "member", "RESULT: {:#?}", result);
-        //             // Compile the new function call
-        //             return result.compile_expr(env, output);
-        //         }
-        //         // If the value does not have a member with this name,
-        //         _ => {
-        //             compile_args()?;
-        //             // Compile it normally:
-        //             // Push the procedure on the stack.
-        //             val.field(name).compile_expr(env, output)?;
-        //             // Pop the "function pointer" from the stack.
-        //             output.op(CoreOp::Pop(Some(A), 1));
-        //             // Call the procedure on the arguments.
-        //             output.op(CoreOp::Call(A));
-        //         }
-        //     }
-        // }
     }
 
     /// An annotated expression with some metadata.

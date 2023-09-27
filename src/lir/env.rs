@@ -32,7 +32,7 @@ pub struct Env {
     /// A lookup for the offsets of global variables.
     globals: Rc<Mutex<Globals>>,
     /// Associated constants for types.
-    associated_constants: Rc<HashMap<Type, HashMap<String, ConstExpr>>>,
+    associated_constants: Rc<RwLock<HashMap<Type, HashMap<String, (ConstExpr, Type)>>>>,
 
     /// The current offset of the frame pointer to assign to the next variable.
     /// This is incremented by the size of each variable as it is defined.
@@ -61,7 +61,7 @@ impl Default for Env {
             vars: Rc::new(HashMap::new()),
             static_vars: Rc::new(HashMap::new()),
             globals: Rc::new(Mutex::new(Globals::new())),
-            associated_constants: Rc::new(HashMap::new()),
+            associated_constants: Rc::new(RwLock::new(HashMap::new())),
 
             // The last argument is stored at `[FP]`, so our first variable must be at `[FP + 1]`.
             fp_offset: 1,
@@ -89,52 +89,123 @@ impl Env {
         }
     }
 
-    pub fn get_associated_const(&self, ty: &Type, name: &str) -> Option<&ConstExpr> {
-        trace!("Getting associated const {name} of type {ty} in {self}");
-        if let Some(constant) = self.associated_constants.get(ty).and_then(|consts| consts.get(name)) {
-            trace!("Found associated const {name} of type {ty} in {self}");
-            return Some(constant);
+    /// Get the type of an associated constant of a type.
+    pub fn get_type_of_associated_const(&self, ty: &Type, name: &str) -> Option<Type> {
+        trace!("Getting type of associated const {name} of type {ty} in {self}");
+        let associated_constants = self.associated_constants.read().unwrap();
+
+        if let Some((_, expr_ty)) = associated_constants.get(ty).and_then(|consts| consts.get(name)) {
+            trace!("Found memoized type of associated const {name} of type {ty} in {self}");
+            return Some(expr_ty.clone());
         }
         // Go through all the types and see if any equals the given type.
-        for (other_ty, consts) in self.associated_constants.iter() {
+        for (other_ty, consts) in associated_constants.iter() {
+            if !ty.can_decay_to(other_ty, self).unwrap_or(false) {
+                trace!("Type {other_ty} does not equal {ty}");
+                continue;
+            }
+            if let Some((constant, expr_ty)) = consts.get(name) {
+                let constant = constant.clone();
+                let expr_ty = expr_ty.clone();
+                drop(associated_constants);
+                self.memoize_associated_const(ty, name, constant, expr_ty.clone()).ok()?;
+                return Some(expr_ty);
+            }
+        }
+        trace!("Could not find associated const {name} of type {ty} in {self}");
+        drop(associated_constants);
+
+        if let Type::Type(inner_ty) = ty {
+            if let Some(ty) = self.get_type_of_associated_const(inner_ty, name) {
+                return Some(ty);
+            }
+        }
+        if let Type::Pointer(_, inner_ty) = ty {
+            if let Some(ty) = self.get_type_of_associated_const(inner_ty, name) {
+                return Some(ty);
+            }
+        }
+        None
+    }
+
+    pub fn get_associated_const(&self, ty: &Type, name: &str) -> Option<ConstExpr> {
+        trace!("Getting associated const {name} of type {ty} in {self}");
+        let associated_constants = self.associated_constants.read().unwrap();
+        
+        if let Some((constant, _)) = associated_constants.get(ty).and_then(|consts| consts.get(name)) {
+            trace!("Found associated const {name} of type {ty} in {self}");
+            return Some(constant.clone());
+        }
+        // Go through all the types and see if any equals the given type.
+        for (other_ty, consts) in associated_constants.iter() {
             if !ty.can_decay_to(other_ty, self).unwrap_or(false) {
                 trace!("Type {other_ty} does not equal {ty}");
                 continue;
             }
             trace!("Found eligible type {other_ty} for {ty}");
-            if let Some(const_expr) = consts.get(name) {
+            if let Some((const_expr, expr_ty)) = consts.get(name) {
+                let expr_ty = expr_ty.clone();
+                let const_expr = const_expr.clone();
+                drop(associated_constants);
+                self.memoize_associated_const(ty, name, const_expr.clone(), expr_ty).ok()?;
                 return Some(const_expr);
             }
         }
-
         trace!("Could not find associated const {name} of type {ty} in {self}");
+        drop(associated_constants);
+
         if let Type::Type(inner_ty) = ty {
             if let Some(constant) = self.get_associated_const(inner_ty, name) {
+                let expr_ty = constant.get_type(self).ok()?;
+                self.memoize_associated_const(ty, name, constant.clone(), expr_ty).ok()?;
                 return Some(constant);
             }
         }
-        if let Type::Pointer(_, inner_ty) = ty {
+        if let Type::Pointer(_mutability, inner_ty) = ty {
             if let Some(constant) = self.get_associated_const(inner_ty, name) {
+                // Memoize the associated constant.
+                let expr_ty = constant.get_type(self).ok()?;
+                self.memoize_associated_const(ty, name, constant.clone(), expr_ty).ok()?;
                 return Some(constant);
             }
         }
         None
     }
 
+    fn memoize_associated_const(&self, ty: &Type, name: &str, constant: ConstExpr, expr_ty: Type) -> Result<(), Error> {
+        trace!("Memoizing associated const {name} of type {ty} in {self}");
+        let mut associated_constants = self.associated_constants.write().unwrap();
+        // Does the type already have the associated constant?
+        if let Some(consts) = associated_constants.get(ty) {
+            if let Some((_, _)) = consts.get(name) {
+                // If so, we don't need to memoize it.
+                return Ok(());
+            }
+        }
+
+        let consts = associated_constants.entry(ty.clone()).or_default();
+        if consts.contains_key(name) {
+            return Ok(());
+        }
+        consts.insert(name.to_owned(), (constant, expr_ty));
+        Ok(())
+    }
+
     pub fn has_associated_const(&self, ty: &Type, name: &str) -> bool {
         self.get_associated_const(ty, name).is_some()
     }
 
-    pub fn get_all_associated_consts(&self, ty: &Type) -> Vec<(&str, &ConstExpr)> {
+    pub fn get_all_associated_consts(&self, ty: &Type) -> Vec<(String, ConstExpr)> {
         trace!("Getting all associated constants of type {ty}");
+        let associated_constants = self.associated_constants.read().unwrap();
         let mut result = Vec::new();
-        if let Some(consts) = self.associated_constants.get(ty) {
-            for (name, const_expr) in consts.iter() {
-                result.push((name.as_str(), const_expr));
+        if let Some(consts) = associated_constants.get(ty) {
+            for (name, (const_expr, _)) in consts.iter() {
+                result.push((name.to_owned(), const_expr.clone()));
             }
         }
         // Go through all the types and see if any equals the given type.
-        for (other_ty, consts) in self.associated_constants.iter() {
+        for (other_ty, consts) in associated_constants.iter() {
             if ty == other_ty {
                 continue;
             }
@@ -143,8 +214,8 @@ impl Env {
                 continue;
             }
             trace!("Found eligible type {other_ty} for {ty}");
-            for (name, const_expr) in consts.iter() {
-                result.push((name.as_str(), const_expr));
+            for (name, (const_expr, _)) in consts.iter() {
+                result.push((name.to_owned(), const_expr.clone()));
             }
         }
         result
@@ -155,13 +226,21 @@ impl Env {
         ty: Type,
         associated_const_name: impl ToString,
         expr: ConstExpr,
-    ) {
+    ) -> Result<(), Error> {
         let associated_const_name = associated_const_name.to_string();
         trace!("Defining associated const {associated_const_name} as {expr} to type {ty}");
-        Rc::make_mut(&mut self.associated_constants)
+        let expr_ty = expr.get_type(self)?;
+        // // Rc::make_mut(&mut self.associated_constants)
+        //     .entry(ty)
+        //     .or_default()
+        //     .insert(associated_const_name, (expr, expr_ty));
+        let mut associated_constants = self.associated_constants.write().unwrap();
+        associated_constants
             .entry(ty)
             .or_default()
-            .insert(associated_const_name, expr);
+            .insert(associated_const_name, (expr, expr_ty));
+
+        Ok(())
     }
 
     /// Add all the declarations to this environment.
@@ -196,7 +275,7 @@ impl Env {
             }
             Declaration::Impl(ty, impls) => {
                 for (name, associated_const) in impls {
-                    self.add_associated_const(ty.clone(), name, associated_const.clone());
+                    self.add_associated_const(ty.clone(), name, associated_const.clone())?;
                 }
             }
             Declaration::Var(_, _, _, _) => {
@@ -539,19 +618,19 @@ impl Env {
 
 impl Display for Env {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        writeln!(f, "Env")?;
-        writeln!(f, "   Types:")?;
-        for (name, ty) in self.types.iter() {
-            writeln!(f, "      {}: {}", name, ty)?;
-            let constants = self.get_all_associated_consts(ty);
-            if constants.is_empty() {
-                continue;
-            }
-            writeln!(f, "         Associated constants:")?;
-            for (name, cexpr) in constants {
-                writeln!(f, "            {}: {}", name, cexpr)?;
-            }
-        }
+        // writeln!(f, "Env")?;
+        // writeln!(f, "   Types:")?;
+        // for (name, ty) in self.types.iter() {
+        //     writeln!(f, "      {}: {}", name, ty)?;
+        //     let constants = self.get_all_associated_consts(ty);
+        //     if constants.is_empty() {
+        //         continue;
+        //     }
+        //     writeln!(f, "         Associated constants:")?;
+        //     for (name, cexpr) in constants {
+        //         writeln!(f, "            {}: {}", name, cexpr)?;
+        //     }
+        // }
         // writeln!(f, "   Constants:")?;
         // for (name, e) in self.consts.iter() {
         //     writeln!(f, "      {}: {}", name, e)?;

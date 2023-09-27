@@ -17,6 +17,7 @@ pub enum Statement {
     LetStatic(Vec<(String, Mutability, Type, ConstExpr)>),
     Assign(Expr, Option<Box<dyn AssignOp + 'static>>, Expr),
     If(Expr, Box<Self>, Option<Box<Self>>),
+    When(ConstExpr, Box<Self>, Option<Box<Self>>),
     IfLet(Pattern, Expr, Box<Self>, Option<Box<Self>>),
     While(Expr, Box<Self>),
     For(Box<Self>, Expr, Box<Self>, Box<Self>),
@@ -52,6 +53,16 @@ impl Statement {
                     None => lhs.refer(Mutability::Mutable).deref_mut(rhs),
                 }
             }
+            (Self::When(cond, body, None), _) => Expr::When(
+                cond,
+                Box::new(body.to_expr(None)),
+                Box::new(Expr::ConstExpr(ConstExpr::None)),
+            ),
+            (Self::When(cond, body, Some(else_body)), _) => Expr::When(
+                cond,
+                Box::new(body.to_expr(None)),
+                Box::new(else_body.to_expr(None)),
+            ),
             (Self::If(cond, body, None), _) => Expr::If(
                 Box::new(cond),
                 Box::new(body.to_expr(None)),
@@ -130,6 +141,7 @@ impl Statement {
 
             (Self::Expr(e), _) => e,
         };
+        
         if let Some(Expr::Many(mut stmts)) = rest {
             stmts.insert(0, stmt);
             Expr::Many(stmts)
@@ -193,45 +205,7 @@ impl Declaration {
             )])
             .to_expr(rest),
             (Self::Impl(ty, methods), _) => return rest_expr.with(crate::lir::Declaration::Impl(ty, methods)),
-            (Self::Struct(name, fields), Some(Expr::Declare(types, ret))) => {
-                ret.with(types.join((name, Type::Struct(fields.into_iter().collect()))))
-            }
             (Self::Struct(name, fields), _) => rest_expr.with((name, Type::Struct(fields.into_iter().collect()))),
-            (Self::Enum(name, variants), Some(Expr::Declare(types, ret))) => {
-                let mut simple = true;
-                for (_, value) in variants.iter() {
-                    if value.is_some() {
-                        simple = false;
-                        break;
-                    }
-                }
-                ret.with(types.join(if simple {
-                    // If we're using a simple enum, then we can just use a simple enum
-                    (
-                        name,
-                        Type::Enum(variants.into_iter().map(|(a, _)| a).collect()),
-                    )
-                } else {
-                    // Otherwise, we need to use a tagged union
-                    (
-                        name,
-                        Type::EnumUnion(
-                            variants
-                                .into_iter()
-                                .map(|(a, b)| {
-                                    (
-                                        a,
-                                        match b {
-                                            Some(x) => x,
-                                            None => Type::None,
-                                        },
-                                    )
-                                })
-                                .collect(),
-                        ),
-                    )
-                }))
-            }
             (Self::Enum(name, variants), _) => {
                 // If none of the variants have a value, then we can just use a simple enum
                 // Otherwise, we need to use a tagged union
@@ -270,49 +244,14 @@ impl Declaration {
                     )
                 })
             }
-            (Self::Const(consts), Some(Expr::Declare(defs, ret))) => {
-                let mut result = *ret;
-                for (name, value) in consts.into_iter().rev() {
-                    result = result.with((name, value))
-                }
-                result.with(*defs)
-
-                // for (name, value) in consts.drain(..).rev() {
-                //     defs.insert(name, value);
-                // }
-                // Expr::LetConsts(defs, ret)
-            }
             (Self::Const(consts), _) => {
                 rest_expr.with(consts)
-            }
-            (Self::Proc(name, params, ret, stmt), Some(Expr::Declare(procs, ret2))) => {
-                ret2.with((
-                    name.clone(),
-                    Self::proc_to_expr(name, params, ret, *stmt),
-                )).with(*procs)
-                // procs.push((name.clone(), Self::proc_to_expr(name, params, ret, *stmt)));
-                // Expr::LetProcs(procs, ret2)
             }
             (Self::Proc(name, params, ret, stmt), _) => {
                 rest_expr.with((
                     name.clone(),
                     Self::proc_to_expr(name, params, ret, *stmt),
                 ))
-            }
-            (
-                Self::PolyProc(name, ty_params, params, ret, stmt),
-                Some(Expr::Declare(decls, ret2)),
-            ) => {
-                ret2.with((
-                    name.clone(),
-                    ConstExpr::PolyProc(PolyProcedure::new(
-                        name,
-                        ty_params,
-                        params,
-                        ret.unwrap_or(Type::None),
-                        stmt.to_expr(None),
-                    )),
-                )).with(*decls)
             }
             (Self::PolyProc(name, ty_params, params, ret, stmt), _) => {
                 rest_expr.with((
@@ -325,11 +264,6 @@ impl Declaration {
                         stmt.to_expr(None),
                     )),
                 ))
-            }
-            (Self::Type(types), Some(Expr::Declare(types2, ret))) => {
-                // types.append(&mut types2);
-                // Expr::LetTypes(types, ret)
-                ret.with(types).with(types2)
             }
             (Self::Type(types), _) => rest_expr.with(types),
             (Self::Statement(stmt), Some(rest)) => stmt.to_expr(Some(rest)),
@@ -722,6 +656,15 @@ fn parse_stmt(pair: Pair<Rule>, filename: Option<&str>) -> Statement {
                 .map(|x| Box::new(parse_stmt(x, filename)));
             Statement::If(cond, Box::new(body), else_body)
         }
+        Rule::stmt_when => {
+            let mut inner_rules = pair.into_inner();
+            let cond = parse_const(inner_rules.next().unwrap());
+            let body = parse_stmt(inner_rules.next().unwrap(), filename);
+            let else_body = inner_rules
+                .next()
+                .map(|x| Box::new(parse_stmt(x, filename)));
+            Statement::When(cond, Box::new(body), else_body)
+        }
 
         Rule::stmt_if_elif => {
             let mut inner_rules = pair.into_inner();
@@ -1103,8 +1046,43 @@ fn parse_binop(pair: Pair<Rule>) -> Expr {
 
 fn parse_const(pair: Pair<Rule>) -> ConstExpr {
     match pair.as_rule() {
-        Rule::r#const | Rule::const_term | Rule::const_atom | Rule::const_group => {
+        Rule::r#const | Rule::const_atom | Rule::const_group => {
             pair.into_inner().map(parse_const).next().unwrap()
+        }
+        Rule::const_term => {
+            let mut inner_rules = pair.into_inner();
+            let mut head = parse_const(inner_rules.next().unwrap());
+            for suffix in inner_rules {
+                head = match suffix.as_rule() {
+                    Rule::expr_int_field => head.field(ConstExpr::Int(
+                        suffix
+                            .into_inner()
+                            .next()
+                            .unwrap()
+                            .as_str()
+                            .parse()
+                            .unwrap(),
+                    )),
+                    Rule::expr_symbol_field => head.field(ConstExpr::Symbol(
+                        suffix.into_inner().next().unwrap().as_str().to_string(),
+                    )),
+                    _ => unreachable!(),
+                }
+            }
+            head
+            // Rule::expr_int_field => head.field(ConstExpr::Int(
+            //     suffix
+            //         .into_inner()
+            //         .next()
+            //         .unwrap()
+            //         .as_str()
+            //         .parse()
+            //         .unwrap(),
+            // )),
+            // Rule::expr_symbol_field => head.field(ConstExpr::Symbol(
+            //     suffix.into_inner().next().unwrap().as_str().to_string(),
+            // )),
+
         }
         Rule::const_monomorph => {
             let mut inner_rules = pair.into_inner();

@@ -157,6 +157,14 @@ impl ConstExpr {
         Self::As(Box::new(self), t)
     }
 
+    /// Get a field from a structure, union, or tuple.
+    ///
+    /// For tuples, use an `Int` constant expression to access the nth field (zero indexed).
+    /// For unions or structures, use a `Symbol` constant expression to access the field.
+    pub fn field(self, field: ConstExpr) -> Self {
+        Self::Member(self.into(), field.into())
+    }
+
     /// Evaluate this constant with stack overflow prevention.
     ///
     /// The `i` is a counter for the number of recursions caused by an `eval` call.
@@ -166,7 +174,7 @@ impl ConstExpr {
             error!("Recursion depth exceeded while evaluating: {self}");
             Err(Error::RecursionDepthConst(self))
         } else {
-            // trace!("Evaluating constexpr: {self}");
+            trace!("Evaluating constexpr: {self}");
             match self {
                 Self::Annotated(expr, metadata) => {
                     expr.eval_checked(env, i).map_err(|e| e.annotate(metadata.clone()))
@@ -364,7 +372,7 @@ impl Simplify for ConstExpr {
 
 impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        trace!("Getting type from constexpr: {self}");
+        // trace!("Getting type from constexpr: {self}");
         Ok(match self.clone() {
             Self::Type(t) => Type::Type(t.into()),
 
@@ -380,9 +388,8 @@ impl GetType for ConstExpr {
                 {
                     Ok(Type::Type(ty)) => {
                         // Get the associated constant expression's type.
-                        env.get_associated_const(&ty, &as_symbol?)
+                        env.get_type_of_associated_const(&ty, &as_symbol?)
                             .ok_or(Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into()))?
-                            .get_type_checked(env, i)?
                     }
                     // If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.

@@ -349,8 +349,11 @@ impl TypeCheck for Declaration {
                 proc.type_check(env)?;
             }
             Self::Impl(_name, impls) => {
+                let mut new_env = env.clone();
+                // Add all the compile-time declarations to the environment.
+                new_env.add_compile_time_declaration(&self.clone())?;
                 for (_name, expr) in impls {
-                    expr.type_check(env)?;
+                    expr.type_check(&new_env)?;
                 }
             }
             // Typecheck a multi-declaration.

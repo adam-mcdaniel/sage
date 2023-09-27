@@ -129,8 +129,10 @@ impl Error {
     pub fn annotate(mut self, annotation: Annotation) -> Self {
         match &mut self {
             Self::Annotated(err, previous_annotation) => {
-                *previous_annotation |= annotation.clone();
+                let mut result = annotation.clone();
+                result |= previous_annotation.clone();
                 *err = Box::new(err.clone().annotate(annotation));
+                *previous_annotation = result;
                 self
             }
             _ => Self::Annotated(Box::new(self), annotation),

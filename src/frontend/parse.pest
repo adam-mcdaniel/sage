@@ -7,7 +7,7 @@ keyword = @{
     | "return" | "struct" | "enum" | "as" | "of" | "sizeof"
     | "def" | "let" | "const" | "type" | "core" | "std"
     | "Int" | "Float" | "Bool" | "Char" | "Cell" | "None" | "Null" | "Never"
-    | "True" | "False" | "new" | "mut" | "impl" | "extern"
+    | "True" | "False" | "new" | "mut" | "impl" | "extern" | "when" | "del"
 }
 
 operator = @{
@@ -371,7 +371,7 @@ const_size_of_type = { "sizeof" ~ "<" ~ type ~ ">" ~ "(" ~ ")" }
 const_size_of_expr = { "sizeof" ~ "(" ~ expr ~ ")" }
 const_term = {
     const_variant
-    | const_atom
+    | const_atom ~ (expr_int_field | expr_symbol_field)*
 }
 const_variant = { type_atom ~ "of" ~ symbol ~ const_atom? }
 const_atom = {
