@@ -3,7 +3,7 @@ use super::{Procedure, PolyProcedure};
 
 use std::collections::BTreeMap;
 use core::{ops::{Add, AddAssign}, fmt::{Display, Formatter, Result as FmtResult}};
-use log::debug;
+use log::{debug, error};
 
 /// A declaration of a variable, function, type, etc.
 #[derive(Debug, Clone, PartialEq)]
@@ -260,6 +260,7 @@ impl TypeCheck for Declaration {
                     expected_ty.type_check(env)?;
                     // Make sure the type of the expression can decay to the specified type.
                     if !found_ty.can_decay_to(expected_ty, env)? {
+                        error!("Invalid declaration {}: {found_ty:?} != {expected_ty:?}", self.clone());
                         return Err(Error::MismatchedTypes {
                             expected: expected_ty.clone(),
                             found: found_ty.clone(),

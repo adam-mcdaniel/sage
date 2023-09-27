@@ -212,7 +212,11 @@ impl Expr {
                                 }
                             } else {
                                 trace!(target: "member", "passing by value {val}");
-                                new_args.push(Expr::ConstExpr(*val.clone()));
+                                if val_type.can_decay_to(&Type::Pointer(Mutability::Any, Type::Any.into()), env)? {
+                                    new_args.push(Expr::ConstExpr(*val.clone()).deref());
+                                } else {
+                                    new_args.push(Expr::ConstExpr(*val.clone()));
+                                }
                             }
                             new_args.extend(args.clone());
                             Ok(Self::Apply(Expr::ConstExpr(associated_function).into(), new_args))
@@ -251,7 +255,11 @@ impl Expr {
                                 }
                             } else {
                                 trace!(target: "member", "passing by value {val}");
-                                new_args.push(*val.clone());
+                                if val_type.can_decay_to(&Type::Pointer(Mutability::Any, Type::Any.into()), env)? {
+                                    new_args.push(val.deref());
+                                } else {
+                                    new_args.push(*val.clone());
+                                }
                             }
                             new_args.extend(args.clone());
                             Ok(Self::Apply(Expr::ConstExpr(associated_function).into(), new_args))

@@ -165,12 +165,9 @@ impl GetType for Expr {
             // Return the type of the expression being dereferenced.
             Self::Deref(expr) => {
                 // Get the type of the expression.
-                let t = expr.get_type_checked(env, i)?;
+                let t = expr.get_type_checked(env, i)?.simplify_until_concrete(env)?;
                 // If the type is a pointer, return the inner type of the pointer.
                 if let Type::Pointer(_, inner) = t {
-                    // Return the inner type of the pointer.
-                    *inner
-                } else if let Type::Pointer(_, inner) = t.simplify(env)? {
                     // If the type *evaluates* to a pointer, return that inner type.
                     *inner
                 } else {
@@ -247,15 +244,20 @@ impl GetType for Expr {
                 // Get the field to access (as an integer)
                 let as_int = field.clone().as_int(env);
                 // Get the type of the value to get the member of.
-                let val_type = val.get_type_checked(env, i)?.simplify_until_has_members(env);
-                match val_type
+                let val_type = val.get_type_checked(env, i)?;
+                match val_type.simplify_until_concrete(env)?
                 {
-                    Ok(Type::Type(ty)) => {
+                    Type::Type(ty) => {
                         // Get the associated constant expression's type.
                         env.get_type_of_associated_const(&ty, &as_symbol?)
                             .ok_or(Error::MemberNotFound(*val.clone(), field.clone()))?
                     }
-                    Ok(Type::Pointer(found_mutability, t)) => {
+                    Type::Unit(_unit_name, inner_ty) => {
+                        // Get the associated constant expression's type.
+                        env.get_type_of_associated_const(&inner_ty, &as_symbol?)
+                            .ok_or(Error::MemberNotFound(*val.clone(), field.clone()))?
+                    }
+                    Type::Pointer(found_mutability, t) => {
                         match t.get_member_offset(field, val, env) {
                             Ok((t, _)) => t,
                             Err(_)=> {
@@ -267,7 +269,7 @@ impl GetType for Expr {
                     // If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
                     // This is because tuples are accesed by integer index.
-                    Ok(Type::Tuple(items)) => {
+                    Type::Tuple(items) => {
                         // Get the index of the field.
                         let n = as_int? as usize;
                         // If the index is in range, return the type of the field.
@@ -281,7 +283,7 @@ impl GetType for Expr {
                     // If we're accessing a member of a struct,
                     // we use the `as_symbol` interpretation of the field.
                     // This is because struct members are accessed by name.
-                    Ok(Type::Struct(fields)) => {
+                    Type::Struct(fields) => {
                         // Get the type of the field.
                         let name = as_symbol?;
                         if let Some(t) = fields.get(&name) {
@@ -296,7 +298,7 @@ impl GetType for Expr {
                     // If we're accessing a member of a union,
                     // we use the `as_symbol` interpretation of the field.
                     // This is because union members are accessed by name.
-                    Ok(Type::Union(types)) => {
+                    Type::Union(types) => {
                         // Get the type of the field.
                         let name = as_symbol?;
                         if let Some(t) = types.get(&name) {
@@ -311,15 +313,17 @@ impl GetType for Expr {
 
                     // If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
-                    Ok(val_type) => {
+                    val_type => {
                         // Try to get the member of the underlying type.
                         return env.get_type_of_associated_const(&val_type, &as_symbol?)
                             .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
                     },
-                    Err(e) => {
-                        // Try to get the member of the underlying type.
-                        return Err(e);
-                    }
+                    // Err(e) => {
+                    //     // Try to get the member of the underlying type.
+                    //     // return Err(e);
+                    //     return env.get_type_of_associated_const(&val_type, &as_symbol?)
+                    //         .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
+                    // }
                 }
             }
 

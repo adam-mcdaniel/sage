@@ -125,6 +125,11 @@ impl Env {
                 return Some(ty);
             }
         }
+        if let Type::Unit(_, inner_ty) = ty {
+            if let Some(ty) = self.get_type_of_associated_const(inner_ty, name) {
+                return Some(ty);
+            }
+        }
         None
     }
 
@@ -162,6 +167,14 @@ impl Env {
             }
         }
         if let Type::Pointer(_mutability, inner_ty) = ty {
+            if let Some(constant) = self.get_associated_const(inner_ty, name) {
+                // Memoize the associated constant.
+                let expr_ty = constant.get_type(self).ok()?;
+                self.memoize_associated_const(ty, name, constant.clone(), expr_ty).ok()?;
+                return Some(constant);
+            }
+        }
+        if let Type::Unit(_unit_name, inner_ty) = ty {
             if let Some(constant) = self.get_associated_const(inner_ty, name) {
                 // Memoize the associated constant.
                 let expr_ty = constant.get_type(self).ok()?;

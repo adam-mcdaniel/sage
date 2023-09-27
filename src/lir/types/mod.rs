@@ -10,11 +10,9 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 mod check;
 mod inference;
 mod size;
-mod traits;
 pub use check::*;
 pub use inference::*;
 pub use size::*;
-pub use traits::*;
 
 use log::{error, trace, warn};
 
@@ -236,13 +234,15 @@ impl Type {
             | Self::Never
             | Self::Enum(_)
             | Self::Type(_) => true,
+            Self::Unit(_, t) => t.is_atomic(),
             Self::Tuple(inner) => inner.iter().all(|t| t.is_atomic()),
             Self::Array(inner, _) => inner.is_atomic(),
             Self::Proc(args, ret) => args.iter().all(|t| t.is_atomic()) && ret.is_atomic(),
             Self::Pointer(_, inner) => inner.is_atomic(),
             Self::Struct(inner) => inner.iter().all(|(_, t)| t.is_atomic()),
             Self::EnumUnion(inner) => inner.iter().all(|(_, t)| t.is_atomic()),
-            Self::Poly(_, _) | Self::Symbol(_) | Self::Apply(_, _) | Self::Let(_, _, _) => false,
+            Self::Poly(_, _) | Self::Symbol(_) | Self::Apply(_, _) => false,
+            Self::Let(_, _, ret) => ret.is_atomic(),
             _ => false,
         }
     }
@@ -281,43 +281,113 @@ impl Type {
             .simplify_until_matches(env, Type::Any, |t, env| t.type_check(env).map(|_| true))
     }
 
+    fn possibly_has_members(&self) -> bool {
+        if matches!(
+            self,
+            Self::Tuple(_) | Self::Struct(_) | Self::Union(_) | Self::Pointer(_, _) | Self::Type(_)
+        ) {
+            return true;
+        }
+
+        if let Self::Unit(_, inner) = self {
+            return inner.possibly_has_members();
+        }
+
+        false
+    }
+
     /// Simplify a type until you can get its members.
     pub fn simplify_until_has_members(&self, env: &Env) -> Result<Self, Error> {
-        self.clone().simplify_until_matches(env, Type::Any, |t, _| {
-            Ok(matches!(
-                t,
-                Type::Tuple(_) | Type::Struct(_) | Type::Union(_) | Type::Pointer(_, _) | Type::Type(_)
-            ))
-        })
+        let result = self.clone().simplify_until_matches(env, Type::Any, |t, _| {
+            Ok(t.possibly_has_members())
+        });
+
+        if result.is_err() {
+            warn!("Couldn't simplify {} to a type with members", self);
+        }
+
+        result
+    }
+
+    fn is_union(&self) -> bool {
+        if matches!(self, Self::Union(_) | Self::EnumUnion(_)) {
+            return true;
+        }
+
+        if let Self::Unit(_, inner) = self {
+            return inner.is_union();
+        }
+
+        false
     }
 
     /// Simplify a type until it's a union.
     pub fn simplify_until_union(&self, env: &Env) -> Result<Self, Error> {
-        self.clone().simplify_until_matches(env, Type::Any, |t, _| {
-            Ok(matches!(t, Type::Union(_) | Type::EnumUnion(_)))
-        })
+        let result = self.clone().simplify_until_matches(env, Type::Any, |t, _| {
+            Ok(t.is_union())
+        });
+        if result.is_err() {
+            warn!("Couldn't simplify {} to a union", self);
+        }
+        result
+    }
+
+    fn has_variants(&self) -> bool {
+        if matches!(self, Self::Enum(_) | Self::EnumUnion(_)) {
+            return true;
+        }
+
+        if let Self::Unit(_, inner) = self {
+            return inner.has_variants();
+        }
+
+        false
     }
 
     /// Simplify a type until you can get its variants.
     pub fn simplify_until_has_variants(&self, env: &Env) -> Result<Self, Error> {
-        self.clone()
+        let result = self.clone()
             .simplify_until_matches(env, Type::Enum(vec![]), |t, _| {
-                Ok(matches!(t, Type::Enum(_) | Type::EnumUnion(_)))
-            })
+                Ok(t.has_variants())
+            });
+        if result.is_err() {
+            warn!("Couldn't simplify {} to a type with variants", self);
+        }
+        result
+    }
+
+    fn is_polymorphic(&self) -> bool {
+        if matches!(self, Self::Poly(_, _)) {
+            return true;
+        }
+
+        if let Self::Unit(_, inner) = self {
+            return inner.is_polymorphic();
+        }
+
+        false
     }
 
     /// Simplify until the type is a polymorphic type.
     pub fn simplify_until_poly(&self, env: &Env) -> Result<Self, Error> {
-        self.clone()
+        let result = self.clone()
             .simplify_until_matches(env, Type::Poly(vec![], Box::new(Type::Any)), |t, _| {
-                Ok(matches!(t, Type::Poly(_, _)))
-            })
+                Ok(t.is_polymorphic())
+            });
+        if result.is_err() {
+            warn!("Couldn't simplify {} to a polymorphic type", self);
+        }
+        result
     }
 
     /// Simplify until the type is concrete.
     pub fn simplify_until_concrete(&self, env: &Env) -> Result<Self, Error> {
-        self.clone()
-            .simplify_until_matches(env, Type::Any, |t, _env| Ok(t.is_simple()))
+        let result = self.clone()
+            .simplify_until_matches(env, Type::Any, |t, _env| Ok(t.is_simple()));
+        if result.is_err() {
+            warn!("Couldn't simplify {} to a concrete type", self);
+        }
+        result
     }
 
     /// Simplify an expression until it matches a given function which "approves" of a type.
@@ -332,12 +402,12 @@ impl Type {
         f: impl Fn(&Self, &Env) -> Result<bool, Error>,
     ) -> Result<Self, Error> {
         let mut simplified = self;
-        for _ in 0..Self::SIMPLIFY_RECURSION_LIMIT {
+        // for _ in 0..Self::SIMPLIFY_RECURSION_LIMIT {
+        for _ in 0..5 {
             if f(&simplified, env)? || simplified.is_atomic() {
                 return Ok(simplified);
             }
             simplified = simplified
-                .simplify(env)?
                 .perform_template_applications(env, &mut HashMap::new())?
         }
         Err(Error::CouldntSimplify(simplified, expected))
@@ -538,11 +608,35 @@ impl Type {
     /// For all cases right now, a decay does nothing; the representations of the types
     /// in the compiler are the same for all types of decay.
     pub fn can_decay_to(&self, desired: &Self, env: &Env) -> Result<bool, Error> {
-        if self == desired {
+        trace!("Checking if {} can decay to {}", self, desired);
+        if self.equals(desired, env)? {
             return Ok(true);
         }
 
         match (self, desired) {
+            // (Self::Unit(_, inner), _) => inner.can_decay_to(desired, env),
+            (Self::Unit(name1, t1), Self::Unit(name2, t2)) => {
+                if name1 == name2 {
+                    t1.can_decay_to(t2, env)
+                } else {
+                    Ok(false)
+                }
+            },
+            (Self::Unit(_, inner), other) | (other, Self::Unit(_, inner)) => other.equals(inner, env),
+
+            (expanded, Self::Symbol(name)) => {
+                if let Some(t) = env.get_type(name) {
+                    if expanded.equals(t, env)? {
+                        trace!("{} can decay to {}", expanded, t);
+                        return Ok(true);
+                    }
+
+                    return expanded.can_decay_to(t, env);
+                }
+
+                Ok(false)
+            }
+
             // Can we decay a pointer to a pointer?
             (
                 Self::Pointer(found_mutability, found_elem_ty),
@@ -550,9 +644,10 @@ impl Type {
             ) => {
                 // Check if the mutabilities and element types can decay.
                 if found_mutability.can_decay_to(&desired_mutabilty)
-                    && found_elem_ty.can_decay_to(&desired_elem_ty, env)?
+                    && found_elem_ty.equals(&desired_elem_ty, env)?
                 {
                     // If they can, then we can decay.
+                    trace!("{} can decay to {}", self, desired);
                     return Ok(true);
                 }
 
@@ -590,6 +685,7 @@ impl Type {
                 if found_elem_ty.can_decay_to(desired_elem_ty, env)?
                     && self.get_size(env)? == desired.get_size(env)?
                 {
+                    trace!("{} can decay to {}", self, desired);
                     return Ok(true);
                 }
 
@@ -597,6 +693,7 @@ impl Type {
                 if found_elem_ty.has_element_type(desired_elem_ty, env)?
                     && self.get_size(env)? == desired.get_size(env)?
                 {
+                    trace!("{} can decay to {}", self, desired);
                     return Ok(true);
                 }
 
@@ -624,6 +721,7 @@ impl Type {
                     }
                 }
                 // If we've made it this far, we know all the fields match and can decay.
+                trace!("{} can decay to {}", self, desired);
                 Ok(true)
             }
 
@@ -764,11 +862,7 @@ impl Type {
             }
 
             (a, b) => {
-                if a.can_decay_to(b, env)? {
-                    Ok(true)
-                } else {
-                    Ok(false)
-                }
+                a.can_decay_to(b, env)
             }
         }?;
 
@@ -795,13 +889,11 @@ impl Type {
         Ok(match self.clone().simplify(env)? {
             Self::Apply(poly, ty_args) => {
                 let pair = (
-                    poly.simplify(env)?
-                        .perform_template_applications(env, previous_applications)?,
+                    poly.perform_template_applications(env, previous_applications)?,
                     ty_args
                         .into_iter()
                         .map(|t| {
-                            t.simplify(env)?
-                                .perform_template_applications(env, previous_applications)
+                            t.perform_template_applications(env, previous_applications)
                         })
                         .collect::<Result<Vec<_>, _>>()?,
                 );
@@ -1287,6 +1379,11 @@ impl Type {
 
 impl Simplify for Type {
     fn simplify_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
+        trace!("Simplifying type {self} in environment {env}");
+        if self.is_atomic() {
+            return Ok(self)
+        }
+
         let i = i + 1;
         if i > Self::SIMPLIFY_RECURSION_LIMIT {
             error!("Recursion depth limit reached while simplifying type {self}");
@@ -1295,7 +1392,7 @@ impl Simplify for Type {
 
         let _s = self.to_string();
         let result = match self {
-            Self::Type(t) => Self::Type(t.simplify_checked(env, i)?.into()),
+            Self::Type(t) => Self::Type(t),
 
             Self::None
             | Self::Never
@@ -1338,6 +1435,7 @@ impl Simplify for Type {
 
             Self::Unit(unit_name, t) => {
                 Self::Unit(unit_name, Box::new(t.simplify_checked(env, i)?))
+                // self
             }
 
             Self::Symbol(ref name) => {

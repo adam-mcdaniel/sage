@@ -170,7 +170,7 @@ impl ConstExpr {
     /// The `i` is a counter for the number of recursions caused by an `eval` call.
     fn eval_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
         let i = i + 1;
-        if i > 500 {
+        if i > 50 {
             error!("Recursion depth exceeded while evaluating: {self}");
             Err(Error::RecursionDepthConst(self))
         } else {
@@ -372,7 +372,7 @@ impl Simplify for ConstExpr {
 
 impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        // trace!("Getting type from constexpr: {self}");
+        trace!("Getting type from constexpr: {self}");
         Ok(match self.clone() {
             Self::Type(t) => Type::Type(t.into()),
 
@@ -384,9 +384,15 @@ impl GetType for ConstExpr {
 
                 let val_type = val.get_type_checked(env, i)?;
                 // Get the type of the value to get the member of.
-                match val_type.simplify_until_has_members(env)
+                match val_type.simplify_until_concrete(env)?
                 {
-                    Ok(Type::Type(ty)) => {
+                    Type::Unit(_unit_name, inner_ty) => {
+                        // Get the type of the field.
+                        env.get_type_of_associated_const(&inner_ty, &as_symbol?)
+                            .ok_or(Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into()))?
+                    }
+
+                    Type::Type(ty) => {
                         // Get the associated constant expression's type.
                         env.get_type_of_associated_const(&ty, &as_symbol?)
                             .ok_or(Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into()))?
@@ -394,7 +400,7 @@ impl GetType for ConstExpr {
                     // If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
                     // This is because tuples are accesed by integer index.
-                    Ok(Type::Tuple(items)) => {
+                    Type::Tuple(items) => {
                         // Get the index of the field.
                         let n = as_int? as usize;
                         // If the index is in range, return the type of the field.
@@ -411,7 +417,7 @@ impl GetType for ConstExpr {
                     // If we're accessing a member of a struct,
                     // we use the `as_symbol` interpretation of the field.
                     // This is because struct members are accessed by name.
-                    Ok(Type::Struct(fields)) => {
+                    Type::Struct(fields) => {
                         // Get the type of the field.
                         if let Some(t) = fields.get(&as_symbol?) {
                             // Return the type of the field.
@@ -427,7 +433,7 @@ impl GetType for ConstExpr {
                     // If we're accessing a member of a union,
                     // we use the `as_symbol` interpretation of the field.
                     // This is because union members are accessed by name.
-                    Ok(Type::Union(types)) => {
+                    Type::Union(types) => {
                         // Get the type of the field.
                         if let Some(t) = types.get(&as_symbol?) {
                             // Return the type of the field.
@@ -447,9 +453,9 @@ impl GetType for ConstExpr {
                     // struct, union, or pointer, we cannot access a member.
                     _ => {
                         return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone().into())
-                        .get_type(env).map_err(
-                            |e| Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into())
-                        );
+                            .get_type(env).map_err(
+                                |e| Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into())
+                            );
                     }
                 }
             }
