@@ -46,7 +46,7 @@ pub struct Env {
     expected_ret: Option<Type>,
 
     /// Memoized type sizes.
-    type_sizes: Rc<RwLock<HashMap<Type, usize>>>,
+    type_sizes: Rc<HashMap<Type, usize>>,
 }
 
 impl Default for Env {
@@ -55,7 +55,7 @@ impl Default for Env {
             // It is important that we use reference counting for the tables because the environment
             // will be copied many times during the compilation process to create new scopes.
             types: Rc::new(HashMap::new()),
-            type_sizes: Rc::new(RwLock::new(HashMap::new())),
+            type_sizes: Rc::new(HashMap::new()),
             consts: Rc::new(HashMap::new()),
             procs: Rc::new(HashMap::new()),
             vars: Rc::new(HashMap::new()),
@@ -398,8 +398,10 @@ impl Env {
                 trace!("Defining type {name} as {ty}");
                 Rc::make_mut(&mut self.types).insert(name, ty.clone());
 
-                if let Ok(size) = ty.get_size(self) {
-                    self.set_precalculated_size(ty.clone(), size);
+                if let Ok(simplified) = ty.simplify_until_concrete(self) {
+                    if let Ok(size) = simplified.get_size(self) {
+                        self.set_precalculated_size(simplified, size);
+                    }
                 }
             }
         }
@@ -426,10 +428,14 @@ impl Env {
         }
 
         for (_, ty) in types {
-            if let Ok(size) = ty.get_size(self) {
-                self.set_precalculated_size(ty, size);
+            if let Ok(simplified) = ty.simplify_until_concrete(self) {
+                if let Ok(size) = simplified.get_size(self) {
+                    self.set_precalculated_size(simplified, size);
+                } else {
+                    warn!("Failed to memoize type size for {simplified}");
+                }
             } else {
-                warn!("Failed to memoize type size for {ty}");
+                warn!("Failed to simplify type {ty}");
             }
         }
     }
@@ -596,7 +602,7 @@ impl Env {
     /// This helps the compiler memoize the size of types so that it doesn't have to
     /// recalculate the size of the same type multiple times.
     pub(super) fn has_precalculated_size(&self, ty: &Type) -> bool {
-        self.type_sizes.read().unwrap().contains_key(ty)
+        self.type_sizes.contains_key(ty)
     }
 
     /// Get the precalculated size of the given type.
@@ -605,7 +611,7 @@ impl Env {
     pub(super) fn get_precalculated_size(&self, ty: &Type) -> Option<usize> {
         // Get the precalculated size of the given type.
         // let size = self.type_sizes.get(ty).copied()?;
-        let size = self.type_sizes.read().unwrap().get(ty).copied()?;
+        let size = self.type_sizes.get(ty).copied()?;
         // Log the size of the type.
         debug!(target: "size", "Getting memoized type size for {ty} => {size}");
         // Return the size of the type.
@@ -625,7 +631,7 @@ impl Env {
                 warn!(target: "size", "Type size {ty} was already memoized with size {old_size}, but we memoized it with size {size}");
             }
         }
-        self.type_sizes.write().unwrap().insert(ty, size);
+        Rc::make_mut(&mut self.type_sizes).insert(ty, size);
     }
 }
 

@@ -995,6 +995,17 @@ fn parse_expr_term(pair: Pair<Rule>) -> Expr {
                     exprs.push(Expr::ConstExpr(ConstExpr::Char('\n')).unop(Put::Display));
                     exprs.push(Expr::ConstExpr(ConstExpr::None));
                     Expr::Many(exprs)
+                } else if head == Expr::ConstExpr(ConstExpr::Symbol("eprint".to_string())) {
+                    let mut exprs: Vec<Expr> =
+                        args.into_iter().map(|val| val.unop(Put::Debug)).collect();
+                    exprs.push(Expr::ConstExpr(ConstExpr::None));
+                    Expr::Many(exprs)
+                } else if head == Expr::ConstExpr(ConstExpr::Symbol("eprintln".to_string())) {
+                    let mut exprs: Vec<Expr> =
+                        args.into_iter().map(|val| val.unop(Put::Debug)).collect();
+                    exprs.push(Expr::ConstExpr(ConstExpr::Char('\n')).unop(Put::Display));
+                    exprs.push(Expr::ConstExpr(ConstExpr::None));
+                    Expr::Many(exprs)
                 } else if head == Expr::ConstExpr(ConstExpr::Symbol("input".to_string())) {
                     let mut exprs: Vec<Expr> = args.into_iter().map(|val| val.unop(Get)).collect();
                     exprs.push(Expr::ConstExpr(ConstExpr::None));

@@ -475,9 +475,8 @@ impl StandardOp {
                         result.move_pointer(1);
                     }
                 }
-                result.where_is_pointer();
                 SP.deref().from(result);
-                result.save();
+                SP.next(output_cells as isize - input_cells as isize, result);
             }
 
             _ => {

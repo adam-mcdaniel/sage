@@ -170,7 +170,7 @@ impl ConstExpr {
     /// The `i` is a counter for the number of recursions caused by an `eval` call.
     fn eval_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
         let i = i + 1;
-        if i > 50 {
+        if i > 500 {
             error!("Recursion depth exceeded while evaluating: {self}");
             Err(Error::RecursionDepthConst(self))
         } else {
@@ -191,7 +191,7 @@ impl ConstExpr {
                                     (*member).into(),
                                 ));
                             }
-                            tuple[n as usize].clone()
+                            tuple[n as usize].clone().eval_checked(env, i)?
                         }
                         (Self::Struct(fields), Self::Symbol(name)) => {
                             // If the field is not in the struct, return an error.
@@ -204,11 +204,11 @@ impl ConstExpr {
                                     (*member).into(),
                                 ));
                             }
-                            fields[&name].clone()
+                            fields[&name].clone().eval_checked(env, i)?
                         }
                         (Self::Type(ty), Self::Symbol(name)) => {
                             if let Some(constant) = env.get_associated_const(&ty, &name) {
-                                constant.clone()
+                                constant.clone().eval_checked(env, i)?
                             } else {
                                 if let Ok(Some(constant)) = member.clone().as_symbol(env).and_then(|name| Ok(env.get_associated_const(&container_ty, &name))) {
                                     return constant.clone().eval_checked(env, i);

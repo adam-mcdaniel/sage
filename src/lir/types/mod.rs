@@ -213,10 +213,10 @@ impl Type {
             | Self::Struct(_)
             | Self::Union(_)
             | Self::Proc(_, _)
-            | Self::Array(_, _)
             | Self::Tuple(_)
             | Self::Unit(_, _)
             | Self::Type(_)
+            | Self::Array(_, _)
             | Self::Pointer(_, _) => true,
         }
     }
@@ -236,7 +236,7 @@ impl Type {
             | Self::Type(_) => true,
             Self::Unit(_, t) => t.is_atomic(),
             Self::Tuple(inner) => inner.iter().all(|t| t.is_atomic()),
-            Self::Array(inner, _) => inner.is_atomic(),
+            Self::Array(inner, expr) => inner.is_atomic() && matches!(**expr, ConstExpr::Int(_)),
             Self::Proc(args, ret) => args.iter().all(|t| t.is_atomic()) && ret.is_atomic(),
             Self::Pointer(_, inner) => inner.is_atomic(),
             Self::Struct(inner) => inner.iter().all(|(_, t)| t.is_atomic()),
