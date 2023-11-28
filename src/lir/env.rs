@@ -30,7 +30,7 @@ pub struct Env {
     /// The static variables defined under the environment.
     static_vars: Rc<HashMap<String, (Mutability, Type, Location)>>,
     /// A lookup for the offsets of global variables.
-    globals: Rc<Mutex<Globals>>,
+    globals: Rc<RwLock<Globals>>,
     /// Associated constants for types.
     associated_constants: Rc<RwLock<HashMap<Type, HashMap<String, (ConstExpr, Type)>>>>,
 
@@ -60,7 +60,7 @@ impl Default for Env {
             procs: Rc::new(HashMap::new()),
             vars: Rc::new(HashMap::new()),
             static_vars: Rc::new(HashMap::new()),
-            globals: Rc::new(Mutex::new(Globals::new())),
+            globals: Rc::new(RwLock::new(Globals::new())),
             associated_constants: Rc::new(RwLock::new(HashMap::new())),
 
             // The last argument is stored at `[FP]`, so our first variable must be at `[FP + 1]`.
@@ -370,7 +370,7 @@ impl Env {
     ) -> Result<Location, Error> {
         let name = name.to_string();
         let size = ty.get_size(self)?;
-        let mut globals = self.globals.lock().unwrap();
+        let mut globals = self.globals.write().unwrap();
         let location = globals.add_global(name.clone(), size);
 
         trace!("Defining static variable {name} of type {ty} at {location}");

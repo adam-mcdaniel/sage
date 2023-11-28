@@ -929,7 +929,7 @@ impl fmt::Display for CoreOp {
                 Ok(())
             }
             Self::Comment(comment) => write!(f, "// {comment}"),
-            Self::Global { name, size } => write!(f, "global {name}, {size}"),
+            Self::Global { name, size } => write!(f, "global ${name}, {size}"),
 
             Self::PushTo { src, sp, size } => {
                 write!(f, "push-to {src}, {sp}, {size}")
@@ -963,12 +963,12 @@ impl fmt::Display for CoreOp {
             }
 
             Self::Call(loc) => write!(f, "call {loc}"),
-            Self::CallLabel(label) => write!(f, "call {label}"),
+            Self::CallLabel(label) => write!(f, "call @{label}"),
 
             Self::GetAddress { addr, dst } => write!(f, "lea {addr}, {dst}"),
             Self::Return => write!(f, "ret"),
 
-            Self::Fn(label) => write!(f, "fun {label}"),
+            Self::Fn(label) => write!(f, "fun @{label}"),
             Self::While(cond) => write!(f, "while {cond}"),
             Self::If(cond) => write!(f, "if {cond}"),
             Self::Else => write!(f, "else"),
@@ -998,7 +998,7 @@ impl fmt::Display for CoreOp {
             Self::Dec(loc) => write!(f, "dec {loc}"),
 
             Self::Set(loc, n) => write!(f, "set {loc}, {n}"),
-            Self::SetLabel(loc, label) => write!(f, "set {loc}, {label}"),
+            Self::SetLabel(loc, label) => write!(f, "set {loc}, @{label}"),
 
             Self::BitwiseNand { src, dst } => write!(f, "bitwise-nand {src}, {dst}"),
             Self::BitwiseAnd { src, dst } => write!(f, "bitwise-and {src}, {dst}"),

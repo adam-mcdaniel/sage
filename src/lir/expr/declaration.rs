@@ -31,6 +31,10 @@ pub enum Declaration {
 }
 
 impl Declaration {
+    pub(crate) fn static_var(name: impl Into<String>, mutability: Mutability, ty: Type, expr: ConstExpr) -> Self {
+        Self::StaticVar(name.into(), mutability, ty, expr)
+    }
+
     /// Flatten a multi-declaration into a single-dimensional vector of declarations.
     pub(crate) fn flatten(self) -> Vec<Self> {
         match self {
@@ -118,6 +122,8 @@ impl Declaration {
                 var_size = var_ty.get_size(env)?;
                 // Compile the expression to leave the value on the stack.
                 expr.clone().compile_expr(env, output)?;
+
+                let name = name.clone().to_uppercase();
                 // Allocate the global variable.
                 output.op(CoreOp::Global {
                     name: name.clone(),

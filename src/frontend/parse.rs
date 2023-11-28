@@ -1170,17 +1170,29 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
         Rule::const_bool => ConstExpr::Bool(pair.as_str().to_lowercase().parse().unwrap()),
         Rule::const_string => ConstExpr::Array(
             snailquote::unescape(
-                &pair
+                &pair.clone()
                     .into_inner()
                     .next()
                     .unwrap()
                     .as_str()
-                    .replace("\\0", "\\\\0"),
+                    .replace("\\0", "\\\\0")
+                    .replace("\\/", "/"),
             )
-            .unwrap()
+            .unwrap_or_else(|e| {
+                eprintln!("Error parsing string: {}", e);
+                pair
+                    .into_inner()
+                    .next()
+                    .unwrap()
+                    .as_str()
+                    .replace("\\0", "\\\\0")
+                    .replace("\\/", "/")
+            })
             .replace("\\0", "\0")
             .chars()
             .map(ConstExpr::Char)
+            // Add a null terminator
+            .chain(std::iter::once(ConstExpr::Char('\0')))
             .collect(),
         ),
         Rule::const_none => ConstExpr::None,

@@ -11,8 +11,10 @@
 //! 3. If the expression cannot be compiled into a core assembly program, then compile it into a standard assembly program.
 use super::*;
 use crate::asm::{
-    AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
+    AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP, Location
 };
+use log::*;
+use std::sync::Mutex;
 use crate::NULL;
 
 use log::{trace, error, info, warn};
@@ -98,18 +100,46 @@ impl Compile for Expr {
             }
 
             Self::UnaryOp(unop, expr) => {
+                if let Expr::Annotated(expr, metadata) = *expr {
+                    return unop.compile(&expr, env, output).map_err(|e| e.annotate(metadata.clone()));
+                }
+
                 // Compile the unary operation on the expression.
                 unop.compile(&expr, env, output)?;
             }
             Self::BinaryOp(binop, lhs, rhs) => {
+                if let Expr::Annotated(lhs, metadata) = &*lhs {
+                    return binop.compile(lhs, &rhs, env, output).map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Expr::Annotated(rhs, metadata) = &*rhs {
+                    return binop.compile(&lhs, rhs, env, output).map_err(|e| e.annotate(metadata.clone()));
+                }
+
                 // Compile the binary operation on the two expressions.
                 binop.compile(&lhs, &rhs, env, output)?;
             }
             Self::TernaryOp(ternop, a, b, c) => {
+                if let Expr::Annotated(a, metadata) = &*a {
+                    return ternop.compile(a, &b, &c, env, output).map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Expr::Annotated(b, metadata) = &*b {
+                    return ternop.compile(&a, b, &c, env, output).map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Expr::Annotated(c, metadata) = &*c {
+                    return ternop.compile(&a, &b, c, env, output).map_err(|e| e.annotate(metadata.clone()));
+                }
+
                 // Compile the ternary operation on the three expressions.
                 ternop.compile(&a, &b, &c, env, output)?;
             }
             Self::AssignOp(op, dst, src) => {
+                if let Expr::Annotated(dst, metadata) = &*dst {
+                    return op.compile(dst, &src, env, output).map_err(|e| e.annotate(metadata.clone()));
+                }
+
+                if let Expr::Annotated(src, metadata) = &*src {
+                    return op.compile(&dst, src, env, output).map_err(|e| e.annotate(metadata.clone()));
+                }
                 // Compile the assignment operation on the two expressions.
                 op.compile(&dst, &src, env, output)?;
             }
@@ -602,10 +632,10 @@ impl Compile for Expr {
                     .compile_expr(env, output)
                     .map_err(|e| e.annotate(metdata))?,
 
-                Expr::ConstExpr(ConstExpr::Annotated(expr, metdata)) => {
+                Expr::ConstExpr(ConstExpr::Annotated(expr, metadata)) => {
                     Self::Refer(expected_mutability, Box::new(Expr::ConstExpr(*expr)))
                         .compile_expr(env, output)
-                        .map_err(|e| e.annotate(metdata))?
+                        .map_err(|e| e.annotate(metadata))?
                 }
 
                 // Get the reference of a variable.
@@ -659,6 +689,44 @@ impl Compile for Expr {
                         // Return an error if the symbol isn't defined.
                         return Err(Error::SymbolNotDefined(name.clone()));
                     }
+                }
+                Expr::ConstExpr(cexpr) => {
+                    // Create a new static variable for the constant.
+                    lazy_static::lazy_static! {
+                        static ref COUNTER: Mutex<usize> = Mutex::new(0);
+                    }
+                    let mut counter = COUNTER.lock().unwrap();
+                    *counter += 1;
+                    let mut var_name = format!("__const_{counter}__");
+                    let mut new_env = env.clone();
+                    debug!("Creating new static variable {var_name} in environment {new_env}");
+                    while new_env.get_var(&var_name).is_some() {
+                        debug!("Variable {var_name} already exists in environment {new_env}, incrementing counter");
+                        *counter += 1;
+                        var_name = format!("__const_{counter}__");
+                    }
+                    let ty = cexpr.get_type(env)?;
+                    let size = ty.get_size(env)?;
+                    new_env.define_static_var(
+                        var_name.clone(),
+                        expected_mutability,
+                        ty
+                    )?;
+                    
+                    // Compile the constant expression.
+                    cexpr.compile_expr(&mut new_env, output)?;
+                    // Pop the constant expression into the variable.
+                    output.op(CoreOp::Global {
+                        name: var_name.clone(),
+                        size
+                    });
+                    output.op(CoreOp::Pop(Some(Location::Global(var_name.clone())), size));
+                    // Push the address of the variable onto the stack.
+                    output.op(CoreOp::Next(SP, None));
+                    output.op(CoreOp::GetAddress {
+                        addr: Location::Global(var_name),
+                        dst: SP.deref(),
+                    });
                 }
                 // Get the reference of a dereferenced value.
                 Expr::Deref(ptr) => {
@@ -852,8 +920,8 @@ impl Compile for ConstExpr {
                 expr.compile_expr(env, output)
                     .map_err(|err| err.annotate(metadata))?;
             }
-            Self::Declare(bindings, expr) => {
-                bindings.compile(Expr::ConstExpr(*expr), env, output)?;
+            Self::Declare(bindings, body) => {
+                bindings.compile(Expr::ConstExpr(*body), env, output)?;
             }
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
                 Self::PolyProc(poly_proc) => {

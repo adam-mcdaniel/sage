@@ -150,7 +150,7 @@ impl fmt::Display for Location {
                     )
                 }
             }
-            Location::Global(name) => write!(f, "{name}"),
+            Location::Global(name) => write!(f, "${name}"),
         }
     }
 }

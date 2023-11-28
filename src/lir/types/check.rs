@@ -197,21 +197,41 @@ impl TypeCheck for Expr {
             }
 
             Self::UnaryOp(unop, expr) => {
-                // Check if the unary operator is sound with
-                // the given expression.
+                if let Self::Annotated(expr, metadata) = &**expr {
+                    return unop.type_check(expr, env).map_err(|e| e.annotate(metadata.clone()));
+                }
                 unop.type_check(expr, env)
             }
             Self::BinaryOp(binop, lhs, rhs) => {
-                // Check if the binary operator is sound with
-                // the given expressions.
+                if let Self::Annotated(lhs, metadata) = &**lhs {
+                    return binop.type_check(lhs, rhs, env).map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Self::Annotated(rhs, metadata) = &**rhs {
+                    return binop.type_check(lhs, rhs, env).map_err(|e| e.annotate(metadata.clone()));
+                }
+
                 binop.type_check(lhs, rhs, env)
             }
             Self::TernaryOp(ternop, a, b, c) => {
-                // Check if the ternary operator is sound with
-                // the given expressions.
+                if let Self::Annotated(a, metadata) = &**a {
+                    return ternop.type_check(a, b, c, env).map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Self::Annotated(b, metadata) = &**b {
+                    return ternop.type_check(a, b, c, env).map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Self::Annotated(c, metadata) = &**c {
+                    return ternop.type_check(a, b, c, env).map_err(|e| e.annotate(metadata.clone()));
+                }
                 ternop.type_check(a, b, c, env)
             }
             Self::AssignOp(op, dst, src) => {
+                if let Self::Annotated(src, metadata) = &**src {
+                    return op.type_check(dst, src, env).map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Self::Annotated(dst, metadata) = &**dst {
+                    return op.type_check(dst, src, env).map_err(|e| e.annotate(metadata.clone()));
+                }
+
                 // Check if the assignment operator is sound with
                 // the given expressions.
                 op.type_check(dst, src, env)
@@ -391,6 +411,9 @@ impl TypeCheck for Expr {
                         // If it isn't, then return an error.
                         Err(Error::InvalidRefer(self.clone()))
                     }
+                }
+                Expr::ConstExpr(cexpr) => {
+                    Ok(())
                 }
                 Expr::Deref(inner) | Expr::Index(inner, _) => {
                     // Confirm that the inner expression can be referenced.

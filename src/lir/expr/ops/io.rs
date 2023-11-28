@@ -429,7 +429,7 @@ impl Put {
 
                 let ty_size = ty.get_size(env)? as isize;
                 if ty.equals(&Type::Char, env)? {
-                    for i in 0..array_len as isize {
+                    for i in 0..array_len as isize - 1 {
                         output.op(CoreOp::Put(addr.offset(i), Output::stdout_char()));
                     }
                 } else {

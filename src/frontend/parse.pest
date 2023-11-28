@@ -45,7 +45,7 @@ float = @{
 string = ${ "\"" ~ string_inner ~ "\"" }
 string_inner = @{ string_char* }
 string_char = {
-    !("\"" | "\\") ~ ANY
+    (!("\"" | "\\") ~ ANY)
     | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t" | "0")
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
     | "\\" ~ ("x" ~ ASCII_HEX_DIGIT{2})
@@ -53,7 +53,7 @@ string_char = {
 
 char = ${ "'" ~ char_inner  ~ "'" }
 char_inner = @{
-    !("'" | "\\") ~ ANY
+    (!("'" | "\\") ~ ANY)
     | "\\" ~ ("\'" | "\\" | "/" | "b" | "f" | "n" | "r" | "t" | "0")
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
     | "\\" ~ ("x" ~ ASCII_HEX_DIGIT{2})

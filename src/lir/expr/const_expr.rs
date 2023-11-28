@@ -490,7 +490,7 @@ impl GetType for ConstExpr {
                 let size = expr.get_type_checked(env, i)?.to_string().len();
                 Type::Array(Box::new(Type::Char), Box::new(Self::Int(size as i64)))
             }
-            Self::Null => Type::Pointer(Mutability::Immutable, Box::new(Type::Any)),
+            Self::Null => Type::Pointer(Mutability::Any, Box::new(Type::Any)),
             Self::None => Type::None,
             Self::SizeOfType(_) | Self::SizeOfExpr(_) | Self::Int(_) => Type::Int,
             Self::Float(_) => Type::Float,

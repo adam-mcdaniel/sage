@@ -80,6 +80,9 @@ impl GetType for Expr {
             }
 
             Self::UnaryOp(unop, expr) => {
+                if let Self::Annotated(expr, metadata) = &**expr {
+                    return unop.return_type(expr, env).map_err(|e| e.annotate(metadata.clone()));
+                }
                 // Infer the type of the unary operation
                 // on the expression.
                 unop.return_type(expr, env)?
@@ -87,14 +90,37 @@ impl GetType for Expr {
             Self::BinaryOp(binop, lhs, rhs) => {
                 // Infer the type of the binary operation
                 // on the two expressions.
+                if let Self::Annotated(lhs, metadata) = &**lhs {
+                    return binop.return_type(lhs, rhs, env).map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Self::Annotated(rhs, metadata) = &**rhs {
+                    return binop.return_type(lhs, rhs, env).map_err(|e| e.annotate(metadata.clone()));
+                }
+
                 binop.return_type(lhs, rhs, env)?
             }
             Self::TernaryOp(ternop, a, b, c) => {
+                if let Self::Annotated(a, metadata) = &**a {
+                    return ternop.return_type(a, b, c, env).map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Self::Annotated(b, metadata) = &**b {
+                    return ternop.return_type(a, b, c, env).map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Self::Annotated(c, metadata) = &**c {
+                    return ternop.return_type(a, b, c, env).map_err(|e| e.annotate(metadata.clone()));
+                }
                 // Infer the type of the ternary operation
                 // on the three expressions.
                 ternop.return_type(a, b, c, env)?
             }
             Self::AssignOp(op, dst, src) => {
+                if let Self::Annotated(dst, metadata) = &**dst {
+                    return op.return_type(dst, src, env).map_err(|e| e.annotate(metadata.clone()));
+                }
+
+                if let Self::Annotated(src, metadata) = &**src {
+                    return op.return_type(dst, src, env).map_err(|e| e.annotate(metadata.clone()));
+                }
                 // Infer the type of the assignment operation
                 // on the two expressions.
                 op.return_type(dst, src, env)?

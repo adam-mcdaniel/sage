@@ -52,6 +52,8 @@ enum TargetType {
     CoreVM,
     /// Compile to the standard variant of the virtual machine.
     StdVM,
+    /// Compile to My OS source code (GCC only).
+    MyOS,
     /// Compile to C source code (GCC only).
     C,
     /// Compile to x86 assembly code.
@@ -388,6 +390,16 @@ fn compile(
                     .map_err(Error::InterpreterError)?;
             }
         },
+        // If the target is MyOS source code, then compile the code to virtual machine code,
+        // and then use the MyOS target implementation to build the output source code.
+        TargetType::MyOS => write_file(
+            format!("{output}.c"),
+            match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
+                Ok(vm_code) => targets::MyOS::default().build_core(&vm_code.flatten()),
+                Err(vm_code) => targets::MyOS::default().build_std(&vm_code.flatten()),
+            }
+            .map_err(Error::BuildError)?,
+        )?,
         // If the target is C source code, then compile the code to virtual machine code,
         // and then use the C target implementation to build the output source code.
         TargetType::C => write_file(
