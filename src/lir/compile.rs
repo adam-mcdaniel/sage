@@ -21,7 +21,7 @@ use log::{error, info, trace, warn};
 
 /// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
-pub trait Compile: TypeCheck {
+pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
     /// Compile the expression into an assembly program.
     ///
     /// On success, this will return an Ok value containing either a successfully
@@ -32,6 +32,7 @@ pub trait Compile: TypeCheck {
     where
         Self: Sized + Clone,
     {
+        eprintln!("Compiling LIR expression {self}");
         info!("Type checking...");
         // First, type check the expression.
         self.type_check(&Env::default())?;

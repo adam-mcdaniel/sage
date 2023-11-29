@@ -49,7 +49,7 @@ impl TypeCheck for Type {
                 if env.get_type(name).is_some() {
                     Ok(())
                 } else {
-                    warn!("Type {name} not defined in environment {env}");
+                    debug!("Type {name} not defined in environment {env}");
                     Err(Error::TypeNotDefined(name.clone()))
                 }
             }

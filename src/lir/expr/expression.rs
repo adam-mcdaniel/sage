@@ -198,7 +198,7 @@ impl Expr {
             return Ok(self.clone());
         }
 
-        warn!("transform_method_call: {}", self);
+        debug!("transform_method_call: {}", self);
 
         let result = match self {
             Self::Annotated(inner, metadata) => inner
@@ -407,7 +407,7 @@ impl Expr {
             _ => Ok(self.clone()),
         }?;
 
-        warn!("transform_method_call result: {}", result);
+        debug!("transform_method_call result: {}", result);
         Ok(result)
     }
 

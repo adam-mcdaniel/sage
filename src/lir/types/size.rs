@@ -169,7 +169,7 @@ impl GetSize for Type {
             }
         };
 
-        env.set_precalculated_size(self.clone(), result);
+        // env.set_precalculated_size(self.clone(), result);
 
         debug!("Size of type {self} is {result}");
         Ok(result)

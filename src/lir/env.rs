@@ -19,7 +19,7 @@ use std::{
     sync::{Mutex, RwLock},
 };
 
-use log::{debug, error, trace, warn};
+use log::*;
 
 /// An environment under which expressions and types are compiled and typechecked.
 /// This is essentially the scope of an expression.
@@ -54,7 +54,7 @@ pub struct Env {
     expected_ret: Option<Type>,
 
     /// Memoized type sizes.
-    type_sizes: Rc<RwLock<Rc<HashMap<Type, usize>>>>,
+    type_sizes: Rc<HashMap<Type, usize>>,
 }
 
 impl Default for Env {
@@ -63,7 +63,7 @@ impl Default for Env {
             // It is important that we use reference counting for the tables because the environment
             // will be copied many times during the compilation process to create new scopes.
             types: Rc::new(HashMap::new()),
-            type_sizes: Rc::new(RwLock::new(Rc::new(HashMap::new()))),
+            type_sizes: Rc::new(HashMap::new()),
             consts: Rc::new(HashMap::new()),
             procs: Rc::new(HashMap::new()),
             vars: Rc::new(HashMap::new()),
@@ -381,7 +381,7 @@ impl Env {
                 }
                 tmp
             } else {
-                warn!("Monomorphizing the old fashioned way");
+                debug!("Monomorphizing the old fashioned way");
                 const_expr.monomorphize(ty_args.clone())
             };
             debug!("Adding monomorphized associated constant {name} = {mono_const} to type {monomorph}");
@@ -436,6 +436,7 @@ impl Env {
         &mut self,
         declaration: &Declaration,
     ) -> Result<(), Error> {
+        trace!("Adding compile-time declaration {declaration}");
         match declaration {
             Declaration::Type(name, ty) => {
                 self.define_type(name, ty.clone());
@@ -498,13 +499,23 @@ impl Env {
                     }
                 }
             }
-            Declaration::Var(_, _, _, _) => {
-                // Variables are not defined at compile-time.
-                // e.get_type(self)?.add_monomorphized_associated_consts(self)?;
+            Declaration::Var(_, _, Some(ty), e) => {
+                ty.add_monomorphized_associated_consts(self).ok();
+                if let Ok(ty) = e.get_type(self) {
+                    ty.add_monomorphized_associated_consts(self).ok();
+                }
             }
-            Declaration::VarPat(_, _) => {
+            Declaration::Var(_, _, _, e) => {
                 // Variables are not defined at compile-time.
-                // e.get_type(self)?.add_monomorphized_associated_consts(self)?;
+                if let Ok(ty) = e.get_type(self) {
+                    ty.add_monomorphized_associated_consts(self).ok();
+                }
+            }
+            Declaration::VarPat(_, e) => {
+                // Variables are not defined at compile-time.
+                if let Ok(ty) = e.get_type(self) {
+                    ty.add_monomorphized_associated_consts(self).ok();
+                }
             }
             Declaration::Many(decls) => {
                 for decl in decls {
@@ -515,7 +526,7 @@ impl Env {
                         if let Ok(size) = ty.get_size(self) {
                             self.set_precalculated_size(ty.clone(), size);
                         } else {
-                            warn!("Failed to memoize type size for {name} = {ty}");
+                            debug!("Failed to memoize type size for {name} = {ty}");
                         }
                     }
                 }
@@ -531,6 +542,7 @@ impl Env {
         &mut self,
         declaration: &Declaration,
     ) -> Result<(), Error> {
+        trace!("Adding local declaration {declaration}");
         match declaration {
             Declaration::Type(_, _) => {
                 // Types are not defined at runtime.
@@ -558,10 +570,12 @@ impl Env {
                     Some(ty) => ty.clone(),
                     None => expr.get_type(self)?,
                 };
+                ty.add_monomorphized_associated_consts(self)?;
                 self.define_var(name, *mutability, ty)?;
             }
             Declaration::VarPat(pat, expr) => {
                 let ty = expr.get_type(self)?;
+                ty.add_monomorphized_associated_consts(self)?;
                 pat.declare_let_bind(expr, &ty, self)?;
             }
             Declaration::Many(decls) => {
@@ -644,10 +658,10 @@ impl Env {
                 if let Ok(size) = simplified.get_size(self) {
                     self.set_precalculated_size(simplified, size);
                 } else {
-                    warn!("Failed to memoize type size for {simplified}");
+                    debug!("Failed to memoize type size for {simplified}");
                 }
             } else {
-                warn!("Failed to simplify type {ty}");
+                debug!("Failed to simplify type {ty}");
             }
         }
     }
@@ -814,7 +828,7 @@ impl Env {
     /// This helps the compiler memoize the size of types so that it doesn't have to
     /// recalculate the size of the same type multiple times.
     pub(super) fn has_precalculated_size(&self, ty: &Type) -> bool {
-        self.type_sizes.read().unwrap().contains_key(ty)
+        self.type_sizes.contains_key(ty)
     }
 
     /// Get the precalculated size of the given type.
@@ -823,7 +837,7 @@ impl Env {
     pub(super) fn get_precalculated_size(&self, ty: &Type) -> Option<usize> {
         // Get the precalculated size of the given type.
         // let size = self.type_sizes.get(ty).copied()?;
-        let size = self.type_sizes.read().unwrap().get(ty).copied()?;
+        let size = self.type_sizes.get(ty).copied()?;
         // Log the size of the type.
         debug!(target: "size", "Getting memoized type size for {ty} => {size}");
         // Return the size of the type.
@@ -833,7 +847,7 @@ impl Env {
     /// Set the precalculated size of the given type.
     /// This helps the compiler memoize the size of types so that it doesn't have to
     /// recalculate the size of the same type multiple times.
-    pub(super) fn set_precalculated_size(&self, ty: Type, size: usize) {
+    pub(super) fn set_precalculated_size(&mut self, ty: Type, size: usize) {
         debug!(target: "size", "Memoizing type size {ty} with size {size}");
         if let Some(old_size) = self.get_precalculated_size(&ty) {
             if old_size == size {
@@ -843,12 +857,7 @@ impl Env {
                 warn!(target: "size", "Type size {ty} was already memoized with size {old_size}, but we memoized it with size {size}");
             }
         }
-
-        let mut inner = self.type_sizes.write().unwrap();
-        Rc::make_mut(&mut *inner).insert(ty, size);
-
-
-        // Rc::make_mut(&mut self.type_sizes).insert(ty, size);
+        Rc::make_mut(&mut self.type_sizes).insert(ty, size);
     }
 }
 

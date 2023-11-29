@@ -438,7 +438,7 @@ impl TypeCheck for Declaration {
                     }
 
                     for templated_const in templated_consts {
-                        warn!(
+                        debug!(
                             "About to type check templated const: {templated_const}",
                             templated_const = templated_const
                         );

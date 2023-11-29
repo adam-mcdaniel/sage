@@ -206,7 +206,7 @@ impl Type {
     }
 
     pub fn add_monomorphized_associated_consts(&self, env: &Env) -> Result<(), Error> {
-        warn!("add_monomorphized_associated_consts: Adding monomorphized associated consts for {}", self);
+        // warn!("add_monomorphized_associated_consts: Adding monomorphized associated consts for {}", self);
         match self.clone() {
             Self::Apply(template, args) => {
                 let simplified_args = args
@@ -216,7 +216,7 @@ impl Type {
 
                 let mut mono_ty = Self::Apply(template.clone(), simplified_args.clone());
                 mono_ty = mono_ty.simplify_until_concrete(env)?;
-                warn!("add_monomorphized_associated_consts: Adding monomorphized associated consts for {self} to {}", mono_ty);
+                // warn!("add_monomorphized_associated_consts: Adding monomorphized associated consts for {self} to {}", mono_ty);
 
                 env.add_monomorphized_associated_consts(*template, mono_ty, simplified_args)?;
             }
@@ -1150,7 +1150,7 @@ impl Type {
             );
             return Ok(false);
         }
-        debug!("Checking if {} equals {}", self, other);
+        trace!("Checking if {} equals {}", self, other);
 
         let i = i + 1;
 
