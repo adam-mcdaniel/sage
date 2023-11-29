@@ -10,7 +10,7 @@ use crate::lir::{Annotation, GetType, Error, Env, Declaration, ConstExpr, Mutabi
 use core::fmt;
 use std::collections::BTreeMap;
 
-use log::trace;
+use log::*;
 
 /// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
 ///       This way, we don't overflow the stack with several clones of the environment.
@@ -119,6 +119,7 @@ impl Expr {
     pub const NONE: Self = Self::ConstExpr(ConstExpr::None);
 
     pub fn is_method_call(&self, env: &Env) -> Result<bool, Error> {
+        debug!("is_method_call: {}", self);
         Ok(match self {
             Self::Annotated(inner, annotation) => {
                 return inner.is_method_call(env).map_err(|e| e.annotate(annotation.clone()))
@@ -146,6 +147,28 @@ impl Expr {
                             }
                         }
                     }
+                    Self::ConstExpr(ConstExpr::Monomorphize(template, _ty_args)) => {
+                        match *template {
+                            ConstExpr::Member(val, name) => {
+                                let val_type = val.get_type(env)?;
+                                // Is this an associated function?
+                                match val_type {
+                                    Type::Type(_) => {
+                                        false
+                                    }
+                                    _ => {
+                                        if let Ok(name) = name.as_symbol(env) {
+                                            env.has_associated_const(&val_type, &name)
+                                        } else {
+                                            false
+                                        }
+                                    }
+                                }
+                            }
+                            _ => false
+                        }
+                    }
+
                     Self::ConstExpr(ConstExpr::Member(val, name)) => {
                         let val_type = val.get_type(env)?;
                         // Is this an associated function?
@@ -175,7 +198,9 @@ impl Expr {
             return Ok(self.clone())
         }
 
-        match self {
+        warn!("transform_method_call: {}", self);
+
+        let result = match self {
             Self::Annotated(inner, metadata) => {
                 inner.transform_method_call(env).map_err(|e| e.annotate(metadata.clone()))
             }
@@ -183,6 +208,51 @@ impl Expr {
                 match *f.clone() {
                     Self::Annotated(inner, metadata) => {
                         inner.transform_method_call(env).map_err(|e| e.annotate(metadata.clone()))
+                    }
+
+                    Self::ConstExpr(ConstExpr::Monomorphize(template, ty_args)) => {
+                        match *template {
+                            ConstExpr::Member(val, member) => {
+                                // Apply the type arguments to the method.
+                                let name = member.as_symbol(env)?;
+                                
+                                // Check if the value actually has a member with this name.
+                                let val_type = val.get_type(env)?;
+                                trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
+                                // If the value has a member with this name,
+                                trace!(target: "member", "WHOOP WHOOP");
+                                let associated_function = env.get_associated_const(&val_type, &name).ok_or_else(|| Error::SymbolNotDefined(name.clone()))?.clone()
+                                                                        .monomorphize(ty_args.clone());
+                                trace!(target: "member", "function value: {associated_function} in {env}");
+                                
+
+                                // Get the type of the function
+                                let associated_function_type = env.get_type_of_associated_const(&val_type, &name).ok_or_else(|| Error::SymbolNotDefined(name))?.clone().apply(ty_args);
+                                // trace!(target: "member", "got function type: {}", associated_function_type);
+
+
+                                let mut new_args = vec![];
+                                if let Some(expected_mutability) = associated_function_type.get_self_param_mutability(env) {
+                                    if val_type.can_decay_to(&Type::Pointer(expected_mutability, Type::Any.into()), env)? {
+                                        trace!(target: "member", "decaying {val} to {expected_mutability} pointer");
+                                        new_args.push(Expr::ConstExpr(*val.clone()));
+                                    } else {
+                                        trace!(target: "member", "referencing {val} as {expected_mutability} pointer");
+                                        new_args.push(Expr::ConstExpr(*val.clone()).refer(expected_mutability));
+                                    }
+                                } else {
+                                    trace!(target: "member", "passing by value {val}");
+                                    if val_type.can_decay_to(&Type::Pointer(Mutability::Any, Type::Any.into()), env)? {
+                                        new_args.push(Expr::ConstExpr(*val.clone()).deref());
+                                    } else {
+                                        new_args.push(Expr::ConstExpr(*val.clone()));
+                                    }
+                                }
+                                new_args.extend(args.clone());
+                                Ok(Self::Apply(Expr::ConstExpr(associated_function).into(), new_args))
+                            }
+                            _ => Ok(Self::Apply(Expr::ConstExpr(ConstExpr::Monomorphize(template.clone(), ty_args.clone())).into(), args.clone()))
+                        }
                     }
 
                     Self::ConstExpr(ConstExpr::Member(val, member)) => {
@@ -273,7 +343,10 @@ impl Expr {
                 }
             }
             _ => Ok(self.clone())
-        }
+        }?;
+
+        warn!("transform_method_call result: {}", result);
+        Ok(result)
 
     }
 

@@ -71,6 +71,21 @@ impl Procedure {
         }
     }
 
+    /// Get the arguments of the procedure.
+    pub fn get_args(&self) -> &[(String, Mutability, Type)] {
+        &self.args
+    }
+
+    /// Get the return type of the procedure.
+    pub fn get_ret(&self) -> &Type {
+        &self.ret
+    }
+
+    /// Get the body of the procedure.
+    pub fn get_body(&self) -> &Expr {
+        &self.body
+    }
+
     /// Get the mangled name of the procedure.
     /// The procedure's mangled name is used to store the procedure in the environment.
     pub fn get_mangled_name(&self) -> &str {
@@ -139,7 +154,7 @@ impl GetType for Procedure {
         for (_, _, t) in &mut self.args {
             *t = t.substitute(name, ty);
         }
-        self.ret.substitute(name, ty);
+        self.ret = self.ret.substitute(name, ty);
 
         self.body.substitute(name, ty);
     }

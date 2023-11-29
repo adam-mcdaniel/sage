@@ -3,7 +3,7 @@ use super::{Procedure, PolyProcedure};
 
 use std::collections::BTreeMap;
 use core::{ops::{Add, AddAssign}, fmt::{Display, Formatter, Result as FmtResult}};
-use log::{debug, error};
+use log::*;
 
 /// A declaration of a variable, function, type, etc.
 #[derive(Debug, Clone, PartialEq)]
@@ -31,9 +31,9 @@ pub enum Declaration {
 }
 
 impl Declaration {
-    pub(crate) fn static_var(name: impl Into<String>, mutability: Mutability, ty: Type, expr: ConstExpr) -> Self {
-        Self::StaticVar(name.into(), mutability, ty, expr)
-    }
+    // pub(crate) fn static_var(name: impl Into<String>, mutability: Mutability, ty: Type, expr: ConstExpr) -> Self {
+    //     Self::StaticVar(name.into(), mutability, ty, expr)
+    // }
 
     /// Flatten a multi-declaration into a single-dimensional vector of declarations.
     pub(crate) fn flatten(self) -> Vec<Self> {
@@ -355,13 +355,62 @@ impl TypeCheck for Declaration {
             Self::ExternProc(_name, proc) => {
                 proc.type_check(env)?;
             }
-            Self::Impl(_name, impls) => {
+            Self::Impl(ty, impls) => {
                 let mut new_env = env.clone();
                 // Add all the compile-time declarations to the environment.
                 new_env.add_compile_time_declaration(&self.clone())?;
-                for (_name, expr) in impls {
-                    expr.type_check(&new_env)?;
+
+
+                if let Type::Apply(template, supplied_params) = ty {
+                    // If this is an implementation for a template type, we need to
+                    // get the template parameters and add them to each associated constant.
+                    let template_params = template.get_template_params(&new_env);
+                    
+                    if template_params.len() != supplied_params.len() {
+                        return Err(Error::MismatchedTypes {
+                            expected: *template.clone(),
+                            found: Type::Apply(template.clone(), supplied_params.clone()),
+                            expr: Expr::NONE.with(self.clone())
+                        });
+                    }
+
+
+                    let supplied_param_symbols = supplied_params.iter().map(|ty| {
+                        if let Type::Symbol(sym) = ty {
+                            Ok(sym.clone())
+                        } else {
+                            Err(Error::MismatchedTypes {
+                                expected: Type::Symbol("A symbol, not a concrete type".to_owned()),
+                                found: ty.clone(),
+                                expr: Expr::NONE.with(self.clone())
+                            })
+                        }
+                    }).collect::<Result<Vec<_>, _>>()?;
+
+                    let mut templated_consts = vec![];
+
+                    for (name, associated_const) in impls {
+                        let templated_const = associated_const.template(supplied_param_symbols.clone());
+                        new_env.add_associated_const(*template.clone(), name, templated_const.clone())?;
+                        templated_consts.push(templated_const);
+                    }
+                    
+                    for templated_const in templated_consts {
+                        warn!("About to type check templated const: {templated_const}", templated_const=templated_const);
+                        templated_const.type_check(&new_env)?;
+                    }
+                } else {
+                    for (name, associated_const) in impls {
+                        new_env.add_associated_const(ty.clone(), name, associated_const.clone())?;
+                    }
+
+                    for (_name, associated_const) in impls {
+                        associated_const.type_check(&new_env)?;
+                    }
                 }
+                // for (_name, expr) in impls {
+                //     expr.type_check(&new_env)?;
+                // }
             }
             // Typecheck a multi-declaration.
             Self::Many(decls) => {

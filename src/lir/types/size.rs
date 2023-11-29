@@ -24,7 +24,7 @@
 //! |`enum {A, B, ...}`|1|
 
 use super::*;
-use log::error;
+use log::*;
 
 /// Get the size of something in memory (number of cells).
 pub trait GetSize {
@@ -57,7 +57,7 @@ impl GetSize for Type {
             });
         }
 
-        Ok(match self {
+        let result = match self {
             // None or Never are not real types, so they have no size.
             // They are not represented with data. They have zero size.
             Self::Type(_) | Self::None | Self::Never => 0,
@@ -167,7 +167,10 @@ impl GetSize for Type {
             Self::Poly(_ty_params, _template) => {
                 return Err(Error::SizeOfTemplate(self.clone()));
             }
-        })
+        };
+
+        debug!("Size of type {self} is {result}");
+        Ok(result)
     }
 }
 

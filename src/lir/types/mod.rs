@@ -189,6 +189,17 @@ impl Type {
     /// This is the maximum number of times a type will be simplified recursively.
     pub const SIMPLIFY_RECURSION_LIMIT: usize = 30;
 
+    pub fn get_template_params(&self, env: &Env) -> Vec<String> {
+        match self.simplify_until_poly(env) {
+            Ok(Self::Poly(params, _)) => params.clone(),
+            _ => vec![],
+        }
+    }
+
+    pub fn apply(&self, args: Vec<Self>) -> Self {
+        Self::Apply(Box::new(self.clone()), args)
+    }
+
     /// Is this type in a simple form?
     /// A simple form is a form that does not require any immediate simplification.
     /// For example, a `Poly` type is not simple, because it requires a `Apply` type
@@ -609,9 +620,13 @@ impl Type {
     /// in the compiler are the same for all types of decay.
     pub fn can_decay_to(&self, desired: &Self, env: &Env) -> Result<bool, Error> {
         trace!("Checking if {} can decay to {}", self, desired);
-        if self.equals(desired, env)? {
-            return Ok(true);
-        }
+        // if self.equals(desired, env)? {
+        //     return Ok(true);
+        // }
+
+        // if !self.is_simple() || !desired.is_simple() {
+        //     return Ok(false);
+        // }
 
         match (self, desired) {
             // (Self::Unit(_, inner), _) => inner.can_decay_to(desired, env),
@@ -622,7 +637,7 @@ impl Type {
                     Ok(false)
                 }
             },
-            (Self::Unit(_, inner), other) | (other, Self::Unit(_, inner)) => other.equals(inner, env),
+            // (Self::Unit(_, inner), other) | (other, Self::Unit(_, inner)) => other.equals(inner, env),
 
             (expanded, Self::Symbol(name)) => {
                 if let Some(t) = env.get_type(name) {
@@ -883,6 +898,7 @@ impl Type {
         previous_applications: &mut HashMap<(Type, Vec<Type>), Type>,
     ) -> Result<Self, Error> {
         let _before = self.to_string();
+        trace!("Performing template applications on {}", self);
         // If the type is an Apply on a Poly, then we can perform the application.
         // First, perform the applications on the type arguments.
         // We can use memoization with the previous_applications HashMap to avoid infinite recursion.
@@ -903,20 +919,34 @@ impl Type {
                     let (poly, ty_args) = pair;
 
                     match poly {
-                        Self::Poly(params, template) => {
-                            let mut template = *template;
+                        Self::Poly(params, mono_ty) => {
+                            let poly = Self::Poly(params.clone(), mono_ty.clone());
+                            let mut mono_ty = *mono_ty;
                             for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
-                                template = template.substitute(param, ty_arg);
+                                mono_ty = mono_ty.substitute(param, ty_arg);
                             }
-                            template
+                            if mono_ty.type_check(env).is_err() || !mono_ty.is_atomic() {
+                                warn!("Type {} failed to type check", mono_ty);
+                            } else {
+                                warn!("About to add monomorphized associated consts for {}", mono_ty);
+                                env.add_monomorphized_associated_consts(poly, mono_ty.clone(), ty_args.clone())?;
+                            }
+                            mono_ty
                         }
                         Self::Symbol(s) => match env.get_type(s.as_str()).cloned() {
-                            Some(Self::Poly(params, template)) => {
-                                let mut template = *template;
+                            Some(Self::Poly(params, mono_ty)) => {
+                                let poly = Self::Poly(params.clone(), mono_ty.clone());
+                                let mut mono_ty = *mono_ty;
                                 for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
-                                    template = template.substitute(param, ty_arg);
+                                    mono_ty = mono_ty.substitute(param, ty_arg);
                                 }
-                                template
+                                if mono_ty.type_check(env).is_err() || !mono_ty.is_atomic() {
+                                    warn!("Type {} failed to type check", mono_ty);
+                                } else {
+                                    warn!("About to add monomorphized associated consts for {}", mono_ty);
+                                    env.add_monomorphized_associated_consts(poly, mono_ty.clone(), ty_args.clone())?;
+                                }
+                                mono_ty
                             }
                             Some(other) => Self::Apply(Box::new(other), ty_args),
                             None => self.clone(),
@@ -1137,6 +1167,16 @@ impl Type {
             }
 
             (Self::Poly(ty_params1, template1), Self::Poly(ty_params2, template2)) => {
+                if ty_params1.len() != ty_params2.len() {
+                    return Ok(false);
+                }
+
+                if ty_params1 == ty_params2 {
+                    // If the two templates have the same type parameters, then we can just compare
+                    // the two templates.
+                    return template1.equals_checked(template2, compared_symbols, env, i);
+                }
+
                 // Create a new environment.
                 let mut new_env = env.clone();
                 for (name1, name2) in ty_params1.iter().zip(ty_params2.iter()) {

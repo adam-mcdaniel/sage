@@ -193,33 +193,53 @@ impl Compile for Expr {
                         });
                 }
 
-                if !matches!(*f, Expr::Member(_, _)) {
-                    // Push the arguments to the procedure on the stack.
-                    for arg in &args {
-                        // Compile the argument (push it on the stack)
-                        arg.clone().compile_expr(env, output)?;
-                    }
-                }
+                // if !matches!(*f, Expr::Member(_, _)) {
+                //     // Push the arguments to the procedure on the stack.
+                //     for arg in &args {
+                //         // Compile the argument (push it on the stack)
+                //         arg.clone().compile_expr(env, output)?;
+                //     }
+                // }
 
                 // Apply the procedure to the arguments on the stack.
                 match *f.clone() {
                     // If the procedure is a core builtin,
                     Expr::ConstExpr(ConstExpr::CoreBuiltin(builtin)) => {
+                        // Push the arguments to the procedure on the stack.
+                        for arg in &args {
+                            // Compile the argument (push it on the stack)
+                            arg.clone().compile_expr(env, output)?;
+                        }
                         // Apply the core builtin to the arguments on the stack.
                         builtin.compile_expr(env, output)?;
                     }
                     // If the procedure is a standard builtin,
                     Expr::ConstExpr(ConstExpr::StandardBuiltin(builtin)) => {
+                        // Push the arguments to the procedure on the stack.
+                        for arg in &args {
+                            // Compile the argument (push it on the stack)
+                            arg.clone().compile_expr(env, output)?;
+                        }
                         // Apply the standard builtin to the arguments on the stack.
                         builtin.compile_expr(env, output)?;
                     }
                     // If the procedure is a foreign function,
                     Expr::ConstExpr(ConstExpr::FFIProcedure(ffi)) => {
+                        // Push the arguments to the procedure on the stack.
+                        for arg in &args {
+                            // Compile the argument (push it on the stack)
+                            arg.clone().compile_expr(env, output)?;
+                        }
                         // Apply the foreign function to the arguments on the stack.
                         ffi.compile_expr(env, output)?;
                     }
                     // If the procedure is a symbol, get the procedure from the environment.
                     Expr::ConstExpr(ConstExpr::Symbol(name)) => {
+                        // Push the arguments to the procedure on the stack.
+                        for arg in &args {
+                            // Compile the argument (push it on the stack)
+                            arg.clone().compile_expr(env, output)?;
+                        }
                         match env.get_const(&name) {
                             // If the procedure is a core builtin,
                             Some(ConstExpr::CoreBuiltin(builtin)) => {
@@ -244,6 +264,28 @@ impl Compile for Expr {
                             }
                         }
                     }
+                    Expr::ConstExpr(ConstExpr::Monomorphize(template, ty_args)) => {
+                        if self_clone.is_method_call(env)? {
+                            self_clone.transform_method_call(env)?.compile_expr(env, output)?;
+                        } else {
+                            warn!("Method transform failed for {self_clone}; Monomorphizing {template} with {ty_args:?} in environment {env}");
+                            // Push the arguments to the procedure on the stack.
+                            for arg in &args {
+                                // Compile the argument (push it on the stack)
+                                arg.clone().compile_expr(env, output)?;
+                            }
+
+                            // Compile it normally:
+                            // Push the procedure on the stack.
+                            warn!("Method: Monomorphizing {template} with {ty_args:?}");
+                            ConstExpr::Monomorphize(template, ty_args).compile_expr(env, output)?;
+                            // Pop the "function pointer" from the stack.
+                            output.op(CoreOp::Pop(Some(A), 1));
+                            // Call the procedure on the arguments.
+                            output.op(CoreOp::Call(A));
+                        }
+                    }
+
                     Expr::Member(val, name) => {
                         // Try to get the member of the underlying type.
                         if self_clone.is_method_call(env)? {
@@ -266,6 +308,11 @@ impl Compile for Expr {
                     }
                     // Otherwise, it must be a procedure.
                     proc => {
+                        // Push the arguments to the procedure on the stack.
+                        for arg in &args {
+                            // Compile the argument (push it on the stack)
+                            arg.clone().compile_expr(env, output)?;
+                        }
                         // Push the procedure on the stack.
                         proc.compile_expr(env, output)?;
                         // Pop the "function pointer" from the stack.
@@ -874,8 +921,14 @@ impl Compile for ConstExpr {
         debug_str.truncate(50);
 
         let current_instruction = output.current_instruction();
+        let ty = self.get_type(env)?;
         // Compile the constant expression.
-        match self {
+        match self.eval(env)? {
+            Self::Template(_, _) => {
+                // Cannot compile a template expression.
+                return Err(Error::UnsizedType(ty));
+            }
+
             Self::Type(_) => {
                 // Do nothing.
             }
@@ -950,6 +1003,21 @@ impl Compile for ConstExpr {
 
                     output.log_instructions_after(&common_name, &message, current_instruction);
                 }
+                Self::Template(params, result) => {
+                    if params.len() != ty_args.len() {
+                        return Err(Error::InvalidMonomorphize(Self::Template(params, result)));
+                    }
+
+                    let mut result = *result.clone();
+                    for (param, ty_arg) in params.into_iter().zip(ty_args) {
+                        result.substitute(&param, &ty_arg);
+                    }
+
+                    result = result.eval(env)?;
+
+                    result.compile_expr(env, output)?;
+                }
+
                 val => {
                     return Err(Error::InvalidMonomorphize(val));
                 }

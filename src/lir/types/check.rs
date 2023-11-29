@@ -49,7 +49,7 @@ impl TypeCheck for Type {
                 if env.get_type(name).is_some() {
                     Ok(())
                 } else {
-                    error!("Type {name} not defined in environment {env}");
+                    warn!("Type {name} not defined in environment {env}");
                     Err(Error::TypeNotDefined(name.clone()))
                 }
             }
@@ -837,6 +837,22 @@ impl TypeCheck for ConstExpr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
         trace!("Typechecking constant expression: {}", self);
         match self {
+            Self::Template(ty_params, template) => {
+                // Create a new environment with the type parameters defined.
+                // let mut new_env = env.clone();
+                // // Define the type parameters in the environment.
+                // new_env.define_types(
+                //     ty_params
+                //         .clone()
+                //         .into_iter()
+                //         .map(|p| (p.clone(), Type::Unit(p, Box::new(Type::None))))
+                //         .collect(),
+                // );
+                // // Check the template type.
+                // template.type_check(&new_env)
+                Ok(())
+            }
+
             Self::Annotated(expr, metadata) => {
                 expr.type_check(env).map_err(|e| e.annotate(metadata.clone()))
             }
@@ -891,14 +907,33 @@ impl TypeCheck for ConstExpr {
                 expr.type_check(&new_env)
             }
             Self::Monomorphize(expr, ty_args) => {
-                self.get_type(env)?.type_check(env)?;
-                if let Self::PolyProc(poly) = *expr.clone() {
-                    poly.type_check(env)?
+                match **expr {
+                    Self::Template(ref ty_params, ref template) => {
+                        // Create a new environment with the type parameters defined.
+                        let mut new_env = env.clone();
+                        // Define the type parameters in the environment.
+                        new_env.define_types(
+                            ty_params
+                                .clone()
+                                .into_iter()
+                                .zip(ty_args.clone())
+                                .collect(),
+                        );
+                        // Check the template type.
+                        template.type_check(&new_env)
+                    }
+                    _ => {
+                        self.get_type(env)?.type_check(env)?;
+                        expr.type_check(env)?;
+                        // if let Self::PolyProc(poly) = *expr.clone() {
+                        //     poly.type_check(env)?
+                        // }
+                        for ty in ty_args {
+                            ty.type_check(env)?;
+                        }
+                        Ok(())
+                    }
                 }
-                for ty in ty_args {
-                    ty.type_check(env)?;
-                }
-                Ok(())
             }
 
             Self::TypeOf(expr) => expr.type_check(env),

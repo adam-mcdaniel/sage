@@ -4,8 +4,8 @@
 //! defined in a given scope. It also stores the variables defined in the scope, and the their offsets
 //! with respect to the frame pointer.
 
-use super::{Compile, ConstExpr, Declaration, Error, GetType, GetSize, Mutability, FFIProcedure, PolyProcedure, Procedure, Type};
-use crate::asm::{AssemblyProgram, Globals, Location};
+use super::{Compile, ConstExpr, Declaration, Error, GetType, GetSize, Mutability, FFIProcedure, PolyProcedure, Procedure, Type, Expr};
+use crate::{asm::{AssemblyProgram, Globals, Location}, lir::Simplify};
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::{
     collections::HashMap,
@@ -31,6 +31,8 @@ pub struct Env {
     static_vars: Rc<HashMap<String, (Mutability, Type, Location)>>,
     /// A lookup for the offsets of global variables.
     globals: Rc<RwLock<Globals>>,
+
+    processed_monomorphizations: Rc<RwLock<HashMap<Type, Vec<Type>>>>,
     /// Associated constants for types.
     associated_constants: Rc<RwLock<HashMap<Type, HashMap<String, (ConstExpr, Type)>>>>,
 
@@ -62,6 +64,7 @@ impl Default for Env {
             static_vars: Rc::new(HashMap::new()),
             globals: Rc::new(RwLock::new(Globals::new())),
             associated_constants: Rc::new(RwLock::new(HashMap::new())),
+            processed_monomorphizations: Rc::new(RwLock::new(HashMap::new())),
 
             // The last argument is stored at `[FP]`, so our first variable must be at `[FP + 1]`.
             fp_offset: 1,
@@ -82,6 +85,7 @@ impl Env {
             static_vars: self.static_vars.clone(),
             type_sizes: self.type_sizes.clone(),
             globals: self.globals.clone(),
+            processed_monomorphizations: self.processed_monomorphizations.clone(),
             associated_constants: self.associated_constants.clone(),
 
             // The rest are the same as a new environment.
@@ -234,8 +238,118 @@ impl Env {
         result
     }
 
+    pub(super) fn has_any_associated_const(&self, ty: &Type) -> bool {
+        trace!("Checking if type {ty} has any associated constants");
+        let associated_constants = self.associated_constants.read().unwrap();
+        if let Some(consts) = associated_constants.get(ty) {
+            if !consts.is_empty() {
+                return true;
+            }
+        }
+        // Go through all the types and see if any equals the given type.
+        for (other_ty, consts) in associated_constants.iter() {
+            if ty == other_ty {
+                continue;
+            }
+            if !ty.can_decay_to(other_ty, self).unwrap_or(false) {
+                trace!("Type {other_ty} does not equal {ty}");
+                continue;
+            }
+            trace!("Found eligible type {other_ty} for {ty}");
+            if !consts.is_empty() {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub(super) fn add_monomorphized_associated_consts(&self, template: Type, monomorph: Type, ty_args: Vec<Type>) -> Result<(), Error> {
+        // // If we can't acquire the lock, just return.
+        // // This is because we don't want to block the thread if we can't acquire the lock.
+        // if let Ok(mut lock) = self.processed_monomorphizations.try_write() {
+        //     // If the template type has already been monomorphized to the monomorph type, return.
+        //     if lock.get(&template).map(|monomorphs| monomorphs.iter().any(|mono| mono == &monomorph)).unwrap_or(false) {
+        //         debug!("Type {template} has already been monomorphized to {monomorph}");
+        //         return Ok(());
+        //     }
+        //     // Otherwise, add the monomorphization to the list of processed monomorphizations.
+        //     lock.entry(template.clone()).or_default().push(template.clone());
+        //     lock.entry(template.clone()).or_default().push(monomorph.clone());
+        // } else {
+        //     // If we can't acquire the lock, just return.
+        //     // This is because we don't want to block the thread if we can't acquire the lock.
+        //     warn!("Failed to acquire lock on processed monomorphizations");
+        //     return Ok(());
+        // }
+        if !monomorph.is_atomic() {
+            debug!("Type {monomorph} is not atomic");
+            return Ok(());
+        }
+
+        let is_processed = {
+            self.processed_monomorphizations.read().unwrap().get(&template).map(|monomorphs| monomorphs.iter().any(|mono| mono.can_decay_to(&monomorph, self).unwrap_or(false))).unwrap_or(false)
+        };
+        if is_processed {
+            debug!("Type {template} has already been monomorphized to {monomorph}");
+            return Ok(());
+        }
+        {
+            self.processed_monomorphizations.write().unwrap().entry(template.clone()).or_default().push(template.clone());
+            self.processed_monomorphizations.write().unwrap().entry(template.clone()).or_default().push(monomorph.clone());
+        };
+
+        if !self.has_any_associated_const(&template) {
+            debug!("Type {template} has no associated constants");
+            return Ok(());
+        }
+
+
+        debug!("Adding monomorphized associated constants of type {template} with type arguments {ty_args:?} to environment");
+        // Get the template type's associated constants.
+        let template_associated_consts = self.get_all_associated_consts(&template);
+        // Check if monomorph already has the associated constants. 
+        let mono_associated_consts = self.get_all_associated_consts(&monomorph);
+        debug!("Template associated consts: {template_associated_consts:?}");
+        debug!("Mono associated consts: {mono_associated_consts:?}");
+        for (name, const_expr) in template_associated_consts {
+            if mono_associated_consts.iter().any(|(mono_name, _)| mono_name == &name) {
+                debug!("Monomorphized type {monomorph} already has associated constant {name}");
+                continue;
+            }
+            // Get the associated constant.
+            // let const_expr = self.get_associated_const(&template, &name).unwrap();
+            
+            // Monomorphize the associated constant.
+            // Strip off the template parameters from the type arguments.
+            let mono_const = if let ConstExpr::Template(ty_params, cexpr) = const_expr {
+                let mut tmp = *cexpr.clone();
+                for (param, arg) in ty_params.iter().zip(ty_args.iter()) {
+                    tmp.substitute(param, arg);
+                }
+                tmp
+            } else {
+                warn!("Monomorphizing the old fashioned way");
+                const_expr.monomorphize(ty_args.clone())
+            };
+            debug!("Adding monomorphized associated constant {name} = {mono_const} to type {monomorph}");   
+            // Add the monomorphized associated constant to the environment.
+            self.add_associated_const(monomorph.clone(), name, mono_const)?;
+
+        }
+        debug!("Done adding monomorphized associated constants of type {template} with type arguments {ty_args:?}");
+
+        // for (name, const_expr) in template_associated_consts {
+        //     // Monomorphize the associated constant.
+        //     let mono_const = const_expr.monomorphize(ty_args.clone(), self)?;
+        //     debug!("Adding monomorphized associated constant {name} = {mono_const} to type {monomorph}");
+        //     // Add the monomorphized associated constant to the environment.
+        //     self.add_associated_const(monomorph.clone(), name, mono_const)?;
+        // }
+        Ok(())
+    }
+
     pub fn add_associated_const(
-        &mut self,
+        &self,
         ty: Type,
         associated_const_name: impl ToString,
         expr: ConstExpr,
@@ -287,9 +401,42 @@ impl Env {
                 self.define_static_var(name, *mutability, ty.clone())?;
             }
             Declaration::Impl(ty, impls) => {
-                for (name, associated_const) in impls {
-                    self.add_associated_const(ty.clone(), name, associated_const.clone())?;
+                if let Type::Apply(template, supplied_params) = ty {
+                    // If this is an implementation for a template type, we need to
+                    // get the template parameters and add them to each associated constant.
+                    let template_params = template.get_template_params(self);
+                    
+                    if template_params.len() != supplied_params.len() {
+                        return Err(Error::MismatchedTypes {
+                            expected: *template.clone(),
+                            found: Type::Apply(template.clone(), supplied_params.clone()),
+                            expr: Expr::NONE.with(declaration.clone())
+                        });
+                    }
+
+
+                    let supplied_param_symbols = supplied_params.iter().map(|ty| {
+                        if let Type::Symbol(sym) = ty {
+                            Ok(sym.clone())
+                        } else {
+                            Err(Error::MismatchedTypes {
+                                expected: Type::Symbol("A symbol, not a concrete type".to_owned()),
+                                found: ty.clone(),
+                                expr: Expr::NONE.with(declaration.clone())
+                            })
+                        }
+                    }).collect::<Result<Vec<_>, _>>()?;
+
+                    for (name, associated_const) in impls {
+                        let templated_const = associated_const.template(supplied_param_symbols.clone());
+                        self.add_associated_const(*template.clone(), name, templated_const)?;
+                    }
+                } else {
+                    for (name, associated_const) in impls {
+                        self.add_associated_const(ty.clone(), name, associated_const.clone())?;
+                    }
                 }
+
             }
             Declaration::Var(_, _, _, _) => {
                 // Variables are not defined at compile-time.

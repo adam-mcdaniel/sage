@@ -60,6 +60,19 @@ impl PolyProcedure {
         }
     }
 
+    pub fn from_mono(mono: Procedure, ty_params: Vec<String>) -> Self {
+        let name = mono.get_common_name().unwrap_or_else(|| mono.get_mangled_name()).to_string();
+
+        Self {
+            name,
+            ty_params,
+            args: mono.get_args().to_vec(),
+            ret: mono.get_ret().clone(),
+            body: mono.get_body().clone().into(),
+            monomorphs: Rc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
     /// Get the name of this polymorphic procedure.
     /// This is not the mangled name, but the name known to the LIR front-end.
     /// The mangled name is unique for each monomorph of the procedure.
