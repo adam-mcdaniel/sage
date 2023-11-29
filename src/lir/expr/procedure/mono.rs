@@ -13,7 +13,10 @@ use crate::lir::{
     Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck,
 };
 use core::fmt;
-use std::{sync::{RwLock, Mutex}, rc::Rc};
+use std::{
+    rc::Rc,
+    sync::{Mutex, RwLock},
+};
 
 use log::trace;
 

@@ -1,6 +1,6 @@
-use std::collections::BTreeSet;
-use core::ops::{BitOr, BitOrAssign};
 use crate::parse::SourceCodeLocation;
+use core::ops::{BitOr, BitOrAssign};
+use std::collections::BTreeSet;
 
 /// An annotation for metadata about an LIR expression.
 /// This is used for error reporting, debugging, optimization,
@@ -81,7 +81,10 @@ impl Annotation {
     pub fn is_dead_code(&self) -> bool {
         match self {
             Annotation::DeadCode(dead_code) => *dead_code,
-            Annotation::Many(annotations) => annotations.contains(&Self::DEAD_CODE) || annotations.iter().any(|a| a.is_dead_code()),
+            Annotation::Many(annotations) => {
+                annotations.contains(&Self::DEAD_CODE)
+                    || annotations.iter().any(|a| a.is_dead_code())
+            }
             _ => false,
         }
     }
@@ -90,7 +93,10 @@ impl Annotation {
     pub fn is_compiler_generated(&self) -> bool {
         match self {
             Annotation::CompilerGenerated(compiler_generated) => *compiler_generated,
-            Annotation::Many(annotations) => annotations.contains(&Self::COMPILER_GENERATED) || annotations.iter().any(|a| a.is_compiler_generated()),
+            Annotation::Many(annotations) => {
+                annotations.contains(&Self::COMPILER_GENERATED)
+                    || annotations.iter().any(|a| a.is_compiler_generated())
+            }
             _ => false,
         }
     }
@@ -99,7 +105,10 @@ impl Annotation {
     pub fn is_temporary(&self) -> bool {
         match self {
             Annotation::Temporary(temporary) => *temporary,
-            Annotation::Many(annotations) => annotations.contains(&Self::TEMPORARY) || annotations.iter().any(|a| a.is_temporary()),
+            Annotation::Many(annotations) => {
+                annotations.contains(&Self::TEMPORARY)
+                    || annotations.iter().any(|a| a.is_temporary())
+            }
             _ => false,
         }
     }

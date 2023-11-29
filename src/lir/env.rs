@@ -4,8 +4,14 @@
 //! defined in a given scope. It also stores the variables defined in the scope, and the their offsets
 //! with respect to the frame pointer.
 
-use super::{Compile, ConstExpr, Declaration, Error, GetType, GetSize, Mutability, FFIProcedure, PolyProcedure, Procedure, Type, Expr};
-use crate::{asm::{AssemblyProgram, Globals, Location}, lir::Simplify};
+use super::{
+    Compile, ConstExpr, Declaration, Error, Expr, FFIProcedure, GetSize, GetType, Mutability,
+    PolyProcedure, Procedure, Type,
+};
+use crate::{
+    asm::{AssemblyProgram, Globals, Location},
+    lir::Simplify,
+};
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::{
     collections::HashMap,
@@ -48,7 +54,7 @@ pub struct Env {
     expected_ret: Option<Type>,
 
     /// Memoized type sizes.
-    type_sizes: Rc<HashMap<Type, usize>>,
+    type_sizes: Rc<RwLock<Rc<HashMap<Type, usize>>>>,
 }
 
 impl Default for Env {
@@ -57,7 +63,7 @@ impl Default for Env {
             // It is important that we use reference counting for the tables because the environment
             // will be copied many times during the compilation process to create new scopes.
             types: Rc::new(HashMap::new()),
-            type_sizes: Rc::new(HashMap::new()),
+            type_sizes: Rc::new(RwLock::new(Rc::new(HashMap::new()))),
             consts: Rc::new(HashMap::new()),
             procs: Rc::new(HashMap::new()),
             vars: Rc::new(HashMap::new()),
@@ -98,7 +104,10 @@ impl Env {
         trace!("Getting type of associated const {name} of type {ty} in {self}");
         let associated_constants = self.associated_constants.read().unwrap();
 
-        if let Some((_, expr_ty)) = associated_constants.get(ty).and_then(|consts| consts.get(name)) {
+        if let Some((_, expr_ty)) = associated_constants
+            .get(ty)
+            .and_then(|consts| consts.get(name))
+        {
             trace!("Found memoized type of associated const {name} of type {ty} in {self}");
             return Some(expr_ty.clone());
         }
@@ -112,7 +121,8 @@ impl Env {
                 let constant = constant.clone();
                 let expr_ty = expr_ty.clone();
                 drop(associated_constants);
-                self.memoize_associated_const(ty, name, constant, expr_ty.clone()).ok()?;
+                self.memoize_associated_const(ty, name, constant, expr_ty.clone())
+                    .ok()?;
                 return Some(expr_ty);
             }
         }
@@ -140,8 +150,11 @@ impl Env {
     pub fn get_associated_const(&self, ty: &Type, name: &str) -> Option<ConstExpr> {
         trace!("Getting associated const {name} of type {ty} in {self}");
         let associated_constants = self.associated_constants.read().unwrap();
-        
-        if let Some((constant, _)) = associated_constants.get(ty).and_then(|consts| consts.get(name)) {
+
+        if let Some((constant, _)) = associated_constants
+            .get(ty)
+            .and_then(|consts| consts.get(name))
+        {
             trace!("Found associated const {name} of type {ty} in {self}");
             return Some(constant.clone());
         }
@@ -156,7 +169,8 @@ impl Env {
                 let expr_ty = expr_ty.clone();
                 let const_expr = const_expr.clone();
                 drop(associated_constants);
-                self.memoize_associated_const(ty, name, const_expr.clone(), expr_ty).ok()?;
+                self.memoize_associated_const(ty, name, const_expr.clone(), expr_ty)
+                    .ok()?;
                 return Some(const_expr);
             }
         }
@@ -166,7 +180,8 @@ impl Env {
         if let Type::Type(inner_ty) = ty {
             if let Some(constant) = self.get_associated_const(inner_ty, name) {
                 let expr_ty = constant.get_type(self).ok()?;
-                self.memoize_associated_const(ty, name, constant.clone(), expr_ty).ok()?;
+                self.memoize_associated_const(ty, name, constant.clone(), expr_ty)
+                    .ok()?;
                 return Some(constant);
             }
         }
@@ -174,7 +189,8 @@ impl Env {
             if let Some(constant) = self.get_associated_const(inner_ty, name) {
                 // Memoize the associated constant.
                 let expr_ty = constant.get_type(self).ok()?;
-                self.memoize_associated_const(ty, name, constant.clone(), expr_ty).ok()?;
+                self.memoize_associated_const(ty, name, constant.clone(), expr_ty)
+                    .ok()?;
                 return Some(constant);
             }
         }
@@ -182,14 +198,21 @@ impl Env {
             if let Some(constant) = self.get_associated_const(inner_ty, name) {
                 // Memoize the associated constant.
                 let expr_ty = constant.get_type(self).ok()?;
-                self.memoize_associated_const(ty, name, constant.clone(), expr_ty).ok()?;
+                self.memoize_associated_const(ty, name, constant.clone(), expr_ty)
+                    .ok()?;
                 return Some(constant);
             }
         }
         None
     }
 
-    fn memoize_associated_const(&self, ty: &Type, name: &str, constant: ConstExpr, expr_ty: Type) -> Result<(), Error> {
+    fn memoize_associated_const(
+        &self,
+        ty: &Type,
+        name: &str,
+        constant: ConstExpr,
+        expr_ty: Type,
+    ) -> Result<(), Error> {
         trace!("Memoizing associated const {name} of type {ty} in {self}");
         let mut associated_constants = self.associated_constants.write().unwrap();
         // Does the type already have the associated constant?
@@ -263,7 +286,12 @@ impl Env {
         false
     }
 
-    pub(super) fn add_monomorphized_associated_consts(&self, template: Type, monomorph: Type, ty_args: Vec<Type>) -> Result<(), Error> {
+    pub(super) fn add_monomorphized_associated_consts(
+        &self,
+        template: Type,
+        monomorph: Type,
+        ty_args: Vec<Type>,
+    ) -> Result<(), Error> {
         // // If we can't acquire the lock, just return.
         // // This is because we don't want to block the thread if we can't acquire the lock.
         // if let Ok(mut lock) = self.processed_monomorphizations.try_write() {
@@ -281,21 +309,44 @@ impl Env {
         //     warn!("Failed to acquire lock on processed monomorphizations");
         //     return Ok(());
         // }
-        if !monomorph.is_atomic() {
+        // let monomorph = monomorph.simplify_until_concrete(self)?;
+
+        if monomorph.get_size(self).is_err() {
             debug!("Type {monomorph} is not atomic");
             return Ok(());
+        } else {
+            debug!("Type {monomorph} is atomic");
         }
 
         let is_processed = {
-            self.processed_monomorphizations.read().unwrap().get(&template).map(|monomorphs| monomorphs.iter().any(|mono| mono.can_decay_to(&monomorph, self).unwrap_or(false))).unwrap_or(false)
+            self.processed_monomorphizations
+                .read()
+                .unwrap()
+                .get(&template)
+                .map(|monomorphs| {
+                    monomorphs
+                        .iter()
+                        .any(|mono| mono.can_decay_to(&monomorph, self).unwrap_or(false))
+                })
+                .unwrap_or(false)
         };
         if is_processed {
             debug!("Type {template} has already been monomorphized to {monomorph}");
             return Ok(());
         }
         {
-            self.processed_monomorphizations.write().unwrap().entry(template.clone()).or_default().push(template.clone());
-            self.processed_monomorphizations.write().unwrap().entry(template.clone()).or_default().push(monomorph.clone());
+            self.processed_monomorphizations
+                .write()
+                .unwrap()
+                .entry(template.clone())
+                .or_default()
+                .push(template.clone());
+            self.processed_monomorphizations
+                .write()
+                .unwrap()
+                .entry(template.clone())
+                .or_default()
+                .push(monomorph.clone());
         };
 
         if !self.has_any_associated_const(&template) {
@@ -303,22 +354,24 @@ impl Env {
             return Ok(());
         }
 
-
         debug!("Adding monomorphized associated constants of type {template} with type arguments {ty_args:?} to environment");
         // Get the template type's associated constants.
         let template_associated_consts = self.get_all_associated_consts(&template);
-        // Check if monomorph already has the associated constants. 
+        // Check if monomorph already has the associated constants.
         let mono_associated_consts = self.get_all_associated_consts(&monomorph);
         debug!("Template associated consts: {template_associated_consts:?}");
         debug!("Mono associated consts: {mono_associated_consts:?}");
         for (name, const_expr) in template_associated_consts {
-            if mono_associated_consts.iter().any(|(mono_name, _)| mono_name == &name) {
+            if mono_associated_consts
+                .iter()
+                .any(|(mono_name, _)| mono_name == &name)
+            {
                 debug!("Monomorphized type {monomorph} already has associated constant {name}");
                 continue;
             }
             // Get the associated constant.
             // let const_expr = self.get_associated_const(&template, &name).unwrap();
-            
+
             // Monomorphize the associated constant.
             // Strip off the template parameters from the type arguments.
             let mono_const = if let ConstExpr::Template(ty_params, cexpr) = const_expr {
@@ -331,10 +384,9 @@ impl Env {
                 warn!("Monomorphizing the old fashioned way");
                 const_expr.monomorphize(ty_args.clone())
             };
-            debug!("Adding monomorphized associated constant {name} = {mono_const} to type {monomorph}");   
+            debug!("Adding monomorphized associated constant {name} = {mono_const} to type {monomorph}");
             // Add the monomorphized associated constant to the environment.
             self.add_associated_const(monomorph.clone(), name, mono_const)?;
-
         }
         debug!("Done adding monomorphized associated constants of type {template} with type arguments {ty_args:?}");
 
@@ -380,7 +432,10 @@ impl Env {
     /// Add all the compile-time declarations to this environment. These are declarations
     /// for types, constants, and procedures that are defined at compile-time. Variables
     /// are not included because they are defined at runtime.
-    pub(super) fn add_compile_time_declaration(&mut self, declaration: &Declaration) -> Result<(), Error> {
+    pub(super) fn add_compile_time_declaration(
+        &mut self,
+        declaration: &Declaration,
+    ) -> Result<(), Error> {
         match declaration {
             Declaration::Type(name, ty) => {
                 self.define_type(name, ty.clone());
@@ -405,44 +460,55 @@ impl Env {
                     // If this is an implementation for a template type, we need to
                     // get the template parameters and add them to each associated constant.
                     let template_params = template.get_template_params(self);
-                    
+
                     if template_params.len() != supplied_params.len() {
                         return Err(Error::MismatchedTypes {
                             expected: *template.clone(),
                             found: Type::Apply(template.clone(), supplied_params.clone()),
-                            expr: Expr::NONE.with(declaration.clone())
+                            expr: Expr::NONE.with(declaration.clone()),
                         });
                     }
 
-
-                    let supplied_param_symbols = supplied_params.iter().map(|ty| {
-                        if let Type::Symbol(sym) = ty {
-                            Ok(sym.clone())
-                        } else {
-                            Err(Error::MismatchedTypes {
-                                expected: Type::Symbol("A symbol, not a concrete type".to_owned()),
-                                found: ty.clone(),
-                                expr: Expr::NONE.with(declaration.clone())
-                            })
-                        }
-                    }).collect::<Result<Vec<_>, _>>()?;
+                    let supplied_param_symbols = supplied_params
+                        .iter()
+                        .map(|ty| {
+                            if let Type::Symbol(sym) = ty {
+                                Ok(sym.clone())
+                            } else {
+                                Err(Error::MismatchedTypes {
+                                    expected: Type::Symbol(
+                                        "A symbol, not a concrete type".to_owned(),
+                                    ),
+                                    found: ty.clone(),
+                                    expr: Expr::NONE.with(declaration.clone()),
+                                })
+                            }
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
 
                     for (name, associated_const) in impls {
-                        let templated_const = associated_const.template(supplied_param_symbols.clone());
+                        let templated_const =
+                            associated_const.template(supplied_param_symbols.clone());
                         self.add_associated_const(*template.clone(), name, templated_const)?;
                     }
                 } else {
+                    ty.add_monomorphized_associated_consts(self)?;
                     for (name, associated_const) in impls {
                         self.add_associated_const(ty.clone(), name, associated_const.clone())?;
                     }
                 }
-
             }
-            Declaration::Var(_, _, _, _) => {
-                // Variables are not defined at compile-time.
+            Declaration::Var(_, _, Some(ty), e) => {
+                ty.add_monomorphized_associated_consts(self)?;
+                e.get_type(self)?.add_monomorphized_associated_consts(self)?;
             }
-            Declaration::VarPat(_, _) => {
+            Declaration::Var(_, _, _, e) => {
                 // Variables are not defined at compile-time.
+                e.get_type(self)?.add_monomorphized_associated_consts(self)?;
+            }
+            Declaration::VarPat(_, e) => {
+                // Variables are not defined at compile-time.
+                e.get_type(self)?.add_monomorphized_associated_consts(self)?;
             }
             Declaration::Many(decls) => {
                 for decl in decls {
@@ -465,7 +531,10 @@ impl Env {
     /// Add a single variable declaration to this environment. These are declarations
     /// for variables that are defined at runtime. Types, constants, and procedures
     /// are not included because they are defined at compile-time.
-    pub(super) fn add_local_variable_declaration(&mut self, declaration: &Declaration) -> Result<(), Error> {
+    pub(super) fn add_local_variable_declaration(
+        &mut self,
+        declaration: &Declaration,
+    ) -> Result<(), Error> {
         match declaration {
             Declaration::Type(_, _) => {
                 // Types are not defined at runtime.
@@ -749,7 +818,7 @@ impl Env {
     /// This helps the compiler memoize the size of types so that it doesn't have to
     /// recalculate the size of the same type multiple times.
     pub(super) fn has_precalculated_size(&self, ty: &Type) -> bool {
-        self.type_sizes.contains_key(ty)
+        self.type_sizes.read().unwrap().contains_key(ty)
     }
 
     /// Get the precalculated size of the given type.
@@ -758,7 +827,7 @@ impl Env {
     pub(super) fn get_precalculated_size(&self, ty: &Type) -> Option<usize> {
         // Get the precalculated size of the given type.
         // let size = self.type_sizes.get(ty).copied()?;
-        let size = self.type_sizes.get(ty).copied()?;
+        let size = self.type_sizes.read().unwrap().get(ty).copied()?;
         // Log the size of the type.
         debug!(target: "size", "Getting memoized type size for {ty} => {size}");
         // Return the size of the type.
@@ -768,7 +837,7 @@ impl Env {
     /// Set the precalculated size of the given type.
     /// This helps the compiler memoize the size of types so that it doesn't have to
     /// recalculate the size of the same type multiple times.
-    pub(super) fn set_precalculated_size(&mut self, ty: Type, size: usize) {
+    pub(super) fn set_precalculated_size(&self, ty: Type, size: usize) {
         debug!(target: "size", "Memoizing type size {ty} with size {size}");
         if let Some(old_size) = self.get_precalculated_size(&ty) {
             if old_size == size {
@@ -778,7 +847,12 @@ impl Env {
                 warn!(target: "size", "Type size {ty} was already memoized with size {old_size}, but we memoized it with size {size}");
             }
         }
-        Rc::make_mut(&mut self.type_sizes).insert(ty, size);
+
+        let mut inner = self.type_sizes.write().unwrap();
+        Rc::make_mut(&mut *inner).insert(ty, size);
+
+
+        // Rc::make_mut(&mut self.type_sizes).insert(ty, size);
     }
 }
 

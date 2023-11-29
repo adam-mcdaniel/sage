@@ -179,10 +179,14 @@ impl TypeCheck for Type {
 impl TypeCheck for Expr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
         trace!("Type checking expression: {self}");
+        let ty = self.get_type(env)?;
+        ty.type_check(env)?;
+
         match self {
             Self::Annotated(expr, metadata) => {
                 // Check the inner expression.
-                expr.type_check(env).map_err(|e| e.annotate(metadata.clone()))
+                expr.type_check(env)
+                    .map_err(|e| e.annotate(metadata.clone()))
             }
 
             Self::Declare(declaration, body) => {
@@ -198,38 +202,54 @@ impl TypeCheck for Expr {
 
             Self::UnaryOp(unop, expr) => {
                 if let Self::Annotated(expr, metadata) = &**expr {
-                    return unop.type_check(expr, env).map_err(|e| e.annotate(metadata.clone()));
+                    return unop
+                        .type_check(expr, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 unop.type_check(expr, env)
             }
             Self::BinaryOp(binop, lhs, rhs) => {
                 if let Self::Annotated(lhs, metadata) = &**lhs {
-                    return binop.type_check(lhs, rhs, env).map_err(|e| e.annotate(metadata.clone()));
+                    return binop
+                        .type_check(lhs, rhs, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 if let Self::Annotated(rhs, metadata) = &**rhs {
-                    return binop.type_check(lhs, rhs, env).map_err(|e| e.annotate(metadata.clone()));
+                    return binop
+                        .type_check(lhs, rhs, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
 
                 binop.type_check(lhs, rhs, env)
             }
             Self::TernaryOp(ternop, a, b, c) => {
                 if let Self::Annotated(a, metadata) = &**a {
-                    return ternop.type_check(a, b, c, env).map_err(|e| e.annotate(metadata.clone()));
+                    return ternop
+                        .type_check(a, b, c, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 if let Self::Annotated(b, metadata) = &**b {
-                    return ternop.type_check(a, b, c, env).map_err(|e| e.annotate(metadata.clone()));
+                    return ternop
+                        .type_check(a, b, c, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 if let Self::Annotated(c, metadata) = &**c {
-                    return ternop.type_check(a, b, c, env).map_err(|e| e.annotate(metadata.clone()));
+                    return ternop
+                        .type_check(a, b, c, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 ternop.type_check(a, b, c, env)
             }
             Self::AssignOp(op, dst, src) => {
                 if let Self::Annotated(src, metadata) = &**src {
-                    return op.type_check(dst, src, env).map_err(|e| e.annotate(metadata.clone()));
+                    return op
+                        .type_check(dst, src, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 if let Self::Annotated(dst, metadata) = &**dst {
-                    return op.type_check(dst, src, env).map_err(|e| e.annotate(metadata.clone()));
+                    return op
+                        .type_check(dst, src, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
 
                 // Check if the assignment operator is sound with
@@ -412,9 +432,7 @@ impl TypeCheck for Expr {
                         Err(Error::InvalidRefer(self.clone()))
                     }
                 }
-                Expr::ConstExpr(cexpr) => {
-                    Ok(())
-                }
+                Expr::ConstExpr(cexpr) => Ok(()),
                 Expr::Deref(inner) | Expr::Index(inner, _) => {
                     // Confirm that the inner expression can be referenced.
                     match inner.get_type(env)? {
@@ -579,14 +597,16 @@ impl TypeCheck for Expr {
                                         });
                                     }
                                 }
-                                return Ok(())
+                                return Ok(());
                             }
                             // If the function is not a procedure, return an error.
-                            _ => return Err(Error::MismatchedTypes {
-                                expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
-                                found: f_type,
-                                expr: self.clone(),
-                            }),
+                            _ => {
+                                return Err(Error::MismatchedTypes {
+                                    expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
+                                    found: f_type,
+                                    expr: self.clone(),
+                                })
+                            }
                         }
                     }
 
@@ -794,7 +814,11 @@ impl TypeCheck for Expr {
                 match e_type.type_check_member(field, e, env) {
                     Ok(_) => Ok(()),
                     Err(e) => {
-                        match field.clone().as_symbol(env).and_then(|name| Ok(env.get_associated_const(&e_type, &name))) {
+                        match field
+                            .clone()
+                            .as_symbol(env)
+                            .and_then(|name| Ok(env.get_associated_const(&e_type, &name)))
+                        {
                             Ok(_) => Ok(()),
                             Err(_) => Err(e),
                         }
@@ -853,9 +877,9 @@ impl TypeCheck for ConstExpr {
                 Ok(())
             }
 
-            Self::Annotated(expr, metadata) => {
-                expr.type_check(env).map_err(|e| e.annotate(metadata.clone()))
-            }
+            Self::Annotated(expr, metadata) => expr
+                .type_check(env)
+                .map_err(|e| e.annotate(metadata.clone())),
 
             // Typecheck a type expression.
             Self::Type(t) => t.type_check(env),
@@ -870,7 +894,11 @@ impl TypeCheck for ConstExpr {
                 match e_type.type_check_member(field, &Expr::ConstExpr(*e.clone()), env) {
                     Ok(_) => Ok(()),
                     Err(e) => {
-                        match field.clone().as_symbol(env).and_then(|name| Ok(env.get_associated_const(&e_type, &name))) {
+                        match field
+                            .clone()
+                            .as_symbol(env)
+                            .and_then(|name| Ok(env.get_associated_const(&e_type, &name)))
+                        {
                             Ok(_) => Ok(()),
                             Err(_) => Err(e),
                         }
@@ -913,11 +941,7 @@ impl TypeCheck for ConstExpr {
                         let mut new_env = env.clone();
                         // Define the type parameters in the environment.
                         new_env.define_types(
-                            ty_params
-                                .clone()
-                                .into_iter()
-                                .zip(ty_args.clone())
-                                .collect(),
+                            ty_params.clone().into_iter().zip(ty_args.clone()).collect(),
                         );
                         // Check the template type.
                         template.type_check(&new_env)

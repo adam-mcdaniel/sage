@@ -9,7 +9,7 @@
 //! - `Power`
 
 use crate::{
-    asm::{AssemblyProgram, CoreOp, StandardOp, SP, A, B},
+    asm::{AssemblyProgram, CoreOp, StandardOp, A, B, SP},
     lir::*,
 };
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
@@ -66,10 +66,14 @@ impl BinaryOp for Arithmetic {
             if let Expr::Annotated(rhs, _) = rhs {
                 return self.return_type(lhs, rhs, env);
             }
-            return self.return_type(lhs, rhs, env).map_err(|e| e.annotate(metadata.clone()));
+            return self
+                .return_type(lhs, rhs, env)
+                .map_err(|e| e.annotate(metadata.clone()));
         }
         if let Expr::Annotated(rhs, metadata) = rhs {
-            return self.return_type(lhs, rhs, env).map_err(|e| e.annotate(metadata.clone()));
+            return self
+                .return_type(lhs, rhs, env)
+                .map_err(|e| e.annotate(metadata.clone()));
         }
 
         Ok(match (lhs.get_type(env)?, rhs.get_type(env)?) {
@@ -80,7 +84,7 @@ impl BinaryOp for Arithmetic {
             (Type::Int | Type::Float | Type::Cell, Type::Cell)
             | (Type::Cell, Type::Int | Type::Float) => Type::Cell,
 
-            (Type::Array(elem, size), Type::Int)=> {
+            (Type::Array(elem, size), Type::Int) => {
                 if let (Self::Multiply, Expr::ConstExpr(const_rhs)) = (self, rhs) {
                     let size = size.as_int(env)?;
                     let n = const_rhs.clone().as_int(env)?;
@@ -89,7 +93,7 @@ impl BinaryOp for Arithmetic {
                         return Err(Error::InvalidBinaryOp(
                             Box::new(*self),
                             lhs.clone(),
-                            rhs.clone()
+                            rhs.clone(),
                         ));
                     }
                     Type::Array(elem, Box::new(ConstExpr::Int(size * n)))
@@ -113,7 +117,6 @@ impl BinaryOp for Arithmetic {
             //         ));
             //     }
             // }
-
             (Type::Unit(name1, a_type), Type::Unit(name2, b_type)) => {
                 // Make sure that the two units are the same.
                 if name1 != name2 {
@@ -164,8 +167,6 @@ impl BinaryOp for Arithmetic {
             //     }
             //     Ok(ConstExpr::Array(new_arr))
             // }
-
-
             (ConstExpr::Int(lhs), Arithmetic::Add, ConstExpr::Int(rhs)) => {
                 Ok(ConstExpr::Int(lhs + rhs))
             }
@@ -267,13 +268,11 @@ impl BinaryOp for Arithmetic {
                 output.op(CoreOp::Many(vec![
                     // Pop into B
                     CoreOp::Pop(Some(B), 1),
-
                     // Store the address of the array in A.
                     CoreOp::GetAddress {
                         addr: SP.deref().offset(1 - arr_size as isize),
                         dst: A,
                     },
-
                     // While B != 0
                     CoreOp::Dec(B),
                     CoreOp::While(B),
@@ -284,14 +283,11 @@ impl BinaryOp for Arithmetic {
                     CoreOp::End,
                 ]));
 
-
                 return Ok(());
             }
 
-            _ => {}            
+            _ => {}
         }
-
-
 
         let src = SP.deref();
         let dst = SP.deref().offset(-1);

@@ -65,20 +65,19 @@
 //! *inlined* recursive types, mutually recursive types, recursive functions, and core builtins are all supported without a problem.
 //! **The LIR compiler will only use a standard instruction if it has to.**
 
+mod annotate;
 mod compile;
 mod env;
-mod expr;
 mod error;
+mod expr;
 mod types;
-mod annotate;
 
+pub use annotate::*;
 pub use compile::*;
 pub use env::*;
-pub use expr::*;
 pub use error::*;
+pub use expr::*;
 pub use types::*;
-pub use annotate::*;
-
 
 /// Simplify an expression while maintaining structural equality.
 pub trait Simplify: Sized {

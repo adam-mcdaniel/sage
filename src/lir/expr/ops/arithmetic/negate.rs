@@ -9,7 +9,8 @@ pub struct Negate;
 
 impl UnaryOp for Negate {
     fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
-        ty.can_decay_to(&Type::Int, env).or(ty.can_decay_to(&Type::Float, env))
+        ty.can_decay_to(&Type::Int, env)
+            .or(ty.can_decay_to(&Type::Float, env))
     }
 
     fn return_type(&self, x: &Expr, env: &Env) -> Result<Type, Error> {

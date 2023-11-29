@@ -161,29 +161,29 @@ impl Architecture for MyOS {
     }
     fn prelude(&self, is_core: bool) -> Option<String> {
         /*
-        let mut result = r#"#include <stdlib.h>
-        #include <stdio.h>
-        #include <stdlib.h>
-#include <math.h>
-#include <string.h>
+                let mut result = r#"#include <stdlib.h>
+                #include <stdio.h>
+                #include <stdlib.h>
+        #include <math.h>
+        #include <string.h>
 
-union cell {
-long long int i;
-double f;
-union cell *p;
-} tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256], *ffi_ptr = ffi_channel;
+        union cell {
+        long long int i;
+        double f;
+        union cell *p;
+        } tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256], *ffi_ptr = ffi_channel;
 
-void __unsafe_memcpy() {
-    union cell *dst = ffi_ptr[-2].p, *src = ffi_ptr[-1].p;
-    long long int n = ffi_ptr[0].i;
-    memcpy(dst, src, n * sizeof(union cell));
-}
+        void __unsafe_memcpy() {
+            union cell *dst = ffi_ptr[-2].p, *src = ffi_ptr[-1].p;
+            long long int n = ffi_ptr[0].i;
+            memcpy(dst, src, n * sizeof(union cell));
+        }
 
-unsigned int ref_ptr = 0;
-void (*funs[10000])(void);
-"#
-        .to_string();
-    */
+        unsigned int ref_ptr = 0;
+        void (*funs[10000])(void);
+        "#
+                .to_string();
+            */
         let mut result = r#"#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -508,7 +508,8 @@ void __putchar() {
     putchar(ffi_ptr[0].i);
     ffi_ptr--;
 }
-"#.to_string();
+"#
+        .to_string();
 
         // if !is_core {
         //     result = "#include <stdlib.h>\n".to_string() + &result;
@@ -518,7 +519,8 @@ void __putchar() {
     }
 
     fn post_funs(&self, funs: Vec<i32>) -> Option<String> {
-        let mut result = String::from(r#"int main () {
+        let mut result = String::from(
+            r#"int main () {
     uint8_t buf[0x80000] = {0};
     salloc_init(buf, buf + sizeof(buf));
 
@@ -533,7 +535,8 @@ void __putchar() {
     ref = (cell**)refs;
     reg.i = 0;
     ffi_ptr = ffi_channel;
-"#);
+"#,
+        );
         for fun in funs {
             result += &format!("\tfuns[{fun}] = f{fun};\n", fun = fun)
         }

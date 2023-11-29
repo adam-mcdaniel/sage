@@ -1,9 +1,18 @@
-use crate::{lir::{Expr, Env, Compile, Error, GetType, Type, TypeCheck, Mutability, ConstExpr, FFIProcedure, Pattern, GetSize}, asm::{AssemblyProgram, SP, CoreOp, Location}};
-use super::{Procedure, PolyProcedure};
+use super::{PolyProcedure, Procedure};
+use crate::{
+    asm::{AssemblyProgram, CoreOp, Location, SP},
+    lir::{
+        Compile, ConstExpr, Env, Error, Expr, FFIProcedure, GetSize, GetType, Mutability, Pattern,
+        Type, TypeCheck,
+    },
+};
 
-use std::collections::BTreeMap;
-use core::{ops::{Add, AddAssign}, fmt::{Display, Formatter, Result as FmtResult}};
+use core::{
+    fmt::{Display, Formatter, Result as FmtResult},
+    ops::{Add, AddAssign},
+};
 use log::*;
+use std::collections::BTreeMap;
 
 /// A declaration of a variable, function, type, etc.
 #[derive(Debug, Clone, PartialEq)]
@@ -54,22 +63,35 @@ impl Declaration {
         match self {
             Self::Var(..) => true,
             Self::VarPat(..) => true,
-            Self::Many(decls) => decls.iter().any(|decl| decl.has_local_variable_declaration()),
+            Self::Many(decls) => decls
+                .iter()
+                .any(|decl| decl.has_local_variable_declaration()),
             _ => false,
         }
     }
 
     /// Compile a declaration with a body in a new scope. This will copy the old environment,
     /// and add the declaration to the new environment.
-    pub(crate) fn compile(&self, body: Expr, env: &Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        self.compile_helper(Some(body), &mut env.clone(), output).map(|_| ())
+    pub(crate) fn compile(
+        &self,
+        body: Expr,
+        env: &Env,
+        output: &mut dyn AssemblyProgram,
+    ) -> Result<(), Error> {
+        self.compile_helper(Some(body), &mut env.clone(), output)
+            .map(|_| ())
     }
 
     /// Compile a declaration, and return how many cells were allocated for variables.
     /// This will modify the environment to add the declaration. If there is a body,
     /// it will be compiled under a new scope, and will be popped off the stack when
     /// the declaration is finished.
-    fn compile_helper(&self, body: Option<Expr>, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<usize, Error> {
+    fn compile_helper(
+        &self,
+        body: Option<Expr>,
+        env: &mut Env,
+        output: &mut dyn AssemblyProgram,
+    ) -> Result<usize, Error> {
         // Add all the compile time declarations to the environment so that they can be used
         // in these declarations.
         env.add_compile_time_declaration(self)?;
@@ -114,7 +136,8 @@ impl Declaration {
                 // Get the current instruction (for logging)
                 let current_instruction = output.current_instruction();
                 // A log message
-                let log_message = format!("Initializing static variable '{name}' with expression '{expr}'");
+                let log_message =
+                    format!("Initializing static variable '{name}' with expression '{expr}'");
 
                 // Get the type of the variable.
                 let var_ty = ty.clone();
@@ -201,9 +224,7 @@ impl Declaration {
                 result.append(&mut other_decls);
                 *self_ = Self::Many(result)
             }
-            (self_, other) => {
-                *self_ = Self::Many(vec![self_.clone(), other])
-            }
+            (self_, other) => *self_ = Self::Many(vec![self_.clone(), other]),
         }
     }
 
@@ -266,11 +287,14 @@ impl TypeCheck for Declaration {
                     expected_ty.type_check(env)?;
                     // Make sure the type of the expression can decay to the specified type.
                     if !found_ty.can_decay_to(expected_ty, env)? {
-                        error!("Invalid declaration {}: {found_ty:?} != {expected_ty:?}", self.clone());
+                        error!(
+                            "Invalid declaration {}: {found_ty:?} != {expected_ty:?}",
+                            self.clone()
+                        );
                         return Err(Error::MismatchedTypes {
                             expected: expected_ty.clone(),
                             found: found_ty.clone(),
-                            expr: Expr::NONE.with(self.clone())
+                            expr: Expr::NONE.with(self.clone()),
                         });
                     }
                 }
@@ -293,6 +317,7 @@ impl TypeCheck for Declaration {
             Self::Type(name, ty) => {
                 let mut new_env = env.clone();
                 new_env.define_type(name, ty.clone());
+                ty.add_monomorphized_associated_consts(env)?;
                 ty.type_check(&new_env)?;
             }
             // Typecheck a constant expression.
@@ -319,7 +344,7 @@ impl TypeCheck for Declaration {
                     return Err(Error::MismatchedTypes {
                         expected: expected_ty.clone(),
                         found: found_ty.clone(),
-                        expr: Expr::NONE.with(self.clone())
+                        expr: Expr::NONE.with(self.clone()),
                     });
                 }
             }
@@ -332,6 +357,7 @@ impl TypeCheck for Declaration {
 
                 // Get the type of the expression.
                 let ty = expr.get_type(env)?;
+                ty.add_monomorphized_associated_consts(env)?;
                 // Get the size of the expression.
                 let size = ty.get_size(env)?;
                 if !pat.is_exhaustive(&expr, &ty, env)? {
@@ -345,10 +371,16 @@ impl TypeCheck for Declaration {
                 // Get the bindings of the variables under the pattern
                 let bindings = pat.get_bindings(&expr, &ty, env)?;
                 // Get the size of all the bindings
-                let size_of_bindings = bindings.iter().map(|(_name, (_mut, ty))| ty.get_size(env).unwrap_or(0)).sum::<usize>();
+                let size_of_bindings = bindings
+                    .iter()
+                    .map(|(_name, (_mut, ty))| ty.get_size(env).unwrap_or(0))
+                    .sum::<usize>();
                 // Make sure the size of the bindings is the same as the size of the expression.
                 if size_of_bindings != size {
-                    return Err(Error::InvalidPatternForExpr(Expr::NONE.with(self.clone()), pat.clone()));
+                    return Err(Error::InvalidPatternForExpr(
+                        Expr::NONE.with(self.clone()),
+                        pat.clone(),
+                    ));
                 }
             }
             // Typecheck a foreign function declaration.
@@ -360,46 +392,60 @@ impl TypeCheck for Declaration {
                 // Add all the compile-time declarations to the environment.
                 new_env.add_compile_time_declaration(&self.clone())?;
 
-
                 if let Type::Apply(template, supplied_params) = ty {
                     // If this is an implementation for a template type, we need to
                     // get the template parameters and add them to each associated constant.
                     let template_params = template.get_template_params(&new_env);
-                    
+
                     if template_params.len() != supplied_params.len() {
                         return Err(Error::MismatchedTypes {
                             expected: *template.clone(),
                             found: Type::Apply(template.clone(), supplied_params.clone()),
-                            expr: Expr::NONE.with(self.clone())
+                            expr: Expr::NONE.with(self.clone()),
                         });
                     }
 
-
-                    let supplied_param_symbols = supplied_params.iter().map(|ty| {
-                        if let Type::Symbol(sym) = ty {
-                            Ok(sym.clone())
-                        } else {
-                            Err(Error::MismatchedTypes {
-                                expected: Type::Symbol("A symbol, not a concrete type".to_owned()),
-                                found: ty.clone(),
-                                expr: Expr::NONE.with(self.clone())
-                            })
-                        }
-                    }).collect::<Result<Vec<_>, _>>()?;
+                    let supplied_param_symbols = supplied_params
+                        .iter()
+                        .map(|ty| {
+                            if let Type::Symbol(sym) = ty {
+                                Ok(sym.clone())
+                            } else {
+                                Err(Error::MismatchedTypes {
+                                    expected: Type::Symbol(
+                                        "A symbol, not a concrete type".to_owned(),
+                                    ),
+                                    found: ty.clone(),
+                                    expr: Expr::NONE.with(self.clone()),
+                                })
+                            }
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
 
                     let mut templated_consts = vec![];
 
                     for (name, associated_const) in impls {
-                        let templated_const = associated_const.template(supplied_param_symbols.clone());
-                        new_env.add_associated_const(*template.clone(), name, templated_const.clone())?;
+                        let templated_const =
+                            associated_const.template(supplied_param_symbols.clone());
+                        new_env.add_associated_const(
+                            *template.clone(),
+                            name,
+                            templated_const.clone(),
+                        )?;
+
+                        // new_env.add_associated_const(simplified_template.clone(), name, templated_const.clone())?;
                         templated_consts.push(templated_const);
                     }
-                    
+
                     for templated_const in templated_consts {
-                        warn!("About to type check templated const: {templated_const}", templated_const=templated_const);
+                        warn!(
+                            "About to type check templated const: {templated_const}",
+                            templated_const = templated_const
+                        );
                         templated_const.type_check(&new_env)?;
                     }
                 } else {
+                    ty.add_monomorphized_associated_consts(env)?;
                     for (name, associated_const) in impls {
                         new_env.add_associated_const(ty.clone(), name, associated_const.clone())?;
                     }
@@ -434,35 +480,35 @@ impl Display for Declaration {
         match self {
             Self::StaticVar(name, mutability, ty, expr) => {
                 write!(f, "static {mutability} {name}: {ty} = {expr}")?;
-            },
+            }
             Self::Var(name, _mutability, ty, expr) => {
                 write!(f, "{} = {}", name, expr)?;
                 if let Some(ty) = ty {
                     write!(f, ": {}", ty)?;
                 }
-            },
+            }
             Self::Proc(name, proc) => {
                 write!(f, "{}", proc)?;
                 write!(f, " {}", name)?;
-            },
+            }
             Self::PolyProc(name, proc) => {
                 write!(f, "{}", proc)?;
                 write!(f, " {}", name)?;
-            },
+            }
             Self::Type(name, ty) => {
                 write!(f, "type {}", name)?;
                 write!(f, " = {}", ty)?;
-            },
+            }
             Self::Const(name, expr) => {
                 write!(f, "const {}: {}", name, expr)?;
-            },
+            }
             Self::VarPat(pat, expr) => {
                 write!(f, "{} = {}", pat, expr)?;
-            },
+            }
             Self::ExternProc(name, proc) => {
                 write!(f, "extern {}", proc)?;
                 write!(f, " {}", name)?;
-            },
+            }
             Self::Impl(name, impls) => {
                 write!(f, "impl {}", name)?;
                 write!(f, " {{")?;
@@ -470,12 +516,12 @@ impl Display for Declaration {
                     write!(f, "{} = {}", name, expr)?;
                 }
                 write!(f, "}}")?;
-            },
+            }
             Self::Many(decls) => {
                 for decl in decls {
                     writeln!(f, "{}", decl)?;
                 }
-            },
+            }
         }
         Ok(())
     }
@@ -595,7 +641,10 @@ impl From<Box<Declaration>> for Declaration {
     }
 }
 
-impl<K, V> From<BTreeMap<K, V>> for Declaration where (K, V): Into<Declaration> {
+impl<K, V> From<BTreeMap<K, V>> for Declaration
+where
+    (K, V): Into<Declaration>,
+{
     fn from(bt: BTreeMap<K, V>) -> Self {
         Self::Many(bt.into_iter().map(|(k, v)| (k, v).into()).collect())
     }
@@ -607,13 +656,19 @@ impl From<(&str, FFIProcedure)> for Declaration {
     }
 }
 
-impl<T> From<Vec<T>> for Declaration where T: Into<Declaration> {
+impl<T> From<Vec<T>> for Declaration
+where
+    T: Into<Declaration>,
+{
     fn from(decls: Vec<T>) -> Self {
         Self::Many(decls.into_iter().map(|decl| decl.into()).collect())
     }
 }
 
-impl<T> Add<T> for Declaration where T: Into<Declaration> {
+impl<T> Add<T> for Declaration
+where
+    T: Into<Declaration>,
+{
     type Output = Self;
 
     fn add(self, other: T) -> Self::Output {
@@ -621,7 +676,10 @@ impl<T> Add<T> for Declaration where T: Into<Declaration> {
     }
 }
 
-impl<T> AddAssign<T> for Declaration where T: Into<Declaration> {
+impl<T> AddAssign<T> for Declaration
+where
+    T: Into<Declaration>,
+{
     fn add_assign(&mut self, other: T) {
         self.append(other.into());
     }

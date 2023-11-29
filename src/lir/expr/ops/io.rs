@@ -110,9 +110,7 @@ impl Put {
 
                 // Print associated constants
                 for (name, constant) in env.get_all_associated_consts(t) {
-                    for c in format!(" const {name} = {constant};")
-                        .chars()
-                    {
+                    for c in format!(" const {name} = {constant};").chars() {
                         output.op(CoreOp::Set(A, c as u8 as i64));
                         output.op(CoreOp::Put(A, Output::stdout_char()));
                     }
@@ -432,6 +430,13 @@ impl Put {
                     for i in 0..array_len as isize - 1 {
                         output.op(CoreOp::Put(addr.offset(i), Output::stdout_char()));
                     }
+                    // Optionally print the last character if it is not null
+                    output.op(CoreOp::If(addr.offset(array_len as isize - 1)));
+                    output.op(CoreOp::Put(
+                        addr.offset(array_len as isize - 1),
+                        Output::stdout_char(),
+                    ));
+                    output.op(CoreOp::End);
                 } else {
                     output.op(CoreOp::Set(A, b'[' as i64));
                     output.op(CoreOp::Put(A, Output::stdout_char()));

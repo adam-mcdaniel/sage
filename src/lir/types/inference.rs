@@ -42,7 +42,8 @@ impl GetType for Expr {
         Ok(match self {
             Self::Annotated(expr, annotation) => {
                 // Get the type of the inner expression.
-                expr.get_type_checked(env, i).map_err(|e| e.annotate(annotation.clone()))?
+                expr.get_type_checked(env, i)
+                    .map_err(|e| e.annotate(annotation.clone()))?
             }
 
             Self::Declare(declaration, body) => {
@@ -81,7 +82,9 @@ impl GetType for Expr {
 
             Self::UnaryOp(unop, expr) => {
                 if let Self::Annotated(expr, metadata) = &**expr {
-                    return unop.return_type(expr, env).map_err(|e| e.annotate(metadata.clone()));
+                    return unop
+                        .return_type(expr, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 // Infer the type of the unary operation
                 // on the expression.
@@ -91,23 +94,33 @@ impl GetType for Expr {
                 // Infer the type of the binary operation
                 // on the two expressions.
                 if let Self::Annotated(lhs, metadata) = &**lhs {
-                    return binop.return_type(lhs, rhs, env).map_err(|e| e.annotate(metadata.clone()));
+                    return binop
+                        .return_type(lhs, rhs, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 if let Self::Annotated(rhs, metadata) = &**rhs {
-                    return binop.return_type(lhs, rhs, env).map_err(|e| e.annotate(metadata.clone()));
+                    return binop
+                        .return_type(lhs, rhs, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
 
                 binop.return_type(lhs, rhs, env)?
             }
             Self::TernaryOp(ternop, a, b, c) => {
                 if let Self::Annotated(a, metadata) = &**a {
-                    return ternop.return_type(a, b, c, env).map_err(|e| e.annotate(metadata.clone()));
+                    return ternop
+                        .return_type(a, b, c, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 if let Self::Annotated(b, metadata) = &**b {
-                    return ternop.return_type(a, b, c, env).map_err(|e| e.annotate(metadata.clone()));
+                    return ternop
+                        .return_type(a, b, c, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 if let Self::Annotated(c, metadata) = &**c {
-                    return ternop.return_type(a, b, c, env).map_err(|e| e.annotate(metadata.clone()));
+                    return ternop
+                        .return_type(a, b, c, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 // Infer the type of the ternary operation
                 // on the three expressions.
@@ -115,11 +128,15 @@ impl GetType for Expr {
             }
             Self::AssignOp(op, dst, src) => {
                 if let Self::Annotated(dst, metadata) = &**dst {
-                    return op.return_type(dst, src, env).map_err(|e| e.annotate(metadata.clone()));
+                    return op
+                        .return_type(dst, src, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
 
                 if let Self::Annotated(src, metadata) = &**src {
-                    return op.return_type(dst, src, env).map_err(|e| e.annotate(metadata.clone()));
+                    return op
+                        .return_type(dst, src, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 // Infer the type of the assignment operation
                 // on the two expressions.
@@ -191,7 +208,9 @@ impl GetType for Expr {
             // Return the type of the expression being dereferenced.
             Self::Deref(expr) => {
                 // Get the type of the expression.
-                let t = expr.get_type_checked(env, i)?.simplify_until_concrete(env)?;
+                let t = expr
+                    .get_type_checked(env, i)?
+                    .simplify_until_concrete(env)?;
                 // If the type is a pointer, return the inner type of the pointer.
                 if let Type::Pointer(_, inner) = t {
                     // If the type *evaluates* to a pointer, return that inner type.
@@ -271,8 +290,7 @@ impl GetType for Expr {
                 let as_int = field.clone().as_int(env);
                 // Get the type of the value to get the member of.
                 let val_type = val.get_type_checked(env, i)?;
-                match val_type.simplify_until_concrete(env)?
-                {
+                match val_type.simplify_until_concrete(env)? {
                     Type::Type(ty) => {
                         // Get the associated constant expression's type.
                         env.get_type_of_associated_const(&ty, &as_symbol?)
@@ -286,12 +304,16 @@ impl GetType for Expr {
                     Type::Pointer(found_mutability, t) => {
                         match t.get_member_offset(field, val, env) {
                             Ok((t, _)) => t,
-                            Err(_)=> {
-                                return env.get_type_of_associated_const(&Type::Pointer(found_mutability, t), &as_symbol?)
+                            Err(_) => {
+                                return env
+                                    .get_type_of_associated_const(
+                                        &Type::Pointer(found_mutability, t),
+                                        &as_symbol?,
+                                    )
                                     .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
                             }
                         }
-                    },
+                    }
                     // If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
                     // This is because tuples are accesed by integer index.
@@ -317,7 +339,8 @@ impl GetType for Expr {
                             t.clone()
                         } else {
                             // If the field is not in the struct, return an error.
-                            return env.get_type_of_associated_const(&Type::Struct(fields), &name)
+                            return env
+                                .get_type_of_associated_const(&Type::Struct(fields), &name)
                                 .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
                         }
                     }
@@ -332,7 +355,8 @@ impl GetType for Expr {
                             t.clone()
                         } else {
                             // If the field is not in the union, return an error.
-                            return env.get_type_of_associated_const(&Type::Union(types), &name)
+                            return env
+                                .get_type_of_associated_const(&Type::Union(types), &name)
                                 .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
                         }
                     }
@@ -341,15 +365,15 @@ impl GetType for Expr {
                     // struct, union, or pointer, we cannot access a member.
                     val_type => {
                         // Try to get the member of the underlying type.
-                        return env.get_type_of_associated_const(&val_type, &as_symbol?)
+                        return env
+                            .get_type_of_associated_const(&val_type, &as_symbol?)
                             .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
-                    },
-                    // Err(e) => {
-                    //     // Try to get the member of the underlying type.
-                    //     // return Err(e);
-                    //     return env.get_type_of_associated_const(&val_type, &as_symbol?)
-                    //         .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
-                    // }
+                    } // Err(e) => {
+                      //     // Try to get the member of the underlying type.
+                      //     // return Err(e);
+                      //     return env.get_type_of_associated_const(&val_type, &as_symbol?)
+                      //         .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
+                      // }
                 }
             }
 
@@ -390,7 +414,7 @@ impl GetType for Expr {
                 cond.substitute(name, ty);
                 body.substitute(name, ty)
             }
-            
+
             Self::Many(exprs) => {
                 for expr in exprs.iter_mut() {
                     expr.substitute(name, ty);

@@ -1,4 +1,4 @@
-use std::fmt::{Display, Debug, Formatter, Result as FmtResult};
+use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 /// This is an FFI binding, which is used to call a foreign function in the virtual machine code.
 ///
@@ -31,6 +31,10 @@ impl Display for FFIBinding {
 
 impl Debug for FFIBinding {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "ffi {}({}) -> {}", self.name, self.input_cells, self.output_cells)
+        write!(
+            f,
+            "ffi {}({}) -> {}",
+            self.name, self.input_cells, self.output_cells
+        )
     }
 }

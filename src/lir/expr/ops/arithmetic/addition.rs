@@ -47,9 +47,7 @@ impl Add {
             (Type::Tuple(elems1), Type::Tuple(elems2)) => Ok(Type::Tuple(
                 elems1.into_iter().chain(elems2.into_iter()).collect(),
             )),
-            (Type::Unit(_, a), b) => {
-                self.return_type_from_types(&b, &a, env)
-            }
+            (Type::Unit(_, a), b) => self.return_type_from_types(&b, &a, env),
             _ => Err(Error::InvalidBinaryOpTypes(
                 self.clone_box(),
                 lhs.clone(),
@@ -205,10 +203,7 @@ impl BinaryOp for Add {
                         size: result_size,
                     });
                     // Pop the copied result
-                    output.op(CoreOp::Pop(
-                        None,
-                        result_size
-                    ));
+                    output.op(CoreOp::Pop(None, result_size));
                     return Ok(());
                 }
 

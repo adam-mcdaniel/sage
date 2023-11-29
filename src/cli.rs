@@ -148,7 +148,7 @@ impl Error {
                 } else {
                     self
                 }
-            },
+            }
             _ => self,
         }
     }

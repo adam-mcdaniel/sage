@@ -61,7 +61,10 @@ impl PolyProcedure {
     }
 
     pub fn from_mono(mono: Procedure, ty_params: Vec<String>) -> Self {
-        let name = mono.get_common_name().unwrap_or_else(|| mono.get_mangled_name()).to_string();
+        let name = mono
+            .get_common_name()
+            .unwrap_or_else(|| mono.get_mangled_name())
+            .to_string();
 
         Self {
             name,
@@ -95,7 +98,9 @@ impl PolyProcedure {
             .into_iter()
             .map(|ty| {
                 // Simplify the type until it is concrete
-                ty.simplify_until_concrete(env)
+                let concrete = ty.simplify_until_concrete(env)?;
+                concrete.add_monomorphized_associated_consts(env)?;
+                Ok(concrete)
             })
             .collect::<Result<Vec<_>, Error>>()?;
 
@@ -110,7 +115,9 @@ impl PolyProcedure {
             );
             // Simplify the type until it is simple.
             // This reduces to the concrete version of the type application.
-            ty.simplify_until_concrete(env)
+            let concrete = ty.simplify_until_concrete(env)?;
+            concrete.add_monomorphized_associated_consts(env)?;
+            Ok(concrete)
         };
         // Distribute the type parameters over the body and arguments of the function.
         debug!(target: "mono", "Distributing type arguments over the arguments of the function {}", self.name);
@@ -124,7 +131,7 @@ impl PolyProcedure {
         let ret = bind_type_args(self.ret.clone())?;
         // Generate a mangled name for the monomorphized procedure.
         let mangled_name = format!("__MONOMORPHIZED_({ty_args:?}){}{args:?}{ret:?}", self.name);
-        // Check if the procedure has already been memoized. 
+        // Check if the procedure has already been memoized.
         debug!(target: "mono", "Checking if monomorphized procedure {} has already been memoized", mangled_name);
         let monomorphs = self.monomorphs.read().unwrap();
         if monomorphs.contains_key(&mangled_name) {
@@ -144,10 +151,10 @@ impl PolyProcedure {
             .or_insert_with(|| {
                 debug!(target: "mono", "Memoizing monomorphized procedure {}", mangled_name);
                 let mut body = *self.body.clone();
-        
+
                 // Substitute the type arguments into the body of the function.
                 body.substitute_types(&self.ty_params, &simplified_ty_args);
-        
+
                 // Wrap the body in a let expression to bind the type arguments.
                 body = body.with(
                     self.ty_params

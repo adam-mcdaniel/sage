@@ -127,8 +127,14 @@ impl Statement {
             // }
             (Self::Let(defs), _) => return rest_expr.with(defs),
             (Self::LetPattern(defs), _) => return rest_expr.with(defs),
-            (Self::LetStatic(defs), _) => return rest_expr.with(defs.into_iter().map(|(a, b, c, d)| crate::lir::Declaration::StaticVar(a, b, c, d)).collect::<Vec<crate::lir::Declaration>>()),
-            
+            (Self::LetStatic(defs), _) => {
+                return rest_expr.with(
+                    defs.into_iter()
+                        .map(|(a, b, c, d)| crate::lir::Declaration::StaticVar(a, b, c, d))
+                        .collect::<Vec<crate::lir::Declaration>>(),
+                )
+            }
+
             (Self::LetIn(defs, body), _) => body.to_expr(None).with(defs),
             (Self::LetStaticIn(defs, body), _) => {
                 // Expr::LetStaticVars(defs, Box::new(body.to_expr(None)))
@@ -141,7 +147,7 @@ impl Statement {
 
             (Self::Expr(e), _) => e,
         };
-        
+
         if let Some(Expr::Many(mut stmts)) = rest {
             stmts.insert(0, stmt);
             Expr::Many(stmts)
@@ -204,8 +210,12 @@ impl Declaration {
                 )),
             )])
             .to_expr(rest),
-            (Self::Impl(ty, methods), _) => return rest_expr.with(crate::lir::Declaration::Impl(ty, methods)),
-            (Self::Struct(name, fields), _) => rest_expr.with((name, Type::Struct(fields.into_iter().collect()))),
+            (Self::Impl(ty, methods), _) => {
+                return rest_expr.with(crate::lir::Declaration::Impl(ty, methods))
+            }
+            (Self::Struct(name, fields), _) => {
+                rest_expr.with((name, Type::Struct(fields.into_iter().collect())))
+            }
             (Self::Enum(name, variants), _) => {
                 // If none of the variants have a value, then we can just use a simple enum
                 // Otherwise, we need to use a tagged union
@@ -216,7 +226,7 @@ impl Declaration {
                         break;
                     }
                 }
-                
+
                 rest_expr.with(if simple {
                     // If we're using a simple enum, then we can just use a simple enum
                     (
@@ -244,27 +254,20 @@ impl Declaration {
                     )
                 })
             }
-            (Self::Const(consts), _) => {
-                rest_expr.with(consts)
-            }
+            (Self::Const(consts), _) => rest_expr.with(consts),
             (Self::Proc(name, params, ret, stmt), _) => {
-                rest_expr.with((
-                    name.clone(),
-                    Self::proc_to_expr(name, params, ret, *stmt),
-                ))
+                rest_expr.with((name.clone(), Self::proc_to_expr(name, params, ret, *stmt)))
             }
-            (Self::PolyProc(name, ty_params, params, ret, stmt), _) => {
-                rest_expr.with((
-                    name.clone(),
-                    ConstExpr::PolyProc(PolyProcedure::new(
-                        name,
-                        ty_params,
-                        params,
-                        ret.unwrap_or(Type::None),
-                        stmt.to_expr(None),
-                    )),
-                ))
-            }
+            (Self::PolyProc(name, ty_params, params, ret, stmt), _) => rest_expr.with((
+                name.clone(),
+                ConstExpr::PolyProc(PolyProcedure::new(
+                    name,
+                    ty_params,
+                    params,
+                    ret.unwrap_or(Type::None),
+                    stmt.to_expr(None),
+                )),
+            )),
             (Self::Type(types), _) => rest_expr.with(types),
             (Self::Statement(stmt), Some(rest)) => stmt.to_expr(Some(rest)),
             (Self::Statement(stmt), None) => stmt.to_expr(None),
@@ -317,7 +320,7 @@ fn parse_decl(pair: Pair<Rule>, filename: Option<&str>) -> Declaration {
             .map(|x| parse_decl(x, filename))
             .next()
             .unwrap(),
-        
+
         Rule::decl_impl => {
             let mut inner_rules = pair.into_inner();
             let ty = parse_type(inner_rules.next().unwrap());
@@ -325,28 +328,44 @@ fn parse_decl(pair: Pair<Rule>, filename: Option<&str>) -> Declaration {
             while inner_rules.peek().is_some() {
                 let decl = parse_decl(inner_rules.next().unwrap(), filename);
                 match decl {
-                    Declaration::Const(mut decls) => {
-                        constants.append(&mut decls)
-                    }
-                    Declaration::Proc(name, args, ret, body) => {
-                        constants.push((name.clone(), ConstExpr::Proc(Procedure::new(Some(name), args, ret.unwrap_or(Type::None), body.to_expr(None)))))
-                    }
-                    Declaration::PolyProc(name, ty_params, args, ret, body) => {
-                        constants.push((name.clone(), ConstExpr::PolyProc(PolyProcedure::new(name, ty_params, args, ret.unwrap_or(Type::None), body.to_expr(None)))))
-                    }
+                    Declaration::Const(mut decls) => constants.append(&mut decls),
+                    Declaration::Proc(name, args, ret, body) => constants.push((
+                        name.clone(),
+                        ConstExpr::Proc(Procedure::new(
+                            Some(name),
+                            args,
+                            ret.unwrap_or(Type::None),
+                            body.to_expr(None),
+                        )),
+                    )),
+                    Declaration::PolyProc(name, ty_params, args, ret, body) => constants.push((
+                        name.clone(),
+                        ConstExpr::PolyProc(PolyProcedure::new(
+                            name,
+                            ty_params,
+                            args,
+                            ret.unwrap_or(Type::None),
+                            body.to_expr(None),
+                        )),
+                    )),
                     Declaration::Type(types) => {
                         for (name, ty) in types {
                             constants.push((name, ConstExpr::Type(ty)))
                         }
                     }
-                    Declaration::Enum(name, variants) => {
-                        constants.push((name.clone(), ConstExpr::Type(Type::EnumUnion(variants.into_iter().map(|(a, x)| {
-                            (a, x.unwrap_or(Type::None))
-                        }).collect()))))
-                    }
-                    Declaration::Struct(name, fields) => {
-                        constants.push((name.clone(), ConstExpr::Type(Type::Struct(fields.into_iter().collect()))))
-                    }
+                    Declaration::Enum(name, variants) => constants.push((
+                        name.clone(),
+                        ConstExpr::Type(Type::EnumUnion(
+                            variants
+                                .into_iter()
+                                .map(|(a, x)| (a, x.unwrap_or(Type::None)))
+                                .collect(),
+                        )),
+                    )),
+                    Declaration::Struct(name, fields) => constants.push((
+                        name.clone(),
+                        ConstExpr::Type(Type::Struct(fields.into_iter().collect())),
+                    )),
                     _ => {
                         panic!("Unexpected declaration in impl: {:?}", decl)
                     }
@@ -355,9 +374,7 @@ fn parse_decl(pair: Pair<Rule>, filename: Option<&str>) -> Declaration {
             Declaration::Impl(ty, constants)
         }
 
-        Rule::decl_imp_child_decl => {
-            parse_decl(pair.into_inner().next().unwrap(), filename)
-        }
+        Rule::decl_imp_child_decl => parse_decl(pair.into_inner().next().unwrap(), filename),
 
         Rule::decl_proc_block | Rule::decl_proc_expr => {
             let mut inner_rules = pair.into_inner();
@@ -615,7 +632,7 @@ fn parse_stmt(pair: Pair<Rule>, filename: Option<&str>) -> Statement {
             }
             Statement::LetStatic(defs)
         }
-            
+
         Rule::stmt_let_static_in_expr | Rule::stmt_let_static_in_block => {
             let mut inner_rules = pair.into_inner();
             let mut defs = vec![];
@@ -749,7 +766,6 @@ fn parse_stmt(pair: Pair<Rule>, filename: Option<&str>) -> Statement {
             }
             Statement::LetPattern(defs)
         }
-
 
         Rule::stmt_let => {
             let mut inner_rules = pair.into_inner();
@@ -1093,7 +1109,6 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
             // Rule::expr_symbol_field => head.field(ConstExpr::Symbol(
             //     suffix.into_inner().next().unwrap().as_str().to_string(),
             // )),
-
         }
         Rule::const_monomorph => {
             let mut inner_rules = pair.into_inner();
@@ -1170,7 +1185,8 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
         Rule::const_bool => ConstExpr::Bool(pair.as_str().to_lowercase().parse().unwrap()),
         Rule::const_string => ConstExpr::Array(
             snailquote::unescape(
-                &pair.clone()
+                &pair
+                    .clone()
                     .into_inner()
                     .next()
                     .unwrap()
@@ -1180,8 +1196,7 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
             )
             .unwrap_or_else(|e| {
                 eprintln!("Error parsing string: {}", e);
-                pair
-                    .into_inner()
+                pair.into_inner()
                     .next()
                     .unwrap()
                     .as_str()

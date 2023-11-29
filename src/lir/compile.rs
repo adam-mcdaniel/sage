@@ -11,13 +11,13 @@
 //! 3. If the expression cannot be compiled into a core assembly program, then compile it into a standard assembly program.
 use super::*;
 use crate::asm::{
-    AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP, Location
+    AssemblyProgram, CoreOp, CoreProgram, Location, StandardOp, StandardProgram, A, B, C, FP, SP,
 };
+use crate::NULL;
 use log::*;
 use std::sync::Mutex;
-use crate::NULL;
 
-use log::{trace, error, info, warn};
+use log::{error, info, trace, warn};
 
 /// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
@@ -101,7 +101,9 @@ impl Compile for Expr {
 
             Self::UnaryOp(unop, expr) => {
                 if let Expr::Annotated(expr, metadata) = *expr {
-                    return unop.compile(&expr, env, output).map_err(|e| e.annotate(metadata.clone()));
+                    return unop
+                        .compile(&expr, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
 
                 // Compile the unary operation on the expression.
@@ -109,10 +111,14 @@ impl Compile for Expr {
             }
             Self::BinaryOp(binop, lhs, rhs) => {
                 if let Expr::Annotated(lhs, metadata) = &*lhs {
-                    return binop.compile(lhs, &rhs, env, output).map_err(|e| e.annotate(metadata.clone()));
+                    return binop
+                        .compile(lhs, &rhs, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 if let Expr::Annotated(rhs, metadata) = &*rhs {
-                    return binop.compile(&lhs, rhs, env, output).map_err(|e| e.annotate(metadata.clone()));
+                    return binop
+                        .compile(&lhs, rhs, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
 
                 // Compile the binary operation on the two expressions.
@@ -120,13 +126,19 @@ impl Compile for Expr {
             }
             Self::TernaryOp(ternop, a, b, c) => {
                 if let Expr::Annotated(a, metadata) = &*a {
-                    return ternop.compile(a, &b, &c, env, output).map_err(|e| e.annotate(metadata.clone()));
+                    return ternop
+                        .compile(a, &b, &c, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 if let Expr::Annotated(b, metadata) = &*b {
-                    return ternop.compile(&a, b, &c, env, output).map_err(|e| e.annotate(metadata.clone()));
+                    return ternop
+                        .compile(&a, b, &c, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 if let Expr::Annotated(c, metadata) = &*c {
-                    return ternop.compile(&a, &b, c, env, output).map_err(|e| e.annotate(metadata.clone()));
+                    return ternop
+                        .compile(&a, &b, c, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
 
                 // Compile the ternary operation on the three expressions.
@@ -134,11 +146,15 @@ impl Compile for Expr {
             }
             Self::AssignOp(op, dst, src) => {
                 if let Expr::Annotated(dst, metadata) = &*dst {
-                    return op.compile(dst, &src, env, output).map_err(|e| e.annotate(metadata.clone()));
+                    return op
+                        .compile(dst, &src, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
 
                 if let Expr::Annotated(src, metadata) = &*src {
-                    return op.compile(&dst, src, env, output).map_err(|e| e.annotate(metadata.clone()));
+                    return op
+                        .compile(&dst, src, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
                 }
                 // Compile the assignment operation on the two expressions.
                 op.compile(&dst, &src, env, output)?;
@@ -179,7 +195,7 @@ impl Compile for Expr {
                     }
                 }
             }
-            
+
             Self::Apply(f, args) => {
                 let self_clone = Self::Apply(f.clone(), args.clone());
                 if let Self::Annotated(expr, metadata) = *f {
@@ -266,7 +282,9 @@ impl Compile for Expr {
                     }
                     Expr::ConstExpr(ConstExpr::Monomorphize(template, ty_args)) => {
                         if self_clone.is_method_call(env)? {
-                            self_clone.transform_method_call(env)?.compile_expr(env, output)?;
+                            self_clone
+                                .transform_method_call(env)?
+                                .compile_expr(env, output)?;
                         } else {
                             warn!("Method transform failed for {self_clone}; Monomorphizing {template} with {ty_args:?} in environment {env}");
                             // Push the arguments to the procedure on the stack.
@@ -289,7 +307,9 @@ impl Compile for Expr {
                     Expr::Member(val, name) => {
                         // Try to get the member of the underlying type.
                         if self_clone.is_method_call(env)? {
-                            self_clone.transform_method_call(env)?.compile_expr(env, output)?;
+                            self_clone
+                                .transform_method_call(env)?
+                                .compile_expr(env, output)?;
                         } else {
                             // Push the arguments to the procedure on the stack.
                             for arg in &args {
@@ -661,12 +681,13 @@ impl Compile for Expr {
                         } else {
                             // Try to get the member of the underlying type.
                             let name = member.clone().as_symbol(env)?;
-                            return env.get_associated_const(&val_type, &name).ok_or_else(|| {
-                                // If we could not find the member return an error.
-                                Error::MemberNotFound(self.clone(), member.clone())
-                            }).and_then(|constant| {
-                                constant.clone().compile_expr(env, output)
-                            });
+                            return env
+                                .get_associated_const(&val_type, &name)
+                                .ok_or_else(|| {
+                                    // If we could not find the member return an error.
+                                    Error::MemberNotFound(self.clone(), member.clone())
+                                })
+                                .and_then(|constant| constant.clone().compile_expr(env, output));
                         }
                     }
                 }
@@ -754,18 +775,14 @@ impl Compile for Expr {
                     }
                     let ty = cexpr.get_type(env)?;
                     let size = ty.get_size(env)?;
-                    new_env.define_static_var(
-                        var_name.clone(),
-                        expected_mutability,
-                        ty
-                    )?;
-                    
+                    new_env.define_static_var(var_name.clone(), expected_mutability, ty)?;
+
                     // Compile the constant expression.
                     cexpr.compile_expr(&mut new_env, output)?;
                     // Pop the constant expression into the variable.
                     output.op(CoreOp::Global {
                         name: var_name.clone(),
-                        size
+                        size,
                     });
                     output.op(CoreOp::Pop(Some(Location::Global(var_name.clone())), size));
                     // Push the address of the variable onto the stack.
@@ -923,7 +940,7 @@ impl Compile for ConstExpr {
         let current_instruction = output.current_instruction();
         let ty = self.get_type(env)?;
         // Compile the constant expression.
-        match self.eval(env)? {
+        match self {
             Self::Template(_, _) => {
                 // Cannot compile a template expression.
                 return Err(Error::UnsizedType(ty));
@@ -962,10 +979,7 @@ impl Compile for ConstExpr {
                         }
                     }
                     _ => {
-                        return Err(Error::MemberNotFound(
-                            (*container).into(),
-                            (*member).into(),
-                        ));
+                        return Err(Error::MemberNotFound((*container).into(), (*member).into()));
                     }
                 }
             }

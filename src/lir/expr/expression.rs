@@ -6,7 +6,9 @@
 //! which are then executed by the runtime.
 
 use super::ops::*;
-use crate::lir::{Annotation, GetType, Error, Env, Declaration, ConstExpr, Mutability, Pattern, Procedure, Type};
+use crate::lir::{
+    Annotation, ConstExpr, Declaration, Env, Error, GetType, Mutability, Pattern, Procedure, Type,
+};
 use core::fmt;
 use std::collections::BTreeMap;
 
@@ -122,22 +124,24 @@ impl Expr {
         debug!("is_method_call: {}", self);
         Ok(match self {
             Self::Annotated(inner, annotation) => {
-                return inner.is_method_call(env).map_err(|e| e.annotate(annotation.clone()))
+                return inner
+                    .is_method_call(env)
+                    .map_err(|e| e.annotate(annotation.clone()))
             }
 
             Self::Apply(fun, args) => {
                 match *fun.clone() {
                     Self::Annotated(inner, annotation) => {
-                        return Self::Apply(inner, args.clone()).is_method_call(env).map_err(|e| e.annotate(annotation.clone()))
+                        return Self::Apply(inner, args.clone())
+                            .is_method_call(env)
+                            .map_err(|e| e.annotate(annotation.clone()))
                     }
 
                     Self::Member(val, name) => {
                         let val_type = val.get_type(env)?;
                         // Is this an associated function?
                         match val_type {
-                            Type::Type(_) => {
-                                false
-                            }
+                            Type::Type(_) => false,
                             _ => {
                                 if let Ok(name) = name.as_symbol(env) {
                                     env.has_associated_const(&val_type, &name)
@@ -153,9 +157,7 @@ impl Expr {
                                 let val_type = val.get_type(env)?;
                                 // Is this an associated function?
                                 match val_type {
-                                    Type::Type(_) => {
-                                        false
-                                    }
+                                    Type::Type(_) => false,
                                     _ => {
                                         if let Ok(name) = name.as_symbol(env) {
                                             env.has_associated_const(&val_type, &name)
@@ -165,7 +167,7 @@ impl Expr {
                                     }
                                 }
                             }
-                            _ => false
+                            _ => false,
                         }
                     }
 
@@ -173,9 +175,7 @@ impl Expr {
                         let val_type = val.get_type(env)?;
                         // Is this an associated function?
                         match val_type {
-                            Type::Type(_) => {
-                                false
-                            }
+                            Type::Type(_) => false,
                             _ => {
                                 if let Ok(name) = name.as_symbol(env) {
                                     env.has_associated_const(&val_type, &name)
@@ -185,73 +185,99 @@ impl Expr {
                             }
                         }
                     }
-                    _ => false
+                    _ => false,
                 }
             }
 
-            _ => false
+            _ => false,
         })
     }
 
     pub fn transform_method_call(&self, env: &Env) -> Result<Self, Error> {
         if !self.is_method_call(env)? {
-            return Ok(self.clone())
+            return Ok(self.clone());
         }
 
         warn!("transform_method_call: {}", self);
 
         let result = match self {
-            Self::Annotated(inner, metadata) => {
-                inner.transform_method_call(env).map_err(|e| e.annotate(metadata.clone()))
-            }
+            Self::Annotated(inner, metadata) => inner
+                .transform_method_call(env)
+                .map_err(|e| e.annotate(metadata.clone())),
             Self::Apply(f, args) => {
                 match *f.clone() {
-                    Self::Annotated(inner, metadata) => {
-                        inner.transform_method_call(env).map_err(|e| e.annotate(metadata.clone()))
-                    }
+                    Self::Annotated(inner, metadata) => inner
+                        .transform_method_call(env)
+                        .map_err(|e| e.annotate(metadata.clone())),
 
                     Self::ConstExpr(ConstExpr::Monomorphize(template, ty_args)) => {
                         match *template {
                             ConstExpr::Member(val, member) => {
                                 // Apply the type arguments to the method.
                                 let name = member.as_symbol(env)?;
-                                
+
                                 // Check if the value actually has a member with this name.
                                 let val_type = val.get_type(env)?;
                                 trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
                                 // If the value has a member with this name,
                                 trace!(target: "member", "WHOOP WHOOP");
-                                let associated_function = env.get_associated_const(&val_type, &name).ok_or_else(|| Error::SymbolNotDefined(name.clone()))?.clone()
-                                                                        .monomorphize(ty_args.clone());
+                                let associated_function = env
+                                    .get_associated_const(&val_type, &name)
+                                    .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?
+                                    .clone()
+                                    .monomorphize(ty_args.clone());
                                 trace!(target: "member", "function value: {associated_function} in {env}");
-                                
 
                                 // Get the type of the function
-                                let associated_function_type = env.get_type_of_associated_const(&val_type, &name).ok_or_else(|| Error::SymbolNotDefined(name))?.clone().apply(ty_args);
+                                let associated_function_type = env
+                                    .get_type_of_associated_const(&val_type, &name)
+                                    .ok_or_else(|| Error::SymbolNotDefined(name))?
+                                    .clone()
+                                    .apply(ty_args);
                                 // trace!(target: "member", "got function type: {}", associated_function_type);
 
-
                                 let mut new_args = vec![];
-                                if let Some(expected_mutability) = associated_function_type.get_self_param_mutability(env) {
-                                    if val_type.can_decay_to(&Type::Pointer(expected_mutability, Type::Any.into()), env)? {
+                                if let Some(expected_mutability) =
+                                    associated_function_type.get_self_param_mutability(env)
+                                {
+                                    if val_type.can_decay_to(
+                                        &Type::Pointer(expected_mutability, Type::Any.into()),
+                                        env,
+                                    )? {
                                         trace!(target: "member", "decaying {val} to {expected_mutability} pointer");
                                         new_args.push(Expr::ConstExpr(*val.clone()));
                                     } else {
                                         trace!(target: "member", "referencing {val} as {expected_mutability} pointer");
-                                        new_args.push(Expr::ConstExpr(*val.clone()).refer(expected_mutability));
+                                        new_args.push(
+                                            Expr::ConstExpr(*val.clone())
+                                                .refer(expected_mutability),
+                                        );
                                     }
                                 } else {
                                     trace!(target: "member", "passing by value {val}");
-                                    if val_type.can_decay_to(&Type::Pointer(Mutability::Any, Type::Any.into()), env)? {
+                                    if val_type.can_decay_to(
+                                        &Type::Pointer(Mutability::Any, Type::Any.into()),
+                                        env,
+                                    )? {
                                         new_args.push(Expr::ConstExpr(*val.clone()).deref());
                                     } else {
                                         new_args.push(Expr::ConstExpr(*val.clone()));
                                     }
                                 }
                                 new_args.extend(args.clone());
-                                Ok(Self::Apply(Expr::ConstExpr(associated_function).into(), new_args))
+                                Ok(Self::Apply(
+                                    Expr::ConstExpr(associated_function).into(),
+                                    new_args,
+                                ))
                             }
-                            _ => Ok(Self::Apply(Expr::ConstExpr(ConstExpr::Monomorphize(template.clone(), ty_args.clone())).into(), args.clone()))
+                            _ => Ok(Self::Apply(
+                                Expr::ConstExpr(ConstExpr::Monomorphize(
+                                    template.clone(),
+                                    ty_args.clone(),
+                                ))
+                                .into(),
+                                args.clone(),
+                            )),
                         }
                     }
 
@@ -264,32 +290,51 @@ impl Expr {
                             trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
                             // If the value has a member with this name,
                             trace!(target: "member", "WHOOP WHOOP");
-                            let associated_function = env.get_associated_const(&val_type, &name).ok_or_else(|| Error::SymbolNotDefined(name.clone()))?.clone();
+                            let associated_function = env
+                                .get_associated_const(&val_type, &name)
+                                .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?
+                                .clone();
                             trace!(target: "member", "function value: {associated_function} in {env}");
-                
+
                             // Get the type of the function
-                            let associated_function_type = env.get_type_of_associated_const(&val_type, &name).ok_or_else(|| Error::SymbolNotDefined(name))?.clone();
+                            let associated_function_type = env
+                                .get_type_of_associated_const(&val_type, &name)
+                                .ok_or_else(|| Error::SymbolNotDefined(name))?
+                                .clone();
                             trace!(target: "member", "got function type: {}", associated_function_type);
                             // Get the first argument's type
                             let mut new_args = vec![];
-                            if let Some(expected_mutability) = associated_function_type.get_self_param_mutability(env) {
-                                if val_type.can_decay_to(&Type::Pointer(expected_mutability, Type::Any.into()), env)? {
+                            if let Some(expected_mutability) =
+                                associated_function_type.get_self_param_mutability(env)
+                            {
+                                if val_type.can_decay_to(
+                                    &Type::Pointer(expected_mutability, Type::Any.into()),
+                                    env,
+                                )? {
                                     trace!(target: "member", "decaying {val} to {expected_mutability} pointer");
                                     new_args.push(Expr::ConstExpr(*val.clone()));
                                 } else {
                                     trace!(target: "member", "referencing {val} as {expected_mutability} pointer");
-                                    new_args.push(Expr::ConstExpr(*val.clone()).refer(expected_mutability));
+                                    new_args.push(
+                                        Expr::ConstExpr(*val.clone()).refer(expected_mutability),
+                                    );
                                 }
                             } else {
                                 trace!(target: "member", "passing by value {val}");
-                                if val_type.can_decay_to(&Type::Pointer(Mutability::Any, Type::Any.into()), env)? {
+                                if val_type.can_decay_to(
+                                    &Type::Pointer(Mutability::Any, Type::Any.into()),
+                                    env,
+                                )? {
                                     new_args.push(Expr::ConstExpr(*val.clone()).deref());
                                 } else {
                                     new_args.push(Expr::ConstExpr(*val.clone()));
                                 }
                             }
                             new_args.extend(args.clone());
-                            Ok(Self::Apply(Expr::ConstExpr(associated_function).into(), new_args))
+                            Ok(Self::Apply(
+                                Expr::ConstExpr(associated_function).into(),
+                                new_args,
+                            ))
                         } else {
                             // Compile it normally:
                             // Push the procedure on the stack.
@@ -307,16 +352,27 @@ impl Expr {
                             trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
                             // If the value has a member with this name,
                             trace!(target: "member", "WHOOP WHOOP");
-                            let associated_function = env.get_associated_const(&val_type, &name).ok_or_else(|| Error::SymbolNotDefined(name.clone()))?.clone();
+                            let associated_function = env
+                                .get_associated_const(&val_type, &name)
+                                .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?
+                                .clone();
                             trace!(target: "member", "function value: {associated_function} in {env}");
-                
+
                             // Get the type of the function
-                            let associated_function_type = env.get_type_of_associated_const(&val_type, &name).ok_or_else(|| Error::SymbolNotDefined(name))?.clone();
+                            let associated_function_type = env
+                                .get_type_of_associated_const(&val_type, &name)
+                                .ok_or_else(|| Error::SymbolNotDefined(name))?
+                                .clone();
                             trace!(target: "member", "got function type: {}", associated_function_type);
                             // Get the first argument's type
                             let mut new_args = vec![];
-                            if let Some(expected_mutability) = associated_function_type.get_self_param_mutability(env) {
-                                if val_type.can_decay_to(&Type::Pointer(expected_mutability, Type::Any.into()), env)? {
+                            if let Some(expected_mutability) =
+                                associated_function_type.get_self_param_mutability(env)
+                            {
+                                if val_type.can_decay_to(
+                                    &Type::Pointer(expected_mutability, Type::Any.into()),
+                                    env,
+                                )? {
                                     trace!(target: "member", "decaying {val} to {expected_mutability} pointer");
                                     new_args.push(*val.clone());
                                 } else {
@@ -325,57 +381,66 @@ impl Expr {
                                 }
                             } else {
                                 trace!(target: "member", "passing by value {val}");
-                                if val_type.can_decay_to(&Type::Pointer(Mutability::Any, Type::Any.into()), env)? {
+                                if val_type.can_decay_to(
+                                    &Type::Pointer(Mutability::Any, Type::Any.into()),
+                                    env,
+                                )? {
                                     new_args.push(val.deref());
                                 } else {
                                     new_args.push(*val.clone());
                                 }
                             }
                             new_args.extend(args.clone());
-                            Ok(Self::Apply(Expr::ConstExpr(associated_function).into(), new_args))
+                            Ok(Self::Apply(
+                                Expr::ConstExpr(associated_function).into(),
+                                new_args,
+                            ))
                         } else {
                             // Compile it normally:
                             // Push the procedure on the stack.
                             Ok(self.clone())
                         }
                     }
-                    _ => Err(Error::MemberNotFound(self.clone(), ConstExpr::None))
+                    _ => Err(Error::MemberNotFound(self.clone(), ConstExpr::None)),
                 }
             }
-            _ => Ok(self.clone())
+            _ => Ok(self.clone()),
         }?;
 
         warn!("transform_method_call result: {}", result);
         Ok(result)
-
     }
 
     pub fn get_method_call_mutability(&self, env: &Env) -> Result<Option<Mutability>, Error> {
         match self {
             Self::Annotated(inner, annotation) => {
-                return inner.get_method_call_mutability(env).map_err(|e| e.annotate(annotation.clone()))
+                return inner
+                    .get_method_call_mutability(env)
+                    .map_err(|e| e.annotate(annotation.clone()))
             }
 
             Self::Apply(fun, args) => {
                 let fun_type = fun.get_type(env)?;
                 match *fun.clone() {
                     Self::Annotated(inner, annotation) => {
-                        return Self::Apply(inner, args.clone()).get_method_call_mutability(env).map_err(|e| e.annotate(annotation.clone()))
+                        return Self::Apply(inner, args.clone())
+                            .get_method_call_mutability(env)
+                            .map_err(|e| e.annotate(annotation.clone()))
                     }
                     Self::Member(val, name) => {
                         // Check if the value actually has a member with this name.
                         // let val_type = val.get_type(env)?;
-                        return Ok(fun_type.get_self_param_mutability(env))
+                        return Ok(fun_type.get_self_param_mutability(env));
                     }
                     Self::ConstExpr(ConstExpr::Member(val, name)) => {
                         // let val_type = val.get_type(env)?;
-                        return Ok(fun_type.get_self_param_mutability(env))
+                        return Ok(fun_type.get_self_param_mutability(env));
                     }
-                    _ => return Err(Error::MemberNotFound(self.clone(), ConstExpr::None))
+                    _ => return Err(Error::MemberNotFound(self.clone(), ConstExpr::None)),
                 }
             }
 
-            _ => return Err(Error::MemberNotFound(self.clone(), ConstExpr::None))
+            _ => return Err(Error::MemberNotFound(self.clone(), ConstExpr::None)),
         }
     }
 
@@ -386,7 +451,7 @@ impl Expr {
                 let mut result = annotation.into();
                 result |= metadata.clone();
                 Self::Annotated(expr.clone(), result)
-            },
+            }
             _ => Self::Annotated(Box::new(self.clone()), annotation.into()),
         }
     }
@@ -809,8 +874,9 @@ impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         use Expr::*;
         match (self, other) {
-            (Self::Annotated(expr, _), other)
-            | (other, Self::Annotated(expr, _)) => &**expr == other,
+            (Self::Annotated(expr, _), other) | (other, Self::Annotated(expr, _)) => {
+                &**expr == other
+            }
             // A constant expression.
             (ConstExpr(a), ConstExpr(b)) => a == b,
             // A block of expressions. The last expression in the block is the value of the block.
@@ -818,7 +884,7 @@ impl PartialEq for Expr {
 
             // Create a while loop: while the first expression evaluates to true, evaluate the second expression.
             (While(cond1, body1), While(cond2, body2)) => cond1 == cond2 && body1 == body2,
-            
+
             // An if-then-else expression.
             //
             // Evaluate a condition.
