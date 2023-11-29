@@ -317,7 +317,7 @@ impl TypeCheck for Declaration {
             Self::Type(name, ty) => {
                 let mut new_env = env.clone();
                 new_env.define_type(name, ty.clone());
-                ty.add_monomorphized_associated_consts(env)?;
+                // ty.add_monomorphized_associated_consts(env)?;
                 ty.type_check(&new_env)?;
             }
             // Typecheck a constant expression.
@@ -357,7 +357,7 @@ impl TypeCheck for Declaration {
 
                 // Get the type of the expression.
                 let ty = expr.get_type(env)?;
-                ty.add_monomorphized_associated_consts(env)?;
+                // ty.add_monomorphized_associated_consts(env)?;
                 // Get the size of the expression.
                 let size = ty.get_size(env)?;
                 if !pat.is_exhaustive(&expr, &ty, env)? {

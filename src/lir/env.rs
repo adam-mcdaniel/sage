@@ -498,17 +498,13 @@ impl Env {
                     }
                 }
             }
-            Declaration::Var(_, _, Some(ty), e) => {
-                ty.add_monomorphized_associated_consts(self)?;
-                e.get_type(self)?.add_monomorphized_associated_consts(self)?;
-            }
-            Declaration::Var(_, _, _, e) => {
+            Declaration::Var(_, _, _, _) => {
                 // Variables are not defined at compile-time.
-                e.get_type(self)?.add_monomorphized_associated_consts(self)?;
+                // e.get_type(self)?.add_monomorphized_associated_consts(self)?;
             }
-            Declaration::VarPat(_, e) => {
+            Declaration::VarPat(_, _) => {
                 // Variables are not defined at compile-time.
-                e.get_type(self)?.add_monomorphized_associated_consts(self)?;
+                // e.get_type(self)?.add_monomorphized_associated_consts(self)?;
             }
             Declaration::Many(decls) => {
                 for decl in decls {
