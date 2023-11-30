@@ -810,7 +810,7 @@ impl TypeCheck for Expr {
                 e.type_check(env)?;
                 // Get the type of the expression.
                 let e_type = e.get_type(env)?;
-                e_type.add_monomorphized_associated_consts(env)?;
+                // e_type.add_monomorphized_associated_consts(env)?;
 
                 // Typecheck the member we want to access.
                 match e_type.type_check_member(field, e, env) {
@@ -892,7 +892,7 @@ impl TypeCheck for ConstExpr {
                 e.type_check(env)?;
                 // Get the type of the expression.
                 let e_type = e.get_type(env)?;
-                e_type.add_monomorphized_associated_consts(env)?;
+                // e_type.add_monomorphized_associated_consts(env)?;
                 // Typecheck the member we want to access.
                 match e_type.type_check_member(field, &Expr::ConstExpr(*e.clone()), env) {
                     Ok(_) => Ok(()),

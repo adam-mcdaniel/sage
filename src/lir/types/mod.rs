@@ -476,10 +476,11 @@ impl Type {
             Self::Array(inner, expr) => inner.is_simple() && matches!(**expr, ConstExpr::Int(_)),
             Self::Proc(args, ret) => args.iter().all(|t| t.is_simple()) && ret.is_simple(),
             Self::Pointer(_, inner) => inner.is_simple(),
-            Self::Struct(inner) => inner.iter().all(|(_, t)| t.is_simple()),
-            Self::EnumUnion(inner) => inner.iter().all(|(_, t)| t.is_simple()),
+            Self::Struct(inner)
+            | Self::Union(inner) 
+            | Self::EnumUnion(inner) => inner.iter().all(|(_, t)| t.is_simple()),
             Self::Symbol(_) => false,
-            Self::Poly(params, ret) => {
+            Self::Poly(_params, _ret) => {
                 true
             }
 
@@ -550,8 +551,8 @@ impl Type {
             Self::Pointer(_, inner) => inner.is_atomic(),
             Self::Struct(inner) => inner.iter().all(|(_, t)| t.is_atomic()),
             Self::EnumUnion(inner) => inner.iter().all(|(_, t)| t.is_atomic()),
-            Self::Poly(_, _) | Self::Symbol(_) | Self::Apply(_, _) => false,
-            Self::Let(_, _, ret) => ret.is_atomic(),
+            // Self::Poly(_, _) | Self::Symbol(_) | Self::Apply(_, _) => false,
+            // Self::Let(_, _, ret) => ret.is_atomic(),
             _ => false,
         }
     }
@@ -731,8 +732,8 @@ impl Type {
         f: impl Fn(&Self, &Env) -> Result<bool, Error>,
     ) -> Result<Self, Error> {
         let mut simplified = self;
-        for _ in 0..Self::SIMPLIFY_RECURSION_LIMIT {
-        // for _ in 0..10 {
+        // for _ in 0..Self::SIMPLIFY_RECURSION_LIMIT {
+        for _ in 0..5 {
             if f(&simplified, env)? || simplified.is_atomic() {
                 return Ok(simplified);
             }

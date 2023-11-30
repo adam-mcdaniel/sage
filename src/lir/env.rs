@@ -412,7 +412,13 @@ impl Env {
         //     warn!("Failed to acquire lock on processed monomorphizations");
         //     return Ok(());
         // }
-        let monomorph = monomorph.simplify_until_simple(self)?;
+        
+        let monomorph = if let Ok(simplified) = monomorph.simplify_until_simple(self) {
+            simplified
+        } else {
+            debug!("Failed to simplify type {monomorph}");
+            return Ok(());
+        };
 
         if monomorph.get_size(self).is_err() {
             debug!("Type {monomorph} is not atomic");
@@ -618,22 +624,22 @@ impl Env {
                 }
             }
             Declaration::Var(_, _, Some(ty), e) => {
-                ty.add_monomorphized_associated_consts(self).ok();
-                if let Ok(ty) = e.get_type(self) {
-                    ty.add_monomorphized_associated_consts(self).ok();
-                }
+                // ty.add_monomorphized_associated_consts(self).ok();
+                // if let Ok(ty) = e.get_type(self) {
+                //     ty.add_monomorphized_associated_consts(self).ok();
+                // }
             }
             Declaration::Var(_, _, _, e) => {
                 // Variables are not defined at compile-time.
-                if let Ok(ty) = e.get_type(self) {
-                    ty.add_monomorphized_associated_consts(self).ok();
-                }
+                // if let Ok(ty) = e.get_type(self) {
+                //     ty.add_monomorphized_associated_consts(self).ok();
+                // }
             }
             Declaration::VarPat(_, e) => {
                 // Variables are not defined at compile-time.
-                if let Ok(ty) = e.get_type(self) {
-                    ty.add_monomorphized_associated_consts(self).ok();
-                }
+                // if let Ok(ty) = e.get_type(self) {
+                //     ty.add_monomorphized_associated_consts(self).ok();
+                // }
             }
             Declaration::Many(decls) => {
                 for decl in decls {
@@ -688,12 +694,12 @@ impl Env {
                     Some(ty) => ty.clone(),
                     None => expr.get_type(self)?,
                 };
-                ty.add_monomorphized_associated_consts(self)?;
+                // ty.add_monomorphized_associated_consts(self)?;
                 self.define_var(name, *mutability, ty)?;
             }
             Declaration::VarPat(pat, expr) => {
                 let ty = expr.get_type(self)?;
-                ty.add_monomorphized_associated_consts(self)?;
+                // ty.add_monomorphized_associated_consts(self)?;
                 pat.declare_let_bind(expr, &ty, self)?;
             }
             Declaration::Many(decls) => {

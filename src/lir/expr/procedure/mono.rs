@@ -121,10 +121,10 @@ impl TypeCheck for Procedure {
         trace!("type checking procedure: {}", self);
         // Typecheck the types of the arguments and return value
         for (_, _, t) in &self.args {
-            t.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
+            // t.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
             t.type_check(env)?;
         }
-        self.ret.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
+        // self.ret.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
         self.ret.type_check(env)?;
 
         // Create a new scope for the procedure's body, and define the arguments for the scope.
