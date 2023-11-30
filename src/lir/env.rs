@@ -99,21 +99,21 @@ impl Env {
         }
     }
 
-    pub fn add_monomorphs(&self, template: Type, monomorphs: Vec<Type>) -> Result<(), Error> {
-        // let mut processed_monomorphizations = self.processed_monomorphizations.write().unwrap();
-        // if processed_monomorphizations
-        //     .get(&template)
-        //     .map(|monos| monos.iter().any(|mono| monomorphs.iter().any(|m| m == mono)))
-        //     .unwrap_or(false)
-        // {
-        //     return Ok(());
-        // }
-        // processed_monomorphizations
-        //     .entry(template.clone())
-        //     .or_default()
-        //     .extend(monomorphs);
-        // Ok(())
-    }
+    // pub fn add_monomorphs(&self, template: Type, monomorphs: Vec<Type>) -> Result<(), Error> {
+    //     // let mut processed_monomorphizations = self.processed_monomorphizations.write().unwrap();
+    //     // if processed_monomorphizations
+    //     //     .get(&template)
+    //     //     .map(|monos| monos.iter().any(|mono| monomorphs.iter().any(|m| m == mono)))
+    //     //     .unwrap_or(false)
+    //     // {
+    //     //     return Ok(());
+    //     // }
+    //     // processed_monomorphizations
+    //     //     .entry(template.clone())
+    //     //     .or_default()
+    //     //     .extend(monomorphs);
+    //     // Ok(())
+    // }
 
     /// Get the type of an associated constant of a type.
     pub fn get_type_of_associated_const(&self, ty: &Type, name: &str) -> Option<Type> {
