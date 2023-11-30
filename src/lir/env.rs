@@ -160,61 +160,17 @@ impl Env {
                     continue;
                 }
 
-                for (const_name, (const_expr, const_ty)) in template_associated_consts.clone() {
-                    // if mono_associated_consts
-                    //     .iter()
-                    //     .any(|(mono_name, _)| mono_name == &name)
-                    // {
-                    //     debug!("Monomorphized type {monomorph} already has associated constant {name}");
-                    //     continue;
-                    // }
-
-                    if name == const_name {
-                        info!("Found associated const (type) {name} of type {ty}");
-                        let result = const_ty.apply(ty_args.clone()).simplify_until_simple(self).ok()?;
-                        info!("Found associated const (type) {name} of type {ty} = {result}");
-                        return Some(result);
-                    // } else {
-                    //     self.add_associated_const(monomorph.clone(), name, mono_const).ok()?;
-                    // } else {
-                    //     error!("(LOOKING FOR {name}) Checking associated constant {const_name} of type {const_ty}");
-                    }
-                    // Get the associated constant.
-                    // matches {e}matches {e}
-                    // let const_expr = self.get_associated_const(&template, &name).unwrap();
-                    // if let ConstExpr::Template(ty_params, cexpr) = const_expr {
-                    //     let mut tmp = *cexpr.clone();
-                    //     for (param, arg) in ty_params.iter().zip(ty_args.iter()) {
-                    //         tmp.substitute(param, arg);
-                    //     }
-                    //     tmp
-                    // }
-                    // for (symbol, binding) in &symbols {
-                    //     const_expr.substitute(symbol, binding);
-                    // }
-
-                    // Monomorphize the associated constant.
-                    // Strip off the template parameters from the type arguments.
-                    // let mono_const = if let ConstExpr::Template(ty_params, cexpr) = const_expr {
-                    //     let mut tmp = *cexpr.clone();
-                    //     for (param, arg) in ty_params.iter().zip(ty_args.iter()) {
-                    //         tmp.substitute(param, arg);
-                    //     }
-                    //     tmp
-                    // } else {
-                    //     continue;
-                    // };
-                    // debug!("Adding monomorphized associated constant {name} = {mono_const} to type {monomorph}");
-                    // Add the monomorphized associated constant to the environment.
-                    // self.add_associated_const(monomorph.clone(), name, mono_const).ok()?;
+                if let Some((_, const_ty)) = template_associated_consts.get(name) {
+                    info!("Found associated const (type) {name} of type {ty}");
+                    let result = const_ty.apply(ty_args.clone()).simplify_until_simple(self).ok()?;
+                    info!("Found associated const (type) {name} of type {ty} = {result}");
+                    return Some(result);
                 }
+
                 warn!("Could not find associated const {name} of type {ty} in {template}");
                 for template_const_name in template_associated_consts.keys() {
                     debug!("   {template_const_name} != {name}");
                 }
-                // return self.get_type_of_associated_const(&monomorph, name);
-            } else {
-                // info!("Type {ty} is not monomorph of {other_ty}");
             }
 
             if !ty.can_decay_to(other_ty, self).unwrap_or(false) {
@@ -295,71 +251,10 @@ impl Env {
                     continue;
                 }
 
-                for (const_name, (const_expr, const_ty)) in template_associated_consts {
-                    // if mono_associated_consts
-                    //     .iter()
-                    //     .any(|(mono_name, _)| mono_name == &name)
-                    // {
-                    //     debug!("Monomorphized type {monomorph} already has associated constant {name}");
-                    //     continue;
-                    // }
-
-                    if name == const_name {
-                        // info!("Found associated const (type) {name} of type {ty}");
-                        // let result = const_ty.apply(ty_args.clone()).simplify_until_simple(self).ok()?;
-                        // info!("Found associated const (type) {name} of type {ty} = {result}");
-                        // return Some(result);
-
-
-                        // let mono_const = if let ConstExpr::Template(ty_params, cexpr) = const_expr {
-                        //     let mut tmp = *cexpr.clone();
-                        //     for (param, arg) in ty_params.iter().zip(ty_args.iter()) {
-                        //         tmp.substitute(param, arg);
-                        //     }
-                        //     tmp
-                        // } else {
-                        //     error!("Monomorphizing the old fashioned way");
-                        //     const_expr.monomorphize(ty_args.clone())
-                        // };
-
-                        return Some(const_expr.monomorphize(ty_args.clone()));
-                    // } else {
-                    //     self.add_associated_const(monomorph.clone(), name, mono_const).ok()?;
-                    // } else {
-                    //     error!("(LOOKING FOR {name}) Checking associated constant {const_name} of type {const_ty}");
-                    }
-
-                    // if name == &const_name {
-                    //     // return const_ty.apply(ty_args.clone()).simplify_until_concrete(self).ok()
-
-                    // }
-                    // if mono_associated_consts
-                    //     .iter()
-                    //     .any(|(mono_name, _)| mono_name == &name)
-                    // {
-                    //     debug!("Monomorphized type {monomorph} already has associated constant {name}");
-                    //     continue;
-                    // }
-                    // Get the associated constant.
-
-                    // let const_expr = self.get_associated_const(&template, &name).unwrap();
-                    // if let ConstExpr::Template(ty_params, cexpr) = const_expr {
-                    //     let mut tmp = *cexpr.clone();
-                    //     for (param, arg) in ty_params.iter().zip(ty_args.iter()) {
-                    //         tmp.substitute(param, arg);
-                    //     }
-                    //     tmp
-                    // }
-                    // for (symbol, binding) in &symbols {
-                    //     const_expr.substitute(symbol, binding);
-                    // }
-
-                    // Monomorphize the associated constant.
-                    // // Strip off the template parameters from the type arguments.
-                    // debug!("Adding monomorphized associated constant {name} = {mono_const} to type {monomorph}");
-                    // // Add the monomorphized associated constant to the environment.
-                    // self.add_associated_const(monomorph.clone(), name, mono_const).ok()?;
+                if let Some((const_expr, _)) = template_associated_consts.get(name) {
+                    return Some(const_expr.clone().monomorphize(ty_args.clone()));
                 }
+                
                 warn!("Could not find associated const {name} of type {ty} in {template}");
                 // return self.get_associated_const(&monomorph, name);
             } else {
