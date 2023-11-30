@@ -1337,6 +1337,7 @@ impl Type {
     ) -> Result<Self, Error> {
         let _before = self.to_string();
         trace!("Performing template applications on {}", self);
+        // let is_recursive = matches!(self, Self::Apply(_, _)) || self.is_recursive(env)?;
         // If the type is an Apply on a Poly, then we can perform the application.
         // First, perform the applications on the type arguments.
         // We can use memoization with the previous_applications HashMap to avoid infinite recursion.
@@ -1400,6 +1401,41 @@ impl Type {
                         ))
                     })
                     .collect::<Result<BTreeMap<_, _>, Error>>()?,
+            ),
+            Self::Union(fields) if !self.is_recursive(env)? => Self::Union(
+                fields
+                    .into_iter()
+                    .map(|(name, t)| {
+                        Ok((
+                            name,
+                            t.perform_template_applications(env, previous_applications)?,
+                        ))
+                    })
+                    .collect::<Result<BTreeMap<_, _>, Error>>()?,
+            ),
+
+            Self::EnumUnion(fields) if !self.is_recursive(env)? => Self::EnumUnion(
+                fields
+                    .into_iter()
+                    .map(|(name, t)| {
+                        Ok((
+                            name,
+                            t.perform_template_applications(env, previous_applications)?,
+                        ))
+                    })
+                    .collect::<Result<BTreeMap<_, _>, Error>>()?,
+            ),
+
+            Self::Tuple(items) if !self.is_recursive(env)? => Self::Tuple(
+                items
+                    .into_iter()
+                    .map(|t| t.perform_template_applications(env, previous_applications))
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+
+            Self::Array(item_t, size) if !self.is_recursive(env)? => Self::Array(
+                Box::new(item_t.perform_template_applications(env, previous_applications)?),
+                size,
             ),
 
             other => other,
