@@ -205,6 +205,7 @@ impl ConstExpr {
 
                 Self::Member(container, member) => {
                     let container_ty = container.get_type_checked(env, i)?;
+                    container_ty.add_monomorphized_associated_consts(env)?;
                     Ok(
                         match (container.clone().eval(env)?, member.clone().eval(env)?) {
                             (Self::Tuple(tuple), Self::Int(n)) => {
@@ -243,6 +244,9 @@ impl ConstExpr {
                                     {
                                         return constant.clone().eval_checked(env, i);
                                     }
+                                    error!(
+                                        "Member access not implemented for: {container_ty} . {member}"
+                                    );
                                     return Err(Error::SymbolNotDefined(name));
                                 }
                             }
@@ -254,6 +258,9 @@ impl ConstExpr {
                                 {
                                     return constant.clone().eval_checked(env, i);
                                 }
+                                error!(
+                                    "Member access not implemented for: {container_ty} . {member}"
+                                );
                                 return Err(Error::MemberNotFound(
                                     (*container).into(),
                                     (*member).into(),
@@ -474,6 +481,7 @@ impl GetType for ConstExpr {
                 let as_int = field.clone().as_int(env);
 
                 let val_type = val.get_type_checked(env, i)?;
+                val_type.add_monomorphized_associated_consts(env)?;
                 // Get the type of the value to get the member of.
                 match val_type.simplify_until_concrete(env)? {
                     Type::Unit(_unit_name, inner_ty) => {

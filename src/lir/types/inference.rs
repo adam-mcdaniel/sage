@@ -290,8 +290,13 @@ impl GetType for Expr {
                 let as_int = field.clone().as_int(env);
                 // Get the type of the value to get the member of.
                 let val_type = val.get_type_checked(env, i)?;
-                match val_type.simplify_until_concrete(env)? {
+                // val_type.add_monomorphized_associated_consts(env)?;
+                let val_type = val_type.simplify_until_concrete(env)?;
+                // val_type.add_monomorphized_associated_consts(env)?;
+                match val_type {
                     Type::Type(ty) => {
+                        // ty.add_monomorphized_associated_consts(env)?;
+
                         // Get the associated constant expression's type.
                         env.get_type_of_associated_const(&ty, &as_symbol?)
                             .ok_or(Error::MemberNotFound(*val.clone(), field.clone()))?
@@ -364,6 +369,13 @@ impl GetType for Expr {
                     // If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
                     val_type => {
+                        // error!("BING BONG");
+                        // Try to get the member of the underlying type.
+                        if let Ok((t, _)) = val_type.get_member_offset(field, val, env) {
+                            info!("BING BONG");
+                            return Ok(t);
+                        }
+
                         // Try to get the member of the underlying type.
                         return env
                             .get_type_of_associated_const(&val_type, &as_symbol?)

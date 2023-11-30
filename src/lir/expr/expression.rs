@@ -139,6 +139,7 @@ impl Expr {
 
                     Self::Member(val, name) => {
                         let val_type = val.get_type(env)?;
+                        val_type.add_monomorphized_associated_consts(env)?;
                         // Is this an associated function?
                         match val_type {
                             Type::Type(_) => false,
@@ -155,6 +156,7 @@ impl Expr {
                         match *template {
                             ConstExpr::Member(val, name) => {
                                 let val_type = val.get_type(env)?;
+                                val_type.add_monomorphized_associated_consts(env)?;
                                 // Is this an associated function?
                                 match val_type {
                                     Type::Type(_) => false,
@@ -173,6 +175,7 @@ impl Expr {
 
                     Self::ConstExpr(ConstExpr::Member(val, name)) => {
                         let val_type = val.get_type(env)?;
+                        val_type.add_monomorphized_associated_consts(env)?;
                         // Is this an associated function?
                         match val_type {
                             Type::Type(_) => false,
@@ -218,6 +221,7 @@ impl Expr {
 
                                 // Check if the value actually has a member with this name.
                                 let val_type = val.get_type(env)?;
+                                val_type.add_monomorphized_associated_consts(env)?;
                                 trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
                                 // If the value has a member with this name,
                                 trace!(target: "member", "WHOOP WHOOP");
@@ -287,6 +291,7 @@ impl Expr {
                             let name = name?;
                             // Check if the value actually has a member with this name.
                             let val_type = val.get_type(env)?;
+                            val_type.add_monomorphized_associated_consts(env)?;
                             trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
                             // If the value has a member with this name,
                             trace!(target: "member", "WHOOP WHOOP");
@@ -349,6 +354,7 @@ impl Expr {
                             let name = name?;
                             // Check if the value actually has a member with this name.
                             let val_type = val.get_type(env)?;
+                            val_type.add_monomorphized_associated_consts(env)?;
                             trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
                             // If the value has a member with this name,
                             trace!(target: "member", "WHOOP WHOOP");

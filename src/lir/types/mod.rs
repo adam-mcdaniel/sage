@@ -189,6 +189,130 @@ impl Type {
     /// This is the maximum number of times a type will be simplified recursively.
     pub const SIMPLIFY_RECURSION_LIMIT: usize = 30;
 
+    pub fn strip_template(&self, env: &Env) -> Self {
+        match self {
+            Self::Apply(template, _) => template.strip_template(env),
+            Self::Poly(_, template) => *template.clone(),
+            Self::Symbol(name) => {
+                if let Some(t) = env.get_type(name) {
+                    t.strip_template(env)
+                } else {
+                    warn!("Couldn't find type {}", name);
+                    self.clone()
+                }
+            }
+            _ => self.clone(),
+        }
+    }
+
+    pub fn is_poly(&self) -> bool {
+        matches!(self, Self::Poly(_, _))
+    }
+
+    pub fn get_monomorph_template_args(&self, template: &Self, matched_symbols: &mut HashMap<String, Self>, param_symbols: &HashSet<String>, env: &Env) -> Result<(), Error> {
+        info!("get_monomorph_template_args: {} template: {}", self, template);
+        match (self, template) {
+            (Self::Struct(fields1), Self::Struct(fields2)) => {
+                for (field_name, field_ty) in fields1 {
+                    if let Some(field_ty2) = fields2.get(field_name) {
+                        field_ty.get_monomorph_template_args(field_ty2, matched_symbols, param_symbols, env)?;
+                    }
+                }
+            }
+            (Self::Union(fields1), Self::Union(fields2)) => {
+                for (field_name, field_ty) in fields1 {
+                    if let Some(field_ty2) = fields2.get(field_name) {
+                        field_ty.get_monomorph_template_args(field_ty2, matched_symbols, param_symbols, env)?;
+                    }
+                }
+            }
+
+            (Self::EnumUnion(fields1), Self::EnumUnion(fields2)) => {
+                for (field_name, field_ty) in fields1 {
+                    if let Some(field_ty2) = fields2.get(field_name) {
+                        field_ty.get_monomorph_template_args(field_ty2, matched_symbols, param_symbols, env)?;
+                    }
+                }
+            }
+
+            (Self::Tuple(fields1), Self::Tuple(fields2)) => {
+                for (field_ty1, field_ty2) in fields1.iter().zip(fields2.iter()) {
+                    field_ty1.get_monomorph_template_args(field_ty2, matched_symbols, param_symbols, env)?;
+                }
+            }
+
+            (Self::Array(inner1, _), Self::Array(inner2, _)) => {
+                inner1.get_monomorph_template_args(inner2, matched_symbols, param_symbols, env)?;
+            }
+
+            (Self::Pointer(_, inner1), Self::Pointer(_, inner2)) => {
+                inner1.get_monomorph_template_args(inner2, matched_symbols, param_symbols, env)?;
+            }
+
+            (Self::Proc(args1, ret1), Self::Proc(args2, ret2)) => {
+                for (arg1, arg2) in args1.iter().zip(args2.iter()) {
+                    arg1.get_monomorph_template_args(arg2, matched_symbols, param_symbols, env)?;
+                }
+                ret1.get_monomorph_template_args(ret2, matched_symbols, param_symbols, env)?;
+            }
+
+            (Self::Unit(_, inner1), Self::Unit(_, inner2)) => {
+                inner1.get_monomorph_template_args(inner2, matched_symbols, param_symbols, env)?;
+            }
+
+            (Self::Apply(template1, args1), Self::Apply(template2, args2)) => {
+                template1.get_monomorph_template_args(template2, matched_symbols, param_symbols, env)?;
+                for (arg1, arg2) in args1.iter().zip(args2.iter()) {
+                    arg1.get_monomorph_template_args(arg2, matched_symbols, param_symbols, env)?;
+                }
+            }
+
+            (Self::Apply(template, args), Self::Poly(params, ret)) => {
+                for (param, arg) in params.iter().zip(args.iter()) {
+                    // ret.get_monomorph_template_args(arg, symbols, env)?;
+                    matched_symbols.insert(param.clone(), arg.clone());
+                    info!("Found match {}: {}", param, arg);
+                }
+                template.get_monomorph_template_args(ret,  matched_symbols, param_symbols, env)?;
+            }
+
+            (Self::Apply(template, args), other) => {
+                if let Ok(Self::Poly(params, ret)) = template.simplify_until_poly(env) {
+                    let mut ret = *ret.clone();
+                    for (param, arg) in params.iter().zip(args.iter()) {
+                        ret = ret.substitute(param, arg);
+                    }
+
+                    ret.get_monomorph_template_args(&other,  matched_symbols, param_symbols, env)?;
+                }
+            }
+
+            (Self::Symbol(name), template) => {
+                if let Some(t) = env.get_type(name) {
+                    t.get_monomorph_template_args(template,  matched_symbols, param_symbols, env)?;
+                }
+            }
+
+            (other, Self::Symbol(name)) => {
+                if param_symbols.contains(name) {
+                    info!("Found match {}: {}", name, other);
+                    matched_symbols.insert(name.clone(), other.clone());
+                } else if let Some(t) = env.get_type(name) {
+                    info!("Symbol {name} is {t}");
+                    other.get_monomorph_template_args(t, matched_symbols, param_symbols, env)?;
+                }
+            }
+
+            (a, b) => {
+                if a != b {
+                    error!("get_monomorph_template_args: Couldn't match {} to {}", self, template);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn is_monomorph_of(&self, template: &Self, env: &Env) -> Result<bool, Error> {
         match (self, template) {
             (Self::Apply(template1, _), template2) => {
@@ -201,6 +325,20 @@ impl Type {
                 }
                 return concrete.equals(&result, env);
             }
+            (Self::Symbol(name), _) => {
+                if let Some(t) = env.get_type(name) {
+                    return t.is_monomorph_of(template, env);
+                }
+                Ok(false)
+            }
+
+            (_, Self::Symbol(name)) => {
+                if let Some(t) = env.get_type(name) {
+                    return self.is_monomorph_of(t, env);
+                }
+                Ok(false)
+            }
+
             _ => Ok(false),
         }
     }
@@ -265,7 +403,9 @@ impl Type {
                 }
             }
 
-            Self::Poly(_, _)
+            Self::Poly(_, t) => {
+                // t.add_monomorphized_associated_consts(env)?;
+            }
             | Self::Let(_, _, _)
             | Self::Any
             | Self::None
@@ -281,9 +421,29 @@ impl Type {
     }
 
     pub fn get_template_params(&self, env: &Env) -> Vec<String> {
+        debug!("get_template_params: {}", self);
         match self.simplify_until_poly(env) {
-            Ok(Self::Poly(params, _)) => params.clone(),
-            _ => vec![],
+            Ok(Self::Poly(params, _)) => {
+                debug!("get_template_params: {} params: {}", self, params.join(", "));
+                params.clone()
+            },
+            Ok(Self::Symbol(name)) => {
+                if let Some(t) = env.get_type(&name) {
+                    let result = t.get_template_params(env);
+                    debug!("get_template_params: {} params: {}", name, result.join(", "));
+                    result
+                } else {
+                    warn!("get_template_params: Couldn't find type {}", name);
+                    vec![]
+                }
+            }
+            result => {
+                match result {
+                    Ok(result) => warn!("get_template_params: Couldn't find template params for {result}"),
+                    Err(e) => error!("get_template_params: Couldn't simplify {self} to a polymorphic type due to {e}")
+                }
+                vec![]
+            },
         }
     }
 
@@ -300,6 +460,53 @@ impl Type {
     /// types, like a tagged union, which may be pattern matched over the inner types,
     /// does not require an immediate lookup to use some of its type information.
     pub fn is_simple(&self) -> bool {
+        match self {
+            Self::None
+            | Self::Int
+            | Self::Float
+            | Self::Cell
+            | Self::Char
+            | Self::Bool
+            | Self::Any
+            | Self::Never
+            | Self::Enum(_)
+            | Self::Type(_) => true,
+            Self::Unit(_, t) => t.is_simple(),
+            Self::Tuple(inner) => inner.iter().all(|t| t.is_simple()),
+            Self::Array(inner, expr) => inner.is_simple() && matches!(**expr, ConstExpr::Int(_)),
+            Self::Proc(args, ret) => args.iter().all(|t| t.is_simple()) && ret.is_simple(),
+            Self::Pointer(_, inner) => inner.is_simple(),
+            Self::Struct(inner) => inner.iter().all(|(_, t)| t.is_simple()),
+            Self::EnumUnion(inner) => inner.iter().all(|(_, t)| t.is_simple()),
+            Self::Symbol(_) => false,
+            Self::Poly(params, ret) => {
+                true
+            }
+
+            Self::Apply(template, args) => {
+                if let Self::Poly(ref params, ref ret) = **template {
+                    if params.len() != args.len() {
+                        return false;
+                    }
+                    let mut ret = *ret.clone();
+                    for (param, arg) in params.iter().zip(args.iter()) {
+                        if !arg.is_simple() {
+                            return false;
+                        }
+                        ret = ret.substitute(param, arg);
+                    }
+
+                    ret.is_simple()
+                } else {
+                    false
+                }
+            }
+            Self::Let(_, _, ret) => ret.is_simple(),
+            _ => false,
+        }
+    }
+
+    pub fn is_concrete(&self) -> bool {
         match self {
             Self::Poly(_, _) | Self::Symbol(_) | Self::Apply(_, _) | Self::Let(_, _, _) => false,
             Self::None
@@ -478,6 +685,15 @@ impl Type {
         }
         result
     }
+    pub fn simplify_until_simple(&self, env: &Env) -> Result<Self, Error> {
+        let result = self
+            .clone()
+            .simplify_until_matches(env, Type::Any, |t, _| Ok(t.is_simple()));
+        if result.is_err() {
+            warn!("Couldn't simplify {} to a simple type", self);
+        }
+        result
+    }
 
     /// Simplify until the type is a polymorphic type.
     pub fn simplify_until_poly(&self, env: &Env) -> Result<Self, Error> {
@@ -496,7 +712,7 @@ impl Type {
     pub fn simplify_until_concrete(&self, env: &Env) -> Result<Self, Error> {
         let result = self
             .clone()
-            .simplify_until_matches(env, Type::Any, |t, _env| Ok(t.is_simple()));
+            .simplify_until_matches(env, Type::Any, |t, _env| Ok(t.is_concrete()));
         if result.is_err() {
             warn!("Couldn't simplify {} to a concrete type", self);
         }
@@ -515,8 +731,8 @@ impl Type {
         f: impl Fn(&Self, &Env) -> Result<bool, Error>,
     ) -> Result<Self, Error> {
         let mut simplified = self;
-        // for _ in 0..Self::SIMPLIFY_RECURSION_LIMIT {
-        for _ in 0..5 {
+        for _ in 0..Self::SIMPLIFY_RECURSION_LIMIT {
+        // for _ in 0..10 {
             if f(&simplified, env)? || simplified.is_atomic() {
                 return Ok(simplified);
             }
@@ -1043,29 +1259,29 @@ impl Type {
                             // let pre_simplify = mono_ty.clone();
                             // mono_ty = mono_ty.perform_template_applications(env, previous_applications)?;
                             // mono_ty = mono_ty.simplify_until_concrete(env)?;
-                            if !mono_ty.is_simple() {
-                                debug!(
-                                    "Type {} failed to simplify to a simple type (first branch)",
-                                    mono_ty
-                                );
-                            } else if let Err(e) = mono_ty.type_check(env) {
-                                debug!("Type {} failed to type check (first branch): {e}", mono_ty);
-                            } else {
-                                debug!(
-                                    "About to add monomorphized associated consts for {}",
-                                    mono_ty
-                                );
-                                env.add_monomorphized_associated_consts(
-                                    poly.clone(),
-                                    mono_ty.clone(),
-                                    ty_args.clone(),
-                                )?;
-                                // env.add_monomorphized_associated_consts(
-                                //     poly,
-                                //     pre_simplify.clone(),
-                                //     ty_args.clone(),
-                                // )?;
-                            }
+                            // if !mono_ty.is_concrete() {
+                            //     debug!(
+                            //         "Type {} failed to simplify to a simple type (first branch)",
+                            //         mono_ty
+                            //     );
+                            // } else if let Err(e) = mono_ty.type_check(env) {
+                            //     debug!("Type {} failed to type check (first branch): {e}", mono_ty);
+                            // } else {
+                            //     debug!(
+                            //         "About to add monomorphized associated consts for {}",
+                            //         mono_ty
+                            //     );
+                            //     env.add_monomorphized_associated_consts(
+                            //         poly.clone(),
+                            //         mono_ty.clone(),
+                            //         ty_args.clone(),
+                            //     )?;
+                            //     // env.add_monomorphized_associated_consts(
+                            //     //     poly,
+                            //     //     pre_simplify.clone(),
+                            //     //     ty_args.clone(),
+                            //     // )?;
+                            // }
                             mono_ty
                         }
                         Self::Symbol(s) => {
@@ -1081,36 +1297,36 @@ impl Type {
                                     // let pre_simplify = mono_ty.clone();
                                     // mono_ty = mono_ty.simplify_until_concrete(env)?;
 
-                                    if !mono_ty.is_simple() {
-                                        debug!("Type {s} = {} failed to simplify to a simple type (second branch)", mono_ty);
-                                    } else if let Err(e) = mono_ty.type_check(env) {
-                                        debug!("Type {s} = {} failed to type check (second branch): {e}", mono_ty);
-                                    } else {
-                                        debug!(
-                                            "About to add monomorphized associated consts for {}",
-                                            mono_ty
-                                        );
-                                        env.add_monomorphized_associated_consts(
-                                            Type::Symbol(s.clone()),
-                                            mono_ty.clone(),
-                                            ty_args.clone(),
-                                        )?;
-                                        // env.add_monomorphized_associated_consts(
-                                        //     poly.clone(),
-                                        //     mono_ty.clone(),
-                                        //     ty_args.clone(),
-                                        // )?;
-                                        // env.add_monomorphized_associated_consts(
-                                        //     Type::Symbol(s.clone()),
-                                        //     pre_simplify.clone(),
-                                        //     ty_args.clone(),
-                                        // )?;
-                                        // env.add_monomorphized_associated_consts(
-                                        //     poly,
-                                        //     pre_simplify.clone(),
-                                        //     ty_args.clone(),
-                                        // )?;
-                                    }
+                                    // if !mono_ty.is_simple() {
+                                    //     debug!("Type {s} = {} failed to simplify to a simple type (second branch)", mono_ty);
+                                    // } else if let Err(e) = mono_ty.type_check(env) {
+                                    //     debug!("Type {s} = {} failed to type check (second branch): {e}", mono_ty);
+                                    // } else {
+                                    //     debug!(
+                                    //         "About to add monomorphized associated consts for {}",
+                                    //         mono_ty
+                                    //     );
+                                    //     env.add_monomorphized_associated_consts(
+                                    //         Type::Symbol(s.clone()),
+                                    //         mono_ty.clone(),
+                                    //         ty_args.clone(),
+                                    //     )?;
+                                    //     // env.add_monomorphized_associated_consts(
+                                    //     //     poly.clone(),
+                                    //     //     mono_ty.clone(),
+                                    //     //     ty_args.clone(),
+                                    //     // )?;
+                                    //     // env.add_monomorphized_associated_consts(
+                                    //     //     Type::Symbol(s.clone()),
+                                    //     //     pre_simplify.clone(),
+                                    //     //     ty_args.clone(),
+                                    //     // )?;
+                                    //     // env.add_monomorphized_associated_consts(
+                                    //     //     poly,
+                                    //     //     pre_simplify.clone(),
+                                    //     //     ty_args.clone(),
+                                    //     // )?;
+                                    // }
                                     mono_ty
                                 }
                                 Some(other) => Self::Apply(Box::new(other), ty_args),
@@ -1124,6 +1340,23 @@ impl Type {
             Self::Pointer(mutability, inner) => Self::Pointer(
                 mutability,
                 Box::new(inner.perform_template_applications(env, previous_applications)?),
+            ),
+            Self::Proc(args, ret) => Self::Proc(
+                args.into_iter()
+                    .map(|t| t.perform_template_applications(env, previous_applications))
+                    .collect::<Result<Vec<_>, _>>()?,
+                Box::new(ret.perform_template_applications(env, previous_applications)?),
+            ),
+            Self::Struct(fields) => Self::Struct(
+                fields
+                    .into_iter()
+                    .map(|(name, t)| {
+                        Ok((
+                            name,
+                            t.perform_template_applications(env, previous_applications)?,
+                        ))
+                    })
+                    .collect::<Result<BTreeMap<_, _>, Error>>()?,
             ),
 
             other => other,
@@ -1502,6 +1735,7 @@ impl Type {
                 if let Some(t) = env.get_type(name) {
                     t.get_member_offset(member, expr, env)
                 } else {
+                    error!("Type {self} not defined in environment {env}");
                     Err(Error::TypeNotDefined(name.clone()))
                 }
             }
@@ -1834,7 +2068,7 @@ impl fmt::Display for Type {
                     return Ok(());
                 }
                 if args.len() == 1 {
-                    write!(f, "{arg} -> {ret}", arg = args[0])?;
+                    write!(f, "def({arg}) -> {ret}", arg = args[0])?;
                     return Ok(());
                 }
                 write!(f, "(")?;

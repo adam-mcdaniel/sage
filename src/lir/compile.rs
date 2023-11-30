@@ -32,7 +32,7 @@ pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
     where
         Self: Sized + Clone,
     {
-        eprintln!("Compiling LIR expression {self}");
+        // eprintln!("Compiling LIR expression {self}");
         info!("Type checking...");
         // First, type check the expression.
         self.type_check(&Env::default())?;
@@ -680,6 +680,7 @@ impl Compile for Expr {
                             // Pop the remaining elements off the stack, so the field remains.
                             output.op(CoreOp::Pop(None, val_size - size));
                         } else {
+                            warn!("Could not get member offset of {member} from {val_type} in environment {env}");
                             // Try to get the member of the underlying type.
                             let name = member.clone().as_symbol(env)?;
                             return env
@@ -802,6 +803,8 @@ impl Compile for Expr {
                 Expr::Member(val, name) => {
                     // Get the type of the value we want to get a field from.
                     let val_type = val.get_type(env)?;
+                    val_type.add_monomorphized_associated_consts(env)?;
+
                     // Push the address of the struct, tuple, or union onto the stack.
                     match val_type.simplify_until_has_members(env)? {
                         // If the value is a struct, tuple, or union:
