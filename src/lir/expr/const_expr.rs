@@ -483,7 +483,7 @@ impl GetType for ConstExpr {
                 let val_type = val.get_type_checked(env, i)?;
                 val_type.add_monomorphized_associated_consts(env)?;
                 // Get the type of the value to get the member of.
-                match val_type.simplify_until_concrete(env)? {
+                match &val_type.simplify_until_simple(env)? {
                     Type::Unit(_unit_name, inner_ty) => {
                         // Get the type of the field.
                         env.get_type_of_associated_const(&inner_ty, &as_symbol?)

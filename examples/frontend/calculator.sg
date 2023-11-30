@@ -19,18 +19,65 @@ enum ParseResult {
     Err Int
 }
 
-def main() {
-    let input = test();
-    match parse_expr(input) {
-        of Ok (input, n) => {
-            print_expr(n);
-            print("\n => ", eval(n), "\n");
-            free_expr(n);
-            free_input(input);
-        },
-        of Err n => print("\nCalculator: error while parsing at character: \n", input.start[n], "\n")
+def is_ok(result: ParseResult): Bool = match result {
+    of Ok _ => True,
+    of Err _ => False
+};
+
+def putint(n: Int) {
+    if (n < 0) {
+        print('-');
+        putint(-n);
+    } elif (n < 10) {
+        print(('0' as Int + n) as Char);
+    } else {
+        putint(n / 10);
+        print(('0' as Int + n % 10) as Char);
     }
 }
+
+def main() {
+    let mut is_done = False;
+    print("+ Adam's Calculator\n");
+    print("  Welcome to Adam's calculator!\n");
+    print("+ About\n");
+    print("  This is written in the Sage programming language: https:\/\/adam-mcdaniel.net\/sage\n");
+    print("  And compiled as an ELF userspace application for our custom OS!\n");
+    print("+ Usage\n");
+    print("  This calculator supports the following infix operators: \"+\", \"-\", \"*\", \"/\", \"%\"\n");
+    print("  Type a math expression (integers only) to evaluate it.\n");
+    print("  Type \"exit\" to quit the program.\n");
+    print("  Example expression syntax: (4 + 6) * ((8 - 2) / 2) + (9 % 5)\n");
+    let buf = alloc(sizeof<Char>() * 1024) as &mut Char;
+
+    let exit_text = "exit\0";
+    let exit_str = &exit_text as &Char;
+    while !is_done {
+        let input = read(buf);
+
+        match parse_expr(input) {
+            of Ok (input, n) => {
+                print("Input: ");
+                print_expr(n);
+                print("\n => ");
+                print(eval(n));
+                print("\n");
+                free_expr(n);
+            },
+            of Err n => {
+                if (is_ok(parse_symbol(input, exit_str))) {
+                    is_done = True;
+                } elif (input.length > 0) {
+                    print("\nCalculator: error while parsing at character: \n", input.start[n], "\n");
+                } else {
+                    print("No input\n");
+                }
+            }
+        }
+    }
+    print("Bye!\n");
+}
+
 
 def eval(expr: &Expr): Float = match *expr {
     of Add (lhs, rhs) => eval(lhs) + eval(rhs),
@@ -119,15 +166,15 @@ def parse_float(mut input: Input): ParseResult {
     }
 
     for (); input.loc < input.length && is_between_inclusive(input.start[input.loc], '0', '9'); input.loc += 1 {
-        n *= 10.0;
-        n += (input.start[input.loc] as Int - '0' as Int) as Float;
+        n *= 10;
+        n += (input.start[input.loc] as Int - '0' as Int) as Int;
     }
 
     if (input.loc < input.length && input.start[input.loc] == '.') {
         input.loc += 1;
         let mut m = 0.1;
         for (); input.loc < input.length && is_between_inclusive(input.start[input.loc], '0', '9'); input.loc += 1 {
-            n += (input.start[input.loc] as Int - '0' as Int) as Float * m;
+            n += (input.start[input.loc] as Int - '0' as Int) as Int * m;
             m *= 0.1;
         }
     }
@@ -251,6 +298,22 @@ def parse_term(mut input: Input): ParseResult {
     }
 }
 
+def parse_symbol(mut input: Input, match_string: &Char): ParseResult {
+    let save = input;
+
+    if (input.loc == input.length) {
+        return ParseResult of Err (input.loc);
+    }
+
+    for let mut i = 0; match_string[i] != '\0'; i+=1 {
+        if (input.loc == input.length || input.start[input.loc] != match_string[i]) {
+            return ParseResult of Err (input.loc);
+        }
+        input.loc += 1;
+    }
+
+    return ParseResult of Ok (input, new Expr of Num 0.0);
+}
 
 def parse_atom(input: Input): ParseResult {
     let save = input;
@@ -313,9 +376,17 @@ def strlen(ch: &Char): Int {
     return i;
 }
 
+def is_ascii(ch: Char): Bool {
+    return ch as Int < 128;
+}
+
 def getchar(): Char {
-    let mut ch = ' ';
-    input(&mut ch);
+    let mut ch = '\0';
+
+    while !(is_ascii(ch)) || ch == '\0' {
+        input(&mut ch);
+    }
+
     return ch;
 }
 
@@ -323,6 +394,7 @@ def readline(ch: &mut Char, len: Int): Int {
     let mut i = len;
 
     let mut c = getchar();
+    
     for (); c != '\n' && c != '\0'; i+=1 {
         ch[i] = c;
         c = getchar();
@@ -330,10 +402,8 @@ def readline(ch: &mut Char, len: Int): Int {
     return i;
 }
 
-def read(): Input {
-    let buf = alloc(sizeof<Char>() * 1024) as &mut Char;
-
-    print("? ");
+def read(buf: &mut Char): Input {
+    print(">>> ");
     let len = readline(buf, 0);
     buf[len] = '\0';
 
@@ -344,8 +414,11 @@ def read(): Input {
     };
 }
 def test(): Input {
-    let buf = alloc(sizeof<Char>() * 34) as &mut Char;
-    *(buf as &mut [Char * 34]) = "(4 + 6) * ((8 - 3) / 2) + (9 % 5)\0";
+    let buf = alloc(sizeof<Char>() * 1024) as &mut Char;
+    let text = "(4 + 6) * ((8 - 3) / 2) + (9 % 5)";
+    for let mut i = 0; text[i] != '\0'; i+=1 {
+        buf[i] = text[i];
+    }
     
     return {
         start = buf as &Char,
@@ -354,4 +427,22 @@ def test(): Input {
     };
 }
 
-main();
+
+def test_main() {
+    let input = test();
+
+    match parse_expr(input) {
+        of Ok (input, n) => {
+            print_expr(n);
+            print("\n => ");
+            print(eval(n));
+            print("\n");
+            free_expr(n);
+        },
+        of Err n => {
+            print("\nCalculator: error while parsing at character: \n", input.start[n], "\n");
+        }
+    }
+}
+
+test_main();

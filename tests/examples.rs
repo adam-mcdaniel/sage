@@ -14,7 +14,7 @@ fn test_frontend_examples() {
     // Compiling most examples overflows the tiny stack for tests.
     // So, we spawn a new thread with a larger stack size.
     let child = std::thread::Builder::new()
-        .stack_size(128 * 1024 * 1024)
+        .stack_size(512 * 1024 * 1024)
         .spawn(test_frontend_examples_helper)
         .unwrap();
 
