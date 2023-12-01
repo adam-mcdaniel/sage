@@ -396,6 +396,22 @@ impl Put {
             Type::Char => {
                 output.op(CoreOp::Put(addr, Output::stdout_char()));
             }
+            // Char pointer is a string
+            Type::Pointer(_, inner) => {
+                if inner.equals(&Type::Char, env)? {
+                    // output.op(CoreOp::Put(addr, Output::stdout_string()));
+                    output.op(CoreOp::GetAddress {
+                        addr: addr.deref(),
+                        dst: A
+                    });
+                    output.op(CoreOp::While(A.deref()));
+                    output.op(CoreOp::Put(A.deref(), Output::stdout_char()));
+                    output.op(CoreOp::Next(A, None));
+                    output.op(CoreOp::End);
+                } else {
+                    Self::debug(addr, t, env, output)?;
+                }
+            }
 
             Type::Enum(variants) => {
                 for variant in variants.iter() {

@@ -45,6 +45,7 @@ def realloc_stack(size: Int) {
     set_gp(new_gp);
     fp_stack_ptr[0] = fp_stack_ptr[0] as Cell + new_fp as Cell - old_fp as Cell;
 }
+
 realloc_stack(1000000);
 let x = &"Testing" as &Char;
 let static test: &Char = x;

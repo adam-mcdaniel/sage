@@ -375,10 +375,6 @@ for let mut i=0; i < 10; i += 1 {
     let contains_key = m.contains_key(i);
     print("m.contains_key(", i, ") = ", contains_key, "\n");
     if contains_key {
-        let s = *(m.get(i).unwrap());
-        for let mut j=0; s[j] != '\0'; j += 1 {
-            print(s[j]);
-        }
-        println();
+        println(*(m.get(i).unwrap()));
     }
 }
