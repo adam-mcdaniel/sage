@@ -128,9 +128,7 @@ impl BinaryOp for Add {
                 });
                 output.op(CoreOp::Pop(None, 1))
             }
-            (Type::Float, Type::Float)
-            | (Type::Float, Type::Cell)
-            | (Type::Cell, Type::Float) => {
+            (Type::Float, Type::Float) | (Type::Float, Type::Cell) | (Type::Cell, Type::Float) => {
                 output.std_op(StandardOp::Add {
                     src: SP.deref(),
                     dst: SP.deref().offset(-1),

@@ -194,7 +194,11 @@ impl Type {
         self.is_recursive_helper(&mut symbols, env)
     }
 
-    pub fn is_recursive_helper(&self, symbols: &mut HashSet<String>, env: &Env) -> Result<bool, Error> {
+    pub fn is_recursive_helper(
+        &self,
+        symbols: &mut HashSet<String>,
+        env: &Env,
+    ) -> Result<bool, Error> {
         match self {
             Self::Symbol(name) => {
                 if symbols.contains(name) {
@@ -316,20 +320,39 @@ impl Type {
         matches!(self, Self::Poly(_, _))
     }
 
-    pub fn get_monomorph_template_args(&self, template: &Self, matched_symbols: &mut HashMap<String, Self>, param_symbols: &HashSet<String>, env: &Env) -> Result<(), Error> {
-        info!("get_monomorph_template_args: {} template: {}", self, template);
+    pub fn get_monomorph_template_args(
+        &self,
+        template: &Self,
+        matched_symbols: &mut HashMap<String, Self>,
+        param_symbols: &HashSet<String>,
+        env: &Env,
+    ) -> Result<(), Error> {
+        info!(
+            "get_monomorph_template_args: {} template: {}",
+            self, template
+        );
         match (self, template) {
             (Self::Struct(fields1), Self::Struct(fields2)) => {
                 for (field_name, field_ty) in fields1 {
                     if let Some(field_ty2) = fields2.get(field_name) {
-                        field_ty.get_monomorph_template_args(field_ty2, matched_symbols, param_symbols, env)?;
+                        field_ty.get_monomorph_template_args(
+                            field_ty2,
+                            matched_symbols,
+                            param_symbols,
+                            env,
+                        )?;
                     }
                 }
             }
             (Self::Union(fields1), Self::Union(fields2)) => {
                 for (field_name, field_ty) in fields1 {
                     if let Some(field_ty2) = fields2.get(field_name) {
-                        field_ty.get_monomorph_template_args(field_ty2, matched_symbols, param_symbols, env)?;
+                        field_ty.get_monomorph_template_args(
+                            field_ty2,
+                            matched_symbols,
+                            param_symbols,
+                            env,
+                        )?;
                     }
                 }
             }
@@ -337,14 +360,24 @@ impl Type {
             (Self::EnumUnion(fields1), Self::EnumUnion(fields2)) => {
                 for (field_name, field_ty) in fields1 {
                     if let Some(field_ty2) = fields2.get(field_name) {
-                        field_ty.get_monomorph_template_args(field_ty2, matched_symbols, param_symbols, env)?;
+                        field_ty.get_monomorph_template_args(
+                            field_ty2,
+                            matched_symbols,
+                            param_symbols,
+                            env,
+                        )?;
                     }
                 }
             }
 
             (Self::Tuple(fields1), Self::Tuple(fields2)) => {
                 for (field_ty1, field_ty2) in fields1.iter().zip(fields2.iter()) {
-                    field_ty1.get_monomorph_template_args(field_ty2, matched_symbols, param_symbols, env)?;
+                    field_ty1.get_monomorph_template_args(
+                        field_ty2,
+                        matched_symbols,
+                        param_symbols,
+                        env,
+                    )?;
                 }
             }
 
@@ -368,7 +401,12 @@ impl Type {
             }
 
             (Self::Apply(template1, args1), Self::Apply(template2, args2)) => {
-                template1.get_monomorph_template_args(template2, matched_symbols, param_symbols, env)?;
+                template1.get_monomorph_template_args(
+                    template2,
+                    matched_symbols,
+                    param_symbols,
+                    env,
+                )?;
                 for (arg1, arg2) in args1.iter().zip(args2.iter()) {
                     arg1.get_monomorph_template_args(arg2, matched_symbols, param_symbols, env)?;
                 }
@@ -380,7 +418,7 @@ impl Type {
                     matched_symbols.insert(param.clone(), arg.clone());
                     info!("Found match {}: {}", param, arg);
                 }
-                template.get_monomorph_template_args(ret,  matched_symbols, param_symbols, env)?;
+                template.get_monomorph_template_args(ret, matched_symbols, param_symbols, env)?;
             }
 
             (Self::Apply(template, args), other) => {
@@ -390,13 +428,13 @@ impl Type {
                         ret = ret.substitute(param, arg);
                     }
 
-                    ret.get_monomorph_template_args(&other,  matched_symbols, param_symbols, env)?;
+                    ret.get_monomorph_template_args(&other, matched_symbols, param_symbols, env)?;
                 }
             }
 
             (Self::Symbol(name), template) => {
                 if let Some(t) = env.get_type(name) {
-                    t.get_monomorph_template_args(template,  matched_symbols, param_symbols, env)?;
+                    t.get_monomorph_template_args(template, matched_symbols, param_symbols, env)?;
                 }
             }
 
@@ -412,7 +450,10 @@ impl Type {
 
             (a, b) => {
                 if a != b {
-                    error!("get_monomorph_template_args: Couldn't match {} to {}", self, template);
+                    error!(
+                        "get_monomorph_template_args: Couldn't match {} to {}",
+                        self, template
+                    );
                 }
             }
         }
@@ -513,7 +554,7 @@ impl Type {
             Self::Poly(_, t) => {
                 // t.add_monomorphized_associated_consts(env)?;
             }
-            | Self::Let(_, _, _)
+            Self::Let(_, _, _)
             | Self::Any
             | Self::None
             | Self::Never
@@ -531,13 +572,21 @@ impl Type {
         debug!("get_template_params: {}", self);
         match self.simplify_until_poly(env) {
             Ok(Self::Poly(params, _)) => {
-                debug!("get_template_params: {} params: {}", self, params.join(", "));
+                debug!(
+                    "get_template_params: {} params: {}",
+                    self,
+                    params.join(", ")
+                );
                 params.clone()
-            },
+            }
             Ok(Self::Symbol(name)) => {
                 if let Some(t) = env.get_type(&name) {
                     let result = t.get_template_params(env);
-                    debug!("get_template_params: {} params: {}", name, result.join(", "));
+                    debug!(
+                        "get_template_params: {} params: {}",
+                        name,
+                        result.join(", ")
+                    );
                     result
                 } else {
                     warn!("get_template_params: Couldn't find type {}", name);
@@ -550,7 +599,7 @@ impl Type {
                     Err(e) => error!("get_template_params: Couldn't simplify {self} to a polymorphic type due to {e}")
                 }
                 vec![]
-            },
+            }
         }
     }
 
@@ -583,13 +632,11 @@ impl Type {
             Self::Array(inner, expr) => inner.is_simple() && matches!(**expr, ConstExpr::Int(_)),
             Self::Proc(args, ret) => args.iter().all(|t| t.is_simple()) && ret.is_simple(),
             Self::Pointer(_, inner) => inner.is_simple(),
-            Self::Struct(inner)
-            | Self::Union(inner) 
-            | Self::EnumUnion(inner) => inner.iter().all(|(_, t)| t.is_simple()),
-            Self::Symbol(_) => false,
-            Self::Poly(_params, _ret) => {
-                true
+            Self::Struct(inner) | Self::Union(inner) | Self::EnumUnion(inner) => {
+                inner.iter().all(|(_, t)| t.is_simple())
             }
+            Self::Symbol(_) => false,
+            Self::Poly(_params, _ret) => true,
 
             Self::Apply(template, args) => {
                 if let Self::Poly(ref params, ref ret) = **template {
@@ -1379,19 +1426,17 @@ impl Type {
                             }
                             mono_ty
                         }
-                        Self::Symbol(s) => {
-                            match env.get_type(s.as_str()).cloned() {
-                                Some(Self::Poly(params, mono_ty)) => {
-                                    let mut mono_ty = *mono_ty;
-                                    for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
-                                        mono_ty = mono_ty.substitute(param, ty_arg);
-                                    }
-                                    mono_ty
+                        Self::Symbol(s) => match env.get_type(s.as_str()).cloned() {
+                            Some(Self::Poly(params, mono_ty)) => {
+                                let mut mono_ty = *mono_ty;
+                                for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
+                                    mono_ty = mono_ty.substitute(param, ty_arg);
                                 }
-                                Some(other) => Self::Apply(Box::new(other), ty_args),
-                                None => self.clone(),
+                                mono_ty
                             }
-                        }
+                            Some(other) => Self::Apply(Box::new(other), ty_args),
+                            None => self.clone(),
+                        },
                         _ => self.clone(),
                     }
                 }

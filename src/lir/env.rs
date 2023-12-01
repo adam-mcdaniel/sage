@@ -147,7 +147,15 @@ impl Env {
                 let ty_param_set = ty_params.clone().into_iter().collect::<HashSet<_>>();
                 let monomorph = ty.clone();
                 let mut symbols = HashMap::new();
-                if monomorph.get_monomorph_template_args(&template.strip_template(self), &mut symbols, &ty_param_set, self).is_err() {
+                if monomorph
+                    .get_monomorph_template_args(
+                        &template.strip_template(self),
+                        &mut symbols,
+                        &ty_param_set,
+                        self,
+                    )
+                    .is_err()
+                {
                     debug!("Failed to get monomorph template args for {monomorph} of {template}");
                     continue;
                 }
@@ -252,7 +260,15 @@ impl Env {
                 let mut symbols = HashMap::new();
                 let ty_params = template.get_template_params(self);
                 let ty_param_set = ty_params.clone().into_iter().collect::<HashSet<_>>();
-                if monomorph.get_monomorph_template_args(&template.strip_template(self), &mut symbols, &ty_param_set, self).is_err() {
+                if monomorph
+                    .get_monomorph_template_args(
+                        &template.strip_template(self),
+                        &mut symbols,
+                        &ty_param_set,
+                        self,
+                    )
+                    .is_err()
+                {
                     debug!("Failed to get monomorph template args for {monomorph} of {template}");
                     continue;
                 }
@@ -278,7 +294,7 @@ impl Env {
                 if let Some((const_expr, _)) = template_associated_consts.get(name) {
                     return Some(const_expr.clone().monomorphize(ty_args.clone()));
                 }
-                
+
                 warn!("Could not find associated const {name} of type {ty} in {template}");
                 // return self.get_associated_const(&monomorph, name);
             } else {
@@ -436,7 +452,7 @@ impl Env {
         //     warn!("Failed to acquire lock on processed monomorphizations");
         //     return Ok(());
         // }
-        
+
         let monomorph = if let Ok(simplified) = monomorph.simplify_until_simple(self) {
             info!("Simplified {monomorph} to {simplified}");
             simplified
@@ -463,11 +479,7 @@ impl Env {
                 .read()
                 .unwrap()
                 .get(&template)
-                .map(|monomorphs| {
-                    monomorphs
-                        .iter()
-                        .any(|mono| mono == &monomorph)
-                })
+                .map(|monomorphs| monomorphs.iter().any(|mono| mono == &monomorph))
                 .unwrap_or(false)
         };
         if is_processed {
@@ -749,7 +761,8 @@ impl Env {
         let location = globals.add_global(name.clone(), size);
 
         trace!("Defining static variable {name} of type {ty} at {location}");
-        Rc::make_mut(&mut self.static_vars).insert(name.clone(), (mutability, ty, Location::Global(name)));
+        Rc::make_mut(&mut self.static_vars)
+            .insert(name.clone(), (mutability, ty, Location::Global(name)));
         Ok(location)
     }
 

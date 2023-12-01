@@ -275,16 +275,14 @@ impl Expr {
                                     new_args,
                                 ))
                             }
-                            _ => {
-                                Ok(Self::Apply(
-                                    Expr::ConstExpr(ConstExpr::Monomorphize(
-                                        template.clone(),
-                                        ty_args.clone(),
-                                    ))
-                                    .into(),
-                                    args.clone(),
+                            _ => Ok(Self::Apply(
+                                Expr::ConstExpr(ConstExpr::Monomorphize(
+                                    template.clone(),
+                                    ty_args.clone(),
                                 ))
-                            }
+                                .into(),
+                                args.clone(),
+                            )),
                         }
                     }
 

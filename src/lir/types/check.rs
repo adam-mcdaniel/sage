@@ -939,7 +939,9 @@ impl TypeCheck for ConstExpr {
                 expr.type_check(&new_env)
             }
             Self::Monomorphize(expr, ty_args) => {
-                debug!("Monomorphizing {expr} with type arguments {ty_args:?} in environment {env}");
+                debug!(
+                    "Monomorphizing {expr} with type arguments {ty_args:?} in environment {env}"
+                );
                 match **expr {
                     Self::Template(ref ty_params, ref template) => {
                         // Create a new environment with the type parameters defined.

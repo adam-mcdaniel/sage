@@ -23,20 +23,21 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
             });
             let free = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
                 name: "free".to_string(),
-                args: vec![("ptr".to_string(), crate::lir::Type::Pointer(
-                    crate::lir::Mutability::Any,
-                    Box::new(crate::lir::Type::Any),
-                ))],
+                args: vec![(
+                    "ptr".to_string(),
+                    crate::lir::Type::Pointer(
+                        crate::lir::Mutability::Any,
+                        Box::new(crate::lir::Type::Any),
+                    ),
+                )],
                 ret: crate::lir::Type::None,
                 body: vec![
                     crate::asm::StandardOp::Free(crate::asm::SP.deref()),
-                    crate::asm::StandardOp::CoreOp(
-                        crate::asm::CoreOp::Pop(None, 1)
-                    ),
+                    crate::asm::StandardOp::CoreOp(crate::asm::CoreOp::Pop(None, 1)),
                 ],
             });
-            use crate::asm::StandardOp::*;
             use crate::asm::CoreOp::*;
+            use crate::asm::StandardOp::*;
             use crate::asm::*;
             // let realloc_fp_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
             //     name: "realloc_fp_stack".to_string(),
@@ -65,7 +66,7 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
             //             },
             //             While(B),
             //             Move {
-            //                 src: A.deref(), 
+            //                 src: A.deref(),
             //                 dst: C.deref(),
             //             },
             //             Next(A, None),
@@ -83,8 +84,6 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
             //         ]))
             //     ],
             // });
-
-
 
             // let realloc_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
             //     name: "realloc_stack".to_string(),
@@ -114,7 +113,7 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
             //             crate::asm::CoreOp::Set(E, 0),
             //             While(B),
             //             Move {
-            //                 src: A.deref(), 
+            //                 src: A.deref(),
             //                 dst: C.deref(),
             //             },
             //             Next(A, None),
@@ -149,7 +148,6 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
             //     ],
             // });
 
-
             let get_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
                 name: "get_sp".to_string(),
                 args: vec![],
@@ -162,36 +160,39 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
 
             let set_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
                 name: "set_sp".to_string(),
-                args: vec![("new_sp".to_string(), crate::lir::Type::Pointer(
-                    crate::lir::Mutability::Any,
-                    Box::new(crate::lir::Type::Cell),
-                ))],
+                args: vec![(
+                    "new_sp".to_string(),
+                    crate::lir::Type::Pointer(
+                        crate::lir::Mutability::Any,
+                        Box::new(crate::lir::Type::Cell),
+                    ),
+                )],
                 ret: crate::lir::Type::None,
-                body: vec![
-                    Pop(Some(A), 1),
-                    Move {
-                        src: A,
-                        dst: SP,
-                    }
-                ],
+                body: vec![Pop(Some(A), 1), Move { src: A, dst: SP }],
             });
 
             let set_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
                 name: "set_fp".to_string(),
-                args: vec![("new_fp".to_string(), crate::lir::Type::Pointer(
-                    crate::lir::Mutability::Any,
-                    Box::new(crate::lir::Type::Cell),
-                ))],
+                args: vec![(
+                    "new_fp".to_string(),
+                    crate::lir::Type::Pointer(
+                        crate::lir::Mutability::Any,
+                        Box::new(crate::lir::Type::Cell),
+                    ),
+                )],
                 ret: crate::lir::Type::None,
                 body: vec![Pop(Some(FP), 1)],
             });
 
             let set_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
                 name: "set_stack_start".to_string(),
-                args: vec![("new_stack_start".to_string(), crate::lir::Type::Pointer(
-                    crate::lir::Mutability::Any,
-                    Box::new(crate::lir::Type::Cell),
-                ))],
+                args: vec![(
+                    "new_stack_start".to_string(),
+                    crate::lir::Type::Pointer(
+                        crate::lir::Mutability::Any,
+                        Box::new(crate::lir::Type::Cell),
+                    ),
+                )],
                 ret: crate::lir::Type::None,
                 body: vec![Pop(Some(STACK_START), 1)],
             });
@@ -217,10 +218,13 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
             });
             let set_gp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
                 name: "set_gp".to_string(),
-                args: vec![("new_gp".to_string(), crate::lir::Type::Pointer(
-                    crate::lir::Mutability::Any,
-                    Box::new(crate::lir::Type::Cell),
-                ))],
+                args: vec![(
+                    "new_gp".to_string(),
+                    crate::lir::Type::Pointer(
+                        crate::lir::Mutability::Any,
+                        Box::new(crate::lir::Type::Cell),
+                    ),
+                )],
                 ret: crate::lir::Type::None,
                 body: vec![Pop(Some(GP), 1)],
             });

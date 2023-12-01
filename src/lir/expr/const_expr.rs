@@ -332,12 +332,10 @@ impl ConstExpr {
                         Self::PolyProc(proc) => {
                             Self::Proc(proc.monomorphize(ty_args.clone(), env)?)
                         }
-                        _ => {
-                            Self::Monomorphize(
-                                Box::new(expr.eval_checked(env, i)?),
-                                ty_args.clone(),
-                            )
-                        }
+                        _ => Self::Monomorphize(
+                            Box::new(expr.eval_checked(env, i)?),
+                            ty_args.clone(),
+                        ),
                     };
 
                     // if env.has_any_associated_const(&template_ty) {

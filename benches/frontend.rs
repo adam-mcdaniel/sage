@@ -1,11 +1,11 @@
+use criterion::{criterion_group, criterion_main, Criterion};
 use sage::{
     lir::*,
     parse::*,
     targets::{self, CompiledTarget},
-    vm::*
+    vm::*,
 };
 use std::fs::{read_to_string, write};
-use criterion::{criterion_group, criterion_main, Criterion};
 
 const CALL_STACK_SIZE: usize = 8192;
 
@@ -18,15 +18,10 @@ fn parse_frontend_file(filename: &str) -> Expr {
 }
 
 fn compile_frontend_file(filename: &str) -> StandardProgram {
-    match parse_frontend_file(filename)
-        .compile()
-        .unwrap()
-    {
+    match parse_frontend_file(filename).compile().unwrap() {
         // If we got back a valid program, assemble it and return the result.
-        Ok(asm_code) => asm_code
-            .assemble(CALL_STACK_SIZE).unwrap().into(),
-        Err(asm_code) => asm_code
-            .assemble(CALL_STACK_SIZE).unwrap(),
+        Ok(asm_code) => asm_code.assemble(CALL_STACK_SIZE).unwrap().into(),
+        Err(asm_code) => asm_code.assemble(CALL_STACK_SIZE).unwrap(),
     }
 }
 
@@ -62,8 +57,13 @@ fn run_with_gcc(_filename: &str, input: &str) -> String {
         .stdout(std::process::Stdio::piped())
         .spawn()
         .expect("failed to execute process");
-    
-    child.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
+
+    child
+        .stdin
+        .as_mut()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .unwrap();
     let output = child.wait_with_output().unwrap();
     // Remove the temp file
     return String::from_utf8_lossy(&output.stdout).to_string();
@@ -72,7 +72,9 @@ fn run_with_gcc(_filename: &str, input: &str) -> String {
 fn run_frontend_file(filename: &str, input: &str) -> String {
     let program = compile_frontend_file(filename);
 
-    let device = StandardInterpreter::new(TestingDevice::new(input)).run(&program).unwrap();
+    let device = StandardInterpreter::new(TestingDevice::new(input))
+        .run(&program)
+        .unwrap();
     let output_text = device.output_str();
 
     return output_text;
@@ -83,61 +85,101 @@ fn bench_frontend(c: &mut Criterion) {
     group.sample_size(50);
 
     compile_with_gcc("examples/frontend/hashmap.sg");
-    group.bench_function("Hashmap (GCC precompiled run)", |b| b.iter(|| {
-        run_with_gcc("examples/frontend/hashmap.sg", "hello world!");
-    }));
-    
+    group.bench_function("Hashmap (GCC precompiled run)", |b| {
+        b.iter(|| {
+            run_with_gcc("examples/frontend/hashmap.sg", "hello world!");
+        })
+    });
+
     compile_with_gcc("examples/frontend/sequence.sg");
-    group.bench_function("Vector (GCC precompiled run)", |b| b.iter(|| {
-        run_with_gcc("examples/frontend/sequence.sg", "hello world!");
-    }));
+    group.bench_function("Vector (GCC precompiled run)", |b| {
+        b.iter(|| {
+            run_with_gcc("examples/frontend/sequence.sg", "hello world!");
+        })
+    });
 
     compile_with_gcc("examples/frontend/sequence2.sg");
-    group.bench_function("Vector2 (GCC precompiled run)", |b| b.iter(|| {
-        run_with_gcc("examples/frontend/sequence2.sg", "hello world!");
-    }));
-    
+    group.bench_function("Vector2 (GCC precompiled run)", |b| {
+        b.iter(|| {
+            run_with_gcc("examples/frontend/sequence2.sg", "hello world!");
+        })
+    });
+
     compile_with_gcc("examples/frontend/AES.sg");
-    group.bench_function("AES (GCC precompiled run)", |b| b.iter(|| {
-        run_with_gcc("examples/frontend/AES.sg", "hello world!");
-    }));
-    
+    group.bench_function("AES (GCC precompiled run)", |b| {
+        b.iter(|| {
+            run_with_gcc("examples/frontend/AES.sg", "hello world!");
+        })
+    });
+
     std::fs::remove_file("benches/temp").unwrap();
     group.finish();
 
     let mut group = c.benchmark_group("VM Backend");
     group.sample_size(10);
-    
-    group.bench_function("Hashmap (compile + VM run)", |b| b.iter(|| run_frontend_file("examples/frontend/hashmap.sg", "hello world!")));
-    group.bench_function("Vector (compile + VM run)", |b| b.iter(|| run_frontend_file("examples/frontend/sequence.sg", "hello world!")));
-    group.bench_function("Vector2 (compile + VM run)", |b| b.iter(|| run_frontend_file("examples/frontend/sequence2.sg", "hello world!")));
-    group.bench_function("AES (compile + VM run)", |b| b.iter(|| run_frontend_file("examples/frontend/AES.sg", "hello world!")));
+
+    group.bench_function("Hashmap (compile + VM run)", |b| {
+        b.iter(|| run_frontend_file("examples/frontend/hashmap.sg", "hello world!"))
+    });
+    group.bench_function("Vector (compile + VM run)", |b| {
+        b.iter(|| run_frontend_file("examples/frontend/sequence.sg", "hello world!"))
+    });
+    group.bench_function("Vector2 (compile + VM run)", |b| {
+        b.iter(|| run_frontend_file("examples/frontend/sequence2.sg", "hello world!"))
+    });
+    group.bench_function("AES (compile + VM run)", |b| {
+        b.iter(|| run_frontend_file("examples/frontend/AES.sg", "hello world!"))
+    });
 
     let precompiled_hashmap = compile_frontend_file("examples/frontend/hashmap.sg");
     let precompiled_vector = compile_frontend_file("examples/frontend/sequence.sg");
     let precompiled_vector2 = compile_frontend_file("examples/frontend/sequence2.sg");
     let precompiled_aes = compile_frontend_file("examples/frontend/AES.sg");
 
-    group.bench_function("Hashmap (compile)", |b| b.iter(|| compile_frontend_file("examples/frontend/hashmap.sg")));
-    group.bench_function("Vector (compile)", |b| b.iter(|| compile_frontend_file("examples/frontend/sequence.sg")));
-    group.bench_function("Vector2 (compile)", |b| b.iter(|| compile_frontend_file("examples/frontend/sequence2.sg")));
-    group.bench_function("AES (compile)", |b| b.iter(|| compile_frontend_file("examples/frontend/AES.sg")));
+    group.bench_function("Hashmap (compile)", |b| {
+        b.iter(|| compile_frontend_file("examples/frontend/hashmap.sg"))
+    });
+    group.bench_function("Vector (compile)", |b| {
+        b.iter(|| compile_frontend_file("examples/frontend/sequence.sg"))
+    });
+    group.bench_function("Vector2 (compile)", |b| {
+        b.iter(|| compile_frontend_file("examples/frontend/sequence2.sg"))
+    });
+    group.bench_function("AES (compile)", |b| {
+        b.iter(|| compile_frontend_file("examples/frontend/AES.sg"))
+    });
 
-    group.bench_function("Hashmap (VM precompiled run)", |b| b.iter(|| {
-        StandardInterpreter::new(TestingDevice::new("hello world!")).run(&precompiled_hashmap).unwrap();
-    }));
+    group.bench_function("Hashmap (VM precompiled run)", |b| {
+        b.iter(|| {
+            StandardInterpreter::new(TestingDevice::new("hello world!"))
+                .run(&precompiled_hashmap)
+                .unwrap();
+        })
+    });
 
-    group.bench_function("Vector (VM precompiled run)", |b| b.iter(|| {
-        StandardInterpreter::new(TestingDevice::new("hello world!")).run(&precompiled_vector).unwrap();
-    }));
+    group.bench_function("Vector (VM precompiled run)", |b| {
+        b.iter(|| {
+            StandardInterpreter::new(TestingDevice::new("hello world!"))
+                .run(&precompiled_vector)
+                .unwrap();
+        })
+    });
 
-    group.bench_function("Vector2 (VM precompiled run)", |b| b.iter(|| {
-        StandardInterpreter::new(TestingDevice::new("hello world!")).run(&precompiled_vector2).unwrap();
-    }));
+    group.bench_function("Vector2 (VM precompiled run)", |b| {
+        b.iter(|| {
+            StandardInterpreter::new(TestingDevice::new("hello world!"))
+                .run(&precompiled_vector2)
+                .unwrap();
+        })
+    });
 
-    group.bench_function("AES (VM precompiled run)", |b| b.iter(|| {
-        StandardInterpreter::new(TestingDevice::new("hello world!")).run(&precompiled_aes).unwrap();
-    }));
+    group.bench_function("AES (VM precompiled run)", |b| {
+        b.iter(|| {
+            StandardInterpreter::new(TestingDevice::new("hello world!"))
+                .run(&precompiled_aes)
+                .unwrap();
+        })
+    });
     group.finish();
 }
 

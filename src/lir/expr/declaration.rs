@@ -40,7 +40,12 @@ pub enum Declaration {
 }
 
 impl Declaration {
-    pub(crate) fn static_var(name: impl Into<String>, mutability: Mutability, ty: Type, expr: ConstExpr) -> Self {
+    pub(crate) fn static_var(
+        name: impl Into<String>,
+        mutability: Mutability,
+        ty: Type,
+        expr: ConstExpr,
+    ) -> Self {
         Self::StaticVar(name.into(), mutability, ty, expr)
     }
 
@@ -154,7 +159,10 @@ impl Declaration {
                 // Compile the expression to leave the value on the stack.
                 expr.clone().compile_expr(env, output)?;
                 // Write the value of the expression to the global variable.
-                output.op(CoreOp::Pop(Some(Location::Global(name.clone())), static_var_size));
+                output.op(CoreOp::Pop(
+                    Some(Location::Global(name.clone())),
+                    static_var_size,
+                ));
                 // Log the instructions for the declaration.
                 output.log_instructions_after(&name, &log_message, current_instruction);
             }
@@ -185,7 +193,9 @@ impl Declaration {
                 // Copy the return value over where the arguments were stored,
                 // so that when we pop the stack, it's as if we popped the variables
                 // and arguments, and pushed our return value.
-                debug!("Destroying {var_size} cells of stack, leaving {result_size} cells of stack");
+                debug!(
+                    "Destroying {var_size} cells of stack, leaving {result_size} cells of stack"
+                );
                 output.op(CoreOp::Copy {
                     // The address of the return value (the values we pushed)
                     src: SP.deref().offset(1 - result_size as isize),

@@ -763,7 +763,6 @@ impl Compile for Expr {
                 Expr::ConstExpr(cexpr) => {
                     // Create a new static variable for the constant.
 
-                    
                     lazy_static::lazy_static! {
                         static ref COUNTER: Mutex<usize> = Mutex::new(0);
                     }
@@ -780,7 +779,9 @@ impl Compile for Expr {
                     let ty = cexpr.get_type(env)?;
                     let size = ty.get_size(env)?;
 
-                    let expr = Expr::var(&var_name).refer(expected_mutability).with(Declaration::static_var(&var_name, expected_mutability, ty, cexpr));
+                    let expr = Expr::var(&var_name).refer(expected_mutability).with(
+                        Declaration::static_var(&var_name, expected_mutability, ty, cexpr),
+                    );
                     debug!("Compiling constant expression {expr} in environment {env}");
                     expr.compile_expr(env, output)?;
                 }

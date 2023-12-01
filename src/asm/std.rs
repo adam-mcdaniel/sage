@@ -7,7 +7,8 @@
 //!
 //! [***Click here to view opcodes!***](./enum.StandardOp.html)
 use super::{
-    location::*, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, GP, SP, START_OF_FP_STACK
+    location::*, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, GP, SP,
+    START_OF_FP_STACK,
 };
 use crate::side_effects::ffi::FFIBinding;
 use crate::vm::{self, VirtualMachineProgram};

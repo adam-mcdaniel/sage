@@ -402,7 +402,7 @@ impl Put {
                     // output.op(CoreOp::Put(addr, Output::stdout_string()));
                     output.op(CoreOp::GetAddress {
                         addr: addr.deref(),
-                        dst: A
+                        dst: A,
                     });
                     output.op(CoreOp::While(A.deref()));
                     output.op(CoreOp::Put(A.deref(), Output::stdout_char()));

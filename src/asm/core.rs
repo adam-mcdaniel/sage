@@ -28,7 +28,8 @@
 //! using `Put`, and assuming-standard out, to display the integer in decimal.
 use super::{
     location::{FP_STACK, TMP},
-    AssemblyProgram, Env, Error, Location, StandardOp, F, FP, GP, SP, START_OF_FP_STACK, STACK_START
+    AssemblyProgram, Env, Error, Location, StandardOp, F, FP, GP, SP, STACK_START,
+    START_OF_FP_STACK,
 };
 use crate::{
     side_effects::{Input, InputMode, Output, OutputMode},
