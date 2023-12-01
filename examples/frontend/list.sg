@@ -1,9 +1,3 @@
-// realloc_stack(100000);
-// realloc_fp_stack(12000);
-// debug();
-// println(y);
-// return ();
-
 
 def realloc_stack(size: Int) {
     let mut new_sp: &mut Cell = Null;
@@ -88,7 +82,7 @@ impl List<T> {
         return List<T> of Cons(value, new List<T> of Nil);
     }
 
-    def cons(value: T, list: List<T>): List<T> {
+    def cons(list: List<T>, value: T): List<T> {
         return List<T> of Cons(value, new list);
     }
 
@@ -136,7 +130,7 @@ let mut l1 = List<Int> of Nil;
 
 
 for let mut i=20; i>=0; i-=1 {
-    l1 = List.cons<Int>(i, l1);
+    l1 = l1.cons(i);
 }
 
 def print_int(i: Int) {
