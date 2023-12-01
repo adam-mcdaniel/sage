@@ -35,22 +35,172 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
                     ),
                 ],
             });
+            use crate::asm::StandardOp::*;
+            use crate::asm::CoreOp::*;
+            use crate::asm::*;
+            // let realloc_fp_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
+            //     name: "realloc_fp_stack".to_string(),
+            //     args: vec![("size".to_string(), crate::lir::Type::Int)],
+            //     ret: crate::lir::Type::None,
+            //     body: vec![
+            //         // Allocate the new frame pointer stack with the given size
+            //         Alloc(SP.deref()),
+            //         CoreOp(Many(vec![
+            //             Pop(Some(C), 1),
+            //             Move {
+            //                 src: C,
+            //                 dst: D
+            //             },
+            //             // Copy all the data from the old frame pointer stack to the new one
+            //             // Copy the start of the old frame pointer stack to the new one
+            //             GetAddress {
+            //                 addr: START_OF_FP_STACK,
+            //                 dst: A,
+            //             },
+            //             // Subtract from the current FP_STACK
+            //             crate::asm::CoreOp::IsLess {
+            //                 a: A,
+            //                 b: FP_STACK,
+            //                 dst: B,
+            //             },
+            //             While(B),
+            //             Move {
+            //                 src: A.deref(), 
+            //                 dst: C.deref(),
+            //             },
+            //             Next(A, None),
+            //             Next(C, None),
+            //             crate::asm::CoreOp::IsLess {
+            //                 a: A,
+            //                 b: FP_STACK,
+            //                 dst: B,
+            //             },
+            //             End,
+            //             Move {
+            //                 src: C,
+            //                 dst: FP_STACK,
+            //             }
+            //         ]))
+            //     ],
+            // });
+
+
+
+            // let realloc_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
+            //     name: "realloc_stack".to_string(),
+            //     args: vec![("size".to_string(), crate::lir::Type::Int)],
+            //     ret: crate::lir::Type::None,
+            //     body: vec![
+            //         // Allocate the new frame pointer stack with the given size
+            //         Alloc(SP.deref()),
+            //         CoreOp(Many(vec![
+            //             Pop(Some(C), 1),
+            //             Move {
+            //                 src: C,
+            //                 dst: D
+            //             },
+            //             // Copy all the data from the old frame pointer stack to the new one
+            //             // Copy the start of the old frame pointer stack to the new one
+            //             Move {
+            //                 src: STACK_START,
+            //                 dst: A,
+            //             },
+            //             // Subtract from the current FP_STACK
+            //             crate::asm::CoreOp::IsLess {
+            //                 a: A,
+            //                 b: SP,
+            //                 dst: B,
+            //             },
+            //             crate::asm::CoreOp::Set(E, 0),
+            //             While(B),
+            //             Move {
+            //                 src: A.deref(), 
+            //                 dst: C.deref(),
+            //             },
+            //             Next(A, None),
+            //             Next(C, None),
+            //             Inc(E),
+            //             crate::asm::CoreOp::IsLess {
+            //                 a: A,
+            //                 b: SP,
+            //                 dst: B,
+            //             },
+            //             End,
+            //             // Index the FP by E
+            //             Index {
+            //                 src: FP,
+            //                 offset: E,
+            //                 dst: F,
+            //             },
+            //             Move {
+            //                 src: F,
+            //                 dst: FP,
+            //             },
+
+            //             Move {
+            //                 src: C,
+            //                 dst: SP,
+            //             },
+            //             Move {
+            //                 src: D,
+            //                 dst: STACK_START,
+            //             }
+            //         ]))
+            //     ],
+            // });
+
 
             let get_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
                 name: "get_sp".to_string(),
                 args: vec![],
                 ret: crate::lir::Type::Pointer(
-                    crate::lir::Mutability::Immutable,
+                    crate::lir::Mutability::Any,
                     Box::new(crate::lir::Type::Cell),
                 ),
                 body: vec![crate::asm::CoreOp::Push(crate::asm::SP, 1)],
+            });
+
+            let set_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "set_sp".to_string(),
+                args: vec![("new_sp".to_string(), crate::lir::Type::Pointer(
+                    crate::lir::Mutability::Any,
+                    Box::new(crate::lir::Type::Cell),
+                ))],
+                ret: crate::lir::Type::None,
+                body: vec![
+                    Pop(Some(A), 1),
+                    Move {
+                        src: A,
+                        dst: SP,
+                    }
+                ],
+            });
+
+            let set_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "set_fp".to_string(),
+                args: vec![("new_fp".to_string(), crate::lir::Type::Pointer(
+                    crate::lir::Mutability::Any,
+                    Box::new(crate::lir::Type::Cell),
+                ))],
+                ret: crate::lir::Type::None,
+                body: vec![Pop(Some(FP), 1)],
+            });
+
+            let set_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "set_stack_start".to_string(),
+                args: vec![("new_stack_start".to_string(), crate::lir::Type::Pointer(
+                    crate::lir::Mutability::Any,
+                    Box::new(crate::lir::Type::Cell),
+                ))],
+                ret: crate::lir::Type::None,
+                body: vec![Pop(Some(STACK_START), 1)],
             });
 
             let get_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
                 name: "get_fp".to_string(),
                 args: vec![],
                 ret: crate::lir::Type::Pointer(
-                    crate::lir::Mutability::Immutable,
+                    crate::lir::Mutability::Any,
                     Box::new(crate::lir::Type::Cell),
                 ),
                 body: vec![crate::asm::CoreOp::Push(crate::asm::FP, 1)],
@@ -60,19 +210,39 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
                 name: "get_gp".to_string(),
                 args: vec![],
                 ret: crate::lir::Type::Pointer(
-                    crate::lir::Mutability::Immutable,
+                    crate::lir::Mutability::Any,
                     Box::new(crate::lir::Type::Cell),
                 ),
                 body: vec![crate::asm::CoreOp::Push(crate::asm::GP, 1)],
             });
+            let set_gp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "set_gp".to_string(),
+                args: vec![("new_gp".to_string(), crate::lir::Type::Pointer(
+                    crate::lir::Mutability::Any,
+                    Box::new(crate::lir::Type::Cell),
+                ))],
+                ret: crate::lir::Type::None,
+                body: vec![Pop(Some(GP), 1)],
+            });
+
             let get_fp_stack = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
                 name: "get_fp_stack".to_string(),
                 args: vec![],
                 ret: crate::lir::Type::Pointer(
-                    crate::lir::Mutability::Immutable,
+                    crate::lir::Mutability::Any,
                     Box::new(crate::lir::Type::Cell),
                 ),
                 body: vec![crate::asm::CoreOp::Push(crate::asm::FP_STACK, 1)],
+            });
+
+            let get_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "get_stack_start".to_string(),
+                args: vec![],
+                ret: crate::lir::Type::Pointer(
+                    crate::lir::Mutability::Any,
+                    Box::new(crate::lir::Type::Cell),
+                ),
+                body: vec![crate::asm::CoreOp::Push(crate::asm::STACK_START, 1)],
             });
 
             let mut debug_body = vec![];
@@ -155,10 +325,17 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
                 vec![
                     ("free", free),
                     ("alloc", alloc),
+                    // ("realloc_fp_stack", realloc_fp_stack),
+                    // ("realloc_stack", realloc_stack),
                     ("debug", debug),
                     ("get_sp", get_sp),
                     ("get_fp", get_fp),
+                    ("set_sp", set_sp),
+                    ("set_fp", set_fp),
+                    ("set_gp", set_gp),
                     ("get_fp_stack", get_fp_stack),
+                    ("get_stack_start", get_stack_start),
+                    ("set_stack_start", set_stack_start),
                     ("get_gp", get_gp),
                 ],
                 result,

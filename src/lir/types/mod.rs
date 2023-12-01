@@ -604,9 +604,10 @@ impl Type {
                         ret = ret.substitute(param, arg);
                     }
 
-                    ret.is_simple()
+                    ret.is_concrete()
+                    // true
                 } else {
-                    false
+                    template.is_simple() && args.iter().all(|t| t.is_simple())
                 }
             }
             Self::Let(_, _, ret) => ret.is_simple(),

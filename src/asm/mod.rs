@@ -39,7 +39,7 @@ pub use self::core::{CoreOp, CoreProgram};
 pub use self::std::{StandardOp, StandardProgram};
 pub use globals::Globals;
 pub use location::{Location, A, B, C, D, E, F, FP, GP, REGISTERS, SP};
-pub(crate) use location::{FP_STACK, TMP};
+pub(crate) use location::{FP_STACK, STACK_START, START_OF_FP_STACK, TMP};
 
 /// A frontend to both the `CoreProgram` and `StandardProgram` types.
 /// This allows the compiler to append `CoreOp`s to both programs

@@ -28,7 +28,7 @@
 //! using `Put`, and assuming-standard out, to display the integer in decimal.
 use super::{
     location::{FP_STACK, TMP},
-    AssemblyProgram, Env, Error, Location, StandardOp, F, FP, GP, SP,
+    AssemblyProgram, Env, Error, Location, StandardOp, F, FP, GP, SP, START_OF_FP_STACK, STACK_START
 };
 use crate::{
     side_effects::{Input, InputMode, Output, OutputMode},
@@ -98,13 +98,13 @@ impl CoreProgram {
         result.comment("BEGIN BOOTSTRAP");
 
         // Create the stack of frame pointers starting directly after the last register
-        let start_of_fp_stack = F.offset(1);
-        start_of_fp_stack.copy_address_to(&FP_STACK, &mut result);
+        // let start_of_fp_stack = F.offset(1);
+        START_OF_FP_STACK.copy_address_to(&FP_STACK, &mut result);
         info!(
-            "Frame pointer stack begins at {start_of_fp_stack:?}, and is {} cells long.",
+            "Frame pointer stack begins at {START_OF_FP_STACK:?}, and is {} cells long.",
             allowed_recursion_depth
         );
-        let end_of_fp_stack = start_of_fp_stack.offset(allowed_recursion_depth as isize);
+        let end_of_fp_stack = START_OF_FP_STACK.offset(allowed_recursion_depth as isize);
 
         // Copy the address just after the allocated space to the global pointer.
         let starting_gp_addr = end_of_fp_stack;
@@ -117,6 +117,7 @@ impl CoreProgram {
         // Allocate the global variables
         let starting_sp_addr = starting_gp_addr.offset(size_of_globals as isize);
         info!("Stack pointer is initialized to point to {starting_sp_addr:?}.");
+        starting_sp_addr.copy_address_to(&STACK_START, &mut result);
         starting_sp_addr.copy_address_to(&SP, &mut result);
 
         result.comment("END BOOTSTRAP");
@@ -909,6 +910,9 @@ impl CoreOp {
                 let dst = env.resolve(dst)?;
 
                 for i in 0..*size {
+                    if src.offset(i as isize) == dst.offset(i as isize) {
+                        continue;
+                    }
                     src.offset(i as isize)
                         .copy_to(&dst.offset(i as isize), result);
                 }

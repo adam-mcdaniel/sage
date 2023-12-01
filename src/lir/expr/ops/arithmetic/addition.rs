@@ -12,6 +12,10 @@ impl Add {
     fn return_type_from_types(&self, lhs: &Type, rhs: &Type, env: &Env) -> Result<Type, Error> {
         match (lhs.clone(), rhs.clone()) {
             (Type::Int, Type::Int) => Ok(Type::Int),
+
+            (Type::Int | Type::Float | Type::Cell, Type::Cell)
+            | (Type::Cell, Type::Int | Type::Float | Type::Cell) => Ok(Type::Cell),
+
             (Type::Float, Type::Float) | (Type::Float, Type::Int) | (Type::Int, Type::Float) => {
                 Ok(Type::Float)
             }
@@ -114,14 +118,19 @@ impl BinaryOp for Add {
             (a, Type::Unit(_, b)) => {
                 self.compile_types(&a, &b, env, output)?;
             }
-            (Type::Int, Type::Int) => {
+            (Type::Int, Type::Int)
+            | (Type::Int, Type::Cell)
+            | (Type::Cell, Type::Int)
+            | (Type::Cell, Type::Cell) => {
                 output.op(CoreOp::Add {
                     src: SP.deref(),
                     dst: SP.deref().offset(-1),
                 });
                 output.op(CoreOp::Pop(None, 1))
             }
-            (Type::Float, Type::Float) => {
+            (Type::Float, Type::Float)
+            | (Type::Float, Type::Cell)
+            | (Type::Cell, Type::Float) => {
                 output.std_op(StandardOp::Add {
                     src: SP.deref(),
                     dst: SP.deref().offset(-1),

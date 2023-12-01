@@ -866,18 +866,18 @@ impl TypeCheck for ConstExpr {
         match self {
             Self::Template(ty_params, template) => {
                 // Create a new environment with the type parameters defined.
-                let mut new_env = env.clone();
-                // Define the type parameters in the environment.
-                new_env.define_types(
-                    ty_params
-                        .clone()
-                        .into_iter()
-                        .map(|p| (p.clone(), Type::Unit(p, Box::new(Type::None))))
-                        .collect(),
-                );
+                // let mut new_env = env.clone();
+                // // Define the type parameters in the environment.
+                // new_env.define_types(
+                //     ty_params
+                //         .clone()
+                //         .into_iter()
+                //         .map(|p| (p.clone(), Type::Unit(p, Box::new(Type::None))))
+                //         .collect(),
+                // );
                 // Check the template type.
-                template.type_check(&new_env)
-                // Ok(())
+                // template.type_check(&new_env)
+                Ok(())
             }
 
             Self::Annotated(expr, metadata) => expr
@@ -939,6 +939,7 @@ impl TypeCheck for ConstExpr {
                 expr.type_check(&new_env)
             }
             Self::Monomorphize(expr, ty_args) => {
+                debug!("Monomorphizing {expr} with type arguments {ty_args:?} in environment {env}");
                 match **expr {
                     Self::Template(ref ty_params, ref template) => {
                         // Create a new environment with the type parameters defined.
@@ -949,6 +950,23 @@ impl TypeCheck for ConstExpr {
                         );
                         // Check the template type.
                         template.type_check(&new_env)
+                        // Ok(())
+                    }
+                    Self::PolyProc(ref poly) => {
+                        // poly.monomorphize(ty_args.clone(), env)?.type_check(env)
+                        // Create a new environment with the type parameters defined.
+                        // let mut new_env = env.clone();
+                        // // Define the type parameters in the environment.
+                        // new_env.define_types(
+                        //     poly.ty_params
+                        //         .clone()
+                        //         .into_iter()
+                        //         .zip(ty_args.clone())
+                        //         .collect(),
+                        // );
+                        // Check the template type.
+                        poly.type_check(env)
+                        // Ok(())
                     }
                     _ => {
                         self.get_type(env)?.type_check(env)?;

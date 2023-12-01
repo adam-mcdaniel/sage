@@ -40,9 +40,9 @@ pub enum Declaration {
 }
 
 impl Declaration {
-    // pub(crate) fn static_var(name: impl Into<String>, mutability: Mutability, ty: Type, expr: ConstExpr) -> Self {
-    //     Self::StaticVar(name.into(), mutability, ty, expr)
-    // }
+    pub(crate) fn static_var(name: impl Into<String>, mutability: Mutability, ty: Type, expr: ConstExpr) -> Self {
+        Self::StaticVar(name.into(), mutability, ty, expr)
+    }
 
     /// Flatten a multi-declaration into a single-dimensional vector of declarations.
     pub(crate) fn flatten(self) -> Vec<Self> {
@@ -142,18 +142,19 @@ impl Declaration {
                 // Get the type of the variable.
                 let var_ty = ty.clone();
                 // Get the size of the variable.
-                var_size = var_ty.get_size(env)?;
-                // Compile the expression to leave the value on the stack.
-                expr.clone().compile_expr(env, output)?;
+                let static_var_size = var_ty.get_size(env)?;
 
-                let name = name.clone().to_uppercase();
+                // let name = name.clone().to_uppercase();
+                let name = name.clone();
                 // Allocate the global variable.
                 output.op(CoreOp::Global {
                     name: name.clone(),
-                    size: var_size,
+                    size: static_var_size,
                 });
+                // Compile the expression to leave the value on the stack.
+                expr.clone().compile_expr(env, output)?;
                 // Write the value of the expression to the global variable.
-                output.op(CoreOp::Pop(Some(Location::Global(name.clone())), var_size));
+                output.op(CoreOp::Pop(Some(Location::Global(name.clone())), static_var_size));
                 // Log the instructions for the declaration.
                 output.log_instructions_after(&name, &log_message, current_instruction);
             }
@@ -180,22 +181,23 @@ impl Declaration {
 
             // Compile the body under the new scope
             body.compile_expr(env, output)?;
-
-            // Copy the return value over where the arguments were stored,
-            // so that when we pop the stack, it's as if we popped the variables
-            // and arguments, and pushed our return value.
-            debug!("Destroying {var_size} cells of stack, leaving {result_size} cells of stack");
-            output.op(CoreOp::Copy {
-                // The address of the return value (the values we pushed)
-                src: SP.deref().offset(1 - result_size as isize),
-                // The address of the arguments (the values we want to write over)
-                dst: SP
-                    .deref()
-                    .offset(1 - var_size as isize - result_size as isize),
-                // The size of the return value
-                size: result_size,
-            });
-            output.op(CoreOp::Pop(None, var_size));
+            if var_size != 0 {
+                // Copy the return value over where the arguments were stored,
+                // so that when we pop the stack, it's as if we popped the variables
+                // and arguments, and pushed our return value.
+                debug!("Destroying {var_size} cells of stack, leaving {result_size} cells of stack");
+                output.op(CoreOp::Copy {
+                    // The address of the return value (the values we pushed)
+                    src: SP.deref().offset(1 - result_size as isize),
+                    // The address of the arguments (the values we want to write over)
+                    dst: SP
+                        .deref()
+                        .offset(1 - var_size as isize - result_size as isize),
+                    // The size of the return value
+                    size: result_size,
+                });
+                output.op(CoreOp::Pop(None, var_size));
+            }
         }
 
         Ok(var_size)

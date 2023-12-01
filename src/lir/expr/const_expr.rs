@@ -13,7 +13,7 @@ use crate::lir::{
     Annotation, CoreBuiltin, Declaration, Env, Error, Expr, FFIProcedure, GetSize, GetType,
     Mutability, PolyProcedure, Procedure, Simplify, StandardBuiltin, Type,
 };
-use log::{error, trace};
+use log::*;
 
 use core::fmt;
 use std::collections::BTreeMap;
@@ -184,7 +184,7 @@ impl ConstExpr {
     /// The `i` is a counter for the number of recursions caused by an `eval` call.
     fn eval_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
         let i = i + 1;
-        if i > 500 {
+        if i > 10 {
             error!("Recursion depth exceeded while evaluating: {self}");
             Err(Error::RecursionDepthConst(self))
         } else {
@@ -192,10 +192,15 @@ impl ConstExpr {
             match self {
                 Self::Template(params, expr) => {
                     // If the inner expr is a procedure, return a `polyproc`.
-                    if let Self::Proc(proc) = *expr.clone() {
-                        return Ok(Self::PolyProc(PolyProcedure::from_mono(proc, params)));
-                    } else {
-                        return Ok(Self::Template(params, expr));
+                    match expr.clone().eval_checked(env, i) {
+                        Ok(Self::Proc(proc)) => {
+                            info!("Creating polyproc from mono proc: {proc}");
+                            return Ok(Self::PolyProc(PolyProcedure::from_mono(proc, params)));
+                        }
+                        _ => {
+                            info!("Creating template from expr: {expr}");
+                            return Ok(Self::Template(params, expr));
+                        }
                     }
                 }
 
@@ -205,7 +210,7 @@ impl ConstExpr {
 
                 Self::Member(container, member) => {
                     let container_ty = container.get_type_checked(env, i)?;
-                    container_ty.add_monomorphized_associated_consts(env)?;
+                    // container_ty.add_monomorphized_associated_consts(env)?;
                     Ok(
                         match (container.clone().eval(env)?, member.clone().eval(env)?) {
                             (Self::Tuple(tuple), Self::Int(n)) => {
@@ -225,6 +230,7 @@ impl ConstExpr {
                                         env.get_associated_const(&container_ty, &name)
                                     {
                                         return constant.clone().eval_checked(env, i);
+                                        // return Ok(constant.clone());
                                     }
                                     return Err(Error::MemberNotFound(
                                         (*container).into(),
@@ -243,6 +249,7 @@ impl ConstExpr {
                                         })
                                     {
                                         return constant.clone().eval_checked(env, i);
+                                        // return Ok(constant.clone());
                                     }
                                     error!(
                                         "Member access not implemented for: {container_ty} . {member}"
@@ -257,6 +264,7 @@ impl ConstExpr {
                                     })
                                 {
                                     return constant.clone().eval_checked(env, i);
+                                    // return Ok(constant.clone());
                                 }
                                 error!(
                                     "Member access not implemented for: {container_ty} . {member}"
@@ -285,6 +293,7 @@ impl ConstExpr {
                 | Self::Type(_) => Ok(self),
 
                 Self::Declare(bindings, expr) => {
+                    debug!("Declaring compile time bindings: {bindings}");
                     let mut new_env = env.clone();
                     new_env.add_compile_time_declaration(&bindings)?;
                     expr.eval_checked(&new_env, i)
@@ -292,49 +301,49 @@ impl ConstExpr {
 
                 Self::Monomorphize(expr, ty_args) => {
                     // env.add_monomorphized_associated_consts(expr.get_type(env)?, ty_args.clone())?;
-                    let template_ty = expr.get_type_checked(env, i)?;
+                    // let template_ty = expr.get_type_checked(env, i)?;
 
-                    let result = if let Self::Template(params, ret) = *expr.clone() {
-                        if params.len() != ty_args.len() {
-                            return Err(Error::InvalidMonomorphize(*expr));
-                        }
-                        let mut ret = ret.clone();
-
-                        for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
-                            ret.substitute(param, ty_arg);
-                        }
-                        ret.eval_checked(env, i)?
-                    } else {
-                        Self::Monomorphize(Box::new(expr.eval_checked(env, i)?), ty_args.clone())
-                    };
-
-                    // let result = match *expr.clone() {
-                    //     Self::Template(params, ret) => {
-                    //         if params.len() != ty_args.len() {
-                    //             return Err(Error::InvalidMonomorphize(*expr));
-                    //         }
-                    //         let mut ret = ret.clone();
-
-                    //         for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
-                    //             ret.substitute(param, ty_arg);
-                    //         }
-                    //         ret.eval_checked(env, i)?
+                    // let result = if let Self::Template(params, ret) = *expr.clone() {
+                    //     if params.len() != ty_args.len() {
+                    //         return Err(Error::InvalidMonomorphize(*expr));
                     //     }
-                    //     Self::PolyProc(proc) => {
-                    //         Self::Proc(proc.monomorphize(ty_args.clone(), env)?)
+                    //     let mut ret = ret.clone();
+
+                    //     for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
+                    //         ret.substitute(param, ty_arg);
                     //     }
-                    //     _ => {
-                    //         Self::Monomorphize(
-                    //             Box::new(expr.eval_checked(env, i)?),
-                    //             ty_args.clone(),
-                    //         )
-                    //     }
+                    //     ret.eval_checked(env, i)?
+                    // } else {
+                    //     Self::Monomorphize(Box::new(expr.eval_checked(env, i)?), ty_args.clone())
                     // };
+
+                    let result = match expr.clone().eval(env)? {
+                        Self::Template(params, ret) => {
+                            if params.len() != ty_args.len() {
+                                return Err(Error::InvalidMonomorphize(*expr));
+                            }
+                            let mut ret = ret.clone();
+
+                            for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
+                                ret.substitute(param, ty_arg);
+                            }
+                            *ret
+                        }
+                        Self::PolyProc(proc) => {
+                            Self::Proc(proc.monomorphize(ty_args.clone(), env)?)
+                        }
+                        _ => {
+                            Self::Monomorphize(
+                                Box::new(expr.eval_checked(env, i)?),
+                                ty_args.clone(),
+                            )
+                        }
+                    };
 
                     // if env.has_any_associated_const(&template_ty) {
                     // }
-                    let mono_ty = result.get_type_checked(env, i)?;
-                    env.add_monomorphized_associated_consts(template_ty, mono_ty, ty_args.clone())?;
+                    // let mono_ty = result.get_type_checked(env, i)?;
+                    // env.add_monomorphized_associated_consts(template_ty, mono_ty, ty_args.clone())?;
 
                     Ok(result)
                 }
@@ -483,7 +492,7 @@ impl GetType for ConstExpr {
                 let val_type = val.get_type_checked(env, i)?;
                 val_type.add_monomorphized_associated_consts(env)?;
                 // Get the type of the value to get the member of.
-                match &val_type.simplify_until_simple(env)? {
+                match &val_type.simplify_until_concrete(env)? {
                     Type::Unit(_unit_name, inner_ty) => {
                         // Get the type of the field.
                         env.get_type_of_associated_const(&inner_ty, &as_symbol?)

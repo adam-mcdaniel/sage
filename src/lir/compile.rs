@@ -762,6 +762,8 @@ impl Compile for Expr {
                 }
                 Expr::ConstExpr(cexpr) => {
                     // Create a new static variable for the constant.
+
+                    
                     lazy_static::lazy_static! {
                         static ref COUNTER: Mutex<usize> = Mutex::new(0);
                     }
@@ -777,22 +779,10 @@ impl Compile for Expr {
                     }
                     let ty = cexpr.get_type(env)?;
                     let size = ty.get_size(env)?;
-                    new_env.define_static_var(var_name.clone(), expected_mutability, ty)?;
 
-                    // Compile the constant expression.
-                    cexpr.compile_expr(&mut new_env, output)?;
-                    // Pop the constant expression into the variable.
-                    output.op(CoreOp::Global {
-                        name: var_name.clone(),
-                        size,
-                    });
-                    output.op(CoreOp::Pop(Some(Location::Global(var_name.clone())), size));
-                    // Push the address of the variable onto the stack.
-                    output.op(CoreOp::Next(SP, None));
-                    output.op(CoreOp::GetAddress {
-                        addr: Location::Global(var_name),
-                        dst: SP.deref(),
-                    });
+                    let expr = Expr::var(&var_name).refer(expected_mutability).with(Declaration::static_var(&var_name, expected_mutability, ty, cexpr));
+                    debug!("Compiling constant expression {expr} in environment {env}");
+                    expr.compile_expr(env, output)?;
                 }
                 // Get the reference of a dereferenced value.
                 Expr::Deref(ptr) => {
@@ -977,6 +967,7 @@ impl Compile for ConstExpr {
                     }
                     (Self::Type(ty), Self::Symbol(name)) => {
                         if let Some(constant) = env.get_associated_const(&ty, &name) {
+                            debug!("Compiling associated constant {constant} in environment {env}");
                             return constant.clone().compile_expr(env, output);
                         } else {
                             return Err(Error::SymbolNotDefined(name));
@@ -1030,8 +1021,8 @@ impl Compile for ConstExpr {
                     for (param, ty_arg) in params.into_iter().zip(ty_args) {
                         result.substitute(&param, &ty_arg);
                     }
-
                     result = result.eval(env)?;
+                    // result.monomorphize(ty_args, env).compile_expr(env, output)?;
 
                     result.compile_expr(env, output)?;
                 }

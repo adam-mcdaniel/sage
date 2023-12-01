@@ -91,8 +91,9 @@ impl Env {
             static_vars: self.static_vars.clone(),
             type_sizes: {
                 // Copy the data but not the lock.
-                let type_sizes = (*self.type_sizes).clone();
-                Rc::new(type_sizes)
+                // let type_sizes = (*self.type_sizes).clone();
+                // Rc::new(type_sizes)
+                self.type_sizes.clone()
             },
             globals: self.globals.clone(),
             processed_monomorphizations: self.processed_monomorphizations.clone(),
@@ -171,9 +172,23 @@ impl Env {
 
                 if let Some((_, const_ty)) = template_associated_consts.get(name) {
                     info!("Found associated const (type) {name} of type {ty}");
-                    let result = const_ty.apply(ty_args.clone()).simplify_until_simple(self).ok()?;
-                    info!("Found associated const (type) {name} of type {ty} = {result}");
-                    return Some(result);
+                    // let result = const_ty.apply(ty_args.clone()).simplify_until_simple(self).ok()?;
+                    let result = const_ty.apply(ty_args.clone());
+                    match result.simplify_until_simple(self) {
+                        Ok(result) => {
+                            info!("Found associated const (type) {name} of type {ty} = {result}");
+                            return Some(result);
+                        }
+                        Err(err) => {
+                            info!("Found associated const (type) {name} of type {ty} = {result} (failed to simplify)");
+                            return Some(result);
+                            // debug!("Failed to simplify associated const (type) {name} of type {ty} = {result}");
+                            // debug!("Error: {err}");
+                            // continue;
+                        }
+                    }
+                    // info!("Found associated const (type) {name} of type {ty} = {result}");
+                    // return Some(result);
                 }
 
                 warn!("Could not find associated const {name} of type {ty} in {template}");
@@ -423,6 +438,7 @@ impl Env {
         // }
         
         let monomorph = if let Ok(simplified) = monomorph.simplify_until_simple(self) {
+            info!("Simplified {monomorph} to {simplified}");
             simplified
         } else {
             debug!("Failed to simplify type {monomorph}");
@@ -733,7 +749,7 @@ impl Env {
         let location = globals.add_global(name.clone(), size);
 
         trace!("Defining static variable {name} of type {ty} at {location}");
-        Rc::make_mut(&mut self.static_vars).insert(name, (mutability, ty, location.clone()));
+        Rc::make_mut(&mut self.static_vars).insert(name.clone(), (mutability, ty, Location::Global(name)));
         Ok(location)
     }
 

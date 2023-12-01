@@ -28,6 +28,7 @@ pub struct PolyProcedure {
     body: Box<Expr>,
     /// The monomorphs of the procedure.
     monomorphs: Rc<RwLock<HashMap<String, Procedure>>>,
+    has_type_checked: Rc<RwLock<bool>>,
 }
 
 impl PartialEq for PolyProcedure {
@@ -57,10 +58,12 @@ impl PolyProcedure {
             ret,
             body: Box::new(body.into()),
             monomorphs: Rc::new(RwLock::new(HashMap::new())),
+            has_type_checked: Rc::new(RwLock::new(false)),
         }
     }
 
     pub fn from_mono(mono: Procedure, ty_params: Vec<String>) -> Self {
+        debug!(target: "mono", "Creating polymorphic procedure from monomorph {}", mono);
         let name = mono
             .get_common_name()
             .unwrap_or_else(|| mono.get_mangled_name())
@@ -73,6 +76,7 @@ impl PolyProcedure {
             ret: mono.get_ret().clone(),
             body: mono.get_body().clone().into(),
             monomorphs: Rc::new(RwLock::new(HashMap::new())),
+            has_type_checked: Rc::new(RwLock::new(false)),
         }
     }
 
@@ -199,6 +203,11 @@ impl GetType for PolyProcedure {
 
 impl TypeCheck for PolyProcedure {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
+        if *self.has_type_checked.read().unwrap() {
+            return Ok(());
+        }
+
+        *self.has_type_checked.write().unwrap() = true;
         trace!("Type checking {self}");
         // Create a new scope for the procedure's body, and define the arguments for the scope.
         let mut new_env = env.new_scope();

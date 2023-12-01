@@ -94,8 +94,12 @@ pub const D: Location = Location::Address(8);
 pub const E: Location = Location::Address(9);
 /// The "F" general purpose register.
 pub const F: Location = Location::Address(10);
+/// A register that points to the bottom of the stack.
+pub(crate) const STACK_START: Location = Location::Address(11);
+/// The bottom of the frame pointer stack.
+pub(crate) const START_OF_FP_STACK: Location = Location::Address(12);
 
-pub const REGISTERS: [Location; 11] = [SP, TMP, FP, FP_STACK, GP, A, B, C, D, E, F];
+pub const REGISTERS: [Location; 12] = [SP, TMP, FP, FP_STACK, GP, A, B, C, D, E, F, STACK_START];
 
 /// A location in memory (on the tape of the virtual machine).
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -127,6 +131,7 @@ impl fmt::Display for Location {
                 _ if self == &E => write!(f, "E"),
                 _ if self == &F => write!(f, "F"),
                 _ if self == &TMP => write!(f, "TMP"),
+                _ if self == &STACK_START => write!(f, "STACK_START"),
                 other => write!(f, "{}", other),
             },
             Location::Indirect(loc) => write!(f, "[{}]", loc),

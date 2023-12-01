@@ -82,7 +82,7 @@ impl BinaryOp for Arithmetic {
                 Type::Float
             }
             (Type::Int | Type::Float | Type::Cell, Type::Cell)
-            | (Type::Cell, Type::Int | Type::Float) => Type::Cell,
+            | (Type::Cell, Type::Int | Type::Float | Type::Cell) => Type::Cell,
 
             (Type::Array(elem, size), Type::Int) => {
                 if let (Self::Multiply, Expr::ConstExpr(const_rhs)) = (self, rhs) {
