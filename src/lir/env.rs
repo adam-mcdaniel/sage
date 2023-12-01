@@ -89,10 +89,19 @@ impl Env {
             consts: self.consts.clone(),
             procs: self.procs.clone(),
             static_vars: self.static_vars.clone(),
-            type_sizes: self.type_sizes.clone(),
+            type_sizes: {
+                // Copy the data but not the lock.
+                let type_sizes = (*self.type_sizes).clone();
+                Rc::new(type_sizes)
+            },
             globals: self.globals.clone(),
             processed_monomorphizations: self.processed_monomorphizations.clone(),
-            associated_constants: self.associated_constants.clone(),
+            // associated_constants: self.associated_constants.clone(),
+            associated_constants: {
+                // Copy the data but not the lock.
+                let associated_constants = self.associated_constants.read().unwrap().clone();
+                Rc::new(RwLock::new(associated_constants))
+            },
 
             // The rest are the same as a new environment.
             ..Env::default()

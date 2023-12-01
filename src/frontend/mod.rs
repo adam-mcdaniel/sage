@@ -21,6 +21,20 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
                 ),
                 body: vec![crate::asm::StandardOp::Alloc(crate::asm::SP.deref())],
             });
+            let free = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
+                name: "free".to_string(),
+                args: vec![("ptr".to_string(), crate::lir::Type::Pointer(
+                    crate::lir::Mutability::Any,
+                    Box::new(crate::lir::Type::Any),
+                ))],
+                ret: crate::lir::Type::None,
+                body: vec![
+                    crate::asm::StandardOp::Free(crate::asm::SP.deref()),
+                    crate::asm::StandardOp::CoreOp(
+                        crate::asm::CoreOp::Pop(None, 1)
+                    ),
+                ],
+            });
 
             let get_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
                 name: "get_sp".to_string(),
@@ -139,6 +153,7 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
 
             Ok(crate::lir::Expr::let_consts(
                 vec![
+                    ("free", free),
                     ("alloc", alloc),
                     ("debug", debug),
                     ("get_sp", get_sp),

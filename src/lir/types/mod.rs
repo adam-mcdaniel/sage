@@ -688,6 +688,20 @@ impl Type {
                     None
                 }
             }
+            Ok(Self::Poly(_, inner)) => inner.get_self_param_mutability(env),
+
+            Ok(Self::Apply(template, args)) => {
+                if let Self::Poly(ref params, ref inner) = *template {
+                    let mut inner = *inner.clone();
+                    for (param, arg) in params.iter().zip(args.iter()) {
+                        inner = inner.substitute(param, arg);
+                    }
+                    inner.get_self_param_mutability(env)
+                } else {
+                    None
+                }
+            }
+
             _ => None,
         }
     }
@@ -1045,9 +1059,9 @@ impl Type {
     /// in the compiler are the same for all types of decay.
     pub fn can_decay_to(&self, desired: &Self, env: &Env) -> Result<bool, Error> {
         trace!("Checking if {} can decay to {}", self, desired);
-        // if self.equals(desired, env)? {
-        //     return Ok(true);
-        // }
+        if self.equals(desired, env)? {
+            return Ok(true);
+        }
 
         // if !self.is_simple() || !desired.is_simple() {
         //     return Ok(false);

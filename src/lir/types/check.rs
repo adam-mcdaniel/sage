@@ -559,12 +559,15 @@ impl TypeCheck for Expr {
                 if self.is_method_call(env)? {
                     // Get the type of the object we're calling the method on.
                     let method_call = self.transform_method_call(env)?;
+                    info!("Transformed method call: {method_call}");
 
                     if let Self::Apply(f, args) = method_call.clone() {
                         // Typecheck the supplied arguments.
                         for arg in &args {
                             arg.type_check(env)?;
                         }
+
+                        f.type_check(env)?;
 
                         // Get the type of the function.
                         let f_type = f.get_type(env)?.simplify_until_concrete(env)?;
@@ -609,8 +612,6 @@ impl TypeCheck for Expr {
                             }
                         }
                     }
-
-                    return Ok(());
                 }
 
                 // Typecheck the expression we want to call as a procedure.
@@ -865,18 +866,18 @@ impl TypeCheck for ConstExpr {
         match self {
             Self::Template(ty_params, template) => {
                 // Create a new environment with the type parameters defined.
-                // let mut new_env = env.clone();
-                // // Define the type parameters in the environment.
-                // new_env.define_types(
-                //     ty_params
-                //         .clone()
-                //         .into_iter()
-                //         .map(|p| (p.clone(), Type::Unit(p, Box::new(Type::None))))
-                //         .collect(),
-                // );
-                // // Check the template type.
-                // template.type_check(&new_env)
-                Ok(())
+                let mut new_env = env.clone();
+                // Define the type parameters in the environment.
+                new_env.define_types(
+                    ty_params
+                        .clone()
+                        .into_iter()
+                        .map(|p| (p.clone(), Type::Unit(p, Box::new(Type::None))))
+                        .collect(),
+                );
+                // Check the template type.
+                template.type_check(&new_env)
+                // Ok(())
             }
 
             Self::Annotated(expr, metadata) => expr

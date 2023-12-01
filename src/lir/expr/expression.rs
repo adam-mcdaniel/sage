@@ -121,8 +121,7 @@ impl Expr {
     pub const NONE: Self = Self::ConstExpr(ConstExpr::None);
 
     pub fn is_method_call(&self, env: &Env) -> Result<bool, Error> {
-        debug!("is_method_call: {}", self);
-        Ok(match self {
+        let result = match self {
             Self::Annotated(inner, annotation) => {
                 return inner
                     .is_method_call(env)
@@ -193,7 +192,9 @@ impl Expr {
             }
 
             _ => false,
-        })
+        };
+        debug!("is_method_call: {self} = {result}");
+        Ok(result)
     }
 
     pub fn transform_method_call(&self, env: &Env) -> Result<Self, Error> {
@@ -201,7 +202,7 @@ impl Expr {
             return Ok(self.clone());
         }
 
-        debug!("transform_method_call: {}", self);
+        debug!("transform_method_call: {self} -- {self:?}");
 
         let result = match self {
             Self::Annotated(inner, metadata) => inner
@@ -209,11 +210,12 @@ impl Expr {
                 .map_err(|e| e.annotate(metadata.clone())),
             Self::Apply(f, args) => {
                 match *f.clone() {
-                    Self::Annotated(inner, metadata) => inner
+                    Self::Annotated(inner, metadata) => Self::Apply(inner, args.clone())
                         .transform_method_call(env)
                         .map_err(|e| e.annotate(metadata.clone())),
 
                     Self::ConstExpr(ConstExpr::Monomorphize(template, ty_args)) => {
+                        debug!("transform_method_call: template={template} -- ty_args={ty_args:?}");
                         match *template {
                             ConstExpr::Member(val, member) => {
                                 // Apply the type arguments to the method.
@@ -231,7 +233,6 @@ impl Expr {
                                     .clone()
                                     .monomorphize(ty_args.clone());
                                 trace!(target: "member", "function value: {associated_function} in {env}");
-
                                 // Get the type of the function
                                 let associated_function_type = env
                                     .get_type_of_associated_const(&val_type, &name)
@@ -274,14 +275,16 @@ impl Expr {
                                     new_args,
                                 ))
                             }
-                            _ => Ok(Self::Apply(
-                                Expr::ConstExpr(ConstExpr::Monomorphize(
-                                    template.clone(),
-                                    ty_args.clone(),
+                            _ => {
+                                Ok(Self::Apply(
+                                    Expr::ConstExpr(ConstExpr::Monomorphize(
+                                        template.clone(),
+                                        ty_args.clone(),
+                                    ))
+                                    .into(),
+                                    args.clone(),
                                 ))
-                                .into(),
-                                args.clone(),
-                            )),
+                            }
                         }
                     }
 
