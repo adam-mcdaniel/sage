@@ -323,6 +323,11 @@ impl GetType for Expr {
                     // we use the `as_int` interpretation of the field.
                     // This is because tuples are accesed by integer index.
                     Type::Tuple(items) => {
+                        if as_symbol.is_ok() {
+                            return env
+                                .get_type_of_associated_const(&Type::Tuple(items), &as_symbol?)
+                                .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
+                        }
                         // Get the index of the field.
                         let n = as_int? as usize;
                         // If the index is in range, return the type of the field.

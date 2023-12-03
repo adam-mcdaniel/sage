@@ -210,9 +210,10 @@ impl ConstExpr {
 
                 Self::Member(container, member) => {
                     let container_ty = container.get_type_checked(env, i)?;
+                    trace!("Member access on type: {container_ty}: {container} . {member}");
                     // container_ty.add_monomorphized_associated_consts(env)?;
                     Ok(
-                        match (container.clone().eval(env)?, member.clone().eval(env)?) {
+                        match (container.clone().eval(env)?, *member.clone()) {
                             (Self::Tuple(tuple), Self::Int(n)) => {
                                 // If the index is out of bounds, return an error.
                                 if n >= tuple.len() as i64 || n < 0 {
@@ -255,6 +256,19 @@ impl ConstExpr {
                                         "Member access not implemented for: {container_ty} . {member}"
                                     );
                                     return Err(Error::SymbolNotDefined(name));
+                                }
+                            }
+                            (_, Self::Symbol(name)) => {
+                                if let Some(constant) = env.get_associated_const(&container_ty, &name) {
+                                    constant.clone().eval_checked(env, i)?
+                                } else{
+                                    error!(
+                                        "Member access not implemented for: {container_ty} . {member}"
+                                    );
+                                    return Err(Error::MemberNotFound(
+                                        (*container).into(),
+                                        (*member).into(),
+                                    ));
                                 }
                             }
                             _ => {
@@ -414,37 +428,58 @@ impl ConstExpr {
 
     /// Try to get this constant expression as an integer.
     pub fn as_int(self, env: &Env) -> Result<i64, Error> {
-        // trace!("Getting int from constexpr: {self}");
-        match self.eval_checked(env, 0) {
-            Ok(Self::Int(n)) => Ok(n),
-            Ok(other) => Err(Error::NonIntegralConst(other)),
-            Err(err) => Err(err),
+        trace!("Getting int from constexpr: {self}");
+        // match self.eval_checked(env, 0) {
+        //     Ok(Self::Int(n)) => Ok(n),
+        //     Ok(other) => Err(Error::NonIntegralConst(other)),
+        //     Err(err) => Err(err),
+        // }
+        match self {
+            Self::Int(n) => Ok(n),
+            other => match other.eval(env)? {
+                Self::Int(n) => Ok(n),
+                other => Err(Error::NonIntegralConst(other)),
+            },
         }
     }
 
     /// Try to get this constant expression as a float.
     pub fn as_float(self, env: &Env) -> Result<f64, Error> {
-        // trace!("Getting float from constexpr: {self}");
-        match self.eval_checked(env, 0) {
-            Ok(Self::Float(n)) => Ok(n),
-            Ok(other) => Err(Error::NonIntegralConst(other)),
-            Err(err) => Err(err),
+        trace!("Getting float from constexpr: {self}");
+        // match self.eval_checked(env, 0) {
+        //     Ok(Self::Float(n)) => Ok(n),
+        //     Ok(other) => Err(Error::NonIntegralConst(other)),
+        //     Err(err) => Err(err),
+        // }
+        match self {
+            Self::Float(n) => Ok(n),
+            other => match other.eval(env)? {
+                Self::Float(n) => Ok(n),
+                other => Err(Error::NonIntegralConst(other)),
+            },
         }
     }
 
     /// Try to get this constant expression as a boolean value.
     pub fn as_bool(self, env: &Env) -> Result<bool, Error> {
-        // trace!("Getting bool from constexpr: {self}");
-        match self.eval_checked(env, 0) {
-            Ok(Self::Bool(b)) => Ok(b),
-            Ok(other) => Err(Error::NonIntegralConst(other)),
-            Err(err) => Err(err),
+        trace!("Getting bool from constexpr: {self}");
+        // match self.eval_checked(env, 0) {
+        //     Ok(Self::Bool(b)) => Ok(b),
+        //     Ok(other) => Err(Error::NonIntegralConst(other)),
+        //     Err(err) => Err(err),
+        // }
+        match self {
+            Self::Bool(n) => Ok(n),
+            other => match other.eval(env)? {
+                Self::Bool(n) => Ok(n),
+                other => Err(Error::NonIntegralConst(other)),
+            },
         }
     }
 
     /// Try to get this constant expression as a symbol (like in LISP).
     pub fn as_symbol(self, env: &Env) -> Result<String, Error> {
-        // trace!("Getting symbol from constexpr: {self}");
+        trace!("Getting symbol from constexpr: {self} ---- {self:?}");
         match self {
             // Check to see if the constexpr is already a symbol.
             Self::Symbol(name) => Ok(name),
@@ -465,7 +500,7 @@ impl Simplify for ConstExpr {
 
 impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        trace!("Getting type from constexpr: {self}");
+        trace!("Getting type from constexpr: {self} -- {self:?}");
         Ok(match self.clone() {
             Self::Template(params, expr) => {
                 let mut new_env = env.clone();
@@ -488,7 +523,7 @@ impl GetType for ConstExpr {
                 let as_int = field.clone().as_int(env);
 
                 let val_type = val.get_type_checked(env, i)?;
-                val_type.add_monomorphized_associated_consts(env)?;
+                // val_type.add_monomorphized_associated_consts(env)?;
                 // Get the type of the value to get the member of.
                 match &val_type.simplify_until_concrete(env)? {
                     Type::Unit(_unit_name, inner_ty) => {
@@ -510,6 +545,16 @@ impl GetType for ConstExpr {
                     // we use the `as_int` interpretation of the field.
                     // This is because tuples are accesed by integer index.
                     Type::Tuple(items) => {
+                        trace!("Getting type of associated const: {val_type} . {as_int:?} {as_symbol:?}");
+                        if as_symbol.is_ok() {
+                            return env.get_type_of_associated_const(&val_type, &as_symbol?).ok_or(
+                                Error::MemberNotFound(
+                                    (*val.clone()).into(),
+                                    (*field.clone()).into(),
+                                ),
+                            );
+                        }
+
                         // Get the index of the field.
                         let n = as_int? as usize;
                         // If the index is in range, return the type of the field.

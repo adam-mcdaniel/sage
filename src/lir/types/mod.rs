@@ -6,6 +6,7 @@
 use super::{ConstExpr, Env, Error, Expr, Simplify};
 use core::fmt;
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::sync::Mutex;
 
 mod check;
 mod inference;
@@ -185,6 +186,15 @@ pub enum Type {
     Apply(Box<Self>, Vec<Self>),
 }
 
+lazy_static::lazy_static! {
+    // Monomorphized types are recursive.
+    static ref RECURSIVE_TYPES: Mutex<HashSet<Type>> = Mutex::new(HashSet::new());
+    static ref NON_RECURSIVE_TYPES: Mutex<HashSet<Type>> = Mutex::new(HashSet::new());
+}
+
+unsafe impl Send for Type {}
+unsafe impl Sync for Type {}
+
 impl Type {
     /// This is the maximum number of times a type will be simplified recursively.
     pub const SIMPLIFY_RECURSION_LIMIT: usize = 30;
@@ -199,7 +209,13 @@ impl Type {
         symbols: &mut HashSet<String>,
         env: &Env,
     ) -> Result<bool, Error> {
-        match self {
+        if RECURSIVE_TYPES.lock().unwrap().contains(self) {
+            return Ok(true);
+        } else if NON_RECURSIVE_TYPES.lock().unwrap().contains(self) {
+            return Ok(false);
+        }
+
+        let result = match self {
             Self::Symbol(name) => {
                 if symbols.contains(name) {
                     Ok(true)
@@ -297,10 +313,24 @@ impl Type {
             | Self::Bool
             | Self::Any
             | Self::Never => Ok(false),
+        };
+        // Save the result for later.
+        if matches!(result, Ok(true)) {
+            let mut recursive_types = RECURSIVE_TYPES.lock().unwrap();
+            // RECURSIVE_TYPES.lock().unwrap().insert(self.clone());
+            recursive_types.insert(self.clone());
+
+        } else if matches!(result, Ok(false)) {
+            // NON_RECURSIVE_TYPES.lock().unwrap().insert(self.clone());
+            let mut non_recursive_types = NON_RECURSIVE_TYPES.lock().unwrap();
+            non_recursive_types.insert(self.clone());
         }
+
+        result
     }
 
     pub fn strip_template(&self, env: &Env) -> Self {
+        debug!("strip_template: {}", self);
         match self {
             Self::Apply(template, _) => template.strip_template(env),
             Self::Poly(_, template) => *template.clone(),
@@ -1923,12 +1953,26 @@ impl Type {
                         return Ok(());
                     }
                 }
-                // error!("{} does not have member {}", self, member);
-                Err(Error::MemberNotFound(expr.clone(), member.clone()))
+
+                let name = member.clone().as_symbol(env)?;
+                if env.has_associated_const(self, &name) {
+                    Ok(())
+                } else {
+                    Err(Error::MemberNotFound(expr.clone(), member.clone()))
+                }
             }
-            Type::Union(types) => match types.get(&member.clone().as_symbol(env)?) {
-                Some(_) => Ok(()),
-                None => Err(Error::MemberNotFound(expr.clone(), member.clone())),
+            Type::Union(types) => {
+                let name = member.clone().as_symbol(env)?;
+                match types.get(&name) {
+                    Some(_) => Ok(()),
+                    None => {
+                        if env.has_associated_const(self, &name) {
+                            Ok(())
+                        } else {
+                            Err(Error::MemberNotFound(expr.clone(), member.clone()))
+                        }
+                    },
+                }
             },
             Type::Let(name, t, ret) => {
                 // Create a new scope and define the new type within it

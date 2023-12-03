@@ -654,7 +654,7 @@ impl Env {
                         self.add_associated_const(*template.clone(), name, templated_const)?;
                     }
                 } else {
-                    ty.add_monomorphized_associated_consts(self)?;
+                    // ty.add_monomorphized_associated_consts(self)?;
                     for (name, associated_const) in impls {
                         self.add_associated_const(ty.clone(), name, associated_const.clone())?;
                     }

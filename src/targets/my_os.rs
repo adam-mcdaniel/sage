@@ -143,8 +143,8 @@ impl Architecture for MyOS {
     fn put(&mut self, dst: &Output) -> Result<String, String> {
         match dst.mode {
             OutputMode::StdoutChar => Ok("putchar(reg.i);".to_string()),
-            OutputMode::StdoutInt => Ok("printf(\"%ld\", reg.i);".to_string()),
-            OutputMode::StdoutFloat => Ok("printf(\"%lf\", reg.f);".to_string()),
+            OutputMode::StdoutInt => Ok("putint(reg.i, 10);".to_string()),
+            OutputMode::StdoutFloat => Ok("putfloat(reg.f);".to_string()),
             OutputMode::StderrChar => Ok("fprintf(stderr, \"%c\", reg.i);".to_string()),
             OutputMode::StderrInt => Ok("fprintf(stderr, \"%lld\", reg.i);".to_string()),
             OutputMode::StderrFloat => Ok("fprintf(stderr, \"%lf\", reg.f);".to_string()),
@@ -187,6 +187,8 @@ impl Architecture for MyOS {
         let mut result = r#"#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <ctype.h>
+#include <sage.h>
 
 typedef union cell {
     int64_t i;
@@ -196,6 +198,7 @@ typedef union cell {
 
 union cell *tape, *refs, *ptr, **ref, reg, *ffi_channel, *ffi_ptr;
 uint8_t *heap_start, *heap_end;
+uint64_t heap_remaining;
 unsigned int ref_ptr = 0;
 void (**funs)(void);
 
@@ -285,34 +288,151 @@ void __puts() {
     }
 }
 
+void putint(int64_t num, int64_t base) {
+	if (base == 10) {
+		printf("%ld", num);
+	}
+	else if (base == 16) {
+		printf("%lx", num);
+	}
+	else if (base == 8) {
+		printf("%lo", num);
+	}
+	else if (base == 2) {
+		printf("%lx", num);
+	}
+	else {
+		printf("%ld", num);
+	}
+}
+
 void __putint() {
     int64_t num = ffi_ptr[-1].i;
     int64_t base = ffi_ptr[0].i;
-    if (base == 10) {
-        printf("%ld", num);
-    }
-    else if (base == 16) {
-        printf("%lx", num);
-    }
-    else if (base == 8) {
-        printf("%lo", num);
-    }
-    else if (base == 2) {
-        printf("%lx", num);
-    }
-    else {
-        printf("%ld", num);
-    }
+	putint(num, base);
+	ffi_ptr -= 2;
 }
 
-void __putaddr() {
-    union cell *src = ffi_ptr[0].p;
-    printf("%p", src);
+#define MAX_PRECISION 10
+const double rounders[MAX_PRECISION + 1] =
+{
+	0.5,				// 0
+	0.05,				// 1
+	0.005,				// 2
+	0.0005,				// 3
+	0.00005,			// 4
+	0.000005,			// 5
+	0.0000005,			// 6
+	0.00000005,			// 7
+	0.000000005,		// 8
+	0.0000000005,		// 9
+	0.00000000005		// 10
+};
+
+char *ftoa(double f, char * buf, int precision)
+{
+	char * ptr = buf;
+	char * p = ptr;
+	char * p1;
+	char c;
+	long intPart;
+
+	// check precision bounds
+	if (precision > MAX_PRECISION)
+		precision = MAX_PRECISION;
+
+	// sign stuff
+	if (f < 0)
+	{
+		f = -f;
+		*ptr++ = '-';
+	}
+
+	if (precision < 0)  // negative precision == automatic precision guess
+	{
+		if (f < 1.0) precision = 6;
+		else if (f < 10.0) precision = 5;
+		else if (f < 100.0) precision = 4;
+		else if (f < 1000.0) precision = 3;
+		else if (f < 10000.0) precision = 2;
+		else if (f < 100000.0) precision = 1;
+		else precision = 0;
+	}
+
+	// round value according the precision
+	if (precision)
+		f += rounders[precision];
+
+	// integer part...
+	intPart = f;
+	f -= intPart;
+
+	if (!intPart)
+		*ptr++ = '0';
+	else
+	{
+		// save start pointer
+		p = ptr;
+
+		// convert (reverse order)
+		while (intPart)
+		{
+			*p++ = '0' + intPart % 10;
+			intPart /= 10;
+		}
+
+		// save end pos
+		p1 = p;
+
+		// reverse result
+		while (p > ptr)
+		{
+			c = *--p;
+			*p = *ptr;
+			*ptr++ = c;
+		}
+
+		// restore end pos
+		ptr = p1;
+	}
+
+	// decimal part
+	if (precision)
+	{
+		// place decimal point
+		*ptr++ = '.';
+
+		// convert
+		while (precision--)
+		{
+			f *= 10.0;
+			c = f;
+			*ptr++ = '0' + c;
+			f -= c;
+		}
+	}
+
+	// terminating zero
+	*ptr = 0;
+
+	return buf;
+}
+
+void putfloat(double num) {
+    char buf[256];
+    ftoa(num, buf, 6);
+    for (int i = 0; i < 256; i++) {
+        if (buf[i] == 0) {
+            break;
+        }
+        putchar(buf[i]);
+    }
 }
 
 void salloc_init(uint8_t *start, uint8_t *end) {
     heap_start = start;
     heap_end = end;
+    heap_remaining = ((uintptr_t)end - (uintptr_t)start);
     // printf("salloc_init: %p - %p\n", heap_start, heap_end);
 }
 
@@ -331,6 +451,8 @@ void *salloc(uint32_t bytes) {
     }
     *ret = words;
     ret++;
+    uint64_t amount_allocated = words * 8;
+    heap_remaining -= amount_allocated;
 	// printf("salloc: %p (remaining=%d)\n", ret, (uint32_t)(heap_end - ((uint8_t*)ret + bytes)));
     return ret;
 }
@@ -346,6 +468,8 @@ void sfree(void *ptr) {
     uint64_t words = *(p - 1);
     memset(p - 1, 0, words / 8);
 
+    heap_remaining += words * 8;
+
     return;
 }
 
@@ -358,6 +482,17 @@ void __free() {
     union cell *ptr = ffi_ptr[0].p;
 	ffi_ptr--;
     sfree(ptr);
+}
+
+void __used_memory() {
+    ffi_ptr++;
+    uint64_t heap_size = (uint64_t)heap_end - (uint64_t)heap_start;
+    ffi_ptr[0].i = heap_size - heap_remaining;
+}
+
+void __remaining_memory() {
+    ffi_ptr++;
+    ffi_ptr[0].i = heap_remaining;
 }
 
 char *line;
@@ -504,9 +639,124 @@ void __getint() {
     ffi_ptr[0].i = sgetint(radix);
 }
 
+void __putfloat() {
+    double num = ffi_ptr[0].f;
+    putfloat(num);
+    ffi_ptr--;
+}
+
+void __putaddr() {
+    union cell *src = ffi_ptr[0].p;
+    printf("%p", src);
+    ffi_ptr--;
+}
+
 void __putchar() {
     putchar(ffi_ptr[0].i);
     ffi_ptr--;
+}
+
+void __get_pid() {
+    ffi_ptr++;
+    ffi_ptr[0].i = get_pid();
+}
+
+void __next_pid() {
+    ffi_ptr[0].i = next_pid(ffi_ptr[0].i);
+}
+
+void __pid_get_env() {
+    int pid = ffi_ptr[-2].i;
+    const cell *name = ffi_ptr[-1].p;
+    cell *value = ffi_ptr[0].p;
+    ffi_ptr -= 3;
+    
+    // Convert the 64 bit elements to char arrays
+    char name_str[256] = {0};
+    for (int i = 0; i < 256; i++) {
+        name_str[i] = name[i].i;
+    }
+    char value_str[256] = {0};
+    int result = pid_get_env(pid, name_str, value_str);
+	for (int i = 0; i < 256; i++) {
+		value[i].i = value_str[i];
+	}
+    ffi_ptr++;
+    ffi_ptr[0].i = result;
+}
+
+void __pid_put_env() {
+    int pid = ffi_ptr[-2].i;
+    const cell *name = ffi_ptr[-1].p;
+    const cell *value = ffi_ptr[0].p;
+    ffi_ptr -= 3;
+    
+    // Convert the 64 bit elements to char arrays
+    char name_str[256];
+    char value_str[256];
+    for (int i = 0; i < 256; i++) {
+        name_str[i] = name[i].i;
+        value_str[i] = value[i].i;
+    }
+	value_str[255] = '\0';
+	name_str[255] = '\0';
+    int result = pid_put_env(pid, name_str, value_str);
+    ffi_ptr++;
+    ffi_ptr[0].i = result;
+}
+
+void __screen_draw_rect() {
+    // Get the pixel buffer
+    const cell *pixels = ffi_ptr[-3].p;
+    // Get the rectangle pointer
+    const cell *rect_vals = ffi_ptr[-2].p;
+	uint64_t x_scale = ffi_ptr[-1].i;
+	uint64_t y_scale = ffi_ptr[0].i;
+    ffi_ptr -= 4;
+	// printf("screen_draw_rect: args = %p, %p, %ld, %ld\n", pixels, rect_vals, x_scale, y_scale);
+
+    Rectangle rect;
+    rect.x = rect_vals[0].i;
+    rect.y = rect_vals[1].i;
+    rect.width = rect_vals[2].i;
+    rect.height = rect_vals[3].i;
+	// printf("screen_draw_rect: rect = %ld, %ld, %ld, %ld\n", rect.x, rect.y, rect.width, rect.height);
+
+	Pixel buf[rect.width * rect.height];
+	for (uint32_t i = 0; i < rect.width * rect.height; i++) {
+        
+		buf[i].r = pixels[i * 4 + 0].i;
+		buf[i].g = pixels[i * 4 + 1].i;
+		buf[i].b = pixels[i * 4 + 2].i;
+		buf[i].a = pixels[i * 4 + 3].i;
+	}
+	// printf("screen_draw_rect: buf = %p\n", buf);
+	screen_draw_rect(buf, &rect, x_scale, y_scale);
+	
+	ffi_ptr++;
+	ffi_ptr[0].i = 0;
+}
+
+void __screen_flush() {
+    screen_flush();
+}
+
+void __get_keyboard_event() {
+    ffi_ptr+=3;
+    VirtioInputEvent event;
+	get_keyboard_event(&event);
+    ffi_ptr[-2].i = event.type;
+    ffi_ptr[-1].i = event.code;
+    ffi_ptr[0].i = event.value;
+}
+
+void __get_tablet_event() {
+    ffi_ptr+=3;
+    VirtioInputEvent event;
+	get_tablet_event(&event);
+    ffi_ptr[-2].i = event.type;
+    ffi_ptr[-1].i = event.code;
+    ffi_ptr[0].i = event.value;
 }
 "#
         .to_string();
@@ -521,13 +771,14 @@ void __putchar() {
     fn post_funs(&self, funs: Vec<i32>) -> Option<String> {
         let mut result = String::from(
             r#"int main () {
-    uint8_t buf[0x80000] = {0};
+    uint8_t buf[0xc0000] = {0};
     salloc_init(buf, buf + sizeof(buf));
 
     funs = (void(**)(void))salloc(200 * sizeof(void*));
     ffi_channel = (cell*)salloc(256 * sizeof(cell));
-    tape = (cell*)salloc(30000 * sizeof(cell));
+    tape = (cell*)salloc(50000 * sizeof(cell));
     refs = (cell*)salloc(128 * sizeof(cell));
+            
 
     sgetchar_init();
 

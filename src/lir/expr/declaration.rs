@@ -457,7 +457,7 @@ impl TypeCheck for Declaration {
                         templated_const.type_check(&new_env)?;
                     }
                 } else {
-                    ty.add_monomorphized_associated_consts(env)?;
+                    // ty.add_monomorphized_associated_consts(env)?;
                     for (name, associated_const) in impls {
                         new_env.add_associated_const(ty.clone(), name, associated_const.clone())?;
                     }

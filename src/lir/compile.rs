@@ -794,7 +794,7 @@ impl Compile for Expr {
                 Expr::Member(val, name) => {
                     // Get the type of the value we want to get a field from.
                     let val_type = val.get_type(env)?;
-                    val_type.add_monomorphized_associated_consts(env)?;
+                    // val_type.add_monomorphized_associated_consts(env)?;
 
                     // Push the address of the struct, tuple, or union onto the stack.
                     match val_type.simplify_until_has_members(env)? {

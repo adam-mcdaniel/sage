@@ -103,7 +103,7 @@ impl PolyProcedure {
             .map(|ty| {
                 // Simplify the type until it is concrete
                 let concrete = ty.simplify_until_concrete(env)?;
-                concrete.add_monomorphized_associated_consts(env)?;
+                // concrete.add_monomorphized_associated_consts(env)?;
                 Ok(concrete)
             })
             .collect::<Result<Vec<_>, Error>>()?;
@@ -120,7 +120,7 @@ impl PolyProcedure {
             // Simplify the type until it is simple.
             // This reduces to the concrete version of the type application.
             let concrete = ty.simplify_until_concrete(env)?;
-            concrete.add_monomorphized_associated_consts(env)?;
+            // concrete.add_monomorphized_associated_consts(env)?;
             Ok(concrete)
         };
         // Distribute the type parameters over the body and arguments of the function.
