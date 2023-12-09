@@ -6,9 +6,14 @@
 //! which are then executed by the runtime.
 
 use super::ops::*;
-use crate::lir::{Annotation, Declaration, ConstExpr, Mutability, Pattern, Procedure, Type};
+use crate::lir::{
+    Annotation, ConstExpr, Declaration, Env, Error, GetType, Mutability, Pattern, Procedure, Type,
+};
 use core::fmt;
 use std::collections::BTreeMap;
+use std::hash::{Hash, Hasher};
+
+use log::*;
 
 /// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
 ///       This way, we don't overflow the stack with several clones of the environment.
@@ -116,6 +121,339 @@ impl Expr {
     /// every time we want to use `None`.
     pub const NONE: Self = Self::ConstExpr(ConstExpr::None);
 
+    pub fn is_method_call(&self, env: &Env) -> Result<bool, Error> {
+        let result = match self {
+            Self::Annotated(inner, annotation) => {
+                return inner
+                    .is_method_call(env)
+                    .map_err(|e| e.annotate(annotation.clone()))
+            }
+
+            Self::Apply(fun, args) => {
+                match *fun.clone() {
+                    Self::Annotated(inner, annotation) => {
+                        return Self::Apply(inner, args.clone())
+                            .is_method_call(env)
+                            .map_err(|e| e.annotate(annotation.clone()))
+                    }
+
+                    Self::Member(val, name) => {
+                        let val_type = val.get_type(env)?;
+                        // val_type.add_monomorphized_associated_consts(env)?;
+                        // Is this an associated function?
+                        match val_type {
+                            Type::Type(_) => false,
+                            _ => {
+                                if let Ok(name) = name.as_symbol(env) {
+                                    env.has_associated_const(&val_type, &name)
+                                } else {
+                                    false
+                                }
+                            }
+                        }
+                    }
+                    Self::ConstExpr(ConstExpr::Monomorphize(template, _ty_args)) => {
+                        match *template {
+                            ConstExpr::Member(val, name) => {
+                                let val_type = val.get_type(env)?;
+                                // val_type.add_monomorphized_associated_consts(env)?;
+                                // Is this an associated function?
+                                match val_type {
+                                    Type::Type(_) => false,
+                                    _ => {
+                                        if let Ok(name) = name.as_symbol(env) {
+                                            env.has_associated_const(&val_type, &name)
+                                        } else {
+                                            false
+                                        }
+                                    }
+                                }
+                            }
+                            _ => false,
+                        }
+                    }
+
+                    Self::ConstExpr(ConstExpr::Member(val, name)) => {
+                        let val_type = val.get_type(env)?;
+                        // val_type.add_monomorphized_associated_consts(env)?;
+                        // Is this an associated function?
+                        match val_type {
+                            Type::Type(_) => false,
+                            _ => {
+                                if let Ok(name) = name.as_symbol(env) {
+                                    env.has_associated_const(&val_type, &name)
+                                } else {
+                                    false
+                                }
+                            }
+                        }
+                    }
+                    _ => false,
+                }
+            }
+
+            _ => false,
+        };
+        debug!("is_method_call: {self} = {result}");
+        Ok(result)
+    }
+
+    pub fn transform_method_call(&self, env: &Env) -> Result<Self, Error> {
+        debug!("transform_method_call: {self} -- {self:?}");
+
+        let result = match self {
+            Self::Annotated(inner, metadata) => inner
+                .transform_method_call(env)
+                .map_err(|e| e.annotate(metadata.clone())),
+            Self::Apply(f, args) => {
+                match *f.clone() {
+                    Self::Annotated(inner, metadata) => Self::Apply(inner, args.clone())
+                        .transform_method_call(env)
+                        .map_err(|e| e.annotate(metadata.clone())),
+
+                    Self::ConstExpr(ConstExpr::Monomorphize(template, ty_args)) => {
+                        debug!("transform_method_call: template={template} -- ty_args={ty_args:?}");
+                        match *template {
+                            ConstExpr::Member(val, member) => {
+                                // Apply the type arguments to the method.
+                                let name = member.as_symbol(env)?;
+
+                                // Check if the value actually has a member with this name.
+                                let val_type = val.get_type(env)?;
+                                // val_type.add_monomorphized_associated_consts(env)?;
+                                trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
+                                // If the value has a member with this name,
+                                trace!(target: "member", "WHOOP WHOOP");
+                                let (mut associated_function, mut associated_function_type) = env
+                                    .get_associated_const(&val_type, &name)
+                                    .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
+                                // .monomorphize(ty_args.clone());
+                                associated_function =
+                                    associated_function.monomorphize(ty_args.clone());
+                                associated_function_type =
+                                    associated_function_type.apply(ty_args.clone());
+                                // let associated_function = ConstExpr::Type(val_type.clone())
+                                //     .field(*member)
+                                //     .monomorphize(ty_args.clone());
+                                trace!(target: "member", "function value: {associated_function} in {env}");
+                                // Get the type of the function
+                                // let associated_function_type = env
+                                //     .get_type_of_associated_const(&val_type, &name)
+                                //     .ok_or_else(|| Error::SymbolNotDefined(name))?
+                                //     .apply(ty_args);
+                                // trace!(target: "member", "got function type: {}", associated_function_type);
+
+                                let mut new_args = vec![];
+                                if let Some(expected_mutability) =
+                                    associated_function_type.get_self_param_mutability(env)
+                                {
+                                    if val_type.can_decay_to(
+                                        &Type::Pointer(expected_mutability, Type::Any.into()),
+                                        env,
+                                    )? {
+                                        trace!(target: "member", "decaying {val} to {expected_mutability} pointer");
+                                        new_args.push(Expr::ConstExpr(*val.clone()));
+                                    } else {
+                                        trace!(target: "member", "referencing {val} as {expected_mutability} pointer");
+                                        new_args.push(
+                                            Expr::ConstExpr(*val.clone())
+                                                .refer(expected_mutability),
+                                        );
+                                    }
+                                } else {
+                                    trace!(target: "member", "passing by value {val}");
+                                    if val_type.can_decay_to(
+                                        &Type::Pointer(Mutability::Any, Type::Any.into()),
+                                        env,
+                                    )? {
+                                        new_args.push(Expr::ConstExpr(*val.clone()).deref());
+                                    } else {
+                                        new_args.push(Expr::ConstExpr(*val.clone()));
+                                    }
+                                }
+                                new_args.extend(args.clone());
+                                Ok(Self::Apply(
+                                    Expr::ConstExpr(associated_function).into(),
+                                    new_args,
+                                ))
+                            }
+                            _ => Ok(Self::Apply(
+                                Expr::ConstExpr(ConstExpr::Monomorphize(
+                                    template.clone(),
+                                    ty_args.clone(),
+                                ))
+                                .into(),
+                                args.clone(),
+                            )),
+                        }
+                    }
+
+                    Self::ConstExpr(ConstExpr::Member(val, member)) => {
+                        let name = member.as_symbol(env);
+                        if self.is_method_call(env)? {
+                            let name = name?;
+                            // Check if the value actually has a member with this name.
+                            let val_type = val.get_type(env)?;
+                            // val_type.add_monomorphized_associated_consts(env)?;
+                            trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
+                            // If the value has a member with this name,
+                            trace!(target: "member", "WHOOP WHOOP");
+
+                            let (associated_function, associated_function_type) = env
+                                .get_associated_const(&val_type, &name)
+                                .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
+
+                            // let associated_function = env
+                            //     .get_associated_const(&val_type, &name)
+                            //     .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
+                            // let associated_function = ConstExpr::Type(val_type.clone())
+                            //     .field(*member)
+                            //     .monomorphize(ty_args.clone());
+                            trace!(target: "member", "function value: {associated_function} in {env}");
+
+                            // Get the type of the function
+                            // let associated_function_type = env
+                            //     .get_type_of_associated_const(&val_type, &name)
+                            //     .ok_or_else(|| Error::SymbolNotDefined(name))?;
+                            trace!(target: "member", "got function type: {}", associated_function_type);
+                            // Get the first argument's type
+                            let mut new_args = vec![];
+                            if let Some(expected_mutability) =
+                                associated_function_type.get_self_param_mutability(env)
+                            {
+                                if val_type.can_decay_to(
+                                    &Type::Pointer(expected_mutability, Type::Any.into()),
+                                    env,
+                                )? {
+                                    trace!(target: "member", "decaying {val} to {expected_mutability} pointer");
+                                    new_args.push(Expr::ConstExpr(*val.clone()));
+                                } else {
+                                    trace!(target: "member", "referencing {val} as {expected_mutability} pointer");
+                                    new_args.push(
+                                        Expr::ConstExpr(*val.clone()).refer(expected_mutability),
+                                    );
+                                }
+                            } else {
+                                trace!(target: "member", "passing by value {val}");
+                                if val_type.can_decay_to(
+                                    &Type::Pointer(Mutability::Any, Type::Any.into()),
+                                    env,
+                                )? {
+                                    new_args.push(Expr::ConstExpr(*val.clone()).deref());
+                                } else {
+                                    new_args.push(Expr::ConstExpr(*val.clone()));
+                                }
+                            }
+                            new_args.extend(args.clone());
+                            Ok(Self::Apply(
+                                Expr::ConstExpr(associated_function).into(),
+                                new_args,
+                            ))
+                        } else {
+                            // Compile it normally:
+                            // Push the procedure on the stack.
+                            Ok(self.clone())
+                        }
+                    }
+
+                    Self::Member(val, member) => {
+                        // Try to get the member of the underlying type.
+                        let name = member.as_symbol(env);
+                        if self.is_method_call(env)? {
+                            let name = name?;
+                            // Check if the value actually has a member with this name.
+                            let val_type = val.get_type(env)?;
+                            // val_type.add_monomorphized_associated_consts(env)?;
+                            trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
+                            // If the value has a member with this name,
+                            trace!(target: "member", "WHOOP WHOOP");
+                            let (associated_function, associated_function_type) = env
+                                .get_associated_const(&val_type, &name)
+                                .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
+                            trace!(target: "member", "function value: {associated_function} in {env}");
+
+                            // Get the type of the function
+                            // let associated_function_type = env
+                            //     .get_type_of_associated_const(&val_type, &name)
+                            //     .ok_or_else(|| Error::SymbolNotDefined(name))?
+                            //     .clone();
+                            trace!(target: "member", "got function type: {}", associated_function_type);
+                            // Get the first argument's type
+                            let mut new_args = vec![];
+                            if let Some(expected_mutability) =
+                                associated_function_type.get_self_param_mutability(env)
+                            {
+                                if val_type.can_decay_to(
+                                    &Type::Pointer(expected_mutability, Type::Any.into()),
+                                    env,
+                                )? {
+                                    trace!(target: "member", "decaying {val} to {expected_mutability} pointer");
+                                    new_args.push(*val.clone());
+                                } else {
+                                    trace!(target: "member", "referencing {val} as {expected_mutability} pointer");
+                                    new_args.push(val.refer(expected_mutability));
+                                }
+                            } else {
+                                trace!(target: "member", "passing by value {val}");
+                                if val_type.can_decay_to(
+                                    &Type::Pointer(Mutability::Any, Type::Any.into()),
+                                    env,
+                                )? {
+                                    new_args.push(val.deref());
+                                } else {
+                                    new_args.push(*val.clone());
+                                }
+                            }
+                            new_args.extend(args.clone());
+                            Ok(Self::Apply(
+                                Expr::ConstExpr(associated_function).into(),
+                                new_args,
+                            ))
+                        } else {
+                            // Compile it normally:
+                            // Push the procedure on the stack.
+                            Ok(self.clone())
+                        }
+                    }
+                    _ => Err(Error::MemberNotFound(self.clone(), ConstExpr::None)),
+                }
+            }
+            _ => Ok(self.clone()),
+        }?;
+
+        debug!("transform_method_call result: {}", result);
+        Ok(result)
+    }
+
+    pub fn get_method_call_mutability(&self, env: &Env) -> Result<Option<Mutability>, Error> {
+        match self {
+            Self::Annotated(inner, annotation) => inner
+                .get_method_call_mutability(env)
+                .map_err(|e| e.annotate(annotation.clone())),
+
+            Self::Apply(fun, args) => {
+                let fun_type = fun.get_type(env)?;
+                match *fun.clone() {
+                    Self::Annotated(inner, annotation) => Self::Apply(inner, args.clone())
+                        .get_method_call_mutability(env)
+                        .map_err(|e| e.annotate(annotation.clone())),
+                    Self::Member(_val, _name) => {
+                        // Check if the value actually has a member with this name.
+                        // let val_type = val.get_type(env)?;
+                        Ok(fun_type.get_self_param_mutability(env))
+                    }
+                    Self::ConstExpr(ConstExpr::Member(_val, _name)) => {
+                        // let val_type = val.get_type(env)?;
+                        Ok(fun_type.get_self_param_mutability(env))
+                    }
+                    _ => Err(Error::MemberNotFound(self.clone(), ConstExpr::None)),
+                }
+            }
+
+            _ => Err(Error::MemberNotFound(self.clone(), ConstExpr::None)),
+        }
+    }
+
     /// An annotated expression with some metadata.
     pub fn annotate(&self, annotation: impl Into<Annotation>) -> Self {
         match self {
@@ -123,7 +461,7 @@ impl Expr {
                 let mut result = annotation.into();
                 result |= metadata.clone();
                 Self::Annotated(expr.clone(), result)
-            },
+            }
             _ => Self::Annotated(Box::new(self.clone()), annotation.into()),
         }
     }
@@ -546,8 +884,9 @@ impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         use Expr::*;
         match (self, other) {
-            (Self::Annotated(expr, _), other)
-            | (other, Self::Annotated(expr, _)) => &**expr == other,
+            (Self::Annotated(expr, _), other) | (other, Self::Annotated(expr, _)) => {
+                &**expr == other
+            }
             // A constant expression.
             (ConstExpr(a), ConstExpr(b)) => a == b,
             // A block of expressions. The last expression in the block is the value of the block.
@@ -555,7 +894,7 @@ impl PartialEq for Expr {
 
             // Create a while loop: while the first expression evaluates to true, evaluate the second expression.
             (While(cond1, body1), While(cond2, body2)) => cond1 == cond2 && body1 == body2,
-            
+
             // An if-then-else expression.
             //
             // Evaluate a condition.
@@ -632,6 +971,167 @@ impl PartialEq for Expr {
             // Index an array or pointer with an expression that evaluates to an `Int` at runtime.
             (Index(val1, idx1), Index(val2, idx2)) => val1 == val2 && idx1 == idx2,
             _ => false,
+        }
+    }
+}
+
+impl Hash for Expr {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        use Expr::*;
+        match self {
+            ConstExpr(expr) => {
+                state.write_u8(0);
+                expr.hash(state)
+            }
+            Many(exprs) => {
+                state.write_u8(1);
+                exprs.hash(state)
+            }
+            Match(expr, branches) => {
+                state.write_u8(2);
+                expr.hash(state);
+                branches.hash(state);
+            }
+            IfLet(pat, expr, t, e) => {
+                state.write_u8(3);
+                pat.hash(state);
+                expr.hash(state);
+                t.hash(state);
+                e.hash(state);
+            }
+
+            While(cond, body) => {
+                state.write_u8(2);
+                cond.hash(state);
+                body.hash(state);
+            }
+
+            If(cond, then, else_) => {
+                state.write_u8(3);
+                cond.hash(state);
+                then.hash(state);
+                else_.hash(state);
+            }
+
+            When(cond, then, else_) => {
+                state.write_u8(4);
+                cond.hash(state);
+                then.hash(state);
+                else_.hash(state);
+            }
+
+            UnaryOp(op, val) => {
+                state.write_u8(5);
+                op.display(val).hash(state);
+                val.hash(state);
+            }
+
+            BinaryOp(op, lhs, rhs) => {
+                state.write_u8(6);
+                op.display(lhs, rhs).hash(state);
+                lhs.hash(state);
+                rhs.hash(state);
+            }
+
+            TernaryOp(op, a, b, c) => {
+                state.write_u8(7);
+                op.display(a, b, c).hash(state);
+                a.hash(state);
+                b.hash(state);
+                c.hash(state);
+            }
+
+            AssignOp(op, lhs, rhs) => {
+                state.write_u8(8);
+                op.display(lhs, rhs).hash(state);
+                lhs.hash(state);
+                rhs.hash(state);
+            }
+
+            Refer(m, val) => {
+                state.write_u8(9);
+                m.hash(state);
+                val.hash(state);
+            }
+
+            Deref(val) => {
+                state.write_u8(10);
+                val.hash(state);
+            }
+
+            DerefMut(dst, src) => {
+                state.write_u8(11);
+                dst.hash(state);
+                src.hash(state);
+            }
+
+            Apply(func, args) => {
+                state.write_u8(12);
+                func.hash(state);
+                args.hash(state);
+            }
+
+            Return(val) => {
+                state.write_u8(13);
+                val.hash(state);
+            }
+
+            Array(vals) => {
+                state.write_u8(14);
+                vals.hash(state);
+            }
+
+            Tuple(vals) => {
+                state.write_u8(15);
+                vals.hash(state);
+            }
+
+            Union(ty, field, val) => {
+                state.write_u8(16);
+                ty.hash(state);
+                field.hash(state);
+                val.hash(state);
+            }
+
+            EnumUnion(ty, field, val) => {
+                state.write_u8(17);
+                ty.hash(state);
+                field.hash(state);
+                val.hash(state);
+            }
+
+            Struct(fields) => {
+                state.write_u8(18);
+                fields.hash(state);
+            }
+
+            As(val, ty) => {
+                state.write_u8(19);
+                val.hash(state);
+                ty.hash(state);
+            }
+
+            Member(val, field) => {
+                state.write_u8(20);
+                val.hash(state);
+                field.hash(state);
+            }
+
+            Index(val, idx) => {
+                state.write_u8(21);
+                val.hash(state);
+                idx.hash(state);
+            }
+
+            Annotated(expr, _) => {
+                expr.hash(state);
+            }
+
+            Declare(decl, expr) => {
+                state.write_u8(22);
+                decl.hash(state);
+                expr.hash(state);
+            }
         }
     }
 }

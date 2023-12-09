@@ -12,6 +12,10 @@ impl Add {
     fn return_type_from_types(&self, lhs: &Type, rhs: &Type, env: &Env) -> Result<Type, Error> {
         match (lhs.clone(), rhs.clone()) {
             (Type::Int, Type::Int) => Ok(Type::Int),
+
+            (Type::Int | Type::Float | Type::Cell, Type::Cell)
+            | (Type::Cell, Type::Int | Type::Float) => Ok(Type::Cell),
+
             (Type::Float, Type::Float) | (Type::Float, Type::Int) | (Type::Int, Type::Float) => {
                 Ok(Type::Float)
             }
@@ -47,6 +51,7 @@ impl Add {
             (Type::Tuple(elems1), Type::Tuple(elems2)) => Ok(Type::Tuple(
                 elems1.into_iter().chain(elems2.into_iter()).collect(),
             )),
+            (Type::Unit(_, a), b) => self.return_type_from_types(&b, &a, env),
             _ => Err(Error::InvalidBinaryOpTypes(
                 self.clone_box(),
                 lhs.clone(),
@@ -107,14 +112,23 @@ impl BinaryOp for Add {
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
         match (lhs.clone().simplify(env)?, rhs.clone().simplify(env)?) {
-            (Type::Int, Type::Int) => {
+            (Type::Unit(_, a), b) => {
+                self.compile_types(&a, &b, env, output)?;
+            }
+            (a, Type::Unit(_, b)) => {
+                self.compile_types(&a, &b, env, output)?;
+            }
+            (Type::Int, Type::Int)
+            | (Type::Int, Type::Cell)
+            | (Type::Cell, Type::Int)
+            | (Type::Cell, Type::Cell) => {
                 output.op(CoreOp::Add {
                     src: SP.deref(),
                     dst: SP.deref().offset(-1),
                 });
                 output.op(CoreOp::Pop(None, 1))
             }
-            (Type::Float, Type::Float) => {
+            (Type::Float, Type::Float) | (Type::Float, Type::Cell) | (Type::Cell, Type::Float) => {
                 output.std_op(StandardOp::Add {
                     src: SP.deref(),
                     dst: SP.deref().offset(-1),
@@ -196,10 +210,7 @@ impl BinaryOp for Add {
                         size: result_size,
                     });
                     // Pop the copied result
-                    output.op(CoreOp::Pop(
-                        None,
-                        result_size
-                    ));
+                    output.op(CoreOp::Pop(None, result_size));
                     return Ok(());
                 }
 

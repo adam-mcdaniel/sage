@@ -52,6 +52,8 @@ enum TargetType {
     CoreVM,
     /// Compile to the standard variant of the virtual machine.
     StdVM,
+    /// Compile to My OS source code (GCC only).
+    MyOS,
     /// Compile to C source code (GCC only).
     C,
     /// Compile to x86 assembly code.
@@ -146,7 +148,7 @@ impl Error {
                 } else {
                     self
                 }
-            },
+            }
             _ => self,
         }
     }
@@ -388,13 +390,23 @@ fn compile(
                     .map_err(Error::InterpreterError)?;
             }
         },
+        // If the target is MyOS source code, then compile the code to virtual machine code,
+        // and then use the MyOS target implementation to build the output source code.
+        TargetType::MyOS => write_file(
+            format!("{output}.c"),
+            match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
+                Ok(vm_code) => targets::MyOS.build_core(&vm_code.flatten()),
+                Err(vm_code) => targets::MyOS.build_std(&vm_code.flatten()),
+            }
+            .map_err(Error::BuildError)?,
+        )?,
         // If the target is C source code, then compile the code to virtual machine code,
         // and then use the C target implementation to build the output source code.
         TargetType::C => write_file(
             format!("{output}.c"),
             match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
-                Ok(vm_code) => targets::C::default().build_core(&vm_code.flatten()),
-                Err(vm_code) => targets::C::default().build_std(&vm_code.flatten()),
+                Ok(vm_code) => targets::C.build_core(&vm_code.flatten()),
+                Err(vm_code) => targets::C.build_std(&vm_code.flatten()),
             }
             .map_err(Error::BuildError)?,
         )?,
@@ -475,14 +487,14 @@ fn cli() {
     let mut builder = env_logger::Builder::from_default_env();
     builder.format_timestamp(None);
 
-    let target = args.debug.as_ref().map(|s| s.as_str());
+    let target = args.debug.as_deref();
 
     // Set the log level.
     match args.log_level {
-        LogLevel::Error if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Error),
-        LogLevel::Warn if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Warn),
-        LogLevel::Off if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Error),
-        LogLevel::Info if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Info),
+        LogLevel::Error if args.debug.is_none() => builder.filter(target, log::LevelFilter::Error),
+        LogLevel::Warn if args.debug.is_none() => builder.filter(target, log::LevelFilter::Warn),
+        LogLevel::Off if args.debug.is_none() => builder.filter(target, log::LevelFilter::Error),
+        LogLevel::Info if args.debug.is_none() => builder.filter(target, log::LevelFilter::Info),
         LogLevel::Trace => builder.filter(target, log::LevelFilter::Trace),
         _ => builder.filter(target, log::LevelFilter::Debug),
     };

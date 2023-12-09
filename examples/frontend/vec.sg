@@ -1,0 +1,140 @@
+enum Option<T> {
+    Some(T),
+    Nothing
+}
+
+def exit(code: Int): ! {
+    while True {}
+}
+
+def panic(msg: &Char): ! {
+    for let mut i=0; msg[i] != '\0'; i+=1 {
+        print(msg);
+    }
+    println();
+    debug();
+    exit(1);
+}
+// Testing
+
+impl Option<T> {
+    def unwrap(self: &Option<T>): T {
+        match self {
+            &of Some(x) => x,
+            _ => panic(&"unwrap called on Nothing" as &Char)
+        }
+    }
+
+    def is_some(self: &Option<T>): Bool {
+        match self {
+            &of Some(_) => True,
+            _ => False
+        }
+    }
+}
+
+struct Vec<T> {
+    data: &mut T,
+    length: Int,
+    capacity: Int
+}
+
+def memcpy<T>(dest: &mut T, src: &T, size: Int) {
+    for let mut i=0; i<size; i+=1 {
+        dest[i] = src[i];
+    }
+}
+
+impl Vec<T> {
+    def make(): Vec<T> {
+        let capacity = 128;
+        let data = alloc(capacity * sizeof<T>());
+        return {
+            data = data,
+            length = 0,
+            capacity = capacity
+        };
+    }
+
+    def reserve(self: &mut Vec<T>, new_capacity: Int) {
+        if new_capacity >= self.capacity {
+            let size = new_capacity * sizeof<T>() + 1024;
+            let new_data = alloc(size);
+            memcpy<T>(new_data, self.data, self.length);
+            free(self.data);
+            self.data = new_data;
+            self.capacity = new_capacity;
+        }
+    }
+
+    def push(self: &mut Vec<T>, value: T) {
+        if self.length > self.capacity / 2 {
+            self.reserve(self.capacity * 2);
+        }
+        self.data[self.length] = value;
+        self.length += 1;
+    }
+
+    def pop(self: &mut Vec<T>): Option<T> {
+        if self.length == 0 {
+            return Option<T> of Nothing;
+        }
+        self.length -= 1;
+        return Option<T> of Some(self.data[self.length]);
+    }
+
+    def map<U>(self: &Vec<T>, f: T -> U): Vec<U> {
+        let mut result = Vec.make<U>();
+        for let mut i=0; i<self.length; i+=1 {
+            result.push(f(self.data[i]));
+        }
+        return result;
+    }
+
+    def reduce<U>(self: &Vec<T>, f: (U, T) -> U, init: U): U {
+        let mut result = init;
+        for let mut i=0; i<self.length; i+=1 {
+            result = f(result, self.data[i]);
+        }
+        return result;
+    }
+
+    def get(self: &Vec<T>, index: Int): Option<T> {
+        if index < 0 || index >= self.length {
+            return Option<T> of Nothing;
+        }
+        return Option<T> of Some(self.data[index]);
+    }
+
+    def len(self: &Vec<T>): Int {
+        return self.length;
+    }
+}
+
+let mut v = Vec.make<Int>();
+
+println("v.len() = ", v.len());
+let mut i=0;
+for (); i<10000; i+=1 {
+    v.push(i);
+}
+println("v.len() = ", v.len());
+
+def double(x: Int): Int {
+    return x * 2;
+}
+
+def sum(x: Int, y: Int): Int {
+    return x + y;
+}
+
+let mut v2 = v.map<Int>(double);
+println("v2.len() = ", v2.len());
+
+for let mut i=0; i<v2.len(); i+=1 {
+    let opt = v2.get(i);
+    println("v2[", i, "] = ", opt.unwrap());
+}
+
+println("sum of v = ", v.reduce<Int>(sum, 0));
+println("sum of v2 = ", v2.reduce<Int>(sum, 0));

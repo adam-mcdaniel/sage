@@ -113,6 +113,8 @@ CoreOp: CoreOp = {
 
 StandardOp: StandardOp = {
     CoreOp => StandardOp::CoreOp(<>),
+
+    "call" <FFIBinding> => StandardOp::Call(<>),
     "set-f" <loc: Location> "," <n: IntLit> => StandardOp::Set(loc, n as f64),
     "set-f" <Location> "," <FloatLit> => StandardOp::Set(<>),
     "to-float" <Location> => StandardOp::ToFloat(<>),

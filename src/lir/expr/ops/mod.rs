@@ -44,6 +44,18 @@ pub trait AssignOp: std::fmt::Debug + std::fmt::Display {
     }
     /// Gets the type of the operation on the given expressions.
     fn return_type(&self, dst: &Expr, src: &Expr, env: &Env) -> Result<Type, Error> {
+        if let Expr::Annotated(dst, metadata) = dst {
+            return self
+                .return_type(dst, src, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+
+        if let Expr::Annotated(src, metadata) = src {
+            return self
+                .return_type(dst, src, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+
         if self.can_apply_exprs(dst, src, env)? {
             dst.get_type(env)
         } else {
@@ -66,6 +78,17 @@ pub trait AssignOp: std::fmt::Debug + std::fmt::Display {
     fn can_apply(&self, dst: &Type, src: &Type, env: &Env) -> Result<bool, Error>;
     /// Checks if the operation can be applied to the given expressions.
     fn can_apply_exprs(&self, dst: &Expr, src: &Expr, env: &Env) -> Result<bool, Error> {
+        if let Expr::Annotated(dst, metadata) = dst {
+            return self
+                .can_apply_exprs(dst, src, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+
+        if let Expr::Annotated(src, metadata) = src {
+            return self
+                .can_apply_exprs(dst, src, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
         self.can_apply(&dst.get_type(env)?, &src.get_type(env)?, env)
     }
     /// Evaluates the operation on the given constant expressions.
@@ -78,6 +101,17 @@ pub trait AssignOp: std::fmt::Debug + std::fmt::Display {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
+        if let Expr::Annotated(dst, metadata) = dst {
+            return self
+                .compile(dst, src, env, output)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+
+        if let Expr::Annotated(src, metadata) = src {
+            return self
+                .compile(dst, src, env, output)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
         // trace!("Compiling assign op: {dst} {self} {src} ({self:?})");
         dst.clone().compile_expr(env, output)?;
         src.clone().compile_expr(env, output)?;
@@ -99,6 +133,12 @@ pub trait AssignOp: std::fmt::Debug + std::fmt::Display {
 pub trait UnaryOp: std::fmt::Debug + std::fmt::Display {
     /// Typechecks the operation on the given expression.
     fn type_check(&self, expr: &Expr, env: &Env) -> Result<(), Error> {
+        if let Expr::Annotated(expr, metadata) = expr {
+            return self
+                .type_check(expr, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+
         // trace!("Type checking unary op: {self} {expr} ({self:?})");
         if self.can_apply(&expr.get_type(env)?, env)? {
             expr.type_check(env)
@@ -109,6 +149,12 @@ pub trait UnaryOp: std::fmt::Debug + std::fmt::Display {
     }
     /// Gets the type of the operation on the given expression.
     fn return_type(&self, expr: &Expr, env: &Env) -> Result<Type, Error> {
+        if let Expr::Annotated(expr, metadata) = expr {
+            return self
+                .return_type(expr, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+
         if self.can_apply_exprs(expr, env)? {
             Ok(expr.get_type(env)?)
         } else {
@@ -137,6 +183,11 @@ pub trait UnaryOp: std::fmt::Debug + std::fmt::Display {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
+        if let Expr::Annotated(expr, metadata) = expr {
+            return self
+                .compile(expr, env, output)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
         // trace!("Compiling unary op: {self} {expr} ({self:?})");
         let current_instruction = output.current_instruction();
         expr.clone().compile_expr(env, output)?;
@@ -160,6 +211,17 @@ pub trait UnaryOp: std::fmt::Debug + std::fmt::Display {
 pub trait BinaryOp: std::fmt::Debug + std::fmt::Display {
     /// Typechecks the operation on the given expressions.
     fn type_check(&self, lhs: &Expr, rhs: &Expr, env: &Env) -> Result<(), Error> {
+        if let Expr::Annotated(lhs, metadata) = lhs {
+            return self
+                .type_check(lhs, rhs, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+        if let Expr::Annotated(rhs, metadata) = rhs {
+            return self
+                .type_check(lhs, rhs, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+
         // trace!("Type checking binary op: {lhs} {self} {rhs} ({self:?})");
         if self.can_apply(&lhs.get_type(env)?, &rhs.get_type(env)?, env)? {
             lhs.type_check(env).and(rhs.type_check(env))
@@ -174,6 +236,17 @@ pub trait BinaryOp: std::fmt::Debug + std::fmt::Display {
     }
     /// Gets the type of the operation on the given expressions.
     fn return_type(&self, lhs: &Expr, rhs: &Expr, env: &Env) -> Result<Type, Error> {
+        if let Expr::Annotated(lhs, metadata) = lhs {
+            return self
+                .return_type(lhs, rhs, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+        if let Expr::Annotated(rhs, metadata) = rhs {
+            return self
+                .return_type(lhs, rhs, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+
         if self.can_apply_exprs(lhs, rhs, env)? {
             lhs.get_type(env)
         } else {
@@ -208,6 +281,17 @@ pub trait BinaryOp: std::fmt::Debug + std::fmt::Display {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
+        if let Expr::Annotated(lhs, metadata) = lhs {
+            return self
+                .compile(lhs, rhs, env, output)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+        if let Expr::Annotated(rhs, metadata) = rhs {
+            return self
+                .compile(lhs, rhs, env, output)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+
         // trace!("Compiling binary op: {lhs} {self} {rhs} ({self:?})");
         lhs.clone().compile_expr(env, output)?;
         rhs.clone().compile_expr(env, output)?;
@@ -228,6 +312,22 @@ pub trait BinaryOp: std::fmt::Debug + std::fmt::Display {
 pub trait TernaryOp: std::fmt::Debug + std::fmt::Display {
     /// Typechecks the operation on the given expressions.
     fn type_check(&self, a: &Expr, b: &Expr, c: &Expr, env: &Env) -> Result<(), Error> {
+        if let Expr::Annotated(a, metadata) = a {
+            return self
+                .type_check(a, b, c, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+        if let Expr::Annotated(b, metadata) = b {
+            return self
+                .type_check(a, b, c, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+        if let Expr::Annotated(c, metadata) = c {
+            return self
+                .type_check(a, b, c, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+
         if self.can_apply(
             &a.clone().get_type(env)?,
             &b.clone().get_type(env)?,
@@ -248,6 +348,22 @@ pub trait TernaryOp: std::fmt::Debug + std::fmt::Display {
     }
     /// Gets the type of the operation on the given expressions.
     fn return_type(&self, a: &Expr, b: &Expr, c: &Expr, env: &Env) -> Result<Type, Error> {
+        if let Expr::Annotated(a, metadata) = a {
+            return self
+                .return_type(a, b, c, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+        if let Expr::Annotated(b, metadata) = b {
+            return self
+                .return_type(a, b, c, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+        if let Expr::Annotated(c, metadata) = c {
+            return self
+                .return_type(a, b, c, env)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+
         if self.can_apply_exprs(a, b, c, env)? {
             c.get_type(env)
         } else {
@@ -289,6 +405,21 @@ pub trait TernaryOp: std::fmt::Debug + std::fmt::Display {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
+        if let Expr::Annotated(a, metadata) = a {
+            return self
+                .compile(a, b, c, env, output)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+        if let Expr::Annotated(b, metadata) = b {
+            return self
+                .compile(a, b, c, env, output)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
+        if let Expr::Annotated(c, metadata) = c {
+            return self
+                .compile(a, b, c, env, output)
+                .map_err(|err| err.annotate(metadata.clone()));
+        }
         // trace!("Compiling ternary op: {a} {self} {b} {c} ({self:?})");
         // Evaluate the three expression on the stack.
         a.clone().compile_expr(env, output)?;

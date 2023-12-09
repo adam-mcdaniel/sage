@@ -1434,10 +1434,72 @@
 <a href="#1434" id="1434">1434</a>
 <a href="#1435" id="1435">1435</a>
 <a href="#1436" id="1436">1436</a>
+<a href="#1437" id="1437">1437</a>
+<a href="#1438" id="1438">1438</a>
+<a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
+<a href="#1452" id="1452">1452</a>
+<a href="#1453" id="1453">1453</a>
+<a href="#1454" id="1454">1454</a>
+<a href="#1455" id="1455">1455</a>
+<a href="#1456" id="1456">1456</a>
+<a href="#1457" id="1457">1457</a>
+<a href="#1458" id="1458">1458</a>
+<a href="#1459" id="1459">1459</a>
+<a href="#1460" id="1460">1460</a>
+<a href="#1461" id="1461">1461</a>
+<a href="#1462" id="1462">1462</a>
+<a href="#1463" id="1463">1463</a>
+<a href="#1464" id="1464">1464</a>
+<a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
+<a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
+<a href="#1473" id="1473">1473</a>
+<a href="#1474" id="1474">1474</a>
+<a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
+<a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
+<a href="#1487" id="1487">1487</a>
+<a href="#1488" id="1488">1488</a>
+<a href="#1489" id="1489">1489</a>
+<a href="#1490" id="1490">1490</a>
+<a href="#1491" id="1491">1491</a>
+<a href="#1492" id="1492">1492</a>
+<a href="#1493" id="1493">1493</a>
+<a href="#1494" id="1494">1494</a>
+<a href="#1495" id="1495">1495</a>
+<a href="#1496" id="1496">1496</a>
+<a href="#1497" id="1497">1497</a>
+<a href="#1498" id="1498">1498</a>
+<a href="#1499" id="1499">1499</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{lir::<span class="kw-2">*</span>, parse::SourceCodeLocation};
 <span class="kw">use </span>pest::{error::Error, iterators::Pair, Parser};
 <span class="kw">use </span>pest_derive::Parser;
-<span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="attr">#[derive(Parser)]
 #[grammar = <span class="string">&quot;frontend/parse.pest&quot;</span>] </span><span class="comment">// relative to src
@@ -1449,10 +1511,12 @@
         stmt: Box&lt;<span class="self">Self</span>&gt;,
         loc: SourceCodeLocation,
     },
+    LetPattern(Vec&lt;(Pattern, Expr)&gt;),
     Let(Vec&lt;(String, Mutability, <span class="prelude-ty">Option</span>&lt;Type&gt;, Expr)&gt;),
     LetStatic(Vec&lt;(String, Mutability, Type, ConstExpr)&gt;),
     Assign(Expr, <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>AssignOp + <span class="lifetime">&#39;static</span>&gt;&gt;, Expr),
     If(Expr, Box&lt;<span class="self">Self</span>&gt;, <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="self">Self</span>&gt;&gt;),
+    When(ConstExpr, Box&lt;<span class="self">Self</span>&gt;, <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="self">Self</span>&gt;&gt;),
     IfLet(Pattern, Expr, Box&lt;<span class="self">Self</span>&gt;, <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="self">Self</span>&gt;&gt;),
     While(Expr, Box&lt;<span class="self">Self</span>&gt;),
     For(Box&lt;<span class="self">Self</span>&gt;, Expr, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
@@ -1479,7 +1543,7 @@
 
         <span class="kw">let </span>stmt = <span class="kw">match </span>(<span class="self">self</span>, rest.clone()) {
             (<span class="self">Self</span>::AnnotatedWithSource { stmt, loc }, <span class="kw">_</span>) =&gt; {
-                <span class="kw">return </span>stmt.to_expr(rest).with_loc(loc);
+                <span class="kw">return </span>stmt.to_expr(rest).annotate(loc);
             }
             (<span class="self">Self</span>::Assign(lhs, op, rhs), <span class="kw">_</span>) =&gt; {
                 <span class="kw">match </span>op {
@@ -1488,6 +1552,16 @@
                     </span><span class="prelude-val">None </span>=&gt; lhs.refer(Mutability::Mutable).deref_mut(rhs),
                 }
             }
+            (<span class="self">Self</span>::When(cond, body, <span class="prelude-val">None</span>), <span class="kw">_</span>) =&gt; Expr::When(
+                cond,
+                Box::new(body.to_expr(<span class="prelude-val">None</span>)),
+                Box::new(Expr::ConstExpr(ConstExpr::None)),
+            ),
+            (<span class="self">Self</span>::When(cond, body, <span class="prelude-val">Some</span>(else_body)), <span class="kw">_</span>) =&gt; Expr::When(
+                cond,
+                Box::new(body.to_expr(<span class="prelude-val">None</span>)),
+                Box::new(else_body.to_expr(<span class="prelude-val">None</span>)),
+            ),
             (<span class="self">Self</span>::If(cond, body, <span class="prelude-val">None</span>), <span class="kw">_</span>) =&gt; Expr::If(
                 Box::new(cond),
                 Box::new(body.to_expr(<span class="prelude-val">None</span>)),
@@ -1550,26 +1624,29 @@
             //     }
             //     return Expr::LetVars(vars, Box::new(Expr::Many(vec![body.to_expr(Some(*ret))])))
             // }
-            </span>(<span class="self">Self</span>::LetIn(defs, body), <span class="kw">_</span>) =&gt; Expr::LetVars(defs, Box::new(body.to_expr(<span class="prelude-val">None</span>))),
+            </span>(<span class="self">Self</span>::Let(defs), <span class="kw">_</span>) =&gt; <span class="kw">return </span>rest_expr.with(defs),
+            (<span class="self">Self</span>::LetPattern(defs), <span class="kw">_</span>) =&gt; <span class="kw">return </span>rest_expr.with(defs),
+            (<span class="self">Self</span>::LetStatic(defs), <span class="kw">_</span>) =&gt; {
+                <span class="kw">return </span>rest_expr.with(
+                    defs.into_iter()
+                        .map(|(a, b, c, d)| <span class="kw">crate</span>::lir::Declaration::StaticVar(a, b, c, d))
+                        .collect::&lt;Vec&lt;<span class="kw">crate</span>::lir::Declaration&gt;&gt;(),
+                )
+            }
+
+            (<span class="self">Self</span>::LetIn(defs, body), <span class="kw">_</span>) =&gt; body.to_expr(<span class="prelude-val">None</span>).with(defs),
             (<span class="self">Self</span>::LetStaticIn(defs, body), <span class="kw">_</span>) =&gt; {
-                Expr::LetStaticVars(defs, Box::new(body.to_expr(<span class="prelude-val">None</span>)))
-            }
-            (<span class="self">Self</span>::Let(defs), <span class="prelude-val">Some</span>(Expr::LetVars(<span class="kw-2">mut </span>vars, ret))) =&gt; {
-                <span class="kw">for </span>(name, mutability, ty, val) <span class="kw">in </span>defs.into_iter().rev() {
-                    vars.insert(<span class="number">0</span>, (name, mutability, ty, val));
+                <span class="comment">// Expr::LetStaticVars(defs, Box::new(body.to_expr(None)))
+                </span><span class="kw">let </span><span class="kw-2">mut </span>result = body.to_expr(<span class="prelude-val">None</span>);
+                <span class="kw">for </span>(n, m, t, e) <span class="kw">in </span>defs.into_iter().rev() {
+                    result = result.with(<span class="kw">crate</span>::lir::Declaration::StaticVar(n, m, t, e));
                 }
-                <span class="kw">return </span>Expr::LetVars(vars, ret);
+                result
             }
-            (<span class="self">Self</span>::Let(defs), <span class="kw">_</span>) =&gt; <span class="kw">return </span>Expr::LetVars(defs, rest_expr),
-            (<span class="self">Self</span>::LetStatic(defs), <span class="prelude-val">Some</span>(Expr::LetStaticVars(<span class="kw-2">mut </span>vars, ret))) =&gt; {
-                <span class="kw">for </span>(name, mutability, ty, val) <span class="kw">in </span>defs.into_iter().rev() {
-                    vars.insert(<span class="number">0</span>, (name, mutability, ty, val));
-                }
-                <span class="kw">return </span>Expr::LetStaticVars(vars, ret);
-            }
-            (<span class="self">Self</span>::LetStatic(defs), <span class="kw">_</span>) =&gt; <span class="kw">return </span>Expr::LetStaticVars(defs, rest_expr),
+
             (<span class="self">Self</span>::Expr(e), <span class="kw">_</span>) =&gt; e,
         };
+
         <span class="kw">if let </span><span class="prelude-val">Some</span>(Expr::Many(<span class="kw-2">mut </span>stmts)) = rest {
             stmts.insert(<span class="number">0</span>, stmt);
             Expr::Many(stmts)
@@ -1583,6 +1660,7 @@
 
 <span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub enum </span>Declaration {
+    Impl(Type, Vec&lt;(String, ConstExpr)&gt;),
     Struct(String, Vec&lt;(String, Type)&gt;),
     Extern(String, Vec&lt;(<span class="prelude-ty">Option</span>&lt;String&gt;, Type)&gt;, Type),
     Enum(String, Vec&lt;(String, <span class="prelude-ty">Option</span>&lt;Type&gt;)&gt;),
@@ -1631,31 +1709,32 @@
                 )),
             )])
             .to_expr(rest),
-            (<span class="self">Self</span>::Struct(name, fields), <span class="prelude-val">Some</span>(Expr::LetTypes(<span class="kw-2">mut </span>types, ret))) =&gt; {
-                types.push((name, Type::Struct(fields.into_iter().collect())));
-                Expr::LetTypes(types, ret)
+            (<span class="self">Self</span>::Impl(ty, methods), <span class="kw">_</span>) =&gt; {
+                <span class="kw">return </span>rest_expr.with(<span class="kw">crate</span>::lir::Declaration::Impl(ty, methods))
             }
-            (<span class="self">Self</span>::Struct(name, fields), <span class="kw">_</span>) =&gt; Expr::LetTypes(
-                <span class="macro">vec!</span>[(name, Type::Struct(fields.into_iter().collect()))],
-                rest_expr,
-            ),
-            (<span class="self">Self</span>::Enum(name, variants), <span class="prelude-val">Some</span>(Expr::LetTypes(<span class="kw-2">mut </span>types, ret))) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>simple = <span class="bool-val">true</span>;
+            (<span class="self">Self</span>::Struct(name, fields), <span class="kw">_</span>) =&gt; {
+                rest_expr.with((name, Type::Struct(fields.into_iter().collect())))
+            }
+            (<span class="self">Self</span>::Enum(name, variants), <span class="kw">_</span>) =&gt; {
+                <span class="comment">// If none of the variants have a value, then we can just use a simple enum
+                // Otherwise, we need to use a tagged union
+                </span><span class="kw">let </span><span class="kw-2">mut </span>simple = <span class="bool-val">true</span>;
                 <span class="kw">for </span>(<span class="kw">_</span>, value) <span class="kw">in </span>variants.iter() {
                     <span class="kw">if </span>value.is_some() {
                         simple = <span class="bool-val">false</span>;
                         <span class="kw">break</span>;
                     }
                 }
-                <span class="kw">if </span>simple {
+
+                rest_expr.with(<span class="kw">if </span>simple {
                     <span class="comment">// If we&#39;re using a simple enum, then we can just use a simple enum
-                    </span>types.push((
+                    </span>(
                         name,
                         Type::Enum(variants.into_iter().map(|(a, <span class="kw">_</span>)| a).collect()),
-                    ));
+                    )
                 } <span class="kw">else </span>{
                     <span class="comment">// Otherwise, we need to use a tagged union
-                    </span>types.push((
+                    </span>(
                         name,
                         Type::EnumUnion(
                             variants
@@ -1671,121 +1750,24 @@
                                 })
                                 .collect(),
                         ),
-                    ));
-                }
-
-                Expr::LetTypes(types, ret)
-            }
-            (<span class="self">Self</span>::Enum(name, variants), <span class="kw">_</span>) =&gt; {
-                <span class="comment">// If none of the variants have a value, then we can just use a simple enum
-                // Otherwise, we need to use a tagged union
-                </span><span class="kw">let </span><span class="kw-2">mut </span>simple = <span class="bool-val">true</span>;
-                <span class="kw">for </span>(<span class="kw">_</span>, value) <span class="kw">in </span>variants.iter() {
-                    <span class="kw">if </span>value.is_some() {
-                        simple = <span class="bool-val">false</span>;
-                        <span class="kw">break</span>;
-                    }
-                }
-                <span class="kw">if </span>simple {
-                    <span class="comment">// If we&#39;re using a simple enum, then we can just use a simple enum
-                    </span>Expr::LetTypes(
-                        <span class="macro">vec!</span>[(
-                            name,
-                            Type::Enum(variants.into_iter().map(|(a, <span class="kw">_</span>)| a).collect()),
-                        )],
-                        rest_expr,
                     )
-                } <span class="kw">else </span>{
-                    <span class="comment">// Otherwise, we need to use a tagged union
-                    </span>Expr::LetTypes(
-                        <span class="macro">vec!</span>[(
-                            name,
-                            Type::EnumUnion(
-                                variants
-                                    .into_iter()
-                                    .map(|(a, b)| {
-                                        (
-                                            a,
-                                            <span class="kw">match </span>b {
-                                                <span class="prelude-val">Some</span>(x) =&gt; x,
-                                                <span class="prelude-val">None </span>=&gt; Type::None,
-                                            },
-                                        )
-                                    })
-                                    .collect(),
-                            ),
-                        )],
-                        rest_expr,
-                    )
-                }
+                })
             }
-            (<span class="self">Self</span>::Const(<span class="kw-2">mut </span>consts), <span class="prelude-val">Some</span>(Expr::LetConsts(<span class="kw-2">mut </span>defs, ret))) =&gt; {
-                <span class="kw">for </span>(name, value) <span class="kw">in </span>consts.drain(..).rev() {
-                    defs.insert(name, value);
-                }
-                Expr::LetConsts(defs, ret)
-            }
-            (<span class="self">Self</span>::Const(consts), <span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>defs = BTreeMap::new();
-                <span class="kw">for </span>(name, value) <span class="kw">in </span>consts.into_iter().rev() {
-                    defs.insert(name, value);
-                }
-                Expr::LetConsts(defs, rest_expr)
-            }
-            (<span class="self">Self</span>::Proc(name, params, ret, stmt), <span class="prelude-val">Some</span>(Expr::LetProcs(<span class="kw-2">mut </span>procs, ret2))) =&gt; {
-                procs.push((name.clone(), <span class="self">Self</span>::proc_to_expr(name, params, ret, <span class="kw-2">*</span>stmt)));
-                Expr::LetProcs(procs, ret2)
-            }
-            (<span class="self">Self</span>::Proc(name, params, ret, stmt), <span class="prelude-val">Some</span>(Expr::LetConsts(<span class="kw-2">mut </span>defs, ret2))) =&gt; {
-                defs.insert(
-                    name.clone(),
-                    ConstExpr::Proc(<span class="self">Self</span>::proc_to_expr(name, params, ret, <span class="kw-2">*</span>stmt)),
-                );
-                Expr::LetConsts(defs, ret2)
-            }
+            (<span class="self">Self</span>::Const(consts), <span class="kw">_</span>) =&gt; rest_expr.with(consts),
             (<span class="self">Self</span>::Proc(name, params, ret, stmt), <span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>defs = BTreeMap::new();
-                defs.insert(
-                    name.clone(),
-                    ConstExpr::Proc(<span class="self">Self</span>::proc_to_expr(name, params, ret, <span class="kw-2">*</span>stmt)),
-                );
-                Expr::LetConsts(defs, rest_expr)
+                rest_expr.with((name.clone(), <span class="self">Self</span>::proc_to_expr(name, params, ret, <span class="kw-2">*</span>stmt)))
             }
-            (
-                <span class="self">Self</span>::PolyProc(name, ty_params, params, ret, stmt),
-                <span class="prelude-val">Some</span>(Expr::LetConsts(<span class="kw-2">mut </span>consts, ret2)),
-            ) =&gt; {
-                consts.insert(
-                    name.clone(),
-                    ConstExpr::PolyProc(PolyProcedure::new(
-                        name,
-                        ty_params,
-                        params,
-                        ret.unwrap_or(Type::None),
-                        stmt.to_expr(<span class="prelude-val">None</span>),
-                    )),
-                );
-                Expr::LetConsts(consts, ret2)
-            }
-            (<span class="self">Self</span>::PolyProc(name, ty_params, params, ret, stmt), <span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>consts = BTreeMap::new();
-                consts.insert(
-                    name.clone(),
-                    ConstExpr::PolyProc(PolyProcedure::new(
-                        name,
-                        ty_params,
-                        params,
-                        ret.unwrap_or(Type::None),
-                        stmt.to_expr(<span class="prelude-val">None</span>),
-                    )),
-                );
-                Expr::LetConsts(consts, rest_expr)
-            }
-            (<span class="self">Self</span>::Type(<span class="kw-2">mut </span>types), <span class="prelude-val">Some</span>(Expr::LetTypes(<span class="kw-2">mut </span>types2, ret))) =&gt; {
-                types.append(<span class="kw-2">&amp;mut </span>types2);
-                Expr::LetTypes(types, ret)
-            }
-            (<span class="self">Self</span>::Type(types), <span class="kw">_</span>) =&gt; Expr::LetTypes(types, rest_expr),
+            (<span class="self">Self</span>::PolyProc(name, ty_params, params, ret, stmt), <span class="kw">_</span>) =&gt; rest_expr.with((
+                name.clone(),
+                ConstExpr::PolyProc(PolyProcedure::new(
+                    name,
+                    ty_params,
+                    params,
+                    ret.unwrap_or(Type::None),
+                    stmt.to_expr(<span class="prelude-val">None</span>),
+                )),
+            )),
+            (<span class="self">Self</span>::Type(types), <span class="kw">_</span>) =&gt; rest_expr.with(types),
             (<span class="self">Self</span>::Statement(stmt), <span class="prelude-val">Some</span>(rest)) =&gt; stmt.to_expr(<span class="prelude-val">Some</span>(rest)),
             (<span class="self">Self</span>::Statement(stmt), <span class="prelude-val">None</span>) =&gt; stmt.to_expr(<span class="prelude-val">None</span>),
         }
@@ -1837,6 +1819,62 @@
             .map(|x| parse_decl(x, filename))
             .next()
             .unwrap(),
+
+        Rule::decl_impl =&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
+            <span class="kw">let </span>ty = parse_type(inner_rules.next().unwrap());
+            <span class="kw">let </span><span class="kw-2">mut </span>constants = <span class="macro">vec!</span>[];
+            <span class="kw">while </span>inner_rules.peek().is_some() {
+                <span class="kw">let </span>decl = parse_decl(inner_rules.next().unwrap(), filename);
+                <span class="kw">match </span>decl {
+                    Declaration::Const(<span class="kw-2">mut </span>decls) =&gt; constants.append(<span class="kw-2">&amp;mut </span>decls),
+                    Declaration::Proc(name, args, ret, body) =&gt; constants.push((
+                        name.clone(),
+                        ConstExpr::Proc(Procedure::new(
+                            <span class="prelude-val">Some</span>(name),
+                            args,
+                            ret.unwrap_or(Type::None),
+                            body.to_expr(<span class="prelude-val">None</span>),
+                        )),
+                    )),
+                    Declaration::PolyProc(name, ty_params, args, ret, body) =&gt; constants.push((
+                        name.clone(),
+                        ConstExpr::PolyProc(PolyProcedure::new(
+                            name,
+                            ty_params,
+                            args,
+                            ret.unwrap_or(Type::None),
+                            body.to_expr(<span class="prelude-val">None</span>),
+                        )),
+                    )),
+                    Declaration::Type(types) =&gt; {
+                        <span class="kw">for </span>(name, ty) <span class="kw">in </span>types {
+                            constants.push((name, ConstExpr::Type(ty)))
+                        }
+                    }
+                    Declaration::Enum(name, variants) =&gt; constants.push((
+                        name.clone(),
+                        ConstExpr::Type(Type::EnumUnion(
+                            variants
+                                .into_iter()
+                                .map(|(a, x)| (a, x.unwrap_or(Type::None)))
+                                .collect(),
+                        )),
+                    )),
+                    Declaration::Struct(name, fields) =&gt; constants.push((
+                        name.clone(),
+                        ConstExpr::Type(Type::Struct(fields.into_iter().collect())),
+                    )),
+                    <span class="kw">_ </span>=&gt; {
+                        <span class="macro">panic!</span>(<span class="string">&quot;Unexpected declaration in impl: {:?}&quot;</span>, decl)
+                    }
+                }
+            }
+            Declaration::Impl(ty, constants)
+        }
+
+        Rule::decl_imp_child_decl =&gt; parse_decl(pair.into_inner().next().unwrap(), filename),
+
         Rule::decl_proc_block | Rule::decl_proc_expr =&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
             <span class="kw">let </span>name = inner_rules.next().unwrap().as_str().to_string();
@@ -2134,6 +2172,15 @@
                 .map(|x| Box::new(parse_stmt(x, filename)));
             Statement::If(cond, Box::new(body), else_body)
         }
+        Rule::stmt_when =&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
+            <span class="kw">let </span>cond = parse_const(inner_rules.next().unwrap());
+            <span class="kw">let </span>body = parse_stmt(inner_rules.next().unwrap(), filename);
+            <span class="kw">let </span>else_body = inner_rules
+                .next()
+                .map(|x| Box::new(parse_stmt(x, filename)));
+            Statement::When(cond, Box::new(body), else_body)
+        }
 
         Rule::stmt_if_elif =&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
@@ -2206,6 +2253,17 @@
             <span class="kw">let </span>post = parse_stmt(inner_rules.next().unwrap(), filename);
             <span class="kw">let </span>body = parse_stmt(inner_rules.next().unwrap(), filename);
             Statement::For(Box::new(pre), cond, Box::new(post), Box::new(body))
+        }
+
+        Rule::stmt_let_pat =&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
+            <span class="kw">let </span><span class="kw-2">mut </span>defs = <span class="macro">vec!</span>[];
+            <span class="kw">while </span>inner_rules.peek().is_some() {
+                <span class="kw">let </span>pattern = parse_pattern(inner_rules.next().unwrap());
+                <span class="kw">let </span>expr = parse_expr(inner_rules.next().unwrap());
+                defs.push((pattern, expr));
+            }
+            Statement::LetPattern(defs)
         }
 
         Rule::stmt_let =&gt; {
@@ -2414,7 +2472,7 @@
     };
     <span class="comment">// result
     // Expr::AnnotatedWithSource { expr: Box::new(result), loc }
-    </span>result.with_loc(loc)
+    </span>result
 }
 
 <span class="kw">fn </span>parse_expr_term(pair: Pair&lt;Rule&gt;) -&gt; Expr {
@@ -2434,18 +2492,6 @@
             Rule::expr_symbol_field =&gt; head.field(ConstExpr::Symbol(
                 suffix.into_inner().next().unwrap().as_str().to_string(),
             )),
-            Rule::expr_int_deref_field =&gt; head.deref().field(ConstExpr::Int(
-                suffix
-                    .into_inner()
-                    .next()
-                    .unwrap()
-                    .as_str()
-                    .parse()
-                    .unwrap(),
-            )),
-            Rule::expr_symbol_deref_field =&gt; head.deref().field(ConstExpr::Symbol(
-                suffix.into_inner().next().unwrap().as_str().to_string(),
-            )),
             Rule::expr_index =&gt; head.idx(parse_expr(suffix)),
             Rule::expr_call =&gt; {
                 <span class="kw">let </span>inner_rules = suffix.into_inner();
@@ -2456,6 +2502,23 @@
                 <span class="kw">if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">&quot;print&quot;</span>.to_string())) {
                     <span class="kw">let </span><span class="kw-2">mut </span>exprs: Vec&lt;Expr&gt; =
                         args.into_iter().map(|val| val.unop(Put::Display)).collect();
+                    exprs.push(Expr::ConstExpr(ConstExpr::None));
+                    Expr::Many(exprs)
+                } <span class="kw">else if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">&quot;println&quot;</span>.to_string())) {
+                    <span class="kw">let </span><span class="kw-2">mut </span>exprs: Vec&lt;Expr&gt; =
+                        args.into_iter().map(|val| val.unop(Put::Display)).collect();
+                    exprs.push(Expr::ConstExpr(ConstExpr::Char(<span class="string">&#39;\n&#39;</span>)).unop(Put::Display));
+                    exprs.push(Expr::ConstExpr(ConstExpr::None));
+                    Expr::Many(exprs)
+                } <span class="kw">else if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">&quot;eprint&quot;</span>.to_string())) {
+                    <span class="kw">let </span><span class="kw-2">mut </span>exprs: Vec&lt;Expr&gt; =
+                        args.into_iter().map(|val| val.unop(Put::Debug)).collect();
+                    exprs.push(Expr::ConstExpr(ConstExpr::None));
+                    Expr::Many(exprs)
+                } <span class="kw">else if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">&quot;eprintln&quot;</span>.to_string())) {
+                    <span class="kw">let </span><span class="kw-2">mut </span>exprs: Vec&lt;Expr&gt; =
+                        args.into_iter().map(|val| val.unop(Put::Debug)).collect();
+                    exprs.push(Expr::ConstExpr(ConstExpr::Char(<span class="string">&#39;\n&#39;</span>)).unop(Put::Display));
                     exprs.push(Expr::ConstExpr(ConstExpr::None));
                     Expr::Many(exprs)
                 } <span class="kw">else if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">&quot;input&quot;</span>.to_string())) {
@@ -2509,9 +2572,43 @@
 
 <span class="kw">fn </span>parse_const(pair: Pair&lt;Rule&gt;) -&gt; ConstExpr {
     <span class="kw">match </span>pair.as_rule() {
-        Rule::r#const | Rule::const_term | Rule::const_atom | Rule::const_group =&gt; {
+        Rule::r#const | Rule::const_atom | Rule::const_group =&gt; {
             pair.into_inner().map(parse_const).next().unwrap()
         }
+        Rule::const_term =&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
+            <span class="kw">let </span><span class="kw-2">mut </span>head = parse_const(inner_rules.next().unwrap());
+            <span class="kw">for </span>suffix <span class="kw">in </span>inner_rules {
+                head = <span class="kw">match </span>suffix.as_rule() {
+                    Rule::expr_int_field =&gt; head.field(ConstExpr::Int(
+                        suffix
+                            .into_inner()
+                            .next()
+                            .unwrap()
+                            .as_str()
+                            .parse()
+                            .unwrap(),
+                    )),
+                    Rule::expr_symbol_field =&gt; head.field(ConstExpr::Symbol(
+                        suffix.into_inner().next().unwrap().as_str().to_string(),
+                    )),
+                    <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+                }
+            }
+            head
+            <span class="comment">// Rule::expr_int_field =&gt; head.field(ConstExpr::Int(
+            //     suffix
+            //         .into_inner()
+            //         .next()
+            //         .unwrap()
+            //         .as_str()
+            //         .parse()
+            //         .unwrap(),
+            // )),
+            // Rule::expr_symbol_field =&gt; head.field(ConstExpr::Symbol(
+            //     suffix.into_inner().next().unwrap().as_str().to_string(),
+            // )),
+        </span>}
         Rule::const_monomorph =&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
             <span class="kw">let </span>c = parse_const(inner_rules.next().unwrap());
@@ -2538,16 +2635,12 @@
             ConstExpr::Array(exprs)
         }
         Rule::const_struct =&gt; {
-            <span class="kw">let </span>inner_rules = pair.into_inner();
+            <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
             <span class="kw">let </span><span class="kw-2">mut </span>fields = Vec::new();
-            <span class="kw">for </span>pair <span class="kw">in </span>inner_rules {
-                <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
-                <span class="kw">if </span>inner_rules.peek().is_none() {
-                    <span class="kw">break</span>;
-                }
-                <span class="kw">let </span>name = inner_rules.next().unwrap().as_str().to_string();
-                <span class="kw">let </span>expr = parse_const(inner_rules.next().unwrap());
-                fields.push((name, expr));
+            <span class="kw">while </span>inner_rules.peek().is_some() {
+                <span class="kw">let </span>field = inner_rules.next().unwrap().as_str().to_string();
+                <span class="kw">let </span>val = parse_const(inner_rules.next().unwrap());
+                fields.push((field, val));
             }
             ConstExpr::Struct(fields.into_iter().collect())
         }
@@ -2582,26 +2675,59 @@
         Rule::const_char =&gt; {
             <span class="kw">let </span>token = pair.into_inner().next().unwrap().as_str();
             <span class="kw">let </span>token = <span class="kw-2">&amp;</span>token[<span class="number">1</span>..token.len() - <span class="number">1</span>];
-            <span class="kw">let </span>result = snailquote::unescape(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;\&quot;{token}\&quot;&quot;</span>).replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\\\\0&quot;</span>))
+            <span class="kw">let </span>result = snailquote::unescape(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;\&quot;{token}\&quot;&quot;</span>).replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\\\\0&quot;</span>).replace(<span class="string">&quot;\\/&quot;</span>, <span class="string">&quot;/&quot;</span>))
                 .unwrap()
-                .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\0&quot;</span>);
-            <span class="kw">let </span>ch = result.chars().next().unwrap();
+                .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\0&quot;</span>)
+                .replace(<span class="string">&quot;\\\&quot;&quot;</span>, <span class="string">&quot;\&quot;&quot;</span>);
+            <span class="comment">// let result = snailquote::unescape(
+            //     &amp;pair
+            //         .clone()
+            //         .into_inner()
+            //         .next()
+            //         .unwrap()
+            //         .as_str()
+            //         // .replace(&quot;\\0&quot;, &quot;\\\\0&quot;)
+            //         .replace(&quot;\\/&quot;, &quot;/&quot;),
+            // )
+            // .unwrap_or_else(|e| {
+            //     eprintln!(&quot;Error parsing string: {}&quot;, e);
+            //     pair.into_inner()
+            //         .next()
+            //         .unwrap()
+            //         .as_str()
+            //         // .replace(&quot;\\0&quot;, &quot;\\\\0&quot;)
+            //         .replace(&quot;\\/&quot;, &quot;/&quot;)
+            // })
+            // .replace(&quot;\\0&quot;, &quot;\0&quot;);
+            </span><span class="kw">let </span>ch = result.chars().chain(std::iter::once(<span class="string">&#39;\0&#39;</span>)).next().unwrap();
             ConstExpr::Char(ch)
         }
         Rule::const_bool =&gt; ConstExpr::Bool(pair.as_str().to_lowercase().parse().unwrap()),
         Rule::const_string =&gt; ConstExpr::Array(
             snailquote::unescape(
                 <span class="kw-2">&amp;</span>pair
+                    .clone()
                     .into_inner()
                     .next()
                     .unwrap()
                     .as_str()
-                    .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\\\\0&quot;</span>),
+                    .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\\\\0&quot;</span>)
+                    .replace(<span class="string">&quot;\\/&quot;</span>, <span class="string">&quot;/&quot;</span>),
             )
-            .unwrap()
+            .unwrap_or_else(|e| {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;Error parsing string: {}&quot;</span>, e);
+                pair.into_inner()
+                    .next()
+                    .unwrap()
+                    .as_str()
+                    .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\\\\0&quot;</span>)
+                    .replace(<span class="string">&quot;\\/&quot;</span>, <span class="string">&quot;/&quot;</span>)
+            })
             .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\0&quot;</span>)
             .chars()
             .map(ConstExpr::Char)
+            <span class="comment">// Add a null terminator
+            </span>.chain(std::iter::once(ConstExpr::Char(<span class="string">&#39;\0&#39;</span>)))
             .collect(),
         ),
         Rule::const_none =&gt; ConstExpr::None,

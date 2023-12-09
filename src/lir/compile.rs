@@ -14,12 +14,14 @@ use crate::asm::{
     AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
 };
 use crate::NULL;
+use log::*;
+use std::sync::Mutex;
 
-use log::{trace, error, info, warn};
+use log::{error, info, trace, warn};
 
 /// A trait which allows an LIR expression to be compiled to one of the
 /// two variants of the assembly language.
-pub trait Compile: TypeCheck {
+pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
     /// Compile the expression into an assembly program.
     ///
     /// On success, this will return an Ok value containing either a successfully
@@ -30,6 +32,7 @@ pub trait Compile: TypeCheck {
     where
         Self: Sized + Clone,
     {
+        // eprintln!("Compiling LIR expression {self}");
         info!("Type checking...");
         // First, type check the expression.
         self.type_check(&Env::default())?;
@@ -98,18 +101,62 @@ impl Compile for Expr {
             }
 
             Self::UnaryOp(unop, expr) => {
+                if let Expr::Annotated(expr, metadata) = *expr {
+                    return unop
+                        .compile(&expr, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+
                 // Compile the unary operation on the expression.
                 unop.compile(&expr, env, output)?;
             }
             Self::BinaryOp(binop, lhs, rhs) => {
+                if let Expr::Annotated(lhs, metadata) = &*lhs {
+                    return binop
+                        .compile(lhs, &rhs, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Expr::Annotated(rhs, metadata) = &*rhs {
+                    return binop
+                        .compile(&lhs, rhs, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+
                 // Compile the binary operation on the two expressions.
                 binop.compile(&lhs, &rhs, env, output)?;
             }
             Self::TernaryOp(ternop, a, b, c) => {
+                if let Expr::Annotated(a, metadata) = &*a {
+                    return ternop
+                        .compile(a, &b, &c, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Expr::Annotated(b, metadata) = &*b {
+                    return ternop
+                        .compile(&a, b, &c, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Expr::Annotated(c, metadata) = &*c {
+                    return ternop
+                        .compile(&a, &b, c, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+
                 // Compile the ternary operation on the three expressions.
                 ternop.compile(&a, &b, &c, env, output)?;
             }
             Self::AssignOp(op, dst, src) => {
+                if let Expr::Annotated(dst, metadata) = &*dst {
+                    return op
+                        .compile(dst, &src, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+
+                if let Expr::Annotated(src, metadata) = &*src {
+                    return op
+                        .compile(&dst, src, env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
                 // Compile the assignment operation on the two expressions.
                 op.compile(&dst, &src, env, output)?;
             }
@@ -149,43 +196,67 @@ impl Compile for Expr {
                     }
                 }
             }
-            
+
             Self::Apply(f, args) => {
-                if let Self::Annotated(expr, metdata) = *f {
+                let self_clone = Self::Apply(f.clone(), args.clone());
+                if let Self::Annotated(expr, metadata) = *f {
                     // Compile the inner expression.
                     return Self::Apply(expr, args)
                         .compile_expr(env, output)
                         .map_err(|e| {
                             // If the inner expression fails to compile,
                             // then add the source location to the error.
-                            e.annotate(metdata)
+                            e.annotate(metadata)
                         });
                 }
 
-                // Push the arguments to the procedure on the stack.
-                for arg in args {
-                    // Compile the argument (push it on the stack)
-                    arg.compile_expr(env, output)?;
-                }
+                // if !matches!(*f, Expr::Member(_, _)) {
+                //     // Push the arguments to the procedure on the stack.
+                //     for arg in &args {
+                //         // Compile the argument (push it on the stack)
+                //         arg.clone().compile_expr(env, output)?;
+                //     }
+                // }
+
                 // Apply the procedure to the arguments on the stack.
-                match *f {
+                match *f.clone() {
                     // If the procedure is a core builtin,
                     Expr::ConstExpr(ConstExpr::CoreBuiltin(builtin)) => {
+                        // Push the arguments to the procedure on the stack.
+                        for arg in &args {
+                            // Compile the argument (push it on the stack)
+                            arg.clone().compile_expr(env, output)?;
+                        }
                         // Apply the core builtin to the arguments on the stack.
                         builtin.compile_expr(env, output)?;
                     }
                     // If the procedure is a standard builtin,
                     Expr::ConstExpr(ConstExpr::StandardBuiltin(builtin)) => {
+                        // Push the arguments to the procedure on the stack.
+                        for arg in &args {
+                            // Compile the argument (push it on the stack)
+                            arg.clone().compile_expr(env, output)?;
+                        }
                         // Apply the standard builtin to the arguments on the stack.
                         builtin.compile_expr(env, output)?;
                     }
                     // If the procedure is a foreign function,
                     Expr::ConstExpr(ConstExpr::FFIProcedure(ffi)) => {
+                        // Push the arguments to the procedure on the stack.
+                        for arg in &args {
+                            // Compile the argument (push it on the stack)
+                            arg.clone().compile_expr(env, output)?;
+                        }
                         // Apply the foreign function to the arguments on the stack.
                         ffi.compile_expr(env, output)?;
                     }
                     // If the procedure is a symbol, get the procedure from the environment.
                     Expr::ConstExpr(ConstExpr::Symbol(name)) => {
+                        // Push the arguments to the procedure on the stack.
+                        for arg in &args {
+                            // Compile the argument (push it on the stack)
+                            arg.clone().compile_expr(env, output)?;
+                        }
                         match env.get_const(&name) {
                             // If the procedure is a core builtin,
                             Some(ConstExpr::CoreBuiltin(builtin)) => {
@@ -210,8 +281,59 @@ impl Compile for Expr {
                             }
                         }
                     }
+                    Expr::ConstExpr(ConstExpr::Monomorphize(template, ty_args)) => {
+                        if self_clone.is_method_call(env)? {
+                            self_clone
+                                .transform_method_call(env)?
+                                .compile_expr(env, output)?;
+                        } else {
+                            warn!("Method transform failed for {self_clone}; Monomorphizing {template} with {ty_args:?} in environment {env}");
+                            // Push the arguments to the procedure on the stack.
+                            for arg in &args {
+                                // Compile the argument (push it on the stack)
+                                arg.clone().compile_expr(env, output)?;
+                            }
+
+                            // Compile it normally:
+                            // Push the procedure on the stack.
+                            warn!("Method: Monomorphizing {template} with {ty_args:?}");
+                            ConstExpr::Monomorphize(template, ty_args).compile_expr(env, output)?;
+                            // Pop the "function pointer" from the stack.
+                            output.op(CoreOp::Pop(Some(A), 1));
+                            // Call the procedure on the arguments.
+                            output.op(CoreOp::Call(A));
+                        }
+                    }
+
+                    Expr::Member(val, name) => {
+                        // Try to get the member of the underlying type.
+                        if self_clone.is_method_call(env)? {
+                            self_clone
+                                .transform_method_call(env)?
+                                .compile_expr(env, output)?;
+                        } else {
+                            // Push the arguments to the procedure on the stack.
+                            for arg in &args {
+                                // Compile the argument (push it on the stack)
+                                arg.clone().compile_expr(env, output)?;
+                            }
+
+                            // Compile it normally:
+                            // Push the procedure on the stack.
+                            val.field(name).compile_expr(env, output)?;
+                            // Pop the "function pointer" from the stack.
+                            output.op(CoreOp::Pop(Some(A), 1));
+                            // Call the procedure on the arguments.
+                            output.op(CoreOp::Call(A));
+                        }
+                    }
                     // Otherwise, it must be a procedure.
                     proc => {
+                        // Push the arguments to the procedure on the stack.
+                        for arg in &args {
+                            // Compile the argument (push it on the stack)
+                            arg.clone().compile_expr(env, output)?;
+                        }
                         // Push the procedure on the stack.
                         proc.compile_expr(env, output)?;
                         // Pop the "function pointer" from the stack.
@@ -524,32 +646,55 @@ impl Compile for Expr {
             Self::Member(ref val, ref member) => {
                 // If the value we're getting a field from is a pointer,
                 // then dereference it and get the field from the value.
-                if let Type::Pointer(_, _) = val.get_type(env)? {
-                    val.clone()
-                        .deref()
-                        .field(member.clone())
-                        .compile_expr(env, output)?;
-                    return Ok(());
-                }
+                match val.get_type(env)? {
+                    Type::Pointer(_, _) => {
+                        val.clone()
+                            .deref()
+                            .field(member.clone())
+                            .compile_expr(env, output)?;
+                    }
+                    Type::Type(ty) => {
+                        let member_as_symbol = member.clone().as_symbol(env)?;
 
-                // Get the size of the field we want to retrieve.
-                let size = self.get_size(env)?;
-                // Get the type of the value we want to get a field from.
-                let val_type = val.get_type(env)?;
-                // Get the size of the value we want to get a field from.
-                let val_size = val_type.get_size(env)?;
-                // Get the offset of the field from the address of the value.
-                let (_, offset) = val_type.get_member_offset(member, &self, env)?;
-                // Evaluate the value and push it onto the stack.
-                val.clone().compile_expr(env, output)?;
-                // Copy the contents of the field over top of the value on the stack.
-                output.op(CoreOp::Copy {
-                    src: SP.deref().offset(1 - val_size as isize + offset as isize),
-                    dst: SP.deref().offset(1 - val_size as isize),
-                    size,
-                });
-                // Pop the remaining elements off the stack, so the field remains.
-                output.op(CoreOp::Pop(None, val_size - size));
+                        if let Some((constant, _)) =
+                            env.get_associated_const(&ty, &member_as_symbol)
+                        {
+                            return constant.clone().compile_expr(env, output);
+                        } else {
+                            return Err(Error::SymbolNotDefined(member_as_symbol));
+                        }
+                    }
+                    val_type => {
+                        // Get the size of the field we want to retrieve.
+                        let size = self.get_size(env)?;
+                        // Get the size of the value we want to get a field from.
+                        let val_size = val_type.get_size(env)?;
+                        // Get the offset of the field from the address of the value.
+                        if let Ok((_, offset)) = val_type.get_member_offset(member, &self, env) {
+                            // Evaluate the value and push it onto the stack.
+                            val.clone().compile_expr(env, output)?;
+                            // Copy the contents of the field over top of the value on the stack.
+                            output.op(CoreOp::Copy {
+                                src: SP.deref().offset(1 - val_size as isize + offset as isize),
+                                dst: SP.deref().offset(1 - val_size as isize),
+                                size,
+                            });
+                            // Pop the remaining elements off the stack, so the field remains.
+                            output.op(CoreOp::Pop(None, val_size - size));
+                        } else {
+                            warn!("Could not get member offset of {member} from {val_type} in environment {env}");
+                            // Try to get the member of the underlying type.
+                            let name = member.clone().as_symbol(env)?;
+                            return env
+                                .get_associated_const(&val_type, &name)
+                                .ok_or_else(|| {
+                                    // If we could not find the member return an error.
+                                    Error::MemberNotFound(self.clone(), member.clone())
+                                })
+                                .and_then(|(c, _)| c.compile_expr(env, output));
+                        }
+                    }
+                }
             }
 
             // Compile a reference operation (on a symbol or a field of a value).
@@ -559,10 +704,10 @@ impl Compile for Expr {
                     .compile_expr(env, output)
                     .map_err(|e| e.annotate(metdata))?,
 
-                Expr::ConstExpr(ConstExpr::Annotated(expr, metdata)) => {
+                Expr::ConstExpr(ConstExpr::Annotated(expr, metadata)) => {
                     Self::Refer(expected_mutability, Box::new(Expr::ConstExpr(*expr)))
                         .compile_expr(env, output)
-                        .map_err(|e| e.annotate(metdata))?
+                        .map_err(|e| e.annotate(metadata))?
                 }
 
                 // Get the reference of a variable.
@@ -617,6 +762,31 @@ impl Compile for Expr {
                         return Err(Error::SymbolNotDefined(name.clone()));
                     }
                 }
+                Expr::ConstExpr(cexpr) => {
+                    // Create a new static variable for the constant.
+
+                    lazy_static::lazy_static! {
+                        static ref COUNTER: Mutex<usize> = Mutex::new(0);
+                    }
+                    let mut counter = COUNTER.lock().unwrap();
+                    *counter += 1;
+                    let mut var_name = format!("__const_{counter}__");
+                    let new_env = env.clone();
+                    debug!("Creating new static variable {var_name} in environment {new_env}");
+                    while new_env.get_var(&var_name).is_some() {
+                        debug!("Variable {var_name} already exists in environment {new_env}, incrementing counter");
+                        *counter += 1;
+                        var_name = format!("__const_{counter}__");
+                    }
+                    let ty = cexpr.get_type(env)?;
+                    let _size = ty.get_size(env)?;
+
+                    let expr = Expr::var(&var_name).refer(expected_mutability).with(
+                        Declaration::static_var(&var_name, expected_mutability, ty, cexpr),
+                    );
+                    debug!("Compiling constant expression {expr} in environment {env}");
+                    expr.compile_expr(env, output)?;
+                }
                 // Get the reference of a dereferenced value.
                 Expr::Deref(ptr) => {
                     // The address of a dereferenced value is just the inner, dereferenced value.
@@ -626,6 +796,8 @@ impl Compile for Expr {
                 Expr::Member(val, name) => {
                     // Get the type of the value we want to get a field from.
                     let val_type = val.get_type(env)?;
+                    // val_type.add_monomorphized_associated_consts(env)?;
+
                     // Push the address of the struct, tuple, or union onto the stack.
                     match val_type.simplify_until_has_members(env)? {
                         // If the value is a struct, tuple, or union:
@@ -758,19 +930,57 @@ impl Compile for Expr {
 /// Compile a constant expression.
 impl Compile for ConstExpr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        // trace!("Compiling constant expression {self} in environment {env}");
+        trace!("Compiling constant expression {self} in environment {env}");
         let mut debug_str = format!("{self}");
         debug_str.truncate(50);
 
         let current_instruction = output.current_instruction();
+        let ty = self.get_type(env)?;
         // Compile the constant expression.
         match self {
+            Self::Template(_, _) => {
+                // Cannot compile a template expression.
+                return Err(Error::UnsizedType(ty));
+            }
+
+            Self::Type(_) => {
+                // Do nothing.
+            }
+            Self::Member(container, member) => {
+                match (container.clone().eval(env)?, member.clone().eval(env)?) {
+                    (Self::Tuple(tuple), Self::Int(n)) => {
+                        // If the index is out of bounds, return an error.
+                        if n >= tuple.len() as i64 || n < 0 {
+                            return Err(Error::MemberNotFound((*container).into(), *member));
+                        }
+                        tuple[n as usize].clone().compile_expr(env, output)?
+                    }
+                    (Self::Struct(fields), Self::Symbol(name)) => {
+                        // If the field is not in the struct, return an error.
+                        if !fields.contains_key(&name) {
+                            return Err(Error::MemberNotFound((*container).into(), *member));
+                        }
+                        fields[&name].clone().compile_expr(env, output)?
+                    }
+                    (Self::Type(ty), Self::Symbol(name)) => {
+                        if let Some((constant, _)) = env.get_associated_const(&ty, &name) {
+                            debug!("Compiling associated constant {constant} in environment {env}");
+                            return constant.clone().compile_expr(env, output);
+                        } else {
+                            return Err(Error::SymbolNotDefined(name));
+                        }
+                    }
+                    _ => {
+                        return Err(Error::MemberNotFound((*container).into(), *member));
+                    }
+                }
+            }
             Self::Annotated(expr, metadata) => {
                 expr.compile_expr(env, output)
                     .map_err(|err| err.annotate(metadata))?;
             }
-            Self::Declare(bindings, expr) => {
-                bindings.compile(Expr::ConstExpr(*expr), env, output)?;
+            Self::Declare(bindings, body) => {
+                bindings.compile(Expr::ConstExpr(*body), env, output)?;
             }
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
                 Self::PolyProc(poly_proc) => {
@@ -797,8 +1007,23 @@ impl Compile for ConstExpr {
                     // Compile the monomorphized function.
                     proc.compile_expr(env, output)?;
 
-                    output.log_instructions_after(&common_name, &message, current_instruction);
+                    output.log_instructions_after(common_name, &message, current_instruction);
                 }
+                Self::Template(params, result) => {
+                    if params.len() != ty_args.len() {
+                        return Err(Error::InvalidMonomorphize(Self::Template(params, result)));
+                    }
+
+                    let mut result = *result.clone();
+                    for (param, ty_arg) in params.into_iter().zip(ty_args) {
+                        result.substitute(&param, &ty_arg);
+                    }
+                    result = result.eval(env)?;
+                    // result.monomorphize(ty_args, env).compile_expr(env, output)?;
+
+                    result.compile_expr(env, output)?;
+                }
+
                 val => {
                     return Err(Error::InvalidMonomorphize(val));
                 }
@@ -859,10 +1084,73 @@ impl Compile for ConstExpr {
             }
             // Compile an array constant.
             Self::Array(items) => {
-                for item in items {
-                    // Compile the item.
-                    item.compile_expr(env, output)?;
+                // If all the items are the same, we can compile the array as a single value.
+                if !items.is_empty() && items.iter().all(|item| item == &items[0]) {
+                    let item_size = items[0].get_size(env)?;
+                    // Compile the first item.
+                    items[0].clone().compile_expr(env, output)?;
+                    // Get the size of the array.
+                    let len = items.len();
+                    // Push the first item onto the stack `size` times.
+                    use CoreOp::*;
+                    output.op(Many(vec![
+                        GetAddress {
+                            addr: SP.deref().offset(1 - item_size as isize),
+                            dst: A,
+                        },
+                        Set(B, len as i64 - 1),
+                        While(B),
+                        Push(A.deref(), item_size),
+                        Dec(B),
+                        End,
+                    ]));
+                } else {
+                    // Compile the items.
+                    // for item in items {
+                    //     item.compile_expr(env, output)?;
+                    // }
+
+                    // Do a loop for repeated items.
+                    let mut items = items.into_iter().peekable();
+                    while let Some(item) = items.next() {
+                        let mut count = 1;
+                        while let Some(next) = items.peek() {
+                            if next == &item {
+                                count += 1;
+                                items.next();
+                            } else {
+                                break;
+                            }
+                        }
+
+                        let item_size = item.get_size(env)?;
+                        if count > 2 || item_size >= 8 {
+                            item.compile_expr(env, output)?;
+                            // Push the first item onto the stack `size` times.
+                            use CoreOp::*;
+                            output.op(Many(vec![
+                                GetAddress {
+                                    addr: SP.deref().offset(1 - item_size as isize),
+                                    dst: A,
+                                },
+                                Set(B, count as i64 - 1),
+                                While(B),
+                                Push(A.deref(), item_size),
+                                Dec(B),
+                                End,
+                            ]));
+                        } else {
+                            for _ in 0..count {
+                                item.clone().compile_expr(env, output)?;
+                            }
+                        }
+                    }
                 }
+
+                // for item in items {
+                //     // Compile the item.
+                //     item.compile_expr(env, output)?;
+                // }
             }
             // Compile a struct constant.
             Self::Struct(items) => {
@@ -1024,7 +1312,7 @@ impl Compile for ConstExpr {
                 }
             }
         }
-        output.log_instructions_after(&"expr", &debug_str, current_instruction);
+        output.log_instructions_after("expr", &debug_str, current_instruction);
         Ok(())
     }
 }

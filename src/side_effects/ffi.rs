@@ -1,11 +1,11 @@
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 /// This is an FFI binding, which is used to call a foreign function in the virtual machine code.
 ///
 /// The name is the symbol for the foreign function. The input cells is the number of cells that
 /// the foreign function will read from the FFI channel. The output cells is the number of cells
 /// that the foreign function will write to the FFI channel.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FFIBinding {
     pub name: String,
     pub input_cells: usize,
@@ -26,5 +26,15 @@ impl FFIBinding {
 impl Display for FFIBinding {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         write!(f, "{}", self.name)
+    }
+}
+
+impl Debug for FFIBinding {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(
+            f,
+            "ffi {}({}) -> {}",
+            self.name, self.input_cells, self.output_cells
+        )
     }
 }

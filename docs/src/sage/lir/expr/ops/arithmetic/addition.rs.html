@@ -337,6 +337,22 @@
 <a href="#337" id="337">337</a>
 <a href="#338" id="338">338</a>
 <a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     asm::{AssemblyProgram, CoreOp, StandardOp, A, SP},
     lir::<span class="kw-2">*</span>,
@@ -351,6 +367,10 @@
     <span class="kw">fn </span>return_type_from_types(<span class="kw-2">&amp;</span><span class="self">self</span>, lhs: <span class="kw-2">&amp;</span>Type, rhs: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
         <span class="kw">match </span>(lhs.clone(), rhs.clone()) {
             (Type::Int, Type::Int) =&gt; <span class="prelude-val">Ok</span>(Type::Int),
+
+            (Type::Int | Type::Float | Type::Cell, Type::Cell)
+            | (Type::Cell, Type::Int | Type::Float | Type::Cell) =&gt; <span class="prelude-val">Ok</span>(Type::Cell),
+
             (Type::Float, Type::Float) | (Type::Float, Type::Int) | (Type::Int, Type::Float) =&gt; {
                 <span class="prelude-val">Ok</span>(Type::Float)
             }
@@ -386,6 +406,7 @@
             (Type::Tuple(elems1), Type::Tuple(elems2)) =&gt; <span class="prelude-val">Ok</span>(Type::Tuple(
                 elems1.into_iter().chain(elems2.into_iter()).collect(),
             )),
+            (Type::Unit(<span class="kw">_</span>, a), b) =&gt; <span class="self">self</span>.return_type_from_types(<span class="kw-2">&amp;</span>b, <span class="kw-2">&amp;</span>a, env),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(Error::InvalidBinaryOpTypes(
                 <span class="self">self</span>.clone_box(),
                 lhs.clone(),
@@ -446,14 +467,23 @@
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">match </span>(lhs.clone().simplify(env)<span class="question-mark">?</span>, rhs.clone().simplify(env)<span class="question-mark">?</span>) {
-            (Type::Int, Type::Int) =&gt; {
+            (Type::Unit(<span class="kw">_</span>, a), b) =&gt; {
+                <span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>a, <span class="kw-2">&amp;</span>b, env, output)<span class="question-mark">?</span>;
+            }
+            (a, Type::Unit(<span class="kw">_</span>, b)) =&gt; {
+                <span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>a, <span class="kw-2">&amp;</span>b, env, output)<span class="question-mark">?</span>;
+            }
+            (Type::Int, Type::Int)
+            | (Type::Int, Type::Cell)
+            | (Type::Cell, Type::Int)
+            | (Type::Cell, Type::Cell) =&gt; {
                 output.op(CoreOp::Add {
                     src: SP.deref(),
                     dst: SP.deref().offset(-<span class="number">1</span>),
                 });
                 output.op(CoreOp::Pop(<span class="prelude-val">None</span>, <span class="number">1</span>))
             }
-            (Type::Float, Type::Float) =&gt; {
+            (Type::Float, Type::Float) | (Type::Float, Type::Cell) | (Type::Cell, Type::Float) =&gt; {
                 output.std_op(StandardOp::Add {
                     src: SP.deref(),
                     dst: SP.deref().offset(-<span class="number">1</span>),
@@ -482,6 +512,7 @@
             (Type::Struct(lhs_fields), Type::Struct(rhs_fields)) =&gt; {
                 <span class="comment">// Get the new struct type so we can actually set the elements in the right layout
                 </span><span class="kw">let </span>result = <span class="self">self</span>.return_type_from_types(lhs, rhs, env)<span class="question-mark">?</span>;
+                <span class="kw">let </span>result_size = result.get_size(env)<span class="question-mark">?</span>;
 
                 <span class="comment">// Get the offsets of each element
                 </span><span class="kw">let </span><span class="kw-2">mut </span>lhs_offsets = BTreeMap::new();
@@ -500,24 +531,26 @@
 
                 <span class="kw">let </span>lhs_size = lhs.get_size(env)<span class="question-mark">?</span>;
                 <span class="kw">let </span>rhs_size = rhs.get_size(env)<span class="question-mark">?</span>;
+                <span class="macro">assert_eq!</span>(lhs_size + rhs_size, result_size);
+
                 output.op(CoreOp::Move { src: SP, dst: A });
                 <span class="kw">let </span>rhs_bp = A.deref().offset(<span class="number">1 </span>- rhs_size <span class="kw">as </span>isize);
                 <span class="kw">let </span>lhs_bp = rhs_bp.offset(-(lhs_size <span class="kw">as </span>isize));
 
                 <span class="kw">if let </span>Type::Struct(result_fields) = <span class="kw-2">&amp;</span>result {
                     <span class="kw">for </span>(name, ty) <span class="kw">in </span>result_fields {
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(offset) = lhs_offsets.get(name) {
-                            output.op(CoreOp::Push(
-                                lhs_bp.offset(<span class="kw-2">*</span>offset <span class="kw">as </span>isize),
-                                ty.clone().get_size(env)<span class="question-mark">?</span>,
-                            ));
+                        <span class="comment">// The size of the struct element
+                        </span><span class="kw">let </span>field_size = ty.get_size(env)<span class="question-mark">?</span>;
+
+                        <span class="comment">// If its in the left hand side, push it from the left hand side
+                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(offset) = lhs_offsets.get(name) {
+                            output.op(CoreOp::Push(lhs_bp.offset(<span class="kw-2">*</span>offset <span class="kw">as </span>isize), field_size));
                         } <span class="kw">else if let </span><span class="prelude-val">Some</span>(offset) = rhs_offsets.get(name) {
-                            output.op(CoreOp::Push(
-                                rhs_bp.offset(<span class="kw-2">*</span>offset <span class="kw">as </span>isize),
-                                ty.clone().get_size(env)<span class="question-mark">?</span>,
-                            ));
+                            <span class="comment">// Otherwise, push it from the right hand side
+                            </span>output.op(CoreOp::Push(rhs_bp.offset(<span class="kw-2">*</span>offset <span class="kw">as </span>isize), field_size));
                         } <span class="kw">else </span>{
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidBinaryOpTypes(
+                            <span class="comment">// If it doesn&#39;t exist in either, then we have a problem
+                            </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidBinaryOpTypes(
                                 <span class="self">self</span>.clone_box(),
                                 lhs.clone(),
                                 rhs.clone(),
@@ -525,15 +558,14 @@
                         }
                     }
 
-                    output.op(CoreOp::Copy {
-                        src: SP.deref().offset(<span class="number">1 </span>- result.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>isize),
+                    <span class="comment">// Copy the result over the old arguments
+                    </span>output.op(CoreOp::Copy {
+                        src: SP.deref().offset(<span class="number">1 </span>- result_size <span class="kw">as </span>isize),
                         dst: lhs_bp,
-                        size: result.get_size(env)<span class="question-mark">?</span>,
+                        size: result_size,
                     });
-                    output.op(CoreOp::Pop(
-                        <span class="prelude-val">None</span>,
-                        lhs_size + rhs_size - result.get_size(env)<span class="question-mark">?</span>,
-                    ));
+                    <span class="comment">// Pop the copied result
+                    </span>output.op(CoreOp::Pop(<span class="prelude-val">None</span>, result_size));
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 }
 

@@ -77,7 +77,7 @@ impl Architecture for C {
 
     fn std_op(&mut self, op: &StandardOp) -> Result<String, String> {
         Ok(match op {
-            StandardOp::Call(ffi) => format!("{}();", ffi.name),
+            StandardOp::Call(ffi) => format!("__{}();", ffi.name),
             StandardOp::Peek => self.peek()?,
             StandardOp::Poke => self.poke()?,
             StandardOp::Set(n) => format!("reg.f = {};", n),
@@ -128,7 +128,7 @@ impl Architecture for C {
         let ch = src.channel.0;
         match src.mode {
             InputMode::StdinChar => Ok("reg.i = getchar();".to_string()),
-            InputMode::StdinInt => Ok("scanf(\"%lld\", &reg.i);".to_string()),
+            InputMode::StdinInt => Ok("scanf(\"%ld\", &reg.i);".to_string()),
             InputMode::StdinFloat => Ok("scanf(\"%lf\", &reg.f);".to_string()),
             InputMode::Thermometer => Ok("reg.f = 293.15;".to_string()),
             InputMode::Clock => Ok("reg.i = time(NULL);".to_string()),
@@ -143,7 +143,7 @@ impl Architecture for C {
     fn put(&mut self, dst: &Output) -> Result<String, String> {
         match dst.mode {
             OutputMode::StdoutChar => Ok("putchar(reg.i);".to_string()),
-            OutputMode::StdoutInt => Ok("printf(\"%lld\", reg.i);".to_string()),
+            OutputMode::StdoutInt => Ok("printf(\"%ld\", reg.i);".to_string()),
             OutputMode::StdoutFloat => Ok("printf(\"%lf\", reg.f);".to_string()),
             OutputMode::StderrChar => Ok("fprintf(stderr, \"%c\", reg.i);".to_string()),
             OutputMode::StderrInt => Ok("fprintf(stderr, \"%lld\", reg.i);".to_string()),
@@ -160,23 +160,18 @@ impl Architecture for C {
         Ok("*(++ffi_ptr) = reg;".to_string())
     }
     fn prelude(&self, is_core: bool) -> Option<String> {
-        let mut result = r#"#include <stdlib.h>
+        let mut result = r#"#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 #include <string.h>
 
-union cell {
-long long int i;
-double f;
-union cell *p;
-} tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256], *ffi_ptr = ffi_channel;
+typedef union cell {
+    int64_t i;
+    double f;
+    union cell *p;
+} cell;
 
-void __unsafe_memcpy() {
-    union cell *dst = ffi_ptr[-2].p, *src = ffi_ptr[-1].p;
-    long long int n = ffi_ptr[0].i;
-    memcpy(dst, src, n * sizeof(union cell));
-}
+cell tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256], *ffi_ptr = ffi_channel;
 
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);

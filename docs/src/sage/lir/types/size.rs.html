@@ -184,6 +184,10 @@
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Size
 //!
 //! This module contains the `GetSize` trait, which is used to calculate the size
@@ -210,7 +214,7 @@
 //! |`enum {A, B, ...}`|1|
 
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
-<span class="kw">use </span>log::error;
+<span class="kw">use </span>log::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Get the size of something in memory (number of cells).
 </span><span class="kw">pub trait </span>GetSize {
@@ -229,9 +233,9 @@
 </span><span class="kw">impl </span>GetSize <span class="kw">for </span>Type {
     <span class="kw">fn </span>get_size_checked(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env, i: usize) -&gt; <span class="prelude-ty">Result</span>&lt;usize, Error&gt; {
         <span class="kw">let </span>i = i + <span class="number">1</span>;
-        <span class="comment">// trace!(&quot;Getting the size of type {self} in environment {env} with depth {i}&quot;);
+        <span class="macro">trace!</span>(<span class="string">&quot;Getting the size of type {self} in environment {env} with depth {i}&quot;</span>);
 
-        </span><span class="kw">if </span>i &gt; Type::SIMPLIFY_RECURSION_LIMIT {
+        <span class="kw">if </span>i &gt; Type::SIMPLIFY_RECURSION_LIMIT {
             <span class="macro">error!</span>(<span class="string">&quot;Recursion limit reached while calculating size of type {self}&quot;</span>);
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsizedType(<span class="self">self</span>.clone()));
         }
@@ -243,10 +247,10 @@
             });
         }
 
-        <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
+        <span class="kw">let </span>result = <span class="kw">match </span><span class="self">self </span>{
             <span class="comment">// None or Never are not real types, so they have no size.
             // They are not represented with data. They have zero size.
-            </span><span class="self">Self</span>::None | <span class="self">Self</span>::Never =&gt; <span class="number">0</span>,
+            </span><span class="self">Self</span>::Type(<span class="kw">_</span>) | <span class="self">Self</span>::None | <span class="self">Self</span>::Never =&gt; <span class="number">0</span>,
             <span class="comment">// The `Any` type is really a placeholder for a type that is not yet
             // known. It *does* have a size, unlike `None` and `Never`, but we
             // don&#39;t know what it is yet. So we return an error.
@@ -272,7 +276,6 @@
                     <span class="comment">// Get the size of the type.
                     </span>t.get_size_checked(env, i)<span class="question-mark">?
                 </span>} <span class="kw">else </span>{
-                    <span class="macro">error!</span>(<span class="string">&quot;Type {name} not defined in environment {env}&quot;</span>);
                     <span class="comment">// If the type is not defined, return an error.
                     </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::TypeNotDefined(name.clone()));
                 }
@@ -354,7 +357,12 @@
             <span class="self">Self</span>::Poly(_ty_params, _template) =&gt; {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::SizeOfTemplate(<span class="self">self</span>.clone()));
             }
-        })
+        };
+
+        <span class="comment">// env.set_precalculated_size(self.clone(), result);
+
+        </span><span class="macro">debug!</span>(<span class="string">&quot;Size of type {self} is {result}&quot;</span>);
+        <span class="prelude-val">Ok</span>(result)
     }
 }
 

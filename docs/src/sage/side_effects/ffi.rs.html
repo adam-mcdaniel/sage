@@ -28,14 +28,24 @@
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::{Debug, Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 
 <span class="doccomment">/// This is an FFI binding, which is used to call a foreign function in the virtual machine code.
 ///
 /// The name is the symbol for the foreign function. The input cells is the number of cells that
 /// the foreign function will read from the FFI channel. The output cells is the number of cells
 /// that the foreign function will write to the FFI channel.
-</span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+</span><span class="attr">#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 </span><span class="kw">pub struct </span>FFIBinding {
     <span class="kw">pub </span>name: String,
     <span class="kw">pub </span>input_cells: usize,
@@ -56,6 +66,16 @@
 <span class="kw">impl </span>Display <span class="kw">for </span>FFIBinding {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
         <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.name)
+    }
+}
+
+<span class="kw">impl </span>Debug <span class="kw">for </span>FFIBinding {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
+        <span class="macro">write!</span>(
+            f,
+            <span class="string">&quot;ffi {}({}) -&gt; {}&quot;</span>,
+            <span class="self">self</span>.name, <span class="self">self</span>.input_cells, <span class="self">self</span>.output_cells
+        )
     }
 }
 </code></pre></div></section></main></body></html>

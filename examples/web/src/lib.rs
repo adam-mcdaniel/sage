@@ -86,7 +86,7 @@ enum BetterError {
 impl BetterError {
     pub fn annotate_with_source(self, code: &String) -> Self {
         match self {
-            Self::LirError(lir::Error::AnnotatedWithSource { err, loc }) => {
+            Self::LirError(lir::Error::Annotated(err, Annotation::Location(loc))) => {
                 Self::WithSourceCode { loc: loc.clone(), source_code: code.clone(), err: Box::new(BetterError::LirError(*err)) }
             }
             _ => self

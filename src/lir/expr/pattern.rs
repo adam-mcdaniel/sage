@@ -1,8 +1,8 @@
 use crate::lir::*;
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
-use log::trace;
+use log::{error, trace};
 
 /// A pattern which can be matched against an expression.
 ///
@@ -11,10 +11,10 @@ use log::trace;
 /// When `match`ing, the pattern just checks if the expression matches the pattern.
 /// When `bind`ing, the pattern binds the expression to corresponding variables in the
 /// pattern, and evaluates an expression with those variables.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Pattern {
     Tuple(Vec<Pattern>),
-    Struct(HashMap<String, Pattern>),
+    Struct(BTreeMap<String, Pattern>),
     Variant(String, Option<Box<Pattern>>),
     Symbol(Mutability, String),
     ConstExpr(ConstExpr),
@@ -29,7 +29,7 @@ impl Pattern {
         Self::Tuple(patterns)
     }
     /// Construct a new pattern which matches a struct with a given set of fields.
-    pub fn struct_(patterns: HashMap<String, Pattern>) -> Self {
+    pub fn struct_(patterns: BTreeMap<String, Pattern>) -> Self {
         Self::Struct(patterns)
     }
     /// Construct a new pattern which matches a symbol with a given name.
@@ -85,7 +85,7 @@ impl Pattern {
 
     /// Is this pattern exhaustive?
     pub fn is_exhaustive(&self, expr: &Expr, ty: &Type, env: &Env) -> Result<bool, Error> {
-        Self::are_patterns_exhaustive(&expr, &[self.clone()], &ty, &env)
+        Self::are_patterns_exhaustive(expr, &[self.clone()], ty, env)
     }
 
     /// This associated function returns whether or not a set of patterns is exhaustive,
@@ -428,8 +428,7 @@ impl Pattern {
                         vec![(self.clone(), branch.clone())],
                     ),
                 })
-            }
-            // Err(e) => return Err(Error::InvalidPatternForExpr(matching_expr.clone(), self.clone())),
+            } // Err(e) => return Err(Error::InvalidPatternForExpr(matching_expr.clone(), self.clone())),
         }
         // Generate an expression with the bindings defined for the branch.
         let result_expr = self
@@ -549,8 +548,14 @@ impl Pattern {
     /// For example `(a, b)` binds the variables `a` and `b` to the first and second
     /// elements of the tuple respectively. This function would return a map with
     /// the keys `a` and `b` and the values being their types.
-    pub fn get_bindings(&self, expr: &Expr, ty: &Type, env: &Env) -> Result<HashMap<String, (Mutability, Type)>, Error> {
-        Ok(self.get_bindings_with_offset(expr, ty, env, 0)?
+    pub fn get_bindings(
+        &self,
+        expr: &Expr,
+        ty: &Type,
+        env: &Env,
+    ) -> Result<HashMap<String, (Mutability, Type)>, Error> {
+        Ok(self
+            .get_bindings_with_offset(expr, ty, env, 0)?
             .into_iter()
             .map(|(k, (m, t, _))| (k, (m, t)))
             .collect())
@@ -640,7 +645,7 @@ impl Pattern {
                         return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
                     }
                 }
-                result
+                result.into_iter().collect()
             }
 
             // If the pattern is a symbol, then bind the symbol to the expression's type
@@ -648,7 +653,7 @@ impl Pattern {
                 let mut result = HashMap::new();
                 // Add the symbol to the result with the type of the expression.
                 result.insert(name.clone(), (*mutability, ty.clone(), origin));
-                result
+                result.into_iter().collect()
             }
 
             // If the pattern is a wildcard, then return an empty map (no bindings).
@@ -676,14 +681,20 @@ impl Pattern {
                         for (var, (mutability, ty, _)) in bindings {
                             // If the variable is not in the result, then add it.
                             if !result.contains_key(&var) {
-                                return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
+                                return Err(Error::InvalidPatternForExpr(
+                                    expr.clone(),
+                                    self.clone(),
+                                ));
                             } else {
                                 // If the variable is in the result, then check if the mutability and type match.
                                 let (prev_mutability, prev_ty, _) = &result[&var];
                                 if *prev_mutability != mutability || *prev_ty != ty {
                                     // If the bindings for this pattern are different to the previous patterns,
                                     // then return an error.
-                                    return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
+                                    return Err(Error::InvalidPatternForExpr(
+                                        expr.clone(),
+                                        self.clone(),
+                                    ));
                                 }
                             }
                         }
@@ -696,6 +707,8 @@ impl Pattern {
             }
 
             (_pat, _ty) => {
+                error!("Pattern: {}", self);
+                error!("Type: {}", ty);
                 // If the pattern does not match the type, then return an error.
                 return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
             }
@@ -858,7 +871,7 @@ impl Pattern {
 
     /// Let-bind the pattern to the given expression. This will define all the bindings
     /// in the environment, and then assign the bound expression to all the pattern bindings.
-    /// 
+    ///
     /// This function works by sorting out where the bindings are in the expression, and then
     /// defining the bindings in the environment to map to the correct position in the stack
     /// relative to the expression. ***If the expression and pattern differ in size or type,

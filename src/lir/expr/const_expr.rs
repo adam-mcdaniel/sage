@@ -10,13 +10,14 @@
 //! - Enum variants
 
 use crate::lir::{
-    Annotation, Declaration, CoreBuiltin, Env, Error, Expr, FFIProcedure, GetSize, GetType, Mutability, PolyProcedure,
-    Procedure, Simplify, StandardBuiltin, Type,
+    Annotation, CoreBuiltin, Declaration, Env, Error, Expr, FFIProcedure, GetSize, GetType,
+    Mutability, PolyProcedure, Procedure, Simplify, StandardBuiltin, Type,
 };
-use log::error;
+use log::*;
 
 use core::fmt;
 use std::collections::BTreeMap;
+use std::hash::{Hash, Hasher};
 
 /// A compiletime expression.
 #[derive(Clone, Debug, PartialEq)]
@@ -58,6 +59,8 @@ pub enum ConstExpr {
     /// This will not evaluate the inner expression.
     SizeOfExpr(Box<Expr>),
 
+    /// A type as a constant expression.
+    Type(Type),
     /// A tuple of constant values.
     Tuple(Vec<Self>),
     /// An array of constant values.
@@ -82,11 +85,29 @@ pub enum ConstExpr {
     /// Monomorphize a constant expression with some type arguments.
     Monomorphize(Box<Self>, Vec<Type>),
 
+    Template(Vec<String>, Box<Self>),
+
+    /// Get an attribute of a constant expression.
+    Member(Box<Self>, Box<Self>),
+
     /// Cast a constant expression to another type.
     As(Box<Self>, Type),
 }
 
 impl ConstExpr {
+    pub fn monomorphize(self, ty_args: Vec<Type>) -> Self {
+        Self::Monomorphize(Box::new(self), ty_args)
+    }
+
+    pub fn template(&self, params: Vec<String>) -> Self {
+        if let Self::Proc(proc) = self {
+            Self::PolyProc(PolyProcedure::from_mono(proc.clone(), params))
+        } else {
+            Self::Template(params, Box::new(self.clone()))
+        }
+        // Self::Template(params, Box::new(self.clone()))
+    }
+
     /// Construct a procedure.
     pub fn proc(
         common_name: Option<String>,
@@ -95,6 +116,30 @@ impl ConstExpr {
         body: impl Into<Expr>,
     ) -> Self {
         Self::Proc(Procedure::new(common_name, args, ret, body))
+    }
+
+    /// Return this expression, but with a given declaration in scope.
+    pub fn with(&self, older_decls: impl Into<Declaration>) -> Self {
+        match self {
+            // If the expression is an annotated expression, we need to unwrap it.
+            Self::Annotated(expr, annotation) => {
+                // Just unwrap the expression and recurse.
+                expr.with(older_decls).annotate(annotation.clone())
+            }
+
+            // If the expression is a declaration, we need to merge the declarations.
+            Self::Declare(younger_decls, expr) => {
+                // Start with the older declarations.
+                let mut result = older_decls.into();
+                // Add the younder declarations to the older declarations.
+                result.append(*younger_decls.clone());
+                // Return the merged declaration.
+                Self::Declare(Box::new(result), expr.clone())
+            }
+
+            // Return the expression with the declaration in scope.
+            _ => Self::Declare(Box::new(older_decls.into()), Box::new(self.clone())),
+        }
     }
 
     /// Annotate this constant expression with a source code location.
@@ -127,21 +172,112 @@ impl ConstExpr {
         Self::As(Box::new(self), t)
     }
 
+    /// Get a field from a structure, union, or tuple.
+    ///
+    /// For tuples, use an `Int` constant expression to access the nth field (zero indexed).
+    /// For unions or structures, use a `Symbol` constant expression to access the field.
+    pub fn field(self, field: ConstExpr) -> Self {
+        Self::Member(self.into(), field.into())
+    }
+
     /// Evaluate this constant with stack overflow prevention.
     ///
     /// The `i` is a counter for the number of recursions caused by an `eval` call.
     fn eval_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
         let i = i + 1;
-        if i > 500 {
+        if i > 10 {
             error!("Recursion depth exceeded while evaluating: {self}");
             Err(Error::RecursionDepthConst(self))
         } else {
-            // trace!("Evaluating constexpr: {self}");
+            trace!("Evaluating constexpr: {self}");
             match self {
-                Self::Annotated(expr, metadata) => {
-                    expr.eval_checked(env, i).map_err(|e| e.annotate(metadata.clone()))
+                Self::Template(params, expr) => {
+                    // If the inner expr is a procedure, return a `polyproc`.
+                    match expr.clone().eval_checked(env, i) {
+                        Ok(Self::Proc(proc)) => {
+                            info!("Creating polyproc from mono proc: {proc}");
+                            Ok(Self::PolyProc(PolyProcedure::from_mono(proc, params)))
+                        }
+                        _ => {
+                            info!("Creating template from expr: {expr}");
+                            Ok(Self::Template(params, expr))
+                        }
+                    }
                 }
 
+                Self::Annotated(expr, metadata) => expr
+                    .eval_checked(env, i)
+                    .map_err(|e| e.annotate(metadata.clone())),
+
+                Self::Member(container, member) => {
+                    let container_ty = container.get_type_checked(env, i)?;
+                    trace!("Member access on type: {container_ty}: {container} . {member}");
+                    // container_ty.add_monomorphized_associated_consts(env)?;
+                    Ok(match (container.clone().eval(env)?, *member.clone()) {
+                        (Self::Tuple(tuple), Self::Int(n)) => {
+                            // If the index is out of bounds, return an error.
+                            if n >= tuple.len() as i64 || n < 0 {
+                                return Err(Error::MemberNotFound((*container).into(), *member));
+                            }
+                            tuple[n as usize].clone().eval_checked(env, i)?
+                        }
+                        (Self::Struct(fields), Self::Symbol(name)) => {
+                            // If the field is not in the struct, return an error.
+                            if !fields.contains_key(&name) {
+                                if let Some((constant, _)) =
+                                    env.get_associated_const(&container_ty, &name)
+                                {
+                                    return constant.eval_checked(env, i);
+                                    // return Ok(constant.clone());
+                                }
+                                return Err(Error::MemberNotFound((*container).into(), *member));
+                            }
+                            fields[&name].clone().eval_checked(env, i)?
+                        }
+                        (Self::Type(ty), Self::Symbol(name)) => {
+                            if let Some((constant, _)) = env.get_associated_const(&ty, &name) {
+                                constant.eval_checked(env, i)?
+                            } else {
+                                if let Ok(Some((constant, _))) = member
+                                    .clone()
+                                    .as_symbol(env)
+                                    .map(|name| env.get_associated_const(&container_ty, &name))
+                                {
+                                    return constant.clone().eval_checked(env, i);
+                                    // return Ok(constant.clone());
+                                }
+                                error!(
+                                    "Member access not implemented for: {container_ty} . {member}"
+                                );
+                                return Err(Error::SymbolNotDefined(name));
+                            }
+                        }
+                        (_, Self::Symbol(name)) => {
+                            if let Some((constant, _)) =
+                                env.get_associated_const(&container_ty, &name)
+                            {
+                                constant.eval_checked(env, i)?
+                            } else {
+                                error!(
+                                    "Member access not implemented for: {container_ty} . {member}"
+                                );
+                                return Err(Error::MemberNotFound((*container).into(), *member));
+                            }
+                        }
+                        _ => {
+                            if let Ok(Some((constant, _))) = member
+                                .clone()
+                                .as_symbol(env)
+                                .map(|name| env.get_associated_const(&container_ty, &name))
+                            {
+                                return constant.eval_checked(env, i);
+                                // return Ok(constant.clone());
+                            }
+                            error!("Member access not implemented for: {container_ty} . {member}");
+                            return Err(Error::MemberNotFound((*container).into(), *member));
+                        }
+                    })
+                }
                 Self::None
                 | Self::Null
                 | Self::Cell(_)
@@ -154,18 +290,62 @@ impl ConstExpr {
                 | Self::StandardBuiltin(_)
                 | Self::FFIProcedure(_)
                 | Self::Proc(_)
-                | Self::PolyProc(_) => Ok(self),
+                | Self::PolyProc(_)
+                | Self::Type(_) => Ok(self),
 
                 Self::Declare(bindings, expr) => {
+                    debug!("Declaring compile time bindings: {bindings}");
                     let mut new_env = env.clone();
                     new_env.add_compile_time_declaration(&bindings)?;
                     expr.eval_checked(&new_env, i)
                 }
 
-                Self::Monomorphize(expr, ty_args) => Ok(Self::Monomorphize(
-                    Box::new(expr.eval_checked(env, i)?),
-                    ty_args,
-                )),
+                Self::Monomorphize(expr, ty_args) => {
+                    // env.add_monomorphized_associated_consts(expr.get_type(env)?, ty_args.clone())?;
+                    // let template_ty = expr.get_type_checked(env, i)?;
+
+                    // let result = if let Self::Template(params, ret) = *expr.clone() {
+                    //     if params.len() != ty_args.len() {
+                    //         return Err(Error::InvalidMonomorphize(*expr));
+                    //     }
+                    //     let mut ret = ret.clone();
+
+                    //     for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
+                    //         ret.substitute(param, ty_arg);
+                    //     }
+                    //     ret.eval_checked(env, i)?
+                    // } else {
+                    //     Self::Monomorphize(Box::new(expr.eval_checked(env, i)?), ty_args.clone())
+                    // };
+
+                    let result = match expr.clone().eval(env)? {
+                        Self::Template(params, ret) => {
+                            if params.len() != ty_args.len() {
+                                return Err(Error::InvalidMonomorphize(*expr));
+                            }
+                            let mut ret = ret.clone();
+
+                            for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
+                                ret.substitute(param, ty_arg);
+                            }
+                            *ret
+                        }
+                        Self::PolyProc(proc) => {
+                            Self::Proc(proc.monomorphize(ty_args.clone(), env)?)
+                        }
+                        _ => Self::Monomorphize(
+                            Box::new(expr.eval_checked(env, i)?),
+                            ty_args.clone(),
+                        ),
+                    };
+
+                    // if env.has_any_associated_const(&template_ty) {
+                    // }
+                    // let mono_ty = result.get_type_checked(env, i)?;
+                    // env.add_monomorphized_associated_consts(template_ty, mono_ty, ty_args.clone())?;
+
+                    Ok(result)
+                }
 
                 Self::TypeOf(expr) => Ok(Self::Array(
                     expr.get_type_checked(env, i)?
@@ -194,6 +374,8 @@ impl ConstExpr {
                 Self::Symbol(name) => {
                     if let Some(c) = env.get_const(&name) {
                         c.clone().eval_checked(env, i)
+                    } else if let Some(t) = env.get_type(&name) {
+                        Ok(Self::Type(t.clone()))
                     } else {
                         Ok(Self::Symbol(name))
                     }
@@ -233,42 +415,63 @@ impl ConstExpr {
 
     /// Try to get this constant expression as an integer.
     pub fn as_int(self, env: &Env) -> Result<i64, Error> {
-        // trace!("Getting int from constexpr: {self}");
-        match self.eval_checked(env, 0) {
-            Ok(Self::Int(n)) => Ok(n),
-            Ok(other) => Err(Error::NonIntegralConst(other)),
-            Err(err) => Err(err),
+        trace!("Getting int from constexpr: {self}");
+        // match self.eval_checked(env, 0) {
+        //     Ok(Self::Int(n)) => Ok(n),
+        //     Ok(other) => Err(Error::NonIntegralConst(other)),
+        //     Err(err) => Err(err),
+        // }
+        match self {
+            Self::Int(n) => Ok(n),
+            other => match other.eval(env)? {
+                Self::Int(n) => Ok(n),
+                other => Err(Error::NonIntegralConst(other)),
+            },
         }
     }
 
     /// Try to get this constant expression as a float.
     pub fn as_float(self, env: &Env) -> Result<f64, Error> {
-        // trace!("Getting float from constexpr: {self}");
-        match self.eval_checked(env, 0) {
-            Ok(Self::Float(n)) => Ok(n),
-            Ok(other) => Err(Error::NonIntegralConst(other)),
-            Err(err) => Err(err),
+        trace!("Getting float from constexpr: {self}");
+        // match self.eval_checked(env, 0) {
+        //     Ok(Self::Float(n)) => Ok(n),
+        //     Ok(other) => Err(Error::NonIntegralConst(other)),
+        //     Err(err) => Err(err),
+        // }
+        match self {
+            Self::Float(n) => Ok(n),
+            other => match other.eval(env)? {
+                Self::Float(n) => Ok(n),
+                other => Err(Error::NonIntegralConst(other)),
+            },
         }
     }
 
     /// Try to get this constant expression as a boolean value.
     pub fn as_bool(self, env: &Env) -> Result<bool, Error> {
-        // trace!("Getting bool from constexpr: {self}");
-        match self.eval_checked(env, 0) {
-            Ok(Self::Bool(b)) => Ok(b),
-            Ok(other) => Err(Error::NonIntegralConst(other)),
-            Err(err) => Err(err),
+        trace!("Getting bool from constexpr: {self}");
+        // match self.eval_checked(env, 0) {
+        //     Ok(Self::Bool(b)) => Ok(b),
+        //     Ok(other) => Err(Error::NonIntegralConst(other)),
+        //     Err(err) => Err(err),
+        // }
+        match self {
+            Self::Bool(n) => Ok(n),
+            other => match other.eval(env)? {
+                Self::Bool(n) => Ok(n),
+                other => Err(Error::NonIntegralConst(other)),
+            },
         }
     }
 
     /// Try to get this constant expression as a symbol (like in LISP).
     pub fn as_symbol(self, env: &Env) -> Result<String, Error> {
-        // trace!("Getting symbol from constexpr: {self}");
+        trace!("Getting symbol from constexpr: {self} ---- {self:?}");
         match self {
             // Check to see if the constexpr is already a symbol.
             Self::Symbol(name) => Ok(name),
             // If not, evaluate it and see if it's a symbol.
-            other => match other.eval_checked(env, 0)? {
+            other => match other.eval(env)? {
                 Self::Symbol(name) => Ok(name),
                 other => Err(Error::NonSymbol(other)),
             },
@@ -284,8 +487,129 @@ impl Simplify for ConstExpr {
 
 impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        // trace!("Getting type from constexpr: {self}");
+        trace!("Getting type from constexpr: {self} -- {self:?}");
         Ok(match self.clone() {
+            Self::Template(params, expr) => {
+                let mut new_env = env.clone();
+                for param in &params {
+                    new_env.define_type(param, Type::Symbol(param.clone()));
+                }
+                Type::Poly(params, expr.get_type_checked(&new_env, i)?.into())
+                // return Ok(Type::Poly(
+                //     params,
+                //     expr.get_type_checked(env, i)?.simplify(env)?.into()
+                // ));
+            }
+
+            Self::Type(t) => Type::Type(t.into()),
+
+            Self::Member(val, field) => {
+                // Get the field to access (as a symbol)
+                let as_symbol = field.clone().as_symbol(env);
+                // Get the field to access (as an integer)
+                let as_int = field.clone().as_int(env);
+
+                let val_type = val.get_type_checked(env, i)?;
+                // val_type.add_monomorphized_associated_consts(env)?;
+                // Get the type of the value to get the member of.
+                match &val_type.simplify_until_concrete(env)? {
+                    Type::Unit(_unit_name, inner_ty) => {
+                        // Get the type of the field.
+                        env.get_type_of_associated_const(inner_ty, &as_symbol?)
+                            .ok_or(Error::MemberNotFound((*val.clone()).into(), *field.clone()))?
+                    }
+
+                    Type::Type(ty) => {
+                        // Get the associated constant expression's type.
+                        env.get_type_of_associated_const(ty, &as_symbol?)
+                            .ok_or(Error::MemberNotFound((*val.clone()).into(), *field.clone()))?
+                    }
+                    // If we're accessing a member of a tuple,
+                    // we use the `as_int` interpretation of the field.
+                    // This is because tuples are accesed by integer index.
+                    Type::Tuple(items) => {
+                        trace!("Getting type of associated const: {val_type} . {as_int:?} {as_symbol:?}");
+                        if as_symbol.is_ok() {
+                            return env
+                                .get_type_of_associated_const(&val_type, &as_symbol?)
+                                .ok_or(Error::MemberNotFound(
+                                    (*val.clone()).into(),
+                                    *field.clone(),
+                                ));
+                        }
+
+                        // Get the index of the field.
+                        let n = as_int? as usize;
+                        // If the index is in range, return the type of the field.
+                        if n < items.len() {
+                            // Return the type of the field.
+                            items[n].clone()
+                        } else {
+                            return ConstExpr::Member(
+                                ConstExpr::Type(val_type).into(),
+                                field.clone(),
+                            )
+                            .get_type(env)
+                            .map_err(|_e| {
+                                Error::MemberNotFound((*val.clone()).into(), *field.clone())
+                            });
+                        }
+                    }
+                    // If we're accessing a member of a struct,
+                    // we use the `as_symbol` interpretation of the field.
+                    // This is because struct members are accessed by name.
+                    Type::Struct(fields) => {
+                        // Get the type of the field.
+                        if let Some(t) = fields.get(&as_symbol?) {
+                            // Return the type of the field.
+                            t.clone()
+                        } else {
+                            // If the field is not in the struct, return an error.
+                            return ConstExpr::Member(
+                                ConstExpr::Type(val_type).into(),
+                                field.clone(),
+                            )
+                            .get_type(env)
+                            .map_err(|_e| {
+                                Error::MemberNotFound((*val.clone()).into(), *field.clone())
+                            });
+                        }
+                    }
+                    // If we're accessing a member of a union,
+                    // we use the `as_symbol` interpretation of the field.
+                    // This is because union members are accessed by name.
+                    Type::Union(types) => {
+                        // Get the type of the field.
+                        if let Some(t) = types.get(&as_symbol?) {
+                            // Return the type of the field.
+                            t.clone()
+                        } else {
+                            // If the field is not in the union, return an error.
+                            // return Err(Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into()));
+
+                            return ConstExpr::Member(
+                                ConstExpr::Type(val_type).into(),
+                                field.clone(),
+                            )
+                            .get_type(env)
+                            .map_err(|_e| {
+                                Error::MemberNotFound((*val.clone()).into(), *field.clone())
+                            });
+                        }
+                    }
+
+                    // If we're accessing a member of a type that is not a tuple,
+                    // struct, union, or pointer, we cannot access a member.
+                    _ => {
+                        return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone())
+                            .get_type(env)
+                            .map_err(|_e| {
+                                Error::MemberNotFound((*val.clone()).into(), *field.clone())
+                            });
+                    }
+                }
+            }
+
             Self::Annotated(expr, metadata) => expr
                 .get_type_checked(env, i)
                 .map_err(|e| e.annotate(metadata))?,
@@ -309,15 +633,49 @@ impl GetType for ConstExpr {
                     .simplify_until_type_checks(&new_env)?
             }
             Self::Monomorphize(expr, ty_args) => {
-                // Type::Apply(Box::new(expr.get_type_checked(env, i)?.simplify(env)?), ty_args.into_iter().map(|t| t.simplify(env)).collect::<Result<Vec<Type>, Error>>()?).perform_template_applications(env, &mut HashMap::new(), 0)?
+                let template_ty = expr.get_type_checked(env, i)?;
+                // if env.has_any_associated_const(&expr_ty) {
+                //     env.add_monomorphized_associated_consts(expr_ty.clone(), ty_args.clone())?;
+                // }
+                let mono_ty = if let Self::Template(params, ret) = *expr.clone() {
+                    if params.len() != ty_args.len() {
+                        return Err(Error::InvalidMonomorphize(*expr));
+                    }
 
-                Type::Apply(Box::new(expr.get_type_checked(env, i)?), ty_args)
+                    let mut ret = ret.clone();
+
+                    for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
+                        ret.substitute(param, ty_arg);
+                    }
+                    ret.get_type_checked(env, i)?
+                        .simplify_until_type_checks(env)?
+                    // let mut new_env = env.clone();
+                    // for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
+                    //     new_env.define_type(param, ty_arg.clone());
+                    // }
+                    // ret.get_type_checked(&new_env, i)?
+                    //     .simplify_until_type_checks(&new_env)?
+                    // } else if let Self::PolyProc(proc) = *expr.clone() {
+                    //     proc.get_type_checked(env, i)?
+                    //         .apply(ty_args.clone())
+                    //         .simplify_until_type_checks(env)?
+                } else {
+                    Type::Apply(Box::new(template_ty.clone()), ty_args.clone())
+                };
+
+                env.add_monomorphized_associated_consts(
+                    template_ty,
+                    mono_ty.clone(),
+                    ty_args.clone(),
+                )?;
+
+                mono_ty
             }
             Self::TypeOf(expr) => {
                 let size = expr.get_type_checked(env, i)?.to_string().len();
                 Type::Array(Box::new(Type::Char), Box::new(Self::Int(size as i64)))
             }
-            Self::Null => Type::Pointer(Mutability::Immutable, Box::new(Type::Any)),
+            Self::Null => Type::Pointer(Mutability::Any, Box::new(Type::Any)),
             Self::None => Type::None,
             Self::SizeOfType(_) | Self::SizeOfExpr(_) | Self::Int(_) => Type::Int,
             Self::Float(_) => Type::Float,
@@ -362,6 +720,9 @@ impl GetType for ConstExpr {
                 } else if let Some((_, t, _)) = env.get_static_var(&name) {
                     // If the symbol is a static variable, push it onto the stack.
                     t.clone()
+                } else if let Some(t) = env.get_type(&name) {
+                    // If this is the name of a type, then the type of the symbol is the type itself.
+                    Type::Type(t.clone().into())
                 } else {
                     // Otherwise, evaluate the symbol as a constant.
                     match Self::Symbol(name).eval(env)? {
@@ -384,35 +745,49 @@ impl GetType for ConstExpr {
         })
     }
 
-    fn substitute(&mut self, name: &str, ty: &Type) {
+    fn substitute(&mut self, name: &str, subsitution: &Type) {
         match self {
+            Self::Type(t) => {
+                *t = t.substitute(name, subsitution);
+            }
+
+            Self::Template(params, ret) => {
+                if params.contains(&name.to_string()) {
+                    return;
+                }
+                ret.substitute(name, subsitution);
+            }
+            Self::Member(container, member) => {
+                container.substitute(name, subsitution);
+                member.substitute(name, subsitution);
+            }
             Self::Annotated(expr, _) => {
-                expr.substitute(name, ty);
+                expr.substitute(name, subsitution);
             }
             Self::As(expr, cast_ty) => {
-                expr.substitute(name, ty);
-                *cast_ty = cast_ty.substitute(name, ty);
+                expr.substitute(name, subsitution);
+                *cast_ty = cast_ty.substitute(name, subsitution);
             }
             Self::Declare(bindings, expr) => {
-                bindings.substitute(name, ty);
-                expr.substitute(name, ty);
+                bindings.substitute(name, subsitution);
+                expr.substitute(name, subsitution);
             }
             Self::Monomorphize(expr, ty_args) => {
-                expr.substitute(name, ty);
+                expr.substitute(name, subsitution);
                 for ty_arg in ty_args {
-                    *ty_arg = ty_arg.substitute(name, ty);
+                    *ty_arg = ty_arg.substitute(name, subsitution);
                 }
             }
             Self::TypeOf(expr) => {
-                expr.substitute(name, ty);
+                expr.substitute(name, subsitution);
             }
             Self::Null => {}
             Self::None => {}
             Self::SizeOfType(inner_ty) => {
-                *inner_ty = inner_ty.substitute(name, ty);
+                *inner_ty = inner_ty.substitute(name, subsitution);
             }
             Self::SizeOfExpr(expr) => {
-                expr.substitute(name, ty);
+                expr.substitute(name, subsitution);
             }
             Self::Cell(_) => {}
             Self::Int(_) => {}
@@ -420,47 +795,49 @@ impl GetType for ConstExpr {
             Self::Char(_) => {}
             Self::Bool(_) => {}
             Self::Of(enum_type, _) => {
-                *enum_type = enum_type.substitute(name, ty);
+                *enum_type = enum_type.substitute(name, subsitution);
             }
             Self::Tuple(items) => {
                 for item in items {
-                    item.substitute(name, ty);
+                    item.substitute(name, subsitution);
                 }
             }
             Self::Array(items) => {
                 for item in items {
-                    item.substitute(name, ty);
+                    item.substitute(name, subsitution);
                 }
             }
             Self::Struct(fields) => {
                 for item in fields.values_mut() {
-                    item.substitute(name, ty);
+                    item.substitute(name, subsitution);
                 }
             }
             Self::Union(inner, _, expr) => {
-                *inner = inner.substitute(name, ty);
-                expr.substitute(name, ty);
+                *inner = inner.substitute(name, subsitution);
+                expr.substitute(name, subsitution);
             }
             Self::EnumUnion(inner, _, expr) => {
-                *inner = inner.substitute(name, ty);
-                expr.substitute(name, ty);
+                *inner = inner.substitute(name, subsitution);
+                expr.substitute(name, subsitution);
             }
             Self::PolyProc(proc) => {
-                proc.substitute(name, ty);
+                proc.substitute(name, subsitution);
             }
             Self::Proc(proc) => {
-                proc.substitute(name, ty);
+                proc.substitute(name, subsitution);
             }
             Self::CoreBuiltin(builtin) => {
-                builtin.substitute(name, ty);
+                builtin.substitute(name, subsitution);
             }
             Self::StandardBuiltin(builtin) => {
-                builtin.substitute(name, ty);
+                builtin.substitute(name, subsitution);
             }
             Self::FFIProcedure(ffi_proc) => {
-                ffi_proc.substitute(name, ty);
+                ffi_proc.substitute(name, subsitution);
             }
-            Self::Symbol(_) => {}
+            Self::Symbol(_) => {
+                // A constant symbol cannot be substituted for a type variable.
+            }
         }
     }
 }
@@ -468,6 +845,23 @@ impl GetType for ConstExpr {
 impl fmt::Display for ConstExpr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Self::Template(params, expr) => {
+                write!(f, "<")?;
+                for (i, param) in params.iter().enumerate() {
+                    write!(f, "{param}")?;
+                    if i < params.len() - 1 {
+                        write!(f, ", ")?
+                    }
+                }
+                write!(f, "> {expr}")
+            }
+
+            Self::Type(t) => {
+                write!(f, "{t}")
+            }
+            Self::Member(container, member) => {
+                write!(f, "{container}.{member}")
+            }
             Self::Annotated(expr, _) => {
                 write!(f, "{expr}")
             }
@@ -556,3 +950,137 @@ impl fmt::Display for ConstExpr {
         }
     }
 }
+
+// Implement Hash for ConstExpr.
+impl Hash for ConstExpr {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Template(params, expr) => {
+                state.write_u8(0);
+                params.hash(state);
+                expr.hash(state);
+            }
+            Self::Type(t) => {
+                state.write_u8(1);
+                t.hash(state);
+            }
+            Self::Member(container, member) => {
+                state.write_u8(2);
+                container.hash(state);
+                member.hash(state);
+            }
+            Self::Annotated(expr, _) => {
+                state.write_u8(3);
+                expr.hash(state);
+            }
+            Self::FFIProcedure(ffi_proc) => {
+                state.write_u8(4);
+                ffi_proc.hash(state);
+            }
+            Self::CoreBuiltin(builtin) => {
+                state.write_u8(5);
+                builtin.hash(state);
+            }
+            Self::StandardBuiltin(builtin) => {
+                state.write_u8(6);
+                builtin.hash(state);
+            }
+            Self::TypeOf(expr) => {
+                state.write_u8(7);
+                expr.hash(state);
+            }
+            Self::Proc(proc) => {
+                state.write_u8(8);
+                proc.hash(state);
+            }
+            Self::PolyProc(proc) => {
+                state.write_u8(9);
+                proc.hash(state);
+            }
+            Self::Declare(bindings, expr) => {
+                state.write_u8(10);
+                bindings.hash(state);
+                expr.hash(state);
+            }
+            Self::Monomorphize(expr, ty_args) => {
+                state.write_u8(11);
+                expr.hash(state);
+                ty_args.hash(state);
+            }
+            Self::As(expr, ty) => {
+                state.write_u8(12);
+                expr.hash(state);
+                ty.hash(state);
+            }
+            Self::Tuple(items) => {
+                state.write_u8(13);
+                items.hash(state);
+            }
+            Self::Struct(fields) => {
+                state.write_u8(14);
+                fields.hash(state);
+            }
+            Self::Union(ty, variant, val) => {
+                state.write_u8(15);
+                ty.hash(state);
+                variant.hash(state);
+                val.hash(state);
+            }
+            Self::EnumUnion(ty, variant, val) => {
+                state.write_u8(16);
+                ty.hash(state);
+                variant.hash(state);
+                val.hash(state);
+            }
+            Self::Array(items) => {
+                state.write_u8(17);
+                items.hash(state);
+            }
+            Self::Bool(x) => {
+                state.write_u8(18);
+                x.hash(state);
+            }
+            Self::Char(ch) => {
+                state.write_u8(19);
+                ch.hash(state);
+            }
+            Self::Cell(n) => {
+                state.write_u8(20);
+                n.hash(state);
+            }
+            Self::Int(n) => {
+                state.write_u8(21);
+                n.hash(state);
+            }
+            Self::Float(n) => {
+                state.write_u8(22);
+                n.to_bits().hash(state);
+            }
+            Self::None => {
+                state.write_u8(23);
+            }
+            Self::Null => {
+                state.write_u8(24);
+            }
+            Self::Symbol(name) => {
+                state.write_u8(25);
+                name.hash(state);
+            }
+            Self::Of(t, name) => {
+                state.write_u8(26);
+                t.hash(state);
+                name.hash(state);
+            }
+            Self::SizeOfExpr(expr) => {
+                state.write_u8(27);
+                expr.hash(state);
+            }
+            Self::SizeOfType(ty) => {
+                state.write_u8(28);
+                ty.hash(state);
+            }
+        }
+    }
+}
+
+impl Eq for ConstExpr {}

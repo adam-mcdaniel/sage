@@ -203,11 +203,6 @@
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
 <a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # C Target
 //!
 //! An implementation of the virtual machine for the C language.
@@ -287,7 +282,7 @@
 
     <span class="kw">fn </span>std_op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>StandardOp) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>op {
-            StandardOp::Call(ffi) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}();&quot;</span>, ffi.name),
+            StandardOp::Call(ffi) =&gt; <span class="macro">format!</span>(<span class="string">&quot;__{}();&quot;</span>, ffi.name),
             StandardOp::Peek =&gt; <span class="self">self</span>.peek()<span class="question-mark">?</span>,
             StandardOp::Poke =&gt; <span class="self">self</span>.poke()<span class="question-mark">?</span>,
             StandardOp::Set(n) =&gt; <span class="macro">format!</span>(<span class="string">&quot;reg.f = {};&quot;</span>, n),
@@ -338,7 +333,7 @@
         <span class="kw">let </span>ch = src.channel.<span class="number">0</span>;
         <span class="kw">match </span>src.mode {
             InputMode::StdinChar =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;reg.i = getchar();&quot;</span>.to_string()),
-            InputMode::StdinInt =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;scanf(\&quot;%lld\&quot;, &amp;reg.i);&quot;</span>.to_string()),
+            InputMode::StdinInt =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;scanf(\&quot;%ld\&quot;, &amp;reg.i);&quot;</span>.to_string()),
             InputMode::StdinFloat =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;scanf(\&quot;%lf\&quot;, &amp;reg.f);&quot;</span>.to_string()),
             InputMode::Thermometer =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;reg.f = 293.15;&quot;</span>.to_string()),
             InputMode::Clock =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;reg.i = time(NULL);&quot;</span>.to_string()),
@@ -353,7 +348,7 @@
     <span class="kw">fn </span>put(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dst: <span class="kw-2">&amp;</span>Output) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="kw">match </span>dst.mode {
             OutputMode::StdoutChar =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;putchar(reg.i);&quot;</span>.to_string()),
-            OutputMode::StdoutInt =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;printf(\&quot;%lld\&quot;, reg.i);&quot;</span>.to_string()),
+            OutputMode::StdoutInt =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;printf(\&quot;%ld\&quot;, reg.i);&quot;</span>.to_string()),
             OutputMode::StdoutFloat =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;printf(\&quot;%lf\&quot;, reg.f);&quot;</span>.to_string()),
             OutputMode::StderrChar =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;fprintf(stderr, \&quot;%c\&quot;, reg.i);&quot;</span>.to_string()),
             OutputMode::StderrInt =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;fprintf(stderr, \&quot;%lld\&quot;, reg.i);&quot;</span>.to_string()),
@@ -370,23 +365,18 @@
         <span class="prelude-val">Ok</span>(<span class="string">&quot;*(++ffi_ptr) = reg;&quot;</span>.to_string())
     }
     <span class="kw">fn </span>prelude(<span class="kw-2">&amp;</span><span class="self">self</span>, is_core: bool) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="string">r#&quot;#include &lt;stdlib.h&gt;
+        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="string">r#&quot;#include &lt;stdint.h&gt;
 #include &lt;stdio.h&gt;
-#include &lt;stdlib.h&gt;
 #include &lt;math.h&gt;
 #include &lt;string.h&gt;
 
-union cell {
-long long int i;
-double f;
-union cell *p;
-} tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256], *ffi_ptr = ffi_channel;
+typedef union cell {
+    int64_t i;
+    double f;
+    union cell *p;
+} cell;
 
-void __unsafe_memcpy() {
-    union cell *dst = ffi_ptr[-2].p, *src = ffi_ptr[-1].p;
-    long long int n = ffi_ptr[0].i;
-    memcpy(dst, src, n * sizeof(union cell));
-}
+cell tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256], *ffi_ptr = ffi_channel;
 
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);

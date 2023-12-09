@@ -71,21 +71,21 @@ struct String {
 }
 
 def String_clone(s: &String): String {
-    let data = alloc(s->cap) as &mut Char;
-    for let mut i = 0; i < s->len; i+=1 {
-        data[i] = s->data[i];
+    let data = alloc(s.cap) as &mut Char;
+    for let mut i = 0; i < s.len; i+=1 {
+        data[i] = s.data[i];
     }
     return {
         data=data,
-        len=s->len,
-        cap=s->cap
+        len=s.len,
+        cap=s.cap
     };
-    // match copy_slice<Char>(s->data, s->cap) {
+    // match copy_slice<Char>(s.data, s.cap) {
     //     of Some(data) => {
     //         return Option<String> of Some({
     //             data=data,
-    //             len=s->len,
-    //             cap=s->cap
+    //             len=s.len,
+    //             cap=s.cap
     //         });
     //     },
     //     of Nothing => {
@@ -129,16 +129,16 @@ def String_from(text: &Char): Option<String> {
 }
 
 def String_print(s: &String) {
-    for let mut i = 0; i < s->len; i+=1 {
-        print(s->data[i]);
+    for let mut i = 0; i < s.len; i+=1 {
+        print(s.data[i]);
     }
 }
 
 def nth(s: &String, n: Int): Option<&Char> {
-    if (n < 0 || n >= s->len) {
+    if (n < 0 || n >= s.len) {
         return Option<&Char> of Nothing;
     } else {
-        return Option<&Char> of Some(&(s->data[n]));
+        return Option<&Char> of Some(&(s.data[n]));
     }
 }
 
@@ -161,8 +161,8 @@ def String_push(mut s: String, c: Char): String {
 }
 
 def String_drop(s: &String) {
-    if s->data != Null {
-        del s->data;
+    if s.data != Null {
+        del s.data;
     }
 }
 
@@ -173,12 +173,12 @@ struct Sequence<T> {
 }
 
 def Sequence_clone<T>(s: &Sequence<T>): Option<Sequence<T>> {
-    match copy_slice<T>(s->data, s->cap) {
+    match copy_slice<T>(s.data, s.cap) {
         of Some(data) => {
             return Option<Sequence<T>> of Some({
                 data=data,
-                len=s->len,
-                cap=s->cap
+                len=s.len,
+                cap=s.cap
             });
         },
         of Nothing => {
@@ -219,9 +219,9 @@ def Sequence_from<T>(data: &T, len: Int): Option<Sequence<T>> {
 
 def Sequence_print<T>(s: &Sequence<T>) {
     print("[");
-    for let mut i = 0; i < s->len; i+=1 {
-        print(s->data[i]);
-        if i < s->len - 1 {
+    for let mut i = 0; i < s.len; i+=1 {
+        print(s.data[i]);
+        if i < s.len - 1 {
             print(", ");
         }
     }
@@ -275,16 +275,16 @@ def Sequence_reverse<T>(s: Sequence<T>): Sequence<T> {
 }
 
 def Sequence_drop<T>(s: &Sequence<T>) {
-    if s->data != Null {
-        del s->data;
+    if s.data != Null {
+        del s.data;
     }
 }
 
 def Sequence_nth<T>(s: &Sequence<T>, n: Int): Option<&T> {
-    if (n < 0 || n >= s->len) {
+    if (n < 0 || n >= s.len) {
         return Option<&T> of Nothing;
     } else {
-        return Option<&T> of Some(&(s->data[n]));
+        return Option<&T> of Some(&(s.data[n]));
     }
 }
 

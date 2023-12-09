@@ -15,7 +15,7 @@ use log::debug;
 /// This is compiled down to a standard assembly `Call` instruction.
 /// The label is the name of the foreign function. The types determine the
 /// size of the cells for the arguments and return value.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FFIProcedure {
     /// The name of the foreign function.
     name: String,
@@ -43,10 +43,7 @@ impl TypeCheck for FFIProcedure {
 
 impl GetType for FFIProcedure {
     fn get_type_checked(&self, _env: &Env, _i: usize) -> Result<Type, Error> {
-        Ok(Type::Proc(
-            self.args.iter().map(|t| t.clone()).collect(),
-            Box::new(self.ret.clone()),
-        ))
+        Ok(Type::Proc(self.args.to_vec(), Box::new(self.ret.clone())))
     }
 
     fn substitute(&mut self, name: &str, substitution: &Type) {

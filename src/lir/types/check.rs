@@ -39,6 +39,8 @@ impl TypeCheck for Type {
             | Self::Char
             | Self::Enum(_) => Ok(()),
 
+            Self::Type(t) => t.type_check(env),
+
             // Units are sound if their inner type is sound.
             Self::Unit(_unit_name, t) => t.type_check(env),
 
@@ -47,7 +49,7 @@ impl TypeCheck for Type {
                 if env.get_type(name).is_some() {
                     Ok(())
                 } else {
-                    error!("Type {name} not defined in environment {env}");
+                    debug!("Type {name} not defined in environment {env}");
                     Err(Error::TypeNotDefined(name.clone()))
                 }
             }
@@ -176,11 +178,15 @@ impl TypeCheck for Type {
 /// Check the type-soundness of a given expression.
 impl TypeCheck for Expr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
-        // trace!("Type checking expression: {self}");
+        trace!("Type checking expression: {self}");
+        let ty = self.get_type(env)?;
+        ty.type_check(env)?;
+
         match self {
             Self::Annotated(expr, metadata) => {
                 // Check the inner expression.
-                expr.type_check(env).map_err(|e| e.annotate(metadata.clone()))
+                expr.type_check(env)
+                    .map_err(|e| e.annotate(metadata.clone()))
             }
 
             Self::Declare(declaration, body) => {
@@ -189,27 +195,63 @@ impl TypeCheck for Expr {
                 // Check the declaration.
                 declaration.type_check(&new_env)?;
                 // Add the declarations to the environment.
-                new_env.add_declaration(&declaration)?;
+                new_env.add_declaration(declaration)?;
                 // Check the body with the declarations defined.
                 body.type_check(&new_env)
             }
 
             Self::UnaryOp(unop, expr) => {
-                // Check if the unary operator is sound with
-                // the given expression.
+                if let Self::Annotated(expr, metadata) = &**expr {
+                    return unop
+                        .type_check(expr, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
                 unop.type_check(expr, env)
             }
             Self::BinaryOp(binop, lhs, rhs) => {
-                // Check if the binary operator is sound with
-                // the given expressions.
+                if let Self::Annotated(lhs, metadata) = &**lhs {
+                    return binop
+                        .type_check(lhs, rhs, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Self::Annotated(rhs, metadata) = &**rhs {
+                    return binop
+                        .type_check(lhs, rhs, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+
                 binop.type_check(lhs, rhs, env)
             }
             Self::TernaryOp(ternop, a, b, c) => {
-                // Check if the ternary operator is sound with
-                // the given expressions.
+                if let Self::Annotated(a, metadata) = &**a {
+                    return ternop
+                        .type_check(a, b, c, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Self::Annotated(b, metadata) = &**b {
+                    return ternop
+                        .type_check(a, b, c, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Self::Annotated(c, metadata) = &**c {
+                    return ternop
+                        .type_check(a, b, c, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
                 ternop.type_check(a, b, c, env)
             }
             Self::AssignOp(op, dst, src) => {
+                if let Self::Annotated(src, metadata) = &**src {
+                    return op
+                        .type_check(dst, src, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Self::Annotated(dst, metadata) = &**dst {
+                    return op
+                        .type_check(dst, src, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+
                 // Check if the assignment operator is sound with
                 // the given expressions.
                 op.type_check(dst, src, env)
@@ -249,7 +291,7 @@ impl TypeCheck for Expr {
                     // If we haven't found a type yet, set it.
                     if let Some(result_ty) = &mut result_ty {
                         // Check that the branch type matches the result type.
-                        if !branch_ty.can_decay_to(&result_ty, &new_env)? {
+                        if !branch_ty.can_decay_to(result_ty, &new_env)? {
                             // If it doesn't, return an error.
                             return Err(Error::MismatchedTypes {
                                 found: branch_ty,
@@ -358,11 +400,16 @@ impl TypeCheck for Expr {
             Self::When(cond, t, e) => {
                 // Typecheck the condition.
                 cond.type_check(env)?;
-                // Typecheck the then and else branches.
-                t.type_check(env)?;
-                e.type_check(env)
+                if cond.clone().as_bool(env)? {
+                    // Typecheck the then branch.
+                    t.type_check(env)?;
+                } else {
+                    // Typecheck the else branch.
+                    e.type_check(env)?;
+                }
                 // Since `when` expressions are computed at compile time,
                 // we don't have to care about matching the types of the then and else branches.
+                Ok(())
             }
 
             // Typecheck a reference to a value.
@@ -385,6 +432,7 @@ impl TypeCheck for Expr {
                         Err(Error::InvalidRefer(self.clone()))
                     }
                 }
+                Expr::ConstExpr(_cexpr) => Ok(()),
                 Expr::Deref(inner) | Expr::Index(inner, _) => {
                     // Confirm that the inner expression can be referenced.
                     match inner.get_type(env)? {
@@ -508,12 +556,71 @@ impl TypeCheck for Expr {
 
             // Typecheck a function application.
             Self::Apply(f, args) => {
+                if self.is_method_call(env)? {
+                    // Get the type of the object we're calling the method on.
+                    let method_call = self.transform_method_call(env)?;
+                    info!("Transformed method call: {method_call}");
+
+                    if let Self::Apply(f, args) = method_call.clone() {
+                        // Typecheck the supplied arguments.
+                        for arg in &args {
+                            arg.type_check(env)?;
+                        }
+
+                        f.type_check(env)?;
+
+                        // Get the type of the function.
+                        let f_type = f.get_type(env)?.simplify_until_concrete(env)?;
+                        // Infer the types of the supplied arguments.
+                        let mut found_arg_tys = vec![];
+                        for arg in args {
+                            found_arg_tys.push(arg.get_type(env)?);
+                        }
+                        match f_type {
+                            Type::Proc(expected_arg_tys, ret_ty) => {
+                                // If the number of arguments is incorrect, then return an error.
+                                if expected_arg_tys.len() != found_arg_tys.len() {
+                                    return Err(Error::MismatchedTypes {
+                                        expected: Type::Proc(expected_arg_tys, ret_ty.clone()),
+                                        found: Type::Proc(found_arg_tys, ret_ty),
+                                        expr: self.clone(),
+                                    });
+                                }
+                                // If the function is a procedure, confirm that the type of each
+                                // argument matches the the type of the supplied value.
+                                for (expected, found) in
+                                    expected_arg_tys.into_iter().zip(found_arg_tys.into_iter())
+                                {
+                                    // If the types don't match, return an error.
+                                    if !found.can_decay_to(&expected, env)? {
+                                        return Err(Error::MismatchedTypes {
+                                            expected,
+                                            found,
+                                            expr: self.clone(),
+                                        });
+                                    }
+                                }
+                                return Ok(());
+                            }
+                            // If the function is not a procedure, return an error.
+                            _ => {
+                                return Err(Error::MismatchedTypes {
+                                    expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
+                                    found: f_type,
+                                    expr: self.clone(),
+                                })
+                            }
+                        }
+                    }
+                }
+
                 // Typecheck the expression we want to call as a procedure.
                 f.type_check(env)?;
                 // Typecheck the supplied arguments.
                 for arg in args {
                     arg.type_check(env)?;
                 }
+
                 // Get the type of the function.
                 let f_type = f.get_type(env)?.simplify_until_concrete(env)?;
                 // Infer the types of the supplied arguments.
@@ -627,7 +734,7 @@ impl TypeCheck for Expr {
                             // Typecheck the value assigned to the variant.
                             val.type_check(env)?;
                             let found = val.get_type(env)?;
-                            if !found.can_decay_to(&expected_ty, env)? {
+                            if !found.can_decay_to(expected_ty, env)? {
                                 return Err(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
                                     found,
@@ -662,7 +769,7 @@ impl TypeCheck for Expr {
                             // Typecheck the value assigned to the variant.
                             val.type_check(env)?;
                             let found = val.get_type(env)?;
-                            if !found.can_decay_to(&expected_ty, env)? {
+                            if !found.can_decay_to(expected_ty, env)? {
                                 return Err(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
                                     found,
@@ -704,8 +811,22 @@ impl TypeCheck for Expr {
                 e.type_check(env)?;
                 // Get the type of the expression.
                 let e_type = e.get_type(env)?;
+                // e_type.add_monomorphized_associated_consts(env)?;
+
                 // Typecheck the member we want to access.
-                e_type.type_check_member(field, e, env)
+                match e_type.type_check_member(field, e, env) {
+                    Ok(_) => Ok(()),
+                    Err(e) => {
+                        match field
+                            .clone()
+                            .as_symbol(env)
+                            .map(|name| env.get_associated_const(&e_type, &name))
+                        {
+                            Ok(_) => Ok(()),
+                            Err(_) => Err(e),
+                        }
+                    }
+                }
             }
 
             // Typecheck an index access.
@@ -741,10 +862,56 @@ impl TypeCheck for Expr {
 // Typecheck a constant expression.
 impl TypeCheck for ConstExpr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
-        // trace!("Typechecking constant expression: {}", self);
+        if env.has_type_checked_const(self) {
+            return Ok(());
+        }
+
+        trace!("Typechecking constant expression: {}", self);
         match self {
-            Self::Annotated(expr, metadata) => {
-                expr.type_check(env).map_err(|e| e.annotate(metadata.clone()))
+            Self::Template(_ty_params, _template) => {
+                // Create a new environment with the type parameters defined.
+                // let mut new_env = env.clone();
+                // // Define the type parameters in the environment.
+                // new_env.define_types(
+                //     ty_params
+                //         .clone()
+                //         .into_iter()
+                //         .map(|p| (p.clone(), Type::Unit(p, Box::new(Type::None))))
+                //         .collect(),
+                // );
+                // Check the template type.
+                // template.type_check(&new_env)
+                Ok(())
+            }
+
+            Self::Annotated(expr, metadata) => expr
+                .type_check(env)
+                .map_err(|e| e.annotate(metadata.clone())),
+
+            // Typecheck a type expression.
+            Self::Type(t) => t.type_check(env),
+
+            // Typecheck a member access.
+            Self::Member(e, field) => {
+                // Typecheck the expression we want to access a member of.
+                e.type_check(env)?;
+                // Get the type of the expression.
+                let e_type = e.get_type(env)?;
+                // e_type.add_monomorphized_associated_consts(env)?;
+                // Typecheck the member we want to access.
+                match e_type.type_check_member(field, &Expr::ConstExpr(*e.clone()), env) {
+                    Ok(_) => Ok(()),
+                    Err(e) => {
+                        match field
+                            .clone()
+                            .as_symbol(env)
+                            .map(|name| env.get_associated_const(&e_type, &name))
+                        {
+                            Ok(_) => Ok(()),
+                            Err(_) => Err(e),
+                        }
+                    }
+                }
             }
 
             // These are all guaranteed to be valid, or
@@ -776,14 +943,49 @@ impl TypeCheck for ConstExpr {
                 expr.type_check(&new_env)
             }
             Self::Monomorphize(expr, ty_args) => {
-                self.get_type(env)?.type_check(env)?;
-                if let Self::PolyProc(poly) = *expr.clone() {
-                    poly.type_check(env)?
+                debug!(
+                    "Monomorphizing {expr} with type arguments {ty_args:?} in environment {env}"
+                );
+                match **expr {
+                    Self::Template(ref ty_params, ref template) => {
+                        // Create a new environment with the type parameters defined.
+                        let mut new_env = env.clone();
+                        // Define the type parameters in the environment.
+                        new_env.define_types(
+                            ty_params.clone().into_iter().zip(ty_args.clone()).collect(),
+                        );
+                        // Check the template type.
+                        template.type_check(&new_env)
+                        // Ok(())
+                    }
+                    Self::PolyProc(ref poly) => {
+                        // poly.monomorphize(ty_args.clone(), env)?.type_check(env)
+                        // Create a new environment with the type parameters defined.
+                        // let mut new_env = env.clone();
+                        // // Define the type parameters in the environment.
+                        // new_env.define_types(
+                        //     poly.ty_params
+                        //         .clone()
+                        //         .into_iter()
+                        //         .zip(ty_args.clone())
+                        //         .collect(),
+                        // );
+                        // Check the template type.
+                        poly.type_check(env)
+                        // Ok(())
+                    }
+                    _ => {
+                        self.get_type(env)?.type_check(env)?;
+                        expr.type_check(env)?;
+                        // if let Self::PolyProc(poly) = *expr.clone() {
+                        //     poly.type_check(env)?
+                        // }
+                        for ty in ty_args {
+                            ty.type_check(env)?;
+                        }
+                        Ok(())
+                    }
                 }
-                for ty in ty_args {
-                    ty.type_check(env)?;
-                }
-                Ok(())
             }
 
             Self::TypeOf(expr) => expr.type_check(env),
@@ -826,6 +1028,7 @@ impl TypeCheck for ConstExpr {
                     || env.get_proc(name).is_some()
                     || env.get_var(name).is_some()
                     || env.get_static_var(name).is_some()
+                    || env.get_type(name).is_some()
                 {
                     // Return success.
                     Ok(())
@@ -942,7 +1145,7 @@ impl TypeCheck for ConstExpr {
                             // Typecheck the value assigned to the variant.
                             val.type_check(env)?;
                             let found = val.get_type(env)?;
-                            if !found.can_decay_to(&expected_ty, env)? {
+                            if !found.can_decay_to(expected_ty, env)? {
                                 error!("Mismatched types: {expected_ty} != {found} in environment {env}");
                                 return Err(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
@@ -980,7 +1183,7 @@ impl TypeCheck for ConstExpr {
                             // Typecheck the value assigned to the variant.
                             val.type_check(env)?;
                             let found = val.get_type(env)?;
-                            if !found.can_decay_to(&expected_ty, env)? {
+                            if !found.can_decay_to(expected_ty, env)? {
                                 error!("Mismatched types: {found} != {expected_ty} in environment {env}");
                                 return Err(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
@@ -1002,6 +1205,8 @@ impl TypeCheck for ConstExpr {
                     _ => Err(Error::VariantNotFound(t.clone(), variant.clone())),
                 }
             }
-        }
+        }?;
+        env.save_type_checked_const(self.clone());
+        Ok(())
     }
 }

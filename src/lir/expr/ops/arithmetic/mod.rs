@@ -9,11 +9,11 @@
 //! - `Power`
 
 use crate::{
-    asm::{AssemblyProgram, CoreOp, StandardOp, SP},
+    asm::{AssemblyProgram, CoreOp, StandardOp, A, B, SP},
     lir::*,
 };
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
-
+use log::*;
 mod addition;
 mod negate;
 
@@ -39,6 +39,8 @@ impl BinaryOp for Arithmetic {
             (Type::Int, Type::Float) | (Type::Float, Type::Int) | (Type::Float, Type::Float) => {
                 Ok(true)
             }
+            (Type::Array(_, _), Type::Int) => Ok(matches!(self, Self::Multiply)),
+
             (Type::Int | Type::Float | Type::Cell, Type::Cell)
             | (Type::Cell, Type::Int | Type::Float) => Ok(true),
             (Type::Unit(name1, a_type), Type::Unit(name2, b_type)) => {
@@ -60,6 +62,20 @@ impl BinaryOp for Arithmetic {
 
     /// Get the type of the result of applying this binary operation to the given types.
     fn return_type(&self, lhs: &Expr, rhs: &Expr, env: &Env) -> Result<Type, Error> {
+        if let Expr::Annotated(lhs, metadata) = lhs {
+            if let Expr::Annotated(rhs, _) = rhs {
+                return self.return_type(lhs, rhs, env);
+            }
+            return self
+                .return_type(lhs, rhs, env)
+                .map_err(|e| e.annotate(metadata.clone()));
+        }
+        if let Expr::Annotated(rhs, metadata) = rhs {
+            return self
+                .return_type(lhs, rhs, env)
+                .map_err(|e| e.annotate(metadata.clone()));
+        }
+
         Ok(match (lhs.get_type(env)?, rhs.get_type(env)?) {
             (Type::Int, Type::Int) => Type::Int,
             (Type::Int, Type::Float) | (Type::Float, Type::Int) | (Type::Float, Type::Float) => {
@@ -68,6 +84,39 @@ impl BinaryOp for Arithmetic {
             (Type::Int | Type::Float | Type::Cell, Type::Cell)
             | (Type::Cell, Type::Int | Type::Float) => Type::Cell,
 
+            (Type::Array(elem, size), Type::Int) => {
+                if let (Self::Multiply, Expr::ConstExpr(const_rhs)) = (self, rhs) {
+                    let size = size.as_int(env)?;
+                    let n = const_rhs.clone().as_int(env)?;
+                    if n <= 0 {
+                        error!("Cannot multiply array {lhs} by {n} (not positive)");
+                        return Err(Error::InvalidBinaryOp(
+                            Box::new(*self),
+                            lhs.clone(),
+                            rhs.clone(),
+                        ));
+                    }
+                    Type::Array(elem, Box::new(ConstExpr::Int(size * n)))
+                } else {
+                    error!("Cannot multiply array {lhs} by {rhs} (not constant = {rhs:?})");
+                    return Err(Error::InvalidBinaryOp(
+                        Box::new(*self),
+                        lhs.clone(),
+                        rhs.clone(),
+                    ));
+                }
+            }
+            // (Type::Int, Type::Array(_, size)) => {
+            //     if let Self::Multiply = self {
+            //         Type::Array(Box::new(Type::Int), size.clone() * lhs.as_int(env)?)
+            //     } else {
+            //         return Err(Error::InvalidBinaryOp(
+            //             Box::new(*self),
+            //             lhs.clone(),
+            //             rhs.clone(),
+            //         ));
+            //     }
+            // }
             (Type::Unit(name1, a_type), Type::Unit(name2, b_type)) => {
                 // Make sure that the two units are the same.
                 if name1 != name2 {
@@ -102,6 +151,22 @@ impl BinaryOp for Arithmetic {
     /// Evaluate this binary operation on the given constant values.
     fn eval(&self, lhs: &ConstExpr, rhs: &ConstExpr, env: &mut Env) -> Result<ConstExpr, Error> {
         match (lhs.clone().eval(env)?, self, rhs.clone().eval(env)?) {
+            (ConstExpr::Array(arr), Arithmetic::Multiply, ConstExpr::Int(n)) => {
+                // Repeat the array `rhs` times.
+                let mut new_arr = Vec::new();
+                for _ in 0..n {
+                    new_arr.extend(arr.clone());
+                }
+                Ok(ConstExpr::Array(new_arr))
+            }
+            // | (ConstExpr::Int(n), Arithmetic::Multiply, ConstExpr::Array(arr)) => {
+            //     // Repeat the array `rhs` times.
+            //     let mut new_arr = Vec::new();
+            //     for _ in 0..n {
+            //         new_arr.extend(arr.clone());
+            //     }
+            //     Ok(ConstExpr::Array(new_arr))
+            // }
             (ConstExpr::Int(lhs), Arithmetic::Add, ConstExpr::Int(rhs)) => {
                 Ok(ConstExpr::Int(lhs + rhs))
             }
@@ -189,9 +254,41 @@ impl BinaryOp for Arithmetic {
         &self,
         lhs: &Type,
         rhs: &Type,
-        _env: &mut Env,
+        env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
+        match (lhs, self, rhs) {
+            // Check for array multiplication.
+            (Type::Array(_, _), Arithmetic::Multiply, Type::Int) => {
+                // Copy the loop RHS times.
+                // This will just evaluate the array, evaluate the int, and then repeatedly
+                // copy the array back onto the stack `rhs` times.
+                let arr_size = lhs.get_size(env)?;
+                // Copy the integer into a register.
+                output.op(CoreOp::Many(vec![
+                    // Pop into B
+                    CoreOp::Pop(Some(B), 1),
+                    // Store the address of the array in A.
+                    CoreOp::GetAddress {
+                        addr: SP.deref().offset(1 - arr_size as isize),
+                        dst: A,
+                    },
+                    // While B != 0
+                    CoreOp::Dec(B),
+                    CoreOp::While(B),
+                    // Push the array back onto the stack, starting at A
+                    CoreOp::Push(A.deref(), arr_size),
+                    // Decrement B
+                    CoreOp::Dec(B),
+                    CoreOp::End,
+                ]));
+
+                return Ok(());
+            }
+
+            _ => {}
+        }
+
         let src = SP.deref();
         let dst = SP.deref().offset(-1);
         let tmp = SP.deref().offset(1);
@@ -256,7 +353,7 @@ impl BinaryOp for Arithmetic {
             }
 
             (Type::Unit(_name1, a_type), Type::Unit(_name2, b_type)) => {
-                return self.compile_types(a_type, b_type, _env, output);
+                return self.compile_types(a_type, b_type, env, output);
             }
 
             // Cannot do arithmetic on other pairs of types.

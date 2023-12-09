@@ -1,0 +1,25 @@
+enum Option<T> {
+    Some(T),
+    Nothing,
+}
+
+def panic(): Never {
+    println("Panicking!");
+    while True {}
+}
+
+impl Option {
+    def unwrap<T>(self: Option<T>): T {
+        match self {
+            of Some(x) => x,
+            of Nothing => panic(),
+        }
+    }
+}
+
+def main() {
+    let x = Option<Int> of Some(5);
+    println(Option.unwrap<Int>(x));
+}
+
+main();

@@ -1076,6 +1076,11 @@
 <a href="#1076" id="1076">1076</a>
 <a href="#1077" id="1077">1077</a>
 <a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
+<a href="#1083" id="1083">1083</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Core Assembly Variant
 //!
 //! This variant of the assembly language is intended to be used
@@ -1106,7 +1111,8 @@
 //! using `Put`, and assuming-standard out, to display the integer in decimal.
 </span><span class="kw">use super</span>::{
     location::{FP_STACK, TMP},
-    AssemblyProgram, Env, Error, Location, StandardOp, F, FP, GP, SP,
+    AssemblyProgram, Env, Error, Location, StandardOp, F, FP, GP, SP, STACK_START,
+    START_OF_FP_STACK,
 };
 <span class="kw">use crate</span>::{
     side_effects::{Input, InputMode, Output, OutputMode},
@@ -1176,13 +1182,13 @@
         </span>result.comment(<span class="string">&quot;BEGIN BOOTSTRAP&quot;</span>);
 
         <span class="comment">// Create the stack of frame pointers starting directly after the last register
-        </span><span class="kw">let </span>start_of_fp_stack = F.offset(<span class="number">1</span>);
-        start_of_fp_stack.copy_address_to(<span class="kw-2">&amp;</span>FP_STACK, <span class="kw-2">&amp;mut </span>result);
+        // let start_of_fp_stack = F.offset(1);
+        </span>START_OF_FP_STACK.copy_address_to(<span class="kw-2">&amp;</span>FP_STACK, <span class="kw-2">&amp;mut </span>result);
         <span class="macro">info!</span>(
-            <span class="string">&quot;Frame pointer stack begins at {start_of_fp_stack:?}, and is {} cells long.&quot;</span>,
+            <span class="string">&quot;Frame pointer stack begins at {START_OF_FP_STACK:?}, and is {} cells long.&quot;</span>,
             allowed_recursion_depth
         );
-        <span class="kw">let </span>end_of_fp_stack = start_of_fp_stack.offset(allowed_recursion_depth <span class="kw">as </span>isize);
+        <span class="kw">let </span>end_of_fp_stack = START_OF_FP_STACK.offset(allowed_recursion_depth <span class="kw">as </span>isize);
 
         <span class="comment">// Copy the address just after the allocated space to the global pointer.
         </span><span class="kw">let </span>starting_gp_addr = end_of_fp_stack;
@@ -1195,6 +1201,7 @@
         <span class="comment">// Allocate the global variables
         </span><span class="kw">let </span>starting_sp_addr = starting_gp_addr.offset(size_of_globals <span class="kw">as </span>isize);
         <span class="macro">info!</span>(<span class="string">&quot;Stack pointer is initialized to point to {starting_sp_addr:?}.&quot;</span>);
+        starting_sp_addr.copy_address_to(<span class="kw-2">&amp;</span>STACK_START, <span class="kw-2">&amp;mut </span>result);
         starting_sp_addr.copy_address_to(<span class="kw-2">&amp;</span>SP, <span class="kw-2">&amp;mut </span>result);
 
         result.comment(<span class="string">&quot;END BOOTSTRAP&quot;</span>);
@@ -1987,6 +1994,9 @@
                 <span class="kw">let </span>dst = env.resolve(dst)<span class="question-mark">?</span>;
 
                 <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="kw-2">*</span>size {
+                    <span class="kw">if </span>src.offset(i <span class="kw">as </span>isize) == dst.offset(i <span class="kw">as </span>isize) {
+                        <span class="kw">continue</span>;
+                    }
                     src.offset(i <span class="kw">as </span>isize)
                         .copy_to(<span class="kw-2">&amp;</span>dst.offset(i <span class="kw">as </span>isize), result);
                 }
@@ -2007,7 +2017,7 @@
                 <span class="prelude-val">Ok</span>(())
             }
             <span class="self">Self</span>::Comment(comment) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;// {comment}&quot;</span>),
-            <span class="self">Self</span>::Global { name, size } =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;global {name}, {size}&quot;</span>),
+            <span class="self">Self</span>::Global { name, size } =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;global ${name}, {size}&quot;</span>),
 
             <span class="self">Self</span>::PushTo { src, sp, size } =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;push-to {src}, {sp}, {size}&quot;</span>)
@@ -2041,12 +2051,12 @@
             }
 
             <span class="self">Self</span>::Call(loc) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;call {loc}&quot;</span>),
-            <span class="self">Self</span>::CallLabel(label) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;call {label}&quot;</span>),
+            <span class="self">Self</span>::CallLabel(label) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;call @{label}&quot;</span>),
 
             <span class="self">Self</span>::GetAddress { addr, dst } =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;lea {addr}, {dst}&quot;</span>),
             <span class="self">Self</span>::Return =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;ret&quot;</span>),
 
-            <span class="self">Self</span>::Fn(label) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;fun {label}&quot;</span>),
+            <span class="self">Self</span>::Fn(label) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;fun @{label}&quot;</span>),
             <span class="self">Self</span>::While(cond) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;while {cond}&quot;</span>),
             <span class="self">Self</span>::If(cond) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;if {cond}&quot;</span>),
             <span class="self">Self</span>::Else =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;else&quot;</span>),
@@ -2076,7 +2086,7 @@
             <span class="self">Self</span>::Dec(loc) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;dec {loc}&quot;</span>),
 
             <span class="self">Self</span>::Set(loc, n) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;set {loc}, {n}&quot;</span>),
-            <span class="self">Self</span>::SetLabel(loc, label) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;set {loc}, {label}&quot;</span>),
+            <span class="self">Self</span>::SetLabel(loc, label) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;set {loc}, @{label}&quot;</span>),
 
             <span class="self">Self</span>::BitwiseNand { src, dst } =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;bitwise-nand {src}, {dst}&quot;</span>),
             <span class="self">Self</span>::BitwiseAnd { src, dst } =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;bitwise-and {src}, {dst}&quot;</span>),

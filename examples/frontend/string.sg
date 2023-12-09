@@ -1,0 +1,113 @@
+def memcpy<T>(dest: &mut T, src: &T, mut n: Int) {
+    while n > 0 {
+        n -= 1;
+        dest[n] = src[n];
+    }
+}
+
+enum Option<T> {
+    Some(T),
+    Nothing
+}
+
+struct String {
+    data: &mut Char,
+    length: Int,
+    capacity: Int
+}
+
+impl String {
+    def make(): String {
+        let capacity = 128;
+        let data = alloc(capacity * sizeof<Char>());
+        return {
+            data = data,
+            length = 0,
+            capacity = capacity
+        };
+    }
+
+    def reserve(self: &mut String, new_capacity: Int) {
+        if new_capacity >= self.capacity {
+            let size = new_capacity * sizeof<Char>() + 1024;
+            let new_data = alloc(size);
+            memcpy<Char>(new_data, self.data, self.length);
+            free(self.data);
+            self.data = new_data;
+            self.capacity = new_capacity;
+        }
+    }
+
+    def push(self: &mut String, value: Char) {
+        if self.length > self.capacity / 2 {
+            self.reserve(self.capacity * 2);
+        }
+        self.data[self.length] = value;
+        self.length += 1;
+    }
+
+    def from_str(s: &Char): String {
+        let mut string = String.make();
+        for let mut i=0; s[i] != '\0'; i+=1 {
+            string.push(s[i]);
+        }
+        return string;
+    }
+
+    def from_int(mut i: Int): String {
+        let mut string = String.make();
+        if i < 0 {
+            string.push('-');
+            i = -i;
+        }
+        if i == 0 {
+            string.push('0');
+        }
+        while i > 0 {
+            string.push(('0' as Int + (i % 10)) as Char);
+            i /= 10;
+        }
+        return string;
+    }
+
+    def pop(self: &mut String): Option<Char> {
+        if self.length == 0 {
+            return Option<Char> of Nothing;
+        }
+        self.length -= 1;
+        return Option<Char> of Some(self.data[self.length]);
+    }
+
+    def print(self: &String) {
+        for let mut i=0; i<self.length; i+=1 {
+            print(self.data[i]);
+        }
+    }
+
+    def println(self: &String) {
+        self.print();
+        println();
+    }
+}
+
+
+let mut s = String.make();
+s.push('h');
+s.push('i');
+s.push('!');
+s.println();
+
+match s.pop() {
+    of Some(c) => {
+        print("popped: ");
+        print(c);
+        println();
+    },
+    of Nothing => {
+        println("nothing to pop (This should not happen)");
+    }
+}
+s.println();
+
+let mut s2 = String.from_str(&"hello world!" as &Char);
+s2.println();

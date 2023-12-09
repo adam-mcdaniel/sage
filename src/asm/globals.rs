@@ -3,7 +3,7 @@ use crate::asm::{CoreOp, Error, Location, GP};
 use core::fmt;
 use std::collections::HashMap;
 
-use log::{error, trace};
+use log::*;
 
 /// A lookup for all the global variables in an assembly program.
 #[derive(Clone, Debug)]

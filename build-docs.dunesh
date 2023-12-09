@@ -1,7 +1,7 @@
 #!/home/adam/.cargo/bin/dunesh
 # To execute, run `use build-docs.sh`.
 cargo doc --no-deps;
-rm -Rf docs;
+'rm -Rf docs;
 mv target/doc docs;
 "<!DOCTYPE html>
 <html>
@@ -12,8 +12,8 @@ mv target/doc docs;
 
 cd examples/web;
 let OUT_DIR = "../../docs/sage/web";
-rm -Rf OUT_DIR;
+'rm -Rf OUT_DIR;
 mkdir -p OUT_DIR;
 wasm-pack build --target web --out-dir OUT_DIR --release;
 cp index.html OUT_DIR;
-rm OUT_DIR + "/.gitignore"
+'rm OUT_DIR + "/.gitignore"

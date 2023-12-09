@@ -1,0 +1,300 @@
+struct Vec<T> {
+    data: &mut T,
+    len: Int,
+    capacity: Int,
+}
+
+def allocate<T>(count: Int): &mut T {
+    let size = count * sizeof<T>();
+    return alloc(size) as &mut T;
+}
+
+def memcpy<T>(dst: &mut T, src: &T, count: Int) {
+    for let mut i=0; i<count; i+=1 {
+        dst[i] = src[i];
+    }
+}
+
+impl Vec {
+    def default<T>(): Vec<T> {
+        // Allocate 128 elements
+        let element_size = sizeof<T>();
+        let capacity = 128;
+        let len = 0;
+        let data = allocate<T>(capacity);
+        return {
+            data=data,
+            len=len,
+            capacity=capacity
+        };
+    }
+
+    def push<T>(self: &mut Vec<T>, value: T) {
+        if self.len == self.capacity {
+            Vec.reserve<T>(self, self.capacity * 2);
+        }
+        self.data[self.len] = value;
+        self.len += 1;
+    }
+
+    def reserve<T>(self: &mut Vec<T>, new_capacity: Int) {
+        if new_capacity <= self.capacity {
+            return ();
+        }
+
+        let new_data = allocate<T>(new_capacity);
+        memcpy<T>(new_data, self.data, self.len);
+        del self.data;
+        self.data = new_data;
+        self.capacity = new_capacity;
+    }
+
+    def print<T>(self: &Vec<T>) {
+        print("[");
+        for let mut i=0; i<self.len; i+=1 {
+            print(self.data[i]);
+            if i < self.len - 1 {
+                print(", ");
+            }
+        }
+        print("]");
+    }
+
+    def drop<T>(self: &mut Vec<T>) {
+        del self.data;
+    }
+}
+
+struct String {
+    contents: Vec<Char>,
+}
+
+impl String {
+    def empty(): String {
+        return {
+            contents=Vec.default<Char>()
+        };
+    }
+
+    def push(self: &mut String, c: Char) {
+        Vec.push<Char>(&mut (self.contents), c);
+    }
+
+    def from(cstr: &Char): String {
+        let mut result = String.empty();
+        for let mut i=0; cstr[i] != '\0'; i += 1 {
+            result.push(cstr[i]);
+        }
+        return result;
+    }
+
+    def concat(self: &mut String, other: &String) {
+        for let mut i=0; i<other.contents.len; i+=1 {
+            self.push(other.contents.data[i]);
+        }
+    }
+
+    def clone(self: &String): String {
+        let mut result = String.empty();
+        for let mut i=0; i<self.contents.len; i+=1 {
+            result.push(self.contents.data[i]);
+        }
+        return result;
+    }
+
+    def repeat(self: &mut String, count: Int) {
+        let mut copy = self.clone();
+        for let mut i=0; i<count; i+=1 {
+            self.concat(&copy);
+        }
+        copy.drop();
+    }
+
+    def drop(self: &mut String) {
+        Vec.drop<Char>(&mut (self.contents));
+    }
+
+    def print(self: &String) {
+        for let mut i=0; i<self.contents.len; i+=1 {
+            print(self.contents.data[i]);
+        }
+    }
+
+    def println(self: &String) {
+        for let mut i=0; i<self.contents.len; i+=1 {
+            print(self.contents.data[i]);
+        }
+        println();
+    }
+}
+
+let text = "Hello, world!";
+let mut s = String.from(&text);
+
+let text2 = " This is a test! ";
+let s2 = String.from(&text2);
+
+// s2.push('!'); // This causes an error because s2 is immutable!
+s.concat(&s2);
+s.repeat(1000);
+s.println();
+
+def main() {
+    let mut test = Vec.default<Float>();
+    for let mut i=0; i<1000; i+=1 {
+        Vec.push<Float>(&mut test, i / 100.0);
+    }
+    Vec.print<Float>(&test);
+    Vec.drop<Float>(&mut test);
+    println();
+}
+
+return ();
+when False {
+    println("This should not be printed");
+}
+
+const ADD_LOG_OPERATIONS = True;
+
+when ADD_LOG_OPERATIONS {
+    impl Int {
+        const ZERO = 0;
+
+        def inc(self: &mut Int) {
+            *self += 1;
+        }
+
+        def log(mut self: Int, base: Int): Int {
+            let mut result = 0;
+            while self > 1 {
+                self /= base;
+                result += 1;
+            }
+            return result;
+        }
+
+        def log2(self: Int): Int {
+            return self.log(2);
+        }
+
+        def log10(self: Int): Int {
+            return self.log(10);
+        }
+    }
+    // How many bits are needed to represent 1024?
+    println("Bits to represent 1024 = ", (1024).log2());
+} else {
+    println("ADD_LOG_OPERATIONS is False");
+}
+
+
+
+impl Cell {
+    def inc(self: &mut Cell) {
+        *(self as &mut Int) += 1;
+    }
+
+    def dec(self: &mut Cell) {
+        *(self as &mut Int) -= 1;
+    }
+
+    def print_byte(self: Cell) {
+        let first_digit = self / 16;
+        let second_digit = self % 16;
+
+        def print_hex_digit(digit: Int) {
+            if digit < 10 {
+                print(digit);
+            } else {
+                print((digit - 10 + 'A' as Int) as Char);
+            }
+        }
+
+        if self as Int <= 0xf {
+            print_hex_digit(second_digit);
+        } else {
+            print_hex_digit(first_digit);
+            print_hex_digit(second_digit);
+        }
+    }
+
+    def print_byteln(self: Cell) {
+        let first_digit = self / 16;
+        let second_digit = self % 16;
+
+        def print_hex_digit(digit: Int) {
+            if digit < 10 {
+                print(digit);
+            } else {
+                print((digit - 10 + 'A' as Int) as Char);
+            }
+        }
+
+        if self as Int <= 0xf {
+            print_hex_digit(second_digit);
+        } else {
+            print_hex_digit(first_digit);
+            print_hex_digit(second_digit);
+        }
+
+        println();
+    }
+}
+
+let mut x = 29 as Cell;
+x.inc();
+x.print_byteln();
+// // How many bits are needed to represent 1024?
+// println((1024).log2());
+// // How many digits are needed to represent 100001?
+// println((100001).log10());
+
+// A point with x and y coordinates
+struct Point {
+    x: Int,
+    y: Int
+}
+
+
+
+impl Point {
+    // Associated constant for `Point` type
+    const ORIGIN = {x=0, y=0};
+
+    // Return a new point moved by dx, dy
+    def move(mut self: Point, dx: Int, dy: Int): Point {
+        self.x += dx;
+        self.y += dy;
+        return self;
+    }
+
+    // Shift the point by dx, dy.
+    // This will mutate the point, and will not return a new point.
+    def shift(self: &mut Point, dx: Int, dy: Int) {
+        self.x += dx;
+        self.y += dy;
+    }
+}
+
+// Print out the type
+println("Type: ", Point);
+// Print out the origin
+println("Origin: ", Point.ORIGIN);
+// Create a new point
+let mut p = {x=1, y=2};
+// Print out the point moved by 2, -3
+println(Point.move(p, 2, -3));
+// Mutate the point by 2, -3
+// Point.shift(&mut p, 2, -3);
+p.shift(2, -3);
+p.shift(2, -3);
+// Print out the mutated point (should be the same)
+println(p);
+println(p.move(2, 3));
+println(p);
+
+
+def exit(): ! {
+    println("Exiting...");
+    while True {}
+}

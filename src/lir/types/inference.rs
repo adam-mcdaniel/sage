@@ -37,19 +37,20 @@ pub trait GetType {
 /// Infer the type associated with an expression under a given environment.
 impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        // trace!("Getting type of expression {}", self);
+        trace!("Getting type of expression {}", self);
         let i = i + 1;
         Ok(match self {
             Self::Annotated(expr, annotation) => {
                 // Get the type of the inner expression.
-                expr.get_type_checked(env, i).map_err(|e| e.annotate(annotation.clone()))?
+                expr.get_type_checked(env, i)
+                    .map_err(|e| e.annotate(annotation.clone()))?
             }
 
             Self::Declare(declaration, body) => {
                 // Create a new environment with the declarations.
                 let mut new_env = env.clone();
                 // Add the declarations to the environment.
-                new_env.add_declaration(&declaration)?;
+                new_env.add_declaration(declaration)?;
                 // Get the type of the body in the new environment.
                 body.get_type_checked(&new_env, i)?
             }
@@ -80,6 +81,11 @@ impl GetType for Expr {
             }
 
             Self::UnaryOp(unop, expr) => {
+                if let Self::Annotated(expr, metadata) = &**expr {
+                    return unop
+                        .return_type(expr, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
                 // Infer the type of the unary operation
                 // on the expression.
                 unop.return_type(expr, env)?
@@ -87,14 +93,51 @@ impl GetType for Expr {
             Self::BinaryOp(binop, lhs, rhs) => {
                 // Infer the type of the binary operation
                 // on the two expressions.
+                if let Self::Annotated(lhs, metadata) = &**lhs {
+                    return binop
+                        .return_type(lhs, rhs, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Self::Annotated(rhs, metadata) = &**rhs {
+                    return binop
+                        .return_type(lhs, rhs, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+
                 binop.return_type(lhs, rhs, env)?
             }
             Self::TernaryOp(ternop, a, b, c) => {
+                if let Self::Annotated(a, metadata) = &**a {
+                    return ternop
+                        .return_type(a, b, c, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Self::Annotated(b, metadata) = &**b {
+                    return ternop
+                        .return_type(a, b, c, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+                if let Self::Annotated(c, metadata) = &**c {
+                    return ternop
+                        .return_type(a, b, c, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
                 // Infer the type of the ternary operation
                 // on the three expressions.
                 ternop.return_type(a, b, c, env)?
             }
             Self::AssignOp(op, dst, src) => {
+                if let Self::Annotated(dst, metadata) = &**dst {
+                    return op
+                        .return_type(dst, src, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+
+                if let Self::Annotated(src, metadata) = &**src {
+                    return op
+                        .return_type(dst, src, env)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
                 // Infer the type of the assignment operation
                 // on the two expressions.
                 op.return_type(dst, src, env)?
@@ -104,12 +147,6 @@ impl GetType for Expr {
             Self::ConstExpr(c) => c.get_type_checked(env, i)?,
             // Get the type of the result of the block of expressions.
             Self::Many(exprs) => {
-                for expr in exprs {
-                    if expr.get_type_checked(env, i)? == Type::Never {
-                        return Ok(Type::Never);
-                    }
-                }
-
                 // Get the type of the last expression in the block.
                 if let Some(expr) = exprs.last() {
                     // If the last expression returns a value,
@@ -171,12 +208,11 @@ impl GetType for Expr {
             // Return the type of the expression being dereferenced.
             Self::Deref(expr) => {
                 // Get the type of the expression.
-                let t = expr.get_type_checked(env, i)?;
+                let t = expr
+                    .get_type_checked(env, i)?
+                    .simplify_until_concrete(env)?;
                 // If the type is a pointer, return the inner type of the pointer.
                 if let Type::Pointer(_, inner) = t {
-                    // Return the inner type of the pointer.
-                    *inner
-                } else if let Type::Pointer(_, inner) = t.simplify(env)? {
                     // If the type *evaluates* to a pointer, return that inner type.
                     *inner
                 } else {
@@ -253,15 +289,45 @@ impl GetType for Expr {
                 // Get the field to access (as an integer)
                 let as_int = field.clone().as_int(env);
                 // Get the type of the value to get the member of.
-                match val
-                    .get_type_checked(env, i)?
-                    .simplify_until_has_members(env)
-                {
-                    Ok(Type::Pointer(_, t)) => t.get_member_offset(field, val, env)?.0,
+                let val_type = val.get_type_checked(env, i)?;
+                // val_type.add_monomorphized_associated_consts(env)?;
+                let val_type = val_type.simplify_until_concrete(env)?;
+                // val_type.add_monomorphized_associated_consts(env)?;
+                match val_type {
+                    Type::Type(ty) => {
+                        // ty.add_monomorphized_associated_consts(env)?;
+
+                        // Get the associated constant expression's type.
+                        env.get_type_of_associated_const(&ty, &as_symbol?)
+                            .ok_or(Error::MemberNotFound(*val.clone(), field.clone()))?
+                    }
+                    Type::Unit(_unit_name, inner_ty) => {
+                        // Get the associated constant expression's type.
+                        env.get_type_of_associated_const(&inner_ty, &as_symbol?)
+                            .ok_or(Error::MemberNotFound(*val.clone(), field.clone()))?
+                    }
+                    Type::Pointer(found_mutability, t) => {
+                        match t.get_member_offset(field, val, env) {
+                            Ok((t, _)) => t,
+                            Err(_) => {
+                                return env
+                                    .get_type_of_associated_const(
+                                        &Type::Pointer(found_mutability, t),
+                                        &as_symbol?,
+                                    )
+                                    .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
+                            }
+                        }
+                    }
                     // If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
                     // This is because tuples are accesed by integer index.
-                    Ok(Type::Tuple(items)) => {
+                    Type::Tuple(items) => {
+                        if as_symbol.is_ok() {
+                            return env
+                                .get_type_of_associated_const(&Type::Tuple(items), &as_symbol?)
+                                .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
+                        }
                         // Get the index of the field.
                         let n = as_int? as usize;
                         // If the index is in range, return the type of the field.
@@ -269,40 +335,62 @@ impl GetType for Expr {
                             // Return the type of the field.
                             items[n].clone()
                         } else {
-                            // Otherwise, the field is out of range.
                             return Err(Error::MemberNotFound(*val.clone(), field.clone()));
                         }
                     }
                     // If we're accessing a member of a struct,
                     // we use the `as_symbol` interpretation of the field.
                     // This is because struct members are accessed by name.
-                    Ok(Type::Struct(fields)) => {
+                    Type::Struct(fields) => {
                         // Get the type of the field.
-                        if let Some(t) = fields.get(&as_symbol?) {
+                        let name = as_symbol?;
+                        if let Some(t) = fields.get(&name) {
                             // Return the type of the field.
                             t.clone()
                         } else {
                             // If the field is not in the struct, return an error.
-                            return Err(Error::MemberNotFound(*val.clone(), field.clone()));
+                            return env
+                                .get_type_of_associated_const(&Type::Struct(fields), &name)
+                                .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
                         }
                     }
                     // If we're accessing a member of a union,
                     // we use the `as_symbol` interpretation of the field.
                     // This is because union members are accessed by name.
-                    Ok(Type::Union(types)) => {
+                    Type::Union(types) => {
                         // Get the type of the field.
-                        if let Some(t) = types.get(&as_symbol?) {
+                        let name = as_symbol?;
+                        if let Some(t) = types.get(&name) {
                             // Return the type of the field.
                             t.clone()
                         } else {
                             // If the field is not in the union, return an error.
-                            return Err(Error::MemberNotFound(*val.clone(), field.clone()));
+                            return env
+                                .get_type_of_associated_const(&Type::Union(types), &name)
+                                .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
                         }
                     }
 
                     // If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
-                    _ => return Err(Error::MemberNotFound(*val.clone(), field.clone())),
+                    val_type => {
+                        // error!("BING BONG");
+                        // Try to get the member of the underlying type.
+                        if let Ok((t, _)) = val_type.get_member_offset(field, val, env) {
+                            info!("BING BONG");
+                            return Ok(t);
+                        }
+
+                        // Try to get the member of the underlying type.
+                        return env
+                            .get_type_of_associated_const(&val_type, &as_symbol?)
+                            .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
+                    } // Err(e) => {
+                      //     // Try to get the member of the underlying type.
+                      //     // return Err(e);
+                      //     return env.get_type_of_associated_const(&val_type, &as_symbol?)
+                      //         .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
+                      // }
                 }
             }
 
@@ -343,7 +431,7 @@ impl GetType for Expr {
                 cond.substitute(name, ty);
                 body.substitute(name, ty)
             }
-            
+
             Self::Many(exprs) => {
                 for expr in exprs.iter_mut() {
                     expr.substitute(name, ty);

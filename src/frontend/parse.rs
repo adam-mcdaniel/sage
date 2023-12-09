@@ -17,6 +17,7 @@ pub enum Statement {
     LetStatic(Vec<(String, Mutability, Type, ConstExpr)>),
     Assign(Expr, Option<Box<dyn AssignOp + 'static>>, Expr),
     If(Expr, Box<Self>, Option<Box<Self>>),
+    When(ConstExpr, Box<Self>, Option<Box<Self>>),
     IfLet(Pattern, Expr, Box<Self>, Option<Box<Self>>),
     While(Expr, Box<Self>),
     For(Box<Self>, Expr, Box<Self>, Box<Self>),
@@ -52,6 +53,16 @@ impl Statement {
                     None => lhs.refer(Mutability::Mutable).deref_mut(rhs),
                 }
             }
+            (Self::When(cond, body, None), _) => Expr::When(
+                cond,
+                Box::new(body.to_expr(None)),
+                Box::new(Expr::ConstExpr(ConstExpr::None)),
+            ),
+            (Self::When(cond, body, Some(else_body)), _) => Expr::When(
+                cond,
+                Box::new(body.to_expr(None)),
+                Box::new(else_body.to_expr(None)),
+            ),
             (Self::If(cond, body, None), _) => Expr::If(
                 Box::new(cond),
                 Box::new(body.to_expr(None)),
@@ -116,8 +127,14 @@ impl Statement {
             // }
             (Self::Let(defs), _) => return rest_expr.with(defs),
             (Self::LetPattern(defs), _) => return rest_expr.with(defs),
-            (Self::LetStatic(defs), _) => return rest_expr.with(defs.into_iter().map(|(a, b, c, d)| crate::lir::Declaration::StaticVar(a, b, c, d)).collect::<Vec<crate::lir::Declaration>>()),
-            
+            (Self::LetStatic(defs), _) => {
+                return rest_expr.with(
+                    defs.into_iter()
+                        .map(|(a, b, c, d)| crate::lir::Declaration::StaticVar(a, b, c, d))
+                        .collect::<Vec<crate::lir::Declaration>>(),
+                )
+            }
+
             (Self::LetIn(defs, body), _) => body.to_expr(None).with(defs),
             (Self::LetStaticIn(defs, body), _) => {
                 // Expr::LetStaticVars(defs, Box::new(body.to_expr(None)))
@@ -130,6 +147,7 @@ impl Statement {
 
             (Self::Expr(e), _) => e,
         };
+
         if let Some(Expr::Many(mut stmts)) = rest {
             stmts.insert(0, stmt);
             Expr::Many(stmts)
@@ -143,6 +161,7 @@ impl Statement {
 
 #[derive(Clone, Debug)]
 pub enum Declaration {
+    Impl(Type, Vec<(String, ConstExpr)>),
     Struct(String, Vec<(String, Type)>),
     Extern(String, Vec<(Option<String>, Type)>, Type),
     Enum(String, Vec<(String, Option<Type>)>),
@@ -191,44 +210,11 @@ impl Declaration {
                 )),
             )])
             .to_expr(rest),
-            (Self::Struct(name, fields), Some(Expr::Declare(types, ret))) => {
-                ret.with(types.join((name, Type::Struct(fields.into_iter().collect()))))
+            (Self::Impl(ty, methods), _) => {
+                rest_expr.with(crate::lir::Declaration::Impl(ty, methods))
             }
-            (Self::Struct(name, fields), _) => rest_expr.with((name, Type::Struct(fields.into_iter().collect()))),
-            (Self::Enum(name, variants), Some(Expr::Declare(types, ret))) => {
-                let mut simple = true;
-                for (_, value) in variants.iter() {
-                    if value.is_some() {
-                        simple = false;
-                        break;
-                    }
-                }
-                ret.with(types.join(if simple {
-                    // If we're using a simple enum, then we can just use a simple enum
-                    (
-                        name,
-                        Type::Enum(variants.into_iter().map(|(a, _)| a).collect()),
-                    )
-                } else {
-                    // Otherwise, we need to use a tagged union
-                    (
-                        name,
-                        Type::EnumUnion(
-                            variants
-                                .into_iter()
-                                .map(|(a, b)| {
-                                    (
-                                        a,
-                                        match b {
-                                            Some(x) => x,
-                                            None => Type::None,
-                                        },
-                                    )
-                                })
-                                .collect(),
-                        ),
-                    )
-                }))
+            (Self::Struct(name, fields), _) => {
+                rest_expr.with((name, Type::Struct(fields.into_iter().collect())))
             }
             (Self::Enum(name, variants), _) => {
                 // If none of the variants have a value, then we can just use a simple enum
@@ -240,7 +226,7 @@ impl Declaration {
                         break;
                     }
                 }
-                
+
                 rest_expr.with(if simple {
                     // If we're using a simple enum, then we can just use a simple enum
                     (
@@ -268,67 +254,20 @@ impl Declaration {
                     )
                 })
             }
-            (Self::Const(consts), Some(Expr::Declare(defs, ret))) => {
-                let mut result = *ret;
-                for (name, value) in consts.into_iter().rev() {
-                    result = result.with((name, value))
-                }
-                result.with(*defs)
-
-                // for (name, value) in consts.drain(..).rev() {
-                //     defs.insert(name, value);
-                // }
-                // Expr::LetConsts(defs, ret)
-            }
-            (Self::Const(consts), _) => {
-                rest_expr.with(consts)
-            }
-            (Self::Proc(name, params, ret, stmt), Some(Expr::Declare(procs, ret2))) => {
-                ret2.with((
-                    name.clone(),
-                    Self::proc_to_expr(name, params, ret, *stmt),
-                )).with(*procs)
-                // procs.push((name.clone(), Self::proc_to_expr(name, params, ret, *stmt)));
-                // Expr::LetProcs(procs, ret2)
-            }
+            (Self::Const(consts), _) => rest_expr.with(consts),
             (Self::Proc(name, params, ret, stmt), _) => {
-                rest_expr.with((
-                    name.clone(),
-                    Self::proc_to_expr(name, params, ret, *stmt),
-                ))
+                rest_expr.with((name.clone(), Self::proc_to_expr(name, params, ret, *stmt)))
             }
-            (
-                Self::PolyProc(name, ty_params, params, ret, stmt),
-                Some(Expr::Declare(decls, ret2)),
-            ) => {
-                ret2.with((
-                    name.clone(),
-                    ConstExpr::PolyProc(PolyProcedure::new(
-                        name,
-                        ty_params,
-                        params,
-                        ret.unwrap_or(Type::None),
-                        stmt.to_expr(None),
-                    )),
-                )).with(*decls)
-            }
-            (Self::PolyProc(name, ty_params, params, ret, stmt), _) => {
-                rest_expr.with((
-                    name.clone(),
-                    ConstExpr::PolyProc(PolyProcedure::new(
-                        name,
-                        ty_params,
-                        params,
-                        ret.unwrap_or(Type::None),
-                        stmt.to_expr(None),
-                    )),
-                ))
-            }
-            (Self::Type(types), Some(Expr::Declare(types2, ret))) => {
-                // types.append(&mut types2);
-                // Expr::LetTypes(types, ret)
-                ret.with(types).with(types2)
-            }
+            (Self::PolyProc(name, ty_params, params, ret, stmt), _) => rest_expr.with((
+                name.clone(),
+                ConstExpr::PolyProc(PolyProcedure::new(
+                    name,
+                    ty_params,
+                    params,
+                    ret.unwrap_or(Type::None),
+                    stmt.to_expr(None),
+                )),
+            )),
             (Self::Type(types), _) => rest_expr.with(types),
             (Self::Statement(stmt), Some(rest)) => stmt.to_expr(Some(rest)),
             (Self::Statement(stmt), None) => stmt.to_expr(None),
@@ -381,6 +320,62 @@ fn parse_decl(pair: Pair<Rule>, filename: Option<&str>) -> Declaration {
             .map(|x| parse_decl(x, filename))
             .next()
             .unwrap(),
+
+        Rule::decl_impl => {
+            let mut inner_rules = pair.into_inner();
+            let ty = parse_type(inner_rules.next().unwrap());
+            let mut constants = vec![];
+            while inner_rules.peek().is_some() {
+                let decl = parse_decl(inner_rules.next().unwrap(), filename);
+                match decl {
+                    Declaration::Const(mut decls) => constants.append(&mut decls),
+                    Declaration::Proc(name, args, ret, body) => constants.push((
+                        name.clone(),
+                        ConstExpr::Proc(Procedure::new(
+                            Some(name),
+                            args,
+                            ret.unwrap_or(Type::None),
+                            body.to_expr(None),
+                        )),
+                    )),
+                    Declaration::PolyProc(name, ty_params, args, ret, body) => constants.push((
+                        name.clone(),
+                        ConstExpr::PolyProc(PolyProcedure::new(
+                            name,
+                            ty_params,
+                            args,
+                            ret.unwrap_or(Type::None),
+                            body.to_expr(None),
+                        )),
+                    )),
+                    Declaration::Type(types) => {
+                        for (name, ty) in types {
+                            constants.push((name, ConstExpr::Type(ty)))
+                        }
+                    }
+                    Declaration::Enum(name, variants) => constants.push((
+                        name.clone(),
+                        ConstExpr::Type(Type::EnumUnion(
+                            variants
+                                .into_iter()
+                                .map(|(a, x)| (a, x.unwrap_or(Type::None)))
+                                .collect(),
+                        )),
+                    )),
+                    Declaration::Struct(name, fields) => constants.push((
+                        name.clone(),
+                        ConstExpr::Type(Type::Struct(fields.into_iter().collect())),
+                    )),
+                    _ => {
+                        panic!("Unexpected declaration in impl: {:?}", decl)
+                    }
+                }
+            }
+            Declaration::Impl(ty, constants)
+        }
+
+        Rule::decl_imp_child_decl => parse_decl(pair.into_inner().next().unwrap(), filename),
+
         Rule::decl_proc_block | Rule::decl_proc_expr => {
             let mut inner_rules = pair.into_inner();
             let name = inner_rules.next().unwrap().as_str().to_string();
@@ -637,7 +632,7 @@ fn parse_stmt(pair: Pair<Rule>, filename: Option<&str>) -> Statement {
             }
             Statement::LetStatic(defs)
         }
-            
+
         Rule::stmt_let_static_in_expr | Rule::stmt_let_static_in_block => {
             let mut inner_rules = pair.into_inner();
             let mut defs = vec![];
@@ -677,6 +672,15 @@ fn parse_stmt(pair: Pair<Rule>, filename: Option<&str>) -> Statement {
                 .next()
                 .map(|x| Box::new(parse_stmt(x, filename)));
             Statement::If(cond, Box::new(body), else_body)
+        }
+        Rule::stmt_when => {
+            let mut inner_rules = pair.into_inner();
+            let cond = parse_const(inner_rules.next().unwrap());
+            let body = parse_stmt(inner_rules.next().unwrap(), filename);
+            let else_body = inner_rules
+                .next()
+                .map(|x| Box::new(parse_stmt(x, filename)));
+            Statement::When(cond, Box::new(body), else_body)
         }
 
         Rule::stmt_if_elif => {
@@ -762,7 +766,6 @@ fn parse_stmt(pair: Pair<Rule>, filename: Option<&str>) -> Statement {
             }
             Statement::LetPattern(defs)
         }
-
 
         Rule::stmt_let => {
             let mut inner_rules = pair.into_inner();
@@ -873,7 +876,7 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
     let length = span.end_pos().pos() - span.start_pos().pos();
     let offset = span.start_pos().pos();
 
-    let loc = SourceCodeLocation {
+    let _loc = SourceCodeLocation {
         filename: None,
         line,
         column,
@@ -970,7 +973,7 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
     };
     // result
     // Expr::AnnotatedWithSource { expr: Box::new(result), loc }
-    result.annotate(loc)
+    result
 }
 
 fn parse_expr_term(pair: Pair<Rule>) -> Expr {
@@ -990,18 +993,6 @@ fn parse_expr_term(pair: Pair<Rule>) -> Expr {
             Rule::expr_symbol_field => head.field(ConstExpr::Symbol(
                 suffix.into_inner().next().unwrap().as_str().to_string(),
             )),
-            Rule::expr_int_deref_field => head.deref().field(ConstExpr::Int(
-                suffix
-                    .into_inner()
-                    .next()
-                    .unwrap()
-                    .as_str()
-                    .parse()
-                    .unwrap(),
-            )),
-            Rule::expr_symbol_deref_field => head.deref().field(ConstExpr::Symbol(
-                suffix.into_inner().next().unwrap().as_str().to_string(),
-            )),
             Rule::expr_index => head.idx(parse_expr(suffix)),
             Rule::expr_call => {
                 let inner_rules = suffix.into_inner();
@@ -1012,6 +1003,23 @@ fn parse_expr_term(pair: Pair<Rule>) -> Expr {
                 if head == Expr::ConstExpr(ConstExpr::Symbol("print".to_string())) {
                     let mut exprs: Vec<Expr> =
                         args.into_iter().map(|val| val.unop(Put::Display)).collect();
+                    exprs.push(Expr::ConstExpr(ConstExpr::None));
+                    Expr::Many(exprs)
+                } else if head == Expr::ConstExpr(ConstExpr::Symbol("println".to_string())) {
+                    let mut exprs: Vec<Expr> =
+                        args.into_iter().map(|val| val.unop(Put::Display)).collect();
+                    exprs.push(Expr::ConstExpr(ConstExpr::Char('\n')).unop(Put::Display));
+                    exprs.push(Expr::ConstExpr(ConstExpr::None));
+                    Expr::Many(exprs)
+                } else if head == Expr::ConstExpr(ConstExpr::Symbol("eprint".to_string())) {
+                    let mut exprs: Vec<Expr> =
+                        args.into_iter().map(|val| val.unop(Put::Debug)).collect();
+                    exprs.push(Expr::ConstExpr(ConstExpr::None));
+                    Expr::Many(exprs)
+                } else if head == Expr::ConstExpr(ConstExpr::Symbol("eprintln".to_string())) {
+                    let mut exprs: Vec<Expr> =
+                        args.into_iter().map(|val| val.unop(Put::Debug)).collect();
+                    exprs.push(Expr::ConstExpr(ConstExpr::Char('\n')).unop(Put::Display));
                     exprs.push(Expr::ConstExpr(ConstExpr::None));
                     Expr::Many(exprs)
                 } else if head == Expr::ConstExpr(ConstExpr::Symbol("input".to_string())) {
@@ -1065,8 +1073,42 @@ fn parse_binop(pair: Pair<Rule>) -> Expr {
 
 fn parse_const(pair: Pair<Rule>) -> ConstExpr {
     match pair.as_rule() {
-        Rule::r#const | Rule::const_term | Rule::const_atom | Rule::const_group => {
+        Rule::r#const | Rule::const_atom | Rule::const_group => {
             pair.into_inner().map(parse_const).next().unwrap()
+        }
+        Rule::const_term => {
+            let mut inner_rules = pair.into_inner();
+            let mut head = parse_const(inner_rules.next().unwrap());
+            for suffix in inner_rules {
+                head = match suffix.as_rule() {
+                    Rule::expr_int_field => head.field(ConstExpr::Int(
+                        suffix
+                            .into_inner()
+                            .next()
+                            .unwrap()
+                            .as_str()
+                            .parse()
+                            .unwrap(),
+                    )),
+                    Rule::expr_symbol_field => head.field(ConstExpr::Symbol(
+                        suffix.into_inner().next().unwrap().as_str().to_string(),
+                    )),
+                    _ => unreachable!(),
+                }
+            }
+            head
+            // Rule::expr_int_field => head.field(ConstExpr::Int(
+            //     suffix
+            //         .into_inner()
+            //         .next()
+            //         .unwrap()
+            //         .as_str()
+            //         .parse()
+            //         .unwrap(),
+            // )),
+            // Rule::expr_symbol_field => head.field(ConstExpr::Symbol(
+            //     suffix.into_inner().next().unwrap().as_str().to_string(),
+            // )),
         }
         Rule::const_monomorph => {
             let mut inner_rules = pair.into_inner();
@@ -1134,26 +1176,63 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
         Rule::const_char => {
             let token = pair.into_inner().next().unwrap().as_str();
             let token = &token[1..token.len() - 1];
-            let result = snailquote::unescape(&format!("\"{token}\"").replace("\\0", "\\\\0"))
-                .unwrap()
-                .replace("\\0", "\0");
-            let ch = result.chars().next().unwrap();
+            let result = snailquote::unescape(
+                &format!("\"{token}\"")
+                    .replace("\\0", "\\\\0")
+                    .replace("\\/", "/"),
+            )
+            .unwrap()
+            .replace("\\0", "\0")
+            .replace("\\\"", "\"");
+            // let result = snailquote::unescape(
+            //     &pair
+            //         .clone()
+            //         .into_inner()
+            //         .next()
+            //         .unwrap()
+            //         .as_str()
+            //         // .replace("\\0", "\\\\0")
+            //         .replace("\\/", "/"),
+            // )
+            // .unwrap_or_else(|e| {
+            //     eprintln!("Error parsing string: {}", e);
+            //     pair.into_inner()
+            //         .next()
+            //         .unwrap()
+            //         .as_str()
+            //         // .replace("\\0", "\\\\0")
+            //         .replace("\\/", "/")
+            // })
+            // .replace("\\0", "\0");
+            let ch = result.chars().chain(std::iter::once('\0')).next().unwrap();
             ConstExpr::Char(ch)
         }
         Rule::const_bool => ConstExpr::Bool(pair.as_str().to_lowercase().parse().unwrap()),
         Rule::const_string => ConstExpr::Array(
             snailquote::unescape(
                 &pair
+                    .clone()
                     .into_inner()
                     .next()
                     .unwrap()
                     .as_str()
-                    .replace("\\0", "\\\\0"),
+                    .replace("\\0", "\\\\0")
+                    .replace("\\/", "/"),
             )
-            .unwrap()
+            .unwrap_or_else(|e| {
+                eprintln!("Error parsing string: {}", e);
+                pair.into_inner()
+                    .next()
+                    .unwrap()
+                    .as_str()
+                    .replace("\\0", "\\\\0")
+                    .replace("\\/", "/")
+            })
             .replace("\\0", "\0")
             .chars()
             .map(ConstExpr::Char)
+            // Add a null terminator
+            .chain(std::iter::once(ConstExpr::Char('\0')))
             .collect(),
         ),
         Rule::const_none => ConstExpr::None,

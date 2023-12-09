@@ -24,7 +24,7 @@
 //! |`enum {A, B, ...}`|1|
 
 use super::*;
-use log::error;
+use log::*;
 
 /// Get the size of something in memory (number of cells).
 pub trait GetSize {
@@ -43,7 +43,7 @@ pub trait GetSize {
 impl GetSize for Type {
     fn get_size_checked(&self, env: &Env, i: usize) -> Result<usize, Error> {
         let i = i + 1;
-        // trace!("Getting the size of type {self} in environment {env} with depth {i}");
+        trace!("Getting the size of type {self} in environment {env} with depth {i}");
 
         if i > Type::SIMPLIFY_RECURSION_LIMIT {
             error!("Recursion limit reached while calculating size of type {self}");
@@ -57,10 +57,10 @@ impl GetSize for Type {
             });
         }
 
-        Ok(match self {
+        let result = match self {
             // None or Never are not real types, so they have no size.
             // They are not represented with data. They have zero size.
-            Self::None | Self::Never => 0,
+            Self::Type(_) | Self::None | Self::Never => 0,
             // The `Any` type is really a placeholder for a type that is not yet
             // known. It *does* have a size, unlike `None` and `Never`, but we
             // don't know what it is yet. So we return an error.
@@ -86,7 +86,6 @@ impl GetSize for Type {
                     // Get the size of the type.
                     t.get_size_checked(env, i)?
                 } else {
-                    error!("Type {name} not defined in environment {env}");
                     // If the type is not defined, return an error.
                     return Err(Error::TypeNotDefined(name.clone()));
                 }
@@ -168,7 +167,12 @@ impl GetSize for Type {
             Self::Poly(_ty_params, _template) => {
                 return Err(Error::SizeOfTemplate(self.clone()));
             }
-        })
+        };
+
+        // env.set_precalculated_size(self.clone(), result);
+
+        debug!("Size of type {self} is {result}");
+        Ok(result)
     }
 }
 

@@ -307,7 +307,7 @@
 
 <span class="doccomment">/// A struct representing a location in the source code.
 /// This is used to format errors properly.
-</span><span class="attr">#[derive(Clone, Debug, PartialEq)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 </span><span class="kw">pub struct </span>SourceCodeLocation {
     <span class="kw">pub </span>line: usize,
     <span class="kw">pub </span>column: usize,

@@ -218,6 +218,54 @@
 <a href="#218" id="218">218</a>
 <a href="#219" id="219">219</a>
 <a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Mono-Procedure
 //!
 //! A procedure of LIR code which can be applied to a list of arguments.
@@ -232,8 +280,12 @@
 <span class="kw">use </span><span class="kw">crate</span>::lir::{
     Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck,
 };
+<span class="kw">use </span>std::hash::{Hash, Hasher};
 <span class="kw">use </span>core::fmt;
-<span class="kw">use </span>std::sync::Mutex;
+<span class="kw">use </span>std::{
+    rc::Rc,
+    sync::{Mutex, RwLock},
+};
 
 <span class="kw">use </span>log::trace;
 
@@ -247,7 +299,7 @@
 <span class="doccomment">/// A monomorphic procedure of LIR code which can be applied to a list of arguments.
 /// A procedure is compiled down to a label in the assembly code.
 /// The label is called with the `Call` instruction.
-</span><span class="attr">#[derive(Clone, Debug, PartialEq)]
+</span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>Procedure {
     <span class="doccomment">/// The name of the procedure, if it was given one.
     </span>common_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
@@ -259,8 +311,17 @@
     </span>ret: Type,
     <span class="doccomment">/// The procedure&#39;s body expression
     </span>body: Box&lt;Expr&gt;,
-    <span class="doccomment">/// Has this procedure been compiled yet?
-    </span><span class="kw">pub </span>compiled: bool,
+    has_type_checked: Rc&lt;RwLock&lt;bool&gt;&gt;,
+}
+
+<span class="kw">impl </span>PartialEq <span class="kw">for </span>Procedure {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+        <span class="self">self</span>.common_name == other.common_name
+            &amp;&amp; <span class="self">self</span>.mangled_name == other.mangled_name
+            &amp;&amp; <span class="self">self</span>.args == other.args
+            &amp;&amp; <span class="self">self</span>.ret == other.ret
+            &amp;&amp; <span class="self">self</span>.body == other.body
+    }
 }
 
 <span class="kw">impl </span>Procedure {
@@ -280,8 +341,23 @@
             args,
             ret,
             body: Box::new(body.into()),
-            compiled: <span class="bool-val">false</span>,
+            has_type_checked: Rc::new(RwLock::new(<span class="bool-val">false</span>)),
         }
+    }
+
+    <span class="doccomment">/// Get the arguments of the procedure.
+    </span><span class="kw">pub fn </span>get_args(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[(String, Mutability, Type)] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.args
+    }
+
+    <span class="doccomment">/// Get the return type of the procedure.
+    </span><span class="kw">pub fn </span>get_ret(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Type {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.ret
+    }
+
+    <span class="doccomment">/// Get the body of the procedure.
+    </span><span class="kw">pub fn </span>get_body(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Expr {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.body
     }
 
     <span class="doccomment">/// Get the mangled name of the procedure.
@@ -314,11 +390,21 @@
 <span class="kw">impl </span>TypeCheck <span class="kw">for </span>Procedure {
     <span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="macro">trace!</span>(<span class="string">&quot;type checking procedure: {}&quot;</span>, <span class="self">self</span>);
+
+        <span class="kw">if </span><span class="kw-2">*</span><span class="self">self</span>.has_type_checked.read().unwrap() {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        }
+
+        <span class="comment">// Mark this procedure as having been type checked.
+        </span><span class="kw-2">*</span><span class="self">self</span>.has_type_checked.write().unwrap() = <span class="bool-val">true</span>;
+        
         <span class="comment">// Typecheck the types of the arguments and return value
         </span><span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, t) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.args {
-            t.type_check(env)<span class="question-mark">?</span>;
+            <span class="comment">// t.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
+            </span>t.type_check(env)<span class="question-mark">?</span>;
         }
-        <span class="self">self</span>.ret.type_check(env)<span class="question-mark">?</span>;
+        <span class="comment">// self.ret.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
+        </span><span class="self">self</span>.ret.type_check(env)<span class="question-mark">?</span>;
 
         <span class="comment">// Create a new scope for the procedure&#39;s body, and define the arguments for the scope.
         </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.new_scope();
@@ -352,7 +438,7 @@
         <span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, t) <span class="kw">in </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.args {
             <span class="kw-2">*</span>t = t.substitute(name, ty);
         }
-        <span class="self">self</span>.ret.substitute(name, ty);
+        <span class="self">self</span>.ret = <span class="self">self</span>.ret.substitute(name, ty);
 
         <span class="self">self</span>.body.substitute(name, ty);
     }
@@ -438,4 +524,13 @@
         <span class="macro">write!</span>(f, <span class="string">&quot;) -&gt; {} = {}&quot;</span>, <span class="self">self</span>.ret, <span class="self">self</span>.body)
     }
 }
-</code></pre></div></section></main></body></html>
+
+<span class="kw">impl </span>Eq <span class="kw">for </span>Procedure {}
+
+<span class="kw">impl </span>Hash <span class="kw">for </span>Procedure {
+    <span class="kw">fn </span>hash&lt;H: std::hash::Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H) {
+        <span class="self">self</span>.mangled_name.hash(state);
+        <span class="comment">// self.args.hash(state);
+        // self.ret.hash(state);
+    </span>}
+}</code></pre></div></section></main></body></html>

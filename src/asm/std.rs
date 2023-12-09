@@ -7,7 +7,8 @@
 //!
 //! [***Click here to view opcodes!***](./enum.StandardOp.html)
 use super::{
-    location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, GP, SP,
+    location::*, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, FP, GP, SP,
+    START_OF_FP_STACK,
 };
 use crate::side_effects::ffi::FFIBinding;
 use crate::vm::{self, VirtualMachineProgram};
@@ -73,13 +74,13 @@ impl StandardProgram {
         let size_of_globals = self.get_size_of_globals(&mut env)?;
 
         // Create the stack of frame pointers starting directly after the last register
-        let start_of_fp_stack = F.offset(1);
-        start_of_fp_stack.copy_address_to(&FP_STACK, &mut result);
+        // let start_of_fp_stack = F.offset(1);
+        START_OF_FP_STACK.copy_address_to(&FP_STACK, &mut result);
         info!(
             "Frame pointer stack begins at {FP_STACK:?}, and is {} cells long.",
             allowed_recursion_depth
         );
-        let end_of_fp_stack = start_of_fp_stack.offset(allowed_recursion_depth as isize);
+        let end_of_fp_stack = START_OF_FP_STACK.offset(allowed_recursion_depth as isize);
 
         // Copy the address just after the allocated space to the global pointer.
         let starting_gp_addr = end_of_fp_stack;
@@ -93,6 +94,7 @@ impl StandardProgram {
         let starting_sp_addr = starting_gp_addr.offset(size_of_globals as isize);
         info!("Stack pointer is initialized to point to {starting_sp_addr:?}.");
         starting_sp_addr.copy_address_to(&SP, &mut result);
+        starting_sp_addr.copy_address_to(&STACK_START, &mut result);
 
         SP.copy_to(&FP, &mut result);
         for (i, op) in self.code.iter().enumerate() {
@@ -475,9 +477,8 @@ impl StandardOp {
                         result.move_pointer(1);
                     }
                 }
-                result.where_is_pointer();
                 SP.deref().from(result);
-                result.save();
+                SP.next(output_cells as isize - input_cells as isize, result);
             }
 
             _ => {
@@ -523,7 +524,7 @@ impl fmt::Display for StandardOp {
 
             // Self::Peek(loc) => write!(f, "peek {loc}"),
             // Self::Poke(loc) => write!(f, "poke {loc}"),
-            Self::Call(binding) => write!(f, "call {}", binding),
+            Self::Call(binding) => write!(f, "call {:?}", binding),
         }
     }
 }

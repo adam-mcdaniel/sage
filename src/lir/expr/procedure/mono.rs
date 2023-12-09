@@ -13,7 +13,11 @@ use crate::lir::{
     Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck,
 };
 use core::fmt;
-use std::sync::Mutex;
+use std::hash::Hash;
+use std::{
+    rc::Rc,
+    sync::{Mutex, RwLock},
+};
 
 use log::trace;
 
@@ -27,7 +31,7 @@ lazy_static! {
 /// A monomorphic procedure of LIR code which can be applied to a list of arguments.
 /// A procedure is compiled down to a label in the assembly code.
 /// The label is called with the `Call` instruction.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Procedure {
     /// The name of the procedure, if it was given one.
     common_name: Option<String>,
@@ -39,8 +43,17 @@ pub struct Procedure {
     ret: Type,
     /// The procedure's body expression
     body: Box<Expr>,
-    /// Has this procedure been compiled yet?
-    pub compiled: bool,
+    has_type_checked: Rc<RwLock<bool>>,
+}
+
+impl PartialEq for Procedure {
+    fn eq(&self, other: &Self) -> bool {
+        self.common_name == other.common_name
+            && self.mangled_name == other.mangled_name
+            && self.args == other.args
+            && self.ret == other.ret
+            && self.body == other.body
+    }
 }
 
 impl Procedure {
@@ -60,8 +73,23 @@ impl Procedure {
             args,
             ret,
             body: Box::new(body.into()),
-            compiled: false,
+            has_type_checked: Rc::new(RwLock::new(false)),
         }
+    }
+
+    /// Get the arguments of the procedure.
+    pub fn get_args(&self) -> &[(String, Mutability, Type)] {
+        &self.args
+    }
+
+    /// Get the return type of the procedure.
+    pub fn get_ret(&self) -> &Type {
+        &self.ret
+    }
+
+    /// Get the body of the procedure.
+    pub fn get_body(&self) -> &Expr {
+        &self.body
     }
 
     /// Get the mangled name of the procedure.
@@ -94,10 +122,20 @@ impl Procedure {
 impl TypeCheck for Procedure {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
         trace!("type checking procedure: {}", self);
+
+        if *self.has_type_checked.read().unwrap() {
+            return Ok(());
+        }
+
+        // Mark this procedure as having been type checked.
+        *self.has_type_checked.write().unwrap() = true;
+
         // Typecheck the types of the arguments and return value
         for (_, _, t) in &self.args {
+            // t.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
             t.type_check(env)?;
         }
+        // self.ret.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
         self.ret.type_check(env)?;
 
         // Create a new scope for the procedure's body, and define the arguments for the scope.
@@ -132,7 +170,7 @@ impl GetType for Procedure {
         for (_, _, t) in &mut self.args {
             *t = t.substitute(name, ty);
         }
-        self.ret.substitute(name, ty);
+        self.ret = self.ret.substitute(name, ty);
 
         self.body.substitute(name, ty);
     }
@@ -185,11 +223,7 @@ impl Compile for Procedure {
         output.op(CoreOp::SetLabel(A, self.mangled_name.clone()));
         output.op(CoreOp::Push(A, 1));
 
-        let name = self
-            .common_name
-            .as_ref()
-            .map(|x| x.as_str())
-            .unwrap_or_else(|| "<anonymous>");
+        let name = self.common_name.as_deref().unwrap_or("<anonymous>");
         // Log the compiled procedure
         let message = format!("Compiled procedure {common_name} to {mangled_name} with args of size {args_size} and return value of size {ret_size}",
             common_name = name,
@@ -216,5 +250,15 @@ impl fmt::Display for Procedure {
             }
         }
         write!(f, ") -> {} = {}", self.ret, self.body)
+    }
+}
+
+impl Eq for Procedure {}
+
+impl Hash for Procedure {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.mangled_name.hash(state);
+        // self.args.hash(state);
+        // self.ret.hash(state);
     }
 }

@@ -1,0 +1,139 @@
+
+def realloc_stack(size: Int) {
+    let mut new_sp: &mut Cell = Null;
+    let mut new_fp: &mut Cell = Null;
+    let mut new_gp: &mut Cell = Null;
+    let mut new_stack_start: &mut Cell = Null;
+    let mut old_sp: &mut Cell = Null;
+    let mut old_fp: &mut Cell = Null;
+    let mut old_gp: &mut Cell = Null;
+    let mut old_frame: &mut Cell = Null;
+    let mut globals_size = 0;
+    let mut old_stack_start: &mut Cell = Null;
+    let mut old_stack_size = 0;
+    let mut old_frame_size = 0;
+    let mut fp_stack_ptr: &mut Cell = get_fp_stack();
+    let mut i = 0;
+    old_sp = get_sp();
+    old_fp = get_fp();
+    old_gp = get_gp();
+    old_stack_start = get_stack_start();
+    for i=0; (&(old_stack_start[i])) as Cell != old_sp as Cell; i+=1 {
+        old_stack_size += 1;
+    }
+    for i=0; (&(old_stack_start[i])) as Cell != old_fp as Cell; i+=1 {
+        old_frame_size += 1;
+    }
+    for i=0; (&(old_gp[i])) as Cell != old_stack_start as Cell; i+=1 {
+        globals_size += 1;
+    }
+    new_gp = alloc(globals_size + size) as &mut Cell;
+    new_sp = &(new_gp[globals_size]);
+    new_stack_start = new_sp;
+    new_fp = &(new_stack_start[old_frame_size]);
+    new_sp = &(new_stack_start[old_stack_size]);
+    
+    for i=0; i<old_stack_size; i+=1 {
+        new_stack_start[i] = old_stack_start[i];
+    }
+    for i=0; i<globals_size; i+=1 {
+        new_gp[i] = old_gp[i];
+    }
+    set_stack_start(new_stack_start);
+    set_fp(new_fp);
+    set_sp(new_sp);
+    set_gp(new_gp);
+    fp_stack_ptr[0] = fp_stack_ptr[0] as Cell + new_fp as Cell - old_fp as Cell;
+}
+
+realloc_stack(1000000);
+let x = &"Testing" as &Char;
+let static test: &Char = x;
+
+for let mut i=0; test[i] != '\0'; i+=1 {
+    print(test[i]);
+}
+println();
+
+enum Option<T> {
+    Some(T),
+    Nothing
+}
+
+def exit(code: Int): ! {
+    while True {}
+}
+
+def panic(msg: &Char): ! {
+    for let mut i=0; msg[i] != '\0'; i+=1 {
+        print(msg);
+    }
+    println();
+    debug();
+    exit(1);
+}
+
+enum List<T> {
+    Cons(T, &List<T>),
+    Nil,
+}
+
+impl List<T> {
+    def make(value: T): List<T> {
+        return List<T> of Cons(value, new List<T> of Nil);
+    }
+
+    def cons(list: List<T>, value: T): List<T> {
+        return List<T> of Cons(value, new list);
+    }
+
+    def head(self: &List<T>): T {
+        match self {
+            &of Cons(head, _) => head,
+            _ => panic(&"head of empty list" as &Char)
+        }
+    }
+
+    def tail(self: &List<T>): &List<T> {
+        match self {
+            &of Cons(_, tail) => tail,
+            _ => panic(&"tail of empty list" as &Char)
+        }
+    }
+
+    def print(self: &List<T>) {
+        match self {
+            &of Cons(head, tail) => {
+                print(head);
+                print(" ");
+                tail.print();
+            },
+            _ => {}
+        }
+    }
+
+    def println(self: &List<T>) {
+        self.print();
+        println();
+    }
+
+    def map<U>(self: List<T>, f: T -> U): List<U> {
+        match self {
+            of Cons(head, tail) => tail.map<U>(f).cons(f(head)),
+            _ => List<U> of Nil
+        }
+    }
+}
+
+let mut l1 = List<Int> of Nil;
+
+
+for let mut i=20; i>=0; i-=1 {
+    l1 = l1.cons(i);
+}
+
+def print_int(i: Int) {
+    print(i, " ");
+}
+
+l1.println();

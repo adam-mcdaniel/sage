@@ -527,6 +527,7 @@
 <a href="#527" id="527">527</a>
 <a href="#528" id="528">528</a>
 <a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Standard Assembly Variant
 //!
 //! This variant of the assembly language is intended to be used
@@ -536,7 +537,8 @@
 //!
 //! [***Click here to view opcodes!***](./enum.StandardOp.html)
 </span><span class="kw">use super</span>::{
-    location::FP_STACK, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, GP, SP,
+    location::<span class="kw-2">*</span>, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, GP, SP,
+    START_OF_FP_STACK,
 };
 <span class="kw">use </span><span class="kw">crate</span>::side_effects::ffi::FFIBinding;
 <span class="kw">use </span><span class="kw">crate</span>::vm::{<span class="self">self</span>, VirtualMachineProgram};
@@ -602,13 +604,13 @@
         </span><span class="kw">let </span>size_of_globals = <span class="self">self</span>.get_size_of_globals(<span class="kw-2">&amp;mut </span>env)<span class="question-mark">?</span>;
 
         <span class="comment">// Create the stack of frame pointers starting directly after the last register
-        </span><span class="kw">let </span>start_of_fp_stack = F.offset(<span class="number">1</span>);
-        start_of_fp_stack.copy_address_to(<span class="kw-2">&amp;</span>FP_STACK, <span class="kw-2">&amp;mut </span>result);
+        // let start_of_fp_stack = F.offset(1);
+        </span>START_OF_FP_STACK.copy_address_to(<span class="kw-2">&amp;</span>FP_STACK, <span class="kw-2">&amp;mut </span>result);
         <span class="macro">info!</span>(
             <span class="string">&quot;Frame pointer stack begins at {FP_STACK:?}, and is {} cells long.&quot;</span>,
             allowed_recursion_depth
         );
-        <span class="kw">let </span>end_of_fp_stack = start_of_fp_stack.offset(allowed_recursion_depth <span class="kw">as </span>isize);
+        <span class="kw">let </span>end_of_fp_stack = START_OF_FP_STACK.offset(allowed_recursion_depth <span class="kw">as </span>isize);
 
         <span class="comment">// Copy the address just after the allocated space to the global pointer.
         </span><span class="kw">let </span>starting_gp_addr = end_of_fp_stack;
@@ -622,6 +624,7 @@
         </span><span class="kw">let </span>starting_sp_addr = starting_gp_addr.offset(size_of_globals <span class="kw">as </span>isize);
         <span class="macro">info!</span>(<span class="string">&quot;Stack pointer is initialized to point to {starting_sp_addr:?}.&quot;</span>);
         starting_sp_addr.copy_address_to(<span class="kw-2">&amp;</span>SP, <span class="kw-2">&amp;mut </span>result);
+        starting_sp_addr.copy_address_to(<span class="kw-2">&amp;</span>STACK_START, <span class="kw-2">&amp;mut </span>result);
 
         SP.copy_to(<span class="kw-2">&amp;</span>FP, <span class="kw-2">&amp;mut </span>result);
         <span class="kw">for </span>(i, op) <span class="kw">in </span><span class="self">self</span>.code.iter().enumerate() {
@@ -715,6 +718,12 @@
     <span class="doccomment">/// Get the operation at the given instruction number.
     </span><span class="kw">fn </span>get_op(<span class="kw-2">&amp;</span><span class="self">self</span>, start: usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="prelude-ty">Result</span>&lt;CoreOp, StandardOp&gt;&gt; {
         <span class="self">self</span>.code.get(start).cloned().map(<span class="prelude-val">Err</span>)
+    }
+}
+
+<span class="kw">impl </span>From&lt;CoreProgram&gt; <span class="kw">for </span>StandardProgram {
+    <span class="kw">fn </span>from(core: CoreProgram) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new(core.code.into_iter().map(StandardOp::CoreOp).collect())
     }
 }
 
@@ -998,9 +1007,8 @@
                         </span>result.move_pointer(<span class="number">1</span>);
                     }
                 }
-                result.where_is_pointer();
                 SP.deref().from(result);
-                result.save();
+                SP.next(output_cells <span class="kw">as </span>isize - input_cells <span class="kw">as </span>isize, result);
             }
 
             <span class="kw">_ </span>=&gt; {
@@ -1046,14 +1054,8 @@
 
             <span class="comment">// Self::Peek(loc) =&gt; write!(f, &quot;peek {loc}&quot;),
             // Self::Poke(loc) =&gt; write!(f, &quot;poke {loc}&quot;),
-            </span><span class="self">Self</span>::Call(binding) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;call {}&quot;</span>, binding),
+            </span><span class="self">Self</span>::Call(binding) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;call {:?}&quot;</span>, binding),
         }
-    }
-}
-
-<span class="kw">impl </span>From&lt;CoreProgram&gt; <span class="kw">for </span>StandardProgram {
-    <span class="kw">fn </span>from(core: CoreProgram) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new(core.code.into_iter().map(StandardOp::CoreOp).collect())
     }
 }
 </code></pre></div></section></main></body></html>

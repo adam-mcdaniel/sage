@@ -7,6 +7,7 @@
 use crate::asm::{AssemblyProgram, CoreOp, StandardOp};
 use crate::lir::{Compile, Env, Error, GetType, Type, TypeCheck};
 use core::fmt;
+use std::hash::{Hash, Hasher};
 
 use log::trace;
 
@@ -63,6 +64,16 @@ impl Compile for CoreBuiltin {
         Ok(())
     }
 }
+
+impl Hash for CoreBuiltin {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.args.hash(state);
+        self.ret.hash(state);
+    }
+}
+
+impl Eq for CoreBuiltin {}
 
 /// A builtin pseudo-procedure implemented in the standard assembly variant.
 ///
@@ -161,5 +172,15 @@ impl fmt::Display for StandardBuiltin {
         }
         write!(f, "}}")?;
         Ok(())
+    }
+}
+
+impl Eq for StandardBuiltin {}
+
+impl Hash for StandardBuiltin {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.args.hash(state);
+        self.ret.hash(state);
     }
 }

@@ -93,6 +93,7 @@
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     asm::{AssemblyProgram, CoreOp, StandardOp, A, SP},
     lir::<span class="kw-2">*</span>,
@@ -104,14 +105,15 @@
 
 <span class="kw">impl </span>UnaryOp <span class="kw">for </span>Negate {
     <span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
-        ty.equals(<span class="kw-2">&amp;</span>Type::Int, env).or(ty.equals(<span class="kw-2">&amp;</span>Type::Float, env))
+        ty.can_decay_to(<span class="kw-2">&amp;</span>Type::Int, env)
+            .or(ty.can_decay_to(<span class="kw-2">&amp;</span>Type::Float, env))
     }
 
     <span class="kw">fn </span>return_type(<span class="kw-2">&amp;</span><span class="self">self</span>, x: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
         <span class="kw">let </span>ty = x.get_type(env)<span class="question-mark">?</span>;
-        <span class="kw">if </span>ty.equals(<span class="kw-2">&amp;</span>Type::Int, env).unwrap_or(<span class="bool-val">false</span>) {
+        <span class="kw">if </span>ty.can_decay_to(<span class="kw-2">&amp;</span>Type::Int, env).unwrap_or(<span class="bool-val">false</span>) {
             <span class="prelude-val">Ok</span>(Type::Int)
-        } <span class="kw">else if </span>ty.equals(<span class="kw-2">&amp;</span>Type::Float, env).unwrap_or(<span class="bool-val">false</span>) {
+        } <span class="kw">else if </span>ty.can_decay_to(<span class="kw-2">&amp;</span>Type::Float, env).unwrap_or(<span class="bool-val">false</span>) {
             <span class="prelude-val">Ok</span>(Type::Float)
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(Error::MismatchedTypes {
@@ -145,7 +147,7 @@
         env: <span class="kw-2">&amp;mut </span>Env,
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">if </span>ty.equals(<span class="kw-2">&amp;</span>Type::Int, env)<span class="question-mark">? </span>{
+        <span class="kw">if </span>ty.can_decay_to(<span class="kw-2">&amp;</span>Type::Int, env)<span class="question-mark">? </span>{
             output.op(CoreOp::Set(A, <span class="number">0</span>));
             output.op(CoreOp::Sub {
                 src: SP.deref(),
@@ -155,7 +157,7 @@
                 src: A,
                 dst: SP.deref(),
             });
-        } <span class="kw">else if </span>ty.equals(<span class="kw-2">&amp;</span>Type::Float, env)<span class="question-mark">? </span>{
+        } <span class="kw">else if </span>ty.can_decay_to(<span class="kw-2">&amp;</span>Type::Float, env)<span class="question-mark">? </span>{
             output.std_op(StandardOp::Set(A, <span class="number">0.0</span>))<span class="question-mark">?</span>;
             output.std_op(StandardOp::Sub {
                 src: SP.deref(),

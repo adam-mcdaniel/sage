@@ -1,0 +1,19 @@
+self.data.len() = 128
+index = 38
+self.data.len() = 128
+index = 39
+self.data.len() = 128
+index = 40
+m.contains_key(0) = false
+m.contains_key(1) = true
+one
+m.contains_key(2) = true
+two
+m.contains_key(3) = true
+three
+m.contains_key(4) = false
+m.contains_key(5) = false
+m.contains_key(6) = false
+m.contains_key(7) = false
+m.contains_key(8) = false
+m.contains_key(9) = false

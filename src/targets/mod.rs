@@ -39,6 +39,9 @@
 pub mod c;
 pub use c::*;
 
+pub mod my_os;
+pub use my_os::*;
+
 pub mod x86;
 pub use x86::*;
 
