@@ -6,7 +6,7 @@
 use crate::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
 use core::fmt;
 use std::{collections::HashMap, rc::Rc, sync::RwLock};
-
+use std::{fmt::Display, hash::Hash, hash::Hasher};
 use log::{debug, error, trace};
 
 use super::Procedure;
@@ -270,5 +270,17 @@ impl fmt::Display for PolyProcedure {
             }
         }
         write!(f, ") -> {} = {}", self.ret, self.body)
+    }
+}
+
+impl Eq for PolyProcedure {}
+
+impl Hash for PolyProcedure {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.ty_params.hash(state);
+        self.args.hash(state);
+        self.ret.hash(state);
+        self.body.hash(state);
     }
 }

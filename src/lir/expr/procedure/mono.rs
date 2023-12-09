@@ -12,6 +12,7 @@ use crate::asm::{AssemblyProgram, CoreOp, A, FP, SP};
 use crate::lir::{
     Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck,
 };
+use std::hash::{Hash, Hasher};
 use core::fmt;
 use std::{
     rc::Rc,
@@ -42,6 +43,7 @@ pub struct Procedure {
     ret: Type,
     /// The procedure's body expression
     body: Box<Expr>,
+    has_type_checked: Rc<RwLock<bool>>,
 }
 
 impl PartialEq for Procedure {
@@ -71,6 +73,7 @@ impl Procedure {
             args,
             ret,
             body: Box::new(body.into()),
+            has_type_checked: Rc::new(RwLock::new(false)),
         }
     }
 
@@ -119,6 +122,14 @@ impl Procedure {
 impl TypeCheck for Procedure {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
         trace!("type checking procedure: {}", self);
+
+        if *self.has_type_checked.read().unwrap() {
+            return Ok(());
+        }
+
+        // Mark this procedure as having been type checked.
+        *self.has_type_checked.write().unwrap() = true;
+        
         // Typecheck the types of the arguments and return value
         for (_, _, t) in &self.args {
             // t.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
@@ -243,5 +254,15 @@ impl fmt::Display for Procedure {
             }
         }
         write!(f, ") -> {} = {}", self.ret, self.body)
+    }
+}
+
+impl Eq for Procedure {}
+
+impl Hash for Procedure {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.mangled_name.hash(state);
+        // self.args.hash(state);
+        // self.ret.hash(state);
     }
 }

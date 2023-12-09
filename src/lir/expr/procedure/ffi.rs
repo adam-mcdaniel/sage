@@ -15,7 +15,7 @@ use log::debug;
 /// This is compiled down to a standard assembly `Call` instruction.
 /// The label is the name of the foreign function. The types determine the
 /// size of the cells for the arguments and return value.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FFIProcedure {
     /// The name of the foreign function.
     name: String,

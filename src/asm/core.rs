@@ -36,6 +36,7 @@ use crate::{
     vm::{self, VirtualMachineProgram},
 };
 use std::{collections::BTreeSet, fmt};
+use rayon::prelude::*;
 
 use log::{info, trace};
 

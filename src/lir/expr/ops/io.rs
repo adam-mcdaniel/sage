@@ -204,22 +204,70 @@ impl Put {
 
             Type::Array(ty, array_len_expr) => {
                 let array_len = array_len_expr.clone().as_int(env)?;
-
-                let ty_size = ty.get_size(env)? as isize;
-
-                output.op(CoreOp::Set(A, b'[' as i64));
-                output.op(CoreOp::Put(A, Output::stdout_char()));
-                for i in 0..array_len as isize {
-                    Self::debug(addr.offset(i * ty_size), &ty, env, output)?;
-                    if i < array_len as isize - 1 {
-                        output.op(CoreOp::Set(A, b',' as i64));
-                        output.op(CoreOp::Put(A, Output::stdout_char()));
-                        output.op(CoreOp::Set(A, b' ' as i64));
-                        output.op(CoreOp::Put(A, Output::stdout_char()));
+                use CoreOp::*;
+                if ty.equals(&Type::Int, env)? {
+                    output.op(Many(vec![
+                        Set(C, b'[' as i64),
+                        Put(C, Output::stdout_char()),
+                        GetAddress {
+                            addr,
+                            dst: A,
+                        },
+                        Set(B, array_len as i64),
+                        While(B),
+                            Put(A.deref(), Output::stdout_int()),
+                            Next(A, None),
+                            Dec(B),
+                            If(B),
+                                Set(C, b',' as i64),
+                                Put(C, Output::stdout_char()),
+                                Set(C, b' ' as i64),
+                                Put(C, Output::stdout_char()),
+                            End,
+                        End,
+                        Set(C, b']' as i64),
+                        Put(C, Output::stdout_char()),
+                    ]))
+                } else if ty.equals(&Type::Float, env)? {
+                    output.op(Many(vec![
+                        Set(C, b'[' as i64),
+                        Put(C, Output::stdout_char()),
+                        GetAddress {
+                            addr,
+                            dst: A,
+                        },
+                        Set(B, array_len as i64),
+                        While(B),
+                            Put(A.deref(), Output::stdout_float()),
+                            Next(A, None),
+                            Dec(B),
+                            If(B),
+                                Set(C, b',' as i64),
+                                Put(C, Output::stdout_char()),
+                                Set(C, b' ' as i64),
+                                Put(C, Output::stdout_char()),
+                            End,
+                        End,
+                        Set(C, b']' as i64),
+                        Put(C, Output::stdout_char()),
+                    ]))
+                } else {
+                    let ty_size = ty.get_size(env)? as isize;
+    
+                    output.op(Set(A, b'[' as i64));
+                    output.op(Put(A, Output::stdout_char()));
+                    for i in 0..array_len as isize {
+                        Self::debug(addr.offset(i * ty_size), &ty, env, output)?;
+                        if i < array_len as isize - 1 {
+                            output.op(Set(A, b',' as i64));
+                            output.op(Put(A, Output::stdout_char()));
+                            output.op(Set(A, b' ' as i64));
+                            output.op(Put(A, Output::stdout_char()));
+                        }
                     }
+                    output.op(Set(A, b']' as i64));
+                    output.op(Put(A, Output::stdout_char()));
                 }
-                output.op(CoreOp::Set(A, b']' as i64));
-                output.op(CoreOp::Put(A, Output::stdout_char()));
             }
 
             Type::Struct(fields) => {
@@ -440,22 +488,75 @@ impl Put {
 
             Type::Array(ty, array_len_expr) => {
                 let array_len = array_len_expr.clone().as_int(env)?;
-
+                use CoreOp::*;
                 let ty_size = ty.get_size(env)? as isize;
                 if ty.equals(&Type::Char, env)? {
-                    for i in 0..array_len as isize - 1 {
-                        output.op(CoreOp::Put(addr.offset(i), Output::stdout_char()));
-                    }
-                    // Optionally print the last character if it is not null
-                    output.op(CoreOp::If(addr.offset(array_len as isize - 1)));
-                    output.op(CoreOp::Put(
-                        addr.offset(array_len as isize - 1),
-                        Output::stdout_char(),
-                    ));
-                    output.op(CoreOp::End);
+                    // Do a while loop instead
+                    output.op(Many(vec![
+                        GetAddress {
+                            addr,
+                            dst: A,
+                        },
+                        Set(B, array_len as i64),
+                        While(B),
+                            If(A.deref()),
+                                Put(A.deref(), Output::stdout_char()),
+                                Next(A, None),
+                                Dec(B),
+                            Else,
+                                Set(B, 0),
+                            End,
+                        End,
+                    ]))
+                } else if ty.equals(&Type::Int, env)? {
+                    output.op(Many(vec![
+                        Set(C, b'[' as i64),
+                        Put(C, Output::stdout_char()),
+                        GetAddress {
+                            addr,
+                            dst: A,
+                        },
+                        Set(B, array_len as i64),
+                        While(B),
+                            Put(A.deref(), Output::stdout_int()),
+                            Next(A, None),
+                            Dec(B),
+                            If(B),
+                                Set(C, b',' as i64),
+                                Put(C, Output::stdout_char()),
+                                Set(C, b' ' as i64),
+                                Put(C, Output::stdout_char()),
+                            End,
+                        End,
+                        Set(C, b']' as i64),
+                        Put(C, Output::stdout_char()),
+                    ]))
+                } else if ty.equals(&Type::Float, env)? {
+                    output.op(Many(vec![
+                        Set(C, b'[' as i64),
+                        Put(C, Output::stdout_char()),
+                        GetAddress {
+                            addr,
+                            dst: A,
+                        },
+                        Set(B, array_len as i64),
+                        While(B),
+                            Put(A.deref(), Output::stdout_float()),
+                            Next(A, None),
+                            Dec(B),
+                            If(B),
+                                Set(C, b',' as i64),
+                                Put(C, Output::stdout_char()),
+                                Set(C, b' ' as i64),
+                                Put(C, Output::stdout_char()),
+                            End,
+                        End,
+                        Set(C, b']' as i64),
+                        Put(C, Output::stdout_char()),
+                    ]))
                 } else {
-                    output.op(CoreOp::Set(A, b'[' as i64));
-                    output.op(CoreOp::Put(A, Output::stdout_char()));
+                    output.op(Set(A, b'[' as i64));
+                    output.op(Put(A, Output::stdout_char()));
                     for i in 0..array_len as isize {
                         Self::debug(addr.offset(i * ty_size), &ty, env, output)?;
                         if i < array_len as isize - 1 {
@@ -465,8 +566,8 @@ impl Put {
                             output.op(CoreOp::Put(A, Output::stdout_char()));
                         }
                     }
-                    output.op(CoreOp::Set(A, b']' as i64));
-                    output.op(CoreOp::Put(A, Output::stdout_char()));
+                    output.op(Set(A, b']' as i64));
+                    output.op(Put(A, Output::stdout_char()));
                 }
             }
 

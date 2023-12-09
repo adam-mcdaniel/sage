@@ -11,6 +11,7 @@ use crate::lir::{
 };
 use core::fmt;
 use std::collections::BTreeMap;
+use std::hash::{Hash, Hasher};
 
 use log::*;
 
@@ -198,10 +199,6 @@ impl Expr {
     }
 
     pub fn transform_method_call(&self, env: &Env) -> Result<Self, Error> {
-        if !self.is_method_call(env)? {
-            return Ok(self.clone());
-        }
-
         debug!("transform_method_call: {self} -- {self:?}");
 
         let result = match self {
@@ -227,18 +224,21 @@ impl Expr {
                                 trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
                                 // If the value has a member with this name,
                                 trace!(target: "member", "WHOOP WHOOP");
-                                let associated_function = env
+                                let (mut associated_function, mut associated_function_type) = env
                                     .get_associated_const(&val_type, &name)
-                                    .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?
-                                    .clone()
-                                    .monomorphize(ty_args.clone());
+                                    .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
+                                    // .monomorphize(ty_args.clone());
+                                associated_function = associated_function.monomorphize(ty_args.clone());
+                                associated_function_type = associated_function_type.apply(ty_args.clone());
+                                // let associated_function = ConstExpr::Type(val_type.clone())
+                                //     .field(*member)
+                                //     .monomorphize(ty_args.clone());
                                 trace!(target: "member", "function value: {associated_function} in {env}");
                                 // Get the type of the function
-                                let associated_function_type = env
-                                    .get_type_of_associated_const(&val_type, &name)
-                                    .ok_or_else(|| Error::SymbolNotDefined(name))?
-                                    .clone()
-                                    .apply(ty_args);
+                                // let associated_function_type = env
+                                //     .get_type_of_associated_const(&val_type, &name)
+                                //     .ok_or_else(|| Error::SymbolNotDefined(name))?
+                                //     .apply(ty_args);
                                 // trace!(target: "member", "got function type: {}", associated_function_type);
 
                                 let mut new_args = vec![];
@@ -296,17 +296,23 @@ impl Expr {
                             trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
                             // If the value has a member with this name,
                             trace!(target: "member", "WHOOP WHOOP");
-                            let associated_function = env
+
+                            let (associated_function, associated_function_type) = env
                                 .get_associated_const(&val_type, &name)
-                                .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?
-                                .clone();
+                                .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
+                            
+                            // let associated_function = env
+                            //     .get_associated_const(&val_type, &name)
+                            //     .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
+                            // let associated_function = ConstExpr::Type(val_type.clone())
+                            //     .field(*member)
+                            //     .monomorphize(ty_args.clone());
                             trace!(target: "member", "function value: {associated_function} in {env}");
 
                             // Get the type of the function
-                            let associated_function_type = env
-                                .get_type_of_associated_const(&val_type, &name)
-                                .ok_or_else(|| Error::SymbolNotDefined(name))?
-                                .clone();
+                            // let associated_function_type = env
+                            //     .get_type_of_associated_const(&val_type, &name)
+                            //     .ok_or_else(|| Error::SymbolNotDefined(name))?;
                             trace!(target: "member", "got function type: {}", associated_function_type);
                             // Get the first argument's type
                             let mut new_args = vec![];
@@ -359,17 +365,16 @@ impl Expr {
                             trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
                             // If the value has a member with this name,
                             trace!(target: "member", "WHOOP WHOOP");
-                            let associated_function = env
+                            let (associated_function, associated_function_type) = env
                                 .get_associated_const(&val_type, &name)
-                                .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?
-                                .clone();
+                                .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
                             trace!(target: "member", "function value: {associated_function} in {env}");
 
                             // Get the type of the function
-                            let associated_function_type = env
-                                .get_type_of_associated_const(&val_type, &name)
-                                .ok_or_else(|| Error::SymbolNotDefined(name))?
-                                .clone();
+                            // let associated_function_type = env
+                            //     .get_type_of_associated_const(&val_type, &name)
+                            //     .ok_or_else(|| Error::SymbolNotDefined(name))?
+                            //     .clone();
                             trace!(target: "member", "got function type: {}", associated_function_type);
                             // Get the first argument's type
                             let mut new_args = vec![];
@@ -968,6 +973,167 @@ impl PartialEq for Expr {
             // Index an array or pointer with an expression that evaluates to an `Int` at runtime.
             (Index(val1, idx1), Index(val2, idx2)) => val1 == val2 && idx1 == idx2,
             _ => false,
+        }
+    }
+}
+
+impl Hash for Expr {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        use Expr::*;
+        match self {
+            ConstExpr(expr) => {
+                state.write_u8(0);
+                expr.hash(state)
+            },
+            Many(exprs) => {
+                state.write_u8(1);
+                exprs.hash(state)
+            },
+            Match(expr, branches) => {
+                state.write_u8(2);
+                expr.hash(state);
+                branches.hash(state);
+            },
+            IfLet(pat, expr, t, e) => {
+                state.write_u8(3);
+                pat.hash(state);
+                expr.hash(state);
+                t.hash(state);
+                e.hash(state);
+            },
+
+            While(cond, body) => {
+                state.write_u8(2);
+                cond.hash(state);
+                body.hash(state);
+            }
+
+            If(cond, then, else_) => {
+                state.write_u8(3);
+                cond.hash(state);
+                then.hash(state);
+                else_.hash(state);
+            }
+            
+            When(cond, then, else_) => {
+                state.write_u8(4);
+                cond.hash(state);
+                then.hash(state);
+                else_.hash(state);
+            }
+
+            UnaryOp(op, val) => {
+                state.write_u8(5);
+                op.display(&val).hash(state);
+                val.hash(state);
+            }
+
+            BinaryOp(op, lhs, rhs) => {
+                state.write_u8(6);
+                op.display(&lhs, &rhs).hash(state);
+                lhs.hash(state);
+                rhs.hash(state);
+            }
+
+            TernaryOp(op, a, b, c) => {
+                state.write_u8(7);
+                op.display(&a, &b, &c).hash(state);
+                a.hash(state);
+                b.hash(state);
+                c.hash(state);
+            }
+
+            AssignOp(op, lhs, rhs) => {
+                state.write_u8(8);
+                op.display(&lhs, &rhs).hash(state);
+                lhs.hash(state);
+                rhs.hash(state);
+            }
+
+            Refer(m, val) => {
+                state.write_u8(9);
+                m.hash(state);
+                val.hash(state);
+            }
+
+            Deref(val) => {
+                state.write_u8(10);
+                val.hash(state);
+            }
+
+            DerefMut(dst, src) => {
+                state.write_u8(11);
+                dst.hash(state);
+                src.hash(state);
+            }
+
+            Apply(func, args) => {
+                state.write_u8(12);
+                func.hash(state);
+                args.hash(state);
+            }
+
+            Return(val) => {
+                state.write_u8(13);
+                val.hash(state);
+            }
+
+            Array(vals) => {
+                state.write_u8(14);
+                vals.hash(state);
+            }
+
+            Tuple(vals) => {
+                state.write_u8(15);
+                vals.hash(state);
+            }
+
+            Union(ty, field, val) => {
+                state.write_u8(16);
+                ty.hash(state);
+                field.hash(state);
+                val.hash(state);
+            }
+
+            EnumUnion(ty, field, val) => {
+                state.write_u8(17);
+                ty.hash(state);
+                field.hash(state);
+                val.hash(state);
+            }
+
+            Struct(fields) => {
+                state.write_u8(18);
+                fields.hash(state);
+            }
+
+            As(val, ty) => {
+                state.write_u8(19);
+                val.hash(state);
+                ty.hash(state);
+            }
+
+            Member(val, field) => {
+                state.write_u8(20);
+                val.hash(state);
+                field.hash(state);
+            }
+
+            Index(val, idx) => {
+                state.write_u8(21);
+                val.hash(state);
+                idx.hash(state);
+            }
+
+            Annotated(expr, _) => {
+                expr.hash(state);
+            }
+
+            Declare(decl, expr) => {
+                state.write_u8(22);
+                decl.hash(state);
+                expr.hash(state);
+            }
         }
     }
 }

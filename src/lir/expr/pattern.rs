@@ -1,6 +1,6 @@
 use crate::lir::*;
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use log::{error, trace};
 
@@ -11,10 +11,10 @@ use log::{error, trace};
 /// When `match`ing, the pattern just checks if the expression matches the pattern.
 /// When `bind`ing, the pattern binds the expression to corresponding variables in the
 /// pattern, and evaluates an expression with those variables.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Pattern {
     Tuple(Vec<Pattern>),
-    Struct(HashMap<String, Pattern>),
+    Struct(BTreeMap<String, Pattern>),
     Variant(String, Option<Box<Pattern>>),
     Symbol(Mutability, String),
     ConstExpr(ConstExpr),
@@ -29,7 +29,7 @@ impl Pattern {
         Self::Tuple(patterns)
     }
     /// Construct a new pattern which matches a struct with a given set of fields.
-    pub fn struct_(patterns: HashMap<String, Pattern>) -> Self {
+    pub fn struct_(patterns: BTreeMap<String, Pattern>) -> Self {
         Self::Struct(patterns)
     }
     /// Construct a new pattern which matches a symbol with a given name.
@@ -645,7 +645,7 @@ impl Pattern {
                         return Err(Error::InvalidPatternForExpr(expr.clone(), self.clone()));
                     }
                 }
-                result
+                result.into_iter().collect()
             }
 
             // If the pattern is a symbol, then bind the symbol to the expression's type
@@ -653,7 +653,7 @@ impl Pattern {
                 let mut result = HashMap::new();
                 // Add the symbol to the result with the type of the expression.
                 result.insert(name.clone(), (*mutability, ty.clone(), origin));
-                result
+                result.into_iter().collect()
             }
 
             // If the pattern is a wildcard, then return an empty map (no bindings).

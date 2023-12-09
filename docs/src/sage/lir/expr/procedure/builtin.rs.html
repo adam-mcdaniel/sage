@@ -163,6 +163,27 @@
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Builtin Procedures
 //!
 //! `CoreBuiltin` and `StandardBuiltin` procedures which are implemented in core or standard assembly respectively.
@@ -172,6 +193,7 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::asm::{AssemblyProgram, CoreOp, StandardOp};
 <span class="kw">use </span><span class="kw">crate</span>::lir::{Compile, Env, Error, GetType, Type, TypeCheck};
 <span class="kw">use </span>core::fmt;
+<span class="kw">use </span>std::hash::{Hash, Hasher};
 
 <span class="kw">use </span>log::trace;
 
@@ -228,6 +250,16 @@
         <span class="prelude-val">Ok</span>(())
     }
 }
+
+<span class="kw">impl </span>Hash <span class="kw">for </span>CoreBuiltin {
+    <span class="kw">fn </span>hash&lt;H: Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H) {
+        <span class="self">self</span>.name.hash(state);
+        <span class="self">self</span>.args.hash(state);
+        <span class="self">self</span>.ret.hash(state);
+    }
+}
+
+<span class="kw">impl </span>Eq <span class="kw">for </span>CoreBuiltin {}
 
 <span class="doccomment">/// A builtin pseudo-procedure implemented in the standard assembly variant.
 ///
@@ -328,4 +360,13 @@
         <span class="prelude-val">Ok</span>(())
     }
 }
-</code></pre></div></section></main></body></html>
+
+<span class="kw">impl </span>Eq <span class="kw">for </span>StandardBuiltin {}
+
+<span class="kw">impl </span>Hash <span class="kw">for </span>StandardBuiltin {
+    <span class="kw">fn </span>hash&lt;H: Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H) {
+        <span class="self">self</span>.name.hash(state);
+        <span class="self">self</span>.args.hash(state);
+        <span class="self">self</span>.ret.hash(state);
+    }
+}</code></pre></div></section></main></body></html>

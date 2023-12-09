@@ -119,9 +119,7 @@ impl List<T> {
 
     def map<U>(self: List<T>, f: T -> U): List<U> {
         match self {
-            of Cons(head, tail) => {
-                List.cons<U>(f(head), tail.map<U>(f));
-            },
+            of Cons(head, tail) => tail.map<U>(f).cons(f(head)),
             _ => List<U> of Nil
         }
     }

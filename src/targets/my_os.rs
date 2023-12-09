@@ -202,6 +202,58 @@ uint64_t heap_remaining;
 unsigned int ref_ptr = 0;
 void (**funs)(void);
 
+/*
+void __get_file_size() {
+    const cell *file_name_cells = ffi_ptr[0].p;
+
+    char file_name[1024];
+    uint64_t i = 0;
+    for (; file_name_cells[i].i; i++) {
+        file_name[i] = file_name_cells[i].i;
+    }
+    file_name[i] = '\0';
+
+    FILE *fp = fopen(file_name, "r");
+	if (fp == NULL) {
+		ffi_ptr[0].i = -1;
+		return;
+	}
+
+    fseek(fp, 0L, SEEK_END);
+    long long int size = ftell(fp);
+    fclose(fp);
+    ffi_ptr[0].i = size;
+}
+
+
+void __read_file() {
+    const cell *file_name_cells = ffi_ptr[-2].p;
+    cell *buffer = ffi_ptr[-1].p;
+    long long int size = ffi_ptr[0].i;
+    ffi_ptr -= 3;
+
+    char file_name[1024];
+    uint64_t i = 0;
+    for (; file_name_cells[i].i; i++) {
+        file_name[i] = file_name_cells[i].i;
+    }
+    file_name[i] = '\0';
+
+    FILE *fp = fopen(file_name, "r");
+	if (fp == NULL) {
+		ffi_ptr[0].i = -1;
+		return;
+	}
+    char tmp_buffer[size];
+    fread(tmp_buffer, sizeof(char), size, fp);
+    fclose(fp);
+    for (int i = 0; i < size; i++) {
+        buffer[i].i = tmp_buffer[i];
+    }
+
+    ffi_ptr[0].i = size;
+}
+*/
 void __memcpy() {
     union cell *dst = ffi_ptr[-2].p, *src = ffi_ptr[-1].p;
     long long int n = ffi_ptr[0].i;
@@ -495,6 +547,68 @@ void __remaining_memory() {
     ffi_ptr[0].i = heap_remaining;
 }
 
+void __path_exists() {
+    const cell *path = ffi_ptr[0].p;
+    char path_str[1024] = {0};
+    for (int i = 0; i < 1024 && path[i].i; i++) {
+        path_str[i] = path[i].i;
+    }
+    ffi_ptr[0].i = path_exists(path_str);
+}
+
+void __path_is_dir() {
+    const cell *path = ffi_ptr[0].p;
+    char path_str[1024] = {0};
+    for (int i = 0; i < 1024 && path[i].i; i++) {
+        path_str[i] = path[i].i;
+    }
+    ffi_ptr[0].i = path_is_dir(path_str);
+}
+
+void __path_is_file() {
+    const cell *path = ffi_ptr[0].p;
+    char path_str[1024] = {0};
+    for (int i = 0; i < 1024 && path[i].i; i++) {
+        path_str[i] = path[i].i;
+    }
+    ffi_ptr[0].i = path_is_file(path_str);
+}
+
+void __path_list_dir() {
+    const cell *path = ffi_ptr[-3].p;
+    cell *buf = ffi_ptr[-2].p;
+    uint64_t buf_size = ffi_ptr[-1].i;
+    bool use_full_paths = ffi_ptr[0].i;
+    
+    char path_str[1024] = {0};
+    for (uint64_t i = 0; i < 1024 && path[i].i; i++) {
+        path_str[i] = path[i].i;
+    }
+    ffi_ptr -= 3;
+    char str_buf[buf_size];
+    for (uint64_t i = 0; i < buf_size; i++) {
+        str_buf[i] = 0;
+    }
+    int64_t result = (int64_t)path_list_dir(path_str, str_buf, buf_size, use_full_paths);
+    for (uint64_t i = 0; i < buf_size; i++) {
+        buf[i].i = str_buf[i];
+    }
+    ffi_ptr[0].i = result;
+}
+
+void __exit() {
+    exit();
+}
+
+void __spawn_process() {
+    const cell *path = ffi_ptr[0].p;
+    char path_str[1024] = {0};
+    for (int i = 0; i < 1024 && path[i].i; i++) {
+        path_str[i] = path[i].i;
+    }
+    ffi_ptr[0].i = spawn_process(path_str);
+}
+
 char *line;
 int at, len, max;
 
@@ -665,6 +779,44 @@ void __next_pid() {
     ffi_ptr[0].i = next_pid(ffi_ptr[0].i);
 }
 
+void __get_env() {
+    const cell *name = ffi_ptr[-1].p;
+    cell *value = ffi_ptr[0].p;
+    ffi_ptr -= 2;
+    
+    // Convert the 64 bit elements to char arrays
+    char name_str[256] = {0};
+    for (int i = 0; i < 256; i++) {
+        name_str[i] = name[i].i;
+    }
+    char value_str[256] = {0};
+    int result = get_env(name_str, value_str);
+	for (int i = 0; i < 256; i++) {
+		value[i].i = value_str[i];
+	}
+    ffi_ptr++;
+    ffi_ptr[0].i = result;
+}
+
+void __put_env() {
+    const cell *name = ffi_ptr[-1].p;
+    const cell *value = ffi_ptr[0].p;
+    ffi_ptr -= 2;
+    
+    // Convert the 64 bit elements to char arrays
+    char name_str[256];
+    char value_str[256];
+    for (int i = 0; i < 256; i++) {
+        name_str[i] = name[i].i;
+        value_str[i] = value[i].i;
+    }
+    value_str[255] = '\0';
+    name_str[255] = '\0';
+    int result = put_env(name_str, value_str);
+    ffi_ptr++;
+    ffi_ptr[0].i = result;
+}
+
 void __pid_get_env() {
     int pid = ffi_ptr[-2].i;
     const cell *name = ffi_ptr[-1].p;
@@ -738,25 +890,46 @@ void __screen_draw_rect() {
 }
 
 void __screen_flush() {
-    screen_flush();
+    const cell *rect_ptr = ffi_ptr[0].p;
+    Rectangle rect;
+    rect.x = rect_ptr[0].i;
+    rect.y = rect_ptr[1].i;
+    rect.width = rect_ptr[2].i;
+    rect.height = rect_ptr[3].i;
+    ffi_ptr--;
+
+    screen_flush(&rect);
+}
+
+void __get_time() {
+    ffi_ptr++;
+    ffi_ptr[0].i = get_time();
+}
+
+void __screen_get_dims() {
+    ffi_ptr += 2;
+    Rectangle rect;
+    screen_get_dims(&rect);
+    ffi_ptr[-1].i = rect.height;
+    ffi_ptr[0].i = rect.width;
 }
 
 void __get_keyboard_event() {
     ffi_ptr+=3;
     VirtioInputEvent event;
 	get_keyboard_event(&event);
-    ffi_ptr[-2].i = event.type;
+    ffi_ptr[-2].i = event.value;
     ffi_ptr[-1].i = event.code;
-    ffi_ptr[0].i = event.value;
+    ffi_ptr[0].i = event.type;
 }
 
 void __get_tablet_event() {
     ffi_ptr+=3;
     VirtioInputEvent event;
 	get_tablet_event(&event);
-    ffi_ptr[-2].i = event.type;
+    ffi_ptr[-2].i = event.value;
     ffi_ptr[-1].i = event.code;
-    ffi_ptr[0].i = event.value;
+    ffi_ptr[0].i = event.type;
 }
 "#
         .to_string();
@@ -771,14 +944,13 @@ void __get_tablet_event() {
     fn post_funs(&self, funs: Vec<i32>) -> Option<String> {
         let mut result = String::from(
             r#"int main () {
-    uint8_t buf[0xc0000] = {0};
+    uint8_t buf[0x800000] = {0};
     salloc_init(buf, buf + sizeof(buf));
 
     funs = (void(**)(void))salloc(200 * sizeof(void*));
     ffi_channel = (cell*)salloc(256 * sizeof(cell));
     tape = (cell*)salloc(50000 * sizeof(cell));
     refs = (cell*)salloc(128 * sizeof(cell));
-            
 
     sgetchar_init();
 

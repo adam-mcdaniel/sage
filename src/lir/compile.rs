@@ -656,7 +656,7 @@ impl Compile for Expr {
                     Type::Type(ty) => {
                         let member_as_symbol = member.clone().as_symbol(env)?;
 
-                        if let Some(constant) = env.get_associated_const(&ty, &member_as_symbol) {
+                        if let Some((constant, _)) = env.get_associated_const(&ty, &member_as_symbol) {
                             return constant.clone().compile_expr(env, output);
                         } else {
                             return Err(Error::SymbolNotDefined(member_as_symbol));
@@ -689,7 +689,7 @@ impl Compile for Expr {
                                     // If we could not find the member return an error.
                                     Error::MemberNotFound(self.clone(), member.clone())
                                 })
-                                .and_then(|constant| constant.clone().compile_expr(env, output));
+                                .and_then(|(c, _)| c.compile_expr(env, output));
                         }
                     }
                 }
@@ -967,7 +967,7 @@ impl Compile for ConstExpr {
                         fields[&name].clone().compile_expr(env, output)?
                     }
                     (Self::Type(ty), Self::Symbol(name)) => {
-                        if let Some(constant) = env.get_associated_const(&ty, &name) {
+                        if let Some((constant, _)) = env.get_associated_const(&ty, &name) {
                             debug!("Compiling associated constant {constant} in environment {env}");
                             return constant.clone().compile_expr(env, output);
                         } else {
@@ -1088,10 +1088,73 @@ impl Compile for ConstExpr {
             }
             // Compile an array constant.
             Self::Array(items) => {
-                for item in items {
-                    // Compile the item.
-                    item.compile_expr(env, output)?;
+                // If all the items are the same, we can compile the array as a single value.
+                if !items.is_empty() && items.iter().all(|item| item == &items[0]) {
+                    let item_size = items[0].get_size(env)?;
+                    // Compile the first item.
+                    items[0].clone().compile_expr(env, output)?;
+                    // Get the size of the array.
+                    let len = items.len();
+                    // Push the first item onto the stack `size` times.
+                    use CoreOp::*;
+                    output.op(Many(vec![
+                        GetAddress {
+                            addr: SP.deref().offset(1 - item_size as isize),
+                            dst: A,
+                        },
+                        Set(B, len as i64 - 1),
+                        While(B),
+                        Push(A.deref(), item_size),
+                        Dec(B),
+                        End,
+                    ]));
+                } else {
+                    // Compile the items.
+                    // for item in items {
+                    //     item.compile_expr(env, output)?;
+                    // }
+
+                    // Do a loop for repeated items.
+                    let mut items = items.into_iter().peekable();
+                    while let Some(item) = items.next() {
+                        let mut count = 1;
+                        while let Some(next) = items.peek() {
+                            if next == &item {
+                                count += 1;
+                                items.next();
+                            } else {
+                                break;
+                            }
+                        }
+
+                        let item_size = item.get_size(env)?;
+                        if count > 2 || item_size >= 8 {
+                            item.compile_expr(env, output)?;
+                            // Push the first item onto the stack `size` times.
+                            use CoreOp::*;
+                            output.op(Many(vec![
+                                GetAddress {
+                                    addr: SP.deref().offset(1 - item_size as isize),
+                                    dst: A,
+                                },
+                                Set(B, count as i64 - 1),
+                                While(B),
+                                Push(A.deref(), item_size),
+                                Dec(B),
+                                End,
+                            ]));
+                        } else {
+                            for _ in 0..count {
+                                item.clone().compile_expr(env, output)?;
+                            }
+                        }
+                    }
                 }
+
+                // for item in items {
+                //     // Compile the item.
+                //     item.compile_expr(env, output)?;
+                // }
             }
             // Compile a struct constant.
             Self::Struct(items) => {

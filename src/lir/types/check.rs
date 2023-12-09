@@ -862,6 +862,10 @@ impl TypeCheck for Expr {
 // Typecheck a constant expression.
 impl TypeCheck for ConstExpr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
+        if env.has_type_checked_const(self) {
+            return Ok(());
+        }
+
         trace!("Typechecking constant expression: {}", self);
         match self {
             Self::Template(ty_params, template) => {
@@ -1201,6 +1205,8 @@ impl TypeCheck for ConstExpr {
                     _ => Err(Error::VariantNotFound(t.clone(), variant.clone())),
                 }
             }
-        }
+        }?;
+        env.save_type_checked_const(self.clone());
+        Ok(())
     }
 }

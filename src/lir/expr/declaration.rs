@@ -6,7 +6,7 @@ use crate::{
         Type, TypeCheck,
     },
 };
-
+use std::hash::{Hash, Hasher};
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     ops::{Add, AddAssign},
@@ -149,7 +149,6 @@ impl Declaration {
                 // Get the size of the variable.
                 let static_var_size = var_ty.get_size(env)?;
 
-                // let name = name.clone().to_uppercase();
                 let name = name.clone();
                 // Allocate the global variable.
                 output.op(CoreOp::Global {
@@ -694,5 +693,66 @@ where
 {
     fn add_assign(&mut self, other: T) {
         self.append(other.into());
+    }
+}
+
+
+impl Hash for Declaration {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            Self::StaticVar(name, mutability, ty, expr) => {
+                state.write_u8(0);
+                name.hash(state);
+                mutability.hash(state);
+                ty.hash(state);
+                expr.hash(state);
+            }
+            Self::Var(name, mutability, ty, expr) => {
+                state.write_u8(1);
+                name.hash(state);
+                mutability.hash(state);
+                ty.hash(state);
+                expr.hash(state);
+            }
+            Self::Proc(name, proc) => {
+                state.write_u8(2);
+                name.hash(state);
+                proc.hash(state);
+            }
+            Self::PolyProc(name, proc) => {
+                state.write_u8(3);
+                name.hash(state);
+                proc.hash(state);
+            }
+            Self::Type(name, ty) => {
+                state.write_u8(4);
+                name.hash(state);
+                ty.hash(state);
+            }
+            Self::Const(name, expr) => {
+                state.write_u8(5);
+                name.hash(state);
+                expr.hash(state);
+            }
+            Self::VarPat(pat, expr) => {
+                state.write_u8(6);
+                pat.hash(state);
+                expr.hash(state);
+            }
+            Self::ExternProc(name, proc) => {
+                state.write_u8(7);
+                name.hash(state);
+                proc.hash(state);
+            }
+            Self::Impl(name, impls) => {
+                state.write_u8(8);
+                name.hash(state);
+                impls.hash(state);
+            }
+            Self::Many(decls) => {
+                state.write_u8(9);
+                decls.hash(state);
+            }
+        }
     }
 }

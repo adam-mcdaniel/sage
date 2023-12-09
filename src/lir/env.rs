@@ -41,6 +41,7 @@ pub struct Env {
     processed_monomorphizations: Rc<RwLock<HashMap<Type, Vec<Type>>>>,
     /// Associated constants for types.
     associated_constants: Rc<RwLock<HashMap<Type, HashMap<String, (ConstExpr, Type)>>>>,
+    type_checked_consts: Rc<RwLock<HashSet<ConstExpr>>>,
 
     /// The current offset of the frame pointer to assign to the next variable.
     /// This is incremented by the size of each variable as it is defined.
@@ -71,6 +72,7 @@ impl Default for Env {
             globals: Rc::new(RwLock::new(Globals::new())),
             associated_constants: Rc::new(RwLock::new(HashMap::new())),
             processed_monomorphizations: Rc::new(RwLock::new(HashMap::new())),
+            type_checked_consts: Rc::new(RwLock::new(HashSet::new())),
 
             // The last argument is stored at `[FP]`, so our first variable must be at `[FP + 1]`.
             fp_offset: 1,
@@ -103,6 +105,11 @@ impl Env {
                 let associated_constants = self.associated_constants.read().unwrap().clone();
                 Rc::new(RwLock::new(associated_constants))
             },
+            type_checked_consts: {
+                // let type_checked_consts = self.type_checked_consts.read().unwrap().clone();
+                // Rc::new(RwLock::new(type_checked_consts))
+                self.type_checked_consts.clone()
+            },
 
             // The rest are the same as a new environment.
             ..Env::default()
@@ -124,6 +131,20 @@ impl Env {
     //     //     .extend(monomorphs);
     //     // Ok(())
     // }
+
+    pub(crate) fn has_type_checked_const(&self, const_expr: &ConstExpr) -> bool {
+        self.type_checked_consts
+            .read()
+            .unwrap()
+            .contains(const_expr)
+    }
+
+    pub(crate) fn save_type_checked_const(&self, const_expr: ConstExpr) {
+        self.type_checked_consts
+            .write()
+            .unwrap()
+            .insert(const_expr);
+    }
 
     /// Get the type of an associated constant of a type.
     pub fn get_type_of_associated_const(&self, ty: &Type, name: &str) -> Option<Type> {
@@ -239,16 +260,16 @@ impl Env {
         None
     }
 
-    pub fn get_associated_const(&self, ty: &Type, name: &str) -> Option<ConstExpr> {
+    pub fn get_associated_const(&self, ty: &Type, name: &str) -> Option<(ConstExpr, Type)> {
         trace!("Getting associated const {name} of type {ty} in {self}");
         let associated_constants = self.associated_constants.read().unwrap();
 
-        if let Some((constant, _)) = associated_constants
+        if let Some((constant, const_ty)) = associated_constants
             .get(ty)
             .and_then(|consts| consts.get(name))
         {
             trace!("Found associated const {name} of type {ty} in {self}");
-            return Some(constant.clone());
+            return Some((constant.clone(), const_ty.clone()));
         }
         // Go through all the types and see if any equals the given type.
         for (other_ty, consts) in associated_constants.clone().iter() {
@@ -291,8 +312,23 @@ impl Env {
                     continue;
                 }
 
-                if let Some((const_expr, _)) = template_associated_consts.get(name) {
-                    return Some(const_expr.clone().monomorphize(ty_args.clone()));
+                if let Some((const_expr, const_ty)) = template_associated_consts.get(name) {
+                    let mut result_ty = const_ty.apply(ty_args.clone());
+                    result_ty = match result_ty.simplify_until_simple(self) {
+                        Ok(result) => {
+                            info!("Found associated const (type) {name} of type {ty} = {result}");
+                            result
+                        }
+                        Err(err) => {
+                            info!("Found associated const (type) {name} of type {ty} = {result_ty} (failed to simplify)");
+                            result_ty
+                            // debug!("Failed to simplify associated const (type) {name} of type {ty} = {result}");
+                            // debug!("Error: {err}");
+                            // continue;
+                        }
+                    };
+
+                    return Some((const_expr.clone().monomorphize(ty_args.clone()), result_ty));
                 }
 
                 warn!("Could not find associated const {name} of type {ty} in {template}");
@@ -310,38 +346,38 @@ impl Env {
                 let expr_ty = expr_ty.clone();
                 let const_expr = const_expr.clone();
                 drop(associated_constants);
-                self.memoize_associated_const(ty, name, const_expr.clone(), expr_ty)
+                self.memoize_associated_const(ty, name, const_expr.clone(), expr_ty.clone())
                     .ok()?;
-                return Some(const_expr);
+                return Some((const_expr, expr_ty));
             }
         }
         trace!("Could not find associated const {name} of type {ty} in {self}");
         drop(associated_constants);
 
         if let Type::Type(inner_ty) = ty {
-            if let Some(constant) = self.get_associated_const(inner_ty, name) {
+            if let Some((constant, const_ty)) = self.get_associated_const(inner_ty, name) {
                 let expr_ty = constant.get_type(self).ok()?;
                 self.memoize_associated_const(ty, name, constant.clone(), expr_ty)
                     .ok()?;
-                return Some(constant);
+                return Some((constant, const_ty));
             }
         }
         if let Type::Pointer(_mutability, inner_ty) = ty {
-            if let Some(constant) = self.get_associated_const(inner_ty, name) {
+            if let Some((constant, const_ty)) = self.get_associated_const(inner_ty, name) {
                 // Memoize the associated constant.
                 let expr_ty = constant.get_type(self).ok()?;
                 self.memoize_associated_const(ty, name, constant.clone(), expr_ty)
                     .ok()?;
-                return Some(constant);
+                return Some((constant, const_ty));
             }
         }
         if let Type::Unit(_unit_name, inner_ty) = ty {
-            if let Some(constant) = self.get_associated_const(inner_ty, name) {
+            if let Some((constant, const_ty)) = self.get_associated_const(inner_ty, name) {
                 // Memoize the associated constant.
                 let expr_ty = constant.get_type(self).ok()?;
                 self.memoize_associated_const(ty, name, constant.clone(), expr_ty)
                     .ok()?;
-                return Some(constant);
+                return Some((constant, const_ty));
             }
         }
         None

@@ -48,6 +48,7 @@ string_char = {
     (!("\"" | "\\") ~ ANY)
     | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t" | "0")
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+    | "\\" ~ ("u" ~ "{" ~ ASCII_HEX_DIGIT{4} ~ "}")
     | "\\" ~ ("x" ~ ASCII_HEX_DIGIT{2})
 }
 
@@ -56,6 +57,7 @@ char_inner = @{
     (!("'" | "\\") ~ ANY)
     | "\\" ~ ("\'" | "\\" | "/" | "b" | "f" | "n" | "r" | "t" | "0")
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+    | "\\" ~ ("u" ~ "{" ~ ASCII_HEX_DIGIT{4} ~ "}")
     | "\\" ~ ("x" ~ ASCII_HEX_DIGIT{2})
 }
 

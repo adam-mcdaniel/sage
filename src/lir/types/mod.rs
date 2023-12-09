@@ -932,7 +932,7 @@ impl Type {
     ) -> Result<Self, Error> {
         let mut simplified = self;
         // for _ in 0..Self::SIMPLIFY_RECURSION_LIMIT {
-        for _ in 0..5 {
+        for _ in 0..3 {
             if f(&simplified, env)? || simplified.is_atomic() {
                 return Ok(simplified);
             }
@@ -1122,7 +1122,7 @@ impl Type {
     pub fn has_element_type(&self, element: &Self, env: &Env) -> Result<bool, Error> {
         match self {
             Self::Array(inner, _) => inner.equals(element, env),
-            Self::Pointer(_, inner) => inner.equals(element, env),
+            // Self::Pointer(_, inner) => inner.equals(element, env),
             _ => Ok(false),
         }
     }

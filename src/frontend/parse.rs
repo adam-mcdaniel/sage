@@ -1,6 +1,7 @@
 use crate::{lir::*, parse::SourceCodeLocation};
 use pest::{error::Error, iterators::Pair, Parser};
 use pest_derive::Parser;
+use rayon::prelude::*;
 
 #[derive(Parser)]
 #[grammar = "frontend/parse.pest"] // relative to src
@@ -231,7 +232,7 @@ impl Declaration {
                     // If we're using a simple enum, then we can just use a simple enum
                     (
                         name,
-                        Type::Enum(variants.into_iter().map(|(a, _)| a).collect()),
+                        Type::Enum(variants.into_par_iter().map(|(a, _)| a).collect()),
                     )
                 } else {
                     // Otherwise, we need to use a tagged union
@@ -239,7 +240,7 @@ impl Declaration {
                         name,
                         Type::EnumUnion(
                             variants
-                                .into_iter()
+                                .into_par_iter()
                                 .map(|(a, b)| {
                                     (
                                         a,
@@ -973,7 +974,7 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
     };
     // result
     // Expr::AnnotatedWithSource { expr: Box::new(result), loc }
-    result.annotate(loc)
+    result
 }
 
 fn parse_expr_term(pair: Pair<Rule>) -> Expr {
@@ -1176,10 +1177,31 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
         Rule::const_char => {
             let token = pair.into_inner().next().unwrap().as_str();
             let token = &token[1..token.len() - 1];
-            let result = snailquote::unescape(&format!("\"{token}\"").replace("\\0", "\\\\0"))
+            let result = snailquote::unescape(&format!("\"{token}\"").replace("\\0", "\\\\0").replace("\\/", "/"))
                 .unwrap()
-                .replace("\\0", "\0");
-            let ch = result.chars().next().unwrap();
+                .replace("\\0", "\0")
+                .replace("\\\"", "\"");
+            // let result = snailquote::unescape(
+            //     &pair
+            //         .clone()
+            //         .into_inner()
+            //         .next()
+            //         .unwrap()
+            //         .as_str()
+            //         // .replace("\\0", "\\\\0")
+            //         .replace("\\/", "/"),
+            // )
+            // .unwrap_or_else(|e| {
+            //     eprintln!("Error parsing string: {}", e);
+            //     pair.into_inner()
+            //         .next()
+            //         .unwrap()
+            //         .as_str()
+            //         // .replace("\\0", "\\\\0")
+            //         .replace("\\/", "/")
+            // })
+            // .replace("\\0", "\0");
+            let ch = result.chars().chain(std::iter::once('\0')).next().unwrap();
             ConstExpr::Char(ch)
         }
         Rule::const_bool => ConstExpr::Bool(pair.as_str().to_lowercase().parse().unwrap()),

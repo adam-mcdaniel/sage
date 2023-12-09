@@ -5,7 +5,7 @@ Debug
    FP = 8208
    FP_STACK = 12
    GP = 8204
-   A = 0
+   A = 8240
    B = 0
    C = 0
    D = 0
@@ -19,7 +19,7 @@ Debug
    FP = 8208
    FP_STACK = 12
    GP = 8204
-   A = 0
+   A = 8240
    B = 0
    C = 0
    D = 0

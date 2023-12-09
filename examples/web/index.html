@@ -22,6 +22,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/ayu-dark.min.css"
         integrity="sha512-mV3RUXi1gt22jDb4UyRBFhZVFgAIiOfRE6ul+2l1Hcj6glyg6x4xlnjPH+neGm/t6XrFmsMRu4++McQu0asjqg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/ayu-mirage.min.css" integrity="sha512-83Qw5YjeKhwUh0sTjLweNX0/xqhfPAghTPNKP3W2VREm8waJe6rjrpGFN3zl9CMDoInarIjiAfNBE7p+NGPM7g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/dracula.min.css" integrity="sha512-gFMl3u9d0xt3WR8ZeW05MWm3yZ+ZfgsBVXLSOiFz2xeVrZ8Neg0+V1kkRIo9LikyA/T9HuS91kDfc2XWse0K0A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/darcula.min.css" integrity="sha512-kqCOYFDdyQF4JM8RddA6rMBi9oaLdR0aEACdB95Xl1EgaBhaXMIe8T4uxmPitfq4qRmHqo+nBU2d1l+M4zUx1g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
     <style>
         .CodeMirror {
             border: 1px solid #eee;
@@ -39,7 +44,7 @@
             mode: "rust",
             lineNumbers: true,
             indentUnit: 4,
-            theme: 'ayu-dark',
+            theme: 'ayu-mirage',
             autoRefresh: true,
         });
         source.setSize("100%", "40em");
@@ -48,10 +53,10 @@
             source.refresh()
         }, 50);
         var output = CodeMirror.fromTextArea(document.getElementById("output"), {
-            mode: "text/x-csrc",
+            mode: "rust",
             lineNumbers: true,
             indentUnit: 4,
-            theme: 'ayu-dark',
+            theme: 'ayu-mirage',
             autoRefresh: true,
         });
         output.setSize("100%", "100%");
@@ -65,7 +70,29 @@
             console.log(document.getElementById("example").value);
             switch (document.getElementById("example").value) {
                 case "hashmap":
-                    source.setValue(`// Used to represent a value that may or may not exist
+                    source.setValue(`def main() {
+    // Create a hashmap from integers to const character pointers
+    let mut m = HashMap.make<Int, &Char>();
+    
+    // Insert some values
+    m.insert(1, &"one");
+    m.insert(2, &"two");
+    m.insert(3, &"three");
+    m.insert(7, &"seven");
+
+    for let mut i=0; i < 10; i += 1 {
+        // Check if the map contains a key
+        let contains_key = m.contains_key(i);
+        println("m.contains_key(", i, ") = ", contains_key);
+
+        // If it does, print the value
+        if contains_key {
+            println("Value: ", m.get_and_unwrap(i));
+        }
+    }
+}
+
+// Used to represent a value that may or may not exist
 enum Option<T> {
     // Some value
     Some(T),
@@ -73,60 +100,201 @@ enum Option<T> {
     Nothing
 }
 
-struct Entry<K, V> {
-    // The key of the entry
-    key: K,
-    // The value of the entry
-    val: V
+// A function for halting the program
+def exit(n: Int): ! {
+    // \`!\` is the type of a value that never returns
+    println("Exit: ", n);
+    debug();
+    while True {}
 }
 
-struct HashMap<K, V> {
-    // The entries of the hashmap
-    entries: &mut Option<Entry<K, V>>,
-    // The reserved size in memory of the entries
-    count_allocated: Int,
-    // The number of occupied entries
-    count_occupied: Int
-}
-                  
-def is_some<T>(opt: Option<T>): Bool = match opt {
-    of Some(_) => True,
-    of Nothing => False
-};
-
-def refer<T>(opt: &Option<T>): Option<&T> {
-    let inner = opt as &T;
-    if let &of Nothing = opt {
-        return Option<&T> of Nothing;
+// Throw an uncaught exception
+def panic(msg: &Char): ! {
+    for let mut i=0; msg[i] != '\\0'; i+=1 {
+        print(msg);
     }
-    return Option<&T> of Some(inner);
+    println();
+    debug();
+    exit(1);
 }
 
-def refer_mut<T>(opt: &mut Option<T>): Option<&mut T> {
-    let inner = opt as &mut T;
-    if let &of Nothing = opt {
-        return Option<&mut T> of Nothing;
+
+// Add some associated functions to the Option enum
+impl Option<T> {
+    def nullify(self: &mut Option<T>) {
+        *self = Option<T> of Nothing;
     }
-    return Option<&mut T> of Some(inner);
+
+    def as_ref(self: &Option<T>): Option<&T> {
+        let inner = self as &T;
+        if let &of Nothing = self {
+            return Option<&T> of Nothing;
+        }
+        return Option<&T> of Some(inner);
+    }
+
+    def as_ref_mut(self: &mut Option<T>): Option<&mut T> {
+        let inner = self as &mut T;
+        if let &of Nothing = self {
+            return Option<&mut T> of Nothing;
+        }
+        return Option<&mut T> of Some(inner);
+    }
+
+    def print(self: &Option<T>) {
+        match self {
+            &of Some(x) => print("Some(", x, ")"),
+            _ => print("Nothing")
+        }
+    }
+
+    def println(self: &Option<T>) {
+        self.print();
+        print("\\n");
+    }
+
+    def map<U>(self: &Option<T>, f: T -> U): Option<U> {
+        match *self {
+            of Some(x) => Option<U> of Some(f(x)),
+            _ => Option<U> of Nothing
+        }
+    }
+
+    def is_some(self: &Option<T>): Bool {
+        match self {
+            &of Some(_) => True,
+            _ => False
+        }
+    }
+
+    def is_none(self: &Option<T>): Bool {
+        match self {
+            &of Some(_) => False,
+            _ => True
+        }
+    }
+
+    def unwrap(self: Option<T>): T {
+        match self {
+            of Some(x) => x,
+            _ => panic(&"called \`Option.unwrap()\` on a \`Nothing\` value" as &Char)
+        }
+    }
+
+    def unwrap_or(self: Option<T>, default: T): T {
+        match self {
+            of Some(x) => x,
+            _ => default
+        }
+    }
 }
 
-def exit(code: Int): ! {
-    print("Exiting with code ", code, "\\n");
-    while True {
-        // Deref a null pointer to cause a segfault
-        let error = *(Null as &Int);
+// A function for allocating memory
+def malloc<T>(n: Int): &mut T {
+    return alloc(n * sizeof<T>());
+}
+
+struct Vec<T> {
+    data: &mut T,
+    length: Int,
+    cap: Int
+}
+
+def memcpy<T>(dest: &mut T, src: &T, size: Int) {
+    for let mut i=0; i<size; i+=1 {
+        dest[i] = src[i];
     }
 }
 
-def unwrap<T>(opt: Option<T>): T {
-    if let of Some(val) = opt {
-        return val;
-    } else {
-        print("Error: Tried to unwrap a None value\\n");
-        exit(1);
+impl Vec<T> {
+    def make(): Vec<T> {
+        let cap = 128;
+        let mut data = alloc(cap * sizeof<T>()) as &mut T;
+        return {
+            data=data,
+            length=0,
+            cap=cap
+        };
+    }
+
+    def reserve(self: &mut Vec<T>, cap: Int) {
+        if cap > self.cap {
+            let mut new_data = malloc<T>(cap);
+            memcpy<T>(new_data, self.data, self.length);
+            free(self.data);
+            self.data = new_data;
+            self.cap = cap;
+        }
+    }
+
+    def push(self: &mut Vec<T>, x: T) {
+        if self.length == self.cap {
+            self.reserve(self.cap * 2);
+        }
+        self.data[self.length] = x;
+        self.length += 1;
+    }
+
+    def pop(self: &mut Vec<T>): Option<T> {
+        if self.length == 0 {
+            return Option<T> of Nothing;
+        }
+        self.length -= 1;
+        return Option<T> of Some(self.data[self.length]);
+    }
+
+    def clear(self: &mut Vec<T>) {
+        self.length = 0;
+    }
+
+    def print(self: &Vec<T>) {
+        print("[");
+        for let mut i=0; i < self.length; i += 1 {
+            print(self.data[i]);
+            if i < self.length - 1 {
+                print(", ");
+            }
+        }
+        print("]");
+    }
+
+    def println(self: &Vec<T>) {
+        self.print();
+        print("\\n");
+    }
+
+    def get(self: &Vec<T>, i: Int): &T {
+        return &(self.data[i]);
+    }
+
+    def get_mut(self: &mut Vec<T>, i: Int): &mut T {
+        return &mut (self.data[i]);
+    }
+
+    def set(self: &mut Vec<T>, i: Int, x: T) {
+        self.data[i] = x;
+    }
+
+    def nth(self: &Vec<T>, i: Int): Option<&T> {
+        if i < 0 || i >= self.length {
+            return Option<&T> of Nothing;
+        }
+        return Option<&T> of Some(self.get(i));
+    }
+
+    def len(self: &Vec<T>): Int {
+        return self.length;
+    }
+
+    def map<U>(self: &Vec<T>, f: T -> U): Vec<U> {
+        let mut new_vec = Vec.make<U>();
+        for let mut i=0; i < self.length; i += 1 {
+            new_vec.push(f(self.data[i]));
+        }
+        return new_vec;
     }
 }
-  
+
 // Hash a value
 def hash<T>(t: T): Int {
     let size = sizeof(t);
@@ -156,7 +324,7 @@ def hash<T>(t: T): Int {
     
     return hashValue;
 }
-
+// Compare two values for equality
 def eq<K>(a: K, b: K): Bool {
     let size = sizeof(a);
     let a_ptr = &a as &Int;
@@ -170,181 +338,298 @@ def eq<K>(a: K, b: K): Bool {
     return True;
 }
 
-def Entry_print<K, V>(self: &Entry<K, V>) {
-    print("hash: ", hash<K>(self.key), ", key: ", self.key, ", val: ", self.val);
+struct Entry<K, V> {
+    key: K,
+    value: V
 }
 
-def HashMap_clear<K, V>(self: &mut HashMap<K, V>) {
-    for let mut i=0; i < self.count_allocated; i+=1 {
-        self.entries[i] = Option<Entry<K, V>> of Nothing;
-    }
-    self.count_occupied = 0;
+struct HashMap<K, V> {
+    data: Vec<Option<Entry<K, V>>>,
+    occupied: Int,
 }
 
-
-def HashMap_new<K, V>(): HashMap<K, V> {
-    let size = 1000 * sizeof<Option<Entry<K, V>>>();
-    let entries = alloc(size) as &mut Option<Entry<K, V>>;
-    let mut self = {
-        entries = entries,
-        count_allocated = 1000,
-        count_occupied = 0
-    };
-    HashMap_clear<K, V>(&mut self);
-    return self;
-}
-
-def HashMap_get<K, V>(self: &HashMap<K, V>, key: K): Option<&V> {
-    let mut index = hash<K>(key) % self.count_allocated;
-    while is_some<Entry<K, V>>(self.entries[index]) {
-        let entry = unwrap<&Entry<K, V>>(refer<Entry<K, V>>(&(self.entries[index])));
-        if (eq<K>(entry.key, key)) {
-            return Option<&V> of Some(&(entry.val));
+impl HashMap<K, V> {
+    def make(): HashMap<K, V> {
+        let mut data = Vec.make<Option<Entry<K, V>>>();
+        for let mut i=0; i < 128; i += 1 {
+            data.push(Option<Entry<K, V>> of Nothing);
         }
-        index = (index + 1) % self.count_allocated;  // Linear probing for collision resolution
-    }
-    return Option<&V> of Nothing;
-}
-
-def HashMap_check_bounds<K, V>(self: &mut HashMap<K, V>) {
-    if (self.count_allocated - self.count_occupied) < 100 {
-        // Allocate new space
-        let old_size = self.count_allocated * sizeof(self.entries[0]);
-        let old_entries = self.entries;
-        let old_map = {
-            entries = old_entries,
-            count_occupied = self.count_occupied,
-            count_allocated = self.count_allocated
+        return {
+            data=data,
+            occupied=0
         };
+    }
 
-        let new_size = old_size * 2;
-        self.count_allocated *= 2;
-        self.entries = alloc(new_size) as &Option<Entry<K, V>>;
-        HashMap_clear<K, V>(self);
+    def len(self: &HashMap<K, V>): Int {
+        return self.occupied;
+    }
 
-        for let mut i=0; i<old_map.count_allocated; i+=1 {
-            if let of Some(old_entry) = old_entries[i] {
-                match HashMap_get<K, V>(&old_map, old_entry.key) {
-                    of Some(val) => HashMap_put<K, V>(self, old_entry.key, *val),
-                    of Nothing => {}
-                }
+    def contains_key(self: &HashMap<K, V>, key: K): Bool {
+        let mut index = hash<K>(key) % self.data.len();
+        while self.data.get(index).is_some() {
+            if eq<K>(self.data.get(index).unwrap().key, key) {
+                return True;
+            }
+            index = (index + 1) % self.data.len();
+        }
+        return False;
+    }
+    
+    def insert(self: &mut HashMap<K, V>, key: K, value: V) {
+        if self.occupied * 2 > self.data.len() {
+            for let mut i=0; i < self.occupied * 2; i += 1 {
+                self.data.push(Option<Entry<K, V>> of Nothing);
             }
         }
-    }
-}
-
-def HashMap_put<K, V>(self: &mut HashMap<K, V>, key: K, val: V) {
-    let mut index = hash<K>(key) % self.count_allocated;
-    while is_some<Entry<K, V>>(self.entries[index]) {
-        let entry = unwrap<&mut Entry<K, V>>(refer_mut<Entry<K, V>>(&mut (self.entries[index])));
-        if (eq<K>(entry.key, key)) {
-            entry.val = val;  // Update value if key already exists
-            return ();
+        let mut index = (hash<K>(key)) % (self.data.len());
+        while self.data.get(index).is_some() {
+            if eq<K>(self.data.get(index).unwrap().key, key) {
+                self.data.set(index, Option<Entry<K, V>> of Some({key=key, value=value}));
+                return ();
+            }
+            index = (index + 1) % self.data.len();
         }
-        index = (index + 1) % self.count_allocated;  // Linear probing for collision resolution
+        self.data.set(index, Option<Entry<K, V>> of Some({key=key, value=value}));
+        self.occupied += 1;
     }
 
-    self.entries[index] = Option<Entry<K, V>> of Some({
-        key = key,
-        val = val
-    });
-    self.count_occupied += 1;
+    def remove(self: &mut HashMap<K, V>, key: K) {
+        let mut index = hash<K>(key) % self.data.len();
+        while self.data.get(index).is_some() {
+            if eq<K>(self.data.get(index).unwrap().key, key) {
+                self.data.set(index, Option<Entry<K, V>> of Nothing);
+                self.occupied -= 1;
+                return ();
+            }
+            index = (index + 1) % self.data.len();
+        }
+    }
     
-    HashMap_check_bounds<K, V>(self);
+    def get_and_unwrap(self: &HashMap<K, V>, key: K): V {
+        let mut index = hash<K>(key) % self.data.len();
+        while self.data.get(index).is_some() {
+            if eq<K>(self.data.get(index).unwrap().key, key) {
+                match self.data.get(index).as_ref() {
+                    of Some(inner) => {
+                        return inner.value;
+                    },
+                    _ => ()
+                }
+            }
+            index = (index + 1) % self.data.len();
+        }
+        panic(&"called \`HashMap.get_and_unwrap()\` on a \`Nothing\` value");
+    }
+
+    def get(self: &HashMap<K, V>, key: K): Option<&V> {
+        let mut index = hash<K>(key) % self.data.len();
+        while self.data.get(index).is_some() {
+            if eq<K>(self.data.get(index).unwrap().key, key) {
+                match self.data.get(index).as_ref() {
+                    of Some(inner) => {
+                        return Option<&V> of Some(&(inner.value));
+                    },
+                    _ => ()
+                }
+            }
+            index = (index + 1) % self.data.len();
+        }
+        return Option<&V> of Nothing;
+    }
+
+    def get_mut(self: &mut HashMap<K, V>, key: K): Option<&mut V> {
+        let mut index = hash<K>(key) % self.data.len();
+        while self.data.get(index).is_some() {
+            if eq<K>(self.data.get(index).unwrap().key, key) {
+                match self.data.get_mut(index).as_ref_mut() {
+                    of Some(inner) => {
+                        return Option<&mut V> of Some(&mut (inner.value));
+                    },
+                    _ => ()
+                }
+            }
+            index = (index + 1) % self.data.len();
+        }
+        return Option<&mut V> of Nothing;
+    }
+
+    def print(self: &HashMap<K, V>) {
+        print("{");
+        let mut first = True;
+        for let mut i=0; i < self.data.len(); i += 1 {
+            if self.data.get(i).is_some() {
+                if !first {
+                    print(", ");
+                }
+                print(self.data.get(i).unwrap().key);
+                print(": ");
+                print(self.data.get(i).unwrap().value);
+                first = False;
+            }
+        }
+        print("}");
+    }
+
+    def println(self: &HashMap<K, V>) {
+        self.print();
+        print("\\n");
+    }
 }
 
-def HashMap_print<K, V>(self: &HashMap<K, V>) {
-    let mut count = 0;
-    if self.count_occupied == 0 {
-        print("Empty\\n");
-        return ();
-    }
-    print("--------------------------------\\n");
-    for let mut i=0; i < self.count_allocated; i+=1 {
-        if let of Some(entry) = self.entries[i] {
-            Entry_print<K, V>(&entry);
-            print("\\n");
-            count += 1;
+main();`);
+                    break;
+                case "option":
+                    document.getElementById("input").value = ``;
+                    source.setValue(`def main() {
+    let x = Option<Int> of Some(5);
+    println(Option.unwrap<Int>(x));
+}
+
+enum Option<T> {
+    Some(T),
+    Nothing,
+}
+
+def panic(): Never {
+    println("Panicking!");
+    while True {}
+}
+
+impl Option {
+    def unwrap<T>(self: Option<T>): T {
+        match self {
+            of Some(x) => x,
+            of Nothing => panic(),
         }
     }
-    print("--------------------------------\\n");
 }
 
-def HashMap_drop<K, V>(self: &HashMap<K, V>) {
-    print("Freeing ", self.count_allocated, " HashMap Entries\\n");
-    del self.entries;
-}
+main();`);
+                    break;
+                case "string":
+                    document.getElementById("input").value = ``;
+                    source.setValue(`def main() {
+    // Create a string
+    let mut s = String.make();
+    // Push some chars on it
+    s.push('h');
+    s.push('i');
+    s.push('!');
+    // Print it
+    s.println();
 
-struct Point {
-    x: Int,
-    y: Int
-}
-
-def f(x: Int): Point {
-    return {x = x, y = x * x};
-}
-
-def putstr(s: &Char) {
-    let mut i = 0;
-    while s[i] != '\\0' {
-        print(s[i]);
-        i += 1;
-    }
-}
-
-def putstrln(s: &Char) {
-    let mut i = 0;
-    while s[i] != '\\0' {
-        print(s[i]);
-        i += 1;
-    }
-    print("\\n");
-}
-
-def make_x_str(x_count: Int): &Char {
-    let value = alloc((x_count + 32) * sizeof<Char>()) as &mut Char;
-    for let mut i=0; i<x_count; i+=1 {
-        value[i] = 'x';
-    }
-    value[x_count] = '\\0';
-    return value;
-}
-
-const INSERT_COUNT = 100;
-const CHECK_COUNT = 200;
-
-let mut map = HashMap_new<Point, &Char>();
-
-print("HashMap before inserting:\\n");
-HashMap_print<Point, &Char>(&map);
-
-for let mut i=1; i<INSERT_COUNT; i+=1 {
-    let point = f(i);
-    let key = point as Point;
-    let value = make_x_str(i);
-    print("Inserting ", key, " -> ");
-    putstrln(value);
-    HashMap_put<Point, &Char>(&mut map, key, value);
-}
-
-print("HashMap after inserting:\\n");
-HashMap_print<Point, &Char>(&map);
-
-for let mut i=1; i<CHECK_COUNT; i+=1 {
-    let point = f(i);
-    let key = point as Point;
-    print("Retrieving ", key, ": ");
-
-    match HashMap_get<Point, &Char>(&map, key) {
-        of Some(value) => {
-            putstrln(*value);
-            del *value;
+    // Pop off a character from the end
+    match s.pop() {
+        of Some(c) => {
+            // If there's some character, print it
+            println("popped: ", c);
         },
-        of Nothing => print("Nothing\\n")
+        of Nothing => {
+            // If there's no character, print an error
+            println("nothing to pop (This should not happen)");
+        }
+    }
+    s.println();
+
+    // Create a string from a string literal
+    let mut s2 = String.from_str(&"hello world!");
+    // Print it
+    s2.println();
+}
+
+def memcpy<T>(dest: &mut T, src: &T, mut n: Int) {
+    while n > 0 {
+        n -= 1;
+        dest[n] = src[n];
     }
 }
 
-HashMap_drop<Point, &Char>(&map);`);
+enum Option<T> {
+    Some(T),
+    Nothing
+}
+
+struct String {
+    data: &mut Char,
+    length: Int,
+    capacity: Int
+}
+
+impl String {
+    def make(): String {
+        let capacity = 128;
+        let data = alloc(capacity * sizeof<Char>());
+        return {
+            data = data,
+            length = 0,
+            capacity = capacity
+        };
+    }
+
+    def reserve(self: &mut String, new_capacity: Int) {
+        if new_capacity >= self.capacity {
+            let size = new_capacity * sizeof<Char>() + 1024;
+            let new_data = alloc(size);
+            memcpy<Char>(new_data, self.data, self.length);
+            free(self.data);
+            self.data = new_data;
+            self.capacity = new_capacity;
+        }
+    }
+
+    def push(self: &mut String, value: Char) {
+        if self.length > self.capacity / 2 {
+            self.reserve(self.capacity * 2);
+        }
+        self.data[self.length] = value;
+        self.length += 1;
+    }
+
+    def from_str(s: &Char): String {
+        let mut string = String.make();
+        for let mut i=0; s[i] != '\\0'; i+=1 {
+            string.push(s[i]);
+        }
+        return string;
+    }
+
+    def from_int(mut i: Int): String {
+        let mut string = String.make();
+        if i < 0 {
+            string.push('-');
+            i = -i;
+        }
+        if i == 0 {
+            string.push('0');
+        }
+        while i > 0 {
+            string.push(('0' as Int + (i % 10)) as Char);
+            i /= 10;
+        }
+        return string;
+    }
+
+    def pop(self: &mut String): Option<Char> {
+        if self.length == 0 {
+            return Option<Char> of Nothing;
+        }
+        self.length -= 1;
+        return Option<Char> of Some(self.data[self.length]);
+    }
+
+    def print(self: &String) {
+        for let mut i=0; i<self.length; i+=1 {
+            print(self.data[i]);
+        }
+    }
+
+    def println(self: &String) {
+        self.print();
+        println();
+    }
+}
+
+main();`);
                     break;
                 case "hex-editor":
                     document.getElementById("input").value = `+100 !ee 40.B0=7f
@@ -712,43 +997,43 @@ def reallocate<T>(src: &T, old_size: Int, new_size: Int): &T {
 }
 
 def Memory_push(m: &mut Memory, value: Int) {
-    while (m->length >= m->capacity) {
-        m->capacity *= 2;
+    while (m.length >= m.capacity) {
+        m.capacity *= 2;
     }
-    m->data = allocate<Int>(m->capacity);
-    m->data[m->length] = value;
-    m->length += 1;
+    m.data = allocate<Int>(m.capacity);
+    m.data[m.length] = value;
+    m.length += 1;
 }
 
 def Memory_extend(m: &mut Memory, count: Int) {
-    while (m->length + count >= m->capacity) {
-        m->capacity *= 2;
+    while (m.length + count >= m.capacity) {
+        m.capacity *= 2;
     }
-    m->data = reallocate<Int>(m->data, m->length, m->capacity);
-    m->length += count;
+    m.data = reallocate<Int>(m.data, m.length, m.capacity);
+    m.length += count;
 }
 
 def Memory_pop(m: &mut Memory): Int {
-    if (m->length == 0) {
+    if (m.length == 0) {
         return 0;
     }
-    m->length -= 1;
-    return m->data[m->length];
+    m.length -= 1;
+    return m.data[m.length];
 }
 
 def Memory_shrink(m: &mut Memory, count: Int) {
-    if (m->length < count) {
-        m->length = 0;
+    if (m.length < count) {
+        m.length = 0;
     } else {
-        m->length -= count;
+        m.length -= count;
     }
 }
 
 def Memory_index(m: &mut Memory, index: Int): &mut Int {
-    if (index >= m->length) {
-        Memory_extend(m, index - m->length + 1);
+    if (index >= m.length) {
+        Memory_extend(m, index - m.length + 1);
     }
-    return &mut (m->data[index]);
+    return &mut (m.data[index]);
 }
 
 def Memory_get(m: &mut Memory, index: Int): Int {
@@ -772,7 +1057,7 @@ def Memory_default(): Memory {
 }
 
 def Memory_free(m: &Memory) {
-    del m->data;
+    del m.data;
 }
 
 def print_byte(mut c: Int) {
@@ -796,24 +1081,24 @@ def print_addr(mut c: Int) {
 }
 
 def Memory_print(m: &Memory) {
-    print("Memory: ", m->length, "/", m->capacity, "\\n");
-    if (m->length == 0) {
+    print("Memory: ", m.length, "/", m.capacity, "\\n");
+    if (m.length == 0) {
         print("Empty\\n");
     }
-    for let mut i=0; i<m->length; i+=1 {
+    for let mut i=0; i<m.length; i+=1 {
         // Print address
         if (i % 16 == 0) {
             print_addr(i);
             print(": ");
         }
 
-        print_byte(m->data[i]);
+        print_byte(m.data[i]);
         print(" ");
         if i % 16 == 15 {
             // print ASCII
             print(" | ");
             for let mut j=i-15; j<=i; j+=1 {
-                let c = m->data[j];
+                let c = m.data[j];
                 if (c >= 32 && c <= 126) {
                     print(c as Char);
                 } else {
@@ -825,15 +1110,15 @@ def Memory_print(m: &Memory) {
     }
 
     // print ASCII
-    if (m->length % 16 != 0) {
-        let i = m->length;
+    if (m.length % 16 != 0) {
+        let i = m.length;
         let j = i - (i % 16);
         for let mut k=i; k<j+16; k+=1 {
             print("   ");
         }
         print(" | ");
         for let mut k=j; k<i; k+=1 {
-            let c = m->data[k];
+            let c = m.data[k];
             if (c >= 32 && c <= 126) {
                 print(c as Char);
             } else {
@@ -1233,451 +1518,542 @@ inverse_cipher(&mut state, &key);
 print_state(&state);
 print("\\n");`);
                     break;
-                case "list":
-                    source.setValue(`enum List<T> {
-    Nil,
-    Cons {
-        data: T,
-        next: &List<T>
+                case "realloc-stack":
+                    source.setValue(`
+def realloc_stack(size: Int) {
+    let mut new_sp: &mut Cell = Null;
+    let mut new_fp: &mut Cell = Null;
+    let mut new_gp: &mut Cell = Null;
+    let mut new_stack_start: &mut Cell = Null;
+    let mut old_sp: &mut Cell = Null;
+    let mut old_fp: &mut Cell = Null;
+    let mut old_gp: &mut Cell = Null;
+    let mut old_frame: &mut Cell = Null;
+    let mut globals_size = 0;
+    let mut old_stack_start: &mut Cell = Null;
+    let mut old_stack_size = 0;
+    let mut old_frame_size = 0;
+    let mut fp_stack_ptr: &mut Cell = get_fp_stack();
+    let mut i = 0;
+    old_sp = get_sp();
+    old_fp = get_fp();
+    old_gp = get_gp();
+    old_stack_start = get_stack_start();
+    for i=0; (&(old_stack_start[i])) as Cell != old_sp as Cell; i+=1 {
+        old_stack_size += 1;
     }
+    for i=0; (&(old_stack_start[i])) as Cell != old_fp as Cell; i+=1 {
+        old_frame_size += 1;
+    }
+    for i=0; (&(old_gp[i])) as Cell != old_stack_start as Cell; i+=1 {
+        globals_size += 1;
+    }
+    new_gp = alloc(globals_size + size) as &mut Cell;
+    new_sp = &(new_gp[globals_size]);
+    new_stack_start = new_sp;
+    new_fp = &(new_stack_start[old_frame_size]);
+    new_sp = &(new_stack_start[old_stack_size]);
+    
+    for i=0; i<old_stack_size; i+=1 {
+        new_stack_start[i] = old_stack_start[i];
+    }
+    for i=0; i<globals_size; i+=1 {
+        new_gp[i] = old_gp[i];
+    }
+    set_stack_start(new_stack_start);
+    set_fp(new_fp);
+    set_sp(new_sp);
+    set_gp(new_gp);
+    fp_stack_ptr[0] = fp_stack_ptr[0] as Cell + new_fp as Cell - old_fp as Cell;
 }
 
-def print_list<T>(l: &List<T>) {
-    match *l {
-        of Nil => {},
-        of Cons {data, next=&of Nil} => {
-            print(data);
-        },
-        of Cons {data, next} => {
-            print(data, ", ");
-            print_list<T>(next);
-        },
-        _ => {}
-    }
+realloc_stack(1000000);
+let x = &"Testing";
+let static test: &Char = x;
+
+for let mut i=0; test[i] != '\\0'; i+=1 {
+    print(test[i]);
+}
+println();`);
+                case "structural-types":
+                    source.setValue(`def main() {
+    // Add the position and the size to get a rectangle
+    let rect = Position.make(10, 20) + Size.make(30, 40);
+
+    // Print the rectangle and its stats
+    println("Rectangle: ", rect);
+    println("Area:      ", rect.area()); 
+    println("Perimeter: ", rect.perimeter());
 }
 
-def make_list<T, U>(cons: Int -> T, len: Int): List<T> {
-    if len == 0 {
-        return List<T> of Nil;
-    } else {
-        return List<T> of Cons {
-            data = cons(len),
-            next = new make_list<T, U>(cons, len - 1)
-        };
-    }
+// A rectangle has an \`x\` and \`y\` position, a \`width\`, and a \`height\`.
+struct Rectangle {
+    x: Int,
+    y: Int,
+    width: Int,
+    height: Int
 }
 
-def identity<T>(t: T): T = t;
+impl Rectangle {
+    // Calculate the area of the rectangle
+    def area(self: &Rectangle): Int = self.width * self.height;
 
-let list1 = make_list<Int, Int>(identity<Int>, 100);
-print_list<Int>(&list1);
-print("\\n");
-
-print_list<Int>(new List<Int> of Cons {
-    data = 1,
-    next = new List<Int> of Cons {
-        data = 2,
-        next = new List<Int> of Cons {
-            data = 3,
-            next = new List<Int> of Cons {
-                data = 4,
-                next = new List<Int> of Nil
-            }
-        }
-    }
-});
-print("\\n");
-
-let x = new List<Char> of Cons {
-    data = 'a',
-    next = new List<Char> of Cons {
-        data = 'b',
-        next = new List<Char> of Cons {
-            data = 'c',
-            next = new List<Char> of Cons {
-                data = 'd',
-                next = new List<Char> of Nil
-            }
-        }
-    }
-};
-
-print_list<Char>(x);
-print("\\n");
-`)
-                    break;
-                case "result":
-                    source.setValue(`enum Result<T, E> {
-    Ok(T),
-    Err(E)
+    // Calculate the perimeter of the rectangle
+    def perimeter(self: &Rectangle): Int = 2 * (self.width + self.height);
 }
 
-def print_result<T, E>(res: Result<T, E>) {
-    match res {
-        of Ok(x) => print("success: ", x, "\\n"),
-        of Err(e) => print("error: ", e, "\\n")
-    }
+// A type for representing the dimensions of a 2D shape
+struct Size {
+    width: Int,
+    height: Int
 }
 
-def map<T, U, E>(f: T -> U, res: Result<T, E>): Result<U, E> {
-    match res {
-        of Ok(x) => Result<U, E> of Ok(f(x)),
-        of Err(e) => Result<U, E> of Err(e)
-    }
+impl Size {
+    // Create a new size with the given width and height
+    def make(width: Int, height: Int): Size = { width=width, height=height };
 }
 
-def map_err<T, E, F>(f: E -> F, res: Result<T, E>): Result<T, F> {
-    match res {
-        of Ok(x) => Result<T, F> of Ok(x),
-        of Err(e) => Result<T, F> of Err(f(e))
-    }
+// A type for representing the position of a 2D shape
+struct Position {
+    x: Int,
+    y: Int
 }
 
-def and_then<T, U, E>(f: T -> Result<U, E>, res: Result<T, E>): Result<U, E> {
-    match res {
-        of Ok(x) => f(x),
-        of Err(e) => Result<U, E> of Err(e)
-    }
+impl Position {
+    // Create a new position with the given x and y coordinates
+    def make(x: Int, y: Int): Position = { x=x, y=y };
 }
 
-def or_else<T, E, F>(f: E -> Result<T, F>, res: Result<T, E>): Result<T, F> {
-    match res {
-        of Ok(x) => Result<T, F> of Ok(x),
-        of Err(e) => f(e)
-    }
-}
-
-def inc(x: Int): Int = x + 1;
-def to_float(n: Int): Float = n as Float;
-def half(n: Float): Float = n / 2;
-
-let text = "hello";
-print("Should print 5 / 2: ");
-print_result<Float, &Char>(map<Float, Float, &Char>(half, map<Int, Float, &Char>(to_float, Result<Int, &Char> of Ok 5)));
+main();
 `);
                     break;
+                case "list":
+                    source.setValue(`def main() {
+    // Create a linked list of integers
+    let mut vals = List<Int> of Nil;
 
-                case "vector":
-                    source.setValue(`enum Option<T> {
+    // Add some values to the list
+    for let mut i=20; i>=0; i-=1 {
+        vals = vals.cons(i);
+    }
+
+    print("List of integers: ");
+    vals.println();
+
+    def square(n: Int): Int = n * n;
+
+    // Create a new list of all the squares of the values in the first list
+    let squares = vals.map<Int>(square);
+
+    // Print the squared values
+    print("List of squares:  ");
+    squares.println();
+}
+
+// A type for nullable values
+enum Option<T> {
     Some(T),
     Nothing
 }
 
-enum Result<T, E> {
-    Ok(T),
-    Err(E)
+// A function for halting the program
+def exit(n: Int): ! {
+    // \`!\` is the type of a value that never returns
+    println("Exit: ", n);
+    debug();
+    while True {}
 }
 
-def allocate<T>(count: Int): Option<&mut T> {
-    if (count <= 0) {
-        return Option<&mut T> of Nothing;
+// Throw an uncaught exception
+def panic(msg: &Char): ! {
+    for let mut i=0; msg[i] != '\\0'; i+=1 {
+        print(msg);
     }
-    let ptr = alloc(count * sizeof<T>()) as &mut T;
-    if (ptr == Null) {
-        return Option<&mut T> of Nothing;
-    } else {
-        return Option<&mut T> of Some(ptr);
-    }
+    println();
+    debug();
+    exit(1);
 }
 
-def copy_slice<T>(data: &T, count: Int): Option<&mut T> {
-    match allocate<T>(count) {
-        of Some(mut ptr) => {
-            for let mut i = 0; i < count; i+=1 {
-                ptr[i] = data[i];
-            }
-            return Option<&mut T> of Some(ptr);
-        },
-        of Nothing => {
-            return Option<&mut T> of Nothing;
+// A recursive linked list type
+enum List<T> {
+    // A list with a head and a tail
+    Cons(T, &List<T>),
+    // The empty list
+    Nil,
+}
+
+impl List<T> {
+    def make(value: T): List<T> {
+        return List<T> of Cons(value, new List<T> of Nil);
+    }
+
+    def cons(list: List<T>, value: T): List<T> {
+        return List<T> of Cons(value, new list);
+    }
+
+    def head(self: &List<T>): T {
+        match self {
+            &of Cons(head, _) => head,
+            _ => panic(&"head of empty list")
         }
     }
-}
 
-def copy<T>(data: &T): Option<&mut T> {
-    return copy_slice<T>(data, 1);
-}
-
-def reallocate<T>(data: &T, old_count: Int, new_count: Int): Option<&T> {
-    match allocate<T>(new_count) {
-        of Some(ptr) => {
-            for let mut i = 0; i < old_count; i+=1 {
-                ptr[i] = data[i];
-            }
-            del data;
-            return Option<&T> of Some(ptr);
-        },
-        of Nothing => {
-            return Option<&T> of Nothing;
+    def tail(self: &List<T>): &List<T> {
+        match self {
+            &of Cons(_, tail) => tail,
+            _ => panic(&"tail of empty list")
         }
     }
-}
 
-enum Either<T> {
-    Left(T),
-    Right(T)
-}
-
-enum Ordering {
-    Less,
-    Equal,
-    Greater
-}
-
-struct String {
-    data: &mut Char,
-    len: Int,
-    cap: Int
-}
-
-def String_clone(s: &String): String {
-    let data = alloc(s->cap) as &mut Char;
-    for let mut i = 0; i < s->len; i+=1 {
-        data[i] = s->data[i];
-    }
-    return {
-        data=data,
-        len=s->len,
-        cap=s->cap
-    };
-}
-
-def String_new_with_capacity(cap: Int): Option<String> {
-    match allocate<Char>(cap) {
-        of Some(data) => {
-            return Option<String> of Some({
-                data=data,
-                len=0,
-                cap=cap
-            });
-        },
-        of Nothing => {
-            return Option<String> of Nothing;
-        }
-    }
-}
-
-def String_from(text: &Char): Option<String> {
-    let mut len = 0;
-    while (text[len] != '\\0') {
-        len += 1;
-    }
-    match String_new_with_capacity(len) {
-        of Some(mut s) => {
-            for let mut i = 0; i < len; i+=1 {
-                s.data[i] = text[i];
-            }
-            s.len = len;
-            return Option<String> of Some(s);
-        },
-        of Nothing => {
-            return Option<String> of Nothing;
-        }
-    }
-}
-
-def String_print(s: &String) {
-    for let mut i = 0; i < s->len; i+=1 {
-        print(s->data[i]);
-    }
-}
-
-def nth(s: &String, n: Int): Option<&Char> {
-    if (n < 0 || n >= s->len) {
-        return Option<&Char> of Nothing;
-    } else {
-        return Option<&Char> of Some(&(s->data[n]));
-    }
-}
-
-def String_push(mut s: String, c: Char): String {
-    if s.len == s.cap {
-        let new_cap = s.cap * 2;
-        match reallocate<Char>(s.data, s.cap, new_cap) {
-            of Some(data) => {
-                s.data = data;
-                s.cap = new_cap;
+    def print(self: &List<T>) {
+        match self {
+            &of Cons(head, tail) => {
+                print(head);
+                print(" ");
+                tail.print();
             },
-            of Nothing => {
-                return s;
-            }
+            _ => {}
         }
     }
-    s.data[s.len] = c;
-    s.len += 1;
-    return s;
-}
 
-def String_drop(s: &String) {
-    if s->data != Null {
-        del s->data;
+    def println(self: &List<T>) {
+        self.print();
+        println();
     }
-}
 
-struct Sequence<T> {
-    len: Int,
-    cap: Int,
-    data: &mut T,
-}
-
-def Sequence_clone<T>(s: &Sequence<T>): Option<Sequence<T>> {
-    match copy_slice<T>(s->data, s->cap) {
-        of Some(data) => {
-            return Option<Sequence<T>> of Some({
-                data=data,
-                len=s->len,
-                cap=s->cap
-            });
-        },
-        of Nothing => {
-            return Option<Sequence<T>> of Nothing;
+    def map<U>(self: List<T>, f: T -> U): List<U> {
+        match self {
+            of Cons(head, tail) => tail.map<U>(f).cons(f(head)),
+            _ => List<U> of Nil
         }
     }
 }
 
-def Sequence_new_with_capacity<T>(cap: Int): Option<Sequence<T>> {
-    match allocate<T>(cap) {
-        of Some(data) => {
-            return Option<Sequence<T>> of Some({
-                data=data,
-                len=0,
-                cap=cap
-            });
-        },
-        of Nothing => {
-            return Option<Sequence<T>> of Nothing;
-        }
-    }
+main();`)
+                    break;
+                case "result":
+                    source.setValue(`// An error type that represents a failure in the program
+enum Error {
+    // A division by zero error
+    DivideByZero {
+        // The numerator of the division
+        numerator: Int,
+    },
+    // An invalid input error
+    InvalidInput,
 }
 
-def Sequence_from<T>(data: &T, len: Int): Option<Sequence<T>> {
-    match Sequence_new_with_capacity<T>(len) {
-        of Some(mut s) => {
-            for let mut i = 0; i < len; i+=1 {
-                s.data[i] = data[i];
-            }
-            s.len = len;
-            return Option<Sequence<T>> of Some(s);
-        },
-        of Nothing => {
-            return Option<Sequence<T>> of Nothing;
-        }
+// The main function of the program is fallible, so it returns a Result
+def main(): Result<(), Error> {
+    // Divide 5 by 1
+    match divide(5, 1) {
+        of Ok(n) => println("Success (expected)! ", n, " is a valid result."),
+        of Err(e) => println("Error (unexpected): ", e),
     }
+    println();
+
+    // Divide 2 by 0
+    match divide(2, 0) {
+        of Ok(n) => println("Success (unexpected)! ", n, " is a valid result."),
+        of Err(e) => println("Error (expected): ", e),
+    }
+    println();
+
+    return Result<(), Error> of Ok(());
 }
 
-def Sequence_print<T>(s: &Sequence<T>) {
-    print("[");
-    for let mut i = 0; i < s->len; i+=1 {
-        print(s->data[i]);
-        if i < s->len - 1 {
-            print(", ");
-        }
-    }
-    print("]");
-}
-
-def Sequence_println<T>(s: &Sequence<T>) {
-    Sequence_print<T>(s);
-    print("\\n");
-}
-
-def Sequence_push<T>(s: Sequence<T>, c: T): Sequence<T> {
-    if (s.len == s.cap) {
-        let old_data = s.data;
-        if let of Some(ptr) = reallocate<T>(s.data, s.cap, s.cap * 2) {
-            s.data = ptr;
-        } else {
-            return s;
-        }
-        s.cap *= 2;
-    }
-    s.data[s.len] = c;
-    s.len += 1;
-    return s;
-}
-
-def Sequence_concat<T>(first: Sequence<T>, second: Sequence<T>): Sequence<T> {
-    let new_len = first.len + second.len;
-    let new_cap = first.cap + second.cap;
-    let new_data = alloc(new_cap * sizeof<T>()) as &mut T;
-    for let mut i = 0; i < first.len; i+=1 {
-        new_data[i] = first.data[i];
-    }
-    for let mut i = 0; i < second.len; i+=1 {
-        new_data[first.len + i] = second.data[i];
-    }
-    return {
-        data=new_data,
-        len=new_len,
-        cap=new_cap
-    };
-}
-
-def Sequence_reverse<T>(s: Sequence<T>): Sequence<T> {
-    for let mut i = 0; i < s.len / 2; i+=1 {
-        let tmp = s.data[i];
-        s.data[i] = s.data[s.len - i - 1];
-        s.data[s.len - i - 1] = tmp;
-    }
-    return s;
-}
-
-def Sequence_drop<T>(s: &Sequence<T>) {
-    if s->data != Null {
-        del s->data;
-    }
-}
-
-def Sequence_nth<T>(s: &Sequence<T>, n: Int): Option<&T> {
-    if (n < 0 || n >= s->len) {
-        return Option<&T> of Nothing;
+// Divide two integers, returning a fallible result
+def divide(x: Int, y: Int): Result<Int, Error> {
+    println("About to divide ", x, " and ", y);
+    if y == 0 {
+        return Result<Int, Error> of Err(Error of DivideByZero { numerator = x });
     } else {
-        return Option<&T> of Some(&(s->data[n]));
+        return Result<Int, Error> of Ok(x / y);
     }
 }
 
-def test<T>(first: &T, second: &T) {
-    if let (of Some(a), of Some(b)) = (Sequence_from<T>(first, 5), Sequence_from<T>(second, 5)) {
-        let seq = Sequence_concat<T>(a, Sequence_reverse<T>(b));
-        Sequence_println<T>(&seq);
-        Sequence_drop<T>(&a);
-        Sequence_drop<T>(&b);
-        Sequence_drop<T>(&seq);
-    }
+enum Option<T> {
+    // Some value T
+    Some(T),
+    // No value
+    Nothing,
 }
 
-let first = [1, 2, 3, 4, 5];
-let second = [6, 7, 8, 9, 10];
-print("Sequence of ints: ");
-test<Int>(&first as &Int, &second as &Int);
-
-let raw_text = "Hello, world!\\0";
-if let of Some(str) = String_from(&raw_text as &Char) {
-    let first = [
-        str,
-        String_push(String_clone(&str), '!'),
-        String_push(String_push(String_clone(&str), '!'), '!'),
-        String_push(String_push(String_push(String_clone(&str), '!'), '!'), '!'),
-        String_push(String_push(String_push(String_push(String_clone(&str), '!'), '!'), '!'), '!')
-    ];
-
-    if let of Some(mut second) = Sequence_from<String>(&first as &String, sizeof(first) / sizeof<String>()) {
-        print("Sequence of strings: ");
-        test<String>(&first as &String, second.data);
-        for let mut i = 0; i < 5; i+=1 {
-            print(i, ": "); String_print(&(first[i])); print("\\n");
+impl Option<T> {
+    def is_some(self: &Option<T>): Bool {
+        match self {
+            &of Some(_) => True,
+            _ => False,
         }
-        second = Sequence_reverse<String>(second);
-        for let mut i = 0; i < 5; i+=1 {
-            if let of Some(s) = Sequence_nth<String>(&second, i) {
-                print(i + 5, ": "); String_print(s); print("\\n");
-            	String_drop(s);
-            }
+    }
+
+    def is_nothing(self: &Option<T>): Bool {
+        match self {
+            &of Some(_) => False,
+            _ => True,
         }
-    	Sequence_drop<String>(&second);
+    }
+
+    def unwrap(self: &Option<T>): T {
+        match self {
+            &of Some(v) => v,
+            _ => panic(&"called \`Option::unwrap()\` on a \`Nothing\` value"),
+        }
+    }
+
+    def unwrap_or(self: &Option<T>, default: T): T {
+        match self {
+            &of Some(v) => v,
+            _ => default,
+        }
+    }
+
+    def unwrap_or_else(self: &Option<T>, f: () -> T): T {
+        match self {
+            &of Some(v) => v,
+            _ => f(),
+        }
+    }
+
+    def map<U>(self: &Option<T>, f: T -> U): Option<U> {
+        match self {
+            &of Some(v) => Some(f(v)),
+            _ => Nothing,
+        }
+    }
+
+    def map_or<U>(self: &Option<T>, default: U, f: T -> U): U {
+        match self {
+            &of Some(v) => f(v),
+            _ => default,
+        }
+    }
+
+    def map_or_else<U>(self: &Option<T>, default: () -> U, f: T -> U): U {
+        match self {
+            &of Some(v) => f(v),
+            _ => default(),
+        }
+    }
+
+    def and<U>(self: &Option<T>, optb: Option<U>): Option<U> {
+        match self {
+            &of Some(_) => optb,
+            _ => Option<U> of Nothing,
+        }
+    }
+
+    def and_then<U>(self: &Option<T>, f: T -> Option<U>): Option<U> {
+        match self {
+            &of Some(v) => f(v),
+            _ => Option<U> of Nothing,
+        }
+    }
+
+    def or(self: &Option<T>, optb: Option<T>): Option<T> {
+        match self {
+            &of Some(_) => *self,
+            _ => optb,
+        }
     }
 }
-print("Vector operations done!\\n");`);
+
+
+
+// A Result of an operation that can either succeed with a value of type T or fail with an error of type E.
+enum Result<T, E> {
+    // A success, containing a value
+    Ok(T),
+    // A failure, containing an error
+    Err(E),
+}
+
+impl Result<T, E> {
+    def is_ok(self: &Result<T, E>): Bool {
+        match self {
+            &of Ok(_) => True,
+            _ => False,
+        }
+    }
+
+    def is_err(self: &Result<T, E>): Bool {
+        match self {
+            &of Ok(_) => False,
+            _ => True,
+        }
+    }
+
+    def ok(self: &Result<T, E>): Option<T> {
+        match self {
+            &of Ok(v) => Option<T> of Some(v),
+            _ => Option<T> of Nothing,
+        }
+    }
+}
+
+def panic(msg: &Char): ! {
+    println("[ERROR] ", msg);
+    debug();
+    while True {}
+}
+
+if let of Err(e) = main() {
+    println("Error: ", e);
+}`);
+                    break;
+
+                case "vector":
+                    source.setValue(`def main() {
+    // Create a vector of integers
+    let mut v = Vec.make<Int>();
+
+    // Print the length
+    println("v.len() = ", v.len());
+    
+    // Add 10000 elements
+    for let mut i=0; i<10000; i+=1 {
+        v.push(i);
+    }
+    // Print the new length
+    println("v.len() = ", v.len());
+
+    def double(x: Int): Int = x * 2;
+    def sum(x: Int, y: Int): Int = x + y;
+
+    // Create a new vector with all the values doubled
+    let mut v2 = v.map<Int>(double);
+    println("v2.len() = ", v2.len());
+
+    // Print the sum of all the elements in the original list
+    println("sum of v = ", v.reduce<Int>(sum, 0));
+    // Print the sum of all the elements in the new, doubled list
+    println("sum of v2 = ", v2.reduce<Int>(sum, 0));
+
+    // Print all the elements in the new, doubled list
+    for let mut i=0; i<v2.len(); i+=1 {
+        let opt = v2.get(i);
+        println("v2[", i, "] = ", opt.unwrap());
+    }
+}
+
+enum Option<T> {
+    Some(T),
+    Nothing
+}
+
+// A function for halting the program
+def exit(n: Int): ! {
+    // \`!\` is the type of a value that never returns
+    println("Exit: ", n);
+    debug();
+    while True {}
+}
+
+// Throw an uncaught exception
+def panic(msg: &Char): ! {
+    for let mut i=0; msg[i] != '\\0'; i+=1 {
+        print(msg);
+    }
+    println();
+    debug();
+    exit(1);
+}
+
+impl Option<T> {
+    def unwrap(self: &Option<T>): T {
+        match self {
+            &of Some(x) => x,
+            _ => panic(&"unwrap called on Nothing")
+        }
+    }
+
+    def is_some(self: &Option<T>): Bool {
+        match self {
+            &of Some(_) => True,
+            _ => False
+        }
+    }
+}
+
+struct Vec<T> {
+    data: &mut T,
+    length: Int,
+    capacity: Int
+}
+
+def memcpy<T>(dest: &mut T, src: &T, size: Int) {
+    for let mut i=0; i<size; i+=1 {
+        dest[i] = src[i];
+    }
+}
+
+impl Vec<T> {
+    def make(): Vec<T> {
+        let capacity = 128;
+        let data = alloc(capacity * sizeof<T>());
+        return {
+            data = data,
+            length = 0,
+            capacity = capacity
+        };
+    }
+
+    def reserve(self: &mut Vec<T>, new_capacity: Int) {
+        if new_capacity >= self.capacity {
+            let size = new_capacity * sizeof<T>() + 1024;
+            let new_data = alloc(size);
+            memcpy<T>(new_data, self.data, self.length);
+            free(self.data);
+            self.data = new_data;
+            self.capacity = new_capacity;
+        }
+    }
+
+    def push(self: &mut Vec<T>, value: T) {
+        if self.length > self.capacity / 2 {
+            self.reserve(self.capacity * 2);
+        }
+        self.data[self.length] = value;
+        self.length += 1;
+    }
+
+    def pop(self: &mut Vec<T>): Option<T> {
+        if self.length == 0 {
+            return Option<T> of Nothing;
+        }
+        self.length -= 1;
+        return Option<T> of Some(self.data[self.length]);
+    }
+
+    def map<U>(self: &Vec<T>, f: T -> U): Vec<U> {
+        let mut result = Vec.make<U>();
+        for let mut i=0; i<self.length; i+=1 {
+            result.push(f(self.data[i]));
+        }
+        return result;
+    }
+
+    def reduce<U>(self: &Vec<T>, f: (U, T) -> U, init: U): U {
+        let mut result = init;
+        for let mut i=0; i<self.length; i+=1 {
+            result = f(result, self.data[i]);
+        }
+        return result;
+    }
+
+    def get(self: &Vec<T>, index: Int): Option<T> {
+        if index < 0 || index >= self.length {
+            return Option<T> of Nothing;
+        }
+        return Option<T> of Some(self.data[index]);
+    }
+
+    def len(self: &Vec<T>): Int {
+        return self.length;
+    }
+}
+
+main();`);
                     break;
 
                 case "calculator":
@@ -2046,16 +2422,6 @@ def read(): Input {
     let len = readline(buf, 0);
     buf[len] = '\\0';
 
-    return {
-        start = buf as &Char,
-        length = strlen(buf),
-        loc = 0
-    };
-}
-def test(): Input {
-    let buf = alloc(sizeof<Char>() * 34) as &mut Char;
-    *(buf as &mut [Char * 34]) = "(4 + 6) * ((8 - 3) / 2) + (9 % 5)\\0";
-    
     return {
         start = buf as &Char,
         length = strlen(buf),
@@ -2514,10 +2880,10 @@ def divide(n: Int, d: Int): Option<Int> {
     }
 }
 
-if let of Some(n) = divide(5, 0) {
-    print("5 / 0 = ", n, "\\n");
+if let of Some(n) = divide(6, 2) {
+    print("6 / 2 = ", n, "\\n");
 } else {
-    print("5 / 0 = undefined\\n");
+    print("6 / 2 = undefined\\n");
 }`);
                     document.getElementById("input").value = "";
                     break;
@@ -2590,7 +2956,8 @@ alert(buf);`);
                     document.getElementById("input").value = "('b' + 'a' + + 'a' + 'a').toUpperCase()";
                     break;
                 case "hello world":
-                    source.setValue(`print("Hello, world!\\n");`);
+                    source.setValue(`// Click the \`Compile\` button below to execute the program!
+println("Hello, world!");`);
                     document.getElementById("input").value = "";
                     break;
                 default:
@@ -2614,17 +2981,17 @@ alert(buf);`);
         </script>
         <select id="example" style="height: 3em; float: left;">
             <option value="hello world">Click to select example program (Default Hello World)</option>
-            <option value="hex-editor">Hex Editor</option>
-            <option value="calculator">Calculator (Parser)</option>
-            <option value="ffi">Foreign Function Interface (JavaScript Example)</option>
-            <option value="hashmap">HashMap (Generics)</option>
+            <option value="result">Fallible Result Types (Generics)</option>
             <option value="vector">Vector (Generics)</option>
+            <option value="hashmap">HashMap (Generics)</option>
+            <option value="list">Linked List (Generics)</option>
+            <option value="structural-types">Structural Typing Demo</option>
+            <option value="string">String</option>
+            <option value="calculator">Calculator (Parser)</option>
+            <option value="hex-editor">Hex Editor</option>
+            <option value="ffi">Foreign Function Interface (JavaScript Example)</option>
             <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
             <option value="alloc">Allocator</option>
-            <option value="result">Result Enum (Generics)</option>
-            <option value="list">Linked List Enum (Generics)</option>
-            <option value="lisp">S-Expressions</option>
-            <option value="tree">Tree (Generics)</option>
             <option value="match">Pattern Matching</option>
             <option value="cat">Cat</option>
             <option value="factorial">Factorial</option>

@@ -17,6 +17,7 @@ use log::*;
 
 use core::fmt;
 use std::collections::BTreeMap;
+use std::hash::{Hash, Hasher};
 
 /// A compiletime expression.
 #[derive(Clone, Debug, PartialEq)]
@@ -227,10 +228,10 @@ impl ConstExpr {
                             (Self::Struct(fields), Self::Symbol(name)) => {
                                 // If the field is not in the struct, return an error.
                                 if !fields.contains_key(&name) {
-                                    if let Some(constant) =
+                                    if let Some((constant, _)) =
                                         env.get_associated_const(&container_ty, &name)
                                     {
-                                        return constant.clone().eval_checked(env, i);
+                                        return constant.eval_checked(env, i);
                                         // return Ok(constant.clone());
                                     }
                                     return Err(Error::MemberNotFound(
@@ -241,10 +242,10 @@ impl ConstExpr {
                                 fields[&name].clone().eval_checked(env, i)?
                             }
                             (Self::Type(ty), Self::Symbol(name)) => {
-                                if let Some(constant) = env.get_associated_const(&ty, &name) {
-                                    constant.clone().eval_checked(env, i)?
+                                if let Some((constant, _)) = env.get_associated_const(&ty, &name) {
+                                    constant.eval_checked(env, i)?
                                 } else {
-                                    if let Ok(Some(constant)) =
+                                    if let Ok(Some((constant, _))) =
                                         member.clone().as_symbol(env).and_then(|name| {
                                             Ok(env.get_associated_const(&container_ty, &name))
                                         })
@@ -259,8 +260,8 @@ impl ConstExpr {
                                 }
                             }
                             (_, Self::Symbol(name)) => {
-                                if let Some(constant) = env.get_associated_const(&container_ty, &name) {
-                                    constant.clone().eval_checked(env, i)?
+                                if let Some((constant, _)) = env.get_associated_const(&container_ty, &name) {
+                                    constant.eval_checked(env, i)?
                                 } else{
                                     error!(
                                         "Member access not implemented for: {container_ty} . {member}"
@@ -272,12 +273,12 @@ impl ConstExpr {
                                 }
                             }
                             _ => {
-                                if let Ok(Some(constant)) =
+                                if let Ok(Some((constant, _))) =
                                     member.clone().as_symbol(env).and_then(|name| {
                                         Ok(env.get_associated_const(&container_ty, &name))
                                     })
                                 {
-                                    return constant.clone().eval_checked(env, i);
+                                    return constant.eval_checked(env, i);
                                     // return Ok(constant.clone());
                                 }
                                 error!(
@@ -979,3 +980,137 @@ impl fmt::Display for ConstExpr {
         }
     }
 }
+
+// Implement Hash for ConstExpr.
+impl Hash for ConstExpr {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Template(params, expr) => {
+                state.write_u8(0);
+                params.hash(state);
+                expr.hash(state);
+            }
+            Self::Type(t) => {
+                state.write_u8(1);
+                t.hash(state);
+            }
+            Self::Member(container, member) => {
+                state.write_u8(2);
+                container.hash(state);
+                member.hash(state);
+            }
+            Self::Annotated(expr, _) => {
+                state.write_u8(3);
+                expr.hash(state);
+            }
+            Self::FFIProcedure(ffi_proc) => {
+                state.write_u8(4);
+                ffi_proc.hash(state);
+            }
+            Self::CoreBuiltin(builtin) => {
+                state.write_u8(5);
+                builtin.hash(state);
+            }
+            Self::StandardBuiltin(builtin) => {
+                state.write_u8(6);
+                builtin.hash(state);
+            }
+            Self::TypeOf(expr) => {
+                state.write_u8(7);
+                expr.hash(state);
+            }
+            Self::Proc(proc) => {
+                state.write_u8(8);
+                proc.hash(state);
+            }
+            Self::PolyProc(proc) => {
+                state.write_u8(9);
+                proc.hash(state);
+            }
+            Self::Declare(bindings, expr) => {
+                state.write_u8(10);
+                bindings.hash(state);
+                expr.hash(state);
+            }
+            Self::Monomorphize(expr, ty_args) => {
+                state.write_u8(11);
+                expr.hash(state);
+                ty_args.hash(state);
+            }
+            Self::As(expr, ty) => {
+                state.write_u8(12);
+                expr.hash(state);
+                ty.hash(state);
+            }
+            Self::Tuple(items) => {
+                state.write_u8(13);
+                items.hash(state);
+            }
+            Self::Struct(fields) => {
+                state.write_u8(14);
+                fields.hash(state);
+            }
+            Self::Union(ty, variant, val) => {
+                state.write_u8(15);
+                ty.hash(state);
+                variant.hash(state);
+                val.hash(state);
+            }
+            Self::EnumUnion(ty, variant, val) => {
+                state.write_u8(16);
+                ty.hash(state);
+                variant.hash(state);
+                val.hash(state);
+            }
+            Self::Array(items) => {
+                state.write_u8(17);
+                items.hash(state);
+            }
+            Self::Bool(x) => {
+                state.write_u8(18);
+                x.hash(state);
+            }
+            Self::Char(ch) => {
+                state.write_u8(19);
+                ch.hash(state);
+            }
+            Self::Cell(n) => {
+                state.write_u8(20);
+                n.hash(state);
+            }
+            Self::Int(n) => {
+                state.write_u8(21);
+                n.hash(state);
+            }
+            Self::Float(n) => {
+                state.write_u8(22);
+                n.to_bits().hash(state);
+            }
+            Self::None => {
+                state.write_u8(23);
+            }
+            Self::Null => {
+                state.write_u8(24);
+            }
+            Self::Symbol(name) => {
+                state.write_u8(25);
+                name.hash(state);
+            }
+            Self::Of(t, name) => {
+                state.write_u8(26);
+                t.hash(state);
+                name.hash(state);
+            }
+            Self::SizeOfExpr(expr) => {
+                state.write_u8(27);
+                expr.hash(state);
+            }
+            Self::SizeOfType(ty) => {
+                state.write_u8(28);
+                ty.hash(state);
+            }
+        }
+    }
+}
+
+impl Eq for ConstExpr {}
