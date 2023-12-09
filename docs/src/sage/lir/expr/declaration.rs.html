@@ -755,7 +755,6 @@
 <a href="#755" id="755">755</a>
 <a href="#756" id="756">756</a>
 <a href="#757" id="757">757</a>
-<a href="#758" id="758">758</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{PolyProcedure, Procedure};
 <span class="kw">use crate</span>::{
     asm::{AssemblyProgram, CoreOp, Location, SP},
@@ -764,13 +763,13 @@
         Type, TypeCheck,
     },
 };
-<span class="kw">use </span>std::hash::{Hash, Hasher};
 <span class="kw">use </span>core::{
     fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult},
     ops::{Add, AddAssign},
 };
 <span class="kw">use </span>log::<span class="kw-2">*</span>;
 <span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::hash::{Hash, Hasher};
 
 <span class="doccomment">/// A declaration of a variable, function, type, etc.
 </span><span class="attr">#[derive(Debug, Clone, PartialEq)]
@@ -883,7 +882,7 @@
                 <span class="comment">// Add the variable to the environment, so that it can be used in the body.
                 </span>env.add_local_variable_declaration(<span class="self">self</span>)<span class="question-mark">?</span>;
                 <span class="comment">// Log the instructions for the declaration.
-                </span>output.log_instructions_after(<span class="kw-2">&amp;</span>name, <span class="kw-2">&amp;</span>log_message, current_instruction);
+                </span>output.log_instructions_after(name, <span class="kw-2">&amp;</span>log_message, current_instruction);
             }
             Declaration::VarPat(pat, expr) =&gt; {
                 <span class="comment">// Get the type of the expression being assigned to the pattern.
@@ -893,7 +892,7 @@
                 <span class="comment">// Compile the expression to leave the value on the stack.
                 </span>expr.clone().compile_expr(env, output)<span class="question-mark">?</span>;
                 <span class="comment">// Add the variable to the environment, so that it can be used in the body.
-                </span>pat.declare_let_bind(<span class="kw-2">&amp;</span>expr, <span class="kw-2">&amp;</span>expr_ty, env)<span class="question-mark">?</span>;
+                </span>pat.declare_let_bind(expr, <span class="kw-2">&amp;</span>expr_ty, env)<span class="question-mark">?</span>;
             }
             Declaration::StaticVar(name, _mutability, ty, expr) =&gt; {
                 <span class="comment">// Get the current instruction (for logging)
@@ -1120,7 +1119,7 @@
             <span class="comment">// Typecheck a variable declaration with a pattern.
             </span><span class="self">Self</span>::VarPat(pat, expr) =&gt; {
                 <span class="comment">// Typecheck the pattern in the environment.
-                </span>pat.type_check(<span class="kw-2">&amp;</span>expr, <span class="kw-2">&amp;</span>Expr::NONE, env)<span class="question-mark">?</span>;
+                </span>pat.type_check(expr, <span class="kw-2">&amp;</span>Expr::NONE, env)<span class="question-mark">?</span>;
                 <span class="comment">// Typecheck the expression assigned to the pattern in the environment.
                 </span>expr.type_check(env)<span class="question-mark">?</span>;
 
@@ -1129,7 +1128,7 @@
                 <span class="comment">// ty.add_monomorphized_associated_consts(env)?;
                 // Get the size of the expression.
                 </span><span class="kw">let </span>size = ty.get_size(env)<span class="question-mark">?</span>;
-                <span class="kw">if </span>!pat.is_exhaustive(<span class="kw-2">&amp;</span>expr, <span class="kw-2">&amp;</span>ty, env)<span class="question-mark">? </span>{
+                <span class="kw">if </span>!pat.is_exhaustive(expr, <span class="kw-2">&amp;</span>ty, env)<span class="question-mark">? </span>{
                     <span class="comment">// Make sure the pattern is exhaustive.
                     // If it is not, then we throw an error.
                     </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::NonExhaustivePatterns {
@@ -1138,7 +1137,7 @@
                     });
                 }
                 <span class="comment">// Get the bindings of the variables under the pattern
-                </span><span class="kw">let </span>bindings = pat.get_bindings(<span class="kw-2">&amp;</span>expr, <span class="kw-2">&amp;</span>ty, env)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>bindings = pat.get_bindings(expr, <span class="kw-2">&amp;</span>ty, env)<span class="question-mark">?</span>;
                 <span class="comment">// Get the size of all the bindings
                 </span><span class="kw">let </span>size_of_bindings = bindings
                     .iter()
@@ -1454,7 +1453,6 @@
     }
 }
 
-
 <span class="kw">impl </span>Hash <span class="kw">for </span>Declaration {
     <span class="kw">fn </span>hash&lt;H: Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H) {
         <span class="kw">match </span><span class="self">self </span>{
@@ -1513,4 +1511,5 @@
             }
         }
     }
-}</code></pre></div></section></main></body></html>
+}
+</code></pre></div></section></main></body></html>

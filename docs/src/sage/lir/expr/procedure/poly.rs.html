@@ -291,9 +291,9 @@
 //! A procedure is compiled down to a label in the assembly code.
 </span><span class="kw">use </span><span class="kw">crate</span>::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
 <span class="kw">use </span>core::fmt;
-<span class="kw">use </span>std::{collections::HashMap, rc::Rc, sync::RwLock};
-<span class="kw">use </span>std::{fmt::Display, hash::Hash, hash::Hasher};
 <span class="kw">use </span>log::{debug, error, trace};
+<span class="kw">use </span>std::{collections::HashMap, rc::Rc, sync::RwLock};
+<span class="kw">use </span>std::{hash::Hash, hash::Hasher};
 
 <span class="kw">use </span><span class="kw">super</span>::Procedure;
 
@@ -569,4 +569,5 @@
         <span class="self">self</span>.ret.hash(state);
         <span class="self">self</span>.body.hash(state);
     }
-}</code></pre></div></section></main></body></html>
+}
+</code></pre></div></section></main></body></html>

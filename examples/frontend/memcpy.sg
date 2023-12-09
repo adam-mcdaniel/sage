@@ -1,4 +1,4 @@
-extern __unsafe_memcpy(dst: &mut Cell, src: &Cell, size: Int);
+extern def __unsafe_memcpy(dst: &mut Cell, src: &Cell, size: Int);
 
 def memcpy<T>(dst: &mut T, src: &T, count: Int) {
     __unsafe_memcpy(dst as &mut Cell, src as &Cell, count * sizeof<T>());

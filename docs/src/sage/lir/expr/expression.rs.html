@@ -1135,8 +1135,6 @@
 <a href="#1135" id="1135">1135</a>
 <a href="#1136" id="1136">1136</a>
 <a href="#1137" id="1137">1137</a>
-<a href="#1138" id="1138">1138</a>
-<a href="#1139" id="1139">1139</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Expression
 //!
 //! An expression is a runtime value.
@@ -1366,9 +1364,11 @@
                                 <span class="kw">let </span>(<span class="kw-2">mut </span>associated_function, <span class="kw-2">mut </span>associated_function_type) = env
                                     .get_associated_const(<span class="kw-2">&amp;</span>val_type, <span class="kw-2">&amp;</span>name)
                                     .ok_or_else(|| Error::SymbolNotDefined(name.clone()))<span class="question-mark">?</span>;
-                                    <span class="comment">// .monomorphize(ty_args.clone());
-                                </span>associated_function = associated_function.monomorphize(ty_args.clone());
-                                associated_function_type = associated_function_type.apply(ty_args.clone());
+                                <span class="comment">// .monomorphize(ty_args.clone());
+                                </span>associated_function =
+                                    associated_function.monomorphize(ty_args.clone());
+                                associated_function_type =
+                                    associated_function_type.apply(ty_args.clone());
                                 <span class="comment">// let associated_function = ConstExpr::Type(val_type.clone())
                                 //     .field(*member)
                                 //     .monomorphize(ty_args.clone());
@@ -1439,7 +1439,7 @@
                             <span class="kw">let </span>(associated_function, associated_function_type) = env
                                 .get_associated_const(<span class="kw-2">&amp;</span>val_type, <span class="kw-2">&amp;</span>name)
                                 .ok_or_else(|| Error::SymbolNotDefined(name.clone()))<span class="question-mark">?</span>;
-                            
+
                             <span class="comment">// let associated_function = env
                             //     .get_associated_const(&amp;val_type, &amp;name)
                             //     .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
@@ -1564,34 +1564,30 @@
 
     <span class="kw">pub fn </span>get_method_call_mutability(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Mutability&gt;, Error&gt; {
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Annotated(inner, annotation) =&gt; {
-                <span class="kw">return </span>inner
-                    .get_method_call_mutability(env)
-                    .map_err(|e| e.annotate(annotation.clone()))
-            }
+            <span class="self">Self</span>::Annotated(inner, annotation) =&gt; inner
+                .get_method_call_mutability(env)
+                .map_err(|e| e.annotate(annotation.clone())),
 
             <span class="self">Self</span>::Apply(fun, args) =&gt; {
                 <span class="kw">let </span>fun_type = fun.get_type(env)<span class="question-mark">?</span>;
                 <span class="kw">match </span><span class="kw-2">*</span>fun.clone() {
-                    <span class="self">Self</span>::Annotated(inner, annotation) =&gt; {
-                        <span class="kw">return </span><span class="self">Self</span>::Apply(inner, args.clone())
-                            .get_method_call_mutability(env)
-                            .map_err(|e| e.annotate(annotation.clone()))
-                    }
-                    <span class="self">Self</span>::Member(val, name) =&gt; {
+                    <span class="self">Self</span>::Annotated(inner, annotation) =&gt; <span class="self">Self</span>::Apply(inner, args.clone())
+                        .get_method_call_mutability(env)
+                        .map_err(|e| e.annotate(annotation.clone())),
+                    <span class="self">Self</span>::Member(_val, _name) =&gt; {
                         <span class="comment">// Check if the value actually has a member with this name.
                         // let val_type = val.get_type(env)?;
-                        </span><span class="kw">return </span><span class="prelude-val">Ok</span>(fun_type.get_self_param_mutability(env));
+                        </span><span class="prelude-val">Ok</span>(fun_type.get_self_param_mutability(env))
                     }
-                    <span class="self">Self</span>::ConstExpr(ConstExpr::Member(val, name)) =&gt; {
+                    <span class="self">Self</span>::ConstExpr(ConstExpr::Member(_val, _name)) =&gt; {
                         <span class="comment">// let val_type = val.get_type(env)?;
-                        </span><span class="kw">return </span><span class="prelude-val">Ok</span>(fun_type.get_self_param_mutability(env));
+                        </span><span class="prelude-val">Ok</span>(fun_type.get_self_param_mutability(env))
                     }
-                    <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(<span class="self">self</span>.clone(), ConstExpr::None)),
+                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(Error::MemberNotFound(<span class="self">self</span>.clone(), ConstExpr::None)),
                 }
             }
 
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(<span class="self">self</span>.clone(), ConstExpr::None)),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(Error::MemberNotFound(<span class="self">self</span>.clone(), ConstExpr::None)),
         }
     }
 
@@ -2123,23 +2119,23 @@
             ConstExpr(expr) =&gt; {
                 state.write_u8(<span class="number">0</span>);
                 expr.hash(state)
-            },
+            }
             Many(exprs) =&gt; {
                 state.write_u8(<span class="number">1</span>);
                 exprs.hash(state)
-            },
+            }
             Match(expr, branches) =&gt; {
                 state.write_u8(<span class="number">2</span>);
                 expr.hash(state);
                 branches.hash(state);
-            },
+            }
             IfLet(pat, expr, t, e) =&gt; {
                 state.write_u8(<span class="number">3</span>);
                 pat.hash(state);
                 expr.hash(state);
                 t.hash(state);
                 e.hash(state);
-            },
+            }
 
             While(cond, body) =&gt; {
                 state.write_u8(<span class="number">2</span>);
@@ -2153,7 +2149,7 @@
                 then.hash(state);
                 else_.hash(state);
             }
-            
+
             When(cond, then, else_) =&gt; {
                 state.write_u8(<span class="number">4</span>);
                 cond.hash(state);
@@ -2163,20 +2159,20 @@
 
             UnaryOp(op, val) =&gt; {
                 state.write_u8(<span class="number">5</span>);
-                op.display(<span class="kw-2">&amp;</span>val).hash(state);
+                op.display(val).hash(state);
                 val.hash(state);
             }
 
             BinaryOp(op, lhs, rhs) =&gt; {
                 state.write_u8(<span class="number">6</span>);
-                op.display(<span class="kw-2">&amp;</span>lhs, <span class="kw-2">&amp;</span>rhs).hash(state);
+                op.display(lhs, rhs).hash(state);
                 lhs.hash(state);
                 rhs.hash(state);
             }
 
             TernaryOp(op, a, b, c) =&gt; {
                 state.write_u8(<span class="number">7</span>);
-                op.display(<span class="kw-2">&amp;</span>a, <span class="kw-2">&amp;</span>b, <span class="kw-2">&amp;</span>c).hash(state);
+                op.display(a, b, c).hash(state);
                 a.hash(state);
                 b.hash(state);
                 c.hash(state);
@@ -2184,7 +2180,7 @@
 
             AssignOp(op, lhs, rhs) =&gt; {
                 state.write_u8(<span class="number">8</span>);
-                op.display(<span class="kw-2">&amp;</span>lhs, <span class="kw-2">&amp;</span>rhs).hash(state);
+                op.display(lhs, rhs).hash(state);
                 lhs.hash(state);
                 rhs.hash(state);
             }

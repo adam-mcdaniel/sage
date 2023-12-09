@@ -1080,7 +1080,6 @@
 <a href="#1080" id="1080">1080</a>
 <a href="#1081" id="1081">1081</a>
 <a href="#1082" id="1082">1082</a>
-<a href="#1083" id="1083">1083</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Core Assembly Variant
 //!
 //! This variant of the assembly language is intended to be used
@@ -1111,8 +1110,7 @@
 //! using `Put`, and assuming-standard out, to display the integer in decimal.
 </span><span class="kw">use super</span>::{
     location::{FP_STACK, TMP},
-    AssemblyProgram, Env, Error, Location, StandardOp, F, FP, GP, SP, STACK_START,
-    START_OF_FP_STACK,
+    AssemblyProgram, Env, Error, Location, StandardOp, FP, GP, SP, STACK_START, START_OF_FP_STACK,
 };
 <span class="kw">use crate</span>::{
     side_effects::{Input, InputMode, Output, OutputMode},

@@ -1177,7 +1177,7 @@
 
     <span class="doccomment">/// Is this pattern exhaustive?
     </span><span class="kw">pub fn </span>is_exhaustive(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
-        <span class="self">Self</span>::are_patterns_exhaustive(<span class="kw-2">&amp;</span>expr, <span class="kw-2">&amp;</span>[<span class="self">self</span>.clone()], <span class="kw-2">&amp;</span>ty, <span class="kw-2">&amp;</span>env)
+        <span class="self">Self</span>::are_patterns_exhaustive(expr, <span class="kw-2">&amp;</span>[<span class="self">self</span>.clone()], ty, env)
     }
 
     <span class="doccomment">/// This associated function returns whether or not a set of patterns is exhaustive,

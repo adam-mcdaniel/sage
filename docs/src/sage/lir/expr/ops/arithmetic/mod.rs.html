@@ -485,7 +485,7 @@
                 Type::Float
             }
             (Type::Int | Type::Float | Type::Cell, Type::Cell)
-            | (Type::Cell, Type::Int | Type::Float | Type::Cell) =&gt; Type::Cell,
+            | (Type::Cell, Type::Int | Type::Float) =&gt; Type::Cell,
 
             (Type::Array(elem, size), Type::Int) =&gt; {
                 <span class="kw">if let </span>(<span class="self">Self</span>::Multiply, Expr::ConstExpr(const_rhs)) = (<span class="self">self</span>, rhs) {

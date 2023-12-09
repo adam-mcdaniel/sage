@@ -1084,36 +1084,6 @@
 <a href="#1084" id="1084">1084</a>
 <a href="#1085" id="1085">1085</a>
 <a href="#1086" id="1086">1086</a>
-<a href="#1087" id="1087">1087</a>
-<a href="#1088" id="1088">1088</a>
-<a href="#1089" id="1089">1089</a>
-<a href="#1090" id="1090">1090</a>
-<a href="#1091" id="1091">1091</a>
-<a href="#1092" id="1092">1092</a>
-<a href="#1093" id="1093">1093</a>
-<a href="#1094" id="1094">1094</a>
-<a href="#1095" id="1095">1095</a>
-<a href="#1096" id="1096">1096</a>
-<a href="#1097" id="1097">1097</a>
-<a href="#1098" id="1098">1098</a>
-<a href="#1099" id="1099">1099</a>
-<a href="#1100" id="1100">1100</a>
-<a href="#1101" id="1101">1101</a>
-<a href="#1102" id="1102">1102</a>
-<a href="#1103" id="1103">1103</a>
-<a href="#1104" id="1104">1104</a>
-<a href="#1105" id="1105">1105</a>
-<a href="#1106" id="1106">1106</a>
-<a href="#1107" id="1107">1107</a>
-<a href="#1108" id="1108">1108</a>
-<a href="#1109" id="1109">1109</a>
-<a href="#1110" id="1110">1110</a>
-<a href="#1111" id="1111">1111</a>
-<a href="#1112" id="1112">1112</a>
-<a href="#1113" id="1113">1113</a>
-<a href="#1114" id="1114">1114</a>
-<a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Constant Expressions
 //!
 //! Constant expressions are expressions that can be evaluated at compile time.
@@ -1312,11 +1282,11 @@
                     </span><span class="kw">match </span>expr.clone().eval_checked(env, i) {
                         <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Proc(proc)) =&gt; {
                             <span class="macro">info!</span>(<span class="string">&quot;Creating polyproc from mono proc: {proc}&quot;</span>);
-                            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::PolyProc(PolyProcedure::from_mono(proc, params)));
+                            <span class="prelude-val">Ok</span>(<span class="self">Self</span>::PolyProc(PolyProcedure::from_mono(proc, params)))
                         }
                         <span class="kw">_ </span>=&gt; {
                             <span class="macro">info!</span>(<span class="string">&quot;Creating template from expr: {expr}&quot;</span>);
-                            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::Template(params, expr));
+                            <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Template(params, expr))
                         }
                     }
                 }
@@ -1329,84 +1299,70 @@
                     <span class="kw">let </span>container_ty = container.get_type_checked(env, i)<span class="question-mark">?</span>;
                     <span class="macro">trace!</span>(<span class="string">&quot;Member access on type: {container_ty}: {container} . {member}&quot;</span>);
                     <span class="comment">// container_ty.add_monomorphized_associated_consts(env)?;
-                    </span><span class="prelude-val">Ok</span>(
-                        <span class="kw">match </span>(container.clone().eval(env)<span class="question-mark">?</span>, <span class="kw-2">*</span>member.clone()) {
-                            (<span class="self">Self</span>::Tuple(tuple), <span class="self">Self</span>::Int(n)) =&gt; {
-                                <span class="comment">// If the index is out of bounds, return an error.
-                                </span><span class="kw">if </span>n &gt;= tuple.len() <span class="kw">as </span>i64 || n &lt; <span class="number">0 </span>{
-                                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(
-                                        (<span class="kw-2">*</span>container).into(),
-                                        (<span class="kw-2">*</span>member).into(),
-                                    ));
-                                }
-                                tuple[n <span class="kw">as </span>usize].clone().eval_checked(env, i)<span class="question-mark">?
-                            </span>}
-                            (<span class="self">Self</span>::Struct(fields), <span class="self">Self</span>::Symbol(name)) =&gt; {
-                                <span class="comment">// If the field is not in the struct, return an error.
-                                </span><span class="kw">if </span>!fields.contains_key(<span class="kw-2">&amp;</span>name) {
-                                    <span class="kw">if let </span><span class="prelude-val">Some</span>((constant, <span class="kw">_</span>)) =
-                                        env.get_associated_const(<span class="kw-2">&amp;</span>container_ty, <span class="kw-2">&amp;</span>name)
-                                    {
-                                        <span class="kw">return </span>constant.eval_checked(env, i);
-                                        <span class="comment">// return Ok(constant.clone());
-                                    </span>}
-                                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(
-                                        (<span class="kw-2">*</span>container).into(),
-                                        (<span class="kw-2">*</span>member).into(),
-                                    ));
-                                }
-                                fields[<span class="kw-2">&amp;</span>name].clone().eval_checked(env, i)<span class="question-mark">?
-                            </span>}
-                            (<span class="self">Self</span>::Type(ty), <span class="self">Self</span>::Symbol(name)) =&gt; {
-                                <span class="kw">if let </span><span class="prelude-val">Some</span>((constant, <span class="kw">_</span>)) = env.get_associated_const(<span class="kw-2">&amp;</span>ty, <span class="kw-2">&amp;</span>name) {
-                                    constant.eval_checked(env, i)<span class="question-mark">?
-                                </span>} <span class="kw">else </span>{
-                                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((constant, <span class="kw">_</span>))) =
-                                        member.clone().as_symbol(env).and_then(|name| {
-                                            <span class="prelude-val">Ok</span>(env.get_associated_const(<span class="kw-2">&amp;</span>container_ty, <span class="kw-2">&amp;</span>name))
-                                        })
-                                    {
-                                        <span class="kw">return </span>constant.clone().eval_checked(env, i);
-                                        <span class="comment">// return Ok(constant.clone());
-                                    </span>}
-                                    <span class="macro">error!</span>(
-                                        <span class="string">&quot;Member access not implemented for: {container_ty} . {member}&quot;
-                                    </span>);
-                                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::SymbolNotDefined(name));
-                                }
+                    </span><span class="prelude-val">Ok</span>(<span class="kw">match </span>(container.clone().eval(env)<span class="question-mark">?</span>, <span class="kw-2">*</span>member.clone()) {
+                        (<span class="self">Self</span>::Tuple(tuple), <span class="self">Self</span>::Int(n)) =&gt; {
+                            <span class="comment">// If the index is out of bounds, return an error.
+                            </span><span class="kw">if </span>n &gt;= tuple.len() <span class="kw">as </span>i64 || n &lt; <span class="number">0 </span>{
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), <span class="kw-2">*</span>member));
                             }
-                            (<span class="kw">_</span>, <span class="self">Self</span>::Symbol(name)) =&gt; {
-                                <span class="kw">if let </span><span class="prelude-val">Some</span>((constant, <span class="kw">_</span>)) = env.get_associated_const(<span class="kw-2">&amp;</span>container_ty, <span class="kw-2">&amp;</span>name) {
-                                    constant.eval_checked(env, i)<span class="question-mark">?
-                                </span>} <span class="kw">else</span>{
-                                    <span class="macro">error!</span>(
-                                        <span class="string">&quot;Member access not implemented for: {container_ty} . {member}&quot;
-                                    </span>);
-                                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(
-                                        (<span class="kw-2">*</span>container).into(),
-                                        (<span class="kw-2">*</span>member).into(),
-                                    ));
-                                }
-                            }
-                            <span class="kw">_ </span>=&gt; {
-                                <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((constant, <span class="kw">_</span>))) =
-                                    member.clone().as_symbol(env).and_then(|name| {
-                                        <span class="prelude-val">Ok</span>(env.get_associated_const(<span class="kw-2">&amp;</span>container_ty, <span class="kw-2">&amp;</span>name))
-                                    })
+                            tuple[n <span class="kw">as </span>usize].clone().eval_checked(env, i)<span class="question-mark">?
+                        </span>}
+                        (<span class="self">Self</span>::Struct(fields), <span class="self">Self</span>::Symbol(name)) =&gt; {
+                            <span class="comment">// If the field is not in the struct, return an error.
+                            </span><span class="kw">if </span>!fields.contains_key(<span class="kw-2">&amp;</span>name) {
+                                <span class="kw">if let </span><span class="prelude-val">Some</span>((constant, <span class="kw">_</span>)) =
+                                    env.get_associated_const(<span class="kw-2">&amp;</span>container_ty, <span class="kw-2">&amp;</span>name)
                                 {
                                     <span class="kw">return </span>constant.eval_checked(env, i);
+                                    <span class="comment">// return Ok(constant.clone());
+                                </span>}
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), <span class="kw-2">*</span>member));
+                            }
+                            fields[<span class="kw-2">&amp;</span>name].clone().eval_checked(env, i)<span class="question-mark">?
+                        </span>}
+                        (<span class="self">Self</span>::Type(ty), <span class="self">Self</span>::Symbol(name)) =&gt; {
+                            <span class="kw">if let </span><span class="prelude-val">Some</span>((constant, <span class="kw">_</span>)) = env.get_associated_const(<span class="kw-2">&amp;</span>ty, <span class="kw-2">&amp;</span>name) {
+                                constant.eval_checked(env, i)<span class="question-mark">?
+                            </span>} <span class="kw">else </span>{
+                                <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((constant, <span class="kw">_</span>))) = member
+                                    .clone()
+                                    .as_symbol(env)
+                                    .map(|name| env.get_associated_const(<span class="kw-2">&amp;</span>container_ty, <span class="kw-2">&amp;</span>name))
+                                {
+                                    <span class="kw">return </span>constant.clone().eval_checked(env, i);
                                     <span class="comment">// return Ok(constant.clone());
                                 </span>}
                                 <span class="macro">error!</span>(
                                     <span class="string">&quot;Member access not implemented for: {container_ty} . {member}&quot;
                                 </span>);
-                                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(
-                                    (<span class="kw-2">*</span>container).into(),
-                                    (<span class="kw-2">*</span>member).into(),
-                                ));
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::SymbolNotDefined(name));
                             }
-                        },
-                    )
+                        }
+                        (<span class="kw">_</span>, <span class="self">Self</span>::Symbol(name)) =&gt; {
+                            <span class="kw">if let </span><span class="prelude-val">Some</span>((constant, <span class="kw">_</span>)) =
+                                env.get_associated_const(<span class="kw-2">&amp;</span>container_ty, <span class="kw-2">&amp;</span>name)
+                            {
+                                constant.eval_checked(env, i)<span class="question-mark">?
+                            </span>} <span class="kw">else </span>{
+                                <span class="macro">error!</span>(
+                                    <span class="string">&quot;Member access not implemented for: {container_ty} . {member}&quot;
+                                </span>);
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), <span class="kw-2">*</span>member));
+                            }
+                        }
+                        <span class="kw">_ </span>=&gt; {
+                            <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((constant, <span class="kw">_</span>))) = member
+                                .clone()
+                                .as_symbol(env)
+                                .map(|name| env.get_associated_const(<span class="kw-2">&amp;</span>container_ty, <span class="kw-2">&amp;</span>name))
+                            {
+                                <span class="kw">return </span>constant.eval_checked(env, i);
+                                <span class="comment">// return Ok(constant.clone());
+                            </span>}
+                            <span class="macro">error!</span>(<span class="string">&quot;Member access not implemented for: {container_ty} . {member}&quot;</span>);
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), <span class="kw-2">*</span>member));
+                        }
+                    })
                 }
                 <span class="self">Self</span>::None
                 | <span class="self">Self</span>::Null
@@ -1645,18 +1601,14 @@
                 </span><span class="kw">match </span><span class="kw-2">&amp;</span>val_type.simplify_until_concrete(env)<span class="question-mark">? </span>{
                     Type::Unit(_unit_name, inner_ty) =&gt; {
                         <span class="comment">// Get the type of the field.
-                        </span>env.get_type_of_associated_const(<span class="kw-2">&amp;</span>inner_ty, <span class="kw-2">&amp;</span>as_symbol<span class="question-mark">?</span>)
-                            .ok_or(Error::MemberNotFound(
-                                (<span class="kw-2">*</span>val.clone()).into(),
-                                (<span class="kw-2">*</span>field.clone()).into(),
-                            ))<span class="question-mark">?
+                        </span>env.get_type_of_associated_const(inner_ty, <span class="kw-2">&amp;</span>as_symbol<span class="question-mark">?</span>)
+                            .ok_or(Error::MemberNotFound((<span class="kw-2">*</span>val.clone()).into(), <span class="kw-2">*</span>field.clone()))<span class="question-mark">?
                     </span>}
 
                     Type::Type(ty) =&gt; {
                         <span class="comment">// Get the associated constant expression&#39;s type.
-                        </span>env.get_type_of_associated_const(<span class="kw-2">&amp;</span>ty, <span class="kw-2">&amp;</span>as_symbol<span class="question-mark">?</span>).ok_or(
-                            Error::MemberNotFound((<span class="kw-2">*</span>val.clone()).into(), (<span class="kw-2">*</span>field.clone()).into()),
-                        )<span class="question-mark">?
+                        </span>env.get_type_of_associated_const(ty, <span class="kw-2">&amp;</span>as_symbol<span class="question-mark">?</span>)
+                            .ok_or(Error::MemberNotFound((<span class="kw-2">*</span>val.clone()).into(), <span class="kw-2">*</span>field.clone()))<span class="question-mark">?
                     </span>}
                     <span class="comment">// If we&#39;re accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
@@ -1664,12 +1616,12 @@
                     </span>Type::Tuple(items) =&gt; {
                         <span class="macro">trace!</span>(<span class="string">&quot;Getting type of associated const: {val_type} . {as_int:?} {as_symbol:?}&quot;</span>);
                         <span class="kw">if </span>as_symbol.is_ok() {
-                            <span class="kw">return </span>env.get_type_of_associated_const(<span class="kw-2">&amp;</span>val_type, <span class="kw-2">&amp;</span>as_symbol<span class="question-mark">?</span>).ok_or(
-                                Error::MemberNotFound(
+                            <span class="kw">return </span>env
+                                .get_type_of_associated_const(<span class="kw-2">&amp;</span>val_type, <span class="kw-2">&amp;</span>as_symbol<span class="question-mark">?</span>)
+                                .ok_or(Error::MemberNotFound(
                                     (<span class="kw-2">*</span>val.clone()).into(),
-                                    (<span class="kw-2">*</span>field.clone()).into(),
-                                ),
-                            );
+                                    <span class="kw-2">*</span>field.clone(),
+                                ));
                         }
 
                         <span class="comment">// Get the index of the field.
@@ -1681,14 +1633,11 @@
                         } <span class="kw">else </span>{
                             <span class="kw">return </span>ConstExpr::Member(
                                 ConstExpr::Type(val_type).into(),
-                                field.clone().into(),
+                                field.clone(),
                             )
                             .get_type(env)
-                            .map_err(|e| {
-                                Error::MemberNotFound(
-                                    (<span class="kw-2">*</span>val.clone()).into(),
-                                    (<span class="kw-2">*</span>field.clone()).into(),
-                                )
+                            .map_err(|_e| {
+                                Error::MemberNotFound((<span class="kw-2">*</span>val.clone()).into(), <span class="kw-2">*</span>field.clone())
                             });
                         }
                     }
@@ -1704,14 +1653,11 @@
                             <span class="comment">// If the field is not in the struct, return an error.
                             </span><span class="kw">return </span>ConstExpr::Member(
                                 ConstExpr::Type(val_type).into(),
-                                field.clone().into(),
+                                field.clone(),
                             )
                             .get_type(env)
-                            .map_err(|e| {
-                                Error::MemberNotFound(
-                                    (<span class="kw-2">*</span>val.clone()).into(),
-                                    (<span class="kw-2">*</span>field.clone()).into(),
-                                )
+                            .map_err(|_e| {
+                                Error::MemberNotFound((<span class="kw-2">*</span>val.clone()).into(), <span class="kw-2">*</span>field.clone())
                             });
                         }
                     }
@@ -1729,14 +1675,11 @@
 
                             </span><span class="kw">return </span>ConstExpr::Member(
                                 ConstExpr::Type(val_type).into(),
-                                field.clone().into(),
+                                field.clone(),
                             )
                             .get_type(env)
-                            .map_err(|e| {
-                                Error::MemberNotFound(
-                                    (<span class="kw-2">*</span>val.clone()).into(),
-                                    (<span class="kw-2">*</span>field.clone()).into(),
-                                )
+                            .map_err(|_e| {
+                                Error::MemberNotFound((<span class="kw-2">*</span>val.clone()).into(), <span class="kw-2">*</span>field.clone())
                             });
                         }
                     }
@@ -1744,14 +1687,11 @@
                     <span class="comment">// If we&#39;re accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
                     </span><span class="kw">_ </span>=&gt; {
-                        <span class="kw">return </span>ConstExpr::Member(
-                            ConstExpr::Type(val_type).into(),
-                            field.clone().into(),
-                        )
-                        .get_type(env)
-                        .map_err(|e| {
-                            Error::MemberNotFound((<span class="kw-2">*</span>val.clone()).into(), (<span class="kw-2">*</span>field.clone()).into())
-                        });
+                        <span class="kw">return </span>ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone())
+                            .get_type(env)
+                            .map_err(|_e| {
+                                Error::MemberNotFound((<span class="kw-2">*</span>val.clone()).into(), <span class="kw-2">*</span>field.clone())
+                            });
                     }
                 }
             }
@@ -2229,4 +2169,5 @@
     }
 }
 
-<span class="kw">impl </span>Eq <span class="kw">for </span>ConstExpr {}</code></pre></div></section></main></body></html>
+<span class="kw">impl </span>Eq <span class="kw">for </span>ConstExpr {}
+</code></pre></div></section></main></body></html>

@@ -2350,22 +2350,6 @@
 <a href="#2350" id="2350">2350</a>
 <a href="#2351" id="2351">2351</a>
 <a href="#2352" id="2352">2352</a>
-<a href="#2353" id="2353">2353</a>
-<a href="#2354" id="2354">2354</a>
-<a href="#2355" id="2355">2355</a>
-<a href="#2356" id="2356">2356</a>
-<a href="#2357" id="2357">2357</a>
-<a href="#2358" id="2358">2358</a>
-<a href="#2359" id="2359">2359</a>
-<a href="#2360" id="2360">2360</a>
-<a href="#2361" id="2361">2361</a>
-<a href="#2362" id="2362">2362</a>
-<a href="#2363" id="2363">2363</a>
-<a href="#2364" id="2364">2364</a>
-<a href="#2365" id="2365">2365</a>
-<a href="#2366" id="2366">2366</a>
-<a href="#2367" id="2367">2367</a>
-<a href="#2368" id="2368">2368</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Types Module
 //!
 //! This module contains a collection of types and traits
@@ -2687,7 +2671,6 @@
             <span class="kw">let </span><span class="kw-2">mut </span>recursive_types = RECURSIVE_TYPES.lock().unwrap();
             <span class="comment">// RECURSIVE_TYPES.lock().unwrap().insert(self.clone());
             </span>recursive_types.insert(<span class="self">self</span>.clone());
-
         } <span class="kw">else if </span><span class="macro">matches!</span>(result, <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)) {
             <span class="comment">// NON_RECURSIVE_TYPES.lock().unwrap().insert(self.clone());
             </span><span class="kw">let </span><span class="kw-2">mut </span>non_recursive_types = NON_RECURSIVE_TYPES.lock().unwrap();
@@ -2826,7 +2809,7 @@
                         ret = ret.substitute(param, arg);
                     }
 
-                    ret.get_monomorph_template_args(<span class="kw-2">&amp;</span>other, matched_symbols, param_symbols, env)<span class="question-mark">?</span>;
+                    ret.get_monomorph_template_args(other, matched_symbols, param_symbols, env)<span class="question-mark">?</span>;
                 }
             }
 
@@ -2861,15 +2844,13 @@
 
     <span class="kw">pub fn </span>is_monomorph_of(<span class="kw-2">&amp;</span><span class="self">self</span>, template: <span class="kw-2">&amp;</span><span class="self">Self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
         <span class="kw">match </span>(<span class="self">self</span>, template) {
-            (<span class="self">Self</span>::Apply(template1, <span class="kw">_</span>), template2) =&gt; {
-                <span class="kw">return </span>template1.equals(template2, env);
-            }
+            (<span class="self">Self</span>::Apply(template1, <span class="kw">_</span>), template2) =&gt; template1.equals(template2, env),
             (concrete, <span class="self">Self</span>::Poly(params, result)) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="kw-2">*</span>result.clone();
                 <span class="kw">for </span>param <span class="kw">in </span>params {
                     result = result.substitute(param, <span class="kw-2">&amp;</span>Type::Any);
                 }
-                <span class="kw">return </span>concrete.equals(<span class="kw-2">&amp;</span>result, env);
+                concrete.equals(<span class="kw-2">&amp;</span>result, env)
             }
             (<span class="self">Self</span>::Symbol(name), <span class="kw">_</span>) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = env.get_type(name) {
@@ -2949,7 +2930,7 @@
                 }
             }
 
-            <span class="self">Self</span>::Poly(<span class="kw">_</span>, t) =&gt; {
+            <span class="self">Self</span>::Poly(<span class="kw">_</span>, _t) =&gt; {
                 <span class="comment">// t.add_monomorphized_associated_consts(env)?;
             </span>}
             <span class="self">Self</span>::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
@@ -3056,7 +3037,6 @@
                 }
             }
             <span class="self">Self</span>::Let(<span class="kw">_</span>, <span class="kw">_</span>, ret) =&gt; ret.is_simple(),
-            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
@@ -3542,8 +3522,8 @@
                 <span class="self">Self</span>::Pointer(desired_mutabilty, desired_elem_ty),
             ) =&gt; {
                 <span class="comment">// Check if the mutabilities and element types can decay.
-                </span><span class="kw">if </span>found_mutability.can_decay_to(<span class="kw-2">&amp;</span>desired_mutabilty)
-                    &amp;&amp; found_elem_ty.equals(<span class="kw-2">&amp;</span>desired_elem_ty, env)<span class="question-mark">?
+                </span><span class="kw">if </span>found_mutability.can_decay_to(desired_mutabilty)
+                    &amp;&amp; found_elem_ty.equals(desired_elem_ty, env)<span class="question-mark">?
                 </span>{
                     <span class="comment">// If they can, then we can decay.
                     </span><span class="macro">trace!</span>(<span class="string">&quot;{} can decay to {}&quot;</span>, <span class="self">self</span>, desired);
@@ -3551,7 +3531,7 @@
                 }
 
                 <span class="comment">// Check if the mutabilities are compatible, and check if this type points to an array of elements of the desired element type.
-                </span><span class="kw">if </span>found_mutability.can_decay_to(<span class="kw-2">&amp;</span>desired_mutabilty)
+                </span><span class="kw">if </span>found_mutability.can_decay_to(desired_mutabilty)
                     &amp;&amp; found_elem_ty.has_element_type(desired_elem_ty, env)<span class="question-mark">?
                 </span>{
                     <span class="comment">// If so, then we can decay.
@@ -3817,7 +3797,7 @@
 
                     <span class="kw">match </span>poly {
                         <span class="self">Self</span>::Poly(params, mono_ty) =&gt; {
-                            <span class="kw">let </span>poly = <span class="self">Self</span>::Poly(params.clone(), mono_ty.clone());
+                            <span class="kw">let </span>_poly = <span class="self">Self</span>::Poly(params.clone(), mono_ty.clone());
                             <span class="kw">let </span><span class="kw-2">mut </span>mono_ty = <span class="kw-2">*</span>mono_ty;
                             <span class="kw">for </span>(param, ty_arg) <span class="kw">in </span>params.iter().zip(ty_args.iter()) {
                                 mono_ty = mono_ty.substitute(param, ty_arg);
@@ -4146,40 +4126,28 @@
                     }
 
                     <span class="bool-val">true
+                </span>} <span class="kw">else if let </span><span class="self">Self</span>::Poly(ty_params, template) = poly1.clone().simplify(env)<span class="question-mark">? </span>{
+                    <span class="kw">let </span><span class="kw-2">mut </span>template = <span class="kw-2">*</span>template.clone();
+                    <span class="kw">for </span>(param, arg) <span class="kw">in </span>ty_params.iter().zip(ty_args1.iter()) {
+                        template = template.substitute(param, arg);
+                    }
+                    template.equals_checked(other, compared_symbols, env, i)<span class="question-mark">?
+                </span>} <span class="kw">else if let </span><span class="self">Self</span>::Poly(ty_params, template) = poly2.clone().simplify(env)<span class="question-mark">? </span>{
+                    <span class="kw">let </span><span class="kw-2">mut </span>template = <span class="kw-2">*</span>template.clone();
+                    <span class="kw">for </span>(param, arg) <span class="kw">in </span>ty_params.iter().zip(ty_args2.iter()) {
+                        template = template.substitute(param, arg);
+                    }
+                    template.equals_checked(other, compared_symbols, env, i)<span class="question-mark">?
                 </span>} <span class="kw">else </span>{
-                    <span class="kw">if let </span><span class="self">Self</span>::Poly(ty_params, template) = poly1.clone().simplify(env)<span class="question-mark">? </span>{
-                        <span class="kw">let </span><span class="kw-2">mut </span>template = <span class="kw-2">*</span>template.clone();
-                        <span class="kw">for </span>(param, arg) <span class="kw">in </span>ty_params.iter().zip(ty_args1.iter()) {
-                            template = template.substitute(param, arg);
-                        }
-                        template.equals_checked(other, compared_symbols, env, i)<span class="question-mark">?
-                    </span>} <span class="kw">else if let </span><span class="self">Self</span>::Poly(ty_params, template) = poly2.clone().simplify(env)<span class="question-mark">? </span>{
-                        <span class="kw">let </span><span class="kw-2">mut </span>template = <span class="kw-2">*</span>template.clone();
-                        <span class="kw">for </span>(param, arg) <span class="kw">in </span>ty_params.iter().zip(ty_args2.iter()) {
-                            template = template.substitute(param, arg);
-                        }
-                        template.equals_checked(other, compared_symbols, env, i)<span class="question-mark">?
-                    </span>} <span class="kw">else </span>{
-                        <span class="comment">// If the two polymorphic types are not equal, then we can&#39;t just compare the two
-                        // types&#39; parameters. We need to simplify the types first.
-                        // other.clone().simplify_until_concrete(env)?.equals_checked(
-                        //     self,
-                        //     compared_symbols,
-                        //     env,
-                        //     i,
-                        // )?
-                        </span><span class="bool-val">false
-                    </span>}
-
                     <span class="comment">// If the two polymorphic types are not equal, then we can&#39;t just compare the two
                     // types&#39; parameters. We need to simplify the types first.
-                    // other.equals_checked(
+                    // other.clone().simplify_until_concrete(env)?.equals_checked(
                     //     self,
                     //     compared_symbols,
                     //     env,
                     //     i,
                     // )?
-                    // false
+                    </span><span class="bool-val">false
                 </span>}
             }
 
@@ -4339,9 +4307,9 @@
                         } <span class="kw">else </span>{
                             <span class="prelude-val">Err</span>(Error::MemberNotFound(expr.clone(), member.clone()))
                         }
-                    },
+                    }
                 }
-            },
+            }
             Type::Let(name, t, ret) =&gt; {
                 <span class="comment">// Create a new scope and define the new type within it
                 </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();

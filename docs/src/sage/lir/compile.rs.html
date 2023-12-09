@@ -1316,10 +1316,6 @@
 <a href="#1316" id="1316">1316</a>
 <a href="#1317" id="1317">1317</a>
 <a href="#1318" id="1318">1318</a>
-<a href="#1319" id="1319">1319</a>
-<a href="#1320" id="1320">1320</a>
-<a href="#1321" id="1321">1321</a>
-<a href="#1322" id="1322">1322</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compile
 //!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
@@ -1333,7 +1329,7 @@
 //! 3. If the expression cannot be compiled into a core assembly program, then compile it into a standard assembly program.
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::asm::{
-    AssemblyProgram, CoreOp, CoreProgram, Location, StandardOp, StandardProgram, A, B, C, FP, SP,
+    AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
 };
 <span class="kw">use </span><span class="kw">crate</span>::NULL;
 <span class="kw">use </span>log::<span class="kw-2">*</span>;
@@ -1978,7 +1974,9 @@
                     Type::Type(ty) =&gt; {
                         <span class="kw">let </span>member_as_symbol = member.clone().as_symbol(env)<span class="question-mark">?</span>;
 
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>((constant, <span class="kw">_</span>)) = env.get_associated_const(<span class="kw-2">&amp;</span>ty, <span class="kw-2">&amp;</span>member_as_symbol) {
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>((constant, <span class="kw">_</span>)) =
+                            env.get_associated_const(<span class="kw-2">&amp;</span>ty, <span class="kw-2">&amp;</span>member_as_symbol)
+                        {
                             <span class="kw">return </span>constant.clone().compile_expr(env, output);
                         } <span class="kw">else </span>{
                             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::SymbolNotDefined(member_as_symbol));
@@ -2091,7 +2089,7 @@
                     <span class="kw">let </span><span class="kw-2">mut </span>counter = COUNTER.lock().unwrap();
                     <span class="kw-2">*</span>counter += <span class="number">1</span>;
                     <span class="kw">let </span><span class="kw-2">mut </span>var_name = <span class="macro">format!</span>(<span class="string">&quot;__const_{counter}__&quot;</span>);
-                    <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
+                    <span class="kw">let </span>new_env = env.clone();
                     <span class="macro">debug!</span>(<span class="string">&quot;Creating new static variable {var_name} in environment {new_env}&quot;</span>);
                     <span class="kw">while </span>new_env.get_var(<span class="kw-2">&amp;</span>var_name).is_some() {
                         <span class="macro">debug!</span>(<span class="string">&quot;Variable {var_name} already exists in environment {new_env}, incrementing counter&quot;</span>);
@@ -2099,7 +2097,7 @@
                         var_name = <span class="macro">format!</span>(<span class="string">&quot;__const_{counter}__&quot;</span>);
                     }
                     <span class="kw">let </span>ty = cexpr.get_type(env)<span class="question-mark">?</span>;
-                    <span class="kw">let </span>size = ty.get_size(env)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>_size = ty.get_size(env)<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>expr = Expr::var(<span class="kw-2">&amp;</span>var_name).refer(expected_mutability).with(
                         Declaration::static_var(<span class="kw-2">&amp;</span>var_name, expected_mutability, ty, cexpr),
@@ -2271,20 +2269,14 @@
                     (<span class="self">Self</span>::Tuple(tuple), <span class="self">Self</span>::Int(n)) =&gt; {
                         <span class="comment">// If the index is out of bounds, return an error.
                         </span><span class="kw">if </span>n &gt;= tuple.len() <span class="kw">as </span>i64 || n &lt; <span class="number">0 </span>{
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(
-                                (<span class="kw-2">*</span>container).into(),
-                                (<span class="kw-2">*</span>member).into(),
-                            ));
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), <span class="kw-2">*</span>member));
                         }
                         tuple[n <span class="kw">as </span>usize].clone().compile_expr(env, output)<span class="question-mark">?
                     </span>}
                     (<span class="self">Self</span>::Struct(fields), <span class="self">Self</span>::Symbol(name)) =&gt; {
                         <span class="comment">// If the field is not in the struct, return an error.
                         </span><span class="kw">if </span>!fields.contains_key(<span class="kw-2">&amp;</span>name) {
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(
-                                (<span class="kw-2">*</span>container).into(),
-                                (<span class="kw-2">*</span>member).into(),
-                            ));
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), <span class="kw-2">*</span>member));
                         }
                         fields[<span class="kw-2">&amp;</span>name].clone().compile_expr(env, output)<span class="question-mark">?
                     </span>}
@@ -2297,7 +2289,7 @@
                         }
                     }
                     <span class="kw">_ </span>=&gt; {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), (<span class="kw-2">*</span>member).into()));
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), <span class="kw-2">*</span>member));
                     }
                 }
             }
@@ -2333,7 +2325,7 @@
                     <span class="comment">// Compile the monomorphized function.
                     </span>proc.compile_expr(env, output)<span class="question-mark">?</span>;
 
-                    output.log_instructions_after(<span class="kw-2">&amp;</span>common_name, <span class="kw-2">&amp;</span>message, current_instruction);
+                    output.log_instructions_after(common_name, <span class="kw-2">&amp;</span>message, current_instruction);
                 }
                 <span class="self">Self</span>::Template(params, result) =&gt; {
                     <span class="kw">if </span>params.len() != ty_args.len() {
@@ -2638,7 +2630,7 @@
                 }
             }
         }
-        output.log_instructions_after(<span class="kw-2">&amp;</span><span class="string">&quot;expr&quot;</span>, <span class="kw-2">&amp;</span>debug_str, current_instruction);
+        output.log_instructions_after(<span class="string">&quot;expr&quot;</span>, <span class="kw-2">&amp;</span>debug_str, current_instruction);
         <span class="prelude-val">Ok</span>(())
     }
 }

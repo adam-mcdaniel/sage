@@ -634,21 +634,6 @@
 <a href="#634" id="634">634</a>
 <a href="#635" id="635">635</a>
 <a href="#636" id="636">636</a>
-<a href="#637" id="637">637</a>
-<a href="#638" id="638">638</a>
-<a href="#639" id="639">639</a>
-<a href="#640" id="640">640</a>
-<a href="#641" id="641">641</a>
-<a href="#642" id="642">642</a>
-<a href="#643" id="643">643</a>
-<a href="#644" id="644">644</a>
-<a href="#645" id="645">645</a>
-<a href="#646" id="646">646</a>
-<a href="#647" id="647">647</a>
-<a href="#648" id="648">648</a>
-<a href="#649" id="649">649</a>
-<a href="#650" id="650">650</a>
-<a href="#651" id="651">651</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use crate</span>::{
@@ -835,7 +820,7 @@
 
             Type::Enum(variants) =&gt; {
                 <span class="kw">for </span>variant <span class="kw">in </span>variants.iter() {
-                    <span class="kw">let </span>variant_id = Type::variant_index(<span class="kw-2">&amp;</span>variants, variant).unwrap();
+                    <span class="kw">let </span>variant_id = Type::variant_index(variants, variant).unwrap();
 
                     output.op(CoreOp::Move {
                         src: addr.clone(),
@@ -860,21 +845,18 @@
                     output.op(Many(<span class="macro">vec!</span>[
                         Set(C, <span class="string">b&#39;[&#39; </span><span class="kw">as </span>i64),
                         Put(C, Output::stdout_char()),
-                        GetAddress {
-                            addr,
-                            dst: A,
-                        },
-                        Set(B, array_len <span class="kw">as </span>i64),
+                        GetAddress { addr, dst: A },
+                        Set(B, array_len),
                         While(B),
-                            Put(A.deref(), Output::stdout_int()),
-                            Next(A, <span class="prelude-val">None</span>),
-                            Dec(B),
-                            If(B),
-                                Set(C, <span class="string">b&#39;,&#39; </span><span class="kw">as </span>i64),
-                                Put(C, Output::stdout_char()),
-                                Set(C, <span class="string">b&#39; &#39; </span><span class="kw">as </span>i64),
-                                Put(C, Output::stdout_char()),
-                            End,
+                        Put(A.deref(), Output::stdout_int()),
+                        Next(A, <span class="prelude-val">None</span>),
+                        Dec(B),
+                        If(B),
+                        Set(C, <span class="string">b&#39;,&#39; </span><span class="kw">as </span>i64),
+                        Put(C, Output::stdout_char()),
+                        Set(C, <span class="string">b&#39; &#39; </span><span class="kw">as </span>i64),
+                        Put(C, Output::stdout_char()),
+                        End,
                         End,
                         Set(C, <span class="string">b&#39;]&#39; </span><span class="kw">as </span>i64),
                         Put(C, Output::stdout_char()),
@@ -883,32 +865,29 @@
                     output.op(Many(<span class="macro">vec!</span>[
                         Set(C, <span class="string">b&#39;[&#39; </span><span class="kw">as </span>i64),
                         Put(C, Output::stdout_char()),
-                        GetAddress {
-                            addr,
-                            dst: A,
-                        },
-                        Set(B, array_len <span class="kw">as </span>i64),
+                        GetAddress { addr, dst: A },
+                        Set(B, array_len),
                         While(B),
-                            Put(A.deref(), Output::stdout_float()),
-                            Next(A, <span class="prelude-val">None</span>),
-                            Dec(B),
-                            If(B),
-                                Set(C, <span class="string">b&#39;,&#39; </span><span class="kw">as </span>i64),
-                                Put(C, Output::stdout_char()),
-                                Set(C, <span class="string">b&#39; &#39; </span><span class="kw">as </span>i64),
-                                Put(C, Output::stdout_char()),
-                            End,
+                        Put(A.deref(), Output::stdout_float()),
+                        Next(A, <span class="prelude-val">None</span>),
+                        Dec(B),
+                        If(B),
+                        Set(C, <span class="string">b&#39;,&#39; </span><span class="kw">as </span>i64),
+                        Put(C, Output::stdout_char()),
+                        Set(C, <span class="string">b&#39; &#39; </span><span class="kw">as </span>i64),
+                        Put(C, Output::stdout_char()),
+                        End,
                         End,
                         Set(C, <span class="string">b&#39;]&#39; </span><span class="kw">as </span>i64),
                         Put(C, Output::stdout_char()),
                     ]))
                 } <span class="kw">else </span>{
                     <span class="kw">let </span>ty_size = ty.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>isize;
-    
+
                     output.op(Set(A, <span class="string">b&#39;[&#39; </span><span class="kw">as </span>i64));
                     output.op(Put(A, Output::stdout_char()));
                     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..array_len <span class="kw">as </span>isize {
-                        <span class="self">Self</span>::debug(addr.offset(i * ty_size), <span class="kw-2">&amp;</span>ty, env, output)<span class="question-mark">?</span>;
+                        <span class="self">Self</span>::debug(addr.offset(i * ty_size), ty, env, output)<span class="question-mark">?</span>;
                         <span class="kw">if </span>i &lt; array_len <span class="kw">as </span>isize - <span class="number">1 </span>{
                             output.op(Set(A, <span class="string">b&#39;,&#39; </span><span class="kw">as </span>i64));
                             output.op(Put(A, Output::stdout_char()));
@@ -994,8 +973,8 @@
                 }
             }
 
-            Type::Unit(name, ty) =&gt; {
-                <span class="self">Self</span>::debug(addr, <span class="kw-2">&amp;</span>ty, env, output)<span class="question-mark">?</span>;
+            Type::Unit(_name, ty) =&gt; {
+                <span class="self">Self</span>::debug(addr, ty, env, output)<span class="question-mark">?</span>;
                 <span class="comment">// for ch in format!(&quot; ({})&quot;, name).chars() {
                 //     output.op(CoreOp::Set(A, ch as u8 as i64));
                 //     output.op(CoreOp::Put(A, Output::stdout_char()));
@@ -1114,7 +1093,7 @@
 
             Type::Enum(variants) =&gt; {
                 <span class="kw">for </span>variant <span class="kw">in </span>variants.iter() {
-                    <span class="kw">let </span>variant_id = Type::variant_index(<span class="kw-2">&amp;</span>variants, variant).unwrap();
+                    <span class="kw">let </span>variant_id = Type::variant_index(variants, variant).unwrap();
 
                     output.op(CoreOp::Move {
                         src: addr.clone(),
@@ -1144,40 +1123,34 @@
                 <span class="kw">if </span>ty.equals(<span class="kw-2">&amp;</span>Type::Char, env)<span class="question-mark">? </span>{
                     <span class="comment">// Do a while loop instead
                     </span>output.op(Many(<span class="macro">vec!</span>[
-                        GetAddress {
-                            addr,
-                            dst: A,
-                        },
-                        Set(B, array_len <span class="kw">as </span>i64),
+                        GetAddress { addr, dst: A },
+                        Set(B, array_len),
                         While(B),
-                            If(A.deref()),
-                                Put(A.deref(), Output::stdout_char()),
-                                Next(A, <span class="prelude-val">None</span>),
-                                Dec(B),
-                            Else,
-                                Set(B, <span class="number">0</span>),
-                            End,
+                        If(A.deref()),
+                        Put(A.deref(), Output::stdout_char()),
+                        Next(A, <span class="prelude-val">None</span>),
+                        Dec(B),
+                        Else,
+                        Set(B, <span class="number">0</span>),
+                        End,
                         End,
                     ]))
                 } <span class="kw">else if </span>ty.equals(<span class="kw-2">&amp;</span>Type::Int, env)<span class="question-mark">? </span>{
                     output.op(Many(<span class="macro">vec!</span>[
                         Set(C, <span class="string">b&#39;[&#39; </span><span class="kw">as </span>i64),
                         Put(C, Output::stdout_char()),
-                        GetAddress {
-                            addr,
-                            dst: A,
-                        },
-                        Set(B, array_len <span class="kw">as </span>i64),
+                        GetAddress { addr, dst: A },
+                        Set(B, array_len),
                         While(B),
-                            Put(A.deref(), Output::stdout_int()),
-                            Next(A, <span class="prelude-val">None</span>),
-                            Dec(B),
-                            If(B),
-                                Set(C, <span class="string">b&#39;,&#39; </span><span class="kw">as </span>i64),
-                                Put(C, Output::stdout_char()),
-                                Set(C, <span class="string">b&#39; &#39; </span><span class="kw">as </span>i64),
-                                Put(C, Output::stdout_char()),
-                            End,
+                        Put(A.deref(), Output::stdout_int()),
+                        Next(A, <span class="prelude-val">None</span>),
+                        Dec(B),
+                        If(B),
+                        Set(C, <span class="string">b&#39;,&#39; </span><span class="kw">as </span>i64),
+                        Put(C, Output::stdout_char()),
+                        Set(C, <span class="string">b&#39; &#39; </span><span class="kw">as </span>i64),
+                        Put(C, Output::stdout_char()),
+                        End,
                         End,
                         Set(C, <span class="string">b&#39;]&#39; </span><span class="kw">as </span>i64),
                         Put(C, Output::stdout_char()),
@@ -1186,21 +1159,18 @@
                     output.op(Many(<span class="macro">vec!</span>[
                         Set(C, <span class="string">b&#39;[&#39; </span><span class="kw">as </span>i64),
                         Put(C, Output::stdout_char()),
-                        GetAddress {
-                            addr,
-                            dst: A,
-                        },
-                        Set(B, array_len <span class="kw">as </span>i64),
+                        GetAddress { addr, dst: A },
+                        Set(B, array_len),
                         While(B),
-                            Put(A.deref(), Output::stdout_float()),
-                            Next(A, <span class="prelude-val">None</span>),
-                            Dec(B),
-                            If(B),
-                                Set(C, <span class="string">b&#39;,&#39; </span><span class="kw">as </span>i64),
-                                Put(C, Output::stdout_char()),
-                                Set(C, <span class="string">b&#39; &#39; </span><span class="kw">as </span>i64),
-                                Put(C, Output::stdout_char()),
-                            End,
+                        Put(A.deref(), Output::stdout_float()),
+                        Next(A, <span class="prelude-val">None</span>),
+                        Dec(B),
+                        If(B),
+                        Set(C, <span class="string">b&#39;,&#39; </span><span class="kw">as </span>i64),
+                        Put(C, Output::stdout_char()),
+                        Set(C, <span class="string">b&#39; &#39; </span><span class="kw">as </span>i64),
+                        Put(C, Output::stdout_char()),
+                        End,
                         End,
                         Set(C, <span class="string">b&#39;]&#39; </span><span class="kw">as </span>i64),
                         Put(C, Output::stdout_char()),
@@ -1209,7 +1179,7 @@
                     output.op(Set(A, <span class="string">b&#39;[&#39; </span><span class="kw">as </span>i64));
                     output.op(Put(A, Output::stdout_char()));
                     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..array_len <span class="kw">as </span>isize {
-                        <span class="self">Self</span>::debug(addr.offset(i * ty_size), <span class="kw-2">&amp;</span>ty, env, output)<span class="question-mark">?</span>;
+                        <span class="self">Self</span>::debug(addr.offset(i * ty_size), ty, env, output)<span class="question-mark">?</span>;
                         <span class="kw">if </span>i &lt; array_len <span class="kw">as </span>isize - <span class="number">1 </span>{
                             output.op(CoreOp::Set(A, <span class="string">b&#39;,&#39; </span><span class="kw">as </span>i64));
                             output.op(CoreOp::Put(A, Output::stdout_char()));

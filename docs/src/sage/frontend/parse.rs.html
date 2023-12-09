@@ -1497,6 +1497,10 @@
 <a href="#1497" id="1497">1497</a>
 <a href="#1498" id="1498">1498</a>
 <a href="#1499" id="1499">1499</a>
+<a href="#1500" id="1500">1500</a>
+<a href="#1501" id="1501">1501</a>
+<a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{lir::<span class="kw-2">*</span>, parse::SourceCodeLocation};
 <span class="kw">use </span>pest::{error::Error, iterators::Pair, Parser};
 <span class="kw">use </span>pest_derive::Parser;
@@ -1710,7 +1714,7 @@
             )])
             .to_expr(rest),
             (<span class="self">Self</span>::Impl(ty, methods), <span class="kw">_</span>) =&gt; {
-                <span class="kw">return </span>rest_expr.with(<span class="kw">crate</span>::lir::Declaration::Impl(ty, methods))
+                rest_expr.with(<span class="kw">crate</span>::lir::Declaration::Impl(ty, methods))
             }
             (<span class="self">Self</span>::Struct(name, fields), <span class="kw">_</span>) =&gt; {
                 rest_expr.with((name, Type::Struct(fields.into_iter().collect())))
@@ -2375,7 +2379,7 @@
     <span class="kw">let </span>length = span.end_pos().pos() - span.start_pos().pos();
     <span class="kw">let </span>offset = span.start_pos().pos();
 
-    <span class="kw">let </span>loc = SourceCodeLocation {
+    <span class="kw">let </span>_loc = SourceCodeLocation {
         filename: <span class="prelude-val">None</span>,
         line,
         column,
@@ -2675,10 +2679,14 @@
         Rule::const_char =&gt; {
             <span class="kw">let </span>token = pair.into_inner().next().unwrap().as_str();
             <span class="kw">let </span>token = <span class="kw-2">&amp;</span>token[<span class="number">1</span>..token.len() - <span class="number">1</span>];
-            <span class="kw">let </span>result = snailquote::unescape(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;\&quot;{token}\&quot;&quot;</span>).replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\\\\0&quot;</span>).replace(<span class="string">&quot;\\/&quot;</span>, <span class="string">&quot;/&quot;</span>))
-                .unwrap()
-                .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\0&quot;</span>)
-                .replace(<span class="string">&quot;\\\&quot;&quot;</span>, <span class="string">&quot;\&quot;&quot;</span>);
+            <span class="kw">let </span>result = snailquote::unescape(
+                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;\&quot;{token}\&quot;&quot;</span>)
+                    .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\\\\0&quot;</span>)
+                    .replace(<span class="string">&quot;\\/&quot;</span>, <span class="string">&quot;/&quot;</span>),
+            )
+            .unwrap()
+            .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\0&quot;</span>)
+            .replace(<span class="string">&quot;\\\&quot;&quot;</span>, <span class="string">&quot;\&quot;&quot;</span>);
             <span class="comment">// let result = snailquote::unescape(
             //     &amp;pair
             //         .clone()
