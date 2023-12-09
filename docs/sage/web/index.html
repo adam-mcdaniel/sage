@@ -2890,9 +2890,10 @@ if let of Some(n) = divide(6, 2) {
                     break;
                 case "cat":
                     source.setValue(`let mut ch = ' ';
+input(&mut ch);
 while (ch != '\\0') {
-    input(&mut ch);
     print(ch);
+    input(&mut ch);
 }`);
                     document.getElementById("input").value = "this is a cat program!";
                     break;
@@ -2918,8 +2919,8 @@ print(fact(n));`);
 // sure you only provide bindings for safe foreign functions to execute!
 // (e.g.\`eval\` is surely not safe, but something like \`alert\` is generally safe.)
 
-extern alert(message: &Char);
-extern eval(code: &mut Char, size: Int);
+extern def alert(message: &Char);
+extern def eval(code: &mut Char, size: Int);
 
 const BUFFER_SIZE = 1024;
 

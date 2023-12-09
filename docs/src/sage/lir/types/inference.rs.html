@@ -583,7 +583,7 @@
                 <span class="comment">// Create a new environment with the declarations.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                 <span class="comment">// Add the declarations to the environment.
-                </span>new_env.add_declaration(<span class="kw-2">&amp;</span>declaration)<span class="question-mark">?</span>;
+                </span>new_env.add_declaration(declaration)<span class="question-mark">?</span>;
                 <span class="comment">// Get the type of the body in the new environment.
                 </span>body.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?
             </span>}

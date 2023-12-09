@@ -1407,7 +1407,7 @@
                 <span class="comment">// Check the declaration.
                 </span>declaration.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
                 <span class="comment">// Add the declarations to the environment.
-                </span>new_env.add_declaration(<span class="kw-2">&amp;</span>declaration)<span class="question-mark">?</span>;
+                </span>new_env.add_declaration(declaration)<span class="question-mark">?</span>;
                 <span class="comment">// Check the body with the declarations defined.
                 </span>body.type_check(<span class="kw-2">&amp;</span>new_env)
             }
@@ -1503,7 +1503,7 @@
                     <span class="comment">// If we haven&#39;t found a type yet, set it.
                     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(result_ty) = <span class="kw-2">&amp;mut </span>result_ty {
                         <span class="comment">// Check that the branch type matches the result type.
-                        </span><span class="kw">if </span>!branch_ty.can_decay_to(<span class="kw-2">&amp;</span>result_ty, <span class="kw-2">&amp;</span>new_env)<span class="question-mark">? </span>{
+                        </span><span class="kw">if </span>!branch_ty.can_decay_to(result_ty, <span class="kw-2">&amp;</span>new_env)<span class="question-mark">? </span>{
                             <span class="comment">// If it doesn&#39;t, return an error.
                             </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                 found: branch_ty,
@@ -1644,7 +1644,7 @@
                         </span><span class="prelude-val">Err</span>(Error::InvalidRefer(<span class="self">self</span>.clone()))
                     }
                 }
-                Expr::ConstExpr(cexpr) =&gt; <span class="prelude-val">Ok</span>(()),
+                Expr::ConstExpr(_cexpr) =&gt; <span class="prelude-val">Ok</span>(()),
                 Expr::Deref(inner) | Expr::Index(inner, <span class="kw">_</span>) =&gt; {
                     <span class="comment">// Confirm that the inner expression can be referenced.
                     </span><span class="kw">match </span>inner.get_type(env)<span class="question-mark">? </span>{
@@ -1946,7 +1946,7 @@
                             <span class="comment">// Typecheck the value assigned to the variant.
                             </span>val.type_check(env)<span class="question-mark">?</span>;
                             <span class="kw">let </span>found = val.get_type(env)<span class="question-mark">?</span>;
-                            <span class="kw">if </span>!found.can_decay_to(<span class="kw-2">&amp;</span>expected_ty, env)<span class="question-mark">? </span>{
+                            <span class="kw">if </span>!found.can_decay_to(expected_ty, env)<span class="question-mark">? </span>{
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
                                     found,
@@ -1981,7 +1981,7 @@
                             <span class="comment">// Typecheck the value assigned to the variant.
                             </span>val.type_check(env)<span class="question-mark">?</span>;
                             <span class="kw">let </span>found = val.get_type(env)<span class="question-mark">?</span>;
-                            <span class="kw">if </span>!found.can_decay_to(<span class="kw-2">&amp;</span>expected_ty, env)<span class="question-mark">? </span>{
+                            <span class="kw">if </span>!found.can_decay_to(expected_ty, env)<span class="question-mark">? </span>{
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
                                     found,
@@ -2032,7 +2032,7 @@
                         <span class="kw">match </span>field
                             .clone()
                             .as_symbol(env)
-                            .and_then(|name| <span class="prelude-val">Ok</span>(env.get_associated_const(<span class="kw-2">&amp;</span>e_type, <span class="kw-2">&amp;</span>name)))
+                            .map(|name| env.get_associated_const(<span class="kw-2">&amp;</span>e_type, <span class="kw-2">&amp;</span>name))
                         {
                             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
                             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(e),
@@ -2080,7 +2080,7 @@
 
         <span class="macro">trace!</span>(<span class="string">&quot;Typechecking constant expression: {}&quot;</span>, <span class="self">self</span>);
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Template(ty_params, template) =&gt; {
+            <span class="self">Self</span>::Template(_ty_params, _template) =&gt; {
                 <span class="comment">// Create a new environment with the type parameters defined.
                 // let mut new_env = env.clone();
                 // // Define the type parameters in the environment.
@@ -2117,7 +2117,7 @@
                         <span class="kw">match </span>field
                             .clone()
                             .as_symbol(env)
-                            .and_then(|name| <span class="prelude-val">Ok</span>(env.get_associated_const(<span class="kw-2">&amp;</span>e_type, <span class="kw-2">&amp;</span>name)))
+                            .map(|name| env.get_associated_const(<span class="kw-2">&amp;</span>e_type, <span class="kw-2">&amp;</span>name))
                         {
                             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
                             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(e),
@@ -2357,7 +2357,7 @@
                             <span class="comment">// Typecheck the value assigned to the variant.
                             </span>val.type_check(env)<span class="question-mark">?</span>;
                             <span class="kw">let </span>found = val.get_type(env)<span class="question-mark">?</span>;
-                            <span class="kw">if </span>!found.can_decay_to(<span class="kw-2">&amp;</span>expected_ty, env)<span class="question-mark">? </span>{
+                            <span class="kw">if </span>!found.can_decay_to(expected_ty, env)<span class="question-mark">? </span>{
                                 <span class="macro">error!</span>(<span class="string">&quot;Mismatched types: {expected_ty} != {found} in environment {env}&quot;</span>);
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
@@ -2395,7 +2395,7 @@
                             <span class="comment">// Typecheck the value assigned to the variant.
                             </span>val.type_check(env)<span class="question-mark">?</span>;
                             <span class="kw">let </span>found = val.get_type(env)<span class="question-mark">?</span>;
-                            <span class="kw">if </span>!found.can_decay_to(<span class="kw-2">&amp;</span>expected_ty, env)<span class="question-mark">? </span>{
+                            <span class="kw">if </span>!found.can_decay_to(expected_ty, env)<span class="question-mark">? </span>{
                                 <span class="macro">error!</span>(<span class="string">&quot;Mismatched types: {found} != {expected_ty} in environment {env}&quot;</span>);
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),

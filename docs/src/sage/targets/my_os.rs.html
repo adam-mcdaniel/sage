@@ -1137,7 +1137,7 @@
     <span class="kw">fn </span>poke(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="prelude-val">Ok</span>(<span class="string">&quot;*(++ffi_ptr) = reg;&quot;</span>.to_string())
     }
-    <span class="kw">fn </span>prelude(<span class="kw-2">&amp;</span><span class="self">self</span>, is_core: bool) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+    <span class="kw">fn </span>prelude(<span class="kw-2">&amp;</span><span class="self">self</span>, _is_core: bool) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
         <span class="comment">/*
                 let mut result = r#&quot;#include &lt;stdlib.h&gt;
                 #include &lt;stdio.h&gt;
@@ -1162,7 +1162,7 @@
         &quot;#
                 .to_string();
             */
-        </span><span class="kw">let </span><span class="kw-2">mut </span>result = <span class="string">r#&quot;#include &lt;stdio.h&gt;
+        </span><span class="kw">let </span>result = <span class="string">r#&quot;#include &lt;stdio.h&gt;
 #include &lt;string.h&gt;
 #include &lt;stdint.h&gt;
 #include &lt;ctype.h&gt;

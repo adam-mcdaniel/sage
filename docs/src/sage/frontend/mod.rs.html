@@ -387,7 +387,7 @@
                 ],
             });
             <span class="kw">use </span><span class="kw">crate</span>::asm::CoreOp::<span class="kw-2">*</span>;
-            <span class="kw">use </span><span class="kw">crate</span>::asm::StandardOp::<span class="kw-2">*</span>;
+
             <span class="kw">use </span><span class="kw">crate</span>::asm::<span class="kw-2">*</span>;
             <span class="comment">// let realloc_fp_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
             //     name: &quot;realloc_fp_stack&quot;.to_string(),
@@ -600,7 +600,7 @@
             });
 
             <span class="kw">let </span><span class="kw-2">mut </span>debug_body = <span class="macro">vec!</span>[];
-            <span class="kw">for </span>ch <span class="kw">in </span><span class="macro">format!</span>(<span class="string">&quot;Debug\n&quot;</span>).chars() {
+            <span class="kw">for </span>ch <span class="kw">in </span><span class="string">&quot;Debug\n&quot;</span>.to_string().chars() {
                 debug_body.push(<span class="kw">crate</span>::asm::CoreOp::Set(<span class="kw">crate</span>::asm::TMP, ch <span class="kw">as </span>i64));
                 debug_body.push(<span class="kw">crate</span>::asm::CoreOp::Put(
                     <span class="kw">crate</span>::asm::TMP,

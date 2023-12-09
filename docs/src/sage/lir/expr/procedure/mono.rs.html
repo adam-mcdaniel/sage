@@ -262,10 +262,6 @@
 <a href="#262" id="262">262</a>
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Mono-Procedure
 //!
 //! A procedure of LIR code which can be applied to a list of arguments.
@@ -280,8 +276,8 @@
 <span class="kw">use </span><span class="kw">crate</span>::lir::{
     Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck,
 };
-<span class="kw">use </span>std::hash::{Hash, Hasher};
 <span class="kw">use </span>core::fmt;
+<span class="kw">use </span>std::hash::Hash;
 <span class="kw">use </span>std::{
     rc::Rc,
     sync::{Mutex, RwLock},
@@ -397,7 +393,7 @@
 
         <span class="comment">// Mark this procedure as having been type checked.
         </span><span class="kw-2">*</span><span class="self">self</span>.has_type_checked.write().unwrap() = <span class="bool-val">true</span>;
-        
+
         <span class="comment">// Typecheck the types of the arguments and return value
         </span><span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, t) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.args {
             <span class="comment">// t.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
@@ -491,11 +487,7 @@
         </span>output.op(CoreOp::SetLabel(A, <span class="self">self</span>.mangled_name.clone()));
         output.op(CoreOp::Push(A, <span class="number">1</span>));
 
-        <span class="kw">let </span>name = <span class="self">self
-            </span>.common_name
-            .as_ref()
-            .map(|x| x.as_str())
-            .unwrap_or_else(|| <span class="string">&quot;&lt;anonymous&gt;&quot;</span>);
+        <span class="kw">let </span>name = <span class="self">self</span>.common_name.as_deref().unwrap_or(<span class="string">&quot;&lt;anonymous&gt;&quot;</span>);
         <span class="comment">// Log the compiled procedure
         </span><span class="kw">let </span>message = <span class="macro">format!</span>(<span class="string">&quot;Compiled procedure {common_name} to {mangled_name} with args of size {args_size} and return value of size {ret_size}&quot;</span>,
             common_name = name,
@@ -533,4 +525,5 @@
         <span class="comment">// self.args.hash(state);
         // self.ret.hash(state);
     </span>}
-}</code></pre></div></section></main></body></html>
+}
+</code></pre></div></section></main></body></html>

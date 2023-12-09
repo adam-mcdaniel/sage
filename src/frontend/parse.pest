@@ -116,7 +116,7 @@ decl_const = {
     "const" ~ (symbol ~ "=" ~ const ~ ",")* ~ symbol ~ "=" ~ const ~ ";"+
 }
 decl_extern = {
-    "extern" ~ symbol ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ ";"+
+    "extern" ~ "def" ~ symbol ~ "(" ~ (decl_proc_param ~ ",")* ~ decl_proc_param? ~ ")" ~ (":" ~ type)? ~ ";"+
 }
 
 stmt = {

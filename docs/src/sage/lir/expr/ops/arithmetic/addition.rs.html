@@ -369,7 +369,7 @@
             (Type::Int, Type::Int) =&gt; <span class="prelude-val">Ok</span>(Type::Int),
 
             (Type::Int | Type::Float | Type::Cell, Type::Cell)
-            | (Type::Cell, Type::Int | Type::Float | Type::Cell) =&gt; <span class="prelude-val">Ok</span>(Type::Cell),
+            | (Type::Cell, Type::Int | Type::Float) =&gt; <span class="prelude-val">Ok</span>(Type::Cell),
 
             (Type::Float, Type::Float) | (Type::Float, Type::Int) | (Type::Int, Type::Float) =&gt; {
                 <span class="prelude-val">Ok</span>(Type::Float)
