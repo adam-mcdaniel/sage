@@ -227,9 +227,11 @@ impl Expr {
                                 let (mut associated_function, mut associated_function_type) = env
                                     .get_associated_const(&val_type, &name)
                                     .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
-                                    // .monomorphize(ty_args.clone());
-                                associated_function = associated_function.monomorphize(ty_args.clone());
-                                associated_function_type = associated_function_type.apply(ty_args.clone());
+                                // .monomorphize(ty_args.clone());
+                                associated_function =
+                                    associated_function.monomorphize(ty_args.clone());
+                                associated_function_type =
+                                    associated_function_type.apply(ty_args.clone());
                                 // let associated_function = ConstExpr::Type(val_type.clone())
                                 //     .field(*member)
                                 //     .monomorphize(ty_args.clone());
@@ -300,7 +302,7 @@ impl Expr {
                             let (associated_function, associated_function_type) = env
                                 .get_associated_const(&val_type, &name)
                                 .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
-                            
+
                             // let associated_function = env
                             //     .get_associated_const(&val_type, &name)
                             //     .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
@@ -425,34 +427,30 @@ impl Expr {
 
     pub fn get_method_call_mutability(&self, env: &Env) -> Result<Option<Mutability>, Error> {
         match self {
-            Self::Annotated(inner, annotation) => {
-                return inner
-                    .get_method_call_mutability(env)
-                    .map_err(|e| e.annotate(annotation.clone()))
-            }
+            Self::Annotated(inner, annotation) => inner
+                .get_method_call_mutability(env)
+                .map_err(|e| e.annotate(annotation.clone())),
 
             Self::Apply(fun, args) => {
                 let fun_type = fun.get_type(env)?;
                 match *fun.clone() {
-                    Self::Annotated(inner, annotation) => {
-                        return Self::Apply(inner, args.clone())
-                            .get_method_call_mutability(env)
-                            .map_err(|e| e.annotate(annotation.clone()))
-                    }
-                    Self::Member(val, name) => {
+                    Self::Annotated(inner, annotation) => Self::Apply(inner, args.clone())
+                        .get_method_call_mutability(env)
+                        .map_err(|e| e.annotate(annotation.clone())),
+                    Self::Member(_val, _name) => {
                         // Check if the value actually has a member with this name.
                         // let val_type = val.get_type(env)?;
-                        return Ok(fun_type.get_self_param_mutability(env));
+                        Ok(fun_type.get_self_param_mutability(env))
                     }
-                    Self::ConstExpr(ConstExpr::Member(val, name)) => {
+                    Self::ConstExpr(ConstExpr::Member(_val, _name)) => {
                         // let val_type = val.get_type(env)?;
-                        return Ok(fun_type.get_self_param_mutability(env));
+                        Ok(fun_type.get_self_param_mutability(env))
                     }
-                    _ => return Err(Error::MemberNotFound(self.clone(), ConstExpr::None)),
+                    _ => Err(Error::MemberNotFound(self.clone(), ConstExpr::None)),
                 }
             }
 
-            _ => return Err(Error::MemberNotFound(self.clone(), ConstExpr::None)),
+            _ => Err(Error::MemberNotFound(self.clone(), ConstExpr::None)),
         }
     }
 
@@ -984,23 +982,23 @@ impl Hash for Expr {
             ConstExpr(expr) => {
                 state.write_u8(0);
                 expr.hash(state)
-            },
+            }
             Many(exprs) => {
                 state.write_u8(1);
                 exprs.hash(state)
-            },
+            }
             Match(expr, branches) => {
                 state.write_u8(2);
                 expr.hash(state);
                 branches.hash(state);
-            },
+            }
             IfLet(pat, expr, t, e) => {
                 state.write_u8(3);
                 pat.hash(state);
                 expr.hash(state);
                 t.hash(state);
                 e.hash(state);
-            },
+            }
 
             While(cond, body) => {
                 state.write_u8(2);
@@ -1014,7 +1012,7 @@ impl Hash for Expr {
                 then.hash(state);
                 else_.hash(state);
             }
-            
+
             When(cond, then, else_) => {
                 state.write_u8(4);
                 cond.hash(state);
@@ -1024,20 +1022,20 @@ impl Hash for Expr {
 
             UnaryOp(op, val) => {
                 state.write_u8(5);
-                op.display(&val).hash(state);
+                op.display(val).hash(state);
                 val.hash(state);
             }
 
             BinaryOp(op, lhs, rhs) => {
                 state.write_u8(6);
-                op.display(&lhs, &rhs).hash(state);
+                op.display(lhs, rhs).hash(state);
                 lhs.hash(state);
                 rhs.hash(state);
             }
 
             TernaryOp(op, a, b, c) => {
                 state.write_u8(7);
-                op.display(&a, &b, &c).hash(state);
+                op.display(a, b, c).hash(state);
                 a.hash(state);
                 b.hash(state);
                 c.hash(state);
@@ -1045,7 +1043,7 @@ impl Hash for Expr {
 
             AssignOp(op, lhs, rhs) => {
                 state.write_u8(8);
-                op.display(&lhs, &rhs).hash(state);
+                op.display(lhs, rhs).hash(state);
                 lhs.hash(state);
                 rhs.hash(state);
             }

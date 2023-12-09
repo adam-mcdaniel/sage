@@ -43,10 +43,7 @@ impl TypeCheck for FFIProcedure {
 
 impl GetType for FFIProcedure {
     fn get_type_checked(&self, _env: &Env, _i: usize) -> Result<Type, Error> {
-        Ok(Type::Proc(
-            self.args.iter().map(|t| t.clone()).collect(),
-            Box::new(self.ret.clone()),
-        ))
+        Ok(Type::Proc(self.args.to_vec(), Box::new(self.ret.clone())))
     }
 
     fn substitute(&mut self, name: &str, substitution: &Type) {

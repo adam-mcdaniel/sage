@@ -184,7 +184,7 @@ impl Put {
 
             Type::Enum(variants) => {
                 for variant in variants.iter() {
-                    let variant_id = Type::variant_index(&variants, variant).unwrap();
+                    let variant_id = Type::variant_index(variants, variant).unwrap();
 
                     output.op(CoreOp::Move {
                         src: addr.clone(),
@@ -209,21 +209,18 @@ impl Put {
                     output.op(Many(vec![
                         Set(C, b'[' as i64),
                         Put(C, Output::stdout_char()),
-                        GetAddress {
-                            addr,
-                            dst: A,
-                        },
-                        Set(B, array_len as i64),
+                        GetAddress { addr, dst: A },
+                        Set(B, array_len),
                         While(B),
-                            Put(A.deref(), Output::stdout_int()),
-                            Next(A, None),
-                            Dec(B),
-                            If(B),
-                                Set(C, b',' as i64),
-                                Put(C, Output::stdout_char()),
-                                Set(C, b' ' as i64),
-                                Put(C, Output::stdout_char()),
-                            End,
+                        Put(A.deref(), Output::stdout_int()),
+                        Next(A, None),
+                        Dec(B),
+                        If(B),
+                        Set(C, b',' as i64),
+                        Put(C, Output::stdout_char()),
+                        Set(C, b' ' as i64),
+                        Put(C, Output::stdout_char()),
+                        End,
                         End,
                         Set(C, b']' as i64),
                         Put(C, Output::stdout_char()),
@@ -232,32 +229,29 @@ impl Put {
                     output.op(Many(vec![
                         Set(C, b'[' as i64),
                         Put(C, Output::stdout_char()),
-                        GetAddress {
-                            addr,
-                            dst: A,
-                        },
-                        Set(B, array_len as i64),
+                        GetAddress { addr, dst: A },
+                        Set(B, array_len),
                         While(B),
-                            Put(A.deref(), Output::stdout_float()),
-                            Next(A, None),
-                            Dec(B),
-                            If(B),
-                                Set(C, b',' as i64),
-                                Put(C, Output::stdout_char()),
-                                Set(C, b' ' as i64),
-                                Put(C, Output::stdout_char()),
-                            End,
+                        Put(A.deref(), Output::stdout_float()),
+                        Next(A, None),
+                        Dec(B),
+                        If(B),
+                        Set(C, b',' as i64),
+                        Put(C, Output::stdout_char()),
+                        Set(C, b' ' as i64),
+                        Put(C, Output::stdout_char()),
+                        End,
                         End,
                         Set(C, b']' as i64),
                         Put(C, Output::stdout_char()),
                     ]))
                 } else {
                     let ty_size = ty.get_size(env)? as isize;
-    
+
                     output.op(Set(A, b'[' as i64));
                     output.op(Put(A, Output::stdout_char()));
                     for i in 0..array_len as isize {
-                        Self::debug(addr.offset(i * ty_size), &ty, env, output)?;
+                        Self::debug(addr.offset(i * ty_size), ty, env, output)?;
                         if i < array_len as isize - 1 {
                             output.op(Set(A, b',' as i64));
                             output.op(Put(A, Output::stdout_char()));
@@ -343,8 +337,8 @@ impl Put {
                 }
             }
 
-            Type::Unit(name, ty) => {
-                Self::debug(addr, &ty, env, output)?;
+            Type::Unit(_name, ty) => {
+                Self::debug(addr, ty, env, output)?;
                 // for ch in format!(" ({})", name).chars() {
                 //     output.op(CoreOp::Set(A, ch as u8 as i64));
                 //     output.op(CoreOp::Put(A, Output::stdout_char()));
@@ -463,7 +457,7 @@ impl Put {
 
             Type::Enum(variants) => {
                 for variant in variants.iter() {
-                    let variant_id = Type::variant_index(&variants, variant).unwrap();
+                    let variant_id = Type::variant_index(variants, variant).unwrap();
 
                     output.op(CoreOp::Move {
                         src: addr.clone(),
@@ -493,40 +487,34 @@ impl Put {
                 if ty.equals(&Type::Char, env)? {
                     // Do a while loop instead
                     output.op(Many(vec![
-                        GetAddress {
-                            addr,
-                            dst: A,
-                        },
-                        Set(B, array_len as i64),
+                        GetAddress { addr, dst: A },
+                        Set(B, array_len),
                         While(B),
-                            If(A.deref()),
-                                Put(A.deref(), Output::stdout_char()),
-                                Next(A, None),
-                                Dec(B),
-                            Else,
-                                Set(B, 0),
-                            End,
+                        If(A.deref()),
+                        Put(A.deref(), Output::stdout_char()),
+                        Next(A, None),
+                        Dec(B),
+                        Else,
+                        Set(B, 0),
+                        End,
                         End,
                     ]))
                 } else if ty.equals(&Type::Int, env)? {
                     output.op(Many(vec![
                         Set(C, b'[' as i64),
                         Put(C, Output::stdout_char()),
-                        GetAddress {
-                            addr,
-                            dst: A,
-                        },
-                        Set(B, array_len as i64),
+                        GetAddress { addr, dst: A },
+                        Set(B, array_len),
                         While(B),
-                            Put(A.deref(), Output::stdout_int()),
-                            Next(A, None),
-                            Dec(B),
-                            If(B),
-                                Set(C, b',' as i64),
-                                Put(C, Output::stdout_char()),
-                                Set(C, b' ' as i64),
-                                Put(C, Output::stdout_char()),
-                            End,
+                        Put(A.deref(), Output::stdout_int()),
+                        Next(A, None),
+                        Dec(B),
+                        If(B),
+                        Set(C, b',' as i64),
+                        Put(C, Output::stdout_char()),
+                        Set(C, b' ' as i64),
+                        Put(C, Output::stdout_char()),
+                        End,
                         End,
                         Set(C, b']' as i64),
                         Put(C, Output::stdout_char()),
@@ -535,21 +523,18 @@ impl Put {
                     output.op(Many(vec![
                         Set(C, b'[' as i64),
                         Put(C, Output::stdout_char()),
-                        GetAddress {
-                            addr,
-                            dst: A,
-                        },
-                        Set(B, array_len as i64),
+                        GetAddress { addr, dst: A },
+                        Set(B, array_len),
                         While(B),
-                            Put(A.deref(), Output::stdout_float()),
-                            Next(A, None),
-                            Dec(B),
-                            If(B),
-                                Set(C, b',' as i64),
-                                Put(C, Output::stdout_char()),
-                                Set(C, b' ' as i64),
-                                Put(C, Output::stdout_char()),
-                            End,
+                        Put(A.deref(), Output::stdout_float()),
+                        Next(A, None),
+                        Dec(B),
+                        If(B),
+                        Set(C, b',' as i64),
+                        Put(C, Output::stdout_char()),
+                        Set(C, b' ' as i64),
+                        Put(C, Output::stdout_char()),
+                        End,
                         End,
                         Set(C, b']' as i64),
                         Put(C, Output::stdout_char()),
@@ -558,7 +543,7 @@ impl Put {
                     output.op(Set(A, b'[' as i64));
                     output.op(Put(A, Output::stdout_char()));
                     for i in 0..array_len as isize {
-                        Self::debug(addr.offset(i * ty_size), &ty, env, output)?;
+                        Self::debug(addr.offset(i * ty_size), ty, env, output)?;
                         if i < array_len as isize - 1 {
                             output.op(CoreOp::Set(A, b',' as i64));
                             output.op(CoreOp::Put(A, Output::stdout_char()));

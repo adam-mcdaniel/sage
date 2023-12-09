@@ -319,7 +319,6 @@ impl Type {
             let mut recursive_types = RECURSIVE_TYPES.lock().unwrap();
             // RECURSIVE_TYPES.lock().unwrap().insert(self.clone());
             recursive_types.insert(self.clone());
-
         } else if matches!(result, Ok(false)) {
             // NON_RECURSIVE_TYPES.lock().unwrap().insert(self.clone());
             let mut non_recursive_types = NON_RECURSIVE_TYPES.lock().unwrap();
@@ -458,7 +457,7 @@ impl Type {
                         ret = ret.substitute(param, arg);
                     }
 
-                    ret.get_monomorph_template_args(&other, matched_symbols, param_symbols, env)?;
+                    ret.get_monomorph_template_args(other, matched_symbols, param_symbols, env)?;
                 }
             }
 
@@ -493,15 +492,13 @@ impl Type {
 
     pub fn is_monomorph_of(&self, template: &Self, env: &Env) -> Result<bool, Error> {
         match (self, template) {
-            (Self::Apply(template1, _), template2) => {
-                return template1.equals(template2, env);
-            }
+            (Self::Apply(template1, _), template2) => template1.equals(template2, env),
             (concrete, Self::Poly(params, result)) => {
                 let mut result = *result.clone();
                 for param in params {
                     result = result.substitute(param, &Type::Any);
                 }
-                return concrete.equals(&result, env);
+                concrete.equals(&result, env)
             }
             (Self::Symbol(name), _) => {
                 if let Some(t) = env.get_type(name) {
@@ -581,7 +578,7 @@ impl Type {
                 }
             }
 
-            Self::Poly(_, t) => {
+            Self::Poly(_, _t) => {
                 // t.add_monomorphized_associated_consts(env)?;
             }
             Self::Let(_, _, _)
@@ -688,7 +685,6 @@ impl Type {
                 }
             }
             Self::Let(_, _, ret) => ret.is_simple(),
-            _ => false,
         }
     }
 
@@ -1174,8 +1170,8 @@ impl Type {
                 Self::Pointer(desired_mutabilty, desired_elem_ty),
             ) => {
                 // Check if the mutabilities and element types can decay.
-                if found_mutability.can_decay_to(&desired_mutabilty)
-                    && found_elem_ty.equals(&desired_elem_ty, env)?
+                if found_mutability.can_decay_to(desired_mutabilty)
+                    && found_elem_ty.equals(desired_elem_ty, env)?
                 {
                     // If they can, then we can decay.
                     trace!("{} can decay to {}", self, desired);
@@ -1183,7 +1179,7 @@ impl Type {
                 }
 
                 // Check if the mutabilities are compatible, and check if this type points to an array of elements of the desired element type.
-                if found_mutability.can_decay_to(&desired_mutabilty)
+                if found_mutability.can_decay_to(desired_mutabilty)
                     && found_elem_ty.has_element_type(desired_elem_ty, env)?
                 {
                     // If so, then we can decay.
@@ -1449,7 +1445,7 @@ impl Type {
 
                     match poly {
                         Self::Poly(params, mono_ty) => {
-                            let poly = Self::Poly(params.clone(), mono_ty.clone());
+                            let _poly = Self::Poly(params.clone(), mono_ty.clone());
                             let mut mono_ty = *mono_ty;
                             for (param, ty_arg) in params.iter().zip(ty_args.iter()) {
                                 mono_ty = mono_ty.substitute(param, ty_arg);
@@ -1778,40 +1774,28 @@ impl Type {
                     }
 
                     true
-                } else {
-                    if let Self::Poly(ty_params, template) = poly1.clone().simplify(env)? {
-                        let mut template = *template.clone();
-                        for (param, arg) in ty_params.iter().zip(ty_args1.iter()) {
-                            template = template.substitute(param, arg);
-                        }
-                        template.equals_checked(other, compared_symbols, env, i)?
-                    } else if let Self::Poly(ty_params, template) = poly2.clone().simplify(env)? {
-                        let mut template = *template.clone();
-                        for (param, arg) in ty_params.iter().zip(ty_args2.iter()) {
-                            template = template.substitute(param, arg);
-                        }
-                        template.equals_checked(other, compared_symbols, env, i)?
-                    } else {
-                        // If the two polymorphic types are not equal, then we can't just compare the two
-                        // types' parameters. We need to simplify the types first.
-                        // other.clone().simplify_until_concrete(env)?.equals_checked(
-                        //     self,
-                        //     compared_symbols,
-                        //     env,
-                        //     i,
-                        // )?
-                        false
+                } else if let Self::Poly(ty_params, template) = poly1.clone().simplify(env)? {
+                    let mut template = *template.clone();
+                    for (param, arg) in ty_params.iter().zip(ty_args1.iter()) {
+                        template = template.substitute(param, arg);
                     }
-
+                    template.equals_checked(other, compared_symbols, env, i)?
+                } else if let Self::Poly(ty_params, template) = poly2.clone().simplify(env)? {
+                    let mut template = *template.clone();
+                    for (param, arg) in ty_params.iter().zip(ty_args2.iter()) {
+                        template = template.substitute(param, arg);
+                    }
+                    template.equals_checked(other, compared_symbols, env, i)?
+                } else {
                     // If the two polymorphic types are not equal, then we can't just compare the two
                     // types' parameters. We need to simplify the types first.
-                    // other.equals_checked(
+                    // other.clone().simplify_until_concrete(env)?.equals_checked(
                     //     self,
                     //     compared_symbols,
                     //     env,
                     //     i,
                     // )?
-                    // false
+                    false
                 }
             }
 
@@ -1971,9 +1955,9 @@ impl Type {
                         } else {
                             Err(Error::MemberNotFound(expr.clone(), member.clone()))
                         }
-                    },
+                    }
                 }
-            },
+            }
             Type::Let(name, t, ret) => {
                 // Create a new scope and define the new type within it
                 let mut new_env = env.clone();

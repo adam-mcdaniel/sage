@@ -85,7 +85,7 @@ impl Pattern {
 
     /// Is this pattern exhaustive?
     pub fn is_exhaustive(&self, expr: &Expr, ty: &Type, env: &Env) -> Result<bool, Error> {
-        Self::are_patterns_exhaustive(&expr, &[self.clone()], &ty, &env)
+        Self::are_patterns_exhaustive(expr, &[self.clone()], ty, env)
     }
 
     /// This associated function returns whether or not a set of patterns is exhaustive,

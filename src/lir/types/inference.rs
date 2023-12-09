@@ -50,7 +50,7 @@ impl GetType for Expr {
                 // Create a new environment with the declarations.
                 let mut new_env = env.clone();
                 // Add the declarations to the environment.
-                new_env.add_declaration(&declaration)?;
+                new_env.add_declaration(declaration)?;
                 // Get the type of the body in the new environment.
                 body.get_type_checked(&new_env, i)?
             }

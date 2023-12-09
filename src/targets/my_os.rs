@@ -159,7 +159,7 @@ impl Architecture for MyOS {
     fn poke(&mut self) -> Result<String, String> {
         Ok("*(++ffi_ptr) = reg;".to_string())
     }
-    fn prelude(&self, is_core: bool) -> Option<String> {
+    fn prelude(&self, _is_core: bool) -> Option<String> {
         /*
                 let mut result = r#"#include <stdlib.h>
                 #include <stdio.h>
@@ -184,7 +184,7 @@ impl Architecture for MyOS {
         "#
                 .to_string();
             */
-        let mut result = r#"#include <stdio.h>
+        let result = r#"#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include <ctype.h>

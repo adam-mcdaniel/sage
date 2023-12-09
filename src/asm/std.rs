@@ -7,7 +7,7 @@
 //!
 //! [***Click here to view opcodes!***](./enum.StandardOp.html)
 use super::{
-    location::*, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, F, FP, GP, SP,
+    location::*, AssemblyProgram, CoreOp, CoreProgram, Env, Error, Location, FP, GP, SP,
     START_OF_FP_STACK,
 };
 use crate::side_effects::ffi::FFIBinding;

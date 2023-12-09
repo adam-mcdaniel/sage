@@ -12,8 +12,8 @@ use crate::asm::{AssemblyProgram, CoreOp, A, FP, SP};
 use crate::lir::{
     Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck,
 };
-use std::hash::Hash;
 use core::fmt;
+use std::hash::Hash;
 use std::{
     rc::Rc,
     sync::{Mutex, RwLock},
@@ -129,7 +129,7 @@ impl TypeCheck for Procedure {
 
         // Mark this procedure as having been type checked.
         *self.has_type_checked.write().unwrap() = true;
-        
+
         // Typecheck the types of the arguments and return value
         for (_, _, t) in &self.args {
             // t.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
@@ -223,11 +223,7 @@ impl Compile for Procedure {
         output.op(CoreOp::SetLabel(A, self.mangled_name.clone()));
         output.op(CoreOp::Push(A, 1));
 
-        let name = self
-            .common_name
-            .as_ref()
-            .map(|x| x.as_str())
-            .unwrap_or_else(|| "<anonymous>");
+        let name = self.common_name.as_deref().unwrap_or("<anonymous>");
         // Log the compiled procedure
         let message = format!("Compiled procedure {common_name} to {mangled_name} with args of size {args_size} and return value of size {ret_size}",
             common_name = name,

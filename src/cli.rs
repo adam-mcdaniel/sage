@@ -395,8 +395,8 @@ fn compile(
         TargetType::MyOS => write_file(
             format!("{output}.c"),
             match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
-                Ok(vm_code) => targets::MyOS::default().build_core(&vm_code.flatten()),
-                Err(vm_code) => targets::MyOS::default().build_std(&vm_code.flatten()),
+                Ok(vm_code) => targets::MyOS.build_core(&vm_code.flatten()),
+                Err(vm_code) => targets::MyOS.build_std(&vm_code.flatten()),
             }
             .map_err(Error::BuildError)?,
         )?,
@@ -405,8 +405,8 @@ fn compile(
         TargetType::C => write_file(
             format!("{output}.c"),
             match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
-                Ok(vm_code) => targets::C::default().build_core(&vm_code.flatten()),
-                Err(vm_code) => targets::C::default().build_std(&vm_code.flatten()),
+                Ok(vm_code) => targets::C.build_core(&vm_code.flatten()),
+                Err(vm_code) => targets::C.build_std(&vm_code.flatten()),
             }
             .map_err(Error::BuildError)?,
         )?,
@@ -487,14 +487,14 @@ fn cli() {
     let mut builder = env_logger::Builder::from_default_env();
     builder.format_timestamp(None);
 
-    let target = args.debug.as_ref().map(|s| s.as_str());
+    let target = args.debug.as_deref();
 
     // Set the log level.
     match args.log_level {
-        LogLevel::Error if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Error),
-        LogLevel::Warn if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Warn),
-        LogLevel::Off if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Error),
-        LogLevel::Info if !args.debug.is_some() => builder.filter(target, log::LevelFilter::Info),
+        LogLevel::Error if args.debug.is_none() => builder.filter(target, log::LevelFilter::Error),
+        LogLevel::Warn if args.debug.is_none() => builder.filter(target, log::LevelFilter::Warn),
+        LogLevel::Off if args.debug.is_none() => builder.filter(target, log::LevelFilter::Error),
+        LogLevel::Info if args.debug.is_none() => builder.filter(target, log::LevelFilter::Info),
         LogLevel::Trace => builder.filter(target, log::LevelFilter::Trace),
         _ => builder.filter(target, log::LevelFilter::Debug),
     };

@@ -11,7 +11,7 @@
 //! 3. If the expression cannot be compiled into a core assembly program, then compile it into a standard assembly program.
 use super::*;
 use crate::asm::{
-    AssemblyProgram, CoreOp, CoreProgram, Location, StandardOp, StandardProgram, A, B, C, FP, SP,
+    AssemblyProgram, CoreOp, CoreProgram, StandardOp, StandardProgram, A, B, C, FP, SP,
 };
 use crate::NULL;
 use log::*;
@@ -656,7 +656,9 @@ impl Compile for Expr {
                     Type::Type(ty) => {
                         let member_as_symbol = member.clone().as_symbol(env)?;
 
-                        if let Some((constant, _)) = env.get_associated_const(&ty, &member_as_symbol) {
+                        if let Some((constant, _)) =
+                            env.get_associated_const(&ty, &member_as_symbol)
+                        {
                             return constant.clone().compile_expr(env, output);
                         } else {
                             return Err(Error::SymbolNotDefined(member_as_symbol));
@@ -769,7 +771,7 @@ impl Compile for Expr {
                     let mut counter = COUNTER.lock().unwrap();
                     *counter += 1;
                     let mut var_name = format!("__const_{counter}__");
-                    let mut new_env = env.clone();
+                    let new_env = env.clone();
                     debug!("Creating new static variable {var_name} in environment {new_env}");
                     while new_env.get_var(&var_name).is_some() {
                         debug!("Variable {var_name} already exists in environment {new_env}, incrementing counter");
@@ -777,7 +779,7 @@ impl Compile for Expr {
                         var_name = format!("__const_{counter}__");
                     }
                     let ty = cexpr.get_type(env)?;
-                    let size = ty.get_size(env)?;
+                    let _size = ty.get_size(env)?;
 
                     let expr = Expr::var(&var_name).refer(expected_mutability).with(
                         Declaration::static_var(&var_name, expected_mutability, ty, cexpr),
@@ -949,20 +951,14 @@ impl Compile for ConstExpr {
                     (Self::Tuple(tuple), Self::Int(n)) => {
                         // If the index is out of bounds, return an error.
                         if n >= tuple.len() as i64 || n < 0 {
-                            return Err(Error::MemberNotFound(
-                                (*container).into(),
-                                (*member).into(),
-                            ));
+                            return Err(Error::MemberNotFound((*container).into(), *member));
                         }
                         tuple[n as usize].clone().compile_expr(env, output)?
                     }
                     (Self::Struct(fields), Self::Symbol(name)) => {
                         // If the field is not in the struct, return an error.
                         if !fields.contains_key(&name) {
-                            return Err(Error::MemberNotFound(
-                                (*container).into(),
-                                (*member).into(),
-                            ));
+                            return Err(Error::MemberNotFound((*container).into(), *member));
                         }
                         fields[&name].clone().compile_expr(env, output)?
                     }
@@ -975,7 +971,7 @@ impl Compile for ConstExpr {
                         }
                     }
                     _ => {
-                        return Err(Error::MemberNotFound((*container).into(), (*member).into()));
+                        return Err(Error::MemberNotFound((*container).into(), *member));
                     }
                 }
             }
@@ -1011,7 +1007,7 @@ impl Compile for ConstExpr {
                     // Compile the monomorphized function.
                     proc.compile_expr(env, output)?;
 
-                    output.log_instructions_after(&common_name, &message, current_instruction);
+                    output.log_instructions_after(common_name, &message, current_instruction);
                 }
                 Self::Template(params, result) => {
                     if params.len() != ty_args.len() {
@@ -1316,7 +1312,7 @@ impl Compile for ConstExpr {
                 }
             }
         }
-        output.log_instructions_after(&"expr", &debug_str, current_instruction);
+        output.log_instructions_after("expr", &debug_str, current_instruction);
         Ok(())
     }
 }

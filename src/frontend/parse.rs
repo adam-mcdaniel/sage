@@ -211,7 +211,7 @@ impl Declaration {
             )])
             .to_expr(rest),
             (Self::Impl(ty, methods), _) => {
-                return rest_expr.with(crate::lir::Declaration::Impl(ty, methods))
+                rest_expr.with(crate::lir::Declaration::Impl(ty, methods))
             }
             (Self::Struct(name, fields), _) => {
                 rest_expr.with((name, Type::Struct(fields.into_iter().collect())))
@@ -876,7 +876,7 @@ pub fn parse_expr(pair: Pair<Rule>) -> Expr {
     let length = span.end_pos().pos() - span.start_pos().pos();
     let offset = span.start_pos().pos();
 
-    let loc = SourceCodeLocation {
+    let _loc = SourceCodeLocation {
         filename: None,
         line,
         column,
@@ -1176,10 +1176,14 @@ fn parse_const(pair: Pair<Rule>) -> ConstExpr {
         Rule::const_char => {
             let token = pair.into_inner().next().unwrap().as_str();
             let token = &token[1..token.len() - 1];
-            let result = snailquote::unescape(&format!("\"{token}\"").replace("\\0", "\\\\0").replace("\\/", "/"))
-                .unwrap()
-                .replace("\\0", "\0")
-                .replace("\\\"", "\"");
+            let result = snailquote::unescape(
+                &format!("\"{token}\"")
+                    .replace("\\0", "\\\\0")
+                    .replace("\\/", "/"),
+            )
+            .unwrap()
+            .replace("\\0", "\0")
+            .replace("\\\"", "\"");
             // let result = snailquote::unescape(
             //     &pair
             //         .clone()

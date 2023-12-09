@@ -14,7 +14,7 @@ impl Add {
             (Type::Int, Type::Int) => Ok(Type::Int),
 
             (Type::Int | Type::Float | Type::Cell, Type::Cell)
-            | (Type::Cell, Type::Int | Type::Float | Type::Cell) => Ok(Type::Cell),
+            | (Type::Cell, Type::Int | Type::Float) => Ok(Type::Cell),
 
             (Type::Float, Type::Float) | (Type::Float, Type::Int) | (Type::Int, Type::Float) => {
                 Ok(Type::Float)

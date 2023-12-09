@@ -195,7 +195,7 @@ impl TypeCheck for Expr {
                 // Check the declaration.
                 declaration.type_check(&new_env)?;
                 // Add the declarations to the environment.
-                new_env.add_declaration(&declaration)?;
+                new_env.add_declaration(declaration)?;
                 // Check the body with the declarations defined.
                 body.type_check(&new_env)
             }
@@ -291,7 +291,7 @@ impl TypeCheck for Expr {
                     // If we haven't found a type yet, set it.
                     if let Some(result_ty) = &mut result_ty {
                         // Check that the branch type matches the result type.
-                        if !branch_ty.can_decay_to(&result_ty, &new_env)? {
+                        if !branch_ty.can_decay_to(result_ty, &new_env)? {
                             // If it doesn't, return an error.
                             return Err(Error::MismatchedTypes {
                                 found: branch_ty,
@@ -432,7 +432,7 @@ impl TypeCheck for Expr {
                         Err(Error::InvalidRefer(self.clone()))
                     }
                 }
-                Expr::ConstExpr(cexpr) => Ok(()),
+                Expr::ConstExpr(_cexpr) => Ok(()),
                 Expr::Deref(inner) | Expr::Index(inner, _) => {
                     // Confirm that the inner expression can be referenced.
                     match inner.get_type(env)? {
@@ -734,7 +734,7 @@ impl TypeCheck for Expr {
                             // Typecheck the value assigned to the variant.
                             val.type_check(env)?;
                             let found = val.get_type(env)?;
-                            if !found.can_decay_to(&expected_ty, env)? {
+                            if !found.can_decay_to(expected_ty, env)? {
                                 return Err(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
                                     found,
@@ -769,7 +769,7 @@ impl TypeCheck for Expr {
                             // Typecheck the value assigned to the variant.
                             val.type_check(env)?;
                             let found = val.get_type(env)?;
-                            if !found.can_decay_to(&expected_ty, env)? {
+                            if !found.can_decay_to(expected_ty, env)? {
                                 return Err(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
                                     found,
@@ -820,7 +820,7 @@ impl TypeCheck for Expr {
                         match field
                             .clone()
                             .as_symbol(env)
-                            .and_then(|name| Ok(env.get_associated_const(&e_type, &name)))
+                            .map(|name| env.get_associated_const(&e_type, &name))
                         {
                             Ok(_) => Ok(()),
                             Err(_) => Err(e),
@@ -868,7 +868,7 @@ impl TypeCheck for ConstExpr {
 
         trace!("Typechecking constant expression: {}", self);
         match self {
-            Self::Template(ty_params, template) => {
+            Self::Template(_ty_params, _template) => {
                 // Create a new environment with the type parameters defined.
                 // let mut new_env = env.clone();
                 // // Define the type parameters in the environment.
@@ -905,7 +905,7 @@ impl TypeCheck for ConstExpr {
                         match field
                             .clone()
                             .as_symbol(env)
-                            .and_then(|name| Ok(env.get_associated_const(&e_type, &name)))
+                            .map(|name| env.get_associated_const(&e_type, &name))
                         {
                             Ok(_) => Ok(()),
                             Err(_) => Err(e),
@@ -1145,7 +1145,7 @@ impl TypeCheck for ConstExpr {
                             // Typecheck the value assigned to the variant.
                             val.type_check(env)?;
                             let found = val.get_type(env)?;
-                            if !found.can_decay_to(&expected_ty, env)? {
+                            if !found.can_decay_to(expected_ty, env)? {
                                 error!("Mismatched types: {expected_ty} != {found} in environment {env}");
                                 return Err(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
@@ -1183,7 +1183,7 @@ impl TypeCheck for ConstExpr {
                             // Typecheck the value assigned to the variant.
                             val.type_check(env)?;
                             let found = val.get_type(env)?;
-                            if !found.can_decay_to(&expected_ty, env)? {
+                            if !found.can_decay_to(expected_ty, env)? {
                                 error!("Mismatched types: {found} != {expected_ty} in environment {env}");
                                 return Err(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),

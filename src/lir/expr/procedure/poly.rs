@@ -5,9 +5,9 @@
 //! A procedure is compiled down to a label in the assembly code.
 use crate::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
 use core::fmt;
-use std::{collections::HashMap, rc::Rc, sync::RwLock};
-use std::{fmt::Display, hash::Hash, hash::Hasher};
 use log::{debug, error, trace};
+use std::{collections::HashMap, rc::Rc, sync::RwLock};
+use std::{hash::Hash, hash::Hasher};
 
 use super::Procedure;
 

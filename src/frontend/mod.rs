@@ -37,7 +37,7 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
                 ],
             });
             use crate::asm::CoreOp::*;
-            use crate::asm::StandardOp::*;
+
             use crate::asm::*;
             // let realloc_fp_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
             //     name: "realloc_fp_stack".to_string(),
@@ -250,7 +250,7 @@ pub fn parse(code: impl ToString, filename: Option<&str>) -> Result<crate::lir::
             });
 
             let mut debug_body = vec![];
-            for ch in format!("Debug\n").chars() {
+            for ch in "Debug\n".to_string().chars() {
                 debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, ch as i64));
                 debug_body.push(crate::asm::CoreOp::Put(
                     crate::asm::TMP,

@@ -8,15 +8,12 @@ use super::{
     Compile, ConstExpr, Declaration, Error, Expr, FFIProcedure, GetSize, GetType, Mutability,
     PolyProcedure, Procedure, Type,
 };
-use crate::{
-    asm::{AssemblyProgram, Globals, Location},
-    lir::Simplify,
-};
+use crate::asm::{AssemblyProgram, Globals, Location};
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::{
     collections::{HashMap, HashSet},
     rc::Rc,
-    sync::{Mutex, RwLock},
+    sync::RwLock,
 };
 
 use log::*;
@@ -140,10 +137,7 @@ impl Env {
     }
 
     pub(crate) fn save_type_checked_const(&self, const_expr: ConstExpr) {
-        self.type_checked_consts
-            .write()
-            .unwrap()
-            .insert(const_expr);
+        self.type_checked_consts.write().unwrap().insert(const_expr);
     }
 
     /// Get the type of an associated constant of a type.
@@ -208,7 +202,7 @@ impl Env {
                             info!("Found associated const (type) {name} of type {ty} = {result}");
                             return Some(result);
                         }
-                        Err(err) => {
+                        Err(_err) => {
                             info!("Found associated const (type) {name} of type {ty} = {result} (failed to simplify)");
                             return Some(result);
                             // debug!("Failed to simplify associated const (type) {name} of type {ty} = {result}");
@@ -319,7 +313,7 @@ impl Env {
                             info!("Found associated const (type) {name} of type {ty} = {result}");
                             result
                         }
-                        Err(err) => {
+                        Err(_err) => {
                             info!("Found associated const (type) {name} of type {ty} = {result_ty} (failed to simplify)");
                             result_ty
                             // debug!("Failed to simplify associated const (type) {name} of type {ty} = {result}");
@@ -696,19 +690,19 @@ impl Env {
                     }
                 }
             }
-            Declaration::Var(_, _, Some(ty), e) => {
+            Declaration::Var(_, _, Some(_ty), _e) => {
                 // ty.add_monomorphized_associated_consts(self).ok();
                 // if let Ok(ty) = e.get_type(self) {
                 //     ty.add_monomorphized_associated_consts(self).ok();
                 // }
             }
-            Declaration::Var(_, _, _, e) => {
+            Declaration::Var(_, _, _, _e) => {
                 // Variables are not defined at compile-time.
                 // if let Ok(ty) = e.get_type(self) {
                 //     ty.add_monomorphized_associated_consts(self).ok();
                 // }
             }
-            Declaration::VarPat(_, e) => {
+            Declaration::VarPat(_, _e) => {
                 // Variables are not defined at compile-time.
                 // if let Ok(ty) = e.get_type(self) {
                 //     ty.add_monomorphized_associated_consts(self).ok();
@@ -1060,7 +1054,7 @@ impl Env {
 }
 
 impl Display for Env {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+    fn fmt(&self, _f: &mut Formatter) -> FmtResult {
         // writeln!(f, "Env")?;
         // writeln!(f, "   Types:")?;
         // for (name, ty) in self.types.iter() {

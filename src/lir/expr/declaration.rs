@@ -6,13 +6,13 @@ use crate::{
         Type, TypeCheck,
     },
 };
-use std::hash::{Hash, Hasher};
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     ops::{Add, AddAssign},
 };
 use log::*;
 use std::collections::BTreeMap;
+use std::hash::{Hash, Hasher};
 
 /// A declaration of a variable, function, type, etc.
 #[derive(Debug, Clone, PartialEq)]
@@ -125,7 +125,7 @@ impl Declaration {
                 // Add the variable to the environment, so that it can be used in the body.
                 env.add_local_variable_declaration(self)?;
                 // Log the instructions for the declaration.
-                output.log_instructions_after(&name, &log_message, current_instruction);
+                output.log_instructions_after(name, &log_message, current_instruction);
             }
             Declaration::VarPat(pat, expr) => {
                 // Get the type of the expression being assigned to the pattern.
@@ -135,7 +135,7 @@ impl Declaration {
                 // Compile the expression to leave the value on the stack.
                 expr.clone().compile_expr(env, output)?;
                 // Add the variable to the environment, so that it can be used in the body.
-                pat.declare_let_bind(&expr, &expr_ty, env)?;
+                pat.declare_let_bind(expr, &expr_ty, env)?;
             }
             Declaration::StaticVar(name, _mutability, ty, expr) => {
                 // Get the current instruction (for logging)
@@ -362,7 +362,7 @@ impl TypeCheck for Declaration {
             // Typecheck a variable declaration with a pattern.
             Self::VarPat(pat, expr) => {
                 // Typecheck the pattern in the environment.
-                pat.type_check(&expr, &Expr::NONE, env)?;
+                pat.type_check(expr, &Expr::NONE, env)?;
                 // Typecheck the expression assigned to the pattern in the environment.
                 expr.type_check(env)?;
 
@@ -371,7 +371,7 @@ impl TypeCheck for Declaration {
                 // ty.add_monomorphized_associated_consts(env)?;
                 // Get the size of the expression.
                 let size = ty.get_size(env)?;
-                if !pat.is_exhaustive(&expr, &ty, env)? {
+                if !pat.is_exhaustive(expr, &ty, env)? {
                     // Make sure the pattern is exhaustive.
                     // If it is not, then we throw an error.
                     return Err(Error::NonExhaustivePatterns {
@@ -380,7 +380,7 @@ impl TypeCheck for Declaration {
                     });
                 }
                 // Get the bindings of the variables under the pattern
-                let bindings = pat.get_bindings(&expr, &ty, env)?;
+                let bindings = pat.get_bindings(expr, &ty, env)?;
                 // Get the size of all the bindings
                 let size_of_bindings = bindings
                     .iter()
@@ -695,7 +695,6 @@ where
         self.append(other.into());
     }
 }
-
 
 impl Hash for Declaration {
     fn hash<H: Hasher>(&self, state: &mut H) {
