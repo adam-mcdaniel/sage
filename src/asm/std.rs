@@ -13,7 +13,6 @@ use super::{
 use crate::side_effects::ffi::FFIBinding;
 use crate::vm::{self, VirtualMachineProgram};
 use std::{collections::BTreeSet, fmt};
-use rayon::prelude::*;
 
 use log::info;
 
@@ -194,7 +193,7 @@ impl AssemblyProgram for StandardProgram {
 
 impl From<CoreProgram> for StandardProgram {
     fn from(core: CoreProgram) -> Self {
-        Self::new(core.code.into_par_iter().map(StandardOp::CoreOp).collect())
+        Self::new(core.code.into_iter().map(StandardOp::CoreOp).collect())
     }
 }
 

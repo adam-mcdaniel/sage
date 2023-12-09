@@ -12,7 +12,7 @@ use crate::asm::{AssemblyProgram, CoreOp, A, FP, SP};
 use crate::lir::{
     Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck,
 };
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use core::fmt;
 use std::{
     rc::Rc,

@@ -53,7 +53,8 @@
             source.refresh()
         }, 50);
         var output = CodeMirror.fromTextArea(document.getElementById("output"), {
-            mode: "rust",
+            mode: "text/x-csrc",
+            // mode: "rust",
             lineNumbers: true,
             indentUnit: 4,
             theme: 'ayu-mirage',

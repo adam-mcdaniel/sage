@@ -1,7 +1,6 @@
 use crate::{lir::*, parse::SourceCodeLocation};
 use pest::{error::Error, iterators::Pair, Parser};
 use pest_derive::Parser;
-use rayon::prelude::*;
 
 #[derive(Parser)]
 #[grammar = "frontend/parse.pest"] // relative to src
@@ -232,7 +231,7 @@ impl Declaration {
                     // If we're using a simple enum, then we can just use a simple enum
                     (
                         name,
-                        Type::Enum(variants.into_par_iter().map(|(a, _)| a).collect()),
+                        Type::Enum(variants.into_iter().map(|(a, _)| a).collect()),
                     )
                 } else {
                     // Otherwise, we need to use a tagged union
@@ -240,7 +239,7 @@ impl Declaration {
                         name,
                         Type::EnumUnion(
                             variants
-                                .into_par_iter()
+                                .into_iter()
                                 .map(|(a, b)| {
                                     (
                                         a,

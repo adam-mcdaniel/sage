@@ -1497,11 +1497,9 @@
 <a href="#1497" id="1497">1497</a>
 <a href="#1498" id="1498">1498</a>
 <a href="#1499" id="1499">1499</a>
-<a href="#1500" id="1500">1500</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{lir::<span class="kw-2">*</span>, parse::SourceCodeLocation};
 <span class="kw">use </span>pest::{error::Error, iterators::Pair, Parser};
 <span class="kw">use </span>pest_derive::Parser;
-<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 
 <span class="attr">#[derive(Parser)]
 #[grammar = <span class="string">&quot;frontend/parse.pest&quot;</span>] </span><span class="comment">// relative to src
@@ -1732,7 +1730,7 @@
                     <span class="comment">// If we&#39;re using a simple enum, then we can just use a simple enum
                     </span>(
                         name,
-                        Type::Enum(variants.into_par_iter().map(|(a, <span class="kw">_</span>)| a).collect()),
+                        Type::Enum(variants.into_iter().map(|(a, <span class="kw">_</span>)| a).collect()),
                     )
                 } <span class="kw">else </span>{
                     <span class="comment">// Otherwise, we need to use a tagged union
@@ -1740,7 +1738,7 @@
                         name,
                         Type::EnumUnion(
                             variants
-                                .into_par_iter()
+                                .into_iter()
                                 .map(|(a, b)| {
                                     (
                                         a,

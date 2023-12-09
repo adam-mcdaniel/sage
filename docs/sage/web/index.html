@@ -46,8 +46,6 @@
             indentUnit: 4,
             theme: 'ayu-mirage',
             autoRefresh: true,
-            // Add highlighting for extra keywords
-            // like `def` and `of`.
         });
         source.setSize("100%", "40em");
         setInterval(function () {
@@ -55,7 +53,8 @@
             source.refresh()
         }, 50);
         var output = CodeMirror.fromTextArea(document.getElementById("output"), {
-            mode: "rust",
+            mode: "text/x-csrc",
+            // mode: "rust",
             lineNumbers: true,
             indentUnit: 4,
             theme: 'ayu-mirage',
