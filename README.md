@@ -124,6 +124,8 @@ Here's an example of Sage's pattern matching:
 
 <img src="./assets/code3.png" width="50%"/>
 
+Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](https://github.com/adam-mcdaniel/sage/tree/main/examples/) folder to see more code examples.
+
 ## Feature Roadmap
 
 - [x] Compiler Backends
