@@ -11,6 +11,8 @@
 
 [***Here's a link to the online compiler playground!***](https://adam-mcdaniel.net/sage)
 
+## Table of Contents
+
 - [What is Sage?](#what-is-sage)
 - [Why Sage?](#why-sage)
 - [How useful is Sage?](#how-useful-is-sage)
