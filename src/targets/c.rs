@@ -3,18 +3,6 @@
 //! An implementation of the virtual machine for the C language.
 //!
 //! This allows the virtual machine to target C programs.
-//!
-//! ## Portability
-//!
-//! Right now, this target only supports GCC due to a quirk
-//! with the way this implementation compiles functions.
-//! For some reason, Clang doesn't like nested functions,
-//! even though the function's addresses can still be known
-//! as labels at compile time. I'm really not sure why Clang
-//! *chooses* not to compile nested functions. This can be
-//! fixed by this implementations by just moving function definitions
-//! code outside of the `main` function, since the virtual machine
-//! does not depend on defining functions at runtime.
 use super::{Architecture, CompiledTarget};
 use crate::{
     side_effects::{Input, InputMode, Output, OutputMode},
