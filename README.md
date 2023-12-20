@@ -108,6 +108,8 @@ $ gcc out.c -o out
 $ ./out
 ```
 
+Check out the [code for the web-demo](https://github.com/adam-mcdaniel/sage/tree/main/examples/web) to see how to use Sage in a web page.
+
 ## What does Sage look like?
 
 Here's an example of a linked list in Sage:
