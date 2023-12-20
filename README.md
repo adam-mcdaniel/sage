@@ -82,7 +82,7 @@ The presentation app parses PPM image files from the filesystem and renders them
 
 ![Presentation](assets/presentation.png)
 
-Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](https://github.com/adam-mcdaniel/sage/tree/main/examples/) folder to see more code examples.
+Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](https://github.com/adam-mcdaniel/sage/tree/main/examples/frontend) folder to see more code examples.
 
 ## How do I use Sage?
 
@@ -124,7 +124,7 @@ Here's an example of Sage's pattern matching:
 
 <img src="./assets/code3.png" width="50%"/>
 
-Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](https://github.com/adam-mcdaniel/sage/tree/main/examples/) folder to see more code examples.
+Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](https://github.com/adam-mcdaniel/sage/tree/main/examples/frontend) folder to see more code examples.
 
 ## Feature Roadmap
 
