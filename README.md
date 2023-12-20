@@ -95,6 +95,20 @@ $ gcc out.c -o out
 $ ./out
 ```
 
+## What does Sage look like?
+
+Here's an example of a linked list in Sage:
+
+![Linked List](assets/code1.png)
+
+Here's an example of Sage's structural typing:
+
+![Structural Typing](assets/code2.png)
+
+Here's an example of Sage's pattern matching:
+
+![Pattern Matching](assets/code3.png)
+
 ## Feature Roadmap
 
 - [x] Compiler Backends
