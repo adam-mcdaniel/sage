@@ -88,19 +88,19 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 
 To start using sage, install it with cargo:
 
-```sh
+```bash
 $ cargo install --git https://github.com/adam-mcdaniel/sage
 ```
 
 Then, you can run a sage file with the `sage` command:
 
-```sh
+```bash
 $ sage examples/frontend/interactive-calculator.sg
 ```
 
 You can also compile a sage file to C with the `--target` flag:
 
-```sh
+```bash
 $ sage examples/frontend/interactive-calculator.sg --target c
 $ # Or `-t c` for short
 $ sage examples/frontend/interactive-calculator.sg -tc
