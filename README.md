@@ -129,6 +129,7 @@ $ ./out
   - [ ] WebAssembly
   - [ ] Foreign Function Interface
   - [ ] Memory Management
+- [ ] Better frontend parser (switch to [Nom](https://crates.io/crates/nom)?)
 - [ ] A package manager
 - [ ] AST Macros
 
