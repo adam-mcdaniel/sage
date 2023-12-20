@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["c","my_os","x86"],"trait":["Architecture","CompiledTarget"]};
+window.SIDEBAR_ITEMS = {"mod":["c","sage_os","x86"],"trait":["Architecture","CompiledTarget"]};

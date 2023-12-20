@@ -1,0 +1,414 @@
+/*
+* Author: Adam McDaniel
+* File: presentation.sg
+* Created: 2023-12-8
+* Short Desc: This is implements parsing and showing PPM files on Sage OS.
+* Long Desc:
+*     This is a simple PPM parser and viewer.
+*     It is designed to be used on Sage OS.
+*     It reads from a list of files and displays them.
+*/
+
+def malloc<T>(element_count: Int): &mut T {
+    return alloc(element_count * sizeof<T>()) as &mut T;
+}
+
+type Pixel = (Int, Int, Int, Int);
+
+struct PPM {
+    width: Int,
+    height: Int,
+    max_color_value: Int,
+    pixels: &mut Pixel,
+}
+
+impl PPM {
+    def make(width: Int, height: Int, max_color_value: Int, pixels: &mut Pixel): PPM {
+        return {
+            width=width,
+            height=height,
+            max_color_value=max_color_value,
+            pixels=pixels
+        };
+    }
+
+    def parse_ascii(content: &Char, content_size: Int): Result<PPM, Error> {
+        type Ret = Result<PPM, Error>;
+        // Find the width and height
+        let mut width: Int = 0;
+        let mut height: Int = 0;
+        let mut i: Int = 0;
+
+        // Skip whitespace
+        while content[i] == ' ' || content[i] == '\n' {
+            i += 1;
+        }
+        // Match against the `P6` magic number
+        if content[i] != 'P' || content[i+1] != '3' {
+            println("Magic number: ", content[i], content[i+1]);
+            return Ret of Err(Error of InvalidMagicNumber);
+        }
+        i += 2;
+        println("Magic number: ", content[0], content[1]);
+
+        // Skip whitespace
+        while content[i] == ' ' || content[i] == '\n' {
+            i += 1;
+        }
+
+        while content[i] != ' ' {
+            width = width * 10 + content[i] as Int - '0' as Int;
+            i += 1;
+        }
+        println("Width: ", width);
+
+        // Skip whitespace
+        while content[i] == ' ' || content[i] == '\n' {
+            i += 1;
+        }
+
+        while content[i] != '\n' {
+            height = height * 10 + content[i] as Int - '0' as Int;
+            i += 1;
+        }
+        println("Height: ", height);
+        // Skip whitespace
+        while content[i] == ' ' || content[i] == '\n' {
+            i += 1;
+        }
+
+        // Find the max color value
+        let mut max_color_value: Int = 0;
+        while content[i] != '\n' {
+            max_color_value = max_color_value * 10 + content[i] as Int - '0' as Int;
+            i += 1;
+        }
+        println("Max color value: ", max_color_value);
+
+        println("Allocating ", width * height, " pixels");
+        debug();
+        let pixels = malloc<Pixel>(width * height * 2);
+        println("Allocated ", width * height, " pixels");
+        debug();
+
+        for let mut row=0; row < height && i < content_size; row += 1 {
+            for let mut col=0; col < width && i < content_size; col += 1 {
+                // debug();
+                // Skip whitespace
+                // println("Parsing pixel at ", row, ",", col);
+                // println("content = ", content as &Cell);
+                // println("content[", i, "] = ", content[i]);
+                // debug();
+                def isdigit(c: Char): Bool {
+                    let c = c as Int;
+                    return c >= '0' as Int && c <= '9' as Int;
+                }
+
+                while i < content_size && !(isdigit(content[i])) {
+                    i += 1;
+                }
+
+                let mut r: Int = 0;
+                while i < content_size && isdigit(content[i]) {
+                    // println("Parsing r = ", content[i]);
+                    // debug();
+                    r = r * 10 + content[i] as Int - '0' as Int;
+                    i += 1;
+                }
+
+                // Skip whitespace
+                while i < content_size && !(isdigit(content[i])) {
+                    // println("Skipping whitespace");
+                    // debug();
+                    i += 1;
+                }
+
+                let mut g: Int = 0;
+                while i < content_size && isdigit(content[i]) {
+                    // println("Parsing g = ", content[i]);
+                    // debug();
+                    g = g * 10 + content[i] as Int - '0' as Int;
+                    i += 1;
+                }
+
+                // Skip whitespace
+                while i < content_size && !(isdigit(content[i])) {
+                    i += 1;
+                }
+
+                let mut b: Int = 0;
+                while i < content_size && isdigit(content[i]) {
+                    // println("Parsing b = ", content[i]);
+                    // debug();
+                    b = b * 10 + content[i] as Int - '0' as Int;
+                    i += 1;
+                }
+
+                pixels[row * width + col] = (r * 255 / max_color_value, g * 255 / max_color_value, b * 255 / max_color_value, 255);
+            }
+        }
+        println("Parsed ", i, " bytes");
+
+        return Ret of Ok(PPM.make(width, height, max_color_value, pixels));
+    }
+
+    def parse_binary(content: &Char): Result<PPM, Error> {
+        type Ret = Result<PPM, Error>;
+        // Match against the `P6` magic number
+        if content[0] != 'P' || content[1] != '6' {
+            return Ret of Err(Error of InvalidMagicNumber);
+        }
+        println("Magic number: ", content[0], content[1]);
+
+        // Find the width and height
+        let mut width: Int = 0;
+        let mut height: Int = 0;
+        let mut i: Int = 3;
+
+        // Skip whitespace
+        while content[i] == ' ' || content[i] == '\n' {
+            i += 1;
+        }
+
+        while content[i] != ' ' {
+            width = width * 10 + content[i] as Int - '0' as Int;
+            i += 1;
+        }
+        println("Width: ", width);
+
+        // Skip whitespace
+        while content[i] == ' ' || content[i] == '\n' {
+            i += 1;
+        }
+
+        while content[i] != '\n' {
+            height = height * 10 + content[i] as Int - '0' as Int;
+            i += 1;
+        }
+        println("Height: ", height);
+        // Skip whitespace
+        while content[i] == ' ' || content[i] == '\n' {
+            i += 1;
+        }
+
+        // Find the max color value
+        let mut max_color_value: Int = 0;
+        while content[i] != '\n' {
+            max_color_value = max_color_value * 10 + content[i] as Int - '0' as Int;
+            i += 1;
+        }
+        println("Max color value: ", max_color_value);
+
+        let pixels = malloc<Pixel>(width * height);
+
+        for let mut row=height - 1; row >= 0; row -= 1 {
+            for let mut col=0; col < width; col += 1 {
+                // Each pixel is a byte of red, green, and blue
+                let r = content[i] as Int * 255 / max_color_value;
+                i += 1;
+                let g = content[i] as Int * 255 / max_color_value;
+                i += 1;
+                let b = content[i] as Int * 255 / max_color_value;
+                i += 1;
+                pixels[row * width + col] = (r, g, b, 255);
+            }
+        }
+
+        return Ret of Ok(PPM.make(width, height, max_color_value, pixels));
+    }
+
+    def print(self: &PPM) {
+        println("PPM: ", self.width, "x", self.height, " max color value: ", self.max_color_value);
+        // for let mut row=0; row < self.height; row += 1 {
+        for let mut row=self.height - 1; row >= 0; row -= 1 {
+            for let mut col=0; col < self.width; col += 1 {
+                let pixel = self.pixels[row * self.width + col];
+                // print("(", pixel.r, ",", pixel.g, ",", pixel.b, ") ");
+                // Draw the pixel in the terminal with escape codes
+                let ESC = 27 as Char;
+                print(ESC, "[48;2;", pixel.0, ";", pixel.1, ";", pixel.2, "m  ");
+            }
+            println("");
+        }
+    }
+
+    def draw(self: &PPM) {
+        extern def screen_flush(rect: &(Int, Int, Int, Int));
+        extern def screen_draw_rect(pixels: &mut Pixel, rect: &(Int, Int, Int, Int), x_scale: Int, y_scale: Int): Int;
+        extern def screen_get_dims(): (Int, Int);
+        let (width, height) = screen_get_dims();
+
+        let rect = (0, 0, self.width, self.height);
+        let x_scale = width / self.width;
+        let y_scale = height / self.height;
+
+        if screen_draw_rect(self.pixels, &rect, x_scale, y_scale) != 0 {
+            println("Error drawing PPM");
+        }
+
+        let flush_rect = (0, 0, width, height);
+        screen_flush(&flush_rect);
+    }
+
+    def drop(self: &mut PPM) {
+        println("Dropping PPM");
+        free(self.pixels);
+    }
+}
+
+enum Error {
+    InvalidMagicNumber,
+    InvalidWidth,
+    InvalidHeight,
+    InvalidMaxColorValue,
+    InvalidPixelData,
+}
+
+def remove_comments(content: &mut Char) {
+    let mut i = 0;
+    while content[i] != '\0' {
+        if content[i] == '#' {
+            while content[i] != '\n' {
+                content[i] = ' ';
+                i += 1;
+            }
+        }
+        i += 1;
+    }
+    content[i] = '\0';
+}
+
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+
+def main() {
+
+    // let mut ppm_ascii = PPM_ASCII;
+    /*
+    println("PPM parser and viewer");
+    extern def get_file_size(file_name: &Char): Int;
+    extern def read_file(file_name: &Char, buffer: &mut Char, buffer_size: Int): Int;
+    let file_name = "test.ppm";
+    let file_size = get_file_size(&file_name);
+    if file_size <= 0 {
+        println("Error: file not found: ", file_name);
+        return ();
+    } else {
+        println("File size: ", file_size);
+    }
+
+    let mut ppm_ascii = malloc<Char>(file_size);
+
+    let file_size = read_file(&file_name, ppm_ascii, file_size);
+    println("Read ", file_size, " bytes from file: ", file_name);
+
+    // println("ASCII PPM:\n", ppm_ascii);
+    remove_comments(ppm_ascii);
+    // println("ASCII PPM (no comments):\n", ppm_ascii);
+    
+    match PPM.parse_ascii(ppm_ascii) {
+        of Ok(ppm) => {
+            println("Parsed ASCII PPM:\n", ppm);
+            ppm.print();
+        },
+        of Err(err) => {
+            println("Error parsing ASCII PPM: ", err);
+        }
+    }
+    */
+
+
+    type Event = (Int, Int, Int);
+    extern def get_keyboard_event(): Event;
+    
+    // A presentation app which gets left and right arrow key events
+    // and cycles through an array of PPMs
+    // let mut ppm_array = malloc<PPM>(3);
+
+    let file_names = [
+        &"/home/cosc562/test.ppm" as &Char,
+        &"/home/cosc562/test2.ppm",
+        &"/home/cosc562/test3.ppm",
+    ];
+
+    println("PPM parser and viewer");
+    
+    let mut is_done = False;
+    let mut redraw = True;
+    let mut current_ppm = 0;
+    while !is_done {
+        let event = get_keyboard_event();
+        if event.0 == 1 && event.1 == 105 && event.2 == 0 {
+            // Left arrow
+            println(event);
+            println("Left arrow");
+            current_ppm -= 1;
+            redraw = True;
+        } elif event.0 == 1 && event.1 == 106 && event.2 == 0 {
+            // Right arrow
+            println(event);
+            println("Right arrow");
+            current_ppm += 1;
+            redraw = True;
+        } elif event.0 == 1 && event.1 == 16 {
+            // q
+            println("Quitting");
+            is_done = True;
+        } elif event.0 != 0 || event.1 != 0 || event.2 != 0 {
+            println("Unknown event: ", event);
+        }
+        current_ppm %= sizeof(file_names) / sizeof<&Char>();
+        if current_ppm < 0 {
+            current_ppm = sizeof(file_names) / sizeof<&Char>() - 1;
+        }
+
+        if redraw {
+            // Draw the current PPM
+            // ppm_array[current_ppm].draw();
+
+            extern def get_file_size(file_name: &Char): Int;
+            extern def read_file(file_name: &Char, buffer: &mut Char, buffer_size: Int): Int;
+            // let file_name = "test2.ppm";
+            let file_name = file_names[current_ppm];
+            // let file_name = "/home/cosc562/test2.ppm";
+            let file_size = get_file_size(file_name);
+
+            if file_size <= 0 {
+                println("Error: file not found: ", file_name);
+                return ();
+            } else {
+                println("File size: ", file_size);
+            }
+
+            println("Allocating ", file_size, " cells");
+            // debug();
+            let mut ppm_ascii = malloc<Char>(file_size * 2);
+            // debug();
+            let file_size = read_file(file_name, ppm_ascii, file_size + 1);
+            ppm_ascii[file_size] = '\0';
+            // debug();
+            println("Read ", file_size, " bytes from file: ", file_name);
+
+            // println("ASCII PPM:\n", ppm_ascii);
+            remove_comments(ppm_ascii);
+            // println("ASCII PPM (no comments):\n", ppm_ascii);
+
+            if let of Ok(mut ppm) = PPM.parse_ascii(ppm_ascii, file_size) {
+                println("Drawing PPM");
+                // ppm.print();
+                ppm.draw();
+                ppm.drop();
+            } else {
+                println("Error parsing ASCII PPM");
+                return ();
+            }
+            free(ppm_ascii);
+
+            redraw = False;
+        }
+    }
+}
+
+main();

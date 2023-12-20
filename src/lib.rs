@@ -14,8 +14,10 @@
 //!                    ░░░░░░            
 //! ```
 //!
+//! ![Logo](https://github.com/adam-mcdaniel/sage/blob/main/assets/sage.png)
+//! 
 //! <embed type="text/html" src="web/index.html" title="Compiler" width="100%" height="940em"></embed>
-//! ***(The sage compiler itself can be compiled to web assembly to be executed on the web. This allows a sage compiler + interpreter to be hosted on a static web page and run embded sage scripts. This web implementation compiles sage LIR code into sage virtual machine code, and then feeds it to a builtin virtual machine interpreter. The compiler can also switch to various backends, such as the C source code generator, or assembly output.)***
+//! ***(The sage compiler itself can be compiled to web assembly to be executed on the web. This allows a sage compiler + interpreter to be hosted on a static web page and run embedded sage scripts. This web implementation compiles sage LIR code into sage virtual machine code, and then feeds it to a builtin virtual machine interpreter. The compiler can also switch to various backends, such as the C source code generator, or assembly output.)***
 //!
 //! This crate implements a compiler for the sage programming language
 //! and its low level virtual machine.

@@ -24,9 +24,9 @@ use crate::{
 /// The type for the C target which implements the `Target` trait.
 /// This allows the compiler to target the C language.
 #[derive(Default)]
-pub struct MyOS;
+pub struct SageOS;
 
-impl Architecture for MyOS {
+impl Architecture for SageOS {
     fn supports_input(&self, i: &Input) -> bool {
         matches!(
             i.mode,
@@ -71,7 +71,7 @@ impl Architecture for MyOS {
             CoreOp::Div => "reg.i /= ptr->i;".to_string(),
             CoreOp::Rem => "reg.i %= ptr->i;".to_string(),
             CoreOp::IsNonNegative => "reg.i = reg.i >= 0;".to_string(),
-            _ => unreachable!("Invalid op for MyOS target {op:?}"),
+            _ => unreachable!("Invalid op for SageOS target {op:?}"),
         }
     }
 
@@ -98,7 +98,7 @@ impl Architecture for MyOS {
             StandardOp::IsNonNegative => "reg.i = reg.f >= 0;".to_string(),
             StandardOp::Alloc => "reg.p = (cell*)salloc(reg.i * sizeof(reg));".to_string(),
             StandardOp::Free => "sfree((void*)reg.p);".to_string(),
-            _ => return Err(format!("Invalid standard op for MyOS target {op:?}")),
+            _ => return Err(format!("Invalid standard op for SageOS target {op:?}")),
         })
     }
 
@@ -975,4 +975,4 @@ void __get_tablet_event() {
     }
 }
 
-impl CompiledTarget for MyOS {}
+impl CompiledTarget for SageOS {}
