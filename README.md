@@ -5,7 +5,7 @@
   </p>
   <p float="left">
     <a href="https://adam-mcdaniel.net/sage"><img src="./assets/code1.png" width="30%"/></a>
-    <a href="https://adam-mcdaniel.net/sage"><img src="./assets/sage.png" width="69.25%"/></a>
+    <a href="https://adam-mcdaniel.net/sage"><img src="./assets/sage.png" width="69%"/></a>
   </p>
 </div>
 
