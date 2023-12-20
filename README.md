@@ -99,15 +99,17 @@ $ ./out
 
 Here's an example of a linked list in Sage:
 
-![Linked List](assets/code1.png)
+<!-- ![Linked List](assets/code1.png) -->
+<img src="./assets/code1.png" width="50%"/>
 
 Here's an example of Sage's structural typing:
 
-![Structural Typing](assets/code2.png)
+<!-- ![Structural Typing](assets/code2.png) -->
+<img src="./assets/code2.png" width="50%"/>
 
 Here's an example of Sage's pattern matching:
 
-![Pattern Matching](assets/code3.png)
+<img src="./assets/code3.png" width="50%"/>
 
 ## Feature Roadmap
 
