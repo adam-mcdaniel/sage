@@ -17,9 +17,9 @@ Sage is a programming language that tries to be maximally portable, expressive, 
 
 <div align="center">
   <p float="left">
-    <a href="https://adam-mcdaniel.net/sage"><img src="./assets/code2.png" width="32.5%"/></a>
-    <a href="https://adam-mcdaniel.net/sage"><img src="./assets/code1.png" width="31.5%"/></a>
-    <a href="https://adam-mcdaniel.net/sage"><img src="./assets/code3.png" width="28.5%"/></a>
+    <img src="./assets/code2.png" width="32.5%"/>
+    <img src="./assets/code1.png" width="31.5%"/>
+    <img src="./assets/code3.png" width="28.5%"/>
   </p>
 </div>
 
