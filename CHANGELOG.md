@@ -15,3 +15,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+
+## [0.0.1-alpha] - 2023-06-14
+
+### Added
+
+Added stable LIR frontend with type checker and polymorphic types.
+
+### Changed
+
+Expanded standard instruction set.
+
+### Fixed
+
+## [0.0.2-alpha] - 2023-12-20
+
+### Added
+
+Added methods to types, associated constants, and expanded support for foreign functions.
+
+### Changed
+
+Changed type system to accommodate methods.
+
+### Fixed
