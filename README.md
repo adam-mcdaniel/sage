@@ -95,14 +95,6 @@ $ gcc out.c -o out
 $ ./out
 ```
 
-## Where can I learn more?
-
-You can read [my blog post](https://adam-mcdaniel-blog.github.io/compilers-for-the-future) about the programming language to learn more about the implementation!
-
-## How do I contribute?
-
-If you want to contribute, you can open an issue or a pull request. [Adding backends for other architectures is a great way to contribute!](https://github.com/adam-mcdaniel/sage/blob/main/src/targets/c.rs)
-
 ## Feature Roadmap
 
 - [x] Compiler Backends
@@ -140,6 +132,14 @@ If you want to contribute, you can open an issue or a pull request. [Adding back
 - [ ] Better frontend parser (switch to [Nom](https://crates.io/crates/nom)?)
 - [ ] A package manager
 - [ ] AST Macros
+
+## Where can I learn more?
+
+You can read [my blog post](https://adam-mcdaniel-blog.github.io/compilers-for-the-future) about the programming language to learn more about the implementation!
+
+## How do I contribute?
+
+If you want to contribute, you can open an issue or a pull request. [Adding backends for other architectures is a great way to contribute!](https://github.com/adam-mcdaniel/sage/blob/main/src/targets/c.rs)
 
 <!-- Do the same table, but divided into 2 columns to be easier to read -->
 <!-- 
