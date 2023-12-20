@@ -60,7 +60,7 @@ The core instruction set is a "zero address code" IR, unlike the popular ["three
 
 Sage is a very young project, and is not ready for production. It's still possible to write very useful programs in it, though.
 
-[SageOS is an operating system with a userspace written in Sage.](https://github.com/adam-mcdaniel/sage-os) Its graphical shell and powerpoint presentation app (both written in Sage) use the FFI to draw to the screen, receive input from the mouse and keyboard, and interact with the filesystem. [You can look at the shell code here.](https://github.com/adam-mcdaniel/sage/tree/main/examples/sage-os/shell.sg)
+[SageOS is an operating system with a userspace written in Sage.](https://github.com/adam-mcdaniel/sage-os) Its graphical shell and presentation app (both written in Sage) use the FFI to draw to the screen, receive input from the mouse and keyboard, and interact with the filesystem. [You can look at the shell code here.](https://github.com/adam-mcdaniel/sage/tree/main/examples/sage-os/shell.sg)
 
 ![Shell1](assets/shell1.png)
 ![Shell2](assets/shell2.png)
