@@ -11,6 +11,15 @@
 
 [***Here's a link to the online compiler playground!***](https://adam-mcdaniel.net/sage)
 
+- [What is Sage?](#what-is-sage)
+- [Why Sage?](#why-sage)
+- [How useful is Sage?](#how-useful-is-sage)
+- [How do I use Sage?](#how-do-i-use-sage)
+- [What does Sage look like?](#what-does-sage-look-like)
+- [Feature Roadmap](#feature-roadmap)
+- [Where can I learn more?](#where-can-i-learn-more)
+- [How do I contribute?](#how-do-i-contribute)
+
 ## What is Sage?
 
 Sage is a programming language that tries to be maximally portable, expressive, and intuitive. It borrows some aspects of Rust, C, and Python. It currently has an x86 compiler backend, a C source backend, and an interpreter backend [which can run on the web](https://adam-mcdaniel.net/sage).
@@ -153,7 +162,7 @@ Here's an example of Sage's pattern matching:
 
 ## Where can I learn more?
 
-You can read [my blog post](https://adam-mcdaniel-blog.github.io/compilers-for-the-future) about the programming language to learn more about the implementation!
+You can read [my blog post](https://adam-mcdaniel-blog.github.io/compilers-for-the-future) (~20 minute read) about the programming language to learn more about the implementation!
 
 ## How do I contribute?
 
