@@ -54,7 +54,9 @@ Sage is very portable -- run it on your thermostat! Here's the complete list of 
 
 The compiler can target this limited instruction "core" set, with an expanded "standard" instruction set for floating point operations and foreign functions. The core instruction set is designed to be as simple as possible for anyone to implement their own backend. [Try to see if you can implement it yourself for your backend of choice!](https://github.com/adam-mcdaniel/sage/blob/main/src/targets/c.rs)
 
-The core instruction set is a "zero address code" IR, unlike the popular ["three address code"](https://en.wikipedia.org/wiki/Three-address_code) LLVM IR, but it's still possible to apply single static assignment to it due to the organization of the brainf***-like tape operations. This makes the instruction set capable of applying LLVM's optimizations while being simple to implement.
+The core instruction set is a "zero address code" IR, unlike the popular ["three address code"](https://en.wikipedia.org/wiki/Three-address_code) LLVM IR, but it's still possible to apply single static assignment to it. This makes the instruction set capable of applying LLVM's optimizations while being simple to implement.
+
+This project is based on some ideas I had while working on [Harbor](https://github.com/adam-mcdaniel/harbor) for a hackathon.
 
 ## How useful is Sage?
 
