@@ -52,11 +52,13 @@ Sage is very portable -- run it on your thermostat! Here's the complete list of 
 
 The compiler can target this limited instruction "core" set, with an expanded "standard" instruction set for floating point operations and foreign functions. The core instruction set is designed to be as simple as possible for anyone to implement their own backend. [Try to see if you can implement it yourself for your backend of choice!](https://github.com/adam-mcdaniel/sage/blob/main/src/targets/c.rs)
 
+The core instruction set is a "zero address code" IR, unlike the popular ["three address code"](https://en.wikipedia.org/wiki/Three-address_code) LLVM IR, but it's still possible to apply single static assignment to it due to the organization of the brainf***-like tape operations. This makes the instruction set capable of applying LLVM's optimizations while being simple to implement.
+
 ## How useful is Sage?
 
 Sage is a very young project, and is not ready for production. It's still possible to write very useful programs in it, though.
 
-[SageOS is an operating system with a userspace written in Sage.](https://github.com/adam-mcdaniel/sage-os). The graphical shell and powerpoint presentation app (both written in Sage) use the FFI to draw to the screen, receive input from the mouse and keyboard, and interact with the filesystem. [You can look at the shell code here.](https://github.com/adam-mcdaniel/sage/tree/main/examples/sage-os/shell.sg)
+[SageOS is an operating system with a userspace written in Sage.](https://github.com/adam-mcdaniel/sage-os) Its graphical shell and powerpoint presentation app (both written in Sage) use the FFI to draw to the screen, receive input from the mouse and keyboard, and interact with the filesystem. [You can look at the shell code here.](https://github.com/adam-mcdaniel/sage/tree/main/examples/sage-os/shell.sg)
 
 ![Shell1](assets/shell1.png)
 ![Shell2](assets/shell2.png)
@@ -127,6 +129,10 @@ $ ./out
   - [ ] Memory Management
 - [ ] A package manager
 - [ ] AST Macros
+
+## Where can I learn more?
+
+You can read [my blog post](https://adam-mcdaniel-blog.github.io/compilers-for-the-future) about the programming language to learn more about the implementation!
 
 ## How do I contribute?
 
