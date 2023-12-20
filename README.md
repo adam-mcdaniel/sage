@@ -78,15 +78,15 @@ $ cargo install --git https://github.com/adam-mcdaniel/sage
 Then, you can run a sage file with the `sage` command:
 
 ```sh
-$ sage examples/frontend/calculator.sg
+$ sage examples/frontend/interactive-calculator.sg
 ```
 
 You can also compile a sage file to C with the `--target` flag:
 
 ```sh
-$ sage examples/frontend/calculator.sg --target c
+$ sage examples/frontend/interactive-calculator.sg --target c
 $ # Or `-t c` for short
-$ sage examples/frontend/calculator.sg -tc
+$ sage examples/frontend/interactive-calculator.sg -tc
 $ gcc out.c -o out
 $ ./out
 ```
