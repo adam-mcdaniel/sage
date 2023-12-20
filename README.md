@@ -23,6 +23,8 @@ Sage is a programming language that tries to be maximally portable, expressive, 
   </p>
 </div>
 
+Sage is licensed under the [MIT License](LICENSE).
+
 ## Why Sage?
 
 Sage is very portable -- run it on your thermostat! Here's the complete list of core virtual machine instructions, and their C equivalents:
