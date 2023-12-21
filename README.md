@@ -155,6 +155,7 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 - [x] Recursive polymorphic types
 - [ ] Iterators and list/vector/array comprehensions
 - [ ] Hindley-Milner type inference
+- [ ] VSCode extension (syntax highlighting, code completion, etc.)
 - [ ] Typeclasses
 - [ ] Modules
 - [ ] A standard library
