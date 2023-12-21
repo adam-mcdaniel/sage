@@ -180,4 +180,4 @@ Join the [Discord server](https://discord.gg/rSGkM4bcdP) to chat about Sage!
 
 ## How do I contribute?
 
-If you want to contribute, you can open an issue or a pull request. [Adding backends for other architectures is a great way to contribute!](https://github.com/adam-mcdaniel/sage/blob/main/src/targets/c.rs)
+If you want to contribute, you can open an issue or a pull request. [Adding backends for other architectures is a great way to contribute!](https://github.com/adam-mcdaniel/sage/blob/main/src/targets/c.rs) We also need a VSCode syntax highlighting extension!
