@@ -153,6 +153,7 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 - [x] Rust-like `enum`s
 - [x] Pattern `match`ing
 - [x] Structural typing
+- [x] Associated constants and methods
 - [x] Recursive polymorphic types
 - [ ] Iterators and list/vector/array comprehensions
 - [ ] Hindley-Milner type inference
