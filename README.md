@@ -22,6 +22,7 @@
 - [Feature Roadmap](#feature-roadmap)
 - [Where can I learn more?](#where-can-i-learn-more)
 - [How do I contribute?](#how-do-i-contribute)
+- [About the Author](#about-the-author)
 
 ## Community
 
