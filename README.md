@@ -153,15 +153,15 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 - [ ] Typeclasses
 - [ ] Modules
 - [ ] A standard library
-  - [ ] Collections
-  - [ ] Networking
-  - [ ] Filesystem
-  - [ ] Graphics
-  - [ ] Audio
-  - [ ] GUI
-  - [ ] WebAssembly
-  - [ ] Foreign Function Interface
-  - [ ] Memory Management
+  - [ ] Collections Module
+  - [ ] Networking Module
+  - [ ] Filesystem Module
+  - [ ] Graphics Module
+  - [ ] Audio Module
+  - [ ] GUI Module
+  - [ ] WebAssembly Module
+  - [ ] Foreign Function Interface Module (create backend with `.toml` file)
+  - [ ] Memory Management Module
 - [ ] Better frontend parser (switch to [Nom](https://crates.io/crates/nom)?)
 - [ ] A package manager
 - [ ] AST Macros
