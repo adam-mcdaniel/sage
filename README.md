@@ -13,6 +13,7 @@
 
 ## Table of Contents
 
+- [Community](#community)
 - [What is Sage?](#what-is-sage)
 - [Why Sage?](#why-sage)
 - [How useful is Sage?](#how-useful-is-sage)
@@ -21,6 +22,10 @@
 - [Feature Roadmap](#feature-roadmap)
 - [Where can I learn more?](#where-can-i-learn-more)
 - [How do I contribute?](#how-do-i-contribute)
+
+## Community
+
+Join the [Discord server](https://discord.gg/rSGkM4bcdP) to chat about Sage!
 
 ## What is Sage?
 
