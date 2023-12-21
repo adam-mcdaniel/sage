@@ -78,7 +78,7 @@ Sage is a very young project, and is not ready for production. It's still possib
 ![Shell1](assets/shell1.png)
 ![Shell2](assets/shell2.png)
 
-The presentation app parses PPM image files from the filesystem and renders them to the screen. [You can look at the presentation code here](https://github.com/adam-mcdaniel/sage/tree/main/examples/sage-os/presentation.sg)
+The presentation app parses PPM image files from the filesystem and renders them to the screen. [You can look at the presentation code here.](https://github.com/adam-mcdaniel/sage/tree/main/examples/sage-os/presentation.sg)
 
 ![Presentation](assets/presentation.png)
 
