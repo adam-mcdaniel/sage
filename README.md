@@ -81,12 +81,12 @@ Sage is a very young project, and is not ready for production. It's still possib
 
 [SageOS is an operating system with a userspace written in Sage.](https://github.com/adam-mcdaniel/sage-os) Its graphical shell and presentation app (both written in Sage) use the FFI to draw to the screen, receive input from the mouse and keyboard, and interact with the filesystem. [You can look at the shell code here.](https://github.com/adam-mcdaniel/sage/tree/main/examples/sage-os/shell.sg)
 
-![Shell1](assets/shell1.png)
-![Shell2](assets/shell2.png)
+[![Shell1](assets/shell1.png)](https://github.com/adam-mcdaniel/sage-os)
+[![Shell2](assets/shell2.png)](https://github.com/adam-mcdaniel/sage-os)
 
 The presentation app parses PPM image files from the filesystem and renders them to the screen. [You can look at the presentation code here.](https://github.com/adam-mcdaniel/sage/tree/main/examples/sage-os/presentation.sg)
 
-![Presentation](assets/presentation.png)
+[![Presentation](assets/presentation.png)](https://github.com/adam-mcdaniel/sage-os)
 
 Sage's FFI is simple and can directly call C functions or backend-specific builtins. Check out the [web-demo](https://adam-mcdaniel.net/sage)'s FFI example that calls some JavaScript code.
 
