@@ -186,8 +186,4 @@ If you want to contribute, you can open an issue or a pull request. [Adding back
 
 ## About the Author
 
-[I'm a 21 year old computer science graduate student at the University of Tennessee, Knoxville🍊](https://adam-mcdaniel.net).
-
-![UTK](assets/utk.png)
-
-Rust is my favorite language, and [I've](https://github.com/adam-mcdaniel/oakc) [written](https://github.com/adam-mcdaniel/harbor) [many](https://github.com/adam-mcdaniel/tsar) [other](https://github.com/adam-mcdaniel/free) [compilers](https://github.com/adam-mcdaniel/xasm). I'm looking for work opportunities for Summer 2024, so if you're interested in hiring me, please reach out to me at [amcdan23@vols.utk.edu](mailto:amcdan23@vols.utk.edu)!
+[I'm a 21 year old computer science graduate student at the University of Tennessee, Knoxville🍊](https://adam-mcdaniel.net). Rust is my favorite language, and [I've](https://github.com/adam-mcdaniel/oakc) [written](https://github.com/adam-mcdaniel/harbor) [many](https://github.com/adam-mcdaniel/tsar) [other](https://github.com/adam-mcdaniel/free) [compilers](https://github.com/adam-mcdaniel/xasm). I'm looking for work opportunities for Summer 2024, so if you're interested in hiring me, please reach out to me at [amcdan23@vols.utk.edu](mailto:amcdan23@vols.utk.edu)!
