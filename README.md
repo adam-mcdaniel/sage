@@ -182,3 +182,7 @@ Join the [Discord server](https://discord.gg/rSGkM4bcdP) to chat about Sage!
 ## How do I contribute?
 
 If you want to contribute, you can open an issue or a pull request. [Adding backends for other architectures is a great way to contribute!](https://github.com/adam-mcdaniel/sage/blob/main/src/targets/c.rs) We also need a VSCode syntax highlighting extension!
+
+## About the Author
+
+I'm a 21 year old graduate student at the University of Tennessee, Knoxville. Rust is my favorite language, and [I've](https://github.com/adam-mcdaniel/oakc) [written](https://github.com/adam-mcdaniel/harbor) [many](https://github.com/adam-mcdaniel/tsar) [other](https://github.com/adam-mcdaniel/free) [compilers](https://github.com/adam-mcdaniel/xasm). I'm studying computer science. I'm looking for work opportunities for Summer 2023, so if you're interested in hiring me, please reach out to me at [amcdan23@vols.utk.edu](amcdan23@vols.utk.edu)!
