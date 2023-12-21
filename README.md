@@ -39,7 +39,7 @@ Sage is a programming language that tries to be maximally portable, expressive, 
   </p>
 </div>
 
-Sage is licensed under the [MIT License](LICENSE), and has been under development since 4/20/2022.
+Sage is licensed under the [MIT License](LICENSE), and has been under development since April 2022.
 
 ## Why Sage?
 
