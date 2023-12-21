@@ -24,7 +24,7 @@
 
 ## What is Sage?
 
-Sage is a programming language that tries to be maximally portable, expressive, and intuitive. It borrows some aspects of Rust, C, and Python. It currently has an x86 compiler backend, a C source backend, and an interpreter backend [which can run on the web](https://adam-mcdaniel.net/sage).
+Sage is a programming language that tries to be maximally portable, expressive, and intuitive. It borrows some aspects of Rust, C, and Python. It currently has an x86 compiler backend, a C source backend, and a VM interpreter backend [which can run on the web](https://adam-mcdaniel.net/sage).
 
 <div align="center">
   <p float="left">
