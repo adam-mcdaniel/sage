@@ -176,6 +176,8 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 
 You can read [my blog post](https://adam-mcdaniel-blog.github.io/compilers-for-the-future) (~20 minute read) about the programming language to learn more about the implementation!
 
+Join the [Discord server](https://discord.gg/rSGkM4bcdP) to chat about Sage!
+
 ## How do I contribute?
 
 If you want to contribute, you can open an issue or a pull request. [Adding backends for other architectures is a great way to contribute!](https://github.com/adam-mcdaniel/sage/blob/main/src/targets/c.rs)
