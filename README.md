@@ -161,6 +161,7 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 - [ ] `no-std` implementation of compiler
 - [ ] Modules
 - [ ] A standard library
+  - [ ] Type Reflection Module
   - [ ] Collections Module
   - [ ] Networking Module
   - [ ] Filesystem Module
