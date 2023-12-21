@@ -157,6 +157,7 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 - [ ] Hindley-Milner type inference
 - [ ] VSCode extension (syntax highlighting, code completion, etc.)
 - [ ] Typeclasses
+- [ ] `no-std` implementation of compiler
 - [ ] Modules
 - [ ] A standard library
   - [ ] Collections Module
