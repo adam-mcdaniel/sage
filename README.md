@@ -82,7 +82,7 @@ The presentation app parses PPM image files from the filesystem and renders them
 
 ![Presentation](assets/presentation.png)
 
-Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](https://github.com/adam-mcdaniel/sage/tree/main/examples/frontend) folder to see more code examples.
+Sage's FFI is very simple and can directly call C functions or backend-specific builtins. Check out the [web-demo](https://adam-mcdaniel.net/sage)'s FFI example that calls some JavaScript code.
 
 ## How do I use Sage?
 
