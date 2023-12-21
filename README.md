@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🌿🌱<b>Sage</b>🪴🍃</h1>
+  <h1>🌿🌱<b>The Sage Programming Language</b>🪴🍃</h1>
   <p>
     <strong>Sage advice for your coding conundrums!</strong>
   </p>
