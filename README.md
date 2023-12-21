@@ -175,6 +175,7 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 - [ ] Better frontend parser (switch to [Nom](https://crates.io/crates/nom)?)
 - [ ] A package manager
 - [ ] AST Macros
+- [ ] C frontend (compile C to Sage VM)
 - [ ] Self-hosting implementation
 
 ## Where can I learn more?
