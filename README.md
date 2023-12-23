@@ -121,16 +121,22 @@ Check out the [code for the web-demo](https://github.com/adam-mcdaniel/sage/tree
 Here's an example of a linked list in Sage:
 
 <!-- ![Linked List](assets/code1.png) -->
-<img src="./assets/code1.png" width="50%"/>
+<div align="center">
+  <img src="./assets/code1.png" width="60%"/>  
+</div>
 
 Here's an example of Sage's structural typing:
 
 <!-- ![Structural Typing](assets/code2.png) -->
-<img src="./assets/code2.png" width="50%"/>
+<div align="center">
+  <img src="./assets/code2.png" width="60%" align="center"/>
+</div>
 
 Here's an example of Sage's pattern matching:
 
-<img src="./assets/code3.png" width="50%"/>
+<div align="center">
+  <img src="./assets/code3.png" width="60%" align="center"/>
+</div>
 
 Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](https://github.com/adam-mcdaniel/sage/tree/main/examples/frontend) folder to see more code examples.
 
