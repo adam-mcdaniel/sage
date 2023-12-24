@@ -26,7 +26,7 @@
 
 ## Community
 
-Join the [Discord server](https://discord.gg/rSGkM4bcdP) to chat about Sage!
+Join the [Discord server](https://discord.gg/rSGkM4bcdP) to chat about Sage! Let us know if you have any thoughts or comments about the language!
 
 ## What is Sage?
 
