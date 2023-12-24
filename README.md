@@ -118,25 +118,29 @@ Check out the [code for the web-demo](https://github.com/adam-mcdaniel/sage/tree
 
 ## What does Sage look like?
 
-Here's an example of a linked list in Sage:
+Here's an example of a polymorphic linked list in Sage using Rust-like `enum`s! It's straightforward to implement operations like `map` with just a few lines.
 
-<!-- ![Linked List](assets/code1.png) -->
-<div align="center">
-  <img src="./assets/code1.png" width="60%"/>  
-</div>
-
-Here's an example of Sage's structural typing:
-
-<!-- ![Structural Typing](assets/code2.png) -->
-<div align="center">
-  <img src="./assets/code2.png" width="60%" align="center"/>
-</div>
-
-Here's an example of Sage's pattern matching:
 
 <div align="center">
-  <img src="./assets/code3.png" width="60%" align="center"/>
+  <img src="./assets/code1.png" width="66%"/>  
 </div>
+
+
+Here's an example of Sage's structural typing: a `Rectangle` can be created by concatenating the fields of a `Position` and a `Size`!
+
+
+<div align="center">
+  <img src="./assets/code2.png" width="66%"/>
+</div>
+
+
+Here's an example of Sage's pattern matching: it's easy to deconstruct a value using `match`, `if let`, or a simple `let` binding. Sage's `match` expressions are very powerful!
+
+
+<div align="center">
+  <img src="./assets/code3.png" width="66%"/>
+</div>
+
 
 Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](https://github.com/adam-mcdaniel/sage/tree/main/examples/frontend) folder to see more code examples.
 
