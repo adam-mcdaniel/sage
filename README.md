@@ -75,7 +75,7 @@ The compiler can target this limited "core" instruction set, with an expanded "s
 
 The virtual machine also has some interesting optimization properties: Although Sage's VM is a *very simple* zero-address-code representation, it preserves all the information to *reconstruct* an LLVM-like three-address-code representation of the original higher level IR. This makes the instruction set capable of applying LLVM's optimizations while being *much easier* to implement.
 
-This combination of simplicity and capacity for optimization was my motivation for creating Sage. I wanted to create a language with the biggest ratio of speed + expression + portability / implementation difficulty.
+This combination of simplicity and capacity for optimization was my motivation for creating Sage. I wanted to create a language with the largest **speed + expression + portability** to **implementation difficulty** ratio.
 
 This project is based on some ideas I had while working on [Harbor](https://github.com/adam-mcdaniel/harbor) for a hackathon.
 
