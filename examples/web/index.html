@@ -3047,8 +3047,9 @@ impl Float {
         return self * self * self;
     }
 
-    def sin(self: Float): Float {
+    def sin(mut self: Float): Float {
         // Taylor series approximation
+        self %= 3.14159 * 2;
         let mut result = 0.0;
         let mut term = self;
         let mut i = 1;
@@ -3060,8 +3061,9 @@ impl Float {
         return result;
     }
 
-    def cos(self: Float): Float {
+    def cos(mut self: Float): Float {
         // Taylor series approximation
+        self %= 3.14159 * 2;
         let mut result = 0.0;
         let mut term = 1.0;
         let mut i = 0;
@@ -3096,16 +3098,23 @@ impl Canvas {
     }
 
     def make(width: Int, height: Int): Canvas {
-        eval(&mut \"window.eval(\`
+        let mut buf = \"window.eval(\`
         const parentDocument = window.parent.document;
         let output = parentDocument.getElementById('output-content');
         var context = null;
         var added_elements = [];
         var canvas = null;
-        canvas = document.createElement('canvas');
-        canvas.width = 400;
-        canvas.height = 400;
-        var parentElement = output;
+        canvas = document.createElement('canvas');\" + ['\\0'] * 1000;
+        
+        let width_str = width.to_str();
+        let height_str = height.to_str();
+        
+        strcat(&mut buf, &\"canvas.width = \");
+        strcat(&mut buf, &width_str);
+        strcat(&mut buf, &\"; canvas.height = \");
+        strcat(&mut buf, &height_str);
+        
+        strcat(&mut buf, &\"; var parentElement = output;
         if (!parentElement) {
             console.error('Parent element not found.', output);
         }
@@ -3123,7 +3132,9 @@ impl Canvas {
           context.arc(x, y, radius, 0, 2 * Math.PI);
           context.fill();
         }
-        \`);\", 2048);
+        \`);\");
+        
+        eval(&mut buf, 2048);
         return {
             width=width,
             height=height
