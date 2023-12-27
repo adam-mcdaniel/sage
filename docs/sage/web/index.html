@@ -3136,7 +3136,7 @@ impl Canvas {
           context.arc(x, y, radius, 0, 2 * Math.PI);
           context.fill();
         }
-        \`);} catch { alert(\\\"Could not create canvas on parent web-page: Disable the \\\"same-origin\\\" policy to fix this!\\\"); }\");
+        \`);} catch { alert(\\\"Could not create canvas on parent web-page: Disable the \\\\\\\"same-origin\\\\\\\" policy to fix this! (only affects this example)\\\"); }\");
         
         eval(&mut buf, 2048);
         return {
