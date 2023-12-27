@@ -191,50 +191,32 @@ impl fmt::Debug for Error {
                     .without_comments(languages::rust())
                     .collect::<String>();
 
+                let filename = filename.clone().unwrap_or("unknown".to_string());
+
                 let file_id = files.add(
-                    filename.clone().unwrap_or("unknown".to_string()),
+                    filename.clone(),
                     source_code,
                 );
-                match filename {
-                    Some(filename) => {
-                        let loc = format!("{}:{}:{}:{}", filename, line, column, offset);
-                        // let code = format!("{}\n{}^", code, " ".repeat(*column - 1));
-                        // write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)?
-                        let diagnostic = Diagnostic::error()
-                            .with_message(format!("Error at {}", loc))
-                            .with_labels(vec![Label::primary(
-                                file_id,
-                                *offset..*offset + length.unwrap_or(0),
-                            )
-                            .with_message(format!("{err:?}"))]);
 
-                        let writer = StandardStream::stderr(ColorChoice::Always);
-                        let config = codespan_reporting::term::Config::default();
+                let loc = format!("{}:{}:{}:{}", filename, line, column, offset);
 
-                        emit(&mut writer.lock(), &config, &files, &diagnostic).unwrap();
-                    }
-                    None => {
-                        let loc = format!("unknown:{}:{}:{}", line, column, offset);
-                        // let code = format!("{}\n{}^", code, " ".repeat(*column - 1));
-                        // write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)?
-                        let diagnostic = Diagnostic::error()
-                            .with_message(format!("Error at {}", loc))
-                            .with_labels(vec![Label::primary(
-                                file_id,
-                                *offset..*offset + length.unwrap_or(0),
-                            )
-                            .with_message(format!("{err:?}"))]);
+                // let code = format!("{}\n{}^", code, " ".repeat(*column - 1));
+                // write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)?
 
-                        let writer = StandardStream::stderr(ColorChoice::Always);
-                        let config = codespan_reporting::term::Config::default();
+                let diagnostic = Diagnostic::error()
+                    .with_message(format!("Error at {}", loc))
+                    .with_labels(vec![Label::primary(
+                        file_id,
+                        *offset..*offset + length.unwrap_or(0),
+                    )
+                        .with_message(format!("{err:?}"))]);
 
-                        emit(&mut writer.lock(), &config, &files, &diagnostic).unwrap();
-                    }
-                }
+                let writer = StandardStream::stderr(ColorChoice::Always);
+                let config = codespan_reporting::term::Config::default();
+
+                emit(&mut writer.lock(), &config, &files, &diagnostic).unwrap();
+
                 Ok(())
-                // let loc = format!("{}:{}:{}:{}", filename, line, column, offset);
-
-                // write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)
             }
             Error::InterpreterError(e) => write!(f, "Interpreter error: {}", e),
             Error::BuildError(e) => write!(f, "Build error: {}", e),
