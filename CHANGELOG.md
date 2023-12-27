@@ -39,3 +39,13 @@ Added methods to types, associated constants, and expanded support for foreign f
 Changed type system to accommodate methods.
 
 ### Fixed
+
+## [0.0.3-alpha] - 2023-12-27
+
+### Added
+
+### Changed
+
+### Fixed
+
+Fixed bug where unary `-` operator did not type-check on `Float` values.
