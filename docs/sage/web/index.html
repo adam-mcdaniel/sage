@@ -3097,44 +3097,26 @@ impl Canvas {
 
     def make(width: Int, height: Int): Canvas {
         eval(&mut \"window.eval(\`
-        // Find the embed tag by its ID
         const parentDocument = window.parent.document;
-        // let output = parentDocument.getElementsByTagName('embed')[0];
         let output = parentDocument.getElementById('output-content');
         var context = null;
         var added_elements = [];
         var canvas = null;
-        // Check if the embed tag exists
-        if (output) {
-          // Create a canvas element
-          canvas = document.createElement('canvas');
-          canvas.width = 400; // Set your preferred width
-          canvas.height = 400; // Set your preferred height
-        
-          // Get the parent node of the embed tag
-          var parentElement = output;
-          if (!parentElement) {
+        canvas = document.createElement('canvas');
+        canvas.width = 400;
+        canvas.height = 400;
+        var parentElement = output;
+        if (!parentElement) {
             console.error('Parent element not found.', output);
-          }
-        
-          // Insert the canvas before the embed tag
-          parentElement.appendChild(canvas);
-          // Add a break line
-          var spacer = document.createElement('br');
-          parentElement.appendChild(spacer);
-        
-          context = canvas.getContext('2d');
-          // Get the 2D context of the canvas for drawing
-        } else {
-          console.error('Embed tag not found.');
         }
-        
-        // Create a drawing function that can be called from Sage
+        parentElement.appendChild(canvas);
+        var spacer = document.createElement('br');
+        parentElement.appendChild(spacer);
+        context = canvas.getContext('2d');
         function draw_rect(color, x, y, width, height) {
           context.fillStyle = color;
           context.fillRect(x, y, width, height);
         }
-        
         function draw_circle(color, x, y, radius) {
           context.fillStyle = color;
           context.beginPath();
