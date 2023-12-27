@@ -472,14 +472,14 @@ fn cli() {
     let target = args.debug.as_deref();
 
     // Set the log level.
-    match args.log_level {
-        LogLevel::Error if args.debug.is_none() => builder.filter(target, log::LevelFilter::Error),
-        LogLevel::Warn if args.debug.is_none() => builder.filter(target, log::LevelFilter::Warn),
-        LogLevel::Off if args.debug.is_none() => builder.filter(target, log::LevelFilter::Error),
-        LogLevel::Info if args.debug.is_none() => builder.filter(target, log::LevelFilter::Info),
-        LogLevel::Trace => builder.filter(target, log::LevelFilter::Trace),
-        _ => builder.filter(target, log::LevelFilter::Debug),
-    };
+    builder.filter(target, match args.log_level {
+        LogLevel::Error if args.debug.is_none() => log::LevelFilter::Error,
+        LogLevel::Warn if args.debug.is_none() => log::LevelFilter::Warn,
+        LogLevel::Off if args.debug.is_none() => log::LevelFilter::Error,
+        LogLevel::Info if args.debug.is_none() =>log::LevelFilter::Info,
+        LogLevel::Trace => log::LevelFilter::Trace,
+        _ => log::LevelFilter::Debug,
+    });
 
     builder.init();
 
