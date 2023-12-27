@@ -9,8 +9,8 @@ pub struct Negate;
 
 impl UnaryOp for Negate {
     fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
-        ty.can_decay_to(&Type::Int, env)
-            .or(ty.can_decay_to(&Type::Float, env))
+        Ok(ty.can_decay_to(&Type::Int, env).unwrap_or(false)
+            || ty.can_decay_to(&Type::Float, env).unwrap_or(false))
     }
 
     fn return_type(&self, x: &Expr, env: &Env) -> Result<Type, Error> {
@@ -51,7 +51,7 @@ impl UnaryOp for Negate {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        if ty.can_decay_to(&Type::Int, env)? {
+        if ty.can_decay_to(&Type::Int, env).unwrap_or(false) {
             output.op(CoreOp::Set(A, 0));
             output.op(CoreOp::Sub {
                 src: SP.deref(),
@@ -61,7 +61,7 @@ impl UnaryOp for Negate {
                 src: A,
                 dst: SP.deref(),
             });
-        } else if ty.can_decay_to(&Type::Float, env)? {
+        } else if ty.can_decay_to(&Type::Float, env).unwrap_or(false) {
             output.std_op(StandardOp::Set(A, 0.0))?;
             output.std_op(StandardOp::Sub {
                 src: SP.deref(),
