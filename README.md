@@ -73,7 +73,7 @@ You could fit this instruction set on a T-shirt!
 
 The compiler can target this limited "core" instruction set, with an expanded "standard" instruction set for floating point operations and foreign functions. The core instruction set is designed to be as simple as possible for anyone to implement their own backend. [Try to see if you can implement it yourself for your backend of choice!](https://github.com/adam-mcdaniel/sage/blob/main/src/targets/c.rs)
 
-The virtual machine has some important optimization properties: Although Sage's VM is a *very simple* zero-address-code representation, it preserves all the information to *reconstruct* an LLVM-like three-address-code representation of the original higher level IR. This makes the instruction set capable of applying LLVM's optimizations while being *much easier* to implement. Sage's innovation is in the backend, not the frontend.
+The virtual machine has some important optimization properties: Although Sage's VM is a *very simple* zero-address-code representation, it preserves all the information to *reconstruct* an LLVM-like three-address-code representation of the original higher level IR. This makes the instruction set capable of applying LLVM's optimizations while being *much easier* to implement. **Sage's innovation is in the backend, not the frontend.**
 
 This combination of simplicity and capacity for optimization was my motivation for creating Sage. I wanted to create a virtual machine with the largest **speed + expression + portability** to **implementation difficulty** ratio, and a high level language that could compile to it. I think Sage is a good solution to this problem.
 
