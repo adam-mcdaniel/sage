@@ -69,16 +69,20 @@
         }, 50);
         function setExampleProgram() {
             // Clear all the elements in the `output-content` div
-            window.eval(`
-                const parentDocument = window.parent.document;
-                var outputContent = parentDocument.getElementById("output-content");
-                if (outputContent) {
-                    console.log("Clearing output-content");
-                    while (outputContent.firstChild) {
-                        outputContent.removeChild(outputContent.firstChild);
+            try {
+                window.eval(`
+                    const parentDocument = window.parent.document;
+                    var outputContent = parentDocument.getElementById("output-content");
+                    if (outputContent) {
+                        console.log("Clearing output-content");
+                        while (outputContent.firstChild) {
+                            outputContent.removeChild(outputContent.firstChild);
+                        }
                     }
-                }
-            `);
+                `);
+            } catch (e) {
+                console.log("Error clearing output-content: " + e);
+            }
             console.log(document.getElementById("example").value);
             switch (document.getElementById("example").value) {
                 case "hashmap":
@@ -3098,7 +3102,7 @@ impl Canvas {
     }
 
     def make(width: Int, height: Int): Canvas {
-        let mut buf = \"window.eval(\`
+        let mut buf = \"try {window.eval(\`
         const parentDocument = window.parent.document;
         let output = parentDocument.getElementById('output-content');
         var context = null;
@@ -3132,7 +3136,7 @@ impl Canvas {
           context.arc(x, y, radius, 0, 2 * Math.PI);
           context.fill();
         }
-        \`);\");
+        \`);} catch { alert(\"Could not create canvas on parent web-page! :( - Sage\"); }\");
         
         eval(&mut buf, 2048);
         return {
@@ -3459,30 +3463,38 @@ println("Hello, world!");`);
             document.getElementById("source").value = source.getValue();
             source.refresh();
             // Clear all the elements in the `output-content` div
-            window.eval(`
-                const parentDocument = window.parent.document;
-                var outputContent = parentDocument.getElementById("output-content");
-                if (outputContent) {
-                    console.log("Clearing output-content");
-                    while (outputContent.firstChild) {
-                        outputContent.removeChild(outputContent.firstChild);
+            try {
+                window.eval(`
+                    const parentDocument = window.parent.document;
+                    var outputContent = parentDocument.getElementById("output-content");
+                    if (outputContent) {
+                        console.log("Clearing output-content");
+                        while (outputContent.firstChild) {
+                            outputContent.removeChild(outputContent.firstChild);
+                        }
                     }
-                }
-            `);
+                `);
+            } catch (e) {
+                console.log("Error clearing output-content: " + e);
+            }
             compile_and_run();
         });
         document.getElementById("run").addEventListener("click", () => {
             // Clear all the elements in the `output-content` div
-            window.eval(`
-                const parentDocument = window.parent.document;
-                var outputContent = parentDocument.getElementById("output-content");
-                if (outputContent) {
-                    console.log("Clearing output-content");
-                    while (outputContent.firstChild) {
-                        outputContent.removeChild(outputContent.firstChild);
+            try {
+                window.eval(`
+                    const parentDocument = window.parent.document;
+                    var outputContent = parentDocument.getElementById("output-content");
+                    if (outputContent) {
+                        console.log("Clearing output-content");
+                        while (outputContent.firstChild) {
+                            outputContent.removeChild(outputContent.firstChild);
+                        }
                     }
-                }
-            `);
+                `);
+            } catch (e) {
+                console.log("Error clearing output-content: " + e);
+            }
 
             compile_and_run();
         }, false);
