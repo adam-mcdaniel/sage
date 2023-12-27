@@ -73,7 +73,7 @@ You could fit this instruction set on a T-shirt!
 
 The compiler can target this limited "core" instruction set, with an expanded "standard" instruction set for floating point operations and foreign functions. The core instruction set is designed to be as simple as possible for anyone to implement their own backend. [Try to see if you can implement it yourself for your backend of choice!](https://github.com/adam-mcdaniel/sage/blob/main/src/targets/c.rs)
 
-The virtual machine also has some interesting optimization properties: Although Sage's VM is a *very simple* zero-address-code representation, it preserves all the information to *reconstruct* an LLVM-like three address code representation of the original compiled IR. This makes the instruction set capable of applying LLVM's optimizations while being *much easier* to implement.
+The virtual machine also has some interesting optimization properties: Although Sage's VM is a *very simple* zero-address-code representation, it preserves all the information to *reconstruct* an LLVM-like three-address-code representation of the original compiled IR. This makes the instruction set capable of applying LLVM's optimizations while being *much easier* to implement.
 
 This project is based on some ideas I had while working on [Harbor](https://github.com/adam-mcdaniel/harbor) for a hackathon.
 
