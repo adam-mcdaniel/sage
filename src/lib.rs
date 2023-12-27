@@ -7,7 +7,7 @@
 //!   </p>
 //!   <p float="left">
 //!     <img src="https://github.com/adam-mcdaniel/sage/blob/main/assets/code1.png?raw=true" width="29.5%"/>
-//!     <a href="https://adam-mcdaniel.net/sage"><img src="https://github.com/adam-mcdaniel/sage/blob/main/assets/sage.png?raw=true" width="68%"/></a>
+//!     <a href="https://github.com/adam-mcdaniel/sage"><img src="https://github.com/adam-mcdaniel/sage/blob/main/assets/sage.png?raw=true" width="68%"/></a>
 //!   </p>
 //!   <p>
 //!      🚧 🏗️ ⚠️ This language is under construction! ⚠️ 🏗️ 🚧
