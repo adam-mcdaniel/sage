@@ -38,7 +38,17 @@
 <a href="#38" id="38">38</a>
 <a href="#39" id="39">39</a>
 <a href="#40" id="40">40</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::{Debug, Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
+<a href="#41" id="41">41</a>
+<a href="#42" id="42">42</a>
+<a href="#43" id="43">43</a>
+<a href="#44" id="44">44</a>
+<a href="#45" id="45">45</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! # Foreign Function Interface
+//! 
+//! This module contains the definition of the foreign function interface (FFI) bindings, which
+//! are used in the various stages of IR to represent calls to foreign functions.
+
+</span><span class="kw">use </span>std::fmt::{Debug, Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 
 <span class="doccomment">/// This is an FFI binding, which is used to call a foreign function in the virtual machine code.
 ///

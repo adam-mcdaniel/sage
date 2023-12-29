@@ -134,7 +134,29 @@
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::asm::{CoreOp, Error, Location, GP};
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! # Assembly Global Variables
+//! 
+//! This module contains all the logic for managing global variables in assembly programs.
+//! 
+//! It is used in-between the LIR and assembly stages of compilation to manage `static` variables.
+//! 
+//! When the assembly program is lowered, this module is used to resolve the locations of global
+//! variables on the tape. This is done by using each variable&#39;s offset from the global pointer
+//! register.
+
+
+</span><span class="kw">use </span><span class="kw">crate</span>::asm::{CoreOp, Error, Location, GP};
 
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::collections::HashMap;

@@ -703,7 +703,23 @@
 <a href="#703" id="703">703</a>
 <a href="#704" id="704">704</a>
 <a href="#705" id="705">705</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>core::fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! # I/O Module
+//! 
+//! This module implements all the types related to the I/O operations available
+//! to the core instruction set. This allows the core VM to communicate with various
+//! instruments connected to the VM, without directly calling foreign functions.
+//! This is a standardized interface for various useful types of I/O, that each
+//! platform can implement in their own way, if they so choose.
+
+</span><span class="kw">use </span>core::fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 
 <span class="doccomment">/// The different axes an input or output might use.
 </span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]

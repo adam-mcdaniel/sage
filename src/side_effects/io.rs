@@ -1,3 +1,11 @@
+//! # I/O Module
+//! 
+//! This module implements all the types related to the I/O operations available
+//! to the core instruction set. This allows the core VM to communicate with various
+//! instruments connected to the VM, without directly calling foreign functions.
+//! This is a standardized interface for various useful types of I/O, that each
+//! platform can implement in their own way, if they so choose.
+
 use core::fmt::{Display, Formatter, Result as FmtResult};
 
 /// The different axes an input or output might use.

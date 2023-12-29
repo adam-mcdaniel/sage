@@ -348,7 +348,17 @@
 <a href="#348" id="348">348</a>
 <a href="#349" id="349">349</a>
 <a href="#350" id="350">350</a>
-</pre></div><pre class="rust"><code><span class="kw">mod </span>parse;
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! # Frontend Module
+//! 
+//! This module implements the frontend of the compiler, which is responsible for parsing
+//! the source code and converting it into the LIR.
+
+</span><span class="kw">mod </span>parse;
 <span class="kw">use </span><span class="kw">crate</span>::side_effects::Output;
 <span class="kw">use </span>no_comment::{languages, IntoWithoutComments};
 <span class="kw">use </span>parse::<span class="kw-2">*</span>;

@@ -1,3 +1,8 @@
+//! # Foreign Function Interface
+//! 
+//! This module contains the definition of the foreign function interface (FFI) bindings, which
+//! are used in the various stages of IR to represent calls to foreign functions.
+
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 /// This is an FFI binding, which is used to call a foreign function in the virtual machine code.

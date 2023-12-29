@@ -1,3 +1,14 @@
+//! # Assembly Global Variables
+//! 
+//! This module contains all the logic for managing global variables in assembly programs.
+//! 
+//! It is used in-between the LIR and assembly stages of compilation to manage `static` variables.
+//! 
+//! When the assembly program is lowered, this module is used to resolve the locations of global
+//! variables on the tape. This is done by using each variable's offset from the global pointer
+//! register.
+
+
 use crate::asm::{CoreOp, Error, Location, GP};
 
 use core::fmt;

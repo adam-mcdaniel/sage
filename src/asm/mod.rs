@@ -12,6 +12,7 @@
 //! 1. [Core Assembly](./core)
 //! 2. [Standard Assembly](./std)
 //! 3. [Assembly Memory Model](./location)
+//! 4. [Global Variable Management](./globals)
 //!
 //! ## The Core Variant
 //!

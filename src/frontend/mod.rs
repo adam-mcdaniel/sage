@@ -1,3 +1,8 @@
+//! # Frontend Module
+//! 
+//! This module implements the frontend of the compiler, which is responsible for parsing
+//! the source code and converting it into the LIR.
+
 mod parse;
 use crate::side_effects::Output;
 use no_comment::{languages, IntoWithoutComments};
