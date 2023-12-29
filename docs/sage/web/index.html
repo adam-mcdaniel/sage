@@ -2912,6 +2912,22 @@ while (ch != '\\0') {
 }`);
                     document.getElementById("input").value = "this is a cat program!";
                     break;
+                case "templates":
+                    source.setValue(`// Create an example template that takes two arguments, and returns another template
+// that takes one argument and returns it.
+type Test = (A, B) => C => C;
+
+// Define \`x\` to have type \`Float\`, but using our curried template type.
+// This will discard the first template arguments (\`Char, Int\`) and return \`Float\`.
+let x: Test<Char, Int><Float> = 3.14159;
+print("Pi is ", x);
+
+// Take two curried template arguments, and return the first.
+type K = A => B => A;
+let y: K<Char><Int> = '!';
+println(y);`);
+                    break;
+                    
                 case "tuple":
                     source.setValue(`// Define a type for a pair of tuple elements
 type Pair<A, B> = (A, B);
@@ -3490,7 +3506,13 @@ main();`);
                     break;
 
                 case "hello world":
-                    source.setValue(`// Click the \`Compile\` button below to execute the program!
+                    source.setValue(`// Welcome to the Sage programming language!
+
+// Click the \`Compile\` button below to execute the program!
+// Use the \`example\` dropdown above to see some example programs!
+// Use the \`target\` dropdown below to see the different stages of compilation.
+
+// You can write Sage code without a \`main\` function like Python!
 println("Hello, world!");`);
                     document.getElementById("input").value = "";
                     break;
@@ -3574,7 +3596,8 @@ let test = 5, ing = 6 in println("5 + 6 = ", test + ing);`)
             <option value="hello world">Click to select example program (Default Hello World)</option>
             <option value="let-bindings">Let-Bindings</option>
             <option value="tuple">Pair (Generics)</option>
-            <option value="tuple-inline-template">Pair With Inline-Template (Generics)</option>
+            <!-- <option value="tuple-inline-template">Pair With Inline-Template (Generics)</option> -->
+            <option value="templates">Type Functions (Generics)</option>
             <option value="string">String</option>
             <option value="result">Fallible Result Types (Generics)</option>
             <option value="vector">Vector (Generics)</option>
