@@ -3507,11 +3507,12 @@ println("5 + 1 = ", num);
 
 // Let bindings can also bind to patterns.
 let (mut a, b, {x, y, z}) = (999.999, 2, {x=3, y=4, z=5});
-a = 3.14159;
+a = 1.0;
 println("a: ", a);
 println("b: ", b);
 println("x: ", x);
 println("y: ", y);
+println("z: ", z);
 
 // You can also bind within a new scope.
 let test = 5, ing = 6 in println("5 + 6 = ", test + ing);`)
