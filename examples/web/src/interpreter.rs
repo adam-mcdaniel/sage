@@ -1,11 +1,10 @@
 //! # Standard Interpreter Module
-//! 
+//!
 //! This module implements an interpreter for the Standard virtual machine
 //! variant.
 
-use sage::vm::{CoreOp, Device, StandardDevice, StandardOp, StandardProgram};
 use super::{as_float, as_int};
-
+use sage::vm::{CoreOp, Device, StandardDevice, StandardOp, StandardProgram};
 
 impl Default for WasmInterpreter<StandardDevice> {
     fn default() -> Self {
@@ -335,22 +334,20 @@ where
                         //     }
                         // }
                         self.device.put(self.register, o.clone())?
-                    },
+                    }
                 },
                 StandardOp::Call(ffi_binding) => {
                     self.device.ffi_call(ffi_binding, Some(&mut self.cells))?
                 }
-                StandardOp::Peek => {
-                    match self.device.peek() {
-                        Ok(val) => self.register = val as i64,
-                        Err(e) => eprintln!("Error: {}", e)
-                    }
+                StandardOp::Peek => match self.device.peek() {
+                    Ok(val) => self.register = val as i64,
+                    Err(e) => eprintln!("Error: {}", e),
                 },
                 StandardOp::Poke => {
                     if let Err(e) = self.device.poke(self.register) {
                         eprintln!("Error: {}", e)
                     }
-                },
+                }
                 StandardOp::Set(n) => self.register = as_int(*n as f32),
                 StandardOp::ToInt => {
                     // self.register = f32::from_bits(self.register as u64) as i64

@@ -1,18 +1,18 @@
 use wasm_bindgen::JsCast;
-mod utils;
-mod interpreter;
 mod device;
-use interpreter::WasmInterpreter;
+mod interpreter;
+mod utils;
 use device::WasmDevice;
-use wasm_bindgen::prelude::*;
+use interpreter::WasmInterpreter;
 use sage::{
     lir::*,
     parse::*,
     targets::{self, CompiledTarget},
     vm::*,
-    *
+    *,
 };
 use std::fmt;
+use wasm_bindgen::prelude::*;
 
 /// A function to reinterpret the bits of an integer as a float.
 pub fn as_float(n: i64) -> f32 {
@@ -65,7 +65,7 @@ enum BetterError {
     WithSourceCode {
         loc: SourceCodeLocation,
         source_code: String,
-        err: Box<Self>
+        err: Box<Self>,
     },
     /// Error in reading source or writing generated code.
     IO(std::io::Error),
@@ -87,13 +87,16 @@ impl BetterError {
     pub fn annotate_with_source(self, code: &String) -> Self {
         match self {
             Self::LirError(lir::Error::Annotated(err, Annotation::Location(loc))) => {
-                Self::WithSourceCode { loc: loc.clone(), source_code: code.clone(), err: Box::new(BetterError::LirError(*err)) }
+                Self::WithSourceCode {
+                    loc: loc.clone(),
+                    source_code: code.clone(),
+                    err: Box::new(BetterError::LirError(*err)),
+                }
             }
-            _ => self
+            _ => self,
         }
     }
 }
-
 
 impl fmt::Debug for BetterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -102,15 +105,28 @@ impl fmt::Debug for BetterError {
             Self::Parse(e) => write!(f, "Parse error: {}", e),
             Self::AsmError(e) => write!(f, "Assembly error: {:?}", e),
             Self::LirError(e) => write!(f, "LIR error: {}", e),
-            Self::WithSourceCode { loc, source_code, err } => {
-                // use codespan_reporting::files::SimpleFiles; 
+            Self::WithSourceCode {
+                loc,
+                source_code,
+                err,
+            } => {
+                // use codespan_reporting::files::SimpleFiles;
                 use codespan_reporting::diagnostic::{Diagnostic, Label};
                 use codespan_reporting::files::SimpleFiles;
-                use codespan_reporting::term::{emit, termcolor::{ColorChoice, StandardStream, NoColor}};
+                use codespan_reporting::term::{
+                    emit,
+                    termcolor::{ColorChoice, NoColor, StandardStream},
+                };
                 use no_comment::{languages, IntoWithoutComments};
-                
-                let SourceCodeLocation { line, column, filename, offset, length } = loc;
-                
+
+                let SourceCodeLocation {
+                    line,
+                    column,
+                    filename,
+                    offset,
+                    length,
+                } = loc;
+
                 let mut files = SimpleFiles::new();
 
                 let source_code = source_code
@@ -121,31 +137,26 @@ impl fmt::Debug for BetterError {
 
                 let filename = filename.clone().unwrap_or("unknown".to_string());
 
-                let file_id = files.add(
-                    filename.clone(),
-                    source_code,
-                );
-
+                let file_id = files.add(filename.clone(), source_code);
                 let loc = format!("{}:{}:{}:{}", filename, line, column, offset);
-
                 // let code = format!("{}\n{}^", code, " ".repeat(*column - 1));
                 // write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)?
-
                 let diagnostic = Diagnostic::error()
                     .with_message(format!("Error at {}", loc))
                     .with_labels(vec![Label::primary(
                         file_id,
                         *offset..*offset + length.unwrap_or(0),
                     )
-                        .with_message(format!("{err:?}"))]);
-
-                let writer = StandardStream::stderr(ColorChoice::Always);
+                    .with_message(format!("{err:?}"))]);
+                let mut error: Vec<u8> = vec![];
+                let mut writer = NoColor::new(&mut error);
                 let config = codespan_reporting::term::Config::default();
+                emit(&mut writer, &config, &files, &diagnostic).unwrap();
 
-                emit(&mut writer.lock(), &config, &files, &diagnostic).unwrap();
-
+                let error = String::from_utf8(error).unwrap();
+                write!(f, "{}", error)?;
                 Ok(())
-            },
+            }
             Self::InterpreterError(e) => write!(f, "Interpreter error: {}", e),
             Self::BuildError(e) => write!(f, "Build error: {}", e),
             Self::InvalidSource(e) => write!(f, "Invalid source: {}", e),
@@ -159,39 +170,61 @@ pub fn compile_and_run() -> Result<(), JsValue> {
     let window = web_sys::window().expect("no global `window` exists");
     let document = window.document().expect("should have a document on window");
 
-    let source_code = document.get_element_by_id("source").unwrap().dyn_into::<web_sys::HtmlTextAreaElement>().unwrap().value();
-    let input = document.get_element_by_id("input").unwrap().dyn_into::<web_sys::HtmlTextAreaElement>().unwrap().value();
+    let source_code = document
+        .get_element_by_id("source")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlTextAreaElement>()
+        .unwrap()
+        .value();
+    let input = document
+        .get_element_by_id("input")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlTextAreaElement>()
+        .unwrap()
+        .value();
     console_log!("input `{input:?}` + code `{source_code:?}`");
     // Manufacture the element we're gonna append
-    let output = document.get_element_by_id("output").unwrap().dyn_into::<web_sys::HtmlTextAreaElement>().unwrap();
+    let output = document
+        .get_element_by_id("output")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlTextAreaElement>()
+        .unwrap();
     output.set_value("");
     let device = WasmDevice::new(input);
     console_log!("input device `{device:?}`...");
 
-    let target = document.get_element_by_id("target").unwrap().dyn_into::<web_sys::HtmlSelectElement>().unwrap().value();
+    let target = document
+        .get_element_by_id("target")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlSelectElement>()
+        .unwrap()
+        .value();
     let contents = match sage::parse::parse_frontend(source_code.clone(), Some("text-box")) {
         Ok(lir_code) => {
-            match lir_code.clone().compile()
+            match lir_code
+                .clone()
+                .compile()
                 .map_err(BetterError::LirError)
-                .map_err(|e| e.annotate_with_source(&source_code)) {
+                .map_err(|e| e.annotate_with_source(&source_code))
+            {
                 Ok(asm_code) => {
+                    console_log!("successfully compiled to asm {asm_code:?}");
                     match target.as_str() {
                         "run" => {
                             let device = WasmInterpreter::new(device)
-                            .run(&match asm_code {
-                                Ok(core) => core.into(),
-                                Err(std) => std }
-                                .assemble(8192)
-                                .unwrap())
-                            .unwrap();
-                            String::from_utf8(device.output
-                                .into_iter()
-                                .map(|n| n as u8)
-                                .collect()).unwrap()
-                        },
-                        "lir" => {
-                            lir_code.to_string()
+                                .run(
+                                    &match asm_code {
+                                        Ok(core) => core.into(),
+                                        Err(std) => std,
+                                    }
+                                    .assemble(8192)
+                                    .unwrap(),
+                                )
+                                .unwrap();
+                            String::from_utf8(device.output.into_iter().map(|n| n as u8).collect())
+                                .unwrap()
                         }
+                        "lir" => lir_code.to_string(),
                         "asm" => {
                             match asm_code {
                                 // If we got back a valid program, assemble it and return the result.
@@ -209,28 +242,42 @@ pub fn compile_and_run() -> Result<(), JsValue> {
                         "c" => {
                             match asm_code {
                                 // If we got back a valid program, assemble it and return the result.
-                                Ok(asm_code) => targets::C::default().build_core(&asm_code.assemble(8192).unwrap()).unwrap(),
-                                Err(asm_code) => targets::C::default().build_std(&asm_code.assemble(8192).unwrap()).unwrap(),
+                                Ok(asm_code) => targets::C::default()
+                                    .build_core(&asm_code.assemble(8192).unwrap())
+                                    .unwrap(),
+                                Err(asm_code) => targets::C::default()
+                                    .build_std(&asm_code.assemble(8192).unwrap())
+                                    .unwrap(),
                             }
                         }
                         "x86" => {
                             match asm_code {
                                 // If we got back a valid program, assemble it and return the result.
-                                Ok(asm_code) => targets::X86::default().build_core(&asm_code.assemble(8192).unwrap()).unwrap(),
-                                Err(asm_code) => targets::X86::default().build_std(&asm_code.assemble(8192).unwrap()).unwrap(),
+                                Ok(asm_code) => targets::X86::default()
+                                    .build_core(&asm_code.assemble(8192).unwrap())
+                                    .unwrap(),
+                                Err(asm_code) => targets::X86::default()
+                                    .build_std(&asm_code.assemble(8192).unwrap())
+                                    .unwrap(),
                             }
                         }
                         otherwise => {
                             console_log!("unknown target `{otherwise:?}`");
                             unreachable!()
                             // panic!("Unknown target `{otherwise:?}`");
-                        },
+                        }
                     }
                 }
-                Err(e) => format!("{e:?}"),
+                Err(e) => {
+                    console_log!("error compiling to asm {e:?}");
+                    format!("{e:?}")
+                }
             }
         }
-        Err(e) => e.to_string(),
+        Err(e) => {
+            console_log!("error parsing {e:?}");
+            e.to_string()
+        }
     };
 
     console_log!("output `{contents:?}`");
