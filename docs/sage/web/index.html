@@ -2918,9 +2918,9 @@ type Pair<A, B> = (A, B);
 
 impl Pair<A, B> {
     // Get the first tuple element
-    def first(self: &Pair<A, B>): A = self.0;
+    def first(self: &(A, B)): A = self.0;
     // Get the second tuple element
-    def second(self: &Pair<A, B>): B = self.1;
+    def second(self: &(A, B)): B = self.1;
 }
 
 // Make a pair of elements
