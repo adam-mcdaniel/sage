@@ -2868,26 +2868,31 @@ match allocate<Point<Int>>(5) {
 }`);
                     break;
                 case "match":
-                    source.setValue(`enum Direction {
+                    source.setValue(`// Create a C-like enum
+enum Direction {
     North, South, East, West
 }
 
-match (Direction of South, 2, struct {x = 5, y = -6}) {
+// Pattern match over a tuple of a Direction, Int, and struct
+match (Direction of South, 2, {x = 5, y = -6}) {
     (of North, _, _)
     | (of East, _, _)
     | (of West, _, _)
     | (of South, 3, _) => print("Incorrect!\\n"),
     (of South, 2, {x = 5, y = -6}) => {
+        // This will be the branch that matches
         print("Correct!\\n");
     },
     _ => print("Incorrect!\\n")
 }
 
+// Create a polymorphic Rust-like enum
 enum Option<T> {
     Some(T),
     Nothing
 }
 
+// Define a fallible division operation
 def divide(n: Int, d: Int): Option<Int> {
     if (d == 0) {
         return Option<Int> of Nothing;
@@ -2896,6 +2901,7 @@ def divide(n: Int, d: Int): Option<Int> {
     }
 }
 
+// Match over a division operation with an if-let statement
 if let of Some(n) = divide(6, 2) {
     print("6 / 2 = ", n, "\\n");
 } else {
@@ -3597,6 +3603,7 @@ let test = 5, ing = 6 in println("5 + 6 = ", test + ing);`)
             <option value="ffi">Simple FFI Example (JavaScript FFI)</option>
             <option value="graphics">Graphical FFI Demo (JavaScript FFI)</option>
             <option value="let-bindings">Let-Bindings</option>
+            <option value="match">Pattern Matching</option>
             <option value="tuple">Pair (Generics)</option>
             <!-- <option value="tuple-inline-template">Pair With Inline-Template (Generics)</option> -->
             <option value="templates">Type Functions (Generics)</option>
@@ -3610,7 +3617,6 @@ let test = 5, ing = 6 in println("5 + 6 = ", test + ing);`)
             <option value="hex-editor">Hex Editor</option>
             <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
             <option value="alloc">Allocator</option>
-            <option value="match">Pattern Matching</option>
             <option value="factorial">Factorial</option>
             <option value="cat">Cat</option>
         </select>
