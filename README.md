@@ -67,6 +67,7 @@ Sage is very portable -- run it on your thermostat! Here's the complete list of 
 | `mul`       | `reg *= *tape_ptr;` |
 | `div`       | `reg /= *tape_ptr;` |
 | `rem`       | `reg %= *tape_ptr;` |
+| `nand`      | `reg = ~(reg & *tape_ptr);` |
 | `gez`       | `reg = reg >= 0;`  |
 
 You could fit this instruction set on a T-shirt!
