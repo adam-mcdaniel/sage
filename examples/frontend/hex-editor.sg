@@ -326,43 +326,43 @@ def reallocate<T>(src: &T, old_size: Int, new_size: Int): &T {
 }
 
 def Memory_push(m: &mut Memory, value: Int) {
-    while (m->length >= m->capacity) {
-        m->capacity *= 2;
+    while (m.length >= m.capacity) {
+        m.capacity *= 2;
     }
-    m->data = allocate<Int>(m->capacity);
-    m->data[m->length] = value;
-    m->length += 1;
+    m.data = allocate<Int>(m.capacity);
+    m.data[m.length] = value;
+    m.length += 1;
 }
 
 def Memory_extend(m: &mut Memory, count: Int) {
-    while (m->length + count >= m->capacity) {
-        m->capacity *= 2;
+    while (m.length + count >= m.capacity) {
+        m.capacity *= 2;
     }
-    m->data = reallocate<Int>(m->data, m->length, m->capacity);
-    m->length += count;
+    m.data = reallocate<Int>(m.data, m.length, m.capacity);
+    m.length += count;
 }
 
 def Memory_pop(m: &mut Memory): Int {
-    if (m->length == 0) {
+    if (m.length == 0) {
         return 0;
     }
-    m->length -= 1;
-    return m->data[m->length];
+    m.length -= 1;
+    return m.data[m.length];
 }
 
 def Memory_shrink(m: &mut Memory, count: Int) {
-    if (m->length < count) {
-        m->length = 0;
+    if (m.length < count) {
+        m.length = 0;
     } else {
-        m->length -= count;
+        m.length -= count;
     }
 }
 
 def Memory_index(m: &mut Memory, index: Int): &mut Int {
-    if (index >= m->length) {
-        Memory_extend(m, index - m->length + 1);
+    if (index >= m.length) {
+        Memory_extend(m, index - m.length + 1);
     }
-    return &mut (m->data[index]);
+    return &mut (m.data[index]);
 }
 
 def Memory_get(m: &mut Memory, index: Int): Int {
@@ -386,7 +386,7 @@ def Memory_default(): Memory {
 }
 
 def Memory_free(m: &Memory) {
-    del m->data;
+    del m.data;
 }
 
 def print_byte(mut c: Int) {
@@ -410,24 +410,24 @@ def print_addr(mut c: Int) {
 }
 
 def Memory_print(m: &Memory) {
-    print("Memory: ", m->length, "/", m->capacity, "\n");
-    if (m->length == 0) {
+    print("Memory: ", m.length, "/", m.capacity, "\n");
+    if (m.length == 0) {
         print("Empty\n");
     }
-    for let mut i=0; i<m->length; i+=1 {
+    for let mut i=0; i<m.length; i+=1 {
         // Print address
         if (i % 16 == 0) {
             print_addr(i);
             print(": ");
         }
 
-        print_byte(m->data[i]);
+        print_byte(m.data[i]);
         print(" ");
         if i % 16 == 15 {
             // print ASCII
             print(" | ");
             for let mut j=i-15; j<=i; j+=1 {
-                let c = m->data[j];
+                let c = m.data[j];
                 if (c >= 32 && c <= 126) {
                     print(c as Char);
                 } else {
@@ -439,15 +439,15 @@ def Memory_print(m: &Memory) {
     }
 
     // print ASCII
-    if (m->length % 16 != 0) {
-        let i = m->length;
+    if (m.length % 16 != 0) {
+        let i = m.length;
         let j = i - (i % 16);
         for let mut k=i; k<j+16; k+=1 {
             print("   ");
         }
         print(" | ");
         for let mut k=j; k<i; k+=1 {
-            let c = m->data[k];
+            let c = m.data[k];
             if (c >= 32 && c <= 126) {
                 print(c as Char);
             } else {
