@@ -163,6 +163,11 @@ cell tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256]
 
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);
+
+#if __has_include("ffi.h")
+	#include "ffi.h"
+#endif
+
 "#
         .to_string();
 
