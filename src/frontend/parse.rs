@@ -1,6 +1,8 @@
 use crate::{lir::*, parse::SourceCodeLocation};
 use pest::{error::Error, iterators::Pair, Parser};
 use pest_derive::Parser;
+use log::*;
+use no_comment::{languages, IntoWithoutComments};
 
 #[derive(Parser)]
 #[grammar = "frontend/parse.pest"] // relative to src
@@ -181,9 +183,23 @@ pub enum Declaration {
     ),
     Type(Vec<(String, Type)>),
     Statement(Statement),
+    Many(Vec<Declaration>),
 }
 
 impl Declaration {
+    fn is_compile_time(&self) -> bool {
+        match self {
+            Self::Const(_) | Self::Type(_) | Self::Proc(_, _, _, _)
+            | Self::PolyProc(_, _, _, _, _)
+            | Self::Extern(_, _, _)
+            | Self::Impl(_, _)
+            | Self::Struct(_, _)
+            | Self::Enum(_, _) => true,
+            Self::Many(decls) => decls.iter().all(|x| x.is_compile_time()),
+            _ => false,
+        }
+    }
+
     fn proc_to_expr(
         name: String,
         args: Vec<(String, Mutability, Type)>,
@@ -201,6 +217,17 @@ impl Declaration {
     fn to_expr(self, rest: Option<Expr>) -> Expr {
         let rest_expr = Box::new(rest.clone().unwrap_or(Expr::ConstExpr(ConstExpr::None)));
         match (self, rest) {
+            (decl, Some(Expr::Annotated(e, loc))) => {
+                return decl.to_expr(Some(*e)).annotate(loc);
+            }
+            (Self::Many(decls), rest) => {
+                let mut result = rest.unwrap_or(Expr::NONE);
+                debug!("Many decls: {:?}", decls);
+                for decl in decls.into_iter().rev() {
+                    result = decl.to_expr(Some(result));
+                }
+                result
+            }
             (Self::Extern(name, args, ret), rest) => Self::Const(vec![(
                 name.clone(),
                 ConstExpr::FFIProcedure(FFIProcedure::new(
@@ -269,8 +296,13 @@ impl Declaration {
                 )),
             )),
             (Self::Type(types), _) => rest_expr.with(types),
-            (Self::Statement(stmt), Some(rest)) => stmt.to_expr(Some(rest)),
+            (Self::Statement(stmt), Some(Expr::Declare(decls, rest))) if decls.is_compile_time() => stmt.to_expr(Some(*rest)).with(decls),
+            (Self::Statement(stmt), Some(rest)) => {
+                debug!("Could not fold statement into rest: {:?}", stmt);
+                stmt.to_expr(Some(rest))
+            },
             (Self::Statement(stmt), None) => stmt.to_expr(None),
+            other => panic!("Unexpected declaration: {:?}", other),
         }
     }
 }
@@ -320,6 +352,74 @@ fn parse_decl(pair: Pair<Rule>, filename: Option<&str>) -> Declaration {
             .map(|x| parse_decl(x, filename))
             .next()
             .unwrap(),
+            
+        Rule::decl_import => {
+            let mut inner_rules = pair.into_inner();
+            let name = inner_rules.next().unwrap().as_str().to_string();
+            // Open the file and parse it
+            // Get the cwd from the filename
+            let mut cwd = filename.map(|x| std::path::Path::new(x).parent().unwrap().to_str().unwrap()).unwrap_or(".");
+            if cwd == "" {
+                cwd = ".";
+            }
+            let file = format!("{cwd}/{name}.sg");
+            debug!("Importing file: {}", file);
+
+            lazy_static::lazy_static! {
+                static ref IMPORTED: std::sync::RwLock<std::collections::HashSet<String>> = std::sync::RwLock::new(std::collections::HashSet::new());
+            }
+
+            {
+                let imported = IMPORTED.read().unwrap();
+                if imported.contains(&file) {
+                    return Declaration::Many(vec![]);
+                }
+            }
+            match std::fs::read_to_string(&file) {
+                Ok(code) => {
+                    {
+                        let mut imported = IMPORTED.write().unwrap();
+                        imported.insert(file.clone());
+                    }
+                    let code = code.to_string()
+                        .chars()
+                        .without_comments(languages::rust())
+                        .collect::<String>();
+
+                    Declaration::Many(FrontendParser::parse(Rule::program, &code)
+                        .unwrap()
+                        .into_iter()
+                        .map(|x| parse_program(x, Some(&file)))
+                        .next()
+                        .unwrap().0)
+                }
+                _ => {
+                    // Try a folder
+                    let file = format!("{cwd}/{name}/mod.sg");
+                    debug!("Importing file: {}", file);
+                    match std::fs::read_to_string(&file) {
+                        Ok(code) => {
+                            {
+                                let mut imported = IMPORTED.write().unwrap();
+                                imported.insert(file.clone());
+                            }
+                            let code = code.to_string()
+                                .chars()
+                                .without_comments(languages::rust())
+                                .collect::<String>();
+                    
+                            Declaration::Many(FrontendParser::parse(Rule::program, &code)
+                                .unwrap()
+                                .into_iter()
+                                .map(|x| parse_program(x, Some(&file)))
+                                .next()
+                                .unwrap().0)
+                        }
+                        _ => panic!("Could not find file or folder for import: {}", name),
+                    }
+                }
+            }
+        }
 
         Rule::decl_impl => {
             let mut inner_rules = pair.into_inner();

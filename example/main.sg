@@ -1,0 +1,7 @@
+// File: main.sg
+import math;
+
+println("File: main.sg");
+for let mut i=0.1; i<6.0; i+=0.1 {
+    println("sin(", i, ") = ", sin(i));
+}

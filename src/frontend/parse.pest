@@ -8,6 +8,7 @@ keyword = @{
     | "def" | "let" | "const" | "type" | "core" | "std"
     | "Int" | "Float" | "Bool" | "Char" | "Cell" | "None" | "Null" | "Never"
     | "True" | "False" | "new" | "mut" | "impl" | "extern" | "when" | "del"
+    | "import"
 }
 
 operator = @{
@@ -65,7 +66,8 @@ char_inner = @{
 program = { SOI ~ decl* ~ EOI }
 
 decl = {
-    decl_proc
+    decl_import
+    | decl_proc
     | decl_unit
     | decl_type
     | decl_struct
@@ -78,6 +80,9 @@ decl = {
 decl_proc = {
     decl_proc_block
     | decl_proc_expr
+}
+decl_import = {
+    "import" ~ symbol ~ ";"+
 }
 decl_impl = {
     "impl" ~ type ~ "{" ~ decl_imp_child_decl* ~ "}"

@@ -1,0 +1,6 @@
+// Module: math/matrix.sg
+println("Module: math/matrix.sg");
+import trig;
+
+let result = sin(7.0);
+println("In math/matrix.sg: sin(7.0) = ", result);

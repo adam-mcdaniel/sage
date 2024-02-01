@@ -1,0 +1,389 @@
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  ms/call  ms/call  name    
+ 50.00      0.02     0.02      785     0.03     0.03  f2
+ 25.00      0.03     0.01     6920     0.00     0.00  f4
+ 25.00      0.04     0.01      865     0.01     0.02  f3
+  0.00      0.04     0.00     1136     0.00     0.00  f13
+  0.00      0.04     0.00     1088     0.00     0.00  f27
+  0.00      0.04     0.00      240     0.00     0.03  f21
+  0.00      0.04     0.00      204     0.00     0.00  f18
+  0.00      0.04     0.00      160     0.00     0.03  f34
+  0.00      0.04     0.00      131     0.00     0.00  f1
+  0.00      0.04     0.00       88     0.00     0.08  f23
+  0.00      0.04     0.00       64     0.00     0.00  f11
+  0.00      0.04     0.00       60     0.00     0.00  f29
+  0.00      0.04     0.00       28     0.00     0.00  f17
+  0.00      0.04     0.00       22     0.00     0.31  f22
+  0.00      0.04     0.00       22     0.00     0.00  f24
+  0.00      0.04     0.00       22     0.00     0.00  f25
+  0.00      0.04     0.00       20     0.00     0.08  f19
+  0.00      0.04     0.00       20     0.00     0.18  f20
+  0.00      0.04     0.00       10     0.00     0.41  f26
+  0.00      0.04     0.00       10     0.00     0.00  f28
+  0.00      0.04     0.00       10     0.00     0.00  f32
+  0.00      0.04     0.00       10     0.00     0.41  f33
+  0.00      0.04     0.00        9     0.00     0.74  f30
+  0.00      0.04     0.00        9     0.00     1.48  f35
+  0.00      0.04     0.00        3     0.00     0.00  f0
+  0.00      0.04     0.00        3     0.00     0.00  f12
+  0.00      0.04     0.00        3     0.00     0.00  f9
+  0.00      0.04     0.00        2     0.00     0.00  f15
+  0.00      0.04     0.00        2     0.00     2.55  f16
+  0.00      0.04     0.00        1     0.00     0.00  f10
+  0.00      0.04     0.00        1     0.00    16.65  f14
+  0.00      0.04     0.00        1     0.00    23.31  f31
+  0.00      0.04     0.00        1     0.00     0.00  f5
+  0.00      0.04     0.00        1     0.00     0.00  f6
+  0.00      0.04     0.00        1     0.00     0.00  f7
+  0.00      0.04     0.00        1     0.00     0.00  f8
+
+ %         the percentage of the total running time of the
+time       program used by this function.
+
+cumulative a running sum of the number of seconds accounted
+ seconds   for by this function and those listed above it.
+
+ self      the number of seconds accounted for by this
+seconds    function alone.  This is the major sort for this
+           listing.
+
+calls      the number of times this function was invoked, if
+           this function is profiled, else blank.
+
+ self      the average number of milliseconds spent in this
+ms/call    function per call, if this function is profiled,
+	   else blank.
+
+ total     the average number of milliseconds spent in this
+ms/call    function and its descendents per call, if this
+	   function is profiled, else blank.
+
+name       the name of the function.  This is the minor sort
+           for this listing. The index shows the location of
+	   the function in the gprof listing. If the index is
+	   in parenthesis it shows where it would appear in
+	   the gprof listing if it were to be printed.
+
+Copyright (C) 2012-2023 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
+		     Call graph (explanation follows)
+
+
+granularity: each sample hit covers 4 byte(s) for 25.00% of 0.04 seconds
+
+index % time    self  children    called     name
+                                                 <spontaneous>
+[1]    100.0    0.00    0.04                 main [1]
+                0.00    0.02       1/1           f31 [2]
+                0.00    0.02       1/1           f14 [5]
+                0.00    0.00       1/785         f2 [4]
+                0.00    0.00       1/865         f3 [3]
+                0.00    0.00       3/3           f0 [29]
+                0.00    0.00       3/3           f12 [30]
+                0.00    0.00       1/1           f5 [34]
+                0.00    0.00       1/1           f6 [35]
+-----------------------------------------------
+                0.00    0.02       1/1           main [1]
+[2]     58.3    0.00    0.02       1         f31 [2]
+                0.00    0.01       9/9           f35 [6]
+                0.00    0.00      10/10          f33 [14]
+                0.00    0.00      11/22          f22 [9]
+                0.00    0.00       1/2           f16 [12]
+                0.00    0.00      11/22          f25 [26]
+                0.00    0.00      10/10          f32 [28]
+                0.00    0.00       1/3           f9 [31]
+                0.00    0.00       1/2           f15 [32]
+-----------------------------------------------
+                0.00    0.00       1/865         main [1]
+                0.00    0.00     288/865         f30 [10]
+                0.01    0.01     576/865         f35 [6]
+[3]     50.0    0.01    0.01     865         f3 [3]
+                0.01    0.00    6920/6920        f4 [7]
+-----------------------------------------------
+                0.00    0.00       1/785         main [1]
+                0.00    0.00      60/785         f19 [17]
+                0.00    0.00      60/785         f20 [16]
+                0.00    0.00     160/785         f34 [13]
+                0.01    0.00     240/785         f21 [11]
+                0.01    0.00     264/785         f23 [8]
+[4]     50.0    0.02    0.00     785         f2 [4]
+-----------------------------------------------
+                0.00    0.02       1/1           main [1]
+[5]     41.6    0.00    0.02       1         f14 [5]
+                0.00    0.01       9/9           f30 [10]
+                0.00    0.00      10/10          f26 [15]
+                0.00    0.00      11/22          f22 [9]
+                0.00    0.00       1/2           f16 [12]
+                0.00    0.00      11/22          f25 [26]
+                0.00    0.00      10/10          f28 [27]
+                0.00    0.00       1/3           f9 [31]
+                0.00    0.00       1/2           f15 [32]
+-----------------------------------------------
+                0.00    0.01       9/9           f31 [2]
+[6]     33.3    0.00    0.01       9         f35 [6]
+                0.01    0.01     576/865         f3 [3]
+                0.00    0.00     144/1136        f13 [18]
+                0.00    0.00     144/1088        f27 [19]
+-----------------------------------------------
+                0.01    0.00    6920/6920        f3 [3]
+[7]     25.0    0.01    0.00    6920         f4 [7]
+-----------------------------------------------
+                0.00    0.01      88/88          f22 [9]
+[8]     16.8    0.00    0.01      88         f23 [8]
+                0.01    0.00     264/785         f2 [4]
+-----------------------------------------------
+                0.00    0.00      11/22          f14 [5]
+                0.00    0.00      11/22          f31 [2]
+[9]     16.8    0.00    0.01      22         f22 [9]
+                0.00    0.01      88/88          f23 [8]
+                0.00    0.00      22/22          f24 [25]
+-----------------------------------------------
+                0.00    0.01       9/9           f14 [5]
+[10]    16.6    0.00    0.01       9         f30 [10]
+                0.00    0.00     288/865         f3 [3]
+                0.00    0.00     144/1136        f13 [18]
+                0.00    0.00     144/1088        f27 [19]
+-----------------------------------------------
+                0.00    0.00      80/240         f20 [16]
+                0.00    0.00     160/240         f26 [15]
+[11]    15.3    0.00    0.01     240         f21 [11]
+                0.01    0.00     240/785         f2 [4]
+-----------------------------------------------
+                0.00    0.00       1/2           f14 [5]
+                0.00    0.00       1/2           f31 [2]
+[12]    12.7    0.00    0.01       2         f16 [12]
+                0.00    0.00      20/20          f20 [16]
+                0.00    0.00      20/20          f19 [17]
+                0.00    0.00      28/28          f17 [24]
+-----------------------------------------------
+                0.00    0.00     160/160         f33 [14]
+[13]    10.2    0.00    0.00     160         f34 [13]
+                0.00    0.00     160/785         f2 [4]
+-----------------------------------------------
+                0.00    0.00      10/10          f31 [2]
+[14]    10.2    0.00    0.00      10         f33 [14]
+                0.00    0.00     160/160         f34 [13]
+                0.00    0.00     160/1136        f13 [18]
+                0.00    0.00     160/1088        f27 [19]
+-----------------------------------------------
+                0.00    0.00      10/10          f14 [5]
+[15]    10.2    0.00    0.00      10         f26 [15]
+                0.00    0.00     160/240         f21 [11]
+                0.00    0.00     160/1136        f13 [18]
+                0.00    0.00     160/1088        f27 [19]
+-----------------------------------------------
+                0.00    0.00      20/20          f16 [12]
+[16]     8.9    0.00    0.00      20         f20 [16]
+                0.00    0.00      80/240         f21 [11]
+                0.00    0.00      60/785         f2 [4]
+                0.00    0.00      60/204         f18 [20]
+-----------------------------------------------
+                0.00    0.00      20/20          f16 [12]
+[17]     3.8    0.00    0.00      20         f19 [17]
+                0.00    0.00      60/785         f2 [4]
+                0.00    0.00      60/204         f18 [20]
+-----------------------------------------------
+                0.00    0.00      48/1136        f12 [30]
+                0.00    0.00     144/1136        f30 [10]
+                0.00    0.00     144/1136        f35 [6]
+                0.00    0.00     160/1136        f26 [15]
+                0.00    0.00     160/1136        f33 [14]
+                0.00    0.00     480/1136        f29 [23]
+[18]     0.0    0.00    0.00    1136         f13 [18]
+-----------------------------------------------
+                0.00    0.00     144/1088        f30 [10]
+                0.00    0.00     144/1088        f35 [6]
+                0.00    0.00     160/1088        f26 [15]
+                0.00    0.00     160/1088        f33 [14]
+                0.00    0.00     480/1088        f29 [23]
+[19]     0.0    0.00    0.00    1088         f27 [19]
+-----------------------------------------------
+                0.00    0.00      60/204         f19 [17]
+                0.00    0.00      60/204         f20 [16]
+                0.00    0.00      84/204         f17 [24]
+[20]     0.0    0.00    0.00     204         f18 [20]
+-----------------------------------------------
+                                  28             f1 [21]
+                0.00    0.00       3/131         f0 [29]
+                0.00    0.00     128/131         f11 [22]
+[21]     0.0    0.00    0.00     131+28      f1 [21]
+                                  28             f1 [21]
+-----------------------------------------------
+                0.00    0.00      16/64          f7 [36]
+                0.00    0.00      48/64          f12 [30]
+[22]     0.0    0.00    0.00      64         f11 [22]
+                0.00    0.00     128/131         f1 [21]
+-----------------------------------------------
+                0.00    0.00      30/60          f28 [27]
+                0.00    0.00      30/60          f32 [28]
+[23]     0.0    0.00    0.00      60         f29 [23]
+                0.00    0.00     480/1136        f13 [18]
+                0.00    0.00     480/1088        f27 [19]
+-----------------------------------------------
+                0.00    0.00      28/28          f16 [12]
+[24]     0.0    0.00    0.00      28         f17 [24]
+                0.00    0.00      84/204         f18 [20]
+-----------------------------------------------
+                0.00    0.00      22/22          f22 [9]
+[25]     0.0    0.00    0.00      22         f24 [25]
+-----------------------------------------------
+                0.00    0.00      11/22          f14 [5]
+                0.00    0.00      11/22          f31 [2]
+[26]     0.0    0.00    0.00      22         f25 [26]
+-----------------------------------------------
+                0.00    0.00      10/10          f14 [5]
+[27]     0.0    0.00    0.00      10         f28 [27]
+                0.00    0.00      30/60          f29 [23]
+-----------------------------------------------
+                0.00    0.00      10/10          f31 [2]
+[28]     0.0    0.00    0.00      10         f32 [28]
+                0.00    0.00      30/60          f29 [23]
+-----------------------------------------------
+                0.00    0.00       3/3           main [1]
+[29]     0.0    0.00    0.00       3         f0 [29]
+                0.00    0.00       3/131         f1 [21]
+-----------------------------------------------
+                0.00    0.00       3/3           main [1]
+[30]     0.0    0.00    0.00       3         f12 [30]
+                0.00    0.00      48/1136        f13 [18]
+                0.00    0.00      48/64          f11 [22]
+-----------------------------------------------
+                0.00    0.00       1/3           f8 [37]
+                0.00    0.00       1/3           f14 [5]
+                0.00    0.00       1/3           f31 [2]
+[31]     0.0    0.00    0.00       3         f9 [31]
+-----------------------------------------------
+                0.00    0.00       1/2           f14 [5]
+                0.00    0.00       1/2           f31 [2]
+[32]     0.0    0.00    0.00       2         f15 [32]
+-----------------------------------------------
+                0.00    0.00       1/1           f7 [36]
+[33]     0.0    0.00    0.00       1         f10 [33]
+-----------------------------------------------
+                0.00    0.00       1/1           main [1]
+[34]     0.0    0.00    0.00       1         f5 [34]
+-----------------------------------------------
+                0.00    0.00       1/1           main [1]
+[35]     0.0    0.00    0.00       1         f6 [35]
+                0.00    0.00       1/1           f7 [36]
+-----------------------------------------------
+                0.00    0.00       1/1           f6 [35]
+[36]     0.0    0.00    0.00       1         f7 [36]
+                0.00    0.00      16/64          f11 [22]
+                0.00    0.00       1/1           f8 [37]
+                0.00    0.00       1/1           f10 [33]
+-----------------------------------------------
+                0.00    0.00       1/1           f7 [36]
+[37]     0.0    0.00    0.00       1         f8 [37]
+                0.00    0.00       1/3           f9 [31]
+-----------------------------------------------
+
+ This table describes the call tree of the program, and was sorted by
+ the total amount of time spent in each function and its children.
+
+ Each entry in this table consists of several lines.  The line with the
+ index number at the left hand margin lists the current function.
+ The lines above it list the functions that called this function,
+ and the lines below it list the functions this one called.
+ This line lists:
+     index	A unique number given to each element of the table.
+		Index numbers are sorted numerically.
+		The index number is printed next to every function name so
+		it is easier to look up where the function is in the table.
+
+     % time	This is the percentage of the `total' time that was spent
+		in this function and its children.  Note that due to
+		different viewpoints, functions excluded by options, etc,
+		these numbers will NOT add up to 100%.
+
+     self	This is the total amount of time spent in this function.
+
+     children	This is the total amount of time propagated into this
+		function by its children.
+
+     called	This is the number of times the function was called.
+		If the function called itself recursively, the number
+		only includes non-recursive calls, and is followed by
+		a `+' and the number of recursive calls.
+
+     name	The name of the current function.  The index number is
+		printed after it.  If the function is a member of a
+		cycle, the cycle number is printed between the
+		function's name and the index number.
+
+
+ For the function's parents, the fields have the following meanings:
+
+     self	This is the amount of time that was propagated directly
+		from the function into this parent.
+
+     children	This is the amount of time that was propagated from
+		the function's children into this parent.
+
+     called	This is the number of times this parent called the
+		function `/' the total number of times the function
+		was called.  Recursive calls to the function are not
+		included in the number after the `/'.
+
+     name	This is the name of the parent.  The parent's index
+		number is printed after it.  If the parent is a
+		member of a cycle, the cycle number is printed between
+		the name and the index number.
+
+ If the parents of the function cannot be determined, the word
+ `<spontaneous>' is printed in the `name' field, and all the other
+ fields are blank.
+
+ For the function's children, the fields have the following meanings:
+
+     self	This is the amount of time that was propagated directly
+		from the child into the function.
+
+     children	This is the amount of time that was propagated from the
+		child's children to the function.
+
+     called	This is the number of times the function called
+		this child `/' the total number of times the child
+		was called.  Recursive calls by the child are not
+		listed in the number after the `/'.
+
+     name	This is the name of the child.  The child's index
+		number is printed after it.  If the child is a
+		member of a cycle, the cycle number is printed
+		between the name and the index number.
+
+ If there are any cycles (circles) in the call graph, there is an
+ entry for the cycle-as-a-whole.  This entry shows who called the
+ cycle (as parents) and the members of the cycle (as children.)
+ The `+' recursive calls entry shows the number of function calls that
+ were internal to the cycle, and the calls entry for each member shows,
+ for that member, how many times it was called from other members of
+ the cycle.
+
+Copyright (C) 2012-2023 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
+Index by function name
+
+  [29] f0                      [4] f2                     [10] f30
+  [21] f1                     [16] f20                     [2] f31
+  [33] f10                    [11] f21                    [28] f32
+  [22] f11                     [9] f22                    [14] f33
+  [30] f12                     [8] f23                    [13] f34
+  [18] f13                    [25] f24                     [6] f35
+   [5] f14                    [26] f25                     [7] f4
+  [32] f15                    [15] f26                    [34] f5
+  [12] f16                    [19] f27                    [35] f6
+  [24] f17                    [27] f28                    [36] f7
+  [20] f18                    [23] f29                    [37] f8
+  [17] f19                     [3] f3                     [31] f9

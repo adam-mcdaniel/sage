@@ -1,0 +1,13 @@
+// Module: math/trig.sg
+println("Module: math/trig.sg");
+import matrix;
+
+println("In math/trig.sg");
+
+const PI = 3.14159;
+
+def sin(mut x: Float): Float {
+    // Clamp between -2PI and 2PI
+    x %= (2 * PI);
+    return x - cube(x) / 6 + pow(x, 5) / 120 - pow(x, 7) / 5040;
+}

@@ -40,6 +40,18 @@ pub enum Declaration {
 }
 
 impl Declaration {
+    pub fn is_compile_time(&self) -> bool {
+        match self {
+            Self::Type(..) => true,
+            Self::Const(..) => true,
+            Self::Impl(..) => true,
+            Self::PolyProc(..) => true,
+            Self::Proc(..) => true,
+            Self::Many(decls) => decls.iter().all(|decl| decl.is_compile_time()),
+            _ => false,
+        }
+    }
+
     pub(crate) fn static_var(
         name: impl Into<String>,
         mutability: Mutability,

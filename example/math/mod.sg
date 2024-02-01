@@ -1,0 +1,19 @@
+println("Module: math/mod.sg");
+import trig;
+import matrix;
+
+def square(x: Float): Float {
+    return x * x;
+}
+
+def cube(x: Float): Float {
+    return x * x * x;
+}
+
+def pow(x: Float, y: Int): Float {
+    let mut result = 1.0;
+    for let mut i = 0; i < y; i += 1 {
+        result *= x;
+    }
+    return result;
+}
