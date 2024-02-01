@@ -54,6 +54,8 @@ enum TargetType {
     StdVM,
     /// Compile to My OS source code (GCC only).
     SageOS,
+    /// Compile to for the flipper zero
+    FlipperZero,
     /// Compile to C source code (GCC only).
     C,
     /// Compile to x86 assembly code.
@@ -379,6 +381,16 @@ fn compile(
             match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
                 Ok(vm_code) => targets::SageOS.build_core(&vm_code.flatten()),
                 Err(vm_code) => targets::SageOS.build_std(&vm_code.flatten()),
+            }
+            .map_err(Error::BuildError)?,
+        )?,
+        // If the target is Flipper Zero source code, then compile the code to virtual machine code,
+        // and then use the Flipper Zero target implementation to build the output source code.
+        TargetType::FlipperZero => write_file(
+            format!("{output}.c"),
+            match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
+                Ok(vm_code) => targets::FlipperZero.build_core(&vm_code.flatten()),
+                Err(vm_code) => targets::FlipperZero.build_std(&vm_code.flatten()),
             }
             .map_err(Error::BuildError)?,
         )?,

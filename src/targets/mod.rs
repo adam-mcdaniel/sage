@@ -45,6 +45,9 @@ pub use sage_os::*;
 pub mod x86;
 pub use x86::*;
 
+pub mod flipperzero;
+pub use flipperzero::*;
+
 use log::info;
 
 use crate::{
