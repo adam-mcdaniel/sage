@@ -92,6 +92,14 @@ pub trait VirtualMachineProgram {
     fn std_op(&mut self, op: StandardOp) -> Result<(), Error>;
     fn code(&self) -> Result<CoreProgram, StandardProgram>;
 
+    /// Get the instruction count for the VM code
+    fn len(&self) -> usize {
+        match self.code() {
+            Ok(core) => core.0.len(),
+            Err(std) => std.0.len(),
+        }
+    }
+
     fn ffi_call(&mut self, ffi: FFIBinding) -> Result<(), Error> {
         self.std_op(StandardOp::Call(ffi))
     }

@@ -1,0 +1,8 @@
+name = "C"
+version = "0.1.0"
+supports_std = true
+supports_floats = true
+call_stack_size = 30_000
+setup_code = "target/setup.sg"
+cleanup_code = "target/cleanup.sg"
+output_code = "target/output.sg"

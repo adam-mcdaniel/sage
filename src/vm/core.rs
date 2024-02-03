@@ -43,7 +43,7 @@ impl CoreProgram {
     pub fn get_functions(&self) -> HashMap<i32, Vec<CoreOp>> {
         flatten(self.0.clone()).1
     }
-
+    
     /// Get the code outside of any functions, and the code for each function.
     pub fn get_main_and_functions(self) -> (Vec<CoreOp>, HashMap<i32, Vec<CoreOp>>) {
         let (_, functions, main) = flatten(self.0);
@@ -187,6 +187,16 @@ impl fmt::Display for CoreProgram {
             )?
         }
         Ok(())
+    }
+}
+
+/// Allow iterating over the core program's instructions.
+impl IntoIterator for CoreProgram {
+    type Item = CoreOp;
+    type IntoIter = std::vec::IntoIter<CoreOp>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 

@@ -91,6 +91,16 @@ impl StandardProgram {
     }
 }
 
+/// Allow iterating over the standard program's instructions.
+impl IntoIterator for StandardProgram {
+    type Item = StandardOp;
+    type IntoIter = std::vec::IntoIter<StandardOp>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 /// Take all of the functions defined in a list of StandardOps,
 /// and flatten their definitions. This will take nested functions
 /// and un-nest them while preserving the order in which functions are defined.

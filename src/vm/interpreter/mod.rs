@@ -201,8 +201,9 @@ impl Device for TestingDevice {
                 if let Some(n) = self.input.pop_front() {
                     Ok(n)
                 } else {
-                    error!("Tried to get character from empty input buffer");
-                    Err("input is empty".to_string())
+                    // error!("Tried to get character from empty input buffer");
+                    // Err("input is empty".to_string())
+                    Ok(0)
                 }
             }
             InputMode::StdinInt => self.get_int(),

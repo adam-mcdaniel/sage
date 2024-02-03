@@ -13,7 +13,7 @@ name = "sagec"
 path = "src/cli.rs"
 
 [[bin]]
-name = "sage"
+name = "garden"
 path = "src/build_system.rs"
 
 [dependencies]
@@ -30,6 +30,9 @@ snailquote = "0.3.1"
 codespan-reporting = "0.11.1"
 log = {version = "0.4.20", features = ["release_max_level_info"] }
 env_logger = "0.10.0"
+toml = "0.8.9"
+serde = { version = "1.0.196", features = ["derive"] }
+serde_derive = { version = "1.0.196", features = ["default"] }
 
 [dev-dependencies]
 criterion = "0.5"
