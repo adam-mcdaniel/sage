@@ -42,7 +42,7 @@ pub trait Device {
     /// and call the function associated with the binding. If the tape is
     /// provided, the foreign function may mutate the tape. Otherwise all
     /// interaction with the FFI is done through the FFI channel.
-    fn ffi_call(&mut self, ffi: &FFIBinding, tape: Option<&mut Vec<i64>>) -> Result<(), String>;
+    fn ffi_call(&mut self, ffi: &FFIBinding, tape: &mut Vec<i64>) -> Result<(), String>;
 }
 
 /// A device used for testing the compiler. This simply keeps a buffer
@@ -53,7 +53,7 @@ pub trait Device {
 /// Then, we check the devices output against the correct output.
 #[derive(Debug, Default)]
 pub struct TestingDevice {
-    pub ffi: HashMap<FFIBinding, fn(&mut VecDeque<i64>, Option<&mut Vec<i64>>)>,
+    pub ffi: HashMap<FFIBinding, fn(&mut VecDeque<i64>, &mut Vec<i64>)>,
     pub ffi_channel: VecDeque<i64>,
     pub input: VecDeque<i64>,
     pub output: Vec<(i64, Output)>,
@@ -72,6 +72,11 @@ impl TestingDevice {
                 .collect(),
             output: vec![],
         }
+    }
+
+    pub fn add_binding(&mut self, ffi: FFIBinding, f: fn(&mut VecDeque<i64>, &mut Vec<i64>)) {
+        trace!("Adding ffi binding to VM interpreter: {}", ffi);
+        self.ffi.insert(ffi, f);
     }
 
     pub fn new_raw(input: Vec<i64>) -> Self {
@@ -238,7 +243,7 @@ impl Device for TestingDevice {
         Ok(())
     }
 
-    fn ffi_call(&mut self, ffi: &FFIBinding, tape: Option<&mut Vec<i64>>) -> Result<(), String> {
+    fn ffi_call(&mut self, ffi: &FFIBinding, tape: &mut Vec<i64>) -> Result<(), String> {
         if let Some(f) = self.ffi.get(ffi) {
             trace!("Calling FFI: {}", ffi);
             f(&mut self.ffi_channel, tape);
@@ -255,7 +260,7 @@ impl Device for TestingDevice {
 /// and writes a character to standard-out with `put`.
 #[derive(Debug, Clone)]
 pub struct StandardDevice {
-    ffi: HashMap<FFIBinding, fn(&mut VecDeque<i64>, Option<&mut Vec<i64>>)>,
+    ffi: HashMap<FFIBinding, fn(&mut VecDeque<i64>, &mut Vec<i64>)>,
     ffi_channel: VecDeque<i64>,
 }
 
@@ -285,10 +290,18 @@ impl Default for StandardDevice {
 }
 
 impl StandardDevice {
+    pub fn new(ffi_bindings: impl IntoIterator<Item = (FFIBinding, fn(&mut VecDeque<i64>, &mut Vec<i64>))>) -> Self {
+        let mut result = Self::default();
+        for (ffi, f) in ffi_bindings {
+            result.add_binding(ffi, f);
+        }
+        result
+    }
+
     pub fn add_binding(
         &mut self,
         ffi: FFIBinding,
-        f: fn(&mut VecDeque<i64>, Option<&mut Vec<i64>>),
+        f: fn(&mut VecDeque<i64>, &mut Vec<i64>),
     ) {
         trace!("Adding ffi binding to VM interpreter: {}", ffi);
         self.ffi.insert(ffi, f);
@@ -408,7 +421,7 @@ impl Device for StandardDevice {
         Ok(())
     }
 
-    fn ffi_call(&mut self, ffi: &FFIBinding, tape: Option<&mut Vec<i64>>) -> Result<(), String> {
+    fn ffi_call(&mut self, ffi: &FFIBinding, tape: &mut Vec<i64>) -> Result<(), String> {
         if let Some(f) = self.ffi.get(ffi) {
             trace!("Calling FFI: {}", ffi);
             f(&mut self.ffi_channel, tape);

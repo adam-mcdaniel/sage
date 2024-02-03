@@ -4,6 +4,7 @@
 //! are used in the various stages of IR to represent calls to foreign functions.
 
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use crate::lir::*;
 
 /// This is an FFI binding, which is used to call a foreign function in the virtual machine code.
 ///
@@ -25,6 +26,16 @@ impl FFIBinding {
             input_cells,
             output_cells,
         }
+    }
+}
+
+impl<T> From<(T, crate::lir::Type, crate::lir::Type)> for FFIBinding where T: ToString {
+    fn from((name, input, output): (T, crate::lir::Type, crate::lir::Type)) -> Self {
+        Self::new(
+            name.to_string(),
+            input.get_size(&crate::lir::Env::default()).unwrap(),
+            output.get_size(&crate::lir::Env::default()).unwrap(),
+        )
     }
 }
 

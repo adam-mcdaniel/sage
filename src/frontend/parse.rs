@@ -187,19 +187,6 @@ pub enum Declaration {
 }
 
 impl Declaration {
-    fn is_compile_time(&self) -> bool {
-        match self {
-            Self::Const(_) | Self::Type(_) | Self::Proc(_, _, _, _)
-            | Self::PolyProc(_, _, _, _, _)
-            | Self::Extern(_, _, _)
-            | Self::Impl(_, _)
-            | Self::Struct(_, _)
-            | Self::Enum(_, _) => true,
-            Self::Many(decls) => decls.iter().all(|x| x.is_compile_time()),
-            _ => false,
-        }
-    }
-
     fn proc_to_expr(
         name: String,
         args: Vec<(String, Mutability, Type)>,
@@ -302,7 +289,6 @@ impl Declaration {
                 stmt.to_expr(Some(rest))
             },
             (Self::Statement(stmt), None) => stmt.to_expr(None),
-            other => panic!("Unexpected declaration: {:?}", other),
         }
     }
 }

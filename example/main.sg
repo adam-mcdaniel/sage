@@ -1,7 +1,38 @@
 // File: main.sg
 import math;
+import aes;
 
 println("File: main.sg");
-for let mut i=0.1; i<6.0; i+=0.1 {
+for let mut i=0.1; i<1.0; i+=0.1 {
     println("sin(", i, ") = ", sin(i));
 }
+
+let mut key_arr = [0] * 16;
+for let mut i=0; i<16; i+=1 {
+    print("Enter key[", i, "]: ");
+    input(&mut (key_arr[i]));
+}
+
+let key = Key of Key128 key_arr;
+println("\nKey:");
+print_key(&key);
+println();
+println();
+
+let mut state = [0] * 16;
+for let mut i=0; i<16; i+=1 {
+    print("Enter plaintext[", i, "]: ");
+    input(&mut (state[i]));
+}
+
+println("\nInput:");
+print_state(&state);
+println();
+println("Cipher:");
+cipher(&mut state, &key);
+print_state(&state);
+println();
+println("Inverse-Cipher:");
+inverse_cipher(&mut state, &key);
+print_state(&state);
+println();

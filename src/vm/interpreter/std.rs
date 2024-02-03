@@ -408,7 +408,7 @@ where
                 }
                 StandardOp::Free => {}
                 StandardOp::Call(binding) => {
-                    self.device.ffi_call(binding, Some(&mut self.cells))?;
+                    self.device.ffi_call(binding, &mut self.cells)?;
                 }
             }
             self.i += 1

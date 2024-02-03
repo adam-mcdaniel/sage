@@ -9,8 +9,12 @@ readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [[bin]]
-name = "sage"
+name = "sagec"
 path = "src/cli.rs"
+
+[[bin]]
+name = "sage"
+path = "src/build_system.rs"
 
 [dependencies]
 regex = { version = "1.8.1", features = ["unicode"] }
