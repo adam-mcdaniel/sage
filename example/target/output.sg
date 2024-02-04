@@ -1,39 +1,84 @@
-// Read in the input program, and write it to the output file.
-// Read in 4096 bytes at a time, and write them to the output file.
-
-let mut buf = ['\0'] * 4096;
+let mut buf = ['\0'] * 8192;
 let mut is_done = False;
 
 extern def append(file: &Char, buf: &Char): Bool;
 extern def write(file: &Char, buf: &Char): Bool;
-extern def info(msg: &Char);
-extern def error(msg: &Char);
+extern def read(file: &Char, buf: &Char): Bool;
 extern def copy(src: &Char, dest: &Char): Bool;
 extern def exists(file: &Char): Bool;
+extern def size(file: &Char): Int;
+extern def info(msg: &Char);
+extern def warn(msg: &Char);
+extern def error(msg: &Char);
+extern def system(cmd: &Char): Bool;
 
-if exists(&"ffi.h") {
-    if copy(&"ffi.h", &"out.c") {
-        info(&"Copied ffi.h to out.h");
-    } else {
-        error(&"Failed to copy ffi.h to out.h");
-        is_done = True;
+def append_file_to_file(src: &Char, dest: &Char) {
+    if exists(src) {
+        let mut data = alloc(size(src));
+        if read(src, data) {
+            let _ = append(dest, data);
+            let _ = append(dest, &"\n\n");
+        }
     }
-} elif !(write(&"out.c", &"")) {
-    error(&"Failed to write to out.c");
-    is_done = True;
 }
 
+if exists(&"ffi.h") {
+    if write(&"out.c", &"#ifndef SAGE_SETUP
+#define SAGE_SETUP
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+
+typedef union cell {
+    int64_t i;
+    double f;
+    union cell *p;
+} cell;
+
+cell tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256], *ffi_ptr = ffi_channel;
+
+unsigned int ref_ptr = 0;
+void (*funs[10000])(void);
+#endif\n\n") {
+        append_file_to_file(&"ffi.h", &"out.c");
+    } else {
+        error(&"Failed to write to out.c");
+        is_done = True;
+    }
+} else {
+    warn(&"ffi.h does not exist, so it cannot be copied to out.c");
+    if !(write(&"out.c", &"")) {
+        error(&"Failed to write to out.c");
+        is_done = True;
+    }
+}
+
+
 while !is_done {
-    for let mut i=0; i<4096 && !is_done; i+=1 {
+    for let mut i=0; i<sizeof(buf) && !is_done; i+=1 {
         input(&mut (buf[i]));
         if buf[i] == '\0' {
             is_done = True;
         }
     }
     if append(&"out.c", &buf) {
-        info(&"Wrote 4096 bytes to out.c");
+        info(&"Wrote 8192 bytes to out.c");
     } else {
-        error(&"Failed to write 4096 bytes to out.c");
+        error(&"Failed to write 8192 bytes to out.c");
         is_done = True;
     }
+}
+
+if exists(&"out.c") {
+    if system(&"gcc -o out out.c -lm") {
+        info(&"Compiled out.c to out");
+        let _ = system(&"rm out.c");
+        let _ = system(&"./out");
+    } else {
+        error(&"Failed to compile out.c to out");
+    }
+} else {
+    error(&"out.c does not exist, so it cannot be compiled to output executable");
 }

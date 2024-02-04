@@ -195,11 +195,11 @@ impl ConstExpr {
                     // If the inner expr is a procedure, return a `polyproc`.
                     match expr.clone().eval_checked(env, i) {
                         Ok(Self::Proc(proc)) => {
-                            info!("Creating polyproc from mono proc: {proc}");
+                            debug!("Creating polyproc from mono proc: {proc}");
                             Ok(Self::PolyProc(PolyProcedure::from_mono(proc, params)))
                         }
                         _ => {
-                            info!("Creating template from expr: {expr}");
+                            debug!("Creating template from expr: {expr}");
                             Ok(Self::Template(params, expr))
                         }
                     }

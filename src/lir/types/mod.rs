@@ -356,7 +356,7 @@ impl Type {
         param_symbols: &HashSet<String>,
         env: &Env,
     ) -> Result<(), Error> {
-        info!(
+        debug!(
             "get_monomorph_template_args: {} template: {}",
             self, template
         );
@@ -445,7 +445,7 @@ impl Type {
                 for (param, arg) in params.iter().zip(args.iter()) {
                     // ret.get_monomorph_template_args(arg, symbols, env)?;
                     matched_symbols.insert(param.clone(), arg.clone());
-                    info!("Found match {}: {}", param, arg);
+                    debug!("Found match {}: {}", param, arg);
                 }
                 template.get_monomorph_template_args(ret, matched_symbols, param_symbols, env)?;
             }

@@ -112,70 +112,112 @@ impl TestingDevice {
     }
 
     fn get_int(&mut self) -> Result<i64, String> {
-        let mut result: i64 = 0;
-        loop {
-            if self.input.is_empty() {
-                warn!("EOF while parsing integer: {result}");
-                break;
-            }
-            let ch = self.input[0] as u8 as char;
-            if ch.is_ascii_whitespace() {
-                self.get_char()?;
-            } else {
-                break;
-            }
+        // let mut result: i64 = 0;
+        // let mut is_neg = false;
+        // loop {
+        //     if self.input.is_empty() {
+        //         warn!("EOF while parsing integer: {result}");
+        //         break;
+        //     }
+        //     let ch = self.input[0] as u8 as char;
+        //     if ch.is_ascii_whitespace() {
+        //         self.get_char()?;
+        //     } else {
+        //         if ch == '-' {
+        //             is_neg = true;
+        //             trace!("Found negative sign");
+        //             self.get_char()?;
+        //         }
+        //         break;
+        //     }
+        // }
+
+        // loop {
+        //     if self.input.is_empty() {
+        //         break;
+        //     }
+        //     let n = self.input[0] as u8;
+        //     let ch = n as char;
+        //     if ch.is_ascii_digit() {
+        //         result *= 10;
+        //         result += (n - b'0') as i64;
+        //         self.input.pop_front();
+        //     } else {
+        //         break;
+        //     }
+        // }
+
+        // Find token after whitespace
+        let mut token = String::new();
+        let mut ch = self.get_char()?;
+        while ch.is_whitespace() {
+            ch = self.get_char()?;
         }
-
-        loop {
-            if self.input.is_empty() {
-                break;
-            }
-            let n = self.input[0] as u8;
-            let ch = n as char;
-            if ch.is_ascii_digit() {
-                result *= 10;
-                result += (n - b'0') as i64;
-                self.input.pop_front();
-            } else {
-                break;
-            }
+        // Find token after whitespace
+        while !ch.is_whitespace() {
+            token.push(ch);
+            ch = self.get_char()?;
         }
-
-        trace!("Got integer input: {}", result);
-
-        Ok(result)
+        Ok(token.parse::<i64>().unwrap_or_else(|s| {
+            warn!("Could not parse integer: {s:?}, defaulting to 0");
+            0
+        }))
     }
 
     fn get_float(&mut self) -> Result<f64, String> {
-        let whole_part = self.get_int()? as f64;
-
-        if self.input.is_empty() {
-            warn!("EOF while parsing float: {whole_part}");
-            return Ok(whole_part);
+        // Find token after whitespace
+        let mut token = String::new();
+        let mut ch = self.get_char()?;
+        while ch.is_whitespace() {
+            ch = self.get_char()?;
         }
-
-        let n = self.input[0] as u8;
-        let ch = n as char;
-        if ch == '.' {
-            self.get_char()?;
-            let fractional_part = self.get_int()? as f64;
-            let digits = fractional_part.log10() as i32 + 1;
-            trace!(
-                "Got float input: {}.{:0digits$}",
-                whole_part,
-                fractional_part,
-                digits = digits as usize
-            );
-            Ok(whole_part
-                + if digits > 1 {
-                    fractional_part / 10.0_f64.powi(digits)
-                } else {
-                    0.0
-                })
-        } else {
-            trace!("Got float input: {}", whole_part);
-            Ok(whole_part)
+        // Find token after whitespace
+        while !ch.is_whitespace() {
+            token.push(ch);
+            ch = self.get_char()?;
         }
+        Ok(token.parse::<f64>().unwrap_or_else(|s| {
+            warn!("Could not parse float: {s:?}, defaulting to 0.0");
+            0.0
+        }))
+        // let whole_part = self.get_int()? as f64;
+
+        // if self.input.is_empty() {
+        //     warn!("EOF while parsing float: {whole_part}");
+        //     return Ok(whole_part);
+        // }
+
+        // let n = self.input[0] as u8;
+        // let ch = n as char;
+        // if ch == '.' {
+        //     self.get_char()?;
+        //     let fractional_part = self.get_int()? as f64;
+        //     let digits = fractional_part.log10() as i32 + 1;
+        //     trace!(
+        //         "Got float input: {}.{:0digits$}",
+        //         whole_part,
+        //         fractional_part,
+        //         digits = digits as usize
+        //     );
+        //     if whole_part >= 0.0 {
+        //         Ok(whole_part
+        //             + if digits > 1 {
+        //                 fractional_part / 10.0_f64.powi(digits)
+        //             } else {
+        //                 0.0
+        //             })
+        //     } else {
+        //         Ok(whole_part
+        //             - if digits > 1 {
+        //                 fractional_part / 10.0_f64.powi(digits)
+        //             } else {
+        //                 0.0
+        //             })
+        //     }
+        // } else {
+        //     trace!("Got float input: {}", whole_part);
+        //     Ok(whole_part)
+        // }
     }
 
     /// Get the output of the testing device as a string (ascii).
@@ -322,33 +364,50 @@ impl StandardDevice {
     }
 
     fn get_int(&mut self) -> Result<i64, String> {
-        let mut buf = [0];
+        // let mut buf = [0];
+        // if stdout().flush().is_err() {
+        //     error!("Could not flush output, do you have a terminal?");
+        //     return Err("Could not flush output".to_string());
+        // }
+
+        // while stdin().read(&mut buf).is_ok() && (buf[0] as char).is_whitespace() {}
+        // let mut is_neg = false;
+        // let mut result = if buf[0].is_ascii_digit() {
+        //     (buf[0] - b'0') as i64
+        // } else if buf[0] == '-' as u8 {
+        //     is_neg = true;
+        //     0
+        // } else {
+        //     warn!("EOF while parsing integer");
+        //     0
+        // };
+
+        // while stdin().read(&mut buf).is_ok() {
+        //     if buf[0].is_ascii_digit() {
+        //         result *= 10;
+        //         result += (buf[0] - b'0') as i64
+        //     } else {
+        //         break;
+        //     }
+        // }
+
+        // trace!("Got integer input: {}", result);
+
+        // Ok(if is_neg {-result} else {result})
+
+        let mut buf = String::new();
         if stdout().flush().is_err() {
             error!("Could not flush output, do you have a terminal?");
             return Err("Could not flush output".to_string());
         }
-
-        while stdin().read(&mut buf).is_ok() && (buf[0] as char).is_whitespace() {}
-
-        let mut result = if buf[0].is_ascii_digit() {
-            (buf[0] - b'0') as i64
-        } else {
-            warn!("EOF while parsing integer");
-            0
-        };
-
-        while stdin().read(&mut buf).is_ok() {
-            if buf[0].is_ascii_digit() {
-                result *= 10;
-                result += (buf[0] - b'0') as i64
-            } else {
-                break;
-            }
+        if stdin().read_line(&mut buf).is_err() {
+            error!("Could not flush output, do you have a terminal?");
+            return Err("Could not get user input".to_string());
         }
-
-        trace!("Got integer input: {}", result);
-
-        Ok(result)
+        Ok(buf.trim().parse::<i64>().unwrap_or_else(|s| {
+            warn!("Could not parse integer: {s:?}, defaulting to 0");
+            0
+        }))
     }
 
     fn get_float(&mut self) -> Result<f64, String> {

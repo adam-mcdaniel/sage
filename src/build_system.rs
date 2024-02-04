@@ -243,6 +243,10 @@ fn main() {
     //     ),
     // ]).unwrap());
 
+
+    // Time the compiler
+    let start = std::time::Instant::now();
+
     // If we're in debug mode, start the compilation in a separate thread.
     // This is to allow the process to have more stack space.
     if !cfg!(debug_assertions) {
@@ -262,4 +266,8 @@ fn main() {
         // Wait for the thread to finish.
         child.join().unwrap()
     }
+
+    let end = std::time::Instant::now();
+
+    info!("Time taken: {:?}", end - start);
 }

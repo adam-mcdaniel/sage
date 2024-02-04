@@ -155,7 +155,7 @@ impl Env {
         // Go through all the types and see if any equals the given type.
         for (other_ty, consts) in associated_constants.iter() {
             if matches!(ty.is_monomorph_of(other_ty, self), Ok(true)) {
-                info!("Type {ty} is monomorph of {other_ty}");
+                debug!("Type {ty} is monomorph of {other_ty}");
                 let template = other_ty.clone();
 
                 let ty_params = template.get_template_params(self);
@@ -175,7 +175,7 @@ impl Env {
                     continue;
                 }
                 for (symbol, ty) in &symbols {
-                    info!("----> {symbol} == {ty}");
+                    debug!("----> {symbol} == {ty}");
                 }
                 let template_associated_consts = consts.clone();
                 let mut ty_args = Vec::new();
@@ -194,23 +194,23 @@ impl Env {
                 }
 
                 if let Some((_, const_ty)) = template_associated_consts.get(name) {
-                    info!("Found associated const (type) {name} of type {ty}");
+                    debug!("Found associated const (type) {name} of type {ty}");
                     // let result = const_ty.apply(ty_args.clone()).simplify_until_simple(self).ok()?;
                     let result = const_ty.apply(ty_args.clone());
                     match result.simplify_until_simple(self) {
                         Ok(result) => {
-                            info!("Found associated const (type) {name} of type {ty} = {result}");
+                            debug!("Found associated const (type) {name} of type {ty} = {result}");
                             return Some(result);
                         }
                         Err(_err) => {
-                            info!("Found associated const (type) {name} of type {ty} = {result} (failed to simplify)");
+                            debug!("Found associated const (type) {name} of type {ty} = {result} (failed to simplify)");
                             return Some(result);
                             // debug!("Failed to simplify associated const (type) {name} of type {ty} = {result}");
                             // debug!("Error: {err}");
                             // continue;
                         }
                     }
-                    // info!("Found associated const (type) {name} of type {ty} = {result}");
+                    // debug!("Found associated const (type) {name} of type {ty} = {result}");
                     // return Some(result);
                 }
 
@@ -268,7 +268,7 @@ impl Env {
         // Go through all the types and see if any equals the given type.
         for (other_ty, consts) in associated_constants.clone().iter() {
             if matches!(ty.is_monomorph_of(other_ty, self), Ok(true)) {
-                info!("Type {ty} is monomorph of {other_ty}");
+                debug!("Type {ty} is monomorph of {other_ty}");
                 let template = other_ty.clone();
 
                 let monomorph = ty.clone();
@@ -288,7 +288,7 @@ impl Env {
                     continue;
                 }
                 for (symbol, ty) in &symbols {
-                    info!("----> {symbol} == {ty}");
+                    debug!("----> {symbol} == {ty}");
                 }
                 let template_associated_consts = consts.clone();
                 let mut ty_args = Vec::new();
@@ -310,11 +310,11 @@ impl Env {
                     let mut result_ty = const_ty.apply(ty_args.clone());
                     result_ty = match result_ty.simplify_until_simple(self) {
                         Ok(result) => {
-                            info!("Found associated const (type) {name} of type {ty} = {result}");
+                            debug!("Found associated const (type) {name} of type {ty} = {result}");
                             result
                         }
                         Err(_err) => {
-                            info!("Found associated const (type) {name} of type {ty} = {result_ty} (failed to simplify)");
+                            debug!("Found associated const (type) {name} of type {ty} = {result_ty} (failed to simplify)");
                             result_ty
                             // debug!("Failed to simplify associated const (type) {name} of type {ty} = {result}");
                             // debug!("Error: {err}");
@@ -328,7 +328,7 @@ impl Env {
                 warn!("Could not find associated const {name} of type {ty} in {template}");
                 // return self.get_associated_const(&monomorph, name);
             } else {
-                // info!("Type {ty} is not monomorph of {other_ty}");
+                // debug!("Type {ty} is not monomorph of {other_ty}");
             }
 
             if !ty.can_decay_to(other_ty, self).unwrap_or(false) {
@@ -484,7 +484,7 @@ impl Env {
         // }
 
         let monomorph = if let Ok(simplified) = monomorph.simplify_until_simple(self) {
-            info!("Simplified {monomorph} to {simplified}");
+            debug!("Simplified {monomorph} to {simplified}");
             simplified
         } else {
             debug!("Failed to simplify type {monomorph}");

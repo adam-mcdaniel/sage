@@ -36,3 +36,15 @@ println("Inverse-Cipher:");
 inverse_cipher(&mut state, &key);
 print_state(&state);
 println();
+
+let mut a = [0] * 16;
+let mut b = [0] * 16;
+extern def memcpy(dst: &mut Int, src: &Int, len: Int);
+for let mut i=0; i<sizeof(a); i+=1 {
+    a[i] = i;
+}
+println("a: ", a);
+println("b: ", b);
+memcpy(&mut b, &a, sizeof(a));
+println("a: ", a);
+println("b: ", b);

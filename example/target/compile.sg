@@ -1,0 +1,728 @@
+extern def exit(code: Int): !;
+extern def info(msg: &Char);
+
+enum MatchingEnd {
+    While,
+    If,
+    Else,
+    Function,
+}
+
+enum Option<T> {
+    Some(T),
+    Nothing,
+}
+
+const MAX_MATCHING_LEVEL_COUNT = 512;
+let static mut MATCHING_LEVEL: &mut Option<MatchingEnd> = Null;
+let mut level = [Option<MatchingEnd> of Nothing] * MAX_MATCHING_LEVEL_COUNT;
+MATCHING_LEVEL = &mut level as &mut Option<MatchingEnd>;
+
+let static mut MATCH_DEPTH: Int = 0;
+
+print("#ifndef SAGE_SETUP
+#define SAGE_SETUP
+#include <stdint.h>
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+#include <stdlib.h>
+
+typedef union cell {
+    int64_t i;
+    double f;
+    union cell *p;
+} cell;
+
+cell tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256], *ffi_ptr = ffi_channel;
+
+unsigned int ref_ptr = 0;
+void (*funs[10000])(void);
+#endif
+");
+
+let static mut FUNCTION_COUNT: Int = 0;
+let static mut FUNCTION_LEVEL: Int = 0;
+
+def function() {
+    println("void f", FUNCTION_COUNT, "() {");
+    FUNCTION_COUNT += 1;
+    FUNCTION_LEVEL += 1;
+    MATCHING_LEVEL[MATCH_DEPTH] = Option<MatchingEnd> of Some(MatchingEnd of Function);
+    MATCH_DEPTH += 1;
+}
+
+def while_loop() {
+    println("while (reg.i) {");
+    MATCHING_LEVEL[MATCH_DEPTH] = Option<MatchingEnd> of Some(MatchingEnd of While);
+    MATCH_DEPTH += 1;
+}
+
+def if_statement() {
+    println("if (reg.i) {");
+    MATCHING_LEVEL[MATCH_DEPTH] = Option<MatchingEnd> of Some(MatchingEnd of If);
+    MATCH_DEPTH += 1;
+}
+
+def else_statement() {
+    println("} else {");
+    MATCHING_LEVEL[MATCH_DEPTH] = Option<MatchingEnd> of Some(MatchingEnd of Else);
+}
+
+def end() {
+    MATCH_DEPTH -= 1;
+    match MATCHING_LEVEL[MATCH_DEPTH] {
+        of Some(of While) => println("}"),
+        of Some(of If) => println("}"),
+        of Some(of Else) => println("}"),
+        of Some(of Function) => {
+            println("}");
+            FUNCTION_LEVEL -= 1;
+        },
+        _ => println("Error: Unmatched end statement"),
+    }
+}
+
+let static mut IS_MAIN_SETUP: Bool = False;
+
+def setup_main() {
+    if FUNCTION_LEVEL == 0 && !IS_MAIN_SETUP {
+        println("int main() {");
+        for let mut i=0; i<FUNCTION_COUNT; i += 1 {
+            println("funs[", i, "] = f", i, ";");
+        }
+        println("reg.i = 0;");
+        IS_MAIN_SETUP = True;
+    }
+}
+
+def comment(s: &Char) {}
+
+def set(n: Int) {
+    setup_main();
+    println("reg.i = ", n, ";");
+}
+
+def setf(n: Float) {
+    setup_main();
+    println("reg.f = ", n, ";");
+}
+
+def call() {
+    setup_main();
+    println("funs[reg.i]();");
+}
+
+def ffi_call(name: &Char) {
+    setup_main();
+    println("__", name, "();");
+}
+
+def return_statement() {
+    setup_main();
+    println("return;");
+}
+
+def save() {
+    setup_main();
+    println("*ptr = reg;");
+}
+
+def restore() {
+    setup_main();
+    println("reg = *ptr;");
+}
+
+def move(n: Int) {
+    setup_main();
+    println("ptr += ", n, ";");
+}
+
+def where() {
+    setup_main();
+    println("reg.p = ptr;");
+}
+
+def deref() {
+    setup_main();
+    println("*ref++ = ptr; ptr = ptr->p;");
+}
+
+def refer() {
+    setup_main();
+    println("ptr = *--ref;");
+}
+
+def index() {
+    setup_main();
+    println("reg.p += ptr->i;");
+}
+
+def bitwise_nand() {
+    setup_main();
+    println("reg.i = ~(reg.i & ptr->i);");
+}
+
+def add() {
+    setup_main();
+    println("reg.i += ptr->i;");
+}
+
+def sub() {
+    setup_main();
+    println("reg.i -= ptr->i;");
+}
+
+def mul() {
+    setup_main();
+    println("reg.i *= ptr->i;");
+}
+
+def div() {
+    setup_main();
+    println("reg.i /= ptr->i;");
+}
+
+def rem() {
+    setup_main();
+    println("reg.i %= ptr->i;");
+}
+
+def gez() {
+    setup_main();
+    println("reg.i = reg.i >= 0;");
+}
+
+def peek() {
+    setup_main();
+    println("reg = *(ffi_ptr--);");
+}
+
+def poke() {
+    setup_main();
+    println("*(++ffi_ptr) = reg;");
+}
+
+def addf() {
+    setup_main();
+    println("reg.f += ptr->f;");
+}
+
+def subf() {
+    setup_main();
+    println("reg.f -= ptr->f;");
+}
+
+def mulf() {
+    setup_main();
+    println("reg.f *= ptr->f;");
+}
+
+def divf() {
+    setup_main();
+    println("reg.f /= ptr->f;");
+}
+
+def remf() {
+    setup_main();
+    println("reg.f = fmod(reg.f, ptr->f);");
+}
+
+def gezf() {
+    setup_main();
+    println("reg.i = reg.f >= 0;");
+}
+
+def acos() {
+    setup_main();
+    println("reg.f = acos(reg.f);");
+}
+
+def asin() {
+    setup_main();
+    println("reg.f = asin(reg.f);");
+}
+
+def atan() {
+    setup_main();
+    println("reg.f = atan(reg.f);");
+}
+
+def cos_() {
+    setup_main();
+    println("reg.f = cos(reg.f);");
+}
+
+def sin_() {
+    setup_main();
+    println("reg.f = sin(reg.f);");
+}
+
+def tan_() {
+    setup_main();
+    println("reg.f = tan(reg.f);");
+}
+
+def powf() {
+    setup_main();
+    println("reg.f = pow(reg.f, ptr->f);");
+}
+
+def alloc_() {
+    setup_main();
+    println("reg.p = malloc(reg.i * sizeof(reg));");
+}
+
+def free_() {
+    setup_main();
+    println("free(reg.p);");
+}
+
+def to_float() {
+    setup_main();
+    println("reg.f = reg.i;");
+}
+
+def to_int() {
+    setup_main();
+    println("reg.i = reg.f;");
+}
+
+def put_stdout_char() {
+    setup_main();
+    println("putchar(reg.i);");
+}
+
+def put_stdout_int() {
+    setup_main();
+    println("printf(\"%lld\", reg.i);");
+}
+
+def put_stdout_float() {
+    setup_main();
+    println("printf(\"%f\", reg.f);");
+}
+
+def get_stdin_char() {
+    setup_main();
+    println("reg.i = getchar();");
+}
+
+def get_stdin_int() {
+    setup_main();
+    println("scanf(\"%lld\", &reg.i);");
+}
+
+def get_stdin_float() {
+    setup_main();
+    println("scanf(\"%f\", &reg.f);");
+}
+
+enum CoreOp {
+    Comment,
+    Where,
+    Deref,
+    Refer,
+    Move(Int),
+    Set(Int),
+    Save,
+    Restore,
+    While,
+    If,
+    Else,
+    Function,
+    End,
+    Call,
+    Return,
+    Index,
+    BitwiseNand,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    Gez,
+    PutStdoutChar,
+    PutStdoutInt,
+    PutStdoutFloat,
+    GetStdinChar,
+    GetStdinInt,
+    GetStdinFloat,
+    Nop,
+}
+
+enum StdOp {
+    Call(&Char),
+    Set(Float),
+    Peek,
+    Poke,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    Gez,
+    ACos,
+    ASin,
+    ATan,
+    Cos,
+    Sin,
+    Tan,
+    Pow,
+    Alloc,
+    Free,
+    ToFloat,
+    ToInt,
+    CoreOp(CoreOp),
+}
+
+def strcmp(a: &Char, b: &Char): Bool {
+    let mut i = 0;
+    while a[i] != '\0' && b[i] != '\0' {
+        if a[i] != b[i] {
+            return False;
+        }
+        i += 1;
+    }
+    return a[i] == b[i];
+}
+
+def read_opcode(): Option<StdOp> {
+    let mut opcode = ['\0'] * 10;
+    for let mut i=0; i<4; i += 1 {
+        input(&mut (opcode[i]));
+        if opcode[i] == '\0' {
+            return Option<StdOp> of Nothing;
+        }
+    }
+    if opcode[0] == '\n' {
+        return Option<StdOp> of Nothing;
+    }
+    let opcode_ptr = &opcode as &Char;
+
+    // let arg = alloc(256 * sizeof(Char)) as &mut Char;
+    let mut next_char = '\0';
+    input(&mut (next_char));
+    // input(&mut (arg[0]));
+    if next_char == '\n' {
+        if strcmp(opcode_ptr, &"call") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Call));
+        } elif strcmp(opcode_ptr, &"save") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Save));
+        } elif strcmp(opcode_ptr, &"load") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Restore));
+        } elif strcmp(opcode_ptr, &"peek") {
+            return Option<StdOp> of Some(StdOp of Peek);
+        } elif strcmp(opcode_ptr, &"poke") {
+            return Option<StdOp> of Some(StdOp of Poke);
+        } elif strcmp(opcode_ptr, &"addf") {
+            return Option<StdOp> of Some(StdOp of Add);
+        } elif strcmp(opcode_ptr, &"subf") {
+            return Option<StdOp> of Some(StdOp of Sub);
+        } elif strcmp(opcode_ptr, &"mulf") {
+            return Option<StdOp> of Some(StdOp of Mul);
+        } elif strcmp(opcode_ptr, &"divf") {
+            return Option<StdOp> of Some(StdOp of Div);
+        } elif strcmp(opcode_ptr, &"remf") {
+            return Option<StdOp> of Some(StdOp of Rem);
+        } elif strcmp(opcode_ptr, &"gezf") {
+            return Option<StdOp> of Some(StdOp of Gez);
+        } elif strcmp(opcode_ptr, &"acos") {
+            return Option<StdOp> of Some(StdOp of ACos);
+        } elif strcmp(opcode_ptr, &"asin") {
+            return Option<StdOp> of Some(StdOp of ASin);
+        } elif strcmp(opcode_ptr, &"atan") {
+            return Option<StdOp> of Some(StdOp of ATan);
+        } elif strcmp(opcode_ptr, &"cos_") {
+            return Option<StdOp> of Some(StdOp of Cos);
+        } elif strcmp(opcode_ptr, &"sin_") {
+            return Option<StdOp> of Some(StdOp of Sin);
+        } elif strcmp(opcode_ptr, &"tan_") {
+            return Option<StdOp> of Some(StdOp of Tan);
+        } elif strcmp(opcode_ptr, &"powf") {
+            return Option<StdOp> of Some(StdOp of Pow);
+        } elif strcmp(opcode_ptr, &"aloc") {
+            return Option<StdOp> of Some(StdOp of Alloc);
+        } elif strcmp(opcode_ptr, &"free") {
+            return Option<StdOp> of Some(StdOp of Free);
+        } elif strcmp(opcode_ptr, &">flt") {
+            return Option<StdOp> of Some(StdOp of ToFloat);
+        } elif strcmp(opcode_ptr, &">int") {
+            return Option<StdOp> of Some(StdOp of ToInt);
+        } elif strcmp(opcode_ptr, &"loc_") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Where));
+        } elif strcmp(opcode_ptr, &"dref") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Deref));
+        } elif strcmp(opcode_ptr, &"ref_") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Refer));
+        } elif strcmp(opcode_ptr, &"indx") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Index));
+        } elif strcmp(opcode_ptr, &"nand") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of BitwiseNand));
+        } elif strcmp(opcode_ptr, &"add_") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Add));
+        } elif strcmp(opcode_ptr, &"sub_") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Sub));
+        } elif strcmp(opcode_ptr, &"mul_") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Mul));
+        } elif strcmp(opcode_ptr, &"div_") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Div));
+        } elif strcmp(opcode_ptr, &"rem_") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Rem));
+        } elif strcmp(opcode_ptr, &"gez_") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Gez));
+        } elif strcmp(opcode_ptr, &"putc") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of PutStdoutChar));
+        } elif strcmp(opcode_ptr, &"puti") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of PutStdoutInt));
+        } elif strcmp(opcode_ptr, &"putf") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of PutStdoutFloat));
+        } elif strcmp(opcode_ptr, &"getc") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of GetStdinChar));
+        } elif strcmp(opcode_ptr, &"geti") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of GetStdinInt));
+        } elif strcmp(opcode_ptr, &"getf") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of GetStdinFloat));
+        } elif strcmp(opcode_ptr, &"end_") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of End));
+        } elif strcmp(opcode_ptr, &"ret_") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Return));
+        } elif strcmp(opcode_ptr, &"loop") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of While));
+        } elif strcmp(opcode_ptr, &"if__") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of If));
+        } elif strcmp(opcode_ptr, &"else") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Else));
+        } elif strcmp(opcode_ptr, &"func") {
+            return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Function));
+        }
+    } elif strcmp(opcode_ptr, &"set_") {
+        let mut cells = 0;
+        input(&mut cells);
+        return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Set(cells)));
+    } elif strcmp(opcode_ptr, &"setf") {
+        let mut val = 0.0;
+        input(&mut (val));
+        return Option<StdOp> of Some(StdOp of Set(val));
+    } elif strcmp(opcode_ptr, &"move") {
+        let mut cells = 0;
+        input(&mut cells);
+        return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Move(cells)));
+    } elif strcmp(opcode_ptr, &"cmnt") {
+        let mut comment = '\0';
+        while comment != '\n' {
+            input(&mut (comment));
+        }
+        return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Comment));
+    } elif strcmp(opcode_ptr, &"call") {
+        let mut name = alloc(256 * sizeof<Char>()) as &mut Char;
+        let mut i = 0;
+        input(&mut (name[i]));
+        while name[i] != '\n' {
+            i += 1;
+            input(&mut (name[i]));
+        }
+        return Option<StdOp> of Some(StdOp of Call(name));
+    } else {
+        return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Nop));
+    }
+
+    return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Nop));
+}
+
+
+def panic(msg: &Char): ! {
+    println("Panic: ", msg);
+    exit(1);
+}
+
+impl Option<T> {
+    def is_some(self: &Option<T>): Bool {
+        match self {
+            &of Some(_) => True,
+            _ => False,
+        }
+    }
+
+    def unwrap(self: &Option<T>): T {
+        match self {
+            &of Some(val) => val,
+            _ => panic(&"Called unwrap on a None value"),
+        }
+    }
+}
+let static mut INSTRUCTION_COUNT: Int = 0;
+let mut opcode = read_opcode();
+while opcode.is_some() {
+    match opcode.unwrap() {
+        of CoreOp(op) => {
+            match op {
+                of Comment => comment(&""),
+                of Where => where(),
+                of Deref => deref(),
+                of Refer => refer(),
+                of Move(cells) => move(cells),
+                of Set(val) => set(val),
+                of Save => save(),
+                of Restore => restore(),
+                of While => while_loop(),
+                of If => if_statement(),
+                of Else => else_statement(),
+                of Function => function(),
+                of End => end(),
+                of Call => call(),
+                of Return => return_statement(),
+                of Index => index(),
+                of BitwiseNand => bitwise_nand(),
+                of Add => add(),
+                of Sub => sub(),
+                of Mul => mul(),
+                of Div => div(),
+                of Rem => rem(),
+                of Gez => gez(),
+                of PutStdoutChar => put_stdout_char(),
+                of PutStdoutInt => put_stdout_int(),
+                of PutStdoutFloat => put_stdout_float(),
+                of GetStdinChar => get_stdin_char(),
+                of GetStdinInt => get_stdin_int(),
+                of GetStdinFloat => get_stdin_float(),
+                of Nop => {},
+            }
+        },
+        of Call(name) => {
+            ffi_call(name);
+        },
+        of Set(val) => {
+            setf(val);
+        },
+        of Peek => {
+            peek();
+        },
+        of Poke => {
+            poke();
+        },
+        of Add => {
+            addf();
+        },
+        of Sub => {
+            subf();
+        },
+        of Mul => {
+            mulf();
+        },
+        of Div => {
+            divf();
+        },
+        of Rem => {
+            remf();
+        },
+        of Gez => {
+            gezf();
+        },
+        of ACos => {
+            acos();
+        },
+        of ASin => {
+            asin();
+        },
+        of ATan => {
+            atan();
+        },
+        of Cos => {
+            cos_();
+        },
+        of Sin => {
+            sin_();
+        },
+        of Tan => {
+            tan_();
+        },
+        of Pow => {
+            powf();
+        },
+        of Alloc => {
+            alloc_();
+        },
+        of Free => {
+            free_();
+        },
+        of ToFloat => {
+            to_float();
+        },
+        of ToInt => {
+            to_int();
+        },
+    }
+    match opcode {
+        of Some(of CoreOp(of Nop | of Comment)) => {},
+        of Some(_) => {
+            INSTRUCTION_COUNT += 1;
+        },
+        _ => {},
+    }
+
+    opcode = read_opcode();
+}
+
+if IS_MAIN_SETUP {
+    println("}");
+}
+
+
+def itoa(mut n: Int, s: &mut Char) {
+    let mut i = 0;
+    let mut sign = 0;
+    if n < 0 {
+        sign = 1;
+        n = -n;
+    }
+    while n > 0 {
+        s[i] = (n % 10 + '0' as Int) as Char;
+        n /= 10;
+        i += 1;
+    }
+    if sign {
+        s[i] = '-';
+        i += 1;
+    }
+    s[i] = '\0';
+    let mut j = 0;
+    i -= 1;
+    while j < i {
+        let temp = s[j];
+        s[j] = s[i];
+        s[i] = temp;
+        j += 1;
+        i -= 1;
+    }
+}
+def strcpy(dest: &mut Char, src: &Char) {
+    let mut i = 0;
+    while src[i] != '\0' {
+        dest[i] = src[i];
+        i += 1;
+    }
+    dest[i] = '\0';
+}
+
+def strcat(dest: &mut Char, src: &Char) {
+    let mut i = 0;
+    while dest[i] != '\0' {
+        i += 1;
+    }
+    let mut j = 0;
+    while src[j] != '\0' {
+        dest[i] = src[j];
+        i += 1;
+        j += 1;
+    }
+    dest[i] = '\0';
+}
+
+let msg = alloc(1024 * sizeof<Char>()) as &mut Char;
+strcpy(msg, &"Compiled ");
+let mut count = alloc(256 * sizeof<Char>()) as &mut Char;
+itoa(INSTRUCTION_COUNT, count);
+strcat(msg, count);
+strcat(msg, &" instructions");
+info(msg);

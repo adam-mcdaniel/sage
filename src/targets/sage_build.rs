@@ -30,8 +30,7 @@ pub struct SageBuild {
     supports_floats: bool,
     version: String,
     call_stack_size: usize,
-    setup_code: String,
-    cleanup_code: String,
+    compile_code: String,
     output_code: String,
 }
 
@@ -41,18 +40,11 @@ impl SageBuild {
         info!("Reading Sage-Build target configuration from {}", file.display());
         let mut config: SageBuild = toml::from_str(&::std::fs::read_to_string(file).unwrap()).unwrap();
         // If there's a setup file, read it
-        if let Ok(mut setup_file) = ::std::fs::File::open(config.setup_code.clone()) {
-            info!("Reading setup code from {}", config.setup_code);
-            let mut setup_code = String::new();
-            setup_file.read_to_string(&mut setup_code).unwrap();
-            config.setup_code = setup_code;
-        }
-        // If there's a cleanup file, read it
-        if let Ok(mut cleanup_file) = ::std::fs::File::open(config.cleanup_code.clone()) {
-            info!("Reading cleanup code from {}", config.cleanup_code);
-            let mut cleanup_code = String::new();
-            cleanup_file.read_to_string(&mut cleanup_code).unwrap();
-            config.cleanup_code = cleanup_code;
+        if let Ok(mut compile_file) = ::std::fs::File::open(config.compile_code.clone()) {
+            info!("Reading setup code from {}", config.compile_code);
+            let mut compile_code = String::new();
+            compile_file.read_to_string(&mut compile_code).unwrap();
+            config.compile_code = compile_code;
         }
         if let Ok(mut output_file) = ::std::fs::File::open(config.output_code.clone()) {
             info!("Reading output code from {}", config.output_code);
@@ -85,22 +77,24 @@ impl SageBuild {
 
     pub fn build_core(&self, program: crate::vm::CoreProgram) -> Result<(), BuildError> {
         info!("Building Sage program with Sage-Build target");
-        let mut code = self.setup_code.clone() + "\n";
+        // let mut code = self.compile_code.clone() + "\n";
         // Show percent done at 10% intervals
         let code_len = program.len();
+        let mut input = String::new();
         for (i, op) in program.into_iter().enumerate() {
             // Show percent done at 10% intervals
             if i % (code_len / 10) == 0 {
                 info!("Building Sage program with Sage-Build target: {}%", (i as f64 / code_len as f64 * 100.0) as i64);
             }
-            code += &build_core_op(op);
+            input += &build_core_op(op);
+            input.push('\n');
         }
-        code += &self.cleanup_code;
-        ::std::fs::write("code-gen.sg", &code).unwrap();
+        // ::std::fs::write("code-gen.sg", &self.compile_code).unwrap();
+        ::std::fs::write("input.txt", &input).unwrap();
         info!("Created build script for Sage-Build target: compiling {} opcodes", code_len);
-        trace!("Created core builder script: {}", code);
+        trace!("Created core builder script: {}", input);
 
-        if let Some(output) = eval(code, "", SAGE_BUILD_BINDINGS.clone(), self.call_stack_size, "sage-build") {
+        if let Some(output) = eval(&self.compile_code, input, SAGE_BUILD_BINDINGS.clone(), self.call_stack_size, "sage-build") {
             eval(&self.output_code, output, SAGE_BUILD_BINDINGS.clone(), self.call_stack_size, "sage-build").ok_or(())
                 .map_err(|_| BuildError::ParseBuildCode("Failed to eval core build script (output)".to_string()))?;
             info!("Built user program with Sage-Build target");
@@ -113,44 +107,45 @@ impl SageBuild {
     pub fn build_std(&self, program: crate::vm::StandardProgram) -> Result<(), BuildError> {
         use crate::vm::StandardOp::*;
 
-        let mut code = self.setup_code.clone() + "\n";
         let code_len = program.len();
+        let mut input = String::new();
         for (i, op) in program.into_iter().enumerate() {
             // Show percent done at 10% intervals
             if i % (code_len / 10) == 0 {
                 info!("Building Sage program with Sage-Build target: {}%", (i as f64 / code_len as f64 * 100.0) as i64);
             }
-            code += &match op {
-                Call(ffi) => format!("call_ffi(&\"{}\");\n", ffi.name),
-                Peek => "peek();\n".to_string(),
-                Poke => "poke();\n".to_string(),
-                Set(n) => format!("set({});\n", n),
-                ToInt => "to_int();\n".to_string(),
-                ToFloat => "to_float();\n".to_string(),
-                ACos => "acos();\n".to_string(),
-                ASin => "asin();\n".to_string(),
-                ATan => "atan();\n".to_string(),
-                Sin => "sin();\n".to_string(),
-                Cos => "cos();\n".to_string(),
-                Tan => "tan();\n".to_string(),
-                Add => "addf();\n".to_string(),
-                Sub => "subf();\n".to_string(),
-                Mul => "mulf();\n".to_string(),
-                Div => "divf();\n".to_string(),
-                Rem => "remf();\n".to_string(),
-                Pow => "powf();\n".to_string(),
-                IsNonNegative => "gezf();\n".to_string(),
-                Alloc => "alloc();\n".to_string(),
-                Free => "free();\n".to_string(),
+            input += &match op {
+                Call(ffi) => format!("call {}", ffi.name),
+                Peek => "peek".to_string(),
+                Poke => "poke".to_string(),
+                Set(n) => format!("setf {}", n),
+                ToInt => ">int".to_string(),
+                ToFloat => ">flt".to_string(),
+                ACos => "acos".to_string(),
+                ASin => "asin".to_string(),
+                ATan => "atan".to_string(),
+                Sin => "sin_".to_string(),
+                Cos => "cos_".to_string(),
+                Tan => "tan_".to_string(),
+                Add => "addf".to_string(),
+                Sub => "subf".to_string(),
+                Mul => "mulf".to_string(),
+                Div => "divf".to_string(),
+                Rem => "remf".to_string(),
+                Pow => "powf".to_string(),
+                IsNonNegative => "gezf".to_string(),
+                Alloc => "aloc".to_string(),
+                Free => "free".to_string(),
                 CoreOp(op) => build_core_op(op),
-            }
+            };
+            input.push('\n');
         }
-        code += &self.cleanup_code;
-        ::std::fs::write("code-gen.sg", &code).unwrap();
+        // code += &self.cleanup_code;
+        ::std::fs::write("input.txt", &input).unwrap();
         info!("Created build script for Sage-Build target: compiling {} opcodes", code_len);
-        trace!("Created standard builder script: {}", code);
+        trace!("Created standard builder script: {}", input);
 
-        if let Some(output) = eval(code, "", SAGE_BUILD_BINDINGS.clone(), self.call_stack_size, "sage-build") {
+        if let Some(output) = eval(&self.compile_code, input, SAGE_BUILD_BINDINGS.clone(), self.call_stack_size, "sage-build") {
             eval(&self.output_code, output, SAGE_BUILD_BINDINGS.clone(), self.call_stack_size, "sage-build").ok_or(())
                 .map_err(|_| BuildError::ParseBuildCode("Failed to eval standard build script (output)".to_string()))?;
             info!("Built user program with Sage-Build target");
@@ -317,6 +312,17 @@ lazy_static! {
                 let filename_ptr = channel.pop_front().unwrap();
                 let filename = read_sage_string(tape, filename_ptr as usize);
                 let result = ::std::fs::metadata(filename).is_ok();
+                channel.push_back(result as i64);
+            }
+        ),
+        (
+            ("size", Tuple(vec![
+                Pointer(Mutability::Immutable, Char.into()),
+            ]), Int).into(),
+            |channel, tape| {
+                let filename_ptr = channel.pop_front().unwrap();
+                let filename = read_sage_string(tape, filename_ptr as usize);
+                let result = ::std::fs::metadata(filename).ok().map(|m| m.len()).unwrap_or(0);
                 channel.push_back(result as i64);
             }
         ),
@@ -516,39 +522,39 @@ lazy_static! {
 fn build_core_op(op: crate::vm::CoreOp) -> String {
     use crate::vm::CoreOp::*;
     match op {
-        Comment(text) => format!("comment(&\"{}\");\n", text),
-        Function => "function();\n".to_string(),
-        While => "while_loop();\n".to_string(),
-        If => "if_statement();\n".to_string(),
-        Else => "else_statement();\n".to_string(),
-        Set(n) => format!("set({});\n", n),
-        Call => "call();\n".to_string(),
-        Return => "return_statement();\n".to_string(),
-        Save => "save();\n".to_string(),
-        Restore => "restore();\n".to_string(),
-        Move(n) => format!("move({});\n", n),
-        Where => "where();\n".to_string(),
-        Deref => "deref();\n".to_string(),
-        Refer => "refer();\n".to_string(),
-        Index => "index();\n".to_string(),
-        BitwiseNand => "bitwise_nand();\n".to_string(),
-        Add => "add();\n".to_string(),
-        Sub => "sub();\n".to_string(),
-        Mul => "mul();\n".to_string(),
-        Div => "div();\n".to_string(),
-        Rem => "rem();\n".to_string(),
-        End => "end();\n".to_string(),
-        IsNonNegative => "gez();\n".to_string(),
+        Comment(text) => format!("cmnt {}", text),
+        Function => "func".to_string(),
+        While => "loop".to_string(),
+        If => "if__".to_string(),
+        Else => "else".to_string(),
+        Set(n) => format!("set_ {}", n),
+        Call => "call".to_string(),
+        Return => "ret_".to_string(),
+        Save => "save".to_string(),
+        Restore => "load".to_string(),
+        Move(n) => format!("move {}", n),
+        Where => "loc_".to_string(),
+        Deref => "dref".to_string(),
+        Refer => "ref_".to_string(),
+        Index => "indx".to_string(),
+        BitwiseNand => "nand".to_string(),
+        Add => "add_".to_string(),
+        Sub => "sub_".to_string(),
+        Mul => "mul_".to_string(),
+        Div => "div_".to_string(),
+        Rem => "rem_".to_string(),
+        End => "end_".to_string(),
+        IsNonNegative => "gez_".to_string(),
         Get(input) => match input.mode {
-                InputMode::StdinChar => "get_stdin_char();\n".to_string(),
-                InputMode::StdinInt => "get_stdin_int();\n".to_string(),
-                InputMode::StdinFloat => "get_stdin_float();\n".to_string(),
+                InputMode::StdinChar => "getc".to_string(),
+                InputMode::StdinInt => "geti".to_string(),
+                InputMode::StdinFloat => "getf".to_string(),
                 _ => todo!(),
         },
         Put(output) => match output.mode {
-            OutputMode::StdoutChar => "put_stdout_char();\n".to_string(),
-            OutputMode::StdoutInt => "put_stdout_int();\n".to_string(),
-            OutputMode::StdoutFloat => "put_stdout_float();\n".to_string(),
+            OutputMode::StdoutChar => "putc".to_string(),
+            OutputMode::StdoutInt => "puti".to_string(),
+            OutputMode::StdoutFloat => "putf".to_string(),
             _ => todo!(),
         }
     }
