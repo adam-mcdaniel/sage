@@ -56,17 +56,17 @@ void (*funs[10000])(void);
 }
 
 
+info(&"Writing to out.c...");
+buf[sizeof(buf) - 1] = '\0';
 while !is_done {
-    for let mut i=0; i<sizeof(buf) && !is_done; i+=1 {
+    for let mut i=0; i<sizeof(buf) - 1; i+=1 {
         input(&mut (buf[i]));
-        if buf[i] == '\0' {
-            is_done = True;
-        }
     }
-    if append(&"out.c", &buf) {
-        info(&"Wrote 8192 bytes to out.c");
-    } else {
-        error(&"Failed to write 8192 bytes to out.c");
+    if (buf[sizeof(buf) - 2] == '\0') {
+        is_done = True;
+    }
+    if !(append(&"out.c", &buf)) {
+        error(&"Failed to write to out.c");
         is_done = True;
     }
 }

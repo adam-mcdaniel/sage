@@ -469,10 +469,10 @@ impl Type {
 
             (other, Self::Symbol(name)) => {
                 if param_symbols.contains(name) {
-                    info!("Found match {}: {}", name, other);
+                    debug!("Found match {}: {}", name, other);
                     matched_symbols.insert(name.clone(), other.clone());
                 } else if let Some(t) = env.get_type(name) {
-                    info!("Symbol {name} is {t}");
+                    debug!("Symbol {name} is {t}");
                     other.get_monomorph_template_args(t, matched_symbols, param_symbols, env)?;
                 }
             }
@@ -808,7 +808,7 @@ impl Type {
             .simplify_until_matches(env, Type::Any, |t, _| Ok(t.possibly_has_members()));
 
         if result.is_err() {
-            warn!("Couldn't simplify {} to a type with members", self);
+            debug!("Couldn't simplify {} to a type with members", self);
         }
 
         result
@@ -832,7 +832,7 @@ impl Type {
             .clone()
             .simplify_until_matches(env, Type::Any, |t, _| Ok(t.is_union()));
         if result.is_err() {
-            warn!("Couldn't simplify {} to a union", self);
+            debug!("Couldn't simplify {} to a union", self);
         }
         result
     }
@@ -855,7 +855,7 @@ impl Type {
             .clone()
             .simplify_until_matches(env, Type::Enum(vec![]), |t, _| Ok(t.has_variants()));
         if result.is_err() {
-            warn!("Couldn't simplify {} to a type with variants", self);
+            debug!("Couldn't simplify {} to a type with variants", self);
         }
         result
     }
@@ -877,7 +877,7 @@ impl Type {
             .clone()
             .simplify_until_matches(env, Type::Any, |t, _| Ok(t.is_atomic()));
         if result.is_err() {
-            warn!("Couldn't simplify {} to an atomic type", self);
+            debug!("Couldn't simplify {} to an atomic type", self);
         }
         result
     }
@@ -886,7 +886,7 @@ impl Type {
             .clone()
             .simplify_until_matches(env, Type::Any, |t, _| Ok(t.is_simple()));
         if result.is_err() {
-            warn!("Couldn't simplify {} to a simple type", self);
+            debug!("Couldn't simplify {} to a simple type", self);
         }
         result
     }
@@ -899,7 +899,7 @@ impl Type {
             |t, _| Ok(t.is_polymorphic()),
         );
         if result.is_err() {
-            warn!("Couldn't simplify {} to a polymorphic type", self);
+            debug!("Couldn't simplify {} to a polymorphic type", self);
         }
         result
     }
@@ -910,7 +910,7 @@ impl Type {
             .clone()
             .simplify_until_matches(env, Type::Any, |t, _env| Ok(t.is_concrete()));
         if result.is_err() {
-            warn!("Couldn't simplify {} to a concrete type", self);
+            debug!("Couldn't simplify {} to a concrete type", self);
         }
         result
     }

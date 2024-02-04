@@ -295,7 +295,7 @@ def put_stdout_char() {
 
 def put_stdout_int() {
     setup_main();
-    println("printf(\"%lld\", reg.i);");
+    println("printf(\"%ld\", reg.i);");
 }
 
 def put_stdout_float() {
@@ -310,7 +310,7 @@ def get_stdin_char() {
 
 def get_stdin_int() {
     setup_main();
-    println("scanf(\"%lld\", &reg.i);");
+    println("scanf(\"%ld\", &reg.i);");
 }
 
 def get_stdin_float() {
@@ -595,11 +595,17 @@ while opcode.is_some() {
         of Set(val) => {
             setf(val);
         },
-        of Peek => {
-            peek();
+        of Alloc => {
+            alloc_();
         },
-        of Poke => {
-            poke();
+        of Free => {
+            free_();
+        },
+        of ToFloat => {
+            to_float();
+        },
+        of ToInt => {
+            to_int();
         },
         of Add => {
             addf();
@@ -618,6 +624,12 @@ while opcode.is_some() {
         },
         of Gez => {
             gezf();
+        },
+        of Peek => {
+            peek();
+        },
+        of Poke => {
+            poke();
         },
         of ACos => {
             acos();
@@ -640,23 +652,14 @@ while opcode.is_some() {
         of Pow => {
             powf();
         },
-        of Alloc => {
-            alloc_();
-        },
-        of Free => {
-            free_();
-        },
-        of ToFloat => {
-            to_float();
-        },
-        of ToInt => {
-            to_int();
-        },
     }
     match opcode {
         of Some(of CoreOp(of Nop | of Comment)) => {},
         of Some(_) => {
             INSTRUCTION_COUNT += 1;
+            if (INSTRUCTION_COUNT % 10000) == 0 {
+                info(&"Compiled 10000 instructions");
+            }
         },
         _ => {},
     }
@@ -668,6 +671,7 @@ if IS_MAIN_SETUP {
     println("}");
 }
 
+/*
 
 def itoa(mut n: Int, s: &mut Char) {
     let mut i = 0;
@@ -726,3 +730,4 @@ itoa(INSTRUCTION_COUNT, count);
 strcat(msg, count);
 strcat(msg, &" instructions");
 info(msg);
+*/target:

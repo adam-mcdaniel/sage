@@ -287,7 +287,7 @@ impl Compile for Expr {
                                 .transform_method_call(env)?
                                 .compile_expr(env, output)?;
                         } else {
-                            warn!("Method transform failed for {self_clone}; Monomorphizing {template} with {ty_args:?} in environment {env}");
+                            debug!("Method transform failed for {self_clone}; Monomorphizing {template} with {ty_args:?} in environment {env}");
                             // Push the arguments to the procedure on the stack.
                             for arg in &args {
                                 // Compile the argument (push it on the stack)
@@ -296,7 +296,7 @@ impl Compile for Expr {
 
                             // Compile it normally:
                             // Push the procedure on the stack.
-                            warn!("Method: Monomorphizing {template} with {ty_args:?}");
+                            debug!("Method: Monomorphizing {template} with {ty_args:?}");
                             ConstExpr::Monomorphize(template, ty_args).compile_expr(env, output)?;
                             // Pop the "function pointer" from the stack.
                             output.op(CoreOp::Pop(Some(A), 1));
