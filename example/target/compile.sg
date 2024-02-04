@@ -730,4 +730,4 @@ itoa(INSTRUCTION_COUNT, count);
 strcat(msg, count);
 strcat(msg, &" instructions");
 info(msg);
-*/target:
+*/
