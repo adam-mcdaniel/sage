@@ -6,6 +6,7 @@ extern def write(file: &Char, buf: &Char): Bool;
 extern def read(file: &Char, buf: &Char): Bool;
 extern def copy(src: &Char, dest: &Char): Bool;
 extern def exists(file: &Char): Bool;
+extern def delete(file: &Char): Bool;
 extern def size(file: &Char): Int;
 extern def info(msg: &Char);
 extern def warn(msg: &Char);
@@ -41,6 +42,8 @@ cell tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256]
 
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);
+
+int ch;
 #endif\n\n") {
         append_file_to_file(&"ffi.h", &"out.c");
     } else {
@@ -74,7 +77,7 @@ while !is_done {
 if exists(&"out.c") {
     if system(&"gcc -o out out.c -lm") {
         info(&"Compiled out.c to out");
-        let _ = system(&"rm out.c");
+        // let _ = delete(&"out.c");
         let _ = system(&"./out");
     } else {
         error(&"Failed to compile out.c to out");

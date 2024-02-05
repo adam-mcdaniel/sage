@@ -1,5 +1,5 @@
-extern def exit(code: Int): !;
-extern def info(msg: &Char);
+//extern def exit(code: Int): !;
+//extern def info(msg: &Char);
 
 enum MatchingEnd {
     While,
@@ -38,6 +38,8 @@ cell tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256]
 
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);
+
+int ch;
 #endif
 ");
 
@@ -305,7 +307,7 @@ def put_stdout_float() {
 
 def get_stdin_char() {
     setup_main();
-    println("reg.i = getchar();");
+    println("ch = getchar(); reg.i = ch == EOF? 0 : ch;");
 }
 
 def get_stdin_int() {
@@ -393,6 +395,8 @@ def read_opcode(): Option<StdOp> {
         input(&mut (opcode[i]));
         if opcode[i] == '\0' {
             return Option<StdOp> of Nothing;
+        } elif opcode[i] == ' ' || opcode[i] == '\n' || opcode[i] == '\t' {
+            i = 0;
         }
     }
     if opcode[0] == '\n' {
@@ -499,14 +503,17 @@ def read_opcode(): Option<StdOp> {
     } elif strcmp(opcode_ptr, &"set_") {
         let mut cells = 0;
         input(&mut cells);
+        input(&mut next_char);
         return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Set(cells)));
     } elif strcmp(opcode_ptr, &"setf") {
         let mut val = 0.0;
         input(&mut (val));
+        input(&mut next_char);
         return Option<StdOp> of Some(StdOp of Set(val));
     } elif strcmp(opcode_ptr, &"move") {
         let mut cells = 0;
         input(&mut cells);
+        input(&mut next_char);
         return Option<StdOp> of Some(StdOp of CoreOp(CoreOp of Move(cells)));
     } elif strcmp(opcode_ptr, &"cmnt") {
         let mut comment = '\0';
@@ -533,7 +540,8 @@ def read_opcode(): Option<StdOp> {
 
 def panic(msg: &Char): ! {
     println("Panic: ", msg);
-    exit(1);
+    //exit(1);
+    while True {}
 }
 
 impl Option<T> {
@@ -653,16 +661,18 @@ while opcode.is_some() {
             powf();
         },
     }
+    /*
     match opcode {
         of Some(of CoreOp(of Nop | of Comment)) => {},
         of Some(_) => {
             INSTRUCTION_COUNT += 1;
             if (INSTRUCTION_COUNT % 10000) == 0 {
-                info(&"Compiled 10000 instructions");
+                println(&"Compiled 10000 instructions");
             }
         },
         _ => {},
     }
+    */
 
     opcode = read_opcode();
 }

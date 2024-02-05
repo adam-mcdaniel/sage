@@ -158,6 +158,7 @@ impl TestingDevice {
             token.push(ch);
             ch = self.get_char()?;
         }
+        self.input.push_front(ch as i64);
         Ok(token.parse::<i64>().unwrap_or_else(|s| {
             warn!("Could not parse integer: {s:?}, defaulting to 0");
             0
@@ -176,6 +177,7 @@ impl TestingDevice {
             token.push(ch);
             ch = self.get_char()?;
         }
+        self.input.push_front(ch as i64);
         Ok(token.parse::<f64>().unwrap_or_else(|s| {
             warn!("Could not parse float: {s:?}, defaulting to 0.0");
             0.0
@@ -303,6 +305,7 @@ impl Device for TestingDevice {
 /// and writes a character to standard-out with `put`.
 #[derive(Debug, Clone)]
 pub struct StandardDevice {
+    input_buffer: VecDeque<i64>,
     ffi: HashMap<FFIBinding, fn(&mut VecDeque<i64>, &mut Vec<i64>)>,
     ffi_channel: VecDeque<i64>,
 }
@@ -310,6 +313,7 @@ pub struct StandardDevice {
 impl Default for StandardDevice {
     fn default() -> Self {
         let mut result = Self {
+            input_buffer: VecDeque::new(),
             ffi: HashMap::new(),
             ffi_channel: VecDeque::new(),
         };
@@ -351,16 +355,20 @@ impl StandardDevice {
     }
 
     fn get_char(&mut self) -> Result<char, String> {
-        let mut buf = [0];
-        if stdout().flush().is_err() {
-            error!("Could not flush output, do you have a terminal?");
-            return Err("Could not flush output".to_string());
+        if let Some(n) = self.input_buffer.pop_front() {
+            Ok(n as u8 as char)
+        } else {
+            let mut buf = [0];
+            if stdout().flush().is_err() {
+                error!("Could not flush output, do you have a terminal?");
+                return Err("Could not flush output".to_string());
+            }
+            if stdin().read(&mut buf).is_err() {
+                error!("Could not flush output, do you have a terminal?");
+                return Err("Could not get user input".to_string());
+            }
+            Ok(buf[0] as char)
         }
-        if stdin().read(&mut buf).is_err() {
-            error!("Could not flush output, do you have a terminal?");
-            return Err("Could not get user input".to_string());
-        }
-        Ok(buf[0] as char)
     }
 
     fn get_int(&mut self) -> Result<i64, String> {
@@ -400,11 +408,33 @@ impl StandardDevice {
             error!("Could not flush output, do you have a terminal?");
             return Err("Could not flush output".to_string());
         }
+
+        // Store it in the buffer
         if stdin().read_line(&mut buf).is_err() {
             error!("Could not flush output, do you have a terminal?");
             return Err("Could not get user input".to_string());
         }
-        Ok(buf.trim().parse::<i64>().unwrap_or_else(|s| {
+
+        // Put the buffer into the input buffer
+        for ch in buf.chars() {
+            self.input_buffer.push_back(ch as i64);
+        }
+        // Parse it like TestingDevice
+
+        // Find token after whitespace
+        let mut token = String::new();
+        let mut ch = self.get_char()?;
+        while ch.is_whitespace() {
+            ch = self.get_char()?;
+        }
+        // Find token after whitespace
+        while !ch.is_whitespace() {
+            token.push(ch);
+            ch = self.get_char()?;
+        }
+        self.input_buffer.push_front(ch as i64);
+
+        Ok(token.trim().parse::<i64>().unwrap_or_else(|s| {
             warn!("Could not parse integer: {s:?}, defaulting to 0");
             0
         }))
@@ -416,11 +446,28 @@ impl StandardDevice {
             error!("Could not flush output, do you have a terminal?");
             return Err("Could not flush output".to_string());
         }
+        // Store it in the buffer
         if stdin().read_line(&mut buf).is_err() {
             error!("Could not flush output, do you have a terminal?");
             return Err("Could not get user input".to_string());
         }
-        Ok(buf.trim().parse::<f64>().unwrap_or_else(|s| {
+        // Put the buffer into the input buffer
+        for ch in buf.chars() {
+            self.input_buffer.push_back(ch as i64);
+        }
+        // Parse it like TestingDevice
+        let mut token = String::new();
+        let mut ch = self.get_char()?;
+        while ch.is_whitespace() {
+            ch = self.get_char()?;
+        }
+        // Find token after whitespace
+        while !ch.is_whitespace() {
+            token.push(ch);
+            ch = self.get_char()?;
+        }
+        self.input_buffer.push_front(ch as i64);
+        Ok(token.trim().parse::<f64>().unwrap_or_else(|s| {
             warn!("Could not parse float: {s:?}, defaulting to 0.0");
             0.0
         }))

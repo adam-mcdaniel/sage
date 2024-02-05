@@ -115,7 +115,7 @@ impl Architecture for C {
     fn get(&mut self, src: &Input) -> Result<String, String> {
         let ch = src.channel.0;
         match src.mode {
-            InputMode::StdinChar => Ok("reg.i = getchar();".to_string()),
+            InputMode::StdinChar => Ok("tmp = getchar(); reg.i = tmp == EOF? 0 : tmp;".to_string()),
             InputMode::StdinInt => Ok("scanf(\"%ld\", &reg.i);".to_string()),
             InputMode::StdinFloat => Ok("scanf(\"%lf\", &reg.f);".to_string()),
             InputMode::Thermometer => Ok("reg.f = 293.15;".to_string()),
@@ -163,6 +163,8 @@ cell tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256]
 
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);
+
+int tmp;
 "#
         .to_string();
 

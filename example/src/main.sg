@@ -7,18 +7,120 @@ for let mut i=0.1; i<1.0; i+=0.1 {
     println("sin(", i, ") = ", sin(i));
 }
 
-let mut key_arr = [0] * 16;
-for let mut i=0; i<16; i+=1 {
-    print("Enter key[", i, "]: ");
-    input(&mut (key_arr[i]));
+def read_line(s: &mut Char) {
+    let mut ch = '\0';
+    let mut i = 0;
+    while ch != '\n' {
+        input(&mut ch);
+        if ch != '\n' {
+            s[i] = ch;
+            i += 1;
+        }
+    }
+    s[i] = '\0';
 }
 
-let key = Key of Key128 key_arr;
-println("\nKey:");
+def read_all(s: &mut Char) {
+    let mut ch = '!';
+    let mut i = 0;
+    while ch != '\0' {
+        input(&mut ch);
+        s[i] = ch;
+        i += 1;
+    }
+    s[i] = '\0';
+}
+
+def read_key(s: &Char): Key {
+    let mut key_arr = [0] * 16;
+    for let mut i=0; i<16 && s[i] != '\0'; i+=1 {
+        key_arr[i] = s[i] as Int;
+    }
+    return Key of Key128 key_arr;
+}
+
+// Take some plaintext input as a string and convert it to a state array
+def encrypt(input: &Char, output: &mut Char, key: &Key) {
+    let mut state = [0] * 16;
+    let mut i = 0;
+    let mut is_done = False;
+    while !is_done {
+        for let mut j=0; j<16; j+=1 {
+            state[j] = input[i + j] as Int;
+            if state[j] == 0 {
+                is_done = True;
+            }
+        }
+        cipher(&mut state, key);
+        for let mut j=0; j<16; j+=1 {
+            output[i + j] = state[j] as Char;
+        }
+        i += 16;
+    }
+}
+
+def decrypt(input: &Char, output: &mut Char, key: &Key) {
+    let mut state = [0] * 16;
+    let mut i = 0;
+    let mut is_done = False;
+    while !is_done {
+        for let mut j=0; j<16; j+=1 {
+            state[j] = input[i + j] as Int;
+            if state[j] == 0 {
+                is_done = True;
+            }
+        }
+        inverse_cipher(&mut state, key);
+        for let mut j=0; j<16; j+=1 {
+            output[i + j] = state[j] as Char;
+        }
+        i += 16;
+    }
+}
+
+const MAX_LEN = 4096;
+let input = alloc(MAX_LEN * sizeof<Char>()) as &mut Char;
+let output = alloc(MAX_LEN * sizeof<Char>()) as &mut Char;
+print("Enter key: ");
+read_line(input);
+let key = read_key(input);
 print_key(&key);
 println();
-println();
 
+print("Enter plaintext: ");
+read_all(input);
+
+println("\nInput: ", input);
+for let mut i=0; input[i] != '\0'; i+=1 {
+    print(input[i] as Int, " ");
+}
+encrypt(input, output, &key);
+println("\nCipher: ", output);
+for let mut i=0; output[i] != '\0'; i+=1 {
+    print(output[i] as Int, " ");
+}
+decrypt(output, input, &key);
+println("\nInverse-Cipher: ", input);
+
+
+// let (mut state, mut is_done) = read_input();
+// cipher(&mut state, &key);
+// print_state(&state);
+// inverse_cipher(&mut state, &key);
+// print_data(state);
+
+// while !is_done {
+//     // (state, is_done) = read_input();
+//     let (s, d) = read_input();
+//     state = s;
+//     is_done = d;
+//     cipher(&mut state, &key);
+//     print_state(&state);
+//     inverse_cipher(&mut state, &key);
+//     print_data(state);
+// }
+
+/*
 let mut state = [0] * 16;
 for let mut i=0; i<16; i+=1 {
     print("Enter plaintext[", i, "]: ");
@@ -36,3 +138,4 @@ println("Inverse-Cipher:");
 inverse_cipher(&mut state, &key);
 print_state(&state);
 println();
+*/
