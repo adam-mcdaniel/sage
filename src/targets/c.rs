@@ -49,8 +49,10 @@ impl Architecture for C {
             CoreOp::Restore => "reg = *ptr;".to_string(),
             CoreOp::Move(n) => format!("ptr += {};", n),
             CoreOp::Where => "reg.p = ptr;".to_string(),
-            CoreOp::Deref => "*ref++ = ptr; ptr = ptr->p;".to_string(),
-            CoreOp::Refer => "ptr = *--ref;".to_string(),
+            CoreOp::Deref => "refs[ref_ptr++] = ptr; ptr = ptr->p;".to_string(),
+            CoreOp::Refer => "ptr = refs[--ref_ptr];".to_string(),
+            // CoreOp::Deref => "*ref++ = ptr; ptr = ptr->p;".to_string(),
+            // CoreOp::Refer => "ptr = *--ref;".to_string(),
             CoreOp::Index => "reg.p += ptr->i;".to_string(),
             CoreOp::BitwiseNand => "reg.i = ~(reg.i & ptr->i);".to_string(),
             CoreOp::Add => "reg.i += ptr->i;".to_string(),
@@ -84,7 +86,7 @@ impl Architecture for C {
             StandardOp::Rem => "reg.f = fmod(reg.f, ptr->f);".to_string(),
             StandardOp::Pow => "reg.f = pow(reg.f, ptr->f);".to_string(),
             StandardOp::IsNonNegative => "reg.i = reg.f >= 0;".to_string(),
-            StandardOp::Alloc => "reg.p = malloc(reg.i * sizeof(reg));".to_string(),
+            StandardOp::Alloc => "reg.p = (cell*)malloc(reg.i * sizeof(reg));".to_string(),
             StandardOp::Free => "free(reg.p);".to_string(),
             _ => return Err(format!("Invalid standard op for C target {op:?}")),
         })
@@ -115,9 +117,9 @@ impl Architecture for C {
     fn get(&mut self, src: &Input) -> Result<String, String> {
         let ch = src.channel.0;
         match src.mode {
-            InputMode::StdinChar => Ok("reg.i = getchar();".to_string()),
-            InputMode::StdinInt => Ok("scanf(\"%ld\", &reg.i);".to_string()),
-            InputMode::StdinFloat => Ok("scanf(\"%lf\", &reg.f);".to_string()),
+            InputMode::StdinChar => Ok("tmp = getchar(); reg.i = tmp == EOF? 0 : tmp;".to_string()),
+            InputMode::StdinInt => Ok("scanf(\"%ld\", &tmp_reg.i); reg = tmp_reg;".to_string()),
+            InputMode::StdinFloat => Ok("scanf(\"%lf\", &tmp_reg.f); reg = tmp_reg;".to_string()),
             InputMode::Thermometer => Ok("reg.f = 293.15;".to_string()),
             InputMode::Clock => Ok("reg.i = time(NULL);".to_string()),
             InputMode::Random => Ok("reg.i = rand();".to_string()),
@@ -159,10 +161,12 @@ typedef union cell {
     union cell *p;
 } cell;
 
-cell tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256], *ffi_ptr = ffi_channel;
+cell tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, tmp_reg, ffi_channel[256], *ffi_ptr = ffi_channel;
 
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);
+
+int tmp;
 "#
         .to_string();
 

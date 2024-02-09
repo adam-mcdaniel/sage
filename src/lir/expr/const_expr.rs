@@ -430,6 +430,23 @@ impl ConstExpr {
         }
     }
 
+    /// Try to get this constant expression as a character.
+    pub fn as_char(self, env: &Env) -> Result<char, Error> {
+        trace!("Getting char from constexpr: {self}");
+        // match self.eval_checked(env, 0) {
+        //     Ok(Self::Int(n)) => Ok(n),
+        //     Ok(other) => Err(Error::NonIntegralConst(other)),
+        //     Err(err) => Err(err),
+        // }
+        match self {
+            Self::Char(ch) => Ok(ch),
+            other => match other.eval(env)? {
+                Self::Char(ch) => Ok(ch),
+                other => Err(Error::NonIntegralConst(other)),
+            },
+        }
+    }
+
     /// Try to get this constant expression as a float.
     pub fn as_float(self, env: &Env) -> Result<f64, Error> {
         trace!("Getting float from constexpr: {self}");

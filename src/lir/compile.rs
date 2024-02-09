@@ -1037,43 +1037,51 @@ impl Compile for ConstExpr {
             Self::None => {}
             // Compile a null constant.
             Self::Null => {
-                output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), NULL));
+                // output.op(CoreOp::Next(SP, None));
+                // output.op(CoreOp::Set(SP.deref(), NULL));
+                output.op(CoreOp::PushConst(vec![NULL]));
             }
             // Compile a char constant.
             Self::Char(ch) => {
-                output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), ch as usize as i64));
+                // output.op(CoreOp::Next(SP, None));
+                // output.op(CoreOp::Set(SP.deref(), ch as usize as i64));
+                output.op(CoreOp::PushConst(vec![ch as usize as i64]));
             }
             // Compile a bool constant.
             Self::Bool(x) => {
-                output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), x as i64));
+                // output.op(CoreOp::Next(SP, None));
+                // output.op(CoreOp::Set(SP.deref(), x as i64));
+                output.op(CoreOp::PushConst(vec![x as i64]));
             }
             // Compile a cell value.
             Self::Cell(n) => {
-                output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), n));
+                // output.op(CoreOp::Next(SP, None));
+                // output.op(CoreOp::Set(SP.deref(), n));
+                output.op(CoreOp::PushConst(vec![n as i64]));
             }
             // Compile an integer constant.
             Self::Int(n) => {
-                output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), n));
+                // output.op(CoreOp::Next(SP, None));
+                // output.op(CoreOp::Set(SP.deref(), n));
+                output.op(CoreOp::PushConst(vec![n as i64]));
             }
             // Compile a float constant.
             Self::Float(f) => {
-                output.op(CoreOp::Next(SP, None));
-                output.std_op(StandardOp::Set(SP.deref(), f))?;
+                // output.op(CoreOp::Next(SP, None));
+                // output.std_op(StandardOp::Set(SP.deref(), f))?;
+                output.std_op(StandardOp::PushConst(vec![f]))?;
             }
             // Calculate the size of a type.
             Self::SizeOfType(t) => {
-                output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), t.get_size(env)? as i64));
+                // output.op(CoreOp::Next(SP, None));
+                // output.op(CoreOp::Set(SP.deref(), t.get_size(env)? as i64));
+                output.op(CoreOp::PushConst(vec![t.get_size(env)? as i64]));
             }
             // Calculate the size of an expression.
             Self::SizeOfExpr(e) => {
-                output.op(CoreOp::Next(SP, None));
-                output.op(CoreOp::Set(SP.deref(), e.get_size(env)? as i64));
+                // output.op(CoreOp::Next(SP, None));
+                // output.op(CoreOp::Set(SP.deref(), e.get_size(env)? as i64));
+                output.op(CoreOp::PushConst(vec![e.get_size(env)? as i64]));
             }
             // Compile a tuple constant.
             Self::Tuple(items) => {
@@ -1105,52 +1113,85 @@ impl Compile for ConstExpr {
                         End,
                     ]));
                 } else {
-                    // Compile the items.
-                    // for item in items {
-                    //     item.compile_expr(env, output)?;
-                    // }
-
-                    // Do a loop for repeated items.
-                    let mut items = items.into_iter().peekable();
-                    while let Some(item) = items.next() {
-                        let mut count = 1;
-                        while let Some(next) = items.peek() {
-                            if next == &item {
-                                count += 1;
-                                items.next();
-                            } else {
-                                break;
-                            }
-                        }
-
-                        let item_size = item.get_size(env)?;
-                        if count > 2 || item_size >= 8 {
-                            item.compile_expr(env, output)?;
-                            // Push the first item onto the stack `size` times.
-                            use CoreOp::*;
-                            output.op(Many(vec![
-                                GetAddress {
-                                    addr: SP.deref().offset(1 - item_size as isize),
-                                    dst: A,
-                                },
-                                Set(B, count as i64 - 1),
-                                While(B),
-                                Push(A.deref(), item_size),
-                                Dec(B),
-                                End,
-                            ]));
-                        } else {
-                            for _ in 0..count {
-                                item.clone().compile_expr(env, output)?;
+                    match items[0].get_type(env)? {
+                        Type::Int => {
+                            output.op(CoreOp::PushConst(
+                                items
+                                    .iter()
+                                    .map(|elem| elem.clone().as_int(env))
+                                    .collect::<Result<Vec<_>, _>>()?,
+                            ));
+                        },
+                        Type::Float => {
+                            output.std_op(StandardOp::PushConst(
+                                items
+                                    .iter()
+                                    .map(|elem| elem.clone().as_float(env))
+                                    .collect::<Result<Vec<_>, _>>()?,
+                            ))?;
+                        },
+                        Type::Cell => {
+                            output.op(CoreOp::PushConst(
+                                items
+                                    .iter()
+                                    .map(|elem| elem.clone().as_int(env))
+                                    .collect::<Result<Vec<_>, _>>()?,
+                            ));
+                        },
+                        Type::Bool => {
+                            output.op(CoreOp::PushConst(
+                                items
+                                    .iter()
+                                    .map(|elem| elem.clone().as_bool(env).map(|x| x as i64))
+                                    .collect::<Result<Vec<_>, _>>()?,
+                            ));
+                        },
+                        Type::Char => {
+                            output.op(CoreOp::PushConst(
+                                items
+                                    .iter()
+                                    .map(|elem| elem.clone().as_char(env).map(|x| x as u8 as i64))
+                                    .collect::<Result<Vec<_>, _>>()?,
+                            ));
+                        },
+                        _ => {
+                            let mut items = items.into_iter().peekable();
+                            while let Some(item) = items.next() {
+                                let mut count = 1;
+                                while let Some(next) = items.peek() {
+                                    if next == &item {
+                                        count += 1;
+                                        items.next();
+                                    } else {
+                                        break;
+                                    }
+                                }
+        
+                                let item_size = item.get_size(env)?;
+                                if count > 2 || item_size >= 8 {
+                                    item.compile_expr(env, output)?;
+                                    // Push the first item onto the stack `size` times.
+                                    use CoreOp::*;
+                                    output.op(Many(vec![
+                                        GetAddress {
+                                            addr: SP.deref().offset(1 - item_size as isize),
+                                            dst: A,
+                                        },
+                                        Set(B, count as i64 - 1),
+                                        While(B),
+                                        Push(A.deref(), item_size),
+                                        Dec(B),
+                                        End,
+                                    ]));
+                                } else {
+                                    for _ in 0..count {
+                                        item.clone().compile_expr(env, output)?;
+                                    }
+                                }
                             }
                         }
                     }
                 }
-
-                // for item in items {
-                //     // Compile the item.
-                //     item.compile_expr(env, output)?;
-                // }
             }
             // Compile a struct constant.
             Self::Struct(items) => {
@@ -1257,8 +1298,9 @@ impl Compile for ConstExpr {
                         // Get the index of the variant.
                         if let Some(index) = Type::variant_index(&variants, &variant) {
                             // Push the index of the variant onto the stack.
-                            output.op(CoreOp::Set(A, index as i64));
-                            output.op(CoreOp::Push(A, 1));
+                            // output.op(CoreOp::Set(A, index as i64));
+                            // output.op(CoreOp::Push(A, 1));
+                            output.op(CoreOp::PushConst(vec![index as i64]));
                             return Ok(());
                         } else {
                             // If the variant is not found, return an error.

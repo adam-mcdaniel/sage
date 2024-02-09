@@ -162,7 +162,80 @@ impl AssemblyProgram for StandardProgram {
         if let CoreOp::Fn(label) = &op {
             self.labels.insert(label.clone());
         }
-        self.code.push(StandardOp::CoreOp(op))
+
+
+        if let Some(last_op) = self.code.last().cloned() {
+            match (last_op, op) {
+                (StandardOp::CoreOp(last_core_op), op) => {
+                    match (last_core_op, op) {
+                        (CoreOp::Push(src, 1), CoreOp::Pop(Some(dst), 1)) => {
+                            self.code.pop();
+                            self.op(CoreOp::Move {
+                                src: src.clone(),
+                                dst: dst.clone(),
+                            })
+                        }
+                        (CoreOp::Next(SP, Some(1) | None), CoreOp::Set(dst, n)) if dst == SP.deref() => {
+                            self.code.pop();
+                            self.op(CoreOp::PushConst(vec![n]));
+                        }
+                        (CoreOp::Pop(None, n), CoreOp::Next(SP, Some(m))) if n as isize == m => {
+                            self.code.pop();
+                        }
+                        (CoreOp::Next(SP, Some(n)), CoreOp::Pop(None, m)) if n == m as isize => {
+                            self.code.pop();
+                        }
+                        (CoreOp::Pop(None, n), CoreOp::Next(SP, None)) if n == 1 => {
+                            self.code.pop();
+                        }
+                        (CoreOp::Next(SP, None), CoreOp::Pop(None, n)) if n == 1 => {
+                            self.code.pop();
+                        }
+                        (CoreOp::Pop(None, n), CoreOp::Pop(None, m)) => {
+                            self.code.pop();
+                            self.op(CoreOp::Pop(None, n + m));
+                        }
+                        (CoreOp::Push(src, 1), CoreOp::Pop(None, 1)) => {
+                            self.code.pop();
+                        }
+                        (CoreOp::Pop(None, 1), CoreOp::Push(src, 1)) => {
+                            self.code.pop();
+                            self.op(CoreOp::Move {
+                                src,
+                                dst: SP.deref(),
+                            });
+                        }
+                        (CoreOp::Move { src, dst }, CoreOp::Set(dst2, n)) if dst == dst2 => {
+                            self.code.pop();
+                            self.op(CoreOp::Set(dst, n));
+                        }
+                        (CoreOp::PushConst(vals), CoreOp::PushConst(vals2)) => {
+                            self.code.pop();
+                            self.op(CoreOp::PushConst(vals.iter().chain(vals2.iter()).cloned().collect()));
+                        }
+                        (_, CoreOp::Move { src, dst }) if src == dst => {}
+                        (_, CoreOp::Copy { size: 0, .. }) => {}
+                        (_, CoreOp::Copy { src, dst, .. }) if src == dst => {}
+                        (_, op) => {
+                            self.code.push(StandardOp::CoreOp(op))
+                        }
+                    }
+                }
+                (_, op) => {
+                    self.code.push(StandardOp::CoreOp(op))
+                }
+            }
+        } else {
+            match op {
+                CoreOp::Move { src, dst } if src == dst => {}
+                CoreOp::Copy { size: 0, .. } => {}
+                CoreOp::Copy { src, dst, .. } if src == dst => {}
+                op => {
+                    self.code.push(StandardOp::CoreOp(op))
+                }
+            }
+        }
+        // self.code.push(StandardOp::CoreOp(op))
     }
 
     /// Add a standard operation to the program.
@@ -214,6 +287,16 @@ pub enum StandardOp {
     /// Take the float value stored in a cell and store the equivalent integer
     /// value in the same cell.
     ToInt(Location),
+
+    /// Write some constant values to a location on the tape
+    Const {
+        /// The beginning of the constant data.
+        dst: Location,
+        /// The constant data.
+        vals: Vec<f64>,
+    },
+    /// Push some constant values to the stack.
+    PushConst(Vec<f64>),
 
     /// Raise a cell (float) to the power of another cell (float).
     Pow {
@@ -481,6 +564,44 @@ impl StandardOp {
                 SP.next(output_cells as isize - input_cells as isize, result);
             }
 
+            Self::Const { vals, dst } => {
+                let dst = env.resolve(dst)?;
+
+                // Go to the dst
+                dst.to(result);
+                // For every value in the list
+                for (i, val) in vals.iter().enumerate() {
+                    // Set the register to the value
+                    result.std_op(vm::StandardOp::Set(*val))?;
+                    // Save the register to the memory location
+                    result.save();
+                    if i < vals.len() - 1 {
+                        // Move to the next cell
+                        result.move_pointer(1);
+                    }
+                }
+                result.where_is_pointer();
+                dst.offset(vals.len() as isize).from(result);
+                // SP.save_to(result);
+            }
+
+            Self::PushConst(vals) => {
+                // Go to the dst
+                SP.deref().to(result);
+                // For every value in the list
+                for val in vals.iter() {
+                    // Move to the next cell
+                    result.move_pointer(1);
+                    // Set the register to the value
+                    result.std_op(vm::StandardOp::Set(*val))?;
+                    // Save the register to the memory location
+                    result.save();
+                }
+                result.where_is_pointer();
+                SP.deref().offset(vals.len() as isize).from(result);
+                SP.save_to(result);
+            }
+
             _ => {
                 panic!("unimplemented {}", self)
             }
@@ -495,6 +616,26 @@ impl fmt::Display for StandardOp {
             Self::CoreOp(op) => write!(f, "{op}"),
 
             Self::Set(loc, n) => write!(f, "set-f {loc}, {n}"),
+            Self::PushConst(items) => {
+                write!(f, "push-const-f ")?;
+                for (i, n) in items.iter().enumerate() {
+                    write!(f, "{n}")?;
+                    if i < items.len() - 1 {
+                        write!(f, ", ")?;
+                    }
+                }
+                Ok(())
+            }
+            Self::Const { vals, dst } => {
+                write!(f, "const-f {dst}, ")?;
+                for (i, n) in vals.iter().enumerate() {
+                    write!(f, "{n}")?;
+                    if i < vals.len() - 1 {
+                        write!(f, ", ")?;
+                    }
+                }
+                Ok(())
+            }
 
             Self::ToFloat(loc) => write!(f, "to-float {loc}"),
             Self::ToInt(loc) => write!(f, "to-int {loc}"),

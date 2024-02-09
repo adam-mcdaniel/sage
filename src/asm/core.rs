@@ -427,6 +427,14 @@ pub enum CoreOp {
         vals: Vec<i64>,
     },
 
+    /// Write a set of values to a memory location.
+    Const {
+        dst: Location,
+        vals: Vec<i64>,
+    },
+    /// Push a const to the stack.
+    PushConst(Vec<i64>),
+
     BitwiseNand {
         src: Location,
         dst: Location,
@@ -538,6 +546,42 @@ impl CoreOp {
                 dst.to(result);
                 result.save();
                 dst.from(result);
+            }
+
+            CoreOp::Const { dst, vals } => {
+                let dst = env.resolve(dst)?;
+
+                // Go to the dst
+                dst.to(result);
+                // For every value in the list
+                for (i, val) in vals.iter().enumerate() {
+                    // Set the register to the value
+                    result.set_register(*val);
+                    // Save the register to the memory location
+                    result.save();
+                    if i < vals.len() - 1 {
+                        // Move to the next cell
+                        result.move_pointer(1);
+                    }
+                }
+                dst.offset(vals.len() as isize).from(result);
+            }
+
+            CoreOp::PushConst(vals) => {
+                // Go to the dst
+                SP.deref().to(result);
+                // For every value in the list
+                for val in vals.iter() {
+                    // Move to the next cell
+                    result.move_pointer(1);
+                    // Set the register to the value
+                    result.set_register(*val);
+                    // Save the register to the memory location
+                    result.save();
+                }
+                result.where_is_pointer();
+                SP.deref().offset(vals.len() as isize).from(result);
+                SP.save_to(result);
             }
 
             CoreOp::GetAddress { addr, dst } => {
@@ -950,6 +994,28 @@ impl fmt::Display for CoreOp {
                 write!(f, "push {loc}")?;
                 if *size != 1 {
                     write!(f, ", {size}")?
+                }
+                Ok(())
+            }
+            Self::Const {dst, vals} => {
+                write!(f, "const {dst}, ")?;
+                for (i, val) in vals.iter().enumerate() {
+                    if i < vals.len() - 1 {
+                        write!(f, "{val}, ")?;
+                    } else {
+                        write!(f, "{val}")?;
+                    }
+                }
+                Ok(())
+            }
+            Self::PushConst(vals) => {
+                write!(f, "push-const ")?;
+                for (i, val) in vals.iter().enumerate() {
+                    if i < vals.len() - 1 {
+                        write!(f, "{val}, ")?;
+                    } else {
+                        write!(f, "{val}")?;
+                    }
                 }
                 Ok(())
             }

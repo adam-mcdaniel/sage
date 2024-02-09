@@ -42,7 +42,57 @@ use std::collections::HashMap;
 
 impl VirtualMachineProgram for StandardProgram {
     fn op(&mut self, op: CoreOp) {
-        self.0.push(StandardOp::CoreOp(op));
+        if let Some(last_op) = self.0.last().cloned() {
+            if let StandardOp::CoreOp(last_core_op) = last_op {
+                match (last_core_op, op) {
+                    (CoreOp::Move(n), CoreOp::Move(m)) => {
+                        self.0.pop();
+                        if m + n != 0 {
+                            self.0.push(StandardOp::CoreOp(CoreOp::Move(n + m)))
+                        }
+                    }
+                    (CoreOp::Set(_), CoreOp::Set(m)) => {
+                        self.0.pop();
+                        self.op(CoreOp::Set(m))
+                    }
+                    (CoreOp::Deref, CoreOp::Refer) => {
+                        self.0.pop();
+                    }
+                    (CoreOp::Else, CoreOp::End) => {
+                        self.0.pop();
+                        self.op(CoreOp::End);
+                    }
+                    (CoreOp::Move(_), CoreOp::Refer) => {
+                        self.0.pop();
+                        self.op(CoreOp::Refer)
+                    }
+                    (CoreOp::Move(n), CoreOp::Set(m)) => {
+                        self.0.pop();
+                        self.op(CoreOp::Set(m));
+                        self.op(CoreOp::Move(n));
+                    }
+                    // (CoreOp::Refer, CoreOp::Deref) => {
+                    //     self.0.pop();
+                    // }
+                    (CoreOp::Save, CoreOp::Save) => {}
+                    (CoreOp::Restore, CoreOp::Restore) => {}
+                    (CoreOp::Save, CoreOp::Restore) => {}
+                    (CoreOp::Restore, CoreOp::Save) => {}
+                    (CoreOp::Set(n), CoreOp::IsNonNegative) => {
+                        self.0.pop();
+                        self.op(CoreOp::Set((n >= 0) as i64))
+                    }
+                    (_, op) => {
+                        self.0.push(StandardOp::CoreOp(op));
+                    }
+
+                }
+            } else {
+                self.0.push(StandardOp::CoreOp(op));
+            }
+        } else {
+            self.0.push(StandardOp::CoreOp(op));
+        }
     }
 
     fn std_op(&mut self, op: StandardOp) -> Result<(), Error> {

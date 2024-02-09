@@ -5,7 +5,7 @@ use sage::{
     targets::{self, CompiledTarget},
     vm::*,
 };
-use std::fs::{read_to_string, write};
+use std::{fs::{read_to_string, write}, time::Duration};
 
 const CALL_STACK_SIZE: usize = 8192;
 
@@ -39,6 +39,13 @@ fn compile_with_gcc(filename: &str) {
         .arg("-O3")
         .arg("-o")
         .arg("benches/temp")
+        .arg("-fwhole-program")
+        .arg("-floop-interchange")
+        .arg("-ftree-loop-linear")
+        .arg("-floop-block")
+        .arg("-fcheck-data-deps")
+        .arg("-ftree-loop-distribution")
+        .arg("-ftree-vect-loop-version")
         .output()
         .expect("failed to execute process");
     // Remove the temp file
