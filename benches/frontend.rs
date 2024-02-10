@@ -46,6 +46,12 @@ fn compile_with_gcc(filename: &str) {
         .arg("-fcheck-data-deps")
         .arg("-ftree-loop-distribution")
         .arg("-ftree-vect-loop-version")
+        .arg("-ffp-contract=fast")
+        .arg("-funsafe-math-optimizations")
+        .arg("-fassociative-math")
+        .arg("-Wstrict-aliasing=3")
+        .arg("-fipa-strict-aliasing")
+        // Flags: -O3 -fwhole-program -floop-interchange -ftree-loop-linear -floop-block -fcheck-data-deps -ftree-loop-distribution -ftree-vect-loop-version
         .output()
         .expect("failed to execute process");
     // Remove the temp file
