@@ -51,7 +51,7 @@ fn compile_with_gcc(filename: &str) {
         .arg("-fassociative-math")
         .arg("-Wstrict-aliasing=3")
         .arg("-fipa-strict-aliasing")
-        // Flags: -O3 -fwhole-program -floop-interchange -ftree-loop-linear -floop-block -fcheck-data-deps -ftree-loop-distribution -ftree-vect-loop-version
+        // Flags: -O3 -fwhole-program -floop-interchange -ftree-loop-linear -floop-block -fcheck-data-deps -ftree-loop-distribution -ftree-vect-loop-version -ffp-contract=fast -funsafe-math-optimizations -fassociative-math -Wstrict-aliasing=3 -fipa-strict-aliasing
         .output()
         .expect("failed to execute process");
     // Remove the temp file
