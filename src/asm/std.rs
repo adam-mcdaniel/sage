@@ -617,24 +617,24 @@ impl fmt::Display for StandardOp {
 
             Self::Set(loc, n) => write!(f, "set-f {loc}, {n}"),
             Self::PushConst(items) => {
-                write!(f, "push-const-f ")?;
+                write!(f, "push-const-f [")?;
                 for (i, n) in items.iter().enumerate() {
                     write!(f, "{n}")?;
                     if i < items.len() - 1 {
                         write!(f, ", ")?;
                     }
                 }
-                Ok(())
+                write!(f, "]")
             }
             Self::Const { vals, dst } => {
-                write!(f, "const-f {dst}, ")?;
+                write!(f, "const-f {dst}, [")?;
                 for (i, n) in vals.iter().enumerate() {
                     write!(f, "{n}")?;
                     if i < vals.len() - 1 {
                         write!(f, ", ")?;
                     }
                 }
-                Ok(())
+                write!(f, "]")
             }
 
             Self::ToFloat(loc) => write!(f, "to-float {loc}"),
