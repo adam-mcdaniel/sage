@@ -559,7 +559,7 @@ impl TypeCheck for Expr {
                 if self.is_method_call(env)? {
                     // Get the type of the object we're calling the method on.
                     let method_call = self.transform_method_call(env)?;
-                    info!("Transformed method call: {method_call}");
+                    debug!("Transformed method call: {method_call}");
 
                     if let Self::Apply(f, args) = method_call.clone() {
                         // Typecheck the supplied arguments.
