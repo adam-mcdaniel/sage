@@ -1055,7 +1055,7 @@ impl fmt::Display for CoreOp {
                 Ok(())
             }
             Self::Const {dst, vals} => {
-                write!(f, "const {dst}, ")?;
+                write!(f, "const {dst}, [")?;
                 for (i, val) in vals.iter().enumerate() {
                     if i < vals.len() - 1 {
                         write!(f, "{val}, ")?;
@@ -1063,10 +1063,10 @@ impl fmt::Display for CoreOp {
                         write!(f, "{val}")?;
                     }
                 }
-                Ok(())
+                write!(f, "]")
             }
             Self::PushConst(vals) => {
-                write!(f, "push-const ")?;
+                write!(f, "push-const [")?;
                 for (i, val) in vals.iter().enumerate() {
                     if i < vals.len() - 1 {
                         write!(f, "{val}, ")?;
@@ -1074,7 +1074,7 @@ impl fmt::Display for CoreOp {
                         write!(f, "{val}")?;
                     }
                 }
-                Ok(())
+                write!(f, "]")
             }
             Self::Pop(loc, size) => {
                 write!(f, "pop")?;

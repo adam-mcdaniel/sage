@@ -100,7 +100,8 @@ CoreOp: CoreOp = {
     
     "get" <loc: Location> "," <i: Input> => CoreOp::Get(loc, i),
     "put" <loc: Location> "," <o: Output> => CoreOp::Put(loc, o),
-
+    "const" <dst: Location> "," <vals: List<"[", IntLit, ",", "]">> => CoreOp::Const { dst, vals },
+    "push-const" <vals: List<"[", IntLit, ",", "]">> => CoreOp::PushConst(vals),
     "array" <src: Location> "," <vals: List<"[", IntLit, ",", "]">> "," <dst: Location> => CoreOp::Array {
         src, dst, vals
     },
@@ -142,6 +143,8 @@ StandardOp: StandardOp = {
     "alloc" <Location> => StandardOp::Alloc(<>),
     "free" <Location> => StandardOp::Free(<>),
     
+    "const-f" <dst: Location> "," <vals: List<"[", FloatLit, ",", "]">> => StandardOp::Const { dst, vals },
+    "push-const-f" <vals: List<"[", FloatLit, ",", "]">> => StandardOp::PushConst(vals),
     // "peek" <Location> => StandardOp::Peek(<>),
     // "poke" <Location> => StandardOp::Poke(<>),
 }
