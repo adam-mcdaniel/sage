@@ -195,7 +195,7 @@ impl AssemblyProgram for StandardProgram {
                             self.code.pop();
                             self.op(CoreOp::Pop(None, n + m));
                         }
-                        (CoreOp::Push(src, 1), CoreOp::Pop(None, 1)) => {
+                        (CoreOp::Push(_src, 1), CoreOp::Pop(None, 1)) => {
                             self.code.pop();
                         }
                         (CoreOp::Pop(None, 1), CoreOp::Push(src, 1)) => {
@@ -205,7 +205,7 @@ impl AssemblyProgram for StandardProgram {
                                 dst: SP.deref(),
                             });
                         }
-                        (CoreOp::Move { src, dst }, CoreOp::Set(dst2, n)) if dst == dst2 => {
+                        (CoreOp::Move { dst, .. }, CoreOp::Set(dst2, n)) if dst == dst2 => {
                             self.code.pop();
                             self.op(CoreOp::Set(dst, n));
                         }

@@ -85,7 +85,6 @@ impl VirtualMachineProgram for StandardProgram {
                     (_, op) => {
                         self.0.push(StandardOp::CoreOp(op));
                     }
-
                 }
             } else {
                 self.0.push(StandardOp::CoreOp(op));

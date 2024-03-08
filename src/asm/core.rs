@@ -188,7 +188,64 @@ impl AssemblyProgram for CoreProgram {
         if let CoreOp::Fn(name) = &op {
             self.labels.insert(name.clone());
         }
-        self.code.push(op)
+
+        if let Some(last_core_op) = self.code.last().cloned() {
+            match (last_core_op, op) {
+                (CoreOp::Push(src, 1), CoreOp::Pop(Some(dst), 1)) => {
+                    self.code.pop();
+                    self.op(CoreOp::Move {
+                        src: src.clone(),
+                        dst: dst.clone(),
+                    })
+                }
+                (CoreOp::Next(SP, Some(1) | None), CoreOp::Set(dst, n)) if dst == SP.deref() => {
+                    self.code.pop();
+                    self.op(CoreOp::PushConst(vec![n]));
+                }
+                (CoreOp::Pop(None, n), CoreOp::Next(SP, Some(m))) if n as isize == m => {
+                    self.code.pop();
+                }
+                (CoreOp::Next(SP, Some(n)), CoreOp::Pop(None, m)) if n == m as isize => {
+                    self.code.pop();
+                }
+                (CoreOp::Pop(None, n), CoreOp::Next(SP, None)) if n == 1 => {
+                    self.code.pop();
+                }
+                (CoreOp::Next(SP, None), CoreOp::Pop(None, n)) if n == 1 => {
+                    self.code.pop();
+                }
+                (CoreOp::Pop(None, n), CoreOp::Pop(None, m)) => {
+                    self.code.pop();
+                    self.op(CoreOp::Pop(None, n + m));
+                }
+                (CoreOp::Push(_src, 1), CoreOp::Pop(None, 1)) => {
+                    self.code.pop();
+                }
+                (CoreOp::Pop(None, 1), CoreOp::Push(src, 1)) => {
+                    self.code.pop();
+                    self.op(CoreOp::Move {
+                        src,
+                        dst: SP.deref(),
+                    });
+                }
+                (CoreOp::Move { dst, .. }, CoreOp::Set(dst2, n)) if dst == dst2 => {
+                    self.code.pop();
+                    self.op(CoreOp::Set(dst, n));
+                }
+                (CoreOp::PushConst(vals), CoreOp::PushConst(vals2)) => {
+                    self.code.pop();
+                    self.op(CoreOp::PushConst(vals.iter().chain(vals2.iter()).cloned().collect()));
+                }
+                (_, CoreOp::Move { src, dst }) if src == dst => {}
+                (_, CoreOp::Copy { size: 0, .. }) => {}
+                (_, CoreOp::Copy { src, dst, .. }) if src == dst => {}
+                (_, op) => {
+                    self.code.push(op)
+                }
+            }
+        } else {
+            self.code.push(op)
+        }
     }
 
     fn std_op(&mut self, op: super::StandardOp) -> Result<(), Error> {
