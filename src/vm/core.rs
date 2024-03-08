@@ -197,7 +197,7 @@ pub enum CoreOp {
     Comment(String),
 
     /// Set the register equal to a constant value.
-    Set(i64),
+    Set(Vec<i64>),
 
     /// Create a new function.
     Function,
@@ -229,9 +229,9 @@ pub enum CoreOp {
     End,
 
     /// Store the register to the value pointed to on the tape.
-    Save,
+    Store(usize),
     /// Store the value pointed to on the tape to the register.
-    Restore,
+    Load(usize),
 
     /// Move the pointer on the tape by a number of cells.
     Move(isize),
@@ -276,7 +276,7 @@ impl fmt::Display for CoreOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CoreOp::Comment(s) => write!(f, "// {}", s),
-            CoreOp::Set(n) => write!(f, "set {}", n),
+            CoreOp::Set(n) => write!(f, "set {:?}", n),
             CoreOp::Function => write!(f, "fun"),
             CoreOp::Call => write!(f, "call"),
             CoreOp::Return => write!(f, "ret"),
@@ -284,8 +284,8 @@ impl fmt::Display for CoreOp {
             CoreOp::If => write!(f, "if"),
             CoreOp::Else => write!(f, "else"),
             CoreOp::End => write!(f, "end"),
-            CoreOp::Save => write!(f, "sav"),
-            CoreOp::Restore => write!(f, "res"),
+            CoreOp::Store(n) => write!(f, "store {n}"),
+            CoreOp::Load(n) => write!(f, "load {n}"),
             CoreOp::Move(n) => write!(f, "mov {}", n),
             CoreOp::Where => write!(f, "where"),
             CoreOp::Deref => write!(f, "deref"),

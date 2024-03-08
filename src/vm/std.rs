@@ -74,13 +74,13 @@ impl VirtualMachineProgram for StandardProgram {
                     // (CoreOp::Refer, CoreOp::Deref) => {
                     //     self.0.pop();
                     // }
-                    (CoreOp::Save, CoreOp::Save) => {}
-                    (CoreOp::Restore, CoreOp::Restore) => {}
-                    (CoreOp::Save, CoreOp::Restore) => {}
-                    (CoreOp::Restore, CoreOp::Save) => {}
-                    (CoreOp::Set(n), CoreOp::IsNonNegative) => {
+                    (CoreOp::Store(m), CoreOp::Store(n)) if n == m => {}
+                    (CoreOp::Load(m), CoreOp::Load(n)) if n == m => {}
+                    (CoreOp::Store(m), CoreOp::Load(n)) if n == m => {}
+                    (CoreOp::Load(m), CoreOp::Store(n)) if n == m => {}
+                    (CoreOp::Set(n), CoreOp::IsNonNegative) if n.len() == 1 => {
                         self.0.pop();
-                        self.op(CoreOp::Set((n >= 0) as i64))
+                        self.op(CoreOp::Set(vec![(n[0] >= 0) as i64]))
                     }
                     (_, op) => {
                         self.0.push(StandardOp::CoreOp(op));
@@ -295,7 +295,7 @@ pub enum StandardOp {
     CoreOp(CoreOp),
 
     /// Set the register equal to a constant floating point value.
-    Set(f64),
+    Set(Vec<f64>),
 
     /// Take the value of the register, and allocate that number of cells in memory.
     /// Set the register to the lowest address of the allocated memory.
@@ -365,7 +365,7 @@ impl fmt::Display for StandardOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             StandardOp::CoreOp(op) => write!(f, "{}", op),
-            StandardOp::Set(val) => write!(f, "set-f {}", val),
+            StandardOp::Set(val) => write!(f, "set-f {:?}", val),
             StandardOp::Alloc => write!(f, "alloc"),
             StandardOp::Free => write!(f, "free"),
             StandardOp::ToInt => write!(f, "to-int"),

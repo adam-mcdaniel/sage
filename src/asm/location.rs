@@ -591,7 +591,7 @@ impl Location {
         val: f64,
         result: &mut dyn VirtualMachineProgram,
     ) -> Result<(), Error> {
-        result.std_op(vm::StandardOp::Set(val))?;
+        result.std_op(vm::StandardOp::Set(vec![val]))?;
         self.save_to(result);
         Ok(())
     }

@@ -10,7 +10,8 @@ pub CoreProgram: CoreProgram = CoreOp* => CoreProgram(<>);
 pub StandardProgram: StandardProgram = StandardOp* => StandardProgram(<>);
 
 CoreOp: CoreOp = {
-    "set" <IntLit> => CoreOp::Set(<>),
+    "set" <List<"[", IntLit, ",", "]">> => CoreOp::Set(<>),
+    "set" <IntLit> => CoreOp::Set(vec![<>]),
     "fun" => CoreOp::Function,
     "call" => CoreOp::Call,
     "ret" => CoreOp::Return,
@@ -20,8 +21,12 @@ CoreOp: CoreOp = {
     "else" => CoreOp::Else,
     "end" => CoreOp::End,
     
-    "sav" => CoreOp::Save,
-    "res" => CoreOp::Restore,
+    "sav" => CoreOp::Store(1),
+    "res" => CoreOp::Load(1),
+
+    "load" <IntLit> => CoreOp::Load(<> as usize),
+    "store" <IntLit> => CoreOp::Store(<> as usize),
+
     "mov" <IntLit> => CoreOp::Move(<> as isize),
 
     "where" => CoreOp::Where,
@@ -43,8 +48,10 @@ CoreOp: CoreOp = {
 
 StandardOp: StandardOp = {
     CoreOp => StandardOp::CoreOp(<>),
-    "set-f" <FloatLit> => StandardOp::Set(<>),
-    "set-f" <IntLit> => StandardOp::Set(<> as f64),
+    "set-f" <FloatLit> => StandardOp::Set(vec![<>]),
+    "set-f" <IntLit> => StandardOp::Set(vec![<> as f64]),
+    "set-f" <List<"[", FloatLit, ",", "]">> => StandardOp::Set(<>),
+    
     "to-float" => StandardOp::ToFloat,
     "to-int" => StandardOp::ToInt,
     

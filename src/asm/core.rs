@@ -587,14 +587,9 @@ impl CoreOp {
                 // For every character in the message
                 // Go to the top of the stack, and push the ASCII value of the character
                 src.to(result);
-                for val in vals {
-                    // Set the register to the ASCII value
-                    result.set_register(*val);
-                    // Save the register to the memory location
-                    result.save();
-                    // Move to the next cell
-                    result.move_pointer(1);
-                }
+                result.set_vector(vals.clone());
+                result.store_vector(vals.len());
+                result.move_pointer(vals.len() as isize);
                 // Save where we ended up
                 result.where_is_pointer();
                 // Move the pointer back where we came from
@@ -607,38 +602,52 @@ impl CoreOp {
 
             CoreOp::Const { dst, vals } => {
                 let dst = env.resolve(dst)?;
-
-                // Go to the dst
+                
+                result.set_vector(vals.clone());
                 dst.to(result);
-                // For every value in the list
-                for (i, val) in vals.iter().enumerate() {
-                    // Set the register to the value
-                    result.set_register(*val);
-                    // Save the register to the memory location
-                    result.save();
-                    if i < vals.len() - 1 {
-                        // Move to the next cell
-                        result.move_pointer(1);
-                    }
-                }
-                dst.offset(vals.len() as isize).from(result);
+                result.store_vector(vals.len());
+                dst.from(result);
+
+                // // Go to the dst
+                // dst.to(result);
+                // // For every value in the list
+                // for (i, val) in vals.iter().enumerate() {
+                //     // Set the register to the value
+                //     result.set_register(*val);
+                //     // Save the register to the memory location
+                //     result.save();
+                //     if i < vals.len() - 1 {
+                //         // Move to the next cell
+                //         result.move_pointer(1);
+                //     }
+                // }
+                // dst.offset(vals.len() as isize).from(result);
             }
 
             CoreOp::PushConst(vals) => {
-                // Go to the dst
                 SP.deref().to(result);
-                // For every value in the list
-                for val in vals.iter() {
-                    // Move to the next cell
-                    result.move_pointer(1);
-                    // Set the register to the value
-                    result.set_register(*val);
-                    // Save the register to the memory location
-                    result.save();
-                }
+                result.set_vector(vals.clone());
+                result.move_pointer(1);
+                result.store_vector(vals.len());
+                result.move_pointer(vals.len() as isize - 1);
                 result.where_is_pointer();
                 SP.deref().offset(vals.len() as isize).from(result);
                 SP.save_to(result);
+
+                // // Go to the dst
+                // SP.deref().to(result);
+                // // For every value in the list
+                // for val in vals.iter() {
+                //     // Move to the next cell
+                //     result.move_pointer(1);
+                //     // Set the register to the value
+                //     result.set_register(*val);
+                //     // Save the register to the memory location
+                //     result.save();
+                // }
+                // result.where_is_pointer();
+                // SP.deref().offset(vals.len() as isize).from(result);
+                // SP.save_to(result);
             }
 
             CoreOp::GetAddress { addr, dst } => {
@@ -1010,13 +1019,24 @@ impl CoreOp {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
 
-                for i in 0..*size {
-                    if src.offset(i as isize) == dst.offset(i as isize) {
-                        continue;
-                    }
-                    src.offset(i as isize)
-                        .copy_to(&dst.offset(i as isize), result);
+                if src == dst {
+                    return Ok(());
                 }
+
+                src.to(result);
+                result.load_vector(*size);
+                src.from(result);
+                dst.to(result);
+                result.store_vector(*size);
+                dst.from(result);
+
+                // for i in 0..*size {
+                //     if src.offset(i as isize) == dst.offset(i as isize) {
+                //         continue;
+                //     }
+                //     src.offset(i as isize)
+                //         .copy_to(&dst.offset(i as isize), result);
+                // }
             }
         }
 

@@ -4,19 +4,11 @@
 //! variant.
 use crate::vm::{CoreOp, CoreProgram, Device, StandardDevice};
 
+use log::warn;
+
 impl Default for CoreInterpreter<StandardDevice> {
     fn default() -> Self {
-        Self {
-            device: StandardDevice::default(),
-            pointer: 0,
-            register: 0,
-            cells: vec![],
-            functions: vec![],
-            calls: vec![],
-            refs: vec![],
-            i: 0,
-            done: false,
-        }
+        Self::new(StandardDevice::default())
     }
 }
 
@@ -30,7 +22,7 @@ where
     /// The current pointer on the turing tape.
     pointer: usize,
     /// The register (which contains a single cell of data).
-    register: i64,
+    register: Vec<i64>,
     /// The turing tape (composed of integer cells)
     cells: Vec<i64>,
     /// The addresses of defined functions. `functions[N]` is the
@@ -57,7 +49,7 @@ where
         Self {
             device,
             pointer: 0,
-            register: 0,
+            register: vec![0; 1024],
             cells: vec![],
             functions: vec![],
             calls: vec![],
@@ -65,6 +57,22 @@ where
             i: 0,
             done: false,
         }
+    }
+
+    fn reg_scalar(&self) -> i64 {
+        self.register[0]
+    }
+
+    fn reg_mut_scalar(&mut self) -> &mut i64 {
+        &mut self.register[0]
+    }
+
+    fn reg_vector(&self) -> &Vec<i64> {
+        &self.register
+    }
+
+    fn reg_mut_vector(&mut self) -> &mut Vec<i64> {
+        &mut self.register
     }
 
     /// Fetch the current instruction pointed to in the program
@@ -104,10 +112,10 @@ where
     /// Call the Nth function defined in the program, where N is the value of the register.
     fn call(&mut self, code: &CoreProgram) -> Result<(), String> {
         // If the function has been defined
-        if self.functions.len() > self.register as usize {
+        if self.functions.len() > self.reg_scalar() as usize {
             // Push the current instruction pointer to the call stack
             self.calls.push(self.i);
-            self.i = self.functions[self.register as usize];
+            self.i = self.functions[self.reg_scalar() as usize];
             Ok(())
         } else {
             // If the function hasn't been defined yet, we'll have to find it.
@@ -117,18 +125,18 @@ where
             // Scan all the function definitions from the start of the program until we find it.
             self.i = 0;
             let mut count = -1;
-            while count < self.register {
+            while count < self.reg_scalar() {
                 // Every time we find a function, it will increment `count`.
                 match self.fetch(code) {
                     Some(CoreOp::Function) => {
                         count += 1;
                     }
                     Some(_) => {}
-                    None => return Err(format!("function {} not defined", self.register)),
+                    None => return Err(format!("function {} not defined", self.reg_scalar())),
                 }
                 // If `count` hasn't reached the function we want,
                 // keep going.
-                if count < self.register {
+                if count < self.reg_scalar() {
                     self.i += 1;
                 }
             }
@@ -248,7 +256,10 @@ where
         if let Some(op) = self.fetch(code) {
             match op {
                 CoreOp::Comment(_) => {}
-                CoreOp::Set(n) => self.register = *n,
+                CoreOp::Set(n) => {
+                    warn!("Set register to {n:?}");
+                    *self.reg_mut_vector() = n.clone()
+                },
                 CoreOp::Function => {
                     if !self.functions.contains(&self.i) {
                         self.functions.push(self.i);
@@ -259,26 +270,52 @@ where
                 CoreOp::Call => self.call(code)?,
                 CoreOp::Return => self.ret(),
                 CoreOp::While => {
-                    if self.register == 0 {
+                    if self.reg_scalar() == 0 {
                         self.jmp_to_end(code)
                     }
                 }
                 CoreOp::If => {
-                    if self.register == 0 {
+                    if self.reg_scalar() == 0 {
                         self.jmp_to_else(code)
                     }
                 }
                 CoreOp::Else => self.jmp_to_end(code),
                 CoreOp::End => {
-                    if self.register != 0 {
+                    if self.reg_scalar() != 0 {
                         if let Some(CoreOp::While) = self.get_matching_for_end(code) {
                             self.jmp_back_to_matching(code)
                         }
                     }
                 }
 
-                CoreOp::Save => *self.get_cell() = self.register,
-                CoreOp::Restore => self.register = *self.get_cell(),
+                CoreOp::Load(n) => {
+                    warn!("Loading {n} cells at {}", self.pointer);
+                    while self.pointer + n >= self.cells.len() {
+                        self.cells.extend(vec![0; 1000]);
+                        warn!("Extended cells to {}", self.cells.len());
+                    }
+
+                    self.reg_mut_vector().clear();
+                    // let cells = self.get_cells();
+                    for i in 0..*n {
+                        let val = self.cells[self.pointer + i];
+                        self.reg_mut_vector().push(val);
+                    }
+                }
+
+                CoreOp::Store(n) => {
+                    warn!("Storing {n} cells at {}", self.pointer);
+                    while self.pointer + n >= self.cells.len() {
+                        self.cells.extend(vec![0; 1000]);
+                        warn!("Extended cells to {}", self.cells.len());
+                    }
+                    for i in 0..*n {
+                        let val = self.reg_vector()[i];
+                        self.cells[self.pointer + i] = val;
+                    }
+                }
+                // CoreOp::Load(n) => *self.get_cell() = self.reg_scalar(),
+                // CoreOp::Store(n) => self.register = *self.get_cell(),
 
                 CoreOp::Move(n) => {
                     if *n >= 0 {
@@ -294,33 +331,33 @@ where
                     }
                 }
 
-                CoreOp::Where => self.register = self.pointer as i64,
+                CoreOp::Where => *self.reg_mut_scalar() = self.pointer as i64,
                 CoreOp::Deref => self.deref(),
                 CoreOp::Refer => self.refer()?,
 
-                CoreOp::Index => self.register += *self.get_cell(),
+                CoreOp::Index => *self.reg_mut_scalar() += *self.get_cell(),
                 CoreOp::BitwiseNand => {
-                    self.register = !(self.register & *self.get_cell());
+                    *self.reg_mut_scalar() = !(self.reg_scalar() & *self.get_cell());
                 }
-                CoreOp::Add => self.register += *self.get_cell(),
-                CoreOp::Sub => self.register -= *self.get_cell(),
-                CoreOp::Mul => self.register *= *self.get_cell(),
+                CoreOp::Add => *self.reg_mut_scalar() += *self.get_cell(),
+                CoreOp::Sub => *self.reg_mut_scalar() -= *self.get_cell(),
+                CoreOp::Mul => *self.reg_mut_scalar() *= *self.get_cell(),
                 CoreOp::Div => {
                     let d = *self.get_cell();
                     if d != 0 {
-                        self.register /= d
+                        *self.reg_mut_scalar() /= d
                     }
                 }
                 CoreOp::Rem => {
                     let d = *self.get_cell();
                     if d != 0 {
-                        self.register %= d
+                        *self.reg_mut_scalar() %= d
                     }
                 }
 
-                CoreOp::IsNonNegative => self.register = i64::from(self.register >= 0),
-                CoreOp::Get(i) => self.register = self.device.get(i.clone())?,
-                CoreOp::Put(o) => self.device.put(self.register, o.clone())?,
+                CoreOp::IsNonNegative => *self.reg_mut_scalar() = i64::from(self.reg_scalar() >= 0),
+                CoreOp::Get(i) => *self.reg_mut_scalar() = self.device.get(i.clone())?,
+                CoreOp::Put(o) => self.device.put(self.reg_scalar(), o.clone())?,
             }
             self.i += 1
         } else {

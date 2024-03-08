@@ -52,12 +52,12 @@ enum TargetType {
     CoreVM,
     /// Compile to the standard variant of the virtual machine.
     StdVM,
-    /// Compile to My OS source code (GCC only).
-    SageOS,
+    // /// Compile to My OS source code (GCC only).
+    // SageOS,
     /// Compile to C source code (GCC only).
     C,
-    /// Compile to x86 assembly code.
-    X86,
+    // /// Compile to x86 assembly code.
+    // X86,
 }
 
 /// The source language options to compile.
@@ -372,16 +372,18 @@ fn compile(
                     .map_err(Error::InterpreterError)?;
             }
         },
-        // If the target is SageOS source code, then compile the code to virtual machine code,
-        // and then use the SageOS target implementation to build the output source code.
-        TargetType::SageOS => write_file(
-            format!("{output}.c"),
-            match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
-                Ok(vm_code) => targets::SageOS.build_core(&vm_code.flatten()),
-                Err(vm_code) => targets::SageOS.build_std(&vm_code.flatten()),
-            }
-            .map_err(Error::BuildError)?,
-        )?,
+        
+        // // If the target is SageOS source code, then compile the code to virtual machine code,
+        // // and then use the SageOS target implementation to build the output source code.
+        // TargetType::SageOS => write_file(
+        //     format!("{output}.c"),
+        //     match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
+        //         Ok(vm_code) => targets::SageOS.build_core(&vm_code.flatten()),
+        //         Err(vm_code) => targets::SageOS.build_std(&vm_code.flatten()),
+        //     }
+        //     .map_err(Error::BuildError)?,
+        // )?,
+
         // If the target is C source code, then compile the code to virtual machine code,
         // and then use the C target implementation to build the output source code.
         TargetType::C => write_file(
@@ -392,16 +394,18 @@ fn compile(
             }
             .map_err(Error::BuildError)?,
         )?,
-        // If the target is x86 assembly code, then compile the code to virtual machine code,
-        // and then use the x86 target implementation to build the output source code.
-        TargetType::X86 => write_file(
-            format!("{output}.s"),
-            match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
-                Ok(vm_code) => targets::X86::default().build_core(&vm_code.flatten()),
-                Err(vm_code) => targets::X86::default().build_std(&vm_code.flatten()),
-            }
-            .map_err(Error::BuildError)?,
-        )?,
+
+        // // If the target is x86 assembly code, then compile the code to virtual machine code,
+        // // and then use the x86 target implementation to build the output source code.
+        // TargetType::X86 => write_file(
+        //     format!("{output}.s"),
+        //     match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
+        //         Ok(vm_code) => targets::X86::default().build_core(&vm_code.flatten()),
+        //         Err(vm_code) => targets::X86::default().build_std(&vm_code.flatten()),
+        //     }
+        //     .map_err(Error::BuildError)?,
+        // )?,
+
         // If the target is core virtual machine code, then try to compile the source to the core variant.
         // If not possible, throw an error.
         TargetType::CoreVM => match compile_source_to_vm(filename, src, src_type, call_stack_size)?

@@ -572,7 +572,7 @@ impl StandardOp {
                 // For every value in the list
                 for (i, val) in vals.iter().enumerate() {
                     // Set the register to the value
-                    result.std_op(vm::StandardOp::Set(*val))?;
+                    result.set_float_register(*val)?;
                     // Save the register to the memory location
                     result.save();
                     if i < vals.len() - 1 {
@@ -582,7 +582,14 @@ impl StandardOp {
                 }
                 result.where_is_pointer();
                 dst.offset(vals.len() as isize).from(result);
-                // SP.save_to(result);
+
+
+                // let dst = env.resolve(dst)?;
+                
+                // result.set_float_vector(vals.clone())?;
+                // dst.to(result);
+                // result.save_vector(vals.len());
+                // dst.from(result);
             }
 
             Self::PushConst(vals) => {
@@ -593,13 +600,33 @@ impl StandardOp {
                     // Move to the next cell
                     result.move_pointer(1);
                     // Set the register to the value
-                    result.std_op(vm::StandardOp::Set(*val))?;
+                    result.set_float_register(*val)?;
                     // Save the register to the memory location
                     result.save();
                 }
                 result.where_is_pointer();
                 SP.deref().offset(vals.len() as isize).from(result);
                 SP.save_to(result);
+
+
+                // SP.deref().to(result);
+                // result.set_float_vector(vals.clone())?;
+                // result.move_pointer(1);
+                // result.save_vector(vals.len());
+                // result.move_pointer(vals.len() as isize);
+                // result.where_is_pointer();
+                // SP.deref().offset(vals.len() as isize + 1).from(result);
+                // SP.save_to(result);
+
+
+                // SP.deref().to(result);
+                // result.set_float_vector(vals.clone())?;
+                // result.move_pointer(1);
+                // result.save_vector(vals.len());
+                // result.move_pointer(vals.len() as isize);
+                // result.where_is_pointer();
+                // SP.deref().offset(vals.len() as isize + 1).from(result);
+                // SP.save_to(result);
             }
 
             _ => {
