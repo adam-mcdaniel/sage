@@ -12,8 +12,7 @@ use crate::asm::{AssemblyProgram, Globals, Location};
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::{
     collections::{HashMap, HashSet},
-    rc::Rc,
-    sync::RwLock,
+    sync::{RwLock, Arc},
 };
 
 use log::*;
@@ -23,22 +22,22 @@ use log::*;
 #[derive(Clone, Debug)]
 pub struct Env {
     /// The types (and also their sizes) defined under the environment.
-    types: Rc<HashMap<String, Type>>,
+    types: Arc<HashMap<String, Type>>,
     /// The constants defined under the environment.
-    consts: Rc<HashMap<String, ConstExpr>>,
+    consts: Arc<HashMap<String, ConstExpr>>,
     /// The procedures defined under the environment.
-    procs: Rc<HashMap<String, Procedure>>,
+    procs: Arc<HashMap<String, Procedure>>,
     /// The variables defined under the environment.
-    vars: Rc<HashMap<String, (Mutability, Type, isize)>>,
+    vars: Arc<HashMap<String, (Mutability, Type, isize)>>,
     /// The static variables defined under the environment.
-    static_vars: Rc<HashMap<String, (Mutability, Type, Location)>>,
+    static_vars: Arc<HashMap<String, (Mutability, Type, Location)>>,
     /// A lookup for the offsets of global variables.
-    globals: Rc<RwLock<Globals>>,
+    globals: Arc<RwLock<Globals>>,
 
-    processed_monomorphizations: Rc<RwLock<HashMap<Type, Vec<Type>>>>,
+    processed_monomorphizations: Arc<RwLock<HashMap<Type, Vec<Type>>>>,
     /// Associated constants for types.
-    associated_constants: Rc<RwLock<HashMap<Type, HashMap<String, (ConstExpr, Type)>>>>,
-    type_checked_consts: Rc<RwLock<HashSet<ConstExpr>>>,
+    associated_constants: Arc<RwLock<HashMap<Type, HashMap<String, (ConstExpr, Type)>>>>,
+    type_checked_consts: Arc<RwLock<HashSet<ConstExpr>>>,
 
     /// The current offset of the frame pointer to assign to the next variable.
     /// This is incremented by the size of each variable as it is defined.
@@ -52,7 +51,7 @@ pub struct Env {
     expected_ret: Option<Type>,
 
     /// Memoized type sizes.
-    type_sizes: Rc<HashMap<Type, usize>>,
+    type_sizes: Arc<HashMap<Type, usize>>,
 }
 
 impl Default for Env {
@@ -60,16 +59,16 @@ impl Default for Env {
         Self {
             // It is important that we use reference counting for the tables because the environment
             // will be copied many times during the compilation process to create new scopes.
-            types: Rc::new(HashMap::new()),
-            type_sizes: Rc::new(HashMap::new()),
-            consts: Rc::new(HashMap::new()),
-            procs: Rc::new(HashMap::new()),
-            vars: Rc::new(HashMap::new()),
-            static_vars: Rc::new(HashMap::new()),
-            globals: Rc::new(RwLock::new(Globals::new())),
-            associated_constants: Rc::new(RwLock::new(HashMap::new())),
-            processed_monomorphizations: Rc::new(RwLock::new(HashMap::new())),
-            type_checked_consts: Rc::new(RwLock::new(HashSet::new())),
+            types: Arc::new(HashMap::new()),
+            type_sizes: Arc::new(HashMap::new()),
+            consts: Arc::new(HashMap::new()),
+            procs: Arc::new(HashMap::new()),
+            vars: Arc::new(HashMap::new()),
+            static_vars: Arc::new(HashMap::new()),
+            globals: Arc::new(RwLock::new(Globals::new())),
+            associated_constants: Arc::new(RwLock::new(HashMap::new())),
+            processed_monomorphizations: Arc::new(RwLock::new(HashMap::new())),
+            type_checked_consts: Arc::new(RwLock::new(HashSet::new())),
 
             // The last argument is stored at `[FP]`, so our first variable must be at `[FP + 1]`.
             fp_offset: 1,
@@ -91,7 +90,7 @@ impl Env {
             type_sizes: {
                 // Copy the data but not the lock.
                 // let type_sizes = (*self.type_sizes).clone();
-                // Rc::new(type_sizes)
+                // Arc::new(type_sizes)
                 self.type_sizes.clone()
             },
             globals: self.globals.clone(),
@@ -100,11 +99,11 @@ impl Env {
             associated_constants: {
                 // Copy the data but not the lock.
                 let associated_constants = self.associated_constants.read().unwrap().clone();
-                Rc::new(RwLock::new(associated_constants))
+                Arc::new(RwLock::new(associated_constants))
             },
             type_checked_consts: {
                 // let type_checked_consts = self.type_checked_consts.read().unwrap().clone();
-                // Rc::new(RwLock::new(type_checked_consts))
+                // Arc::new(RwLock::new(type_checked_consts))
                 self.type_checked_consts.clone()
             },
 
@@ -600,7 +599,7 @@ impl Env {
         let associated_const_name = associated_const_name.to_string();
         trace!("Defining associated const {associated_const_name} as {expr} to type {ty}");
         let expr_ty = expr.get_type(self)?;
-        // // Rc::make_mut(&mut self.associated_constants)
+        // // Arc::make_mut(&mut self.associated_constants)
         //     .entry(ty)
         //     .or_default()
         //     .insert(associated_const_name, (expr, expr_ty));
@@ -791,7 +790,7 @@ impl Env {
         let location = globals.add_global(name.clone(), size);
 
         trace!("Defining static variable {name} of type {ty} at {location}");
-        Rc::make_mut(&mut self.static_vars)
+        Arc::make_mut(&mut self.static_vars)
             .insert(name.clone(), (mutability, ty, Location::Global(name)));
         Ok(location)
     }
@@ -814,7 +813,7 @@ impl Env {
             }
             _ => {
                 trace!("Defining type {name} as {ty}");
-                Rc::make_mut(&mut self.types).insert(name, ty.clone());
+                Arc::make_mut(&mut self.types).insert(name, ty.clone());
 
                 if let Ok(simplified) = ty.simplify_until_concrete(self) {
                     if let Ok(size) = simplified.get_size(self) {
@@ -840,7 +839,7 @@ impl Env {
                 }
                 _ => {
                     trace!("Defining type {name} as {ty}");
-                    Rc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
+                    Arc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
                 }
             }
         }
@@ -867,7 +866,7 @@ impl Env {
     pub(super) fn define_const(&mut self, name: impl ToString, e: ConstExpr) {
         let name = name.to_string();
         trace!("Defining constant {name} as {e}");
-        Rc::make_mut(&mut self.consts).insert(name, e);
+        Arc::make_mut(&mut self.consts).insert(name, e);
     }
 
     /// Get a constant definition from this environment.
@@ -879,21 +878,21 @@ impl Env {
     pub(super) fn define_proc(&mut self, name: impl ToString, proc: Procedure) {
         let name = name.to_string();
         trace!("Defining procedure {name} as {proc}");
-        Rc::make_mut(&mut self.procs).insert(name, proc);
+        Arc::make_mut(&mut self.procs).insert(name, proc);
     }
 
     /// Define a polymorphic procedure with a given name under this environment.
     pub(super) fn define_poly_proc(&mut self, name: impl ToString, proc: PolyProcedure) {
         let name = name.to_string();
         trace!("Defining polymorphic procedure {name} as {proc}");
-        Rc::make_mut(&mut self.consts).insert(name, ConstExpr::PolyProc(proc));
+        Arc::make_mut(&mut self.consts).insert(name, ConstExpr::PolyProc(proc));
     }
 
     /// Define an FFI procedure with a given name under this environment.
     pub(super) fn define_ffi_proc(&mut self, name: impl ToString, proc: FFIProcedure) {
         let name = name.to_string();
         trace!("Defining FFI procedure {name} as {proc}");
-        Rc::make_mut(&mut self.consts).insert(name, ConstExpr::FFIProcedure(proc));
+        Arc::make_mut(&mut self.consts).insert(name, ConstExpr::FFIProcedure(proc));
     }
 
     /// Get a procedure definition from this environment.
@@ -913,7 +912,7 @@ impl Env {
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
         // Check if the procedure is defined.
-        if let Some(proc) = Rc::make_mut(&mut self.procs).get_mut(name) {
+        if let Some(proc) = Arc::make_mut(&mut self.procs).get_mut(name) {
             debug!("Pushing procedure {} onto the stack", name);
             // Compile the procedure.
             proc.clone().compile_expr(self, output)
@@ -968,7 +967,7 @@ impl Env {
                 "Defined argument {name} of type {ty} at offset {} in\n{self}",
                 self.fp_offset
             );
-            Rc::make_mut(&mut self.vars).insert(name, (mutability, ty, self.fp_offset));
+            Arc::make_mut(&mut self.vars).insert(name, (mutability, ty, self.fp_offset));
         }
         // Set the frame pointer offset to `1` so that the first variable defined under the scope is at `[FP + 1]`.
         self.fp_offset = 1;
@@ -997,7 +996,7 @@ impl Env {
         debug!("Defining variable {var} of type {ty} at {offset} in\n{self}");
         self.fp_offset += size;
         // Store the variable's type and offset in the environment.
-        Rc::make_mut(&mut self.vars).insert(var, (mutability, ty, offset));
+        Arc::make_mut(&mut self.vars).insert(var, (mutability, ty, offset));
         // Return the offset of the variable from the frame pointer.
         Ok(offset)
     }
@@ -1049,7 +1048,7 @@ impl Env {
                 warn!(target: "size", "Type size {ty} was already memoized with size {old_size}, but we memoized it with size {size}");
             }
         }
-        Rc::make_mut(&mut self.type_sizes).insert(ty, size);
+        Arc::make_mut(&mut self.type_sizes).insert(ty, size);
     }
 }
 

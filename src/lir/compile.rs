@@ -34,13 +34,15 @@ pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
     {
         // eprintln!("Compiling LIR expression {self}");
         info!("Type checking...");
+        let start = std::time::Instant::now();
         // First, type check the expression.
         self.type_check(&Env::default())?;
-        info!("Type checked successfully.");
+        info!("Type checked successfully in {:?} ms.", start.elapsed().as_millis());
         // Then, attempt to compile the expression into a core assembly program.
         let mut core_asm = CoreProgram::default();
 
         info!("Compiling...");
+        let start = std::time::Instant::now();
         // If the expression cannot be compiled into a core assembly program,
         // then compile it into a standard assembly program.
         if let Err(err) = self
@@ -52,11 +54,11 @@ pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
             let mut std_asm = StandardProgram::default();
             // Compile the expression into the standard assembly program.
             self.compile_expr(&mut Env::default(), &mut std_asm)?;
-            info!("Compiled to standard assembly successfully.");
+            info!("Compiled to standard assembly successfully in {:?} ms.", start.elapsed().as_millis());
             // Return the fallback standard assembly program.
             Ok(Err(std_asm))
         } else {
-            info!("Compiled to core assembly successfully.");
+            info!("Compiled to core assembly successfully in {:?} ms.", start.elapsed().as_millis());
             // Return the successfully compiled core assembly program.
             Ok(Ok(core_asm))
         }

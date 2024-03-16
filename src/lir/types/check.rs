@@ -12,8 +12,12 @@
 use super::*;
 use crate::lir::Pattern;
 
-use log::{error, trace};
+use std::sync::RwLock;
 
+use rayon::prelude::*;
+use lazy_static::lazy_static;
+
+use log::{error, trace};
 /// A trait used to enforce type checking.
 ///
 /// Whenever this is applied, it will return `Ok(())`
@@ -79,29 +83,43 @@ impl TypeCheck for Type {
             }
             Self::Tuple(ts) => {
                 // Check each inner type.
+                /*
                 for t in ts {
                     // Check the inner type.
                     t.type_check(env)?;
                 }
+                */
+                ts.into_par_iter().try_for_each(|t| t.type_check(env))?;
                 // Return success if all the types are sound.
                 Ok(())
             }
             Self::Struct(fields) | Self::Union(fields) | Self::EnumUnion(fields) => {
                 // Check each inner type.
+                /*
                 for t in fields.values() {
                     // Check the inner type.
                     t.type_check(env)?;
                 }
+                */
+                fields
+                    .values()
+                    .collect::<Vec<&Type>>()
+                    .into_par_iter()
+                    .try_for_each(|t| t.type_check(env))?;
                 // Return success if all the types are sound.
                 Ok(())
             }
 
             Self::Proc(args, ret) => {
                 // Check each argument type.
+                /*
                 for t in args {
                     // Check the argument type.
                     t.type_check(env)?;
                 }
+                */
+                args.into_par_iter().try_for_each(|t| t.type_check(env))?;
+
                 // Check the return type.
                 ret.type_check(env)
             }
@@ -126,10 +144,13 @@ impl TypeCheck for Type {
                 poly.type_check(env)?;
 
                 // Check each type argument.
+                /*
                 for t in ty_args {
                     // Check the type argument.
                     t.type_check(env)?;
                 }
+                */
+                ty_args.into_par_iter().try_for_each(|t| t.type_check(env))?;
 
                 // Try to confirm that the polymorphic type is a template.
                 match poly.simplify_until_poly(env)? {
@@ -350,6 +371,7 @@ impl TypeCheck for Expr {
             // Typecheck a block of expressions.
             Self::Many(exprs) => {
                 // Typecheck each expression.
+                /*
                 for (i, expr) in exprs.iter().enumerate() {
                     // Check the inner expression.
                     expr.type_check(env)?;
@@ -364,6 +386,57 @@ impl TypeCheck for Expr {
                         }
                     }
                 }
+                */
+                lazy_static! {
+                    // Use this to limit recursive parallelism.
+                    static ref PARALLEL_RECURSION_DEPTH: RwLock<usize> = RwLock::new(0);
+                }
+
+                const PARALLEL_RECURSION_LIMIT: usize = 5;
+
+                // Get the current recursion depth.
+                let depth = *PARALLEL_RECURSION_DEPTH.read().unwrap();
+
+                // If we're at the limit, then don't use parallelism.
+                if depth >= PARALLEL_RECURSION_LIMIT {
+                    for (i, expr) in exprs.iter().enumerate() {
+                        // Check the inner expression.
+                        expr.type_check(env)?;
+                        if i < exprs.len() - 1 {
+                            // If it's not the last expression, confirm that it's of type `None`.
+                            // Otherwise, return an error.
+                            let ty = expr.get_type(env)?;
+                            if !ty.can_decay_to(&Type::None, env)? {
+                                error!("Expected type {} for expression {expr}, but found type {ty} in environment {env}", Type::None);
+                                // If it's not, return an error.
+                                return Err(Error::UnusedExpr(expr.clone(), ty));
+                            }
+                        }
+                    }
+                } else {
+                    // Increment the recursion depth
+                    *PARALLEL_RECURSION_DEPTH.write().unwrap() += 1;
+
+                    let count = exprs.len();
+                    exprs.into_par_iter()
+                        .enumerate()
+                        .try_for_each(|(i, expr)| {
+                            expr.type_check(env)?;
+                            if i < count - 1 {
+                                // If it's not the last expression, confirm that it's of type `None`.
+                                // Otherwise, return an error.
+                                let ty = expr.get_type(env)?;
+                                if !ty.can_decay_to(&Type::None, env)? {
+                                    error!("Expected type {} for expression {expr}, but found type {ty} in environment {env}", Type::None);
+                                    // If it's not, return an error.
+                                    return Err(Error::UnusedExpr(expr.clone(), ty));
+                                }
+                            }
+                            Ok(())
+                        })?;
+                }
+
+
                 // Return success if all the expressions are sound.
                 Ok(())
             }
@@ -683,28 +756,24 @@ impl TypeCheck for Expr {
 
             // Typecheck an array or tuple literal.
             Self::Array(items) => {
-                let mut last_type: Option<Type> = None;
-                // Typecheck each item in the array.
-                for item in items {
-                    // Typecheck the item.
+                let last_type = items[0].get_type(env)?;
+                items.into_par_iter().try_for_each(|item| {
                     item.type_check(env)?;
-                    // Get the type of the item.
                     let item_type = item.get_type(env)?;
-                    // If the type of the item is different from the last item,
-                    if let Some(last_type) = last_type {
-                        // Confirm that the type of the item is the same as the
-                        // last item.
-                        if !item_type.can_decay_to(&last_type, env)? {
-                            // If it isn't, return an error.
-                            return Err(Error::MismatchedTypes {
-                                expected: last_type,
-                                found: item_type,
-                                expr: self.clone(),
-                            });
-                        }
+                    if !last_type.can_decay_to(&item_type, env)? {
+                        error!(
+                            "Mismatched types: {last_type} != {item_type} in environment {env}"
+                        );
+                        return Err(Error::MismatchedTypes {
+                            expected: last_type.clone(),
+                            found: item_type,
+                            expr: self.clone(),
+                        });
                     }
-                    last_type = Some(item_type);
-                }
+                    Ok(())
+                })?;
+
+                // Return success.
                 Ok(())
             }
             Self::Tuple(elems) => {
@@ -980,9 +1049,12 @@ impl TypeCheck for ConstExpr {
                         // if let Self::PolyProc(poly) = *expr.clone() {
                         //     poly.type_check(env)?
                         // }
+                        /*
                         for ty in ty_args {
                             ty.type_check(env)?;
                         }
+                        */
+                        ty_args.into_par_iter().try_for_each(|ty| ty.type_check(env))?;
                         Ok(())
                     }
                 }
@@ -1083,18 +1155,22 @@ impl TypeCheck for ConstExpr {
             // Typecheck a tuple literal.
             Self::Tuple(items) => {
                 // Typecheck each item in the tuple.
+                /*
                 for item in items {
                     // Typecheck the item.
                     item.type_check(env)?;
                 }
+                */
+                items.into_par_iter().try_for_each(|item| item.type_check(env))?;
                 // Return success.
                 Ok(())
             }
 
             // Typecheck an array literal.
             Self::Array(items) => {
-                let mut last_type: Option<Type> = None;
+                let last_type = items[0].get_type(env)?;
                 // Typecheck each item in the array.
+                /*
                 for item in items {
                     // Typecheck the item.
                     item.type_check(env)?;
@@ -1118,6 +1194,23 @@ impl TypeCheck for ConstExpr {
                     }
                     last_type = Some(item_type);
                 }
+                 */
+                items.into_par_iter().try_for_each(|item| {
+                    item.type_check(env)?;
+                    let item_type = item.get_type(env)?;
+                    if !last_type.can_decay_to(&item_type, env)? {
+                        error!(
+                            "Mismatched types: {last_type} != {item_type} in environment {env}"
+                        );
+                        return Err(Error::MismatchedTypes {
+                            expected: last_type.clone(),
+                            found: item_type,
+                            expr: Expr::ConstExpr(self.clone()),
+                        });
+                    }
+                    Ok(())
+                })?;
+
                 // Return success.
                 Ok(())
             }
@@ -1125,10 +1218,17 @@ impl TypeCheck for ConstExpr {
             // Typecheck a struct literal.
             Self::Struct(fields) => {
                 // Typecheck each field in the struct.
+                /*
                 for item in fields.values() {
                     // Typecheck the item.
                     item.type_check(env)?;
                 }
+                */
+                fields
+                    .values()
+                    .collect::<Vec<&ConstExpr>>()
+                    .into_par_iter()
+                    .try_for_each(|item| item.type_check(env))?;
                 // Return success.
                 Ok(())
             }
