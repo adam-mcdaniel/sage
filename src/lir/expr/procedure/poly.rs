@@ -6,7 +6,10 @@
 use crate::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
 use core::fmt;
 use log::{debug, error, trace};
-use std::{collections::HashMap, sync::{Arc, RwLock}};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 use std::{hash::Hash, hash::Hasher};
 
 use super::Procedure;

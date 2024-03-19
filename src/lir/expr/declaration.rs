@@ -10,9 +10,14 @@ use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     ops::{Add, AddAssign},
 };
+use lazy_static::lazy_static;
 use log::*;
+use rayon::prelude::*;
 use std::collections::BTreeMap;
-use std::hash::{Hash, Hasher};
+use std::{
+    hash::{Hash, Hasher},
+    sync::RwLock,
+};
 
 /// A declaration of a variable, function, type, etc.
 #[derive(Debug, Clone, PartialEq)]
@@ -71,6 +76,20 @@ impl Declaration {
             Self::Many(decls) => decls
                 .iter()
                 .any(|decl| decl.has_local_variable_declaration()),
+            _ => false,
+        }
+    }
+
+    /// Is this a compile time declaration?
+    pub(crate) fn is_compile_time_declaration(&self) -> bool {
+        match self {
+            Self::Type(..) => true,
+            Self::Const(..) => true,
+            Self::Proc(..) => true,
+            Self::PolyProc(..) => true,
+            Self::ExternProc(..) => true,
+            Self::Impl(..) => true,
+            Self::Many(decls) => decls.iter().all(|decl| decl.is_compile_time_declaration()),
             _ => false,
         }
     }
@@ -383,8 +402,13 @@ impl TypeCheck for Declaration {
                 let bindings = pat.get_bindings(expr, &ty, env)?;
                 // Get the size of all the bindings
                 let size_of_bindings = bindings
-                    .iter()
-                    .map(|(_name, (_mut, ty))| ty.get_size(env).unwrap_or(0))
+                    // .iter()
+                    // .map(|(_name, (_mut, ty))| ty.get_size(env).unwrap_or(0))
+                    // .sum::<usize>();
+                    .values()
+                    .collect::<Vec<_>>()
+                    .par_iter()
+                    .map(|(_mut, ty)| ty.get_size(env).unwrap_or(0))
                     .sum::<usize>();
                 // Make sure the size of the bindings is the same as the size of the expression.
                 if size_of_bindings != size {
@@ -448,38 +472,102 @@ impl TypeCheck for Declaration {
                         templated_consts.push(templated_const);
                     }
 
-                    for templated_const in templated_consts {
-                        debug!(
-                            "About to type check templated const: {templated_const}",
-                            templated_const = templated_const
-                        );
-                        templated_const.type_check(&new_env)?;
-                    }
+                    // If we are at the limit of parallel recursion, then we should
+                    // type check the associated constants sequentially.
+                    // for templated_const in templated_consts {
+                    //     templated_const.type_check(&new_env)?;
+                    // }
+
+                    templated_consts
+                        .par_iter()
+                        .try_for_each(|templated_const| templated_const.type_check(&new_env))?;
                 } else {
                     // ty.add_monomorphized_associated_consts(env)?;
                     for (name, associated_const) in impls {
                         new_env.add_associated_const(ty.clone(), name, associated_const.clone())?;
                     }
 
-                    for (_name, associated_const) in impls {
-                        associated_const.type_check(&new_env)?;
-                    }
+                    // If we are at the limit of parallel recursion, then we should
+                    // type check the associated constants sequentially.
+                    // for (_name, associated_const) in impls {
+                    //     associated_const.type_check(&new_env)?;
+                    // }
+
+                    impls.par_iter().try_for_each(|(_name, associated_const)| {
+                        associated_const.type_check(&new_env)
+                    })?;
                 }
-                // for (_name, expr) in impls {
-                //     expr.type_check(&new_env)?;
-                // }
             }
             // Typecheck a multi-declaration.
             Self::Many(decls) => {
                 let mut new_env = env.clone();
                 // Add all the compile-time declarations to the environment.
                 new_env.add_compile_time_declaration(&self.clone())?;
-                for decl in decls {
-                    // Typecheck any variable declarations in the old scope
-                    decl.type_check(&new_env)?;
-                    // Add them to the new scope.
-                    new_env.add_declaration(decl)?;
+
+                // Get all the compile time declarations so we can type check them in parallel.
+                let (comp_time_decls, run_time_decls): (Vec<_>, Vec<_>) = decls
+                    .iter()
+                    .partition(|decl| decl.is_compile_time_declaration());
+
+                if !comp_time_decls.is_empty() {
+                    // Type check all the compile time declarations in parallel.
+                    comp_time_decls
+                        .par_iter()
+                        .try_for_each(|decl| decl.type_check(&new_env))?;
                 }
+
+                /*
+                lazy_static! {
+                    // Use this to limit recursive parallelism.
+                    static ref PARALLEL_RECURSION_DEPTH: RwLock<usize> = RwLock::new(0);
+                }
+
+                const PARALLEL_RECURSION_LIMIT: usize = 16;
+
+                // Get the current recursion depth.
+                let depth = *PARALLEL_RECURSION_DEPTH.read().unwrap();
+
+                if depth < PARALLEL_RECURSION_LIMIT && comp_time_decls.len() > 2 {
+                    // Increment the recursion depth.
+                    *PARALLEL_RECURSION_DEPTH.write().unwrap() += 1;
+
+                    // Type check all the compile time declarations in parallel.
+                    // for chunk in comp_time_decls.chunks(2) {
+                    //     info!("Typechecking {} declarations in parallel", chunk.len());
+
+                    //     chunk.par_iter().try_for_each(|decl| {
+                    //         decl.type_check(&new_env)
+                    //     })?;
+                    // }
+                    info!("Typechecking {} declarations in parallel", comp_time_decls.len());
+                    comp_time_decls.par_iter().try_for_each(|decl| {
+                        decl.type_check(&new_env)
+                    })?;
+                    // for decl in comp_time_decls {
+                    //     decl.type_check(&new_env)?;
+                    // }
+                } else {
+                    // Type check all the compile time declarations sequentially.
+                    for decl in comp_time_decls {
+                        decl.type_check(&new_env)?;
+                    }
+                }
+                 */
+
+                run_time_decls
+                    .iter()
+                    // .map(|decl| decl.type_check(&new_env))
+                    .try_for_each(|decl| {
+                        decl.type_check(&new_env)?;
+                        new_env.add_declaration(decl)
+                    })?;
+
+                // for decl in decls {
+                //     // Typecheck any variable declarations in the old scope
+                //     decl.type_check(&new_env)?;
+                //     // Add them to the new scope.
+                //     new_env.add_declaration(decl)?;
+                // }
             }
         }
         Ok(())

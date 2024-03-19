@@ -163,76 +163,71 @@ impl AssemblyProgram for StandardProgram {
             self.labels.insert(label.clone());
         }
 
-
         if let Some(last_op) = self.code.last().cloned() {
             match (last_op, op) {
-                (StandardOp::CoreOp(last_core_op), op) => {
-                    match (last_core_op, op) {
-                        (CoreOp::Push(src, 1), CoreOp::Pop(Some(dst), 1)) => {
-                            self.code.pop();
-                            self.op(CoreOp::Move {
-                                src: src.clone(),
-                                dst: dst.clone(),
-                            })
-                        }
-                        (CoreOp::Next(SP, Some(1) | None), CoreOp::Set(dst, n)) if dst == SP.deref() => {
-                            self.code.pop();
-                            self.op(CoreOp::PushConst(vec![n]));
-                        }
-                        (CoreOp::Pop(None, n), CoreOp::Next(SP, Some(m))) if n as isize == m => {
-                            self.code.pop();
-                        }
-                        (CoreOp::Next(SP, Some(n)), CoreOp::Pop(None, m)) if n == m as isize => {
-                            self.code.pop();
-                        }
-                        (CoreOp::Pop(None, n), CoreOp::Next(SP, None)) if n == 1 => {
-                            self.code.pop();
-                        }
-                        (CoreOp::Next(SP, None), CoreOp::Pop(None, n)) if n == 1 => {
-                            self.code.pop();
-                        }
-                        (CoreOp::Pop(None, n), CoreOp::Pop(None, m)) => {
-                            self.code.pop();
-                            self.op(CoreOp::Pop(None, n + m));
-                        }
-                        (CoreOp::Push(_src, 1), CoreOp::Pop(None, 1)) => {
-                            self.code.pop();
-                        }
-                        (CoreOp::Pop(None, 1), CoreOp::Push(src, 1)) => {
-                            self.code.pop();
-                            self.op(CoreOp::Move {
-                                src,
-                                dst: SP.deref(),
-                            });
-                        }
-                        (CoreOp::Move { dst, .. }, CoreOp::Set(dst2, n)) if dst == dst2 => {
-                            self.code.pop();
-                            self.op(CoreOp::Set(dst, n));
-                        }
-                        (CoreOp::PushConst(vals), CoreOp::PushConst(vals2)) => {
-                            self.code.pop();
-                            self.op(CoreOp::PushConst(vals.iter().chain(vals2.iter()).cloned().collect()));
-                        }
-                        (_, CoreOp::Move { src, dst }) if src == dst => {}
-                        (_, CoreOp::Copy { size: 0, .. }) => {}
-                        (_, CoreOp::Copy { src, dst, .. }) if src == dst => {}
-                        (_, op) => {
-                            self.code.push(StandardOp::CoreOp(op))
-                        }
+                (StandardOp::CoreOp(last_core_op), op) => match (last_core_op, op) {
+                    (CoreOp::Push(src, 1), CoreOp::Pop(Some(dst), 1)) => {
+                        self.code.pop();
+                        self.op(CoreOp::Move {
+                            src: src.clone(),
+                            dst: dst.clone(),
+                        })
                     }
-                }
-                (_, op) => {
-                    self.code.push(StandardOp::CoreOp(op))
-                }
+                    (CoreOp::Next(SP, Some(1) | None), CoreOp::Set(dst, n))
+                        if dst == SP.deref() =>
+                    {
+                        self.code.pop();
+                        self.op(CoreOp::PushConst(vec![n]));
+                    }
+                    (CoreOp::Pop(None, n), CoreOp::Next(SP, Some(m))) if n as isize == m => {
+                        self.code.pop();
+                    }
+                    (CoreOp::Next(SP, Some(n)), CoreOp::Pop(None, m)) if n == m as isize => {
+                        self.code.pop();
+                    }
+                    (CoreOp::Pop(None, n), CoreOp::Next(SP, None)) if n == 1 => {
+                        self.code.pop();
+                    }
+                    (CoreOp::Next(SP, None), CoreOp::Pop(None, n)) if n == 1 => {
+                        self.code.pop();
+                    }
+                    (CoreOp::Pop(None, n), CoreOp::Pop(None, m)) => {
+                        self.code.pop();
+                        self.op(CoreOp::Pop(None, n + m));
+                    }
+                    (CoreOp::Push(_src, 1), CoreOp::Pop(None, 1)) => {
+                        self.code.pop();
+                    }
+                    (CoreOp::Pop(None, 1), CoreOp::Push(src, 1)) => {
+                        self.code.pop();
+                        self.op(CoreOp::Move {
+                            src,
+                            dst: SP.deref(),
+                        });
+                    }
+                    (CoreOp::Move { dst, .. }, CoreOp::Set(dst2, n)) if dst == dst2 => {
+                        self.code.pop();
+                        self.op(CoreOp::Set(dst, n));
+                    }
+                    (CoreOp::PushConst(vals), CoreOp::PushConst(vals2)) => {
+                        self.code.pop();
+                        self.op(CoreOp::PushConst(
+                            vals.iter().chain(vals2.iter()).cloned().collect(),
+                        ));
+                    }
+                    (_, CoreOp::Move { src, dst }) if src == dst => {}
+                    (_, CoreOp::Copy { size: 0, .. }) => {}
+                    (_, CoreOp::Copy { src, dst, .. }) if src == dst => {}
+                    (_, op) => self.code.push(StandardOp::CoreOp(op)),
+                },
+                (_, op) => self.code.push(StandardOp::CoreOp(op)),
             }
         } else {
             match op {
                 CoreOp::Move { src, dst } if src == dst => {}
                 CoreOp::Copy { size: 0, .. } => {}
                 CoreOp::Copy { src, dst, .. } if src == dst => {}
-                op => {
-                    self.code.push(StandardOp::CoreOp(op))
-                }
+                op => self.code.push(StandardOp::CoreOp(op)),
             }
         }
         // self.code.push(StandardOp::CoreOp(op))
@@ -583,9 +578,8 @@ impl StandardOp {
                 result.where_is_pointer();
                 dst.offset(vals.len() as isize).from(result);
 
-
                 // let dst = env.resolve(dst)?;
-                
+
                 // result.set_float_vector(vals.clone())?;
                 // dst.to(result);
                 // result.save_vector(vals.len());
@@ -608,7 +602,6 @@ impl StandardOp {
                 SP.deref().offset(vals.len() as isize).from(result);
                 SP.save_to(result);
 
-
                 // SP.deref().to(result);
                 // result.set_float_vector(vals.clone())?;
                 // result.move_pointer(1);
@@ -617,7 +610,6 @@ impl StandardOp {
                 // result.where_is_pointer();
                 // SP.deref().offset(vals.len() as isize + 1).from(result);
                 // SP.save_to(result);
-
 
                 // SP.deref().to(result);
                 // result.set_float_vector(vals.clone())?;

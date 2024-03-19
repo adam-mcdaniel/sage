@@ -14,9 +14,7 @@ use crate::lir::{
 };
 use core::fmt;
 use std::hash::Hash;
-use std::{
-    sync::{Mutex, RwLock, Arc},
-};
+use std::sync::{Arc, Mutex, RwLock};
 
 use log::trace;
 

@@ -14,8 +14,8 @@ use crate::lir::Pattern;
 
 use std::sync::RwLock;
 
-use rayon::prelude::*;
 use lazy_static::lazy_static;
+use rayon::prelude::*;
 
 use log::{error, trace};
 /// A trait used to enforce type checking.
@@ -150,7 +150,9 @@ impl TypeCheck for Type {
                     t.type_check(env)?;
                 }
                 */
-                ty_args.into_par_iter().try_for_each(|t| t.type_check(env))?;
+                ty_args
+                    .into_par_iter()
+                    .try_for_each(|t| t.type_check(env))?;
 
                 // Try to confirm that the polymorphic type is a template.
                 match poly.simplify_until_poly(env)? {
@@ -327,10 +329,10 @@ impl TypeCheck for Expr {
                 }
 
                 // Now collect patterns into a list and check if they're exhaustive with Pattern::are_patterns_exhaustive.
-                let mut patterns = Vec::new();
-                for (pat, _) in branches {
-                    patterns.push(pat.clone());
-                }
+                let patterns = branches
+                    .iter()
+                    .map(|(pat, _)| pat.clone())
+                    .collect::<Vec<Pattern>>();
                 // If they're not exhaustive, return an error.
                 if !Pattern::are_patterns_exhaustive(self, &patterns, &ty, env)? {
                     return Err(Error::NonExhaustivePatterns {
@@ -387,22 +389,13 @@ impl TypeCheck for Expr {
                     }
                 }
                 */
-                lazy_static! {
-                    // Use this to limit recursive parallelism.
-                    static ref PARALLEL_RECURSION_DEPTH: RwLock<usize> = RwLock::new(0);
-                }
 
-                const PARALLEL_RECURSION_LIMIT: usize = 5;
-
-                // Get the current recursion depth.
-                let depth = *PARALLEL_RECURSION_DEPTH.read().unwrap();
-
-                // If we're at the limit, then don't use parallelism.
-                if depth >= PARALLEL_RECURSION_LIMIT {
-                    for (i, expr) in exprs.iter().enumerate() {
-                        // Check the inner expression.
+                let count = exprs.len();
+                exprs.into_par_iter()
+                    .enumerate()
+                    .try_for_each(|(i, expr)| {
                         expr.type_check(env)?;
-                        if i < exprs.len() - 1 {
+                        if i < count - 1 {
                             // If it's not the last expression, confirm that it's of type `None`.
                             // Otherwise, return an error.
                             let ty = expr.get_type(env)?;
@@ -412,30 +405,8 @@ impl TypeCheck for Expr {
                                 return Err(Error::UnusedExpr(expr.clone(), ty));
                             }
                         }
-                    }
-                } else {
-                    // Increment the recursion depth
-                    *PARALLEL_RECURSION_DEPTH.write().unwrap() += 1;
-
-                    let count = exprs.len();
-                    exprs.into_par_iter()
-                        .enumerate()
-                        .try_for_each(|(i, expr)| {
-                            expr.type_check(env)?;
-                            if i < count - 1 {
-                                // If it's not the last expression, confirm that it's of type `None`.
-                                // Otherwise, return an error.
-                                let ty = expr.get_type(env)?;
-                                if !ty.can_decay_to(&Type::None, env)? {
-                                    error!("Expected type {} for expression {expr}, but found type {ty} in environment {env}", Type::None);
-                                    // If it's not, return an error.
-                                    return Err(Error::UnusedExpr(expr.clone(), ty));
-                                }
-                            }
-                            Ok(())
-                        })?;
-                }
-
+                        Ok(())
+                    })?;
 
                 // Return success if all the expressions are sound.
                 Ok(())
@@ -761,9 +732,7 @@ impl TypeCheck for Expr {
                     item.type_check(env)?;
                     let item_type = item.get_type(env)?;
                     if !last_type.can_decay_to(&item_type, env)? {
-                        error!(
-                            "Mismatched types: {last_type} != {item_type} in environment {env}"
-                        );
+                        error!("Mismatched types: {last_type} != {item_type} in environment {env}");
                         return Err(Error::MismatchedTypes {
                             expected: last_type.clone(),
                             found: item_type,
@@ -1054,7 +1023,9 @@ impl TypeCheck for ConstExpr {
                             ty.type_check(env)?;
                         }
                         */
-                        ty_args.into_par_iter().try_for_each(|ty| ty.type_check(env))?;
+                        ty_args
+                            .into_par_iter()
+                            .try_for_each(|ty| ty.type_check(env))?;
                         Ok(())
                     }
                 }
@@ -1161,7 +1132,9 @@ impl TypeCheck for ConstExpr {
                     item.type_check(env)?;
                 }
                 */
-                items.into_par_iter().try_for_each(|item| item.type_check(env))?;
+                items
+                    .into_par_iter()
+                    .try_for_each(|item| item.type_check(env))?;
                 // Return success.
                 Ok(())
             }
@@ -1199,9 +1172,7 @@ impl TypeCheck for ConstExpr {
                     item.type_check(env)?;
                     let item_type = item.get_type(env)?;
                     if !last_type.can_decay_to(&item_type, env)? {
-                        error!(
-                            "Mismatched types: {last_type} != {item_type} in environment {env}"
-                        );
+                        error!("Mismatched types: {last_type} != {item_type} in environment {env}");
                         return Err(Error::MismatchedTypes {
                             expected: last_type.clone(),
                             found: item_type,

@@ -15,6 +15,7 @@ use crate::asm::{
 };
 use crate::NULL;
 use log::*;
+use rayon::prelude::*;
 use std::sync::Mutex;
 
 use log::{error, info, trace, warn};
@@ -37,7 +38,10 @@ pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
         let start = std::time::Instant::now();
         // First, type check the expression.
         self.type_check(&Env::default())?;
-        info!("Type checked successfully in {:?} ms.", start.elapsed().as_millis());
+        info!(
+            "Type checked successfully in {:?} ms.",
+            start.elapsed().as_millis()
+        );
         // Then, attempt to compile the expression into a core assembly program.
         let mut core_asm = CoreProgram::default();
 
@@ -54,11 +58,17 @@ pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
             let mut std_asm = StandardProgram::default();
             // Compile the expression into the standard assembly program.
             self.compile_expr(&mut Env::default(), &mut std_asm)?;
-            info!("Compiled to standard assembly successfully in {:?} ms.", start.elapsed().as_millis());
+            info!(
+                "Compiled to standard assembly successfully in {:?} ms.",
+                start.elapsed().as_millis()
+            );
             // Return the fallback standard assembly program.
             Ok(Err(std_asm))
         } else {
-            info!("Compiled to core assembly successfully in {:?} ms.", start.elapsed().as_millis());
+            info!(
+                "Compiled to core assembly successfully in {:?} ms.",
+                start.elapsed().as_millis()
+            );
             // Return the successfully compiled core assembly program.
             Ok(Ok(core_asm))
         }
@@ -572,7 +582,7 @@ impl Compile for Expr {
                         // If the array is a literal, then we will have to push the array
                         // on the stack and essentially do the same address calculations,
                         // but the difference is that the operation is not in-place.
-                        if optimized_idx.type_check(env).is_ok() {
+                        if optimized_idx.get_type(env).is_ok() {
                             return optimized_idx.compile_expr(env, output);
                         }
 
@@ -988,7 +998,7 @@ impl Compile for ConstExpr {
                 Self::PolyProc(poly_proc) => {
                     // Simplify the type arguments.
                     let ty_args = ty_args
-                        .into_iter()
+                        .into_par_iter()
                         .map(|ty| ty.simplify(env))
                         .collect::<Result<Vec<_>, _>>()?;
 
@@ -1004,8 +1014,8 @@ impl Compile for ConstExpr {
                     let current_instruction = output.current_instruction();
                     // Monomorphize the function
                     let proc = poly_proc.monomorphize(ty_args, env)?;
-                    // Typecheck the monomorphized function.
-                    proc.type_check(env)?;
+                    // // Typecheck the monomorphized function.
+                    // proc.type_check(env)?;
                     // Compile the monomorphized function.
                     proc.compile_expr(env, output)?;
 
@@ -1119,43 +1129,43 @@ impl Compile for ConstExpr {
                         Type::Int => {
                             output.op(CoreOp::PushConst(
                                 items
-                                    .iter()
+                                    .par_iter()
                                     .map(|elem| elem.clone().as_int(env))
                                     .collect::<Result<Vec<_>, _>>()?,
                             ));
-                        },
+                        }
                         Type::Float => {
                             output.std_op(StandardOp::PushConst(
                                 items
-                                    .iter()
+                                    .par_iter()
                                     .map(|elem| elem.clone().as_float(env))
                                     .collect::<Result<Vec<_>, _>>()?,
                             ))?;
-                        },
+                        }
                         Type::Cell => {
                             output.op(CoreOp::PushConst(
                                 items
-                                    .iter()
+                                    .par_iter()
                                     .map(|elem| elem.clone().as_int(env))
                                     .collect::<Result<Vec<_>, _>>()?,
                             ));
-                        },
+                        }
                         Type::Bool => {
                             output.op(CoreOp::PushConst(
                                 items
-                                    .iter()
+                                    .par_iter()
                                     .map(|elem| elem.clone().as_bool(env).map(|x| x as i64))
                                     .collect::<Result<Vec<_>, _>>()?,
                             ));
-                        },
+                        }
                         Type::Char => {
                             output.op(CoreOp::PushConst(
                                 items
-                                    .iter()
+                                    .par_iter()
                                     .map(|elem| elem.clone().as_char(env).map(|x| x as u8 as i64))
                                     .collect::<Result<Vec<_>, _>>()?,
                             ));
-                        },
+                        }
                         _ => {
                             let mut items = items.into_iter().peekable();
                             while let Some(item) = items.next() {
@@ -1168,7 +1178,7 @@ impl Compile for ConstExpr {
                                         break;
                                     }
                                 }
-        
+
                                 let item_size = item.get_size(env)?;
                                 if count > 2 || item_size >= 8 {
                                     item.compile_expr(env, output)?;

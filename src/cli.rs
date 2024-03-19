@@ -19,7 +19,8 @@ use std::{
 use log::error;
 
 // The stack sizes of the threads used to compile the code.
-const RELEASE_STACK_SIZE_MB: usize = 512;
+// const RELEASE_STACK_SIZE_MB: usize = 512;
+const RELEASE_STACK_SIZE_MB: usize = 2048;
 const DEBUG_STACK_SIZE_MB: usize = RELEASE_STACK_SIZE_MB;
 
 #[derive(clap::ValueEnum, Default, Clone, Debug, PartialEq)]
@@ -193,10 +194,7 @@ impl fmt::Debug for Error {
 
                 let filename = filename.clone().unwrap_or("unknown".to_string());
 
-                let file_id = files.add(
-                    filename.clone(),
-                    source_code,
-                );
+                let file_id = files.add(filename.clone(), source_code);
 
                 let loc = format!("{}:{}:{}:{}", filename, line, column, offset);
 
@@ -209,7 +207,7 @@ impl fmt::Debug for Error {
                         file_id,
                         *offset..*offset + length.unwrap_or(0),
                     )
-                        .with_message(format!("{err:?}"))]);
+                    .with_message(format!("{err:?}"))]);
 
                 let writer = StandardStream::stderr(ColorChoice::Always);
                 let config = codespan_reporting::term::Config::default();
@@ -372,7 +370,7 @@ fn compile(
                     .map_err(Error::InterpreterError)?;
             }
         },
-        
+
         // // If the target is SageOS source code, then compile the code to virtual machine code,
         // // and then use the SageOS target implementation to build the output source code.
         // TargetType::SageOS => write_file(
@@ -476,14 +474,17 @@ fn cli() {
     let target = args.debug.as_deref();
 
     // Set the log level.
-    builder.filter(target, match args.log_level {
-        LogLevel::Error if args.debug.is_none() => log::LevelFilter::Error,
-        LogLevel::Warn if args.debug.is_none() => log::LevelFilter::Warn,
-        LogLevel::Off if args.debug.is_none() => log::LevelFilter::Error,
-        LogLevel::Info if args.debug.is_none() =>log::LevelFilter::Info,
-        LogLevel::Trace => log::LevelFilter::Trace,
-        _ => log::LevelFilter::Debug,
-    });
+    builder.filter(
+        target,
+        match args.log_level {
+            LogLevel::Error if args.debug.is_none() => log::LevelFilter::Error,
+            LogLevel::Warn if args.debug.is_none() => log::LevelFilter::Warn,
+            LogLevel::Off if args.debug.is_none() => log::LevelFilter::Error,
+            LogLevel::Info if args.debug.is_none() => log::LevelFilter::Info,
+            LogLevel::Trace => log::LevelFilter::Trace,
+            _ => log::LevelFilter::Debug,
+        },
+    );
 
     builder.init();
 
@@ -511,6 +512,12 @@ fn cli() {
 }
 
 fn main() {
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(16)
+        .stack_size(RELEASE_STACK_SIZE_MB * 1024 * 1024)
+        .build_global()
+        .unwrap();
+
     // If we're in debug mode, start the compilation in a separate thread.
     // This is to allow the process to have more stack space.
     if !cfg!(debug_assertions) {

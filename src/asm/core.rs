@@ -234,14 +234,14 @@ impl AssemblyProgram for CoreProgram {
                 }
                 (CoreOp::PushConst(vals), CoreOp::PushConst(vals2)) => {
                     self.code.pop();
-                    self.op(CoreOp::PushConst(vals.iter().chain(vals2.iter()).cloned().collect()));
+                    self.op(CoreOp::PushConst(
+                        vals.iter().chain(vals2.iter()).cloned().collect(),
+                    ));
                 }
                 (_, CoreOp::Move { src, dst }) if src == dst => {}
                 (_, CoreOp::Copy { size: 0, .. }) => {}
                 (_, CoreOp::Copy { src, dst, .. }) if src == dst => {}
-                (_, op) => {
-                    self.code.push(op)
-                }
+                (_, op) => self.code.push(op),
             }
         } else {
             self.code.push(op)
@@ -602,7 +602,7 @@ impl CoreOp {
 
             CoreOp::Const { dst, vals } => {
                 let dst = env.resolve(dst)?;
-                
+
                 result.set_vector(vals.clone());
                 dst.to(result);
                 result.store_vector(vals.len());
@@ -1074,7 +1074,7 @@ impl fmt::Display for CoreOp {
                 }
                 Ok(())
             }
-            Self::Const {dst, vals} => {
+            Self::Const { dst, vals } => {
                 write!(f, "const {dst}, [")?;
                 for (i, val) in vals.iter().enumerate() {
                     if i < vals.len() - 1 {

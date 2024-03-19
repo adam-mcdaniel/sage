@@ -259,7 +259,7 @@ where
                 CoreOp::Set(n) => {
                     warn!("Set register to {n:?}");
                     *self.reg_mut_vector() = n.clone()
-                },
+                }
                 CoreOp::Function => {
                     if !self.functions.contains(&self.i) {
                         self.functions.push(self.i);
@@ -316,7 +316,6 @@ where
                 }
                 // CoreOp::Load(n) => *self.get_cell() = self.reg_scalar(),
                 // CoreOp::Store(n) => self.register = *self.get_cell(),
-
                 CoreOp::Move(n) => {
                     if *n >= 0 {
                         self.pointer += *n as usize

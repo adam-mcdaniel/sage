@@ -10,9 +10,10 @@ use super::{
 };
 use crate::asm::{AssemblyProgram, Globals, Location};
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use rayon::prelude::*;
 use std::{
     collections::{HashMap, HashSet},
-    sync::{RwLock, Arc},
+    sync::{Arc, RwLock},
 };
 
 use log::*;
@@ -684,9 +685,14 @@ impl Env {
                     }
                 } else {
                     // ty.add_monomorphized_associated_consts(self)?;
+
                     for (name, associated_const) in impls {
                         self.add_associated_const(ty.clone(), name, associated_const.clone())?;
                     }
+
+                    // impls.par_iter().try_for_each(|(name, associated_const)| {
+                    //     self.add_associated_const(ty.clone(), name, associated_const.clone())
+                    // })?;
                 }
             }
             Declaration::Var(_, _, Some(_ty), _e) => {
@@ -711,6 +717,7 @@ impl Env {
                 for decl in decls {
                     self.add_compile_time_declaration(decl)?;
                 }
+
                 for decl in decls {
                     if let Declaration::Type(name, ty) = decl {
                         if let Ok(size) = ty.get_size(self) {
@@ -809,7 +816,7 @@ impl Env {
         let name = name.to_string();
         match &ty {
             Type::Symbol(sym) if sym == &name => {
-                warn!("Defining type {ty} to itself as {name}");
+                trace!("Defining type {ty} to itself as {name}");
             }
             _ => {
                 trace!("Defining type {name} as {ty}");
@@ -835,7 +842,7 @@ impl Env {
         for (name, ty) in &types {
             match &ty {
                 Type::Symbol(sym) if sym == name => {
-                    warn!("Defining type {ty} to itself as {name}");
+                    trace!("Defining type {ty} to itself as {name}");
                 }
                 _ => {
                     trace!("Defining type {name} as {ty}");

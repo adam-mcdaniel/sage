@@ -55,7 +55,7 @@ impl Architecture for C {
                 }
                 tmp
                 // format!("scalar_reg.i = {};", n)
-            },
+            }
             CoreOp::Call => "funs[scalar_reg.i]();".to_string(),
             CoreOp::Return => "return;".to_string(),
             CoreOp::Store(1) => "*ptr = scalar_reg;".to_string(),
@@ -65,13 +65,13 @@ impl Architecture for C {
                     warn!("Store with n > 1024 not supported by C target");
                 }
                 format!("vector_reg[0] = scalar_reg; memcpy(ptr, vector_reg, {n} * sizeof(cell));")
-            },
+            }
             CoreOp::Load(n) => {
                 if *n > 1024 {
                     warn!("Load with n > 1024 not supported by C target");
                 }
                 format!("memcpy(vector_reg, ptr, {n} * sizeof(cell)); scalar_reg = ptr[0];")
-            },
+            }
 
             CoreOp::Move(n) => format!("ptr += {};", n),
             CoreOp::Where => "scalar_reg.p = ptr;".to_string(),
@@ -97,7 +97,6 @@ impl Architecture for C {
             StandardOp::Peek => self.peek()?,
             StandardOp::Poke => self.poke()?,
             // StandardOp::Set(n) => format!("scalar_reg.f = {};", n),
-
             StandardOp::Set(n) => {
                 let mut tmp = format!("scalar_reg.f = {};", n[0]);
                 // If all the values in the vector are the same, use `memset`
@@ -110,7 +109,7 @@ impl Architecture for C {
                 }
                 tmp
                 // format!("scalar_reg.i = {};", n)
-            },
+            }
             StandardOp::ToInt => "scalar_reg.i = scalar_reg.f;".to_string(),
             StandardOp::ToFloat => "scalar_reg.f = scalar_reg.i;".to_string(),
             StandardOp::ACos => "scalar_reg.f = acos(scalar_reg.f);".to_string(),
@@ -126,7 +125,9 @@ impl Architecture for C {
             StandardOp::Rem => "scalar_reg.f = fmod(scalar_reg.f, ptr->f);".to_string(),
             StandardOp::Pow => "scalar_reg.f = pow(scalar_reg.f, ptr->f);".to_string(),
             StandardOp::IsNonNegative => "scalar_reg.i = scalar_reg.f >= 0;".to_string(),
-            StandardOp::Alloc => "scalar_reg.p = (cell*)malloc(scalar_reg.i * sizeof(cell));".to_string(),
+            StandardOp::Alloc => {
+                "scalar_reg.p = (cell*)malloc(scalar_reg.i * sizeof(cell));".to_string()
+            }
             StandardOp::Free => "free(scalar_reg.p);".to_string(),
             _ => return Err(format!("Invalid standard op for C target {op:?}")),
         })
