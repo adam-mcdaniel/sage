@@ -12,9 +12,6 @@
 use super::*;
 use crate::lir::Pattern;
 
-use std::sync::RwLock;
-
-use lazy_static::lazy_static;
 use rayon::prelude::*;
 
 use log::{error, trace};

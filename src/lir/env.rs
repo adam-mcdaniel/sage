@@ -10,7 +10,7 @@ use super::{
 };
 use crate::asm::{AssemblyProgram, Globals, Location};
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
-use rayon::prelude::*;
+
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, RwLock},

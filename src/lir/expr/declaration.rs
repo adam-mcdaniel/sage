@@ -10,14 +10,10 @@ use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     ops::{Add, AddAssign},
 };
-use lazy_static::lazy_static;
 use log::*;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
-use std::{
-    hash::{Hash, Hasher},
-    sync::RwLock,
-};
+use std::hash::{Hash, Hasher};
 
 /// A declaration of a variable, function, type, etc.
 #[derive(Debug, Clone, PartialEq)]
@@ -89,7 +85,7 @@ impl Declaration {
             Self::PolyProc(..) => true,
             Self::ExternProc(..) => true,
             Self::Impl(..) => true,
-            Self::Many(decls) => decls.iter().all(|decl| decl.is_compile_time_declaration()),
+            Self::Many(decls) => decls.par_iter().all(|decl| decl.is_compile_time_declaration()),
             _ => false,
         }
     }
@@ -290,14 +286,20 @@ impl Declaration {
                 proc.substitute(substitution_name, substitution_ty);
             }
             Self::Impl(_name, impls) => {
-                for (_name, expr) in impls {
+                // for (_name, expr) in impls {
+                //     expr.substitute(substitution_name, substitution_ty);
+                // }
+                impls.par_iter_mut().for_each(|(_name, expr)| {
                     expr.substitute(substitution_name, substitution_ty);
-                }
+                });
             }
             Self::Many(decls) => {
-                for decl in decls {
+                // for decl in decls {
+                //     decl.substitute(substitution_name, substitution_ty);
+                // }
+                decls.par_iter_mut().for_each(|decl| {
                     decl.substitute(substitution_name, substitution_ty);
-                }
+                });
             }
         }
     }
