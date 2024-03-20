@@ -4,8 +4,6 @@
 //! variant.
 use crate::vm::{CoreOp, CoreProgram, Device, StandardDevice};
 
-use log::warn;
-
 impl Default for CoreInterpreter<StandardDevice> {
     fn default() -> Self {
         Self::new(StandardDevice::default())
@@ -257,7 +255,6 @@ where
             match op {
                 CoreOp::Comment(_) => {}
                 CoreOp::Set(n) => {
-                    warn!("Set register to {n:?}");
                     *self.reg_mut_vector() = n.clone()
                 }
                 CoreOp::Function => {
@@ -289,10 +286,8 @@ where
                 }
 
                 CoreOp::Load(n) => {
-                    warn!("Loading {n} cells at {}", self.pointer);
                     while self.pointer + n >= self.cells.len() {
                         self.cells.extend(vec![0; 1000]);
-                        warn!("Extended cells to {}", self.cells.len());
                     }
 
                     self.reg_mut_vector().clear();
@@ -304,10 +299,8 @@ where
                 }
 
                 CoreOp::Store(n) => {
-                    warn!("Storing {n} cells at {}", self.pointer);
                     while self.pointer + n >= self.cells.len() {
                         self.cells.extend(vec![0; 1000]);
-                        warn!("Extended cells to {}", self.cells.len());
                     }
                     for i in 0..*n {
                         let val = self.reg_vector()[i];

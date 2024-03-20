@@ -4,7 +4,6 @@
 //! variant.
 
 use crate::vm::{CoreOp, Device, StandardDevice, StandardOp, StandardProgram};
-use log::warn;
 
 /// A function to reinterpret the bits of an integer as a float.
 pub fn as_float(n: i64) -> f64 {
@@ -277,7 +276,6 @@ where
                 StandardOp::CoreOp(core_op) => match core_op {
                     CoreOp::Comment(_) => {}
                     CoreOp::Set(n) => {
-                        warn!("Set register to {n:?}");
                         *self.reg_mut_vector() = n.clone()
                     }
                     CoreOp::Function => {
@@ -311,10 +309,8 @@ where
                     }
 
                     CoreOp::Load(n) => {
-                        // warn!("Loading {n} cells at {}", self.pointer);
                         while self.pointer + n >= self.cells.len() {
                             self.cells.extend(vec![0; 1000]);
-                            warn!("Extended cells to {}", self.cells.len());
                         }
 
                         self.reg_mut_vector().clear();
@@ -326,10 +322,8 @@ where
                     }
 
                     CoreOp::Store(n) => {
-                        // warn!("Storing {n} cells at {}", self.pointer);
                         while self.pointer + n >= self.cells.len() {
                             self.cells.extend(vec![0; 1000]);
-                            warn!("Extended cells to {}", self.cells.len());
                         }
 
                         for i in 0..*n {
