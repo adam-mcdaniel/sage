@@ -339,7 +339,8 @@ where
                 }
                 CoreOp::BitwiseNand(n) => {
                     for i in 0..*n {
-                        self.reg_mut_vector()[i] &= !self.cells[self.pointer + i];
+                        // self.reg_mut_vector()[i] &= !self.cells[self.pointer + i];
+                        self.reg_mut_vector()[i] = !(self.reg_vector()[i] & self.cells[self.pointer + i]);
                     }
                 }
                 CoreOp::BitwiseAnd(n) => {
@@ -437,12 +438,12 @@ where
 
                 CoreOp::Inc(n) => {
                     for i in 0..*n {
-                        self.cells[self.pointer + i] += 1;
+                        self.reg_mut_vector()[i] += 1;
                     }
                 },
                 CoreOp::Dec(n) => {
                     for i in 0..*n {
-                        self.cells[self.pointer + i] -= 1;
+                        self.reg_mut_vector()[i] -= 1;
                     }
                 },
 

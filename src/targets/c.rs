@@ -81,14 +81,14 @@ impl Architecture for C {
             // CoreOp::Refer => "ptr = *--ref;".to_string(),
             CoreOp::Offset(n, size) => {
                 if *size == 1 {
-                    format!("scalar_reg.p += {}; ptr = scalar_reg.p;", n)
+                    format!("scalar_reg.p += {};", n)
                 } else {
                     format!("for (int i = 0; i < {size}; i++) vector_reg[i].p += {n};")
                 }
             }
             CoreOp::Index(n) => {
                 if *n == 1 {
-                    "scalar_reg = *ptr;".to_string()
+                    "scalar_reg.p += ptr->i;".to_string()
                 } else {
                     format!("for (int i = 0; i < {n}; i++) vector_reg[i].p += ptr[i].i;", n = n)
                 }

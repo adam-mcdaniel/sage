@@ -364,7 +364,7 @@ where
                     }
                     CoreOp::BitwiseNand(n) => {
                         for i in 0..*n {
-                            self.reg_mut_vector()[i] &= !self.cells[self.pointer + i];
+                            self.reg_mut_vector()[i] = !(self.reg_vector()[i] & self.cells[self.pointer + i]);
                         }
                     }
                     CoreOp::BitwiseAnd(n) => {
