@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/vm/interpreter/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.1 (eb26296b5 2023-08-03)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/vm/interpreter/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -442,7 +443,7 @@
 };
 
 <span class="doccomment">/// Create an input / output device for the virtual machine interpreter
-/// to operate on. The method `get` retrieves the device&#39;s input, and the
+/// to operate on. The method `get` retrieves the device's input, and the
 /// function `put` writes to the devices output.
 ///
 /// TODO: Make a trait for a device with the standard variant, which requires
@@ -517,7 +518,7 @@
     }
 
     <span class="kw">fn </span>put_float(<span class="kw-2">&amp;mut </span><span class="self">self</span>, val: f64) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
-        <span class="kw">for </span>ch <span class="kw">in </span><span class="macro">format!</span>(<span class="string">&quot;{val:?}&quot;</span>).chars() {
+        <span class="kw">for </span>ch <span class="kw">in </span><span class="macro">format!</span>(<span class="string">"{val:?}"</span>).chars() {
             <span class="self">self</span>.put_char(ch)<span class="question-mark">?
         </span>}
         <span class="prelude-val">Ok</span>(())
@@ -531,7 +532,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>result: i64 = <span class="number">0</span>;
         <span class="kw">loop </span>{
             <span class="kw">if </span><span class="self">self</span>.input.is_empty() {
-                <span class="macro">warn!</span>(<span class="string">&quot;EOF while parsing integer: {result}&quot;</span>);
+                <span class="macro">warn!</span>(<span class="string">"EOF while parsing integer: {result}"</span>);
                 <span class="kw">break</span>;
             }
             <span class="kw">let </span>ch = <span class="self">self</span>.input[<span class="number">0</span>] <span class="kw">as </span>u8 <span class="kw">as </span>char;
@@ -550,14 +551,14 @@
             <span class="kw">let </span>ch = n <span class="kw">as </span>char;
             <span class="kw">if </span>ch.is_ascii_digit() {
                 result <span class="kw-2">*</span>= <span class="number">10</span>;
-                result += (n - <span class="string">b&#39;0&#39;</span>) <span class="kw">as </span>i64;
+                result += (n - <span class="string">b'0'</span>) <span class="kw">as </span>i64;
                 <span class="self">self</span>.input.pop_front();
             } <span class="kw">else </span>{
                 <span class="kw">break</span>;
             }
         }
 
-        <span class="macro">trace!</span>(<span class="string">&quot;Got integer input: {}&quot;</span>, result);
+        <span class="macro">trace!</span>(<span class="string">"Got integer input: {}"</span>, result);
 
         <span class="prelude-val">Ok</span>(result)
     }
@@ -566,18 +567,18 @@
         <span class="kw">let </span>whole_part = <span class="self">self</span>.get_int()<span class="question-mark">? </span><span class="kw">as </span>f64;
 
         <span class="kw">if </span><span class="self">self</span>.input.is_empty() {
-            <span class="macro">warn!</span>(<span class="string">&quot;EOF while parsing float: {whole_part}&quot;</span>);
+            <span class="macro">warn!</span>(<span class="string">"EOF while parsing float: {whole_part}"</span>);
             <span class="kw">return </span><span class="prelude-val">Ok</span>(whole_part);
         }
 
         <span class="kw">let </span>n = <span class="self">self</span>.input[<span class="number">0</span>] <span class="kw">as </span>u8;
         <span class="kw">let </span>ch = n <span class="kw">as </span>char;
-        <span class="kw">if </span>ch == <span class="string">&#39;.&#39; </span>{
+        <span class="kw">if </span>ch == <span class="string">'.' </span>{
             <span class="self">self</span>.get_char()<span class="question-mark">?</span>;
             <span class="kw">let </span>fractional_part = <span class="self">self</span>.get_int()<span class="question-mark">? </span><span class="kw">as </span>f64;
             <span class="kw">let </span>digits = fractional_part.log10() <span class="kw">as </span>i32 + <span class="number">1</span>;
             <span class="macro">trace!</span>(
-                <span class="string">&quot;Got float input: {}.{:0digits$}&quot;</span>,
+                <span class="string">"Got float input: {}.{:0digits$}"</span>,
                 whole_part,
                 fractional_part,
                 digits = digits <span class="kw">as </span>usize
@@ -589,7 +590,7 @@
                     <span class="number">0.0
                 </span>})
         } <span class="kw">else </span>{
-            <span class="macro">trace!</span>(<span class="string">&quot;Got float input: {}&quot;</span>, whole_part);
+            <span class="macro">trace!</span>(<span class="string">"Got float input: {}"</span>, whole_part);
             <span class="prelude-val">Ok</span>(whole_part)
         }
     }
@@ -600,7 +601,7 @@
         <span class="kw">for </span>(ch, <span class="kw">_</span>) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.output {
             result.push(<span class="kw-2">*</span>ch <span class="kw">as </span>i8 <span class="kw">as </span>u8 <span class="kw">as </span>char)
         }
-        <span class="macro">trace!</span>(<span class="string">&quot;Output from testing device: {}&quot;</span>, result);
+        <span class="macro">trace!</span>(<span class="string">"Output from testing device: {}"</span>, result);
         result
     }
 
@@ -617,14 +618,14 @@
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(n) = <span class="self">self</span>.input.pop_front() {
                     <span class="prelude-val">Ok</span>(n)
                 } <span class="kw">else </span>{
-                    <span class="macro">error!</span>(<span class="string">&quot;Tried to get character from empty input buffer&quot;</span>);
-                    <span class="prelude-val">Err</span>(<span class="string">&quot;input is empty&quot;</span>.to_string())
+                    <span class="macro">error!</span>(<span class="string">"Tried to get character from empty input buffer"</span>);
+                    <span class="prelude-val">Err</span>(<span class="string">"input is empty"</span>.to_string())
                 }
             }
             InputMode::StdinInt =&gt; <span class="self">self</span>.get_int(),
             InputMode::StdinFloat =&gt; <span class="self">self</span>.get_float().map(as_int),
             <span class="kw">_ </span>=&gt; {
-                <span class="macro">warn!</span>(<span class="string">&quot;Requested input mode: {}&quot;</span>, src.mode);
+                <span class="macro">warn!</span>(<span class="string">"Requested input mode: {}"</span>, src.mode);
                 <span class="prelude-val">Ok</span>(<span class="number">0</span>)
             }
         }
@@ -639,7 +640,7 @@
             OutputMode::StdoutInt =&gt; <span class="self">self</span>.put_int(val),
             OutputMode::StdoutFloat =&gt; <span class="self">self</span>.put_float(as_float(val)),
             <span class="kw">_ </span>=&gt; {
-                <span class="macro">warn!</span>(<span class="string">&quot;Requested output mode: {} (with output={val})&quot;</span>, dst.mode);
+                <span class="macro">warn!</span>(<span class="string">"Requested output mode: {} (with output={val})"</span>, dst.mode);
                 <span class="prelude-val">Ok</span>(())
             }
         }
@@ -649,8 +650,8 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(n) = <span class="self">self</span>.ffi_channel.pop_front() {
             <span class="prelude-val">Ok</span>(n)
         } <span class="kw">else </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;Tried to peek from empty ffi channel&quot;</span>);
-            <span class="prelude-val">Err</span>(<span class="string">&quot;ffi channel is empty&quot;</span>.to_string())
+            <span class="macro">error!</span>(<span class="string">"Tried to peek from empty ffi channel"</span>);
+            <span class="prelude-val">Err</span>(<span class="string">"ffi channel is empty"</span>.to_string())
         }
     }
 
@@ -661,12 +662,12 @@
 
     <span class="kw">fn </span>ffi_call(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ffi: <span class="kw-2">&amp;</span>FFIBinding, tape: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>Vec&lt;i64&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(f) = <span class="self">self</span>.ffi.get(ffi) {
-            <span class="macro">trace!</span>(<span class="string">&quot;Calling FFI: {}&quot;</span>, ffi);
+            <span class="macro">trace!</span>(<span class="string">"Calling FFI: {}"</span>, ffi);
             f(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ffi_channel, tape);
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;FFI call not found: {:?}&quot;</span>, ffi);
-            <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;ffi call not found: {:?}&quot;</span>, ffi))
+            <span class="macro">error!</span>(<span class="string">"FFI call not found: {:?}"</span>, ffi);
+            <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">"ffi call not found: {:?}"</span>, ffi))
         }
     }
 }
@@ -688,14 +689,14 @@
         };
 
         result.add_binding(
-            FFIBinding::new(<span class="string">&quot;square_root&quot;</span>.to_string(), <span class="number">1</span>, <span class="number">1</span>),
+            FFIBinding::new(<span class="string">"square_root"</span>.to_string(), <span class="number">1</span>, <span class="number">1</span>),
             |channel, <span class="kw">_</span>| {
                 <span class="kw">let </span>val = as_float(channel.pop_front().unwrap());
                 channel.push_back(as_int(val.sqrt()));
             },
         );
 
-        result.add_binding(FFIBinding::new(<span class="string">&quot;add&quot;</span>.to_string(), <span class="number">2</span>, <span class="number">1</span>), |channel, <span class="kw">_</span>| {
+        result.add_binding(FFIBinding::new(<span class="string">"add"</span>.to_string(), <span class="number">2</span>, <span class="number">1</span>), |channel, <span class="kw">_</span>| {
             <span class="kw">let </span>a = as_float(channel.pop_front().unwrap());
             <span class="kw">let </span>b = as_float(channel.pop_front().unwrap());
             channel.push_back(as_int(a + b));
@@ -711,19 +712,19 @@
         ffi: FFIBinding,
         f: <span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>VecDeque&lt;i64&gt;, <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>Vec&lt;i64&gt;&gt;),
     ) {
-        <span class="macro">trace!</span>(<span class="string">&quot;Adding ffi binding to VM interpreter: {}&quot;</span>, ffi);
+        <span class="macro">trace!</span>(<span class="string">"Adding ffi binding to VM interpreter: {}"</span>, ffi);
         <span class="self">self</span>.ffi.insert(ffi, f);
     }
 
     <span class="kw">fn </span>get_char(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;char, String&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0</span>];
         <span class="kw">if </span>stdout().flush().is_err() {
-            <span class="macro">error!</span>(<span class="string">&quot;Could not flush output, do you have a terminal?&quot;</span>);
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Could not flush output&quot;</span>.to_string());
+            <span class="macro">error!</span>(<span class="string">"Could not flush output, do you have a terminal?"</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">"Could not flush output"</span>.to_string());
         }
         <span class="kw">if </span>stdin().read(<span class="kw-2">&amp;mut </span>buf).is_err() {
-            <span class="macro">error!</span>(<span class="string">&quot;Could not flush output, do you have a terminal?&quot;</span>);
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Could not get user input&quot;</span>.to_string());
+            <span class="macro">error!</span>(<span class="string">"Could not flush output, do you have a terminal?"</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">"Could not get user input"</span>.to_string());
         }
         <span class="prelude-val">Ok</span>(buf[<span class="number">0</span>] <span class="kw">as </span>char)
     }
@@ -731,29 +732,29 @@
     <span class="kw">fn </span>get_int(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;i64, String&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0</span>];
         <span class="kw">if </span>stdout().flush().is_err() {
-            <span class="macro">error!</span>(<span class="string">&quot;Could not flush output, do you have a terminal?&quot;</span>);
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Could not flush output&quot;</span>.to_string());
+            <span class="macro">error!</span>(<span class="string">"Could not flush output, do you have a terminal?"</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">"Could not flush output"</span>.to_string());
         }
 
         <span class="kw">while </span>stdin().read(<span class="kw-2">&amp;mut </span>buf).is_ok() &amp;&amp; (buf[<span class="number">0</span>] <span class="kw">as </span>char).is_whitespace() {}
 
         <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="kw">if </span>buf[<span class="number">0</span>].is_ascii_digit() {
-            (buf[<span class="number">0</span>] - <span class="string">b&#39;0&#39;</span>) <span class="kw">as </span>i64
+            (buf[<span class="number">0</span>] - <span class="string">b'0'</span>) <span class="kw">as </span>i64
         } <span class="kw">else </span>{
-            <span class="macro">warn!</span>(<span class="string">&quot;EOF while parsing integer&quot;</span>);
+            <span class="macro">warn!</span>(<span class="string">"EOF while parsing integer"</span>);
             <span class="number">0
         </span>};
 
         <span class="kw">while </span>stdin().read(<span class="kw-2">&amp;mut </span>buf).is_ok() {
             <span class="kw">if </span>buf[<span class="number">0</span>].is_ascii_digit() {
                 result <span class="kw-2">*</span>= <span class="number">10</span>;
-                result += (buf[<span class="number">0</span>] - <span class="string">b&#39;0&#39;</span>) <span class="kw">as </span>i64
+                result += (buf[<span class="number">0</span>] - <span class="string">b'0'</span>) <span class="kw">as </span>i64
             } <span class="kw">else </span>{
                 <span class="kw">break</span>;
             }
         }
 
-        <span class="macro">trace!</span>(<span class="string">&quot;Got integer input: {}&quot;</span>, result);
+        <span class="macro">trace!</span>(<span class="string">"Got integer input: {}"</span>, result);
 
         <span class="prelude-val">Ok</span>(result)
     }
@@ -761,15 +762,15 @@
     <span class="kw">fn </span>get_float(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;f64, String&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>buf = String::new();
         <span class="kw">if </span>stdout().flush().is_err() {
-            <span class="macro">error!</span>(<span class="string">&quot;Could not flush output, do you have a terminal?&quot;</span>);
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Could not flush output&quot;</span>.to_string());
+            <span class="macro">error!</span>(<span class="string">"Could not flush output, do you have a terminal?"</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">"Could not flush output"</span>.to_string());
         }
         <span class="kw">if </span>stdin().read_line(<span class="kw-2">&amp;mut </span>buf).is_err() {
-            <span class="macro">error!</span>(<span class="string">&quot;Could not flush output, do you have a terminal?&quot;</span>);
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Could not get user input&quot;</span>.to_string());
+            <span class="macro">error!</span>(<span class="string">"Could not flush output, do you have a terminal?"</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">"Could not get user input"</span>.to_string());
         }
         <span class="prelude-val">Ok</span>(buf.trim().parse::&lt;f64&gt;().unwrap_or_else(|s| {
-            <span class="macro">warn!</span>(<span class="string">&quot;Could not parse float: {s:?}, defaulting to 0.0&quot;</span>);
+            <span class="macro">warn!</span>(<span class="string">"Could not parse float: {s:?}, defaulting to 0.0"</span>);
             <span class="number">0.0
         </span>}))
     }
@@ -784,7 +785,7 @@
             InputMode::Thermometer =&gt; as_int(<span class="number">295.15</span>),
             <span class="kw">_ </span>=&gt; {
                 <span class="macro">warn!</span>(
-                    <span class="string">&quot;Requested input mode: {} (on channel #{})&quot;</span>,
+                    <span class="string">"Requested input mode: {} (on channel #{})"</span>,
                     src.mode, src.channel
                 );
                 <span class="number">0
@@ -795,21 +796,21 @@
     <span class="kw">fn </span>put(<span class="kw-2">&amp;mut </span><span class="self">self</span>, val: i64, dst: Output) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
         <span class="comment">// Print the character without a newline
         </span><span class="kw">match </span>dst.mode {
-            OutputMode::StdoutChar =&gt; <span class="macro">print!</span>(<span class="string">&quot;{}&quot;</span>, val <span class="kw">as </span>u8 <span class="kw">as </span>char),
-            OutputMode::StdoutInt =&gt; <span class="macro">print!</span>(<span class="string">&quot;{}&quot;</span>, val),
-            OutputMode::StdoutFloat =&gt; <span class="macro">print!</span>(<span class="string">&quot;{:?}&quot;</span>, as_float(val)),
-            OutputMode::StderrChar =&gt; <span class="macro">eprint!</span>(<span class="string">&quot;{}&quot;</span>, val <span class="kw">as </span>u8 <span class="kw">as </span>char),
-            OutputMode::StderrInt =&gt; <span class="macro">eprint!</span>(<span class="string">&quot;{}&quot;</span>, val),
-            OutputMode::StderrFloat =&gt; <span class="macro">eprint!</span>(<span class="string">&quot;{:?}&quot;</span>, as_float(val)),
+            OutputMode::StdoutChar =&gt; <span class="macro">print!</span>(<span class="string">"{}"</span>, val <span class="kw">as </span>u8 <span class="kw">as </span>char),
+            OutputMode::StdoutInt =&gt; <span class="macro">print!</span>(<span class="string">"{}"</span>, val),
+            OutputMode::StdoutFloat =&gt; <span class="macro">print!</span>(<span class="string">"{:?}"</span>, as_float(val)),
+            OutputMode::StderrChar =&gt; <span class="macro">eprint!</span>(<span class="string">"{}"</span>, val <span class="kw">as </span>u8 <span class="kw">as </span>char),
+            OutputMode::StderrInt =&gt; <span class="macro">eprint!</span>(<span class="string">"{}"</span>, val),
+            OutputMode::StderrFloat =&gt; <span class="macro">eprint!</span>(<span class="string">"{:?}"</span>, as_float(val)),
             <span class="kw">_ </span>=&gt; {
                 <span class="macro">warn!</span>(
-                    <span class="string">&quot;Requested output mode: {} (on channel #{}) with output={val}&quot;</span>,
+                    <span class="string">"Requested output mode: {} (on channel #{}) with output={val}"</span>,
                     dst.mode, dst.channel
                 );
             }
         }
         <span class="kw">if </span>stdout().flush().is_err() {
-            <span class="prelude-val">Err</span>(String::from(<span class="string">&quot;could not flush output&quot;</span>))
+            <span class="prelude-val">Err</span>(String::from(<span class="string">"could not flush output"</span>))
         } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(())
         }
@@ -819,8 +820,8 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(n) = <span class="self">self</span>.ffi_channel.pop_front() {
             <span class="prelude-val">Ok</span>(n)
         } <span class="kw">else </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;Tried to peek from empty ffi channel&quot;</span>);
-            <span class="prelude-val">Err</span>(<span class="string">&quot;ffi channel is empty&quot;</span>.to_string())
+            <span class="macro">error!</span>(<span class="string">"Tried to peek from empty ffi channel"</span>);
+            <span class="prelude-val">Err</span>(<span class="string">"ffi channel is empty"</span>.to_string())
         }
     }
 
@@ -831,12 +832,12 @@
 
     <span class="kw">fn </span>ffi_call(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ffi: <span class="kw-2">&amp;</span>FFIBinding, tape: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>Vec&lt;i64&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(f) = <span class="self">self</span>.ffi.get(ffi) {
-            <span class="macro">trace!</span>(<span class="string">&quot;Calling FFI: {}&quot;</span>, ffi);
+            <span class="macro">trace!</span>(<span class="string">"Calling FFI: {}"</span>, ffi);
             f(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ffi_channel, tape);
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;FFI call not found: {:?}&quot;</span>, ffi);
-            <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;ffi call not found: {:?}&quot;</span>, ffi))
+            <span class="macro">error!</span>(<span class="string">"FFI call not found: {:?}"</span>, ffi);
+            <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">"ffi call not found: {:?}"</span>, ffi))
         }
     }
 }

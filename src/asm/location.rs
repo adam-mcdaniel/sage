@@ -228,11 +228,33 @@ impl Location {
         sp.deref().offset(-1).copy_address_to(sp, result)
     }
 
+    /// Restore the address of this location to the register.
+    pub(crate) fn restore_address(&self, result: &mut dyn VirtualMachineProgram) {
+        match self {
+            Location::Address(addr) => {
+                result.where_is_pointer();
+                result.op(vm::CoreOp::Offset(*addr as isize));
+            },
+            Location::Indirect(loc) => {
+                loc.restore_from(result);
+            }
+            Location::Offset(loc, offset) => {
+                loc.restore_address(result);
+                result.op(vm::CoreOp::Offset(*offset));
+            }
+            Location::Global(name) => {
+                panic!("Cannot restore address of global variable {}", name);
+            }
+        }
+    }
+
     /// Copy the address of this location to another location.
     pub(crate) fn copy_address_to(&self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.to(result);
-        result.where_is_pointer();
-        self.from(result);
+        // self.to(result);
+        // result.where_is_pointer();
+        // self.from(result);
+        // dst.save_to(result);
+        self.restore_address(result);
         dst.save_to(result);
     }
 
@@ -279,13 +301,23 @@ impl Location {
     /// Take the pointer value of this location, and make it point
     /// `count` number of cells to the right of its original position.
     pub(crate) fn next(&self, count: isize, result: &mut dyn VirtualMachineProgram) {
-        self.deref().offset(count).copy_address_to(self, result);
+        // self.deref().offset(count).copy_address_to(self, result);
+        self.to(result);
+        result.restore();
+        result.op(vm::CoreOp::Offset(count));
+        result.save();
+        self.from(result);
     }
 
     /// Take the pointer value of this location, and make it point
     /// `count` number of cells to the left of its original position.
     pub(crate) fn prev(&self, count: isize, result: &mut dyn VirtualMachineProgram) {
-        self.deref().offset(-count).copy_address_to(self, result);
+        // self.deref().offset(-count).copy_address_to(self, result);
+        self.to(result);
+        result.restore();
+        result.op(vm::CoreOp::Offset(-count));
+        result.save();
+        self.from(result);
     }
 
     /// Take the value at this location. If it is a whole number (>= 0),
@@ -314,18 +346,30 @@ impl Location {
 
     /// Increment the value of this location.
     pub(crate) fn inc(&self, result: &mut dyn VirtualMachineProgram) {
+        // self.to(result);
+        // result.set_register(1);
+        // result.op(vm::CoreOp::Add);
+        // result.save();
+        // self.from(result);
+
         self.to(result);
-        result.set_register(1);
-        result.op(vm::CoreOp::Add);
+        result.restore();
+        result.op(vm::CoreOp::Inc);
         result.save();
         self.from(result);
     }
 
     /// Decrement the value of this location.
     pub(crate) fn dec(&self, result: &mut dyn VirtualMachineProgram) {
+        // self.to(result);
+        // result.set_register(-1);
+        // result.op(vm::CoreOp::Add);
+        // result.save();
+        // self.from(result);
+
         self.to(result);
-        result.set_register(-1);
-        result.op(vm::CoreOp::Add);
+        result.restore();
+        result.op(vm::CoreOp::Dec);
         result.save();
         self.from(result);
     }
@@ -364,6 +408,38 @@ impl Location {
     pub(crate) fn bitwise_nand(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.binop(vm::CoreOp::BitwiseNand, src, result);
     }
+    /// Perform bitwise-and on this cell and a source cell.
+    pub(crate) fn bitwise_and(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.binop(vm::CoreOp::BitwiseAnd, src, result);
+    }
+
+    /// Perform bitwise-or on this cell and a source cell.
+    pub(crate) fn bitwise_or(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.binop(vm::CoreOp::BitwiseOr, src, result);
+    }
+
+    /// Perform bitwise-xor on this cell and a source cell.
+    pub(crate) fn bitwise_xor(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.binop(vm::CoreOp::BitwiseXor, src, result);
+    }
+    /// Perform bitwise-xor on this cell and a source cell.
+    pub(crate) fn bitwise_not(&self, result: &mut dyn VirtualMachineProgram) {
+        self.to(result);
+        result.restore();
+        result.op(vm::CoreOp::BitwiseNot);
+        result.save();
+        self.from(result);
+    }
+
+    /// Perform bitwise-nor on this cell and a source cell.
+    pub(crate) fn bitwise_nor(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.restore_from(result);
+        src.to(result);
+        result.op(vm::CoreOp::BitwiseOr);
+        result.op(vm::CoreOp::BitwiseNot);
+        src.from(result);
+        self.save_to(result);
+    }
 
     /// If this cell is non-zero, then the value of this location is now 0.
     /// Otherwise, the value of this location is now 1.
@@ -372,43 +448,49 @@ impl Location {
     pub(crate) fn not(&self, result: &mut dyn VirtualMachineProgram) {
         self.to(result);
         result.restore();
-        result.begin_if();
-        result.set_register(0);
-        result.begin_else();
-        result.set_register(1);
-        result.end();
+        result.op(vm::CoreOp::Not);
         result.save();
+        // result.begin_if();
+        // result.set_register(0);
+        // result.begin_else();
+        // result.set_register(1);
+        // result.end();
+        // result.save();
         self.from(result);
     }
 
     /// Perform boolean and on the value of this cell and a source cell.
     pub(crate) fn and(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.to(result);
-        result.restore();
-        result.begin_if();
-        self.from(result);
-        src.restore_from(result);
-        self.to(result);
-        result.begin_else();
-        result.set_register(0);
-        result.end();
-        result.save();
-        self.from(result);
+        // self.to(result);
+        // result.restore();
+        // result.begin_if();
+        // self.from(result);
+        // src.restore_from(result);
+        // self.to(result);
+        // result.begin_else();
+        // result.set_register(0);
+        // result.end();
+        // result.save();
+        // self.from(result);
+        
+        self.binop(vm::CoreOp::And, src, result);
+
     }
 
     /// Perform boolean or on the value of this cell and a source cell.
     pub(crate) fn or(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
-        self.to(result);
-        result.restore();
-        result.begin_if();
-        result.set_register(1);
-        result.begin_else();
-        self.from(result);
-        src.restore_from(result);
-        self.to(result);
-        result.end();
-        result.save();
-        self.from(result);
+        // self.to(result);
+        // result.restore();
+        // result.begin_if();
+        // result.set_register(1);
+        // result.begin_else();
+        // self.from(result);
+        // src.restore_from(result);
+        // self.to(result);
+        // result.end();
+        // result.save();
+        // self.from(result);
+        self.binop(vm::CoreOp::Or, src, result);
     }
 
     /// dst = this cell > source cell.
@@ -522,6 +604,31 @@ impl Location {
     /// This cell %= source cell.
     pub(crate) fn rem(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
         self.binop(vm::CoreOp::Rem, src, result);
+    }
+
+    /// This cell <<= source cell.
+    pub(crate) fn left_shift(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.binop(vm::CoreOp::LeftShift, src, result);
+    }
+
+    /// This cell >>= source cell.
+    /// This is an arithmetic shift right.
+    pub(crate) fn arithmetic_right_shift(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.binop(vm::CoreOp::ArithmeticRightShift, src, result);
+    }
+
+    /// This cell >>= source cell.
+    /// This is a logical shift right.
+    pub(crate) fn logical_right_shift(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+        self.binop(vm::CoreOp::LogicalRightShift, src, result);
+    }
+    /// Negate the cell
+    pub(crate) fn neg(&self, result: &mut dyn VirtualMachineProgram) {
+        self.to(result);
+        result.restore();
+        result.op(vm::CoreOp::Neg);
+        result.save();
+        self.from(result);
     }
 
     /// This cell += source cell.

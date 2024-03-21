@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/targets/c.rs`."><title>c.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.1 (eb26296b5 2023-08-03)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../sage/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/targets/c.rs`."><title>c.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -191,6 +192,79 @@
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # C Target
 //!
 //! An implementation of the virtual machine for the C language.
@@ -201,6 +275,7 @@
     side_effects::{Input, InputMode, Output, OutputMode},
     vm::{CoreOp, StandardOp},
 };
+<span class="kw">use </span>log::warn;
 
 <span class="doccomment">/// The type for the C target which implements the `Target` trait.
 /// This allows the compiler to target the C language.
@@ -225,80 +300,150 @@
     <span class="kw">fn </span>op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>CoreOp) -&gt; String {
         <span class="kw">match </span>op {
             CoreOp::Comment(text) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;// {}&quot;</span>, text.replace(<span class="string">&#39;\n&#39;</span>, <span class="string">&quot;\n// &quot;</span>).replace(<span class="string">&#39;\r&#39;</span>, <span class="string">&quot;&quot;</span>))
+                <span class="macro">format!</span>(<span class="string">"// {}"</span>, text.replace(<span class="string">'\n'</span>, <span class="string">"\n// "</span>).replace(<span class="string">'\r'</span>, <span class="string">""</span>))
                 <span class="comment">// let mut comment = String::new();
-                // for line in n.split(&#39;\n&#39;) {
-                //     comment += &amp;format!(&quot;// {}&quot;, line.trim());
+                // for line in n.split('\n') {
+                //     comment += &amp;format!("// {}", line.trim());
                 // }
                 // comment
             </span>}
-            CoreOp::While =&gt; <span class="string">&quot;while (reg.i) {&quot;</span>.to_string(),
-            CoreOp::If =&gt; <span class="string">&quot;if (reg.i) {&quot;</span>.to_string(),
-            CoreOp::Else =&gt; <span class="string">&quot;} else {&quot;</span>.to_string(),
-            CoreOp::Set(n) =&gt; <span class="macro">format!</span>(<span class="string">&quot;reg.i = {};&quot;</span>, n),
-            CoreOp::Call =&gt; <span class="string">&quot;funs[reg.i]();&quot;</span>.to_string(),
-            CoreOp::Return =&gt; <span class="string">&quot;return;&quot;</span>.to_string(),
-            CoreOp::Save =&gt; <span class="string">&quot;*ptr = reg;&quot;</span>.to_string(),
-            CoreOp::Restore =&gt; <span class="string">&quot;reg = *ptr;&quot;</span>.to_string(),
-            CoreOp::Move(n) =&gt; <span class="macro">format!</span>(<span class="string">&quot;ptr += {};&quot;</span>, n),
-            CoreOp::Where =&gt; <span class="string">&quot;reg.p = ptr;&quot;</span>.to_string(),
-            CoreOp::Deref =&gt; <span class="string">&quot;*ref++ = ptr; ptr = ptr-&gt;p;&quot;</span>.to_string(),
-            CoreOp::Refer =&gt; <span class="string">&quot;ptr = *--ref;&quot;</span>.to_string(),
-            CoreOp::Index =&gt; <span class="string">&quot;reg.p += ptr-&gt;i;&quot;</span>.to_string(),
-            CoreOp::BitwiseNand =&gt; <span class="string">&quot;reg.i = ~(reg.i &amp; ptr-&gt;i);&quot;</span>.to_string(),
-            CoreOp::Add =&gt; <span class="string">&quot;reg.i += ptr-&gt;i;&quot;</span>.to_string(),
-            CoreOp::Sub =&gt; <span class="string">&quot;reg.i -= ptr-&gt;i;&quot;</span>.to_string(),
-            CoreOp::Mul =&gt; <span class="string">&quot;reg.i *= ptr-&gt;i;&quot;</span>.to_string(),
-            CoreOp::Div =&gt; <span class="string">&quot;reg.i /= ptr-&gt;i;&quot;</span>.to_string(),
-            CoreOp::Rem =&gt; <span class="string">&quot;reg.i %= ptr-&gt;i;&quot;</span>.to_string(),
-            CoreOp::IsNonNegative =&gt; <span class="string">&quot;reg.i = reg.i &gt;= 0;&quot;</span>.to_string(),
-            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">&quot;Invalid op for C target {op:?}&quot;</span>),
+            CoreOp::While =&gt; <span class="string">"while (scalar_reg.i) {"</span>.to_string(),
+            CoreOp::If =&gt; <span class="string">"if (scalar_reg.i) {"</span>.to_string(),
+            CoreOp::Else =&gt; <span class="string">"} else {"</span>.to_string(),
+            CoreOp::Set(n) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>tmp = <span class="macro">format!</span>(<span class="string">"scalar_reg.i = {};"</span>, n[<span class="number">0</span>]);
+                <span class="comment">// // If all the values in the vector are the same, use `memset`
+                // if n.iter().all(|&amp;x| x == n[0]) {
+                //     // tmp += &amp;format!("memset(vector_reg, {}, {} * sizeof(cell));", n[0], n.len());
+                // } else {
+                // }
+                </span><span class="kw">for </span>(i, val) <span class="kw">in </span>n.iter().enumerate() {
+                    tmp += <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"vector_reg[{}].i = {};"</span>, i, val);
+                }
+                tmp
+                <span class="comment">// format!("scalar_reg.i = {};", n)
+            </span>}
+            CoreOp::Call =&gt; <span class="string">"funs[scalar_reg.i]();"</span>.to_string(),
+            CoreOp::Return =&gt; <span class="string">"return;"</span>.to_string(),
+            CoreOp::Store(<span class="number">1</span>) =&gt; <span class="string">"*ptr = scalar_reg;"</span>.to_string(),
+            CoreOp::Load(<span class="number">1</span>) =&gt; <span class="string">"scalar_reg = *ptr; vector_reg[0] = scalar_reg;"</span>.to_string(),
+            CoreOp::Store(n) =&gt; {
+                <span class="kw">if </span><span class="kw-2">*</span>n &gt; <span class="number">1024 </span>{
+                    <span class="macro">warn!</span>(<span class="string">"Store with n &gt; 1024 not supported by C target"</span>);
+                }
+                <span class="macro">format!</span>(<span class="string">"vector_reg[0] = scalar_reg; memcpy(ptr, vector_reg, {n} * sizeof(cell));"</span>)
+            }
+            CoreOp::Load(n) =&gt; {
+                <span class="kw">if </span><span class="kw-2">*</span>n &gt; <span class="number">1024 </span>{
+                    <span class="macro">warn!</span>(<span class="string">"Load with n &gt; 1024 not supported by C target"</span>);
+                }
+                <span class="macro">format!</span>(<span class="string">"memcpy(vector_reg, ptr, {n} * sizeof(cell)); scalar_reg = ptr[0];"</span>)
+            }
+
+            CoreOp::Move(n) =&gt; <span class="macro">format!</span>(<span class="string">"ptr += {};"</span>, n),
+            CoreOp::Where =&gt; <span class="string">"scalar_reg.p = ptr;"</span>.to_string(),
+            CoreOp::Deref =&gt; <span class="string">"refs[ref_ptr++] = ptr; ptr = ptr-&gt;p;"</span>.to_string(),
+            CoreOp::Refer =&gt; <span class="string">"ptr = refs[--ref_ptr];"</span>.to_string(),
+            <span class="comment">// CoreOp::Deref =&gt; "*ref++ = ptr; ptr = ptr-&gt;p;".to_string(),
+            // CoreOp::Refer =&gt; "ptr = *--ref;".to_string(),
+            </span>CoreOp::Offset(n) =&gt; <span class="macro">format!</span>(<span class="string">"scalar_reg.p += {};"</span>, n),
+            CoreOp::Index =&gt; <span class="string">"scalar_reg.p += ptr-&gt;i;"</span>.to_string(),
+            CoreOp::Add =&gt; <span class="string">"scalar_reg.i += ptr-&gt;i;"</span>.to_string(),
+            CoreOp::Sub =&gt; <span class="string">"scalar_reg.i -= ptr-&gt;i;"</span>.to_string(),
+            CoreOp::Mul =&gt; <span class="string">"scalar_reg.i *= ptr-&gt;i;"</span>.to_string(),
+            CoreOp::Div =&gt; <span class="string">"scalar_reg.i /= ptr-&gt;i;"</span>.to_string(),
+            CoreOp::Rem =&gt; <span class="string">"scalar_reg.i %= ptr-&gt;i;"</span>.to_string(),
+            CoreOp::Inc =&gt; <span class="string">"scalar_reg.i++;"</span>.to_string(),
+            CoreOp::Dec =&gt; <span class="string">"scalar_reg.i--;"</span>.to_string(),
+            CoreOp::Neg =&gt; <span class="string">"scalar_reg.i = -scalar_reg.i;"</span>.to_string(),
+            CoreOp::Swap =&gt; <span class="string">"tmp_reg = scalar_reg; scalar_reg = *ptr; *ptr = tmp_reg;"</span>.to_string(),
+
+            CoreOp::And =&gt; <span class="string">"scalar_reg.i = scalar_reg.i &amp;&amp; ptr-&gt;i;"</span>.to_string(),
+            CoreOp::Or =&gt; <span class="string">"scalar_reg.i = scalar_reg.i || ptr-&gt;i;"</span>.to_string(),
+            CoreOp::Not =&gt; <span class="string">"scalar_reg.i = !scalar_reg.i;"</span>.to_string(),
+
+            CoreOp::BitwiseNand =&gt; <span class="string">"scalar_reg.i = ~(scalar_reg.i &amp; ptr-&gt;i);"</span>.to_string(),
+            CoreOp::BitwiseAnd =&gt; <span class="string">"scalar_reg.i &amp;= ptr-&gt;i;"</span>.to_string(),
+            CoreOp::BitwiseOr =&gt; <span class="string">"scalar_reg.i |= ptr-&gt;i;"</span>.to_string(),
+            CoreOp::BitwiseXor =&gt; <span class="string">"scalar_reg.i ^= ptr-&gt;i;"</span>.to_string(),
+            CoreOp::BitwiseNot =&gt; <span class="string">"scalar_reg.i = ~scalar_reg.i;"</span>.to_string(),
+
+            CoreOp::LeftShift =&gt; <span class="string">"scalar_reg.i &lt;&lt;= ptr-&gt;i;"</span>.to_string(),
+            CoreOp::LogicalRightShift =&gt; <span class="string">"scalar_reg.i = (unsigned long long)scalar_reg.i &gt;&gt; ptr-&gt;i;"</span>.to_string(),
+            CoreOp::ArithmeticRightShift =&gt; <span class="string">"scalar_reg.i &gt;&gt;= ptr-&gt;i;"</span>.to_string(),
+
+            CoreOp::IsNonNegative =&gt; <span class="string">"scalar_reg.i = scalar_reg.i &gt;= 0;"</span>.to_string(),
+            <span class="comment">/*
+            CoreOp::CompareEqual =&gt; "scalar_reg.i = scalar_reg.i == ptr-&gt;i;".to_string(),
+            CoreOp::CompareLess =&gt; "scalar_reg.i = scalar_reg.i &lt; ptr-&gt;i;".to_string(),
+            CoreOp::CompareGreater =&gt; "scalar_reg.i = scalar_reg.i &gt; ptr-&gt;i;".to_string(),
+            CoreOp::CompareLessEqual =&gt; "scalar_reg.i = scalar_reg.i &lt;= ptr-&gt;i;".to_string(),
+            CoreOp::CompareGreaterEqual =&gt; "scalar_reg.i = scalar_reg.i &gt;= ptr-&gt;i;".to_string(),
+            */
+            </span>CoreOp::End | CoreOp::Function | CoreOp::Put(<span class="kw">_</span>) | CoreOp::Get(<span class="kw">_</span>) =&gt; {
+                <span class="macro">unreachable!</span>(<span class="string">"Invalid core op for C target"</span>)
+            }
         }
     }
 
     <span class="kw">fn </span>std_op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: <span class="kw-2">&amp;</span>StandardOp) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>op {
-            StandardOp::Call(ffi) =&gt; <span class="macro">format!</span>(<span class="string">&quot;__{}();&quot;</span>, ffi.name),
+            StandardOp::Call(ffi) =&gt; <span class="macro">format!</span>(<span class="string">"__{}();"</span>, ffi.name),
             StandardOp::Peek =&gt; <span class="self">self</span>.peek()<span class="question-mark">?</span>,
             StandardOp::Poke =&gt; <span class="self">self</span>.poke()<span class="question-mark">?</span>,
-            StandardOp::Set(n) =&gt; <span class="macro">format!</span>(<span class="string">&quot;reg.f = {};&quot;</span>, n),
-            StandardOp::ToInt =&gt; <span class="string">&quot;reg.i = reg.f;&quot;</span>.to_string(),
-            StandardOp::ToFloat =&gt; <span class="string">&quot;reg.f = reg.i;&quot;</span>.to_string(),
-            StandardOp::ACos =&gt; <span class="string">&quot;reg.f = acos(reg.f);&quot;</span>.to_string(),
-            StandardOp::ASin =&gt; <span class="string">&quot;reg.f = asin(reg.f);&quot;</span>.to_string(),
-            StandardOp::ATan =&gt; <span class="string">&quot;reg.f = atan(reg.f);&quot;</span>.to_string(),
-            StandardOp::Sin =&gt; <span class="string">&quot;reg.f = sin(reg.f);&quot;</span>.to_string(),
-            StandardOp::Cos =&gt; <span class="string">&quot;reg.f = cos(reg.f);&quot;</span>.to_string(),
-            StandardOp::Tan =&gt; <span class="string">&quot;reg.f = tan(reg.f);&quot;</span>.to_string(),
-            StandardOp::Add =&gt; <span class="string">&quot;reg.f += ptr-&gt;f;&quot;</span>.to_string(),
-            StandardOp::Sub =&gt; <span class="string">&quot;reg.f -= ptr-&gt;f;&quot;</span>.to_string(),
-            StandardOp::Mul =&gt; <span class="string">&quot;reg.f *= ptr-&gt;f;&quot;</span>.to_string(),
-            StandardOp::Div =&gt; <span class="string">&quot;reg.f /= ptr-&gt;f;&quot;</span>.to_string(),
-            StandardOp::Rem =&gt; <span class="string">&quot;reg.f = fmod(reg.f, ptr-&gt;f);&quot;</span>.to_string(),
-            StandardOp::Pow =&gt; <span class="string">&quot;reg.f = pow(reg.f, ptr-&gt;f);&quot;</span>.to_string(),
-            StandardOp::IsNonNegative =&gt; <span class="string">&quot;reg.i = reg.f &gt;= 0;&quot;</span>.to_string(),
-            StandardOp::Alloc =&gt; <span class="string">&quot;reg.p = malloc(reg.i * sizeof(reg));&quot;</span>.to_string(),
-            StandardOp::Free =&gt; <span class="string">&quot;free(reg.p);&quot;</span>.to_string(),
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;Invalid standard op for C target {op:?}&quot;</span>)),
+            <span class="comment">// StandardOp::Set(n) =&gt; format!("scalar_reg.f = {};", n),
+            </span>StandardOp::Set(n) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>tmp = <span class="macro">format!</span>(<span class="string">"scalar_reg.f = {};"</span>, n[<span class="number">0</span>]);
+                <span class="comment">// If all the values in the vector are the same, use `memset`
+                </span><span class="kw">if </span>n.iter().all(|<span class="kw-2">&amp;</span>x| x == n[<span class="number">0</span>]) {
+                    tmp += <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"memset(vector_reg, {}, {} * sizeof(cell));"</span>, n[<span class="number">0</span>], n.len());
+                } <span class="kw">else </span>{
+                    <span class="kw">for </span>(i, val) <span class="kw">in </span>n.iter().enumerate() {
+                        tmp += <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"vector_reg[{i}].f = {val};"</span>);
+                    }
+                }
+                tmp
+                <span class="comment">// format!("scalar_reg.i = {};", n)
+            </span>}
+            StandardOp::ToInt =&gt; <span class="string">"scalar_reg.i = scalar_reg.f;"</span>.to_string(),
+            StandardOp::ToFloat =&gt; <span class="string">"scalar_reg.f = scalar_reg.i;"</span>.to_string(),
+            StandardOp::ACos =&gt; <span class="string">"scalar_reg.f = acos(scalar_reg.f);"</span>.to_string(),
+            StandardOp::ASin =&gt; <span class="string">"scalar_reg.f = asin(scalar_reg.f);"</span>.to_string(),
+            StandardOp::ATan =&gt; <span class="string">"scalar_reg.f = atan(scalar_reg.f);"</span>.to_string(),
+            StandardOp::Sin =&gt; <span class="string">"scalar_reg.f = sin(scalar_reg.f);"</span>.to_string(),
+            StandardOp::Cos =&gt; <span class="string">"scalar_reg.f = cos(scalar_reg.f);"</span>.to_string(),
+            StandardOp::Tan =&gt; <span class="string">"scalar_reg.f = tan(scalar_reg.f);"</span>.to_string(),
+            StandardOp::Add =&gt; <span class="string">"scalar_reg.f += ptr-&gt;f;"</span>.to_string(),
+            StandardOp::Sub =&gt; <span class="string">"scalar_reg.f -= ptr-&gt;f;"</span>.to_string(),
+            StandardOp::Mul =&gt; <span class="string">"scalar_reg.f *= ptr-&gt;f;"</span>.to_string(),
+            StandardOp::Div =&gt; <span class="string">"scalar_reg.f /= ptr-&gt;f;"</span>.to_string(),
+            StandardOp::Rem =&gt; <span class="string">"scalar_reg.f = fmod(scalar_reg.f, ptr-&gt;f);"</span>.to_string(),
+            StandardOp::Pow =&gt; <span class="string">"scalar_reg.f = pow(scalar_reg.f, ptr-&gt;f);"</span>.to_string(),
+            StandardOp::IsNonNegative =&gt; <span class="string">"scalar_reg.i = scalar_reg.f &gt;= 0;"</span>.to_string(),
+            StandardOp::Alloc =&gt; {
+                <span class="string">"scalar_reg.p = (cell*)malloc(scalar_reg.i * sizeof(cell));"</span>.to_string()
+            }
+            StandardOp::Free =&gt; <span class="string">"free(scalar_reg.p);"</span>.to_string(),
+            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">"Invalid standard op for C target {op:?}"</span>)),
         })
     }
 
     <span class="kw">fn </span>end(<span class="kw-2">&amp;mut </span><span class="self">self</span>, matching: <span class="kw-2">&amp;</span>CoreOp, fun: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; String {
         <span class="kw">match </span>(matching, fun) {
-            (CoreOp::Function | CoreOp::While | CoreOp::If | CoreOp::Else, <span class="kw">_</span>) =&gt; <span class="string">&quot;}&quot;</span>.to_string(),
-            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">&quot;Invalid matching op for end&quot;</span>),
+            (CoreOp::Function | CoreOp::While | CoreOp::If | CoreOp::Else, <span class="kw">_</span>) =&gt; <span class="string">"}"</span>.to_string(),
+            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">"Invalid matching op for end"</span>),
         }
     }
 
     <span class="kw">fn </span>declare_proc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, label_id: usize) -&gt; String {
-        <span class="macro">format!</span>(<span class="string">&quot;void f{label_id}() {{&quot;</span>)
+        <span class="macro">format!</span>(<span class="string">"void f{label_id}() {{"</span>)
     }
 
     <span class="kw">fn </span>name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
-        <span class="string">&quot;C&quot;
+        <span class="string">"C"
     </span>}
     <span class="kw">fn </span>version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
-        <span class="string">&quot;1.0&quot;
+        <span class="string">"1.0"
     </span>}
 
     <span class="kw">fn </span>supports_floats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
@@ -308,40 +453,40 @@
     <span class="kw">fn </span>get(<span class="kw-2">&amp;mut </span><span class="self">self</span>, src: <span class="kw-2">&amp;</span>Input) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="kw">let </span>ch = src.channel.<span class="number">0</span>;
         <span class="kw">match </span>src.mode {
-            InputMode::StdinChar =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;reg.i = getchar();&quot;</span>.to_string()),
-            InputMode::StdinInt =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;scanf(\&quot;%ld\&quot;, &amp;reg.i);&quot;</span>.to_string()),
-            InputMode::StdinFloat =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;scanf(\&quot;%lf\&quot;, &amp;reg.f);&quot;</span>.to_string()),
-            InputMode::Thermometer =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;reg.f = 293.15;&quot;</span>.to_string()),
-            InputMode::Clock =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;reg.i = time(NULL);&quot;</span>.to_string()),
-            InputMode::Random =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;reg.i = rand();&quot;</span>.to_string()),
+            InputMode::StdinChar =&gt; <span class="prelude-val">Ok</span>(<span class="string">"tmp = getchar(); scalar_reg.i = tmp == EOF? 0 : tmp;"</span>.to_string()),
+            InputMode::StdinInt =&gt; <span class="prelude-val">Ok</span>(<span class="string">"scanf(\"%ld\", &amp;tmp_scalar_reg.i); reg = tmp_reg;"</span>.to_string()),
+            InputMode::StdinFloat =&gt; <span class="prelude-val">Ok</span>(<span class="string">"scanf(\"%lf\", &amp;tmp_scalar_reg.f); reg = tmp_reg;"</span>.to_string()),
+            InputMode::Thermometer =&gt; <span class="prelude-val">Ok</span>(<span class="string">"scalar_reg.f = 293.15;"</span>.to_string()),
+            InputMode::Clock =&gt; <span class="prelude-val">Ok</span>(<span class="string">"scalar_reg.i = time(NULL);"</span>.to_string()),
+            InputMode::Random =&gt; <span class="prelude-val">Ok</span>(<span class="string">"scalar_reg.i = rand();"</span>.to_string()),
             InputMode::Button =&gt; <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(
-                <span class="string">&quot;printf(\&quot;Button #{ch}: \&quot;); reg.i = getchar() == &#39;y&#39;; while (getchar() != 10);&quot;
+                <span class="string">"printf(\"Button #{ch}: \"); scalar_reg.i = getchar() == 'y'; while (getchar() != 10);"
             </span>)),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Input not supported by this target&quot;</span>.to_string()),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">"Input not supported by this target"</span>.to_string()),
         }
     }
 
     <span class="kw">fn </span>put(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dst: <span class="kw-2">&amp;</span>Output) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
         <span class="kw">match </span>dst.mode {
-            OutputMode::StdoutChar =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;putchar(reg.i);&quot;</span>.to_string()),
-            OutputMode::StdoutInt =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;printf(\&quot;%ld\&quot;, reg.i);&quot;</span>.to_string()),
-            OutputMode::StdoutFloat =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;printf(\&quot;%lf\&quot;, reg.f);&quot;</span>.to_string()),
-            OutputMode::StderrChar =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;fprintf(stderr, \&quot;%c\&quot;, reg.i);&quot;</span>.to_string()),
-            OutputMode::StderrInt =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;fprintf(stderr, \&quot;%lld\&quot;, reg.i);&quot;</span>.to_string()),
-            OutputMode::StderrFloat =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;fprintf(stderr, \&quot;%lf\&quot;, reg.f);&quot;</span>.to_string()),
-            OutputMode::Heater =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;printf(\&quot;Heating...\&quot;);&quot;</span>.to_string()),
-            OutputMode::Cooler =&gt; <span class="prelude-val">Ok</span>(<span class="string">&quot;printf(\&quot;Cooling...\&quot;);&quot;</span>.to_string()),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Output not supported by this target&quot;</span>.to_string()),
+            OutputMode::StdoutChar =&gt; <span class="prelude-val">Ok</span>(<span class="string">"putchar(scalar_reg.i);"</span>.to_string()),
+            OutputMode::StdoutInt =&gt; <span class="prelude-val">Ok</span>(<span class="string">"printf(\"%ld\", scalar_reg.i);"</span>.to_string()),
+            OutputMode::StdoutFloat =&gt; <span class="prelude-val">Ok</span>(<span class="string">"printf(\"%lf\", scalar_reg.f);"</span>.to_string()),
+            OutputMode::StderrChar =&gt; <span class="prelude-val">Ok</span>(<span class="string">"fprintf(stderr, \"%c\", scalar_reg.i);"</span>.to_string()),
+            OutputMode::StderrInt =&gt; <span class="prelude-val">Ok</span>(<span class="string">"fprintf(stderr, \"%lld\", scalar_reg.i);"</span>.to_string()),
+            OutputMode::StderrFloat =&gt; <span class="prelude-val">Ok</span>(<span class="string">"fprintf(stderr, \"%lf\", scalar_reg.f);"</span>.to_string()),
+            OutputMode::Heater =&gt; <span class="prelude-val">Ok</span>(<span class="string">"printf(\"Heating...\");"</span>.to_string()),
+            OutputMode::Cooler =&gt; <span class="prelude-val">Ok</span>(<span class="string">"printf(\"Cooling...\");"</span>.to_string()),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">"Output not supported by this target"</span>.to_string()),
         }
     }
     <span class="kw">fn </span>peek(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
-        <span class="prelude-val">Ok</span>(<span class="string">&quot;reg = *(ffi_ptr--);&quot;</span>.to_string())
+        <span class="prelude-val">Ok</span>(<span class="string">"reg = *(ffi_ptr--);"</span>.to_string())
     }
     <span class="kw">fn </span>poke(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
-        <span class="prelude-val">Ok</span>(<span class="string">&quot;*(++ffi_ptr) = reg;&quot;</span>.to_string())
+        <span class="prelude-val">Ok</span>(<span class="string">"*(++ffi_ptr) = reg;"</span>.to_string())
     }
     <span class="kw">fn </span>prelude(<span class="kw-2">&amp;</span><span class="self">self</span>, is_core: bool) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="string">r#&quot;#include &lt;stdint.h&gt;
+        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="string">r#"#include &lt;stdint.h&gt;
 #include &lt;stdio.h&gt;
 #include &lt;math.h&gt;
 #include &lt;string.h&gt;
@@ -352,34 +497,36 @@ typedef union cell {
     union cell *p;
 } cell;
 
-cell tape[200000], *refs[1024], *ptr = tape, **ref = refs, reg, ffi_channel[256], *ffi_ptr = ffi_channel;
+cell tape[200000], *refs[1024], *ptr = tape, **ref = refs, scalar_reg, vector_reg[1024], tmp_reg, ffi_channel[256], *ffi_ptr = ffi_channel;
 
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);
-&quot;#
+
+int tmp;
+"#
         </span>.to_string();
 
         <span class="kw">if </span>!is_core {
-            result = <span class="string">&quot;#include &lt;stdlib.h&gt;\n&quot;</span>.to_string() + <span class="kw-2">&amp;</span>result;
+            result = <span class="string">"#include &lt;stdlib.h&gt;\n"</span>.to_string() + <span class="kw-2">&amp;</span>result;
         }
 
         <span class="prelude-val">Some</span>(result)
     }
 
     <span class="kw">fn </span>post_funs(<span class="kw-2">&amp;</span><span class="self">self</span>, funs: Vec&lt;i32&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>result = String::from(<span class="string">&quot;int main () {\n&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>result = String::from(<span class="string">"int main () {\n"</span>);
         <span class="kw">for </span>fun <span class="kw">in </span>funs {
-            result += <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;\tfuns[{fun}] = f{fun};\n&quot;</span>, fun = fun)
+            result += <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"\tfuns[{fun}] = f{fun};\n"</span>, fun = fun)
         }
         <span class="prelude-val">Some</span>(result)
     }
 
     <span class="kw">fn </span>postop(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="prelude-val">Some</span>(<span class="string">&quot;\n&quot;</span>.to_string())
+        <span class="prelude-val">Some</span>(<span class="string">"\n"</span>.to_string())
     }
 
     <span class="kw">fn </span>postlude(<span class="kw-2">&amp;</span><span class="self">self</span>, _is_core: bool) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="prelude-val">Some</span>(<span class="string">&quot;return 0;\n}&quot;</span>.to_string())
+        <span class="prelude-val">Some</span>(<span class="string">"return 0;\n}"</span>.to_string())
     }
 }
 

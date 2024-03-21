@@ -324,6 +324,7 @@ where
                 }
 
                 CoreOp::Where => *self.reg_mut_scalar() = self.pointer as i64,
+                CoreOp::Offset(n) => *self.reg_mut_scalar() += *n as i64,
                 CoreOp::Deref => self.deref(),
                 CoreOp::Refer => self.refer()?,
 
@@ -331,6 +332,15 @@ where
                 CoreOp::BitwiseNand => {
                     *self.reg_mut_scalar() = !(self.reg_scalar() & *self.get_cell());
                 }
+                CoreOp::BitwiseAnd => *self.reg_mut_scalar() &= *self.get_cell(),
+                CoreOp::BitwiseOr => *self.reg_mut_scalar() |= *self.get_cell(),
+                CoreOp::BitwiseXor => *self.reg_mut_scalar() ^= *self.get_cell(),
+                CoreOp::BitwiseNot => *self.reg_mut_scalar() = !self.reg_scalar(),
+                CoreOp::LeftShift => *self.reg_mut_scalar() <<= *self.get_cell(),
+                CoreOp::LogicalRightShift => {
+                    *self.reg_mut_scalar() = (self.reg_scalar() as u64 >> *self.get_cell() as u64) as i64
+                }
+                CoreOp::ArithmeticRightShift => *self.reg_mut_scalar() >>= *self.get_cell(),
                 CoreOp::Add => *self.reg_mut_scalar() += *self.get_cell(),
                 CoreOp::Sub => *self.reg_mut_scalar() -= *self.get_cell(),
                 CoreOp::Mul => *self.reg_mut_scalar() *= *self.get_cell(),
@@ -346,6 +356,27 @@ where
                         *self.reg_mut_scalar() %= d
                     }
                 }
+                CoreOp::Neg => *self.reg_mut_scalar() = -self.reg_scalar(),
+                CoreOp::And => *self.reg_mut_scalar() = i64::from(self.reg_scalar() != 0 && *self.get_cell() != 0),
+                CoreOp::Or => *self.reg_mut_scalar() = i64::from(self.reg_scalar() != 0 || *self.get_cell() != 0),
+                CoreOp::Not => *self.reg_mut_scalar() = i64::from(self.reg_scalar() == 0),
+
+                CoreOp::Inc => *self.reg_mut_scalar() += 1,
+                CoreOp::Dec => *self.reg_mut_scalar() -= 1,
+
+                CoreOp::Swap => {
+                    let temp = self.reg_scalar();
+                    *self.reg_mut_scalar() = *self.get_cell();
+                    *self.get_cell() = temp;
+                }
+
+                /*
+                CoreOp::CompareEqual => *self.reg_mut_scalar() = i64::from(self.reg_scalar() == *self.get_cell()),
+                CoreOp::CompareGreater => *self.reg_mut_scalar() = i64::from(self.reg_scalar() > *self.get_cell()),
+                CoreOp::CompareLess => *self.reg_mut_scalar() = i64::from(self.reg_scalar() < *self.get_cell()),
+                CoreOp::CompareGreaterEqual => *self.reg_mut_scalar() = i64::from(self.reg_scalar() >= *self.get_cell()),
+                CoreOp::CompareLessEqual => *self.reg_mut_scalar() = i64::from(self.reg_scalar() <= *self.get_cell()),
+                */
 
                 CoreOp::IsNonNegative => *self.reg_mut_scalar() = i64::from(self.reg_scalar() >= 0),
                 CoreOp::Get(i) => *self.reg_mut_scalar() = self.device.get(i.clone())?,

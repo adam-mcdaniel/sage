@@ -248,9 +248,45 @@ pub enum CoreOp {
     /// of the index into the register.
     Index,
 
+    /// Interpret the register's value as a pointer to a cell.
+    /// Offset the pointer by a constant value.
+    Offset(isize),
+
     /// Perform bitwise nand on the cell and the value pointed to on the tape,
     /// and store the result in the register.
     BitwiseNand,
+    /// Perform bitwise and on the cell and the value pointed to on the tape,
+    /// and store the result in the register.
+    BitwiseAnd,
+    /// Perform bitwise or on the cell and the value pointed to on the tape,
+    /// and store the result in the register.
+    BitwiseOr,
+    /// Perform a bitwise xor on the cell and the value pointed to on the tape,
+    /// and store the result in the register.
+    BitwiseXor,
+    /// Bitwise not the register. Store the result in the register.
+    BitwiseNot,
+
+    /// Left shift the cell by the value pointed to on the tape.
+    /// Store the result in the register.
+    LeftShift,
+    /// Logical right shift the cell by the value pointed to on the tape.
+    /// Store the result in the register.
+    LogicalRightShift,
+    /// Interpret the register's value as a signed integer.
+    /// Arithmetic right shift the cell by the value pointed to on the tape.
+    /// Store the result in the register.
+    ArithmeticRightShift,
+
+    /// Boolean-and the register and the value pointed to on the tape.
+    /// Store the result in the register.
+    And,
+    /// Boolean-or the register and the value pointed to on the tape.
+    /// Store the result in the register.
+    Or,
+    /// Boolean-not the register (0 if the register is non-zero, 1 if the register is zero)
+    /// Store the result in the register.
+    Not,
 
     /// Add the value pointed to on the tape to the register.
     Add,
@@ -262,9 +298,43 @@ pub enum CoreOp {
     Div,
     /// Store the remainder of the register and the value pointed to in the tape into the register.
     Rem,
+    /// Negate the register.
+    Neg,
+
+    /// Increment the register.
+    Inc,
+    /// Decrement the register.
+    Dec,
+
+    /// Swap the value of the register with the value pointed to on the tape.
+    Swap,
 
     /// Make the register equal to 1 if the register is non-negative, otherwise make it equal to 0.
     IsNonNegative,
+
+
+    /*
+    /// Compare the register to a value on the tape.
+    /// If the register is equal to the value on the tape, make the register equal to 1.
+    /// Otherwise, make the register equal to 0.
+    CompareEqual,
+    /// Compare the register to a value on the tape.
+    /// If the register is less than the value on the tape, make the register equal to 1.
+    /// Otherwise, make the register equal to 0.
+    CompareLess,
+    /// Compare the register to a value on the tape.
+    /// If the register is greater than the value on the tape, make the register equal to 1.
+    /// Otherwise, make the register equal to 0.
+    CompareGreater,
+    /// Compare the register to a value on the tape.
+    /// If the register is less than or equal to the value on the tape, make the register equal to 1.
+    /// Otherwise, make the register equal to 0.
+    CompareLessEqual,
+    /// Compare the register to a value on the tape.
+    /// If the register is greater than or equal to the value on the tape, make the register equal to 1.
+    /// Otherwise, make the register equal to 0.
+    CompareGreaterEqual,
+    */
 
     /// Get a value from an input source and store it in the register.
     Get(Input),
@@ -275,8 +345,8 @@ pub enum CoreOp {
 impl fmt::Display for CoreOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CoreOp::Comment(s) => write!(f, "// {}", s),
-            CoreOp::Set(n) => write!(f, "set {:?}", n),
+            CoreOp::Comment(s) => write!(f, "// {s}"),
+            CoreOp::Set(n) => write!(f, "set {n:?}"),
             CoreOp::Function => write!(f, "fun"),
             CoreOp::Call => write!(f, "call"),
             CoreOp::Return => write!(f, "ret"),
@@ -286,18 +356,41 @@ impl fmt::Display for CoreOp {
             CoreOp::End => write!(f, "end"),
             CoreOp::Store(n) => write!(f, "store {n}"),
             CoreOp::Load(n) => write!(f, "load {n}"),
-            CoreOp::Move(n) => write!(f, "mov {}", n),
+            CoreOp::Move(n) => write!(f, "mov {n}"),
+            CoreOp::Offset(n) => write!(f, "offset {n}"),
             CoreOp::Where => write!(f, "where"),
             CoreOp::Deref => write!(f, "deref"),
             CoreOp::Refer => write!(f, "ref"),
             CoreOp::Index => write!(f, "index"),
             CoreOp::BitwiseNand => write!(f, "bitwise-nand"),
+            CoreOp::BitwiseAnd => write!(f, "bitwise-and"),
+            CoreOp::BitwiseOr => write!(f, "bitwise-or"),
+            CoreOp::BitwiseXor => write!(f, "bitwise-xor"),
+            CoreOp::BitwiseNot => write!(f, "bitwise-not"),
+            CoreOp::LeftShift => write!(f, "lsh"),
+            CoreOp::LogicalRightShift => write!(f, "lrsh"),
+            CoreOp::ArithmeticRightShift => write!(f, "arsh"),
+            CoreOp::And => write!(f, "and"),
+            CoreOp::Or => write!(f, "or"),
+            CoreOp::Not => write!(f, "not"),
+            CoreOp::Neg => write!(f, "neg"),
+            CoreOp::Inc => write!(f, "inc"),
+            CoreOp::Dec => write!(f, "dec"),
             CoreOp::Add => write!(f, "add"),
             CoreOp::Sub => write!(f, "sub"),
             CoreOp::Mul => write!(f, "mul"),
             CoreOp::Div => write!(f, "div"),
             CoreOp::Rem => write!(f, "rem"),
+            CoreOp::Swap => write!(f, "swap"),
             CoreOp::IsNonNegative => write!(f, "gez"),
+
+            /*
+            CoreOp::CompareEqual => write!(f, "ceq"),
+            CoreOp::CompareLess => write!(f, "clt"),
+            CoreOp::CompareGreater => write!(f, "cgt"),
+            CoreOp::CompareLessEqual => write!(f, "cle"),
+            CoreOp::CompareGreaterEqual => write!(f, "cge"),
+            */
             CoreOp::Get(i) => write!(f, "get {i}"),
             CoreOp::Put(o) => write!(f, "put {o}"),
         }

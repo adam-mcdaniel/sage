@@ -513,6 +513,18 @@ pub enum CoreOp {
         dst: Location,
     },
     BitwiseNot(Location),
+    LeftShift {
+        src: Location,
+        dst: Location
+    },
+    LogicalRightShift {
+        src: Location,
+        dst: Location
+    },
+    ArithmeticRightShift {
+        src: Location,
+        dst: Location
+    },
 }
 
 impl CoreOp {
@@ -799,6 +811,10 @@ impl CoreOp {
             CoreOp::Mul { src, dst } => env.resolve(dst)?.mul(src, result),
             CoreOp::Div { src, dst } => env.resolve(dst)?.div(src, result),
             CoreOp::Rem { src, dst } => env.resolve(dst)?.rem(src, result),
+            CoreOp::LeftShift { src, dst } => env.resolve(dst)?.left_shift(src, result),
+            CoreOp::LogicalRightShift { src, dst } => env.resolve(dst)?.logical_right_shift(src, result),
+            CoreOp::ArithmeticRightShift { src, dst } => env.resolve(dst)?.arithmetic_right_shift(src, result),
+
             CoreOp::DivRem { src, dst } => {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
@@ -810,12 +826,12 @@ impl CoreOp {
             }
             CoreOp::Neg(dst) => {
                 let dst = env.resolve(dst)?;
-
-                result.set_register(-1);
-                dst.to(result);
-                result.op(vm::CoreOp::Mul);
-                result.save();
-                dst.from(result)
+                dst.neg(result);
+                // result.set_register(-1);
+                // dst.to(result);
+                // result.op(vm::CoreOp::Mul);
+                // result.save();
+                // dst.from(result)
             }
 
             Self::BitwiseNand { src, dst } => {
@@ -828,68 +844,77 @@ impl CoreOp {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
 
-                src.copy_to(&TMP, result);
-                TMP.bitwise_nand(&dst, result);
-                TMP.bitwise_nand(&dst, result);
-                dst.bitwise_nand(&src, result);
-                dst.bitwise_nand(&src, result);
-                dst.bitwise_nand(&TMP, result);
+                dst.bitwise_xor(&src, result);
+
+                // src.copy_to(&TMP, result);
+                // TMP.bitwise_nand(&dst, result);
+                // TMP.bitwise_nand(&dst, result);
+                // dst.bitwise_nand(&src, result);
+                // dst.bitwise_nand(&src, result);
+                // dst.bitwise_nand(&TMP, result);
             }
             Self::BitwiseOr { src, dst } => {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
 
-                dst.to(result);
-                result.restore();
-                result.bitwise_nand();
-                result.save();
-                dst.from(result);
-                src.to(result);
-                result.restore();
-                result.bitwise_nand();
-                src.from(result);
-                dst.to(result);
-                result.bitwise_nand();
-                result.save();
-                dst.from(result);
+                dst.bitwise_or(&src, result);
+
+                // dst.to(result);
+                // result.restore();
+                // result.bitwise_nand();
+                // result.save();
+                // dst.from(result);
+                // src.to(result);
+                // result.restore();
+                // result.bitwise_nand();
+                // src.from(result);
+                // dst.to(result);
+                // result.bitwise_nand();
+                // result.save();
+                // dst.from(result);
             }
             Self::BitwiseNor { src, dst } => {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
 
-                dst.to(result);
-                result.restore();
-                result.bitwise_nand();
-                result.save();
-                dst.from(result);
-                src.to(result);
-                result.restore();
-                result.bitwise_nand();
-                src.from(result);
-                dst.to(result);
-                result.save();
-                dst.from(result);
+                dst.bitwise_nor(&src, result);
+
+                // dst.to(result);
+                // result.restore();
+                // result.bitwise_nand();
+                // result.save();
+                // dst.from(result);
+                // src.to(result);
+                // result.restore();
+                // result.bitwise_nand();
+                // src.from(result);
+                // dst.to(result);
+                // result.save();
+                // dst.from(result);
             }
             Self::BitwiseAnd { src, dst } => {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
 
-                src.restore_from(result);
-                dst.to(result);
-                result.bitwise_nand();
-                result.save();
-                result.bitwise_nand();
-                result.save();
-                dst.from(result);
+                dst.bitwise_and(&src, result);
+
+                // src.restore_from(result);
+                // dst.to(result);
+                // result.bitwise_nand();
+                // result.save();
+                // result.bitwise_nand();
+                // result.save();
+                // dst.from(result);
             }
             Self::BitwiseNot(dst) => {
                 let dst = env.resolve(dst)?;
 
-                dst.to(result);
-                result.restore();
-                result.bitwise_nand();
-                result.save();
-                dst.from(result);
+                dst.bitwise_not(result);
+                // dst.to(result);
+                // result.restore();
+                // result.bitwise_nand();
+                // result.save();
+                // dst.from(result);
             }
 
             CoreOp::Not(dst) => env.resolve(dst)?.not(result),
@@ -901,10 +926,18 @@ impl CoreOp {
                 let src = env.resolve(src)?;
                 let size = *size;
 
-                for i in 0..size {
-                    src.offset(i as isize)
-                        .copy_to(&sp.deref().offset(i as isize + 1), result);
-                }
+                // for i in 0..size {
+                //     src.offset(i as isize)
+                //         .copy_to(&sp.deref().offset(i as isize + 1), result);
+                // }
+                src.to(result);
+                result.load_vector(size);
+                src.from(result);
+
+                sp.deref().offset(1).to(result);
+                result.store_vector(size);
+                sp.deref().offset(1).from(result);
+
                 sp.next(size as isize, result);
             }
 
@@ -912,17 +945,31 @@ impl CoreOp {
                 let sp = env.resolve(sp)?;
                 let size = *size as isize;
 
+                if size == 0 {
+                    return Ok(());
+                }
+
                 if let Some(dst) = dst {
                     let dst = env.resolve(dst)?;
-                    for i in 1..=size {
-                        dst.offset(size - i).pop_from(&sp, result)
-                    }
+                    // for i in 1..=size {
+                    //     dst.offset(size - i).pop_from(&sp, result)
+                    // }
+                    sp.prev(size, result);
+                    sp.deref().offset(1).to(result);
+                    result.load_vector(size as usize);
+                    sp.deref().offset(1).from(result);
+                    dst.to(result);
+                    result.store_vector(size as usize);
+                    dst.from(result);
                 } else {
                     sp.prev(size, result)
                 }
             }
             CoreOp::Push(src, size) => {
                 let src = env.resolve(src)?;
+                if *size == 0 {
+                    return Ok(());
+                }
 
                 CoreOp::PushTo {
                     sp: SP,
@@ -1055,6 +1102,18 @@ impl fmt::Display for CoreOp {
             }
             Self::Comment(comment) => write!(f, "// {comment}"),
             Self::Global { name, size } => write!(f, "global ${name}, {size}"),
+
+            Self::LeftShift { src, dst } => {
+                write!(f, "lsh {src}, {dst}")
+            }
+
+            Self::LogicalRightShift { src, dst } => {
+                write!(f, "lrsh {src}, {dst}")
+            }
+
+            Self::ArithmeticRightShift { src, dst } => {
+                write!(f, "arsh {src}, {dst}")
+            }
 
             Self::PushTo { src, sp, size } => {
                 write!(f, "push-to {src}, {sp}, {size}")

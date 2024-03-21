@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/frontend/parse.rs`."><title>parse.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.1 (eb26296b5 2023-08-03)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../sage/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/frontend/parse.rs`."><title>parse.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1501,12 +1502,17 @@
 <a href="#1501" id="1501">1501</a>
 <a href="#1502" id="1502">1502</a>
 <a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
+<a href="#1505" id="1505">1505</a>
+<a href="#1506" id="1506">1506</a>
+<a href="#1507" id="1507">1507</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{lir::<span class="kw-2">*</span>, parse::SourceCodeLocation};
 <span class="kw">use </span>pest::{error::Error, iterators::Pair, Parser};
 <span class="kw">use </span>pest_derive::Parser;
+<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 
 <span class="attr">#[derive(Parser)]
-#[grammar = <span class="string">&quot;frontend/parse.pest&quot;</span>] </span><span class="comment">// relative to src
+#[grammar = <span class="string">"frontend/parse.pest"</span>] </span><span class="comment">// relative to src
 </span><span class="kw">struct </span>FrontendParser;
 
 <span class="attr">#[derive(Clone, Debug)]
@@ -1518,7 +1524,7 @@
     LetPattern(Vec&lt;(Pattern, Expr)&gt;),
     Let(Vec&lt;(String, Mutability, <span class="prelude-ty">Option</span>&lt;Type&gt;, Expr)&gt;),
     LetStatic(Vec&lt;(String, Mutability, Type, ConstExpr)&gt;),
-    Assign(Expr, <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>AssignOp + <span class="lifetime">&#39;static</span>&gt;&gt;, Expr),
+    Assign(Expr, <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>AssignOp + <span class="lifetime">'static</span>&gt;&gt;, Expr),
     If(Expr, Box&lt;<span class="self">Self</span>&gt;, <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="self">Self</span>&gt;&gt;),
     When(ConstExpr, Box&lt;<span class="self">Self</span>&gt;, <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="self">Self</span>&gt;&gt;),
     IfLet(Pattern, Expr, Box&lt;<span class="self">Self</span>&gt;, <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="self">Self</span>&gt;&gt;),
@@ -1530,6 +1536,9 @@
     LetStaticIn(Vec&lt;(String, Mutability, Type, ConstExpr)&gt;, Box&lt;<span class="self">Self</span>&gt;),
     Expr(Expr),
 }
+
+<span class="kw">unsafe impl </span>Send <span class="kw">for </span>Statement {}
+<span class="kw">unsafe impl </span>Sync <span class="kw">for </span>Statement {}
 
 <span class="kw">impl </span>Statement {
     <span class="kw">fn </span>with_loc(<span class="self">self</span>, loc: SourceCodeLocation) -&gt; <span class="self">Self </span>{
@@ -1603,7 +1612,7 @@
             (<span class="self">Self</span>::Block(stmts), <span class="prelude-val">Some</span>(Expr::Many(<span class="kw-2">mut </span>rest))) =&gt; {
                 rest.insert(
                     <span class="number">0</span>,
-                    Expr::Many(stmts.into_iter().map(|s| s.to_expr(<span class="prelude-val">None</span>)).collect()),
+                    Expr::Many(stmts.into_par_iter().map(|s| s.to_expr(<span class="prelude-val">None</span>)).collect()),
                 );
                 <span class="kw">return </span>Expr::Many(rest);
             }
@@ -1731,7 +1740,7 @@
                 }
 
                 rest_expr.with(<span class="kw">if </span>simple {
-                    <span class="comment">// If we&#39;re using a simple enum, then we can just use a simple enum
+                    <span class="comment">// If we're using a simple enum, then we can just use a simple enum
                     </span>(
                         name,
                         Type::Enum(variants.into_iter().map(|(a, <span class="kw">_</span>)| a).collect()),
@@ -1870,7 +1879,7 @@
                         ConstExpr::Type(Type::Struct(fields.into_iter().collect())),
                     )),
                     <span class="kw">_ </span>=&gt; {
-                        <span class="macro">panic!</span>(<span class="string">&quot;Unexpected declaration in impl: {:?}&quot;</span>, decl)
+                        <span class="macro">panic!</span>(<span class="string">"Unexpected declaration in impl: {:?}"</span>, decl)
                     }
                 }
             }
@@ -1915,7 +1924,7 @@
                     Rule::expr =&gt; {
                         stmt = Statement::Expr(parse_expr(pair));
                     }
-                    other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected rule {:?}&quot;</span>, other),
+                    other =&gt; <span class="macro">panic!</span>(<span class="string">"unexpected rule {:?}"</span>, other),
                 }
             }
             <span class="kw">if </span>ty_params.is_empty() {
@@ -2082,7 +2091,7 @@
                     Rule::r#type =&gt; {
                         ret = <span class="prelude-val">Some</span>(parse_type(pair));
                     }
-                    other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;unexpected rule {:?}&quot;</span>, other),
+                    other =&gt; <span class="macro">panic!</span>(<span class="string">"unexpected rule {:?}"</span>, other),
                 }
             }
             Declaration::Extern(name, args, ret.unwrap_or(Type::None))
@@ -2099,7 +2108,7 @@
         }
         Rule::stmt | Rule::stmt_block =&gt; Declaration::Statement(parse_stmt(pair, filename)),
         Rule::EOI =&gt; Declaration::Statement(Statement::Block(<span class="macro">vec!</span>[])),
-        other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected rule: {:?}: {:?}&quot;</span>, other, pair),
+        other =&gt; <span class="macro">panic!</span>(<span class="string">"Unexpected rule: {:?}: {:?}"</span>, other, pair),
     }
 }
 
@@ -2153,7 +2162,7 @@
                 Rule::expr =&gt; {
                     Statement::LetStaticIn(defs, Box::new(Statement::Expr(parse_expr(last))))
                 }
-                other =&gt; <span class="macro">unreachable!</span>(<span class="string">&quot;Unexpected rule {:?}&quot;</span>, other),
+                other =&gt; <span class="macro">unreachable!</span>(<span class="string">"Unexpected rule {:?}"</span>, other),
             }
         }
         Rule::stmt_match =&gt; Statement::Expr(parse_match(pair)),
@@ -2309,7 +2318,7 @@
             <span class="kw">match </span>last.as_rule() {
                 Rule::stmt_block =&gt; Statement::LetIn(defs, Box::new(parse_stmt(last, filename))),
                 Rule::expr =&gt; Statement::LetIn(defs, Box::new(Statement::Expr(parse_expr(last)))),
-                other =&gt; <span class="macro">unreachable!</span>(<span class="string">&quot;Unexpected rule {:?}&quot;</span>, other),
+                other =&gt; <span class="macro">unreachable!</span>(<span class="string">"Unexpected rule {:?}"</span>, other),
             }
         }
 
@@ -2321,15 +2330,15 @@
             Statement::Assign(
                 lhs,
                 <span class="kw">match </span>op {
-                    <span class="string">&quot;=&quot; </span>=&gt; <span class="prelude-val">None</span>,
-                    <span class="string">&quot;+=&quot; </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(Add))),
-                    <span class="string">&quot;-=&quot; </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(Arithmetic::Subtract))),
-                    <span class="string">&quot;*=&quot; </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(Arithmetic::Multiply))),
-                    <span class="string">&quot;/=&quot; </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(Arithmetic::Divide))),
-                    <span class="string">&quot;%=&quot; </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(Arithmetic::Remainder))),
-                    <span class="string">&quot;&amp;=&quot; </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(BitwiseAnd))),
-                    <span class="string">&quot;^=&quot; </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(BitwiseXor))),
-                    <span class="string">&quot;|=&quot; </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(BitwiseOr))),
+                    <span class="string">"=" </span>=&gt; <span class="prelude-val">None</span>,
+                    <span class="string">"+=" </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(Add))),
+                    <span class="string">"-=" </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(Arithmetic::Subtract))),
+                    <span class="string">"*=" </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(Arithmetic::Multiply))),
+                    <span class="string">"/=" </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(Arithmetic::Divide))),
+                    <span class="string">"%=" </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(Arithmetic::Remainder))),
+                    <span class="string">"&amp;=" </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(BitwiseAnd))),
+                    <span class="string">"^=" </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(BitwiseXor))),
+                    <span class="string">"|=" </span>=&gt; <span class="prelude-val">Some</span>(Box::new(Assign::new(BitwiseOr))),
                     <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
                 },
                 rhs,
@@ -2344,7 +2353,7 @@
 
         Rule::expr =&gt; Statement::Expr(parse_expr(pair)),
 
-        other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected rule: {:?}: {:?}&quot;</span>, other, pair),
+        other =&gt; <span class="macro">panic!</span>(<span class="string">"Unexpected rule: {:?}: {:?}"</span>, other, pair),
     }
     .with_loc(loc)
 }
@@ -2452,15 +2461,15 @@
             <span class="kw">for </span>x <span class="kw">in </span>inner_rules.rev() {
                 result = <span class="kw">match </span>x.as_rule() {
                     Rule::expr_unary_op | Rule::expr_keyword_unary_op =&gt; <span class="kw">match </span>x.as_str() {
-                        <span class="string">&quot;!&quot; </span>=&gt; result.not(),
-                        <span class="string">&quot;-&quot; </span>=&gt; result.neg(),
-                        <span class="string">&quot;~&quot; </span>=&gt; result.bitnot(),
-                        <span class="string">&quot;&amp;&quot; </span>=&gt; result.refer(Mutability::Immutable),
-                        <span class="string">&quot;&amp;mut&quot; </span>=&gt; result.refer(Mutability::Mutable),
-                        <span class="string">&quot;new&quot; </span>=&gt; result.unop(New),
-                        <span class="string">&quot;del&quot; </span>=&gt; result.unop(Delete),
-                        <span class="string">&quot;*&quot; </span>=&gt; result.deref(),
-                        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected unary op: {}&quot;</span>, x.as_str()),
+                        <span class="string">"!" </span>=&gt; result.not(),
+                        <span class="string">"-" </span>=&gt; result.neg(),
+                        <span class="string">"~" </span>=&gt; result.bitnot(),
+                        <span class="string">"&amp;" </span>=&gt; result.refer(Mutability::Immutable),
+                        <span class="string">"&amp;mut" </span>=&gt; result.refer(Mutability::Mutable),
+                        <span class="string">"new" </span>=&gt; result.unop(New),
+                        <span class="string">"del" </span>=&gt; result.unop(Delete),
+                        <span class="string">"*" </span>=&gt; result.deref(),
+                        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Unexpected unary op: {}"</span>, x.as_str()),
                     },
                     <span class="kw">_ </span>=&gt; parse_expr(x),
                 }
@@ -2472,7 +2481,7 @@
             Expr::ConstExpr(parse_const(pair))
         }
         Rule::stmt_block =&gt; parse_stmt(pair, <span class="prelude-val">None</span>).to_expr(<span class="prelude-val">None</span>),
-        other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected rule: {:?}: {:?}&quot;</span>, other, pair),
+        other =&gt; <span class="macro">panic!</span>(<span class="string">"Unexpected rule: {:?}: {:?}"</span>, other, pair),
     };
     <span class="comment">// result
     // Expr::AnnotatedWithSource { expr: Box::new(result), loc }
@@ -2503,29 +2512,29 @@
                 <span class="kw">for </span>arg <span class="kw">in </span>inner_rules {
                     args.push(parse_expr(arg));
                 }
-                <span class="kw">if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">&quot;print&quot;</span>.to_string())) {
+                <span class="kw">if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">"print"</span>.to_string())) {
                     <span class="kw">let </span><span class="kw-2">mut </span>exprs: Vec&lt;Expr&gt; =
                         args.into_iter().map(|val| val.unop(Put::Display)).collect();
                     exprs.push(Expr::ConstExpr(ConstExpr::None));
                     Expr::Many(exprs)
-                } <span class="kw">else if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">&quot;println&quot;</span>.to_string())) {
+                } <span class="kw">else if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">"println"</span>.to_string())) {
                     <span class="kw">let </span><span class="kw-2">mut </span>exprs: Vec&lt;Expr&gt; =
                         args.into_iter().map(|val| val.unop(Put::Display)).collect();
-                    exprs.push(Expr::ConstExpr(ConstExpr::Char(<span class="string">&#39;\n&#39;</span>)).unop(Put::Display));
+                    exprs.push(Expr::ConstExpr(ConstExpr::Char(<span class="string">'\n'</span>)).unop(Put::Display));
                     exprs.push(Expr::ConstExpr(ConstExpr::None));
                     Expr::Many(exprs)
-                } <span class="kw">else if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">&quot;eprint&quot;</span>.to_string())) {
+                } <span class="kw">else if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">"eprint"</span>.to_string())) {
                     <span class="kw">let </span><span class="kw-2">mut </span>exprs: Vec&lt;Expr&gt; =
                         args.into_iter().map(|val| val.unop(Put::Debug)).collect();
                     exprs.push(Expr::ConstExpr(ConstExpr::None));
                     Expr::Many(exprs)
-                } <span class="kw">else if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">&quot;eprintln&quot;</span>.to_string())) {
+                } <span class="kw">else if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">"eprintln"</span>.to_string())) {
                     <span class="kw">let </span><span class="kw-2">mut </span>exprs: Vec&lt;Expr&gt; =
                         args.into_iter().map(|val| val.unop(Put::Debug)).collect();
-                    exprs.push(Expr::ConstExpr(ConstExpr::Char(<span class="string">&#39;\n&#39;</span>)).unop(Put::Display));
+                    exprs.push(Expr::ConstExpr(ConstExpr::Char(<span class="string">'\n'</span>)).unop(Put::Display));
                     exprs.push(Expr::ConstExpr(ConstExpr::None));
                     Expr::Many(exprs)
-                } <span class="kw">else if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">&quot;input&quot;</span>.to_string())) {
+                } <span class="kw">else if </span>head == Expr::ConstExpr(ConstExpr::Symbol(<span class="string">"input"</span>.to_string())) {
                     <span class="kw">let </span><span class="kw-2">mut </span>exprs: Vec&lt;Expr&gt; = args.into_iter().map(|val| val.unop(Get)).collect();
                     exprs.push(Expr::ConstExpr(ConstExpr::None));
                     Expr::Many(exprs)
@@ -2550,24 +2559,24 @@
         <span class="kw">let </span>op = pair.as_str()[..pair.as_str().len() - next_pair.as_str().len()].trim();
         <span class="kw">let </span>tail = parse_expr(next_pair);
         head = <span class="kw">match </span>op {
-            <span class="string">&quot;&amp;&amp;&quot; </span>=&gt; head.and(tail),
-            <span class="string">&quot;||&quot; </span>=&gt; head.or(tail),
-            <span class="string">&quot;+&quot; </span>=&gt; head.add(tail),
-            <span class="string">&quot;-&quot; </span>=&gt; head.sub(tail),
-            <span class="string">&quot;*&quot; </span>=&gt; head.mul(tail),
-            <span class="string">&quot;/&quot; </span>=&gt; head.div(tail),
-            <span class="string">&quot;%&quot; </span>=&gt; head.rem(tail),
-            <span class="string">&quot;==&quot; </span>=&gt; head.eq(tail),
-            <span class="string">&quot;!=&quot; </span>=&gt; head.neq(tail),
-            <span class="string">&quot;&lt;&quot; </span>=&gt; head.lt(tail),
-            <span class="string">&quot;&lt;=&quot; </span>=&gt; head.le(tail),
-            <span class="string">&quot;&gt;&quot; </span>=&gt; head.gt(tail),
-            <span class="string">&quot;&gt;=&quot; </span>=&gt; head.ge(tail),
-            <span class="string">&quot;&amp;&quot; </span>=&gt; head.bitand(tail),
-            <span class="string">&quot;|&quot; </span>=&gt; head.bitor(tail),
-            <span class="string">&quot;^&quot; </span>=&gt; head.bitxor(tail),
-            <span class="string">&quot;~&amp;&quot; </span>=&gt; head.bitnand(tail),
-            <span class="string">&quot;~|&quot; </span>=&gt; head.bitnor(tail),
+            <span class="string">"&amp;&amp;" </span>=&gt; head.and(tail),
+            <span class="string">"||" </span>=&gt; head.or(tail),
+            <span class="string">"+" </span>=&gt; head.add(tail),
+            <span class="string">"-" </span>=&gt; head.sub(tail),
+            <span class="string">"*" </span>=&gt; head.mul(tail),
+            <span class="string">"/" </span>=&gt; head.div(tail),
+            <span class="string">"%" </span>=&gt; head.rem(tail),
+            <span class="string">"==" </span>=&gt; head.eq(tail),
+            <span class="string">"!=" </span>=&gt; head.neq(tail),
+            <span class="string">"&lt;" </span>=&gt; head.lt(tail),
+            <span class="string">"&lt;=" </span>=&gt; head.le(tail),
+            <span class="string">"&gt;" </span>=&gt; head.gt(tail),
+            <span class="string">"&gt;=" </span>=&gt; head.ge(tail),
+            <span class="string">"&amp;" </span>=&gt; head.bitand(tail),
+            <span class="string">"|" </span>=&gt; head.bitor(tail),
+            <span class="string">"^" </span>=&gt; head.bitxor(tail),
+            <span class="string">"~&amp;" </span>=&gt; head.bitnand(tail),
+            <span class="string">"~|" </span>=&gt; head.bitnor(tail),
             <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
         };
     }
@@ -2663,11 +2672,11 @@
         Rule::const_symbol =&gt; ConstExpr::Symbol(pair.as_str().to_string()),
         Rule::const_int =&gt; {
             <span class="kw">let </span>s = pair.as_str();
-            ConstExpr::Int(<span class="kw">if </span>s.len() &gt; <span class="number">2 </span>&amp;&amp; <span class="kw-2">&amp;</span>s[..<span class="number">2</span>] == <span class="string">&quot;0b&quot; </span>{
+            ConstExpr::Int(<span class="kw">if </span>s.len() &gt; <span class="number">2 </span>&amp;&amp; <span class="kw-2">&amp;</span>s[..<span class="number">2</span>] == <span class="string">"0b" </span>{
                 i64::from_str_radix(<span class="kw-2">&amp;</span>s[<span class="number">2</span>..], <span class="number">2</span>).unwrap()
-            } <span class="kw">else if </span>s.len() &gt; <span class="number">2 </span>&amp;&amp; <span class="kw-2">&amp;</span>s[..<span class="number">2</span>] == <span class="string">&quot;0o&quot; </span>{
+            } <span class="kw">else if </span>s.len() &gt; <span class="number">2 </span>&amp;&amp; <span class="kw-2">&amp;</span>s[..<span class="number">2</span>] == <span class="string">"0o" </span>{
                 i64::from_str_radix(<span class="kw-2">&amp;</span>s[<span class="number">2</span>..], <span class="number">8</span>).unwrap()
-            } <span class="kw">else if </span>s.len() &gt; <span class="number">2 </span>&amp;&amp; <span class="kw-2">&amp;</span>s[..<span class="number">2</span>] == <span class="string">&quot;0x&quot; </span>{
+            } <span class="kw">else if </span>s.len() &gt; <span class="number">2 </span>&amp;&amp; <span class="kw-2">&amp;</span>s[..<span class="number">2</span>] == <span class="string">"0x" </span>{
                 i64::from_str_radix(<span class="kw-2">&amp;</span>s[<span class="number">2</span>..], <span class="number">16</span>).unwrap()
             } <span class="kw">else if </span>!s.is_empty() {
                 s.parse::&lt;i64&gt;().unwrap()
@@ -2680,13 +2689,13 @@
             <span class="kw">let </span>token = pair.into_inner().next().unwrap().as_str();
             <span class="kw">let </span>token = <span class="kw-2">&amp;</span>token[<span class="number">1</span>..token.len() - <span class="number">1</span>];
             <span class="kw">let </span>result = snailquote::unescape(
-                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;\&quot;{token}\&quot;&quot;</span>)
-                    .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\\\\0&quot;</span>)
-                    .replace(<span class="string">&quot;\\/&quot;</span>, <span class="string">&quot;/&quot;</span>),
+                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"\"{token}\""</span>)
+                    .replace(<span class="string">"\\0"</span>, <span class="string">"\\\\0"</span>)
+                    .replace(<span class="string">"\\/"</span>, <span class="string">"/"</span>),
             )
             .unwrap()
-            .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\0&quot;</span>)
-            .replace(<span class="string">&quot;\\\&quot;&quot;</span>, <span class="string">&quot;\&quot;&quot;</span>);
+            .replace(<span class="string">"\\0"</span>, <span class="string">"\0"</span>)
+            .replace(<span class="string">"\\\""</span>, <span class="string">"\""</span>);
             <span class="comment">// let result = snailquote::unescape(
             //     &amp;pair
             //         .clone()
@@ -2694,20 +2703,20 @@
             //         .next()
             //         .unwrap()
             //         .as_str()
-            //         // .replace(&quot;\\0&quot;, &quot;\\\\0&quot;)
-            //         .replace(&quot;\\/&quot;, &quot;/&quot;),
+            //         // .replace("\\0", "\\\\0")
+            //         .replace("\\/", "/"),
             // )
             // .unwrap_or_else(|e| {
-            //     eprintln!(&quot;Error parsing string: {}&quot;, e);
+            //     eprintln!("Error parsing string: {}", e);
             //     pair.into_inner()
             //         .next()
             //         .unwrap()
             //         .as_str()
-            //         // .replace(&quot;\\0&quot;, &quot;\\\\0&quot;)
-            //         .replace(&quot;\\/&quot;, &quot;/&quot;)
+            //         // .replace("\\0", "\\\\0")
+            //         .replace("\\/", "/")
             // })
-            // .replace(&quot;\\0&quot;, &quot;\0&quot;);
-            </span><span class="kw">let </span>ch = result.chars().chain(std::iter::once(<span class="string">&#39;\0&#39;</span>)).next().unwrap();
+            // .replace("\\0", "\0");
+            </span><span class="kw">let </span>ch = result.chars().chain(std::iter::once(<span class="string">'\0'</span>)).next().unwrap();
             ConstExpr::Char(ch)
         }
         Rule::const_bool =&gt; ConstExpr::Bool(pair.as_str().to_lowercase().parse().unwrap()),
@@ -2719,23 +2728,23 @@
                     .next()
                     .unwrap()
                     .as_str()
-                    .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\\\\0&quot;</span>)
-                    .replace(<span class="string">&quot;\\/&quot;</span>, <span class="string">&quot;/&quot;</span>),
+                    .replace(<span class="string">"\\0"</span>, <span class="string">"\\\\0"</span>)
+                    .replace(<span class="string">"\\/"</span>, <span class="string">"/"</span>),
             )
             .unwrap_or_else(|e| {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;Error parsing string: {}&quot;</span>, e);
+                <span class="macro">eprintln!</span>(<span class="string">"Error parsing string: {}"</span>, e);
                 pair.into_inner()
                     .next()
                     .unwrap()
                     .as_str()
-                    .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\\\\0&quot;</span>)
-                    .replace(<span class="string">&quot;\\/&quot;</span>, <span class="string">&quot;/&quot;</span>)
+                    .replace(<span class="string">"\\0"</span>, <span class="string">"\\\\0"</span>)
+                    .replace(<span class="string">"\\/"</span>, <span class="string">"/"</span>)
             })
-            .replace(<span class="string">&quot;\\0&quot;</span>, <span class="string">&quot;\0&quot;</span>)
+            .replace(<span class="string">"\\0"</span>, <span class="string">"\0"</span>)
             .chars()
             .map(ConstExpr::Char)
             <span class="comment">// Add a null terminator
-            </span>.chain(std::iter::once(ConstExpr::Char(<span class="string">&#39;\0&#39;</span>)))
+            </span>.chain(std::iter::once(ConstExpr::Char(<span class="string">'\0'</span>)))
             .collect(),
         ),
         Rule::const_none =&gt; ConstExpr::None,
@@ -2746,7 +2755,7 @@
         Rule::const_size_of_expr =&gt; {
             ConstExpr::SizeOfExpr(parse_expr(pair.into_inner().next().unwrap()).into())
         }
-        other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected rule: {:?}: {:?}&quot;</span>, other, pair),
+        other =&gt; <span class="macro">panic!</span>(<span class="string">"Unexpected rule: {:?}: {:?}"</span>, other, pair),
     }
 }
 
@@ -2907,7 +2916,7 @@
             Type::Proc(args, Box::new(ret))
         }
 
-        other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected rule: {:?}: {:?}&quot;</span>, other, pair),
+        other =&gt; <span class="macro">panic!</span>(<span class="string">"Unexpected rule: {:?}: {:?}"</span>, other, pair),
     }
 }
 
@@ -2978,7 +2987,7 @@
         Rule::pattern_mut_symbol =&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>inner_rules = pair.into_inner();
             <span class="kw">let </span>symbol = inner_rules.next().unwrap().as_str().to_string();
-            <span class="kw">if </span>symbol == <span class="string">&quot;_&quot; </span>{
+            <span class="kw">if </span>symbol == <span class="string">"_" </span>{
                 Pattern::Wildcard
             } <span class="kw">else </span>{
                 Pattern::Symbol(Mutability::Mutable, symbol)
@@ -2986,7 +2995,7 @@
         }
         Rule::pattern_symbol =&gt; {
             <span class="kw">let </span>symbol = pair.as_str().to_string();
-            <span class="kw">if </span>symbol == <span class="string">&quot;_&quot; </span>{
+            <span class="kw">if </span>symbol == <span class="string">"_" </span>{
                 Pattern::Wildcard
             } <span class="kw">else </span>{
                 Pattern::Symbol(Mutability::Immutable, symbol)
@@ -3001,7 +3010,7 @@
             }
             Pattern::Alt(patterns)
         }
-        other =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected rule: {:?}: {:?}&quot;</span>, other, pair),
+        other =&gt; <span class="macro">panic!</span>(<span class="string">"Unexpected rule: {:?}: {:?}"</span>, other, pair),
     }
 }
 </code></pre></div></section></main></body></html>

@@ -79,15 +79,43 @@ impl Architecture for C {
             CoreOp::Refer => "ptr = refs[--ref_ptr];".to_string(),
             // CoreOp::Deref => "*ref++ = ptr; ptr = ptr->p;".to_string(),
             // CoreOp::Refer => "ptr = *--ref;".to_string(),
+            CoreOp::Offset(n) => format!("scalar_reg.p += {};", n),
             CoreOp::Index => "scalar_reg.p += ptr->i;".to_string(),
-            CoreOp::BitwiseNand => "scalar_reg.i = ~(scalar_reg.i & ptr->i);".to_string(),
             CoreOp::Add => "scalar_reg.i += ptr->i;".to_string(),
             CoreOp::Sub => "scalar_reg.i -= ptr->i;".to_string(),
             CoreOp::Mul => "scalar_reg.i *= ptr->i;".to_string(),
             CoreOp::Div => "scalar_reg.i /= ptr->i;".to_string(),
             CoreOp::Rem => "scalar_reg.i %= ptr->i;".to_string(),
+            CoreOp::Inc => "scalar_reg.i++;".to_string(),
+            CoreOp::Dec => "scalar_reg.i--;".to_string(),
+            CoreOp::Neg => "scalar_reg.i = -scalar_reg.i;".to_string(),
+            CoreOp::Swap => "tmp_reg = scalar_reg; scalar_reg = *ptr; *ptr = tmp_reg;".to_string(),
+
+            CoreOp::And => "scalar_reg.i = scalar_reg.i && ptr->i;".to_string(),
+            CoreOp::Or => "scalar_reg.i = scalar_reg.i || ptr->i;".to_string(),
+            CoreOp::Not => "scalar_reg.i = !scalar_reg.i;".to_string(),
+
+            CoreOp::BitwiseNand => "scalar_reg.i = ~(scalar_reg.i & ptr->i);".to_string(),
+            CoreOp::BitwiseAnd => "scalar_reg.i &= ptr->i;".to_string(),
+            CoreOp::BitwiseOr => "scalar_reg.i |= ptr->i;".to_string(),
+            CoreOp::BitwiseXor => "scalar_reg.i ^= ptr->i;".to_string(),
+            CoreOp::BitwiseNot => "scalar_reg.i = ~scalar_reg.i;".to_string(),
+
+            CoreOp::LeftShift => "scalar_reg.i <<= ptr->i;".to_string(),
+            CoreOp::LogicalRightShift => "scalar_reg.i = (unsigned long long)scalar_reg.i >> ptr->i;".to_string(),
+            CoreOp::ArithmeticRightShift => "scalar_reg.i >>= ptr->i;".to_string(),
+
             CoreOp::IsNonNegative => "scalar_reg.i = scalar_reg.i >= 0;".to_string(),
-            _ => unreachable!("Invalid op for C target {op:?}"),
+            /*
+            CoreOp::CompareEqual => "scalar_reg.i = scalar_reg.i == ptr->i;".to_string(),
+            CoreOp::CompareLess => "scalar_reg.i = scalar_reg.i < ptr->i;".to_string(),
+            CoreOp::CompareGreater => "scalar_reg.i = scalar_reg.i > ptr->i;".to_string(),
+            CoreOp::CompareLessEqual => "scalar_reg.i = scalar_reg.i <= ptr->i;".to_string(),
+            CoreOp::CompareGreaterEqual => "scalar_reg.i = scalar_reg.i >= ptr->i;".to_string(),
+            */
+            CoreOp::End | CoreOp::Function | CoreOp::Put(_) | CoreOp::Get(_) => {
+                unreachable!("Invalid core op for C target")
+            }
         }
     }
 

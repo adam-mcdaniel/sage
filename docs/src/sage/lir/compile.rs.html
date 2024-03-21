@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/compile.rs`."><title>compile.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.1 (eb26296b5 2023-08-03)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../sage/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/compile.rs`."><title>compile.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1316,6 +1317,66 @@
 <a href="#1316" id="1316">1316</a>
 <a href="#1317" id="1317">1317</a>
 <a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
+<a href="#1326" id="1326">1326</a>
+<a href="#1327" id="1327">1327</a>
+<a href="#1328" id="1328">1328</a>
+<a href="#1329" id="1329">1329</a>
+<a href="#1330" id="1330">1330</a>
+<a href="#1331" id="1331">1331</a>
+<a href="#1332" id="1332">1332</a>
+<a href="#1333" id="1333">1333</a>
+<a href="#1334" id="1334">1334</a>
+<a href="#1335" id="1335">1335</a>
+<a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
+<a href="#1344" id="1344">1344</a>
+<a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
+<a href="#1347" id="1347">1347</a>
+<a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
+<a href="#1359" id="1359">1359</a>
+<a href="#1360" id="1360">1360</a>
+<a href="#1361" id="1361">1361</a>
+<a href="#1362" id="1362">1362</a>
+<a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
+<a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
+<a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
+<a href="#1374" id="1374">1374</a>
+<a href="#1375" id="1375">1375</a>
+<a href="#1376" id="1376">1376</a>
+<a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compile
 //!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
@@ -1333,6 +1394,7 @@
 };
 <span class="kw">use </span><span class="kw">crate</span>::NULL;
 <span class="kw">use </span>log::<span class="kw-2">*</span>;
+<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>std::sync::Mutex;
 
 <span class="kw">use </span>log::{error, info, trace, warn};
@@ -1350,15 +1412,14 @@
     <span class="kw">where
         </span><span class="self">Self</span>: Sized + Clone,
     {
-        <span class="comment">// eprintln!(&quot;Compiling LIR expression {self}&quot;);
-        </span><span class="macro">info!</span>(<span class="string">&quot;Type checking...&quot;</span>);
+        <span class="comment">// eprintln!("Compiling LIR expression {self}");
+        </span><span class="macro">info!</span>(<span class="string">"Type checking..."</span>);
         <span class="comment">// First, type check the expression.
         </span><span class="self">self</span>.type_check(<span class="kw-2">&amp;</span>Env::default())<span class="question-mark">?</span>;
-        <span class="macro">info!</span>(<span class="string">&quot;Type checked successfully.&quot;</span>);
         <span class="comment">// Then, attempt to compile the expression into a core assembly program.
         </span><span class="kw">let </span><span class="kw-2">mut </span>core_asm = CoreProgram::default();
 
-        <span class="macro">info!</span>(<span class="string">&quot;Compiling...&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">"Compiling..."</span>);
         <span class="comment">// If the expression cannot be compiled into a core assembly program,
         // then compile it into a standard assembly program.
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
@@ -1366,15 +1427,15 @@
             <span class="comment">// Compile the expression into the core assembly program.
             </span>.compile_expr(<span class="kw-2">&amp;mut </span>Env::default(), <span class="kw-2">&amp;mut </span>core_asm)
         {
-            <span class="macro">warn!</span>(<span class="string">&quot;Failed to compile into core assembly program: {err}, falling back on standard assembly&quot;</span>);
+            <span class="macro">warn!</span>(<span class="string">"Failed to compile into core assembly program: {err}, falling back on standard assembly"</span>);
             <span class="kw">let </span><span class="kw-2">mut </span>std_asm = StandardProgram::default();
             <span class="comment">// Compile the expression into the standard assembly program.
             </span><span class="self">self</span>.compile_expr(<span class="kw-2">&amp;mut </span>Env::default(), <span class="kw-2">&amp;mut </span>std_asm)<span class="question-mark">?</span>;
-            <span class="macro">info!</span>(<span class="string">&quot;Compiled to standard assembly successfully.&quot;</span>);
+            <span class="macro">info!</span>(<span class="string">"Compiled to standard assembly successfully"</span>);
             <span class="comment">// Return the fallback standard assembly program.
             </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(std_asm))
         } <span class="kw">else </span>{
-            <span class="macro">info!</span>(<span class="string">&quot;Compiled to core assembly successfully.&quot;</span>);
+            <span class="macro">info!</span>(<span class="string">"Compiled to core assembly successfully"</span>);
             <span class="comment">// Return the successfully compiled core assembly program.
             </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(core_asm))
         }
@@ -1386,13 +1447,13 @@
 <span class="doccomment">/// Compile an LIR expression into several core assembly instructions.
 </span><span class="kw">impl </span>Compile <span class="kw">for </span>Expr {
     <span class="kw">fn </span>compile_expr(<span class="self">self</span>, env: <span class="kw-2">&amp;mut </span>Env, output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="macro">trace!</span>(<span class="string">&quot;Compiling expression {self} in environment {env}&quot;</span>);
-        <span class="kw">let </span><span class="kw-2">mut </span>debug_str = <span class="macro">format!</span>(<span class="string">&quot;{self:50}&quot;</span>);
+        <span class="macro">trace!</span>(<span class="string">"Compiling expression {self} in environment {env}"</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>debug_str = <span class="macro">format!</span>(<span class="string">"{self:50}"</span>);
         debug_str.truncate(<span class="number">50</span>);
 
-        <span class="comment">// Write a little comment about what we&#39;re compiling.
+        <span class="comment">// Write a little comment about what we're compiling.
         </span><span class="kw">if </span>!<span class="macro">matches!</span>(<span class="self">self</span>, <span class="self">Self</span>::ConstExpr(<span class="kw">_</span>)) {
-            <span class="kw">let </span><span class="kw-2">mut </span>comment = <span class="macro">format!</span>(<span class="string">&quot;{self}&quot;</span>);
+            <span class="kw">let </span><span class="kw-2">mut </span>comment = <span class="macro">format!</span>(<span class="string">"{self}"</span>);
             comment.truncate(<span class="number">70</span>);
         }
 
@@ -1592,7 +1653,7 @@
                             </span><span class="kw">_ </span>=&gt; {
                                 <span class="comment">// Push the procedure on the stack.
                                 </span>ConstExpr::Symbol(name).compile_expr(env, output)<span class="question-mark">?</span>;
-                                <span class="comment">// Pop the &quot;function pointer&quot; from the stack.
+                                <span class="comment">// Pop the "function pointer" from the stack.
                                 </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(A), <span class="number">1</span>));
                                 <span class="comment">// Call the procedure on the arguments.
                                 </span>output.op(CoreOp::Call(A));
@@ -1605,7 +1666,7 @@
                                 .transform_method_call(env)<span class="question-mark">?
                                 </span>.compile_expr(env, output)<span class="question-mark">?</span>;
                         } <span class="kw">else </span>{
-                            <span class="macro">warn!</span>(<span class="string">&quot;Method transform failed for {self_clone}; Monomorphizing {template} with {ty_args:?} in environment {env}&quot;</span>);
+                            <span class="macro">debug!</span>(<span class="string">"Method transform failed for {self_clone}; Monomorphizing {template} with {ty_args:?} in environment {env}"</span>);
                             <span class="comment">// Push the arguments to the procedure on the stack.
                             </span><span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span>args {
                                 <span class="comment">// Compile the argument (push it on the stack)
@@ -1614,9 +1675,9 @@
 
                             <span class="comment">// Compile it normally:
                             // Push the procedure on the stack.
-                            </span><span class="macro">warn!</span>(<span class="string">&quot;Method: Monomorphizing {template} with {ty_args:?}&quot;</span>);
+                            </span><span class="macro">debug!</span>(<span class="string">"Method: Monomorphizing {template} with {ty_args:?}"</span>);
                             ConstExpr::Monomorphize(template, ty_args).compile_expr(env, output)<span class="question-mark">?</span>;
-                            <span class="comment">// Pop the &quot;function pointer&quot; from the stack.
+                            <span class="comment">// Pop the "function pointer" from the stack.
                             </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(A), <span class="number">1</span>));
                             <span class="comment">// Call the procedure on the arguments.
                             </span>output.op(CoreOp::Call(A));
@@ -1639,7 +1700,7 @@
                             <span class="comment">// Compile it normally:
                             // Push the procedure on the stack.
                             </span>val.field(name).compile_expr(env, output)<span class="question-mark">?</span>;
-                            <span class="comment">// Pop the &quot;function pointer&quot; from the stack.
+                            <span class="comment">// Pop the "function pointer" from the stack.
                             </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(A), <span class="number">1</span>));
                             <span class="comment">// Call the procedure on the arguments.
                             </span>output.op(CoreOp::Call(A));
@@ -1654,7 +1715,7 @@
                         }
                         <span class="comment">// Push the procedure on the stack.
                         </span>proc.compile_expr(env, output)<span class="question-mark">?</span>;
-                        <span class="comment">// Pop the &quot;function pointer&quot; from the stack.
+                        <span class="comment">// Pop the "function pointer" from the stack.
                         </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(A), <span class="number">1</span>));
                         <span class="comment">// Call the procedure on the arguments.
                         </span>output.op(CoreOp::Call(A));
@@ -1862,7 +1923,7 @@
                 </span><span class="kw">let </span>val_type = val.get_type(env)<span class="question-mark">?</span>;
                 <span class="comment">// Get the size of the value being indexed.
                 </span><span class="kw">let </span>val_size = val_type.get_size(env)<span class="question-mark">?</span>;
-                <span class="comment">// Figure out what to do based on the value&#39;s type.
+                <span class="comment">// Figure out what to do based on the value's type.
                 </span><span class="kw">match </span>val_type {
                     <span class="comment">// If the value being indexed is an array:
                     </span>Type::Array(<span class="kw-2">ref </span>elem, <span class="kw">_</span>) =&gt; {
@@ -1888,7 +1949,7 @@
                         // If the array is a literal, then we will have to push the array
                         // on the stack and essentially do the same address calculations,
                         // but the difference is that the operation is not in-place.
-                        </span><span class="kw">if </span>optimized_idx.type_check(env).is_ok() {
+                        </span><span class="kw">if </span>optimized_idx.get_type(env).is_ok() {
                             <span class="kw">return </span>optimized_idx.compile_expr(env, output);
                         }
 
@@ -1902,10 +1963,12 @@
                         <span class="comment">// Calculate the offset of the element we want to return
                         // (the index times the size of the element), and store it in `B`.
                         </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(B), <span class="number">1</span>));
-                        output.op(CoreOp::Set(A, elem_size <span class="kw">as </span>i64));
-                        output.op(CoreOp::Mul { dst: B, src: A });
+                        <span class="kw">if </span>elem_size &gt; <span class="number">1 </span>{
+                            output.op(CoreOp::Set(A, elem_size <span class="kw">as </span>i64));
+                            output.op(CoreOp::Mul { dst: B, src: A });
+                        }
 
-                        <span class="comment">// Get the address of the array&#39;s first element, and store it in `A`.
+                        <span class="comment">// Get the address of the array's first element, and store it in `A`.
                         </span>output.op(CoreOp::GetAddress {
                             addr: SP.deref().offset(<span class="number">1 </span>- val_size <span class="kw">as </span>isize),
                             dst: A,
@@ -1919,7 +1982,7 @@
                         });
 
                         <span class="comment">// Copy the contents of the element at `C` overtop of the
-                        // array&#39;s first element on the stack.
+                        // array's first element on the stack.
                         </span>output.op(CoreOp::Copy {
                             src: C.deref(),
                             dst: SP.deref().offset(<span class="number">1 </span>- val_size <span class="kw">as </span>isize),
@@ -1941,11 +2004,14 @@
                         </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(A), <span class="number">1</span>));
                         <span class="comment">// Store the index in `B`.
                         </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(B), <span class="number">1</span>));
-                        <span class="comment">// Store the size of the element in `C`.
-                        </span>output.op(CoreOp::Set(C, elem_size <span class="kw">as </span>i64));
-                        <span class="comment">// Store the offset of the element from the pointer in `B`
-                        // (the index times the size of the element).
-                        </span>output.op(CoreOp::Mul { dst: B, src: C });
+                        <span class="kw">if </span>elem_size &gt; <span class="number">1 </span>{
+                            <span class="comment">// Store the size of the element in `C`.
+                            </span>output.op(CoreOp::Set(C, elem_size <span class="kw">as </span>i64));
+
+                            <span class="comment">// Calculate the offset of the element from the address of the array.
+                            // (the index times the size of the element).
+                            </span>output.op(CoreOp::Mul { dst: B, src: C });
+                        }
                         <span class="comment">// Get the address of the element and store it in `C`.
                         </span>output.op(CoreOp::Index {
                             src: A,
@@ -1955,14 +2021,14 @@
                         <span class="comment">// Push the contents of the element onto the stack.
                         </span>output.op(CoreOp::Push(C.deref(), elem_size));
                     }
-                    <span class="comment">// Otherwise, we can&#39;t index this value.
+                    <span class="comment">// Otherwise, we can't index this value.
                     </span><span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
                 }
             }
 
             <span class="comment">// Compile a member access operation.
             </span><span class="self">Self</span>::Member(<span class="kw-2">ref </span>val, <span class="kw-2">ref </span>member) =&gt; {
-                <span class="comment">// If the value we&#39;re getting a field from is a pointer,
+                <span class="comment">// If the value we're getting a field from is a pointer,
                 // then dereference it and get the field from the value.
                 </span><span class="kw">match </span>val.get_type(env)<span class="question-mark">? </span>{
                     Type::Pointer(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
@@ -2000,7 +2066,7 @@
                             <span class="comment">// Pop the remaining elements off the stack, so the field remains.
                             </span>output.op(CoreOp::Pop(<span class="prelude-val">None</span>, val_size - size));
                         } <span class="kw">else </span>{
-                            <span class="macro">warn!</span>(<span class="string">&quot;Could not get member offset of {member} from {val_type} in environment {env}&quot;</span>);
+                            <span class="macro">warn!</span>(<span class="string">"Could not get member offset of {member} from {val_type} in environment {env}"</span>);
                             <span class="comment">// Try to get the member of the underlying type.
                             </span><span class="kw">let </span>name = member.clone().as_symbol(env)<span class="question-mark">?</span>;
                             <span class="kw">return </span>env
@@ -2030,7 +2096,7 @@
 
                 <span class="comment">// Get the reference of a variable.
                 </span>Expr::ConstExpr(ConstExpr::Symbol(name)) =&gt; {
-                    <span class="comment">// Get the variable&#39;s offset from the frame pointer.
+                    <span class="comment">// Get the variable's offset from the frame pointer.
                     </span><span class="kw">if let </span><span class="prelude-val">Some</span>((found_mutability, _ty, offset)) = env.get_var(<span class="kw-2">&amp;</span>name) {
                         <span class="kw">if </span>!found_mutability.can_decay_to(<span class="kw-2">&amp;</span>expected_mutability) {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedMutability {
@@ -2041,19 +2107,29 @@
                         }
 
                         <span class="comment">// Calculate the address of the variable from the offset
-                        </span>output.op(CoreOp::Many(<span class="macro">vec!</span>[
-                            CoreOp::Move { src: FP, dst: A },
-                            CoreOp::Set(B, <span class="kw-2">*</span>offset <span class="kw">as </span>i64),
-                            <span class="comment">// Index the frame pointer with the offset of the variable.
-                            // This is the address of the variable.
-                            </span>CoreOp::Index {
-                                src: A,
-                                offset: B,
-                                dst: C,
+                        // output.op(CoreOp::Many(vec![
+                        //     CoreOp::Move { src: FP, dst: A },
+                        //     CoreOp::Set(B, *offset as i64),
+                        //     // Index the frame pointer with the offset of the variable.
+                        //     // This is the address of the variable.
+                        //     CoreOp::Index {
+                        //         src: A,
+                        //         offset: B,
+                        //         dst: C,
+                        //     },
+                        //     // Push the address of the variable onto the stack.
+                        //     CoreOp::Push(C, 1),
+                        // ]))
+                        // Push the address of the variable onto the stack.
+                        </span>output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
+                        output.op(
+                            <span class="comment">// Calculate the address of the variable from the offset
+                            </span>CoreOp::GetAddress {
+                                addr: FP.deref().offset(<span class="kw-2">*</span>offset <span class="kw">as </span>isize),
+                                dst: SP.deref(),
                             },
-                            <span class="comment">// Push the address of the variable onto the stack.
-                            </span>CoreOp::Push(C, <span class="number">1</span>),
-                        ]))
+                        )
+
                     } <span class="kw">else if let </span><span class="prelude-val">Some</span>((found_mutability, _ty, location)) =
                         env.get_static_var(<span class="kw-2">&amp;</span>name)
                     {
@@ -2064,19 +2140,18 @@
                                 expr: Expr::ConstExpr(ConstExpr::Symbol(name)),
                             });
                         }
-
-                        <span class="comment">// Calculate the address of the variable from the offset
-                        </span>output.op(CoreOp::Many(<span class="macro">vec!</span>[
-                            <span class="comment">// Push the address of the variable onto the stack.
-                            </span>CoreOp::Next(SP, <span class="prelude-val">None</span>),
-                            CoreOp::GetAddress {
+                        <span class="comment">// Push the address of the variable onto the stack.
+                        </span>output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
+                        output.op(
+                            <span class="comment">// Calculate the address of the variable from the offset
+                            </span>CoreOp::GetAddress {
                                 addr: location.clone(),
                                 dst: SP.deref(),
                             },
-                        ]))
+                        )
                     } <span class="kw">else </span>{
-                        <span class="macro">error!</span>(<span class="string">&quot;Tried to get the reference of a symbol that isn&#39;t a variable: {name} in environment {env}&quot;</span>);
-                        <span class="comment">// Return an error if the symbol isn&#39;t defined.
+                        <span class="macro">error!</span>(<span class="string">"Tried to get the reference of a symbol that isn't a variable: {name} in environment {env}"</span>);
+                        <span class="comment">// Return an error if the symbol isn't defined.
                         </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::SymbolNotDefined(name.clone()));
                     }
                 }
@@ -2088,13 +2163,13 @@
                     }
                     <span class="kw">let </span><span class="kw-2">mut </span>counter = COUNTER.lock().unwrap();
                     <span class="kw-2">*</span>counter += <span class="number">1</span>;
-                    <span class="kw">let </span><span class="kw-2">mut </span>var_name = <span class="macro">format!</span>(<span class="string">&quot;__const_{counter}__&quot;</span>);
+                    <span class="kw">let </span><span class="kw-2">mut </span>var_name = <span class="macro">format!</span>(<span class="string">"__const_{counter}__"</span>);
                     <span class="kw">let </span>new_env = env.clone();
-                    <span class="macro">debug!</span>(<span class="string">&quot;Creating new static variable {var_name} in environment {new_env}&quot;</span>);
+                    <span class="macro">debug!</span>(<span class="string">"Creating new static variable {var_name} in environment {new_env}"</span>);
                     <span class="kw">while </span>new_env.get_var(<span class="kw-2">&amp;</span>var_name).is_some() {
-                        <span class="macro">debug!</span>(<span class="string">&quot;Variable {var_name} already exists in environment {new_env}, incrementing counter&quot;</span>);
+                        <span class="macro">debug!</span>(<span class="string">"Variable {var_name} already exists in environment {new_env}, incrementing counter"</span>);
                         <span class="kw-2">*</span>counter += <span class="number">1</span>;
-                        var_name = <span class="macro">format!</span>(<span class="string">&quot;__const_{counter}__&quot;</span>);
+                        var_name = <span class="macro">format!</span>(<span class="string">"__const_{counter}__"</span>);
                     }
                     <span class="kw">let </span>ty = cexpr.get_type(env)<span class="question-mark">?</span>;
                     <span class="kw">let </span>_size = ty.get_size(env)<span class="question-mark">?</span>;
@@ -2102,7 +2177,7 @@
                     <span class="kw">let </span>expr = Expr::var(<span class="kw-2">&amp;</span>var_name).refer(expected_mutability).with(
                         Declaration::static_var(<span class="kw-2">&amp;</span>var_name, expected_mutability, ty, cexpr),
                     );
-                    <span class="macro">debug!</span>(<span class="string">&quot;Compiling constant expression {expr} in environment {env}&quot;</span>);
+                    <span class="macro">debug!</span>(<span class="string">"Compiling constant expression {expr} in environment {env}"</span>);
                     expr.compile_expr(env, output)<span class="question-mark">?</span>;
                 }
                 <span class="comment">// Get the reference of a dereferenced value.
@@ -2140,7 +2215,7 @@
                             </span>val.clone().compile_expr(env, output)<span class="question-mark">?</span>;
                         }
                         other =&gt; {
-                            <span class="macro">error!</span>(<span class="string">&quot;Tried to get a member {name} of a non-struct, non-tuple, non-union, non-pointer type: {other} of value {val} in environment {env}&quot;</span>);
+                            <span class="macro">error!</span>(<span class="string">"Tried to get a member {name} of a non-struct, non-tuple, non-union, non-pointer type: {other} of value {val} in environment {env}"</span>);
                             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidRefer(Expr::Member(val, name)));
                         }
                     }
@@ -2179,12 +2254,14 @@
                             </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(B), <span class="number">1</span>));
                             <span class="comment">// Store the address of the array in `A`.
                             </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(A), <span class="number">1</span>));
-                            <span class="comment">// Store the size of the element in `C`.
-                            </span>output.op(CoreOp::Set(C, elem_size <span class="kw">as </span>i64));
-
-                            <span class="comment">// Calculate the offset of the element from the address of the array.
-                            // (the index times the size of the element).
-                            </span>output.op(CoreOp::Mul { dst: B, src: C });
+                            <span class="kw">if </span>elem_size &gt; <span class="number">1 </span>{
+                                <span class="comment">// Store the size of the element in `C`.
+                                </span>output.op(CoreOp::Set(C, elem_size <span class="kw">as </span>i64));
+    
+                                <span class="comment">// Calculate the offset of the element from the address of the array.
+                                // (the index times the size of the element).
+                                </span>output.op(CoreOp::Mul { dst: B, src: C });
+                            }
 
                             <span class="comment">// Index the address of the array with the offset of the element.
                             // This is the address of the element.
@@ -2217,12 +2294,14 @@
                             </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(A), <span class="number">1</span>));
                             <span class="comment">// Store the index in `B`.
                             </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(B), <span class="number">1</span>));
-                            <span class="comment">// Store the size of the element in `C`.
-                            </span>output.op(CoreOp::Set(C, elem_size <span class="kw">as </span>i64));
-
-                            <span class="comment">// Calculate the offset of the element from the pointer.
-                            // (the index times the size of the element).
-                            </span>output.op(CoreOp::Mul { dst: B, src: C });
+                            <span class="kw">if </span>elem_size &gt; <span class="number">1 </span>{
+                                <span class="comment">// Store the size of the element in `C`.
+                                </span>output.op(CoreOp::Set(C, elem_size <span class="kw">as </span>i64));
+    
+                                <span class="comment">// Calculate the offset of the element from the address of the array.
+                                // (the index times the size of the element).
+                                </span>output.op(CoreOp::Mul { dst: B, src: C });
+                            }
                             output.op(CoreOp::Index {
                                 src: A,
                                 offset: B,
@@ -2248,8 +2327,8 @@
 <span class="doccomment">/// Compile a constant expression.
 </span><span class="kw">impl </span>Compile <span class="kw">for </span>ConstExpr {
     <span class="kw">fn </span>compile_expr(<span class="self">self</span>, env: <span class="kw-2">&amp;mut </span>Env, output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="macro">trace!</span>(<span class="string">&quot;Compiling constant expression {self} in environment {env}&quot;</span>);
-        <span class="kw">let </span><span class="kw-2">mut </span>debug_str = <span class="macro">format!</span>(<span class="string">&quot;{self}&quot;</span>);
+        <span class="macro">trace!</span>(<span class="string">"Compiling constant expression {self} in environment {env}"</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>debug_str = <span class="macro">format!</span>(<span class="string">"{self}"</span>);
         debug_str.truncate(<span class="number">50</span>);
 
         <span class="kw">let </span>current_instruction = output.current_instruction();
@@ -2282,7 +2361,7 @@
                     </span>}
                     (<span class="self">Self</span>::Type(ty), <span class="self">Self</span>::Symbol(name)) =&gt; {
                         <span class="kw">if let </span><span class="prelude-val">Some</span>((constant, <span class="kw">_</span>)) = env.get_associated_const(<span class="kw-2">&amp;</span>ty, <span class="kw-2">&amp;</span>name) {
-                            <span class="macro">debug!</span>(<span class="string">&quot;Compiling associated constant {constant} in environment {env}&quot;</span>);
+                            <span class="macro">debug!</span>(<span class="string">"Compiling associated constant {constant} in environment {env}"</span>);
                             <span class="kw">return </span>constant.clone().compile_expr(env, output);
                         } <span class="kw">else </span>{
                             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::SymbolNotDefined(name));
@@ -2304,25 +2383,25 @@
                 <span class="self">Self</span>::PolyProc(poly_proc) =&gt; {
                     <span class="comment">// Simplify the type arguments.
                     </span><span class="kw">let </span>ty_args = ty_args
-                        .into_iter()
+                        .into_par_iter()
                         .map(|ty| ty.simplify(env))
                         .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>common_name = poly_proc.get_name();
                     <span class="kw">let </span>message = <span class="macro">format!</span>(
-                        <span class="string">&quot;Monomorphized {common_name} with type arguments {}&quot;</span>,
+                        <span class="string">"Monomorphized {common_name} with type arguments {}"</span>,
                         ty_args
                             .iter()
-                            .map(|ty| <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, ty))
+                            .map(|ty| <span class="macro">format!</span>(<span class="string">"{}"</span>, ty))
                             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-                            .join(<span class="string">&quot;, &quot;</span>)
+                            .join(<span class="string">", "</span>)
                     );
                     <span class="kw">let </span>current_instruction = output.current_instruction();
                     <span class="comment">// Monomorphize the function
                     </span><span class="kw">let </span>proc = poly_proc.monomorphize(ty_args, env)<span class="question-mark">?</span>;
-                    <span class="comment">// Typecheck the monomorphized function.
-                    </span>proc.type_check(env)<span class="question-mark">?</span>;
-                    <span class="comment">// Compile the monomorphized function.
+                    <span class="comment">// // Typecheck the monomorphized function.
+                    // proc.type_check(env)?;
+                    // Compile the monomorphized function.
                     </span>proc.compile_expr(env, output)<span class="question-mark">?</span>;
 
                     output.log_instructions_after(common_name, <span class="kw-2">&amp;</span>message, current_instruction);
@@ -2355,43 +2434,51 @@
             </span><span class="self">Self</span>::None =&gt; {}
             <span class="comment">// Compile a null constant.
             </span><span class="self">Self</span>::Null =&gt; {
-                output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.op(CoreOp::Set(SP.deref(), NULL));
+                <span class="comment">// output.op(CoreOp::Next(SP, None));
+                // output.op(CoreOp::Set(SP.deref(), NULL));
+                </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[NULL]));
             }
             <span class="comment">// Compile a char constant.
             </span><span class="self">Self</span>::Char(ch) =&gt; {
-                output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.op(CoreOp::Set(SP.deref(), ch <span class="kw">as </span>usize <span class="kw">as </span>i64));
+                <span class="comment">// output.op(CoreOp::Next(SP, None));
+                // output.op(CoreOp::Set(SP.deref(), ch as usize as i64));
+                </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[ch <span class="kw">as </span>usize <span class="kw">as </span>i64]));
             }
             <span class="comment">// Compile a bool constant.
             </span><span class="self">Self</span>::Bool(x) =&gt; {
-                output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.op(CoreOp::Set(SP.deref(), x <span class="kw">as </span>i64));
+                <span class="comment">// output.op(CoreOp::Next(SP, None));
+                // output.op(CoreOp::Set(SP.deref(), x as i64));
+                </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[x <span class="kw">as </span>i64]));
             }
             <span class="comment">// Compile a cell value.
             </span><span class="self">Self</span>::Cell(n) =&gt; {
-                output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.op(CoreOp::Set(SP.deref(), n));
+                <span class="comment">// output.op(CoreOp::Next(SP, None));
+                // output.op(CoreOp::Set(SP.deref(), n));
+                </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[n <span class="kw">as </span>i64]));
             }
             <span class="comment">// Compile an integer constant.
             </span><span class="self">Self</span>::Int(n) =&gt; {
-                output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.op(CoreOp::Set(SP.deref(), n));
+                <span class="comment">// output.op(CoreOp::Next(SP, None));
+                // output.op(CoreOp::Set(SP.deref(), n));
+                </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[n <span class="kw">as </span>i64]));
             }
             <span class="comment">// Compile a float constant.
             </span><span class="self">Self</span>::Float(f) =&gt; {
-                output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.std_op(StandardOp::Set(SP.deref(), f))<span class="question-mark">?</span>;
+                <span class="comment">// output.op(CoreOp::Next(SP, None));
+                // output.std_op(StandardOp::Set(SP.deref(), f))?;
+                </span>output.std_op(StandardOp::PushConst(<span class="macro">vec!</span>[f]))<span class="question-mark">?</span>;
             }
             <span class="comment">// Calculate the size of a type.
             </span><span class="self">Self</span>::SizeOfType(t) =&gt; {
-                output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.op(CoreOp::Set(SP.deref(), t.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>i64));
+                <span class="comment">// output.op(CoreOp::Next(SP, None));
+                // output.op(CoreOp::Set(SP.deref(), t.get_size(env)? as i64));
+                </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[t.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>i64]));
             }
             <span class="comment">// Calculate the size of an expression.
             </span><span class="self">Self</span>::SizeOfExpr(e) =&gt; {
-                output.op(CoreOp::Next(SP, <span class="prelude-val">None</span>));
-                output.op(CoreOp::Set(SP.deref(), e.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>i64));
+                <span class="comment">// output.op(CoreOp::Next(SP, None));
+                // output.op(CoreOp::Set(SP.deref(), e.get_size(env)? as i64));
+                </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[e.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>i64]));
             }
             <span class="comment">// Compile a tuple constant.
             </span><span class="self">Self</span>::Tuple(items) =&gt; {
@@ -2423,53 +2510,86 @@
                         End,
                     ]));
                 } <span class="kw">else </span>{
-                    <span class="comment">// Compile the items.
-                    // for item in items {
-                    //     item.compile_expr(env, output)?;
-                    // }
-
-                    // Do a loop for repeated items.
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>items = items.into_iter().peekable();
-                    <span class="kw">while let </span><span class="prelude-val">Some</span>(item) = items.next() {
-                        <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">1</span>;
-                        <span class="kw">while let </span><span class="prelude-val">Some</span>(next) = items.peek() {
-                            <span class="kw">if </span>next == <span class="kw-2">&amp;</span>item {
-                                count += <span class="number">1</span>;
-                                items.next();
-                            } <span class="kw">else </span>{
-                                <span class="kw">break</span>;
-                            }
+                    <span class="kw">match </span>items[<span class="number">0</span>].get_type(env)<span class="question-mark">? </span>{
+                        Type::Int =&gt; {
+                            output.op(CoreOp::PushConst(
+                                items
+                                    .par_iter()
+                                    .map(|elem| elem.clone().as_int(env))
+                                    .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
+                            ));
                         }
+                        Type::Float =&gt; {
+                            output.std_op(StandardOp::PushConst(
+                                items
+                                    .par_iter()
+                                    .map(|elem| elem.clone().as_float(env))
+                                    .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
+                            ))<span class="question-mark">?</span>;
+                        }
+                        Type::Cell =&gt; {
+                            output.op(CoreOp::PushConst(
+                                items
+                                    .par_iter()
+                                    .map(|elem| elem.clone().as_int(env))
+                                    .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
+                            ));
+                        }
+                        Type::Bool =&gt; {
+                            output.op(CoreOp::PushConst(
+                                items
+                                    .par_iter()
+                                    .map(|elem| elem.clone().as_bool(env).map(|x| x <span class="kw">as </span>i64))
+                                    .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
+                            ));
+                        }
+                        Type::Char =&gt; {
+                            output.op(CoreOp::PushConst(
+                                items
+                                    .par_iter()
+                                    .map(|elem| elem.clone().as_char(env).map(|x| x <span class="kw">as </span>u8 <span class="kw">as </span>i64))
+                                    .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
+                            ));
+                        }
+                        <span class="kw">_ </span>=&gt; {
+                            <span class="kw">let </span><span class="kw-2">mut </span>items = items.into_iter().peekable();
+                            <span class="kw">while let </span><span class="prelude-val">Some</span>(item) = items.next() {
+                                <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">1</span>;
+                                <span class="kw">while let </span><span class="prelude-val">Some</span>(next) = items.peek() {
+                                    <span class="kw">if </span>next == <span class="kw-2">&amp;</span>item {
+                                        count += <span class="number">1</span>;
+                                        items.next();
+                                    } <span class="kw">else </span>{
+                                        <span class="kw">break</span>;
+                                    }
+                                }
 
-                        <span class="kw">let </span>item_size = item.get_size(env)<span class="question-mark">?</span>;
-                        <span class="kw">if </span>count &gt; <span class="number">2 </span>|| item_size &gt;= <span class="number">8 </span>{
-                            item.compile_expr(env, output)<span class="question-mark">?</span>;
-                            <span class="comment">// Push the first item onto the stack `size` times.
-                            </span><span class="kw">use </span>CoreOp::<span class="kw-2">*</span>;
-                            output.op(Many(<span class="macro">vec!</span>[
-                                GetAddress {
-                                    addr: SP.deref().offset(<span class="number">1 </span>- item_size <span class="kw">as </span>isize),
-                                    dst: A,
-                                },
-                                Set(B, count <span class="kw">as </span>i64 - <span class="number">1</span>),
-                                While(B),
-                                Push(A.deref(), item_size),
-                                Dec(B),
-                                End,
-                            ]));
-                        } <span class="kw">else </span>{
-                            <span class="kw">for _ in </span><span class="number">0</span>..count {
-                                item.clone().compile_expr(env, output)<span class="question-mark">?</span>;
+                                <span class="kw">let </span>item_size = item.get_size(env)<span class="question-mark">?</span>;
+                                <span class="kw">if </span>count &gt; <span class="number">2 </span>|| item_size &gt;= <span class="number">8 </span>{
+                                    item.compile_expr(env, output)<span class="question-mark">?</span>;
+                                    <span class="comment">// Push the first item onto the stack `size` times.
+                                    </span><span class="kw">use </span>CoreOp::<span class="kw-2">*</span>;
+                                    output.op(Many(<span class="macro">vec!</span>[
+                                        GetAddress {
+                                            addr: SP.deref().offset(<span class="number">1 </span>- item_size <span class="kw">as </span>isize),
+                                            dst: A,
+                                        },
+                                        Set(B, count <span class="kw">as </span>i64 - <span class="number">1</span>),
+                                        While(B),
+                                        Push(A.deref(), item_size),
+                                        Dec(B),
+                                        End,
+                                    ]));
+                                } <span class="kw">else </span>{
+                                    <span class="kw">for _ in </span><span class="number">0</span>..count {
+                                        item.clone().compile_expr(env, output)<span class="question-mark">?</span>;
+                                    }
+                                }
                             }
                         }
                     }
                 }
-
-                <span class="comment">// for item in items {
-                //     // Compile the item.
-                //     item.compile_expr(env, output)?;
-                // }
-            </span>}
+            }
             <span class="comment">// Compile a struct constant.
             </span><span class="self">Self</span>::Struct(items) =&gt; {
                 <span class="kw">for </span>(<span class="kw">_</span>, expr) <span class="kw">in </span>items {
@@ -2575,8 +2695,9 @@
                         <span class="comment">// Get the index of the variant.
                         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(index) = Type::variant_index(<span class="kw-2">&amp;</span>variants, <span class="kw-2">&amp;</span>variant) {
                             <span class="comment">// Push the index of the variant onto the stack.
-                            </span>output.op(CoreOp::Set(A, index <span class="kw">as </span>i64));
-                            output.op(CoreOp::Push(A, <span class="number">1</span>));
+                            // output.op(CoreOp::Set(A, index as i64));
+                            // output.op(CoreOp::Push(A, 1));
+                            </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[index <span class="kw">as </span>i64]));
                             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                         } <span class="kw">else </span>{
                             <span class="comment">// If the variant is not found, return an error.
@@ -2621,7 +2742,7 @@
                 } <span class="kw">else </span>{
                     <span class="comment">// If the symbol is not a variable, evaluate it like a constant.
                     </span><span class="kw">match </span><span class="self">Self</span>::Symbol(name).eval(env)<span class="question-mark">? </span>{
-                        <span class="comment">// If the symbol isn&#39;t a constant, try to get the procedure
+                        <span class="comment">// If the symbol isn't a constant, try to get the procedure
                         // with the same name.
                         </span><span class="self">Self</span>::Symbol(name) =&gt; env.push_proc(<span class="kw-2">&amp;</span>name, output)<span class="question-mark">?</span>,
                         <span class="comment">// If the symbol is a constant, push it onto the stack.
@@ -2630,7 +2751,7 @@
                 }
             }
         }
-        output.log_instructions_after(<span class="string">&quot;expr&quot;</span>, <span class="kw-2">&amp;</span>debug_str, current_instruction);
+        output.log_instructions_after(<span class="string">"expr"</span>, <span class="kw-2">&amp;</span>debug_str, current_instruction);
         <span class="prelude-val">Ok</span>(())
     }
 }
