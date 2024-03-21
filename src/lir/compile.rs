@@ -80,10 +80,10 @@ impl Compile for Expr {
 
         // Compile the expression.
         match self {
-            Self::Annotated(expr, metdata) => {
+            Self::Annotated(expr, metadata) => {
                 // Compile the expression.
                 expr.compile_expr(env, output)
-                    .map_err(|e| e.annotate(metdata))?;
+                    .map_err(|e| e.annotate(metadata))?;
             }
 
             Self::Match(expr, branches) => {
