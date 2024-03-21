@@ -8,12 +8,13 @@ description = "A portable programming language with a compact backend"
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+bench = false
+
 [[bin]]
 name = "sage"
 path = "src/cli.rs"
-
-[profile.release]
-debug = true
+bench = false
 
 [dependencies]
 regex = { version = "1.8.1", features = ["unicode"] }
