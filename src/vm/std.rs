@@ -71,9 +71,11 @@ impl VirtualMachineProgram for StandardProgram {
                         self.op(CoreOp::Set(m));
                         self.op(CoreOp::Move(n));
                     }
-                    // (CoreOp::Refer, CoreOp::Deref) => {
-                    //     self.0.pop();
-                    // }
+                    (CoreOp::Move(n), CoreOp::Offset(off, m)) => {
+                        self.0.pop();
+                        self.op(CoreOp::Offset(off, m));
+                        self.op(CoreOp::Move(n));
+                    }
                     (CoreOp::Store(m), CoreOp::Store(n)) if n == m => {}
                     (CoreOp::Load(m), CoreOp::Load(n)) if n == m => {}
                     (CoreOp::Store(m), CoreOp::Load(n)) if n == m => {}
@@ -82,6 +84,7 @@ impl VirtualMachineProgram for StandardProgram {
                         self.0.pop();
                         self.op(CoreOp::Set(vec![(n[0] >= 0) as i64]))
                     }
+
                     (_, op) => {
                         self.0.push(StandardOp::CoreOp(op));
                     }
@@ -310,16 +313,18 @@ pub enum StandardOp {
     ToFloat,
 
     /// Add the value pointed to on the tape to the register (as floats).
-    Add,
+    Add(usize),
     /// Subtract the value pointed to on the tape from the register (as floats).
-    Sub,
+    Sub(usize),
     /// Multiply the register by the value pointed to on the tape (as floats).
-    Mul,
+    Mul(usize),
     /// Divide the register by the value pointed to on the tape (as floats).
-    Div,
+    Div(usize),
     /// Store the remainder of the register and the value pointed to in the
     /// tape (as floats) into the register.
-    Rem,
+    Rem(usize),
+    /// Negate the value of the register (as a float).
+    Neg(usize),
 
     /// Make the register equal to the integer 1 if the register (as a float)
     /// is not negative, otherwise make it equal to 0.
@@ -370,11 +375,12 @@ impl fmt::Display for StandardOp {
             StandardOp::Free => write!(f, "free"),
             StandardOp::ToInt => write!(f, "to-int"),
             StandardOp::ToFloat => write!(f, "to-float"),
-            StandardOp::Add => write!(f, "add-f"),
-            StandardOp::Sub => write!(f, "sub-f"),
-            StandardOp::Mul => write!(f, "mul-f"),
-            StandardOp::Div => write!(f, "div-f"),
-            StandardOp::Rem => write!(f, "rem-f"),
+            StandardOp::Add(n) => write!(f, "add-f {n}"),
+            StandardOp::Sub(n) => write!(f, "sub-f {n}"),
+            StandardOp::Mul(n) => write!(f, "mul-f {n}"),
+            StandardOp::Div(n) => write!(f, "div-f {n}"),
+            StandardOp::Rem(n) => write!(f, "rem-f {n}"),
+            StandardOp::Neg(n) => write!(f, "neg-f {n}"),
             StandardOp::IsNonNegative => write!(f, "gez-f"),
             StandardOp::Sin => write!(f, "sin"),
             StandardOp::Cos => write!(f, "cos"),

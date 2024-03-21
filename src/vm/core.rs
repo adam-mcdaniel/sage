@@ -246,65 +246,75 @@ pub enum CoreOp {
     /// Interpret the register's value as a pointer to a cell.
     /// Index that pointer by the value on the tape. Store the address
     /// of the index into the register.
-    Index,
+    /// The argument is the size of the vector to index.
+    Index(usize),
 
     /// Interpret the register's value as a pointer to a cell.
     /// Offset the pointer by a constant value.
-    Offset(isize),
+    /// The first argument is the offset to add to the pointer.
+    /// The second argument is the size of the vector to add to the pointer.
+    Offset(isize, usize),
 
     /// Perform bitwise nand on the cell and the value pointed to on the tape,
     /// and store the result in the register.
-    BitwiseNand,
+    BitwiseNand(usize),
     /// Perform bitwise and on the cell and the value pointed to on the tape,
     /// and store the result in the register.
-    BitwiseAnd,
+    BitwiseAnd(usize),
     /// Perform bitwise or on the cell and the value pointed to on the tape,
     /// and store the result in the register.
-    BitwiseOr,
+    BitwiseOr(usize),
     /// Perform a bitwise xor on the cell and the value pointed to on the tape,
     /// and store the result in the register.
-    BitwiseXor,
+    BitwiseXor(usize),
     /// Bitwise not the register. Store the result in the register.
-    BitwiseNot,
+    BitwiseNot(usize),
 
     /// Left shift the cell by the value pointed to on the tape.
     /// Store the result in the register.
-    LeftShift,
+    LeftShift(usize),
     /// Logical right shift the cell by the value pointed to on the tape.
     /// Store the result in the register.
-    LogicalRightShift,
+    LogicalRightShift(usize),
     /// Interpret the register's value as a signed integer.
     /// Arithmetic right shift the cell by the value pointed to on the tape.
     /// Store the result in the register.
-    ArithmeticRightShift,
+    ArithmeticRightShift(usize),
 
     /// Boolean-and the register and the value pointed to on the tape.
     /// Store the result in the register.
-    And,
+    And(usize),
     /// Boolean-or the register and the value pointed to on the tape.
     /// Store the result in the register.
-    Or,
+    Or(usize),
     /// Boolean-not the register (0 if the register is non-zero, 1 if the register is zero)
     /// Store the result in the register.
-    Not,
+    Not(usize),
 
     /// Add the value pointed to on the tape to the register.
-    Add,
+    /// The argument is the size of the vector to add to the register.
+    Add(usize),
     /// Subtract the value pointed to on the tape from the register.
-    Sub,
+    /// The argument is the size of the vector to subtract from the register.
+    Sub(usize),
     /// Multiply the register by the value pointed to on the tape.
-    Mul,
+    /// The argument is the size of the vector to multiply the register by.
+    Mul(usize),
     /// Divide the register by the value pointed to on the tape.
-    Div,
+    /// The argument is the size of the vector to divide the register by.
+    Div(usize),
     /// Store the remainder of the register and the value pointed to in the tape into the register.
-    Rem,
+    /// The argument is the size of the vector to take the remainder of the register by.
+    Rem(usize),
     /// Negate the register.
-    Neg,
+    /// The argument is the size of the vector to negate the register by.
+    Neg(usize),
 
     /// Increment the register.
-    Inc,
+    /// The argument is the size of the vector to increment.
+    Inc(usize),
     /// Decrement the register.
-    Dec,
+    Dec(usize),
 
     /// Swap the value of the register with the value pointed to on the tape.
     Swap,
@@ -357,30 +367,30 @@ impl fmt::Display for CoreOp {
             CoreOp::Store(n) => write!(f, "store {n}"),
             CoreOp::Load(n) => write!(f, "load {n}"),
             CoreOp::Move(n) => write!(f, "mov {n}"),
-            CoreOp::Offset(n) => write!(f, "offset {n}"),
+            CoreOp::Offset(offset, n) => write!(f, "offset {offset}, {n}"),
             CoreOp::Where => write!(f, "where"),
             CoreOp::Deref => write!(f, "deref"),
             CoreOp::Refer => write!(f, "ref"),
-            CoreOp::Index => write!(f, "index"),
-            CoreOp::BitwiseNand => write!(f, "bitwise-nand"),
-            CoreOp::BitwiseAnd => write!(f, "bitwise-and"),
-            CoreOp::BitwiseOr => write!(f, "bitwise-or"),
-            CoreOp::BitwiseXor => write!(f, "bitwise-xor"),
-            CoreOp::BitwiseNot => write!(f, "bitwise-not"),
-            CoreOp::LeftShift => write!(f, "lsh"),
-            CoreOp::LogicalRightShift => write!(f, "lrsh"),
-            CoreOp::ArithmeticRightShift => write!(f, "arsh"),
-            CoreOp::And => write!(f, "and"),
-            CoreOp::Or => write!(f, "or"),
-            CoreOp::Not => write!(f, "not"),
-            CoreOp::Neg => write!(f, "neg"),
-            CoreOp::Inc => write!(f, "inc"),
-            CoreOp::Dec => write!(f, "dec"),
-            CoreOp::Add => write!(f, "add"),
-            CoreOp::Sub => write!(f, "sub"),
-            CoreOp::Mul => write!(f, "mul"),
-            CoreOp::Div => write!(f, "div"),
-            CoreOp::Rem => write!(f, "rem"),
+            CoreOp::Index(n) => write!(f, "index {n}"),
+            CoreOp::BitwiseNand(n) => write!(f, "bitwise-nand {n}"),
+            CoreOp::BitwiseAnd(n) => write!(f, "bitwise-and {n}"),
+            CoreOp::BitwiseOr(n) => write!(f, "bitwise-or {n}"),
+            CoreOp::BitwiseXor(n) => write!(f, "bitwise-xor {n}"),
+            CoreOp::BitwiseNot(n) => write!(f, "bitwise-not {n}"),
+            CoreOp::LeftShift(n) => write!(f, "lsh {n}"),
+            CoreOp::LogicalRightShift(n) => write!(f, "lrsh {n}"),
+            CoreOp::ArithmeticRightShift(n) => write!(f, "arsh {n}"),
+            CoreOp::And(n) => write!(f, "and {n}"),
+            CoreOp::Or(n) => write!(f, "or {n}"),
+            CoreOp::Not(n) => write!(f, "not {n}"),
+            CoreOp::Neg(n) => write!(f, "neg {n}"),
+            CoreOp::Add(n) => write!(f, "add {n}"),
+            CoreOp::Sub(n) => write!(f, "sub {n}"),
+            CoreOp::Mul(n) => write!(f, "mul {n}"),
+            CoreOp::Div(n) => write!(f, "div {n}"),
+            CoreOp::Rem(n) => write!(f, "rem {n}"),
+            CoreOp::Inc(n) => write!(f, "inc {n}"),
+            CoreOp::Dec(n) => write!(f, "dec {n}"),
             CoreOp::Swap => write!(f, "swap"),
             CoreOp::IsNonNegative => write!(f, "gez"),
 

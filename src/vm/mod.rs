@@ -187,11 +187,11 @@ pub trait VirtualMachineProgram {
     }
 
     fn index(&mut self) {
-        self.op(CoreOp::Index)
+        self.op(CoreOp::Index(1))
     }
 
     fn bitwise_nand(&mut self) {
-        self.op(CoreOp::BitwiseNand)
+        self.op(CoreOp::BitwiseNand(1))
     }
 
     fn get(&mut self, src: Input) {

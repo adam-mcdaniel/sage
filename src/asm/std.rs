@@ -477,6 +477,12 @@ impl StandardOp {
                 }
             }
 
+            Self::Neg(dst) => {
+                if dst.neg_float(result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
             Self::Pow { src, dst } => {
                 if dst.pow_float(src, result).is_err() {
                     unsupported(self.clone())?

@@ -324,45 +324,127 @@ where
                 }
 
                 CoreOp::Where => *self.reg_mut_scalar() = self.pointer as i64,
-                CoreOp::Offset(n) => *self.reg_mut_scalar() += *n as i64,
+                CoreOp::Offset(n, size) => {
+                    for i in 0..*size {
+                        self.reg_mut_vector()[i] += *n as i64;
+                    }
+                }
                 CoreOp::Deref => self.deref(),
                 CoreOp::Refer => self.refer()?,
 
-                CoreOp::Index => *self.reg_mut_scalar() += *self.get_cell(),
-                CoreOp::BitwiseNand => {
-                    *self.reg_mut_scalar() = !(self.reg_scalar() & *self.get_cell());
-                }
-                CoreOp::BitwiseAnd => *self.reg_mut_scalar() &= *self.get_cell(),
-                CoreOp::BitwiseOr => *self.reg_mut_scalar() |= *self.get_cell(),
-                CoreOp::BitwiseXor => *self.reg_mut_scalar() ^= *self.get_cell(),
-                CoreOp::BitwiseNot => *self.reg_mut_scalar() = !self.reg_scalar(),
-                CoreOp::LeftShift => *self.reg_mut_scalar() <<= *self.get_cell(),
-                CoreOp::LogicalRightShift => {
-                    *self.reg_mut_scalar() = (self.reg_scalar() as u64 >> *self.get_cell() as u64) as i64
-                }
-                CoreOp::ArithmeticRightShift => *self.reg_mut_scalar() >>= *self.get_cell(),
-                CoreOp::Add => *self.reg_mut_scalar() += *self.get_cell(),
-                CoreOp::Sub => *self.reg_mut_scalar() -= *self.get_cell(),
-                CoreOp::Mul => *self.reg_mut_scalar() *= *self.get_cell(),
-                CoreOp::Div => {
-                    let d = *self.get_cell();
-                    if d != 0 {
-                        *self.reg_mut_scalar() /= d
+                CoreOp::Index(n) => {
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] += self.cells[self.pointer + i];
                     }
                 }
-                CoreOp::Rem => {
-                    let d = *self.get_cell();
-                    if d != 0 {
-                        *self.reg_mut_scalar() %= d
+                CoreOp::BitwiseNand(n) => {
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] &= !self.cells[self.pointer + i];
                     }
                 }
-                CoreOp::Neg => *self.reg_mut_scalar() = -self.reg_scalar(),
-                CoreOp::And => *self.reg_mut_scalar() = i64::from(self.reg_scalar() != 0 && *self.get_cell() != 0),
-                CoreOp::Or => *self.reg_mut_scalar() = i64::from(self.reg_scalar() != 0 || *self.get_cell() != 0),
-                CoreOp::Not => *self.reg_mut_scalar() = i64::from(self.reg_scalar() == 0),
+                CoreOp::BitwiseAnd(n) => {
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] &= self.cells[self.pointer + i];
+                    }
+                }
+                CoreOp::BitwiseOr(n) => {
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] |= self.cells[self.pointer + i];
+                    }
+                }
+                CoreOp::BitwiseXor(n) => {
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] ^= self.cells[self.pointer + i];
+                    }
+                }
+                CoreOp::BitwiseNot(n) => {
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = !self.reg_vector()[i];
+                    }
+                }
+                CoreOp::LeftShift(n) => {
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] <<= self.cells[self.pointer + i];
+                    }
+                }
 
-                CoreOp::Inc => *self.reg_mut_scalar() += 1,
-                CoreOp::Dec => *self.reg_mut_scalar() -= 1,
+                CoreOp::LogicalRightShift(n) => {
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = (self.reg_vector()[i] as u64 >> self.cells[self.pointer + i] as u64) as i64;
+                    }
+                }
+
+                CoreOp::ArithmeticRightShift(n) => {
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] >>= self.cells[self.pointer + i];
+                    }
+                }
+
+                CoreOp::Add(n) => {
+                    for i in 0..*n {
+                        let val = self.cells[self.pointer + i];
+                        self.reg_mut_vector()[i] += val;
+                    }
+                }
+                CoreOp::Sub(n) => {
+                    for i in 0..*n {
+                        let val = self.cells[self.pointer + i];
+                        self.reg_mut_vector()[i] -= val;
+                    }
+                }
+                CoreOp::Mul(n) => {
+                    for i in 0..*n {
+                        let val = self.cells[self.pointer + i];
+                        self.reg_mut_vector()[i] *= val;
+                    }
+                }
+                CoreOp::Div(n) => {
+                    for i in 0..*n {
+                        let val = self.cells[self.pointer + i];
+                        if val != 0 {
+                            self.reg_mut_vector()[i] /= val;
+                        }
+                    }
+                }
+                CoreOp::Rem(n) => {
+                    for i in 0..*n {
+                        let val = self.cells[self.pointer + i];
+                        if val != 0 {
+                            self.reg_mut_vector()[i] %= val;
+                        }
+                    }
+                }
+                CoreOp::Neg(n) => {
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] *= -1;
+                    }
+                }
+                CoreOp::And(n) => {
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = i64::from(self.reg_vector()[i] != 0 && self.cells[self.pointer + i] != 0);
+                    }
+                }
+                CoreOp::Or(n) => {
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = i64::from(self.reg_vector()[i] != 0 || self.cells[self.pointer + i] != 0);
+                    }
+                }
+                CoreOp::Not(n) => {
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = i64::from(self.reg_vector()[i] == 0);
+                    }
+                }
+
+                CoreOp::Inc(n) => {
+                    for i in 0..*n {
+                        self.cells[self.pointer + i] += 1;
+                    }
+                },
+                CoreOp::Dec(n) => {
+                    for i in 0..*n {
+                        self.cells[self.pointer + i] -= 1;
+                    }
+                },
 
                 CoreOp::Swap => {
                     let temp = self.reg_scalar();
