@@ -5,10 +5,7 @@ use sage::{
     targets::{self, CompiledTarget},
     vm::*,
 };
-use std::{
-    fs::{read_to_string, write},
-    time::Duration,
-};
+use std::fs::{read_to_string, write};
 
 const CALL_STACK_SIZE: usize = 8192;
 
