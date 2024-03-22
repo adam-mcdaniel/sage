@@ -1,0 +1,53 @@
+fun @putvec
+    // Pop the size into A
+    pop A
+
+    // Pop the pointer to the vector into B
+    pop B
+    // Print the vector
+    set C, '['
+    put-char C
+    set C, ' '
+    put-char C
+    while A
+        put-int [B]
+        put-char C
+        next B
+        dec A
+    end
+    set C, ']'
+    put-char C
+end
+
+fun @newline
+    set A, 10
+    put-char A
+end
+
+
+global $V1, 1024
+global $V2, 1024
+global $POWERS_OF_TWO, 1024
+global $ONES, 1024
+
+vset $V1, [1, 2, 3, 4, 5]
+vset $V2, [5, 5, 5, 5, 5]
+vset $ONES, [1, 1, 1, 1, 1]
+
+vlsh $V1, $ONES, 5
+lea-push $ONES
+push-const [5]
+call @putvec
+call @newline
+
+lea-push $V1
+push-const [5]
+call @putvec
+call @newline
+
+vmul $V1, $V1, 5
+
+lea-push $V1
+push-const [5]
+call @putvec
+call @newline

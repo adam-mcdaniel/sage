@@ -292,6 +292,9 @@ pub enum CoreOp {
 
     /// Set the value of a register, or any location in memory, to a given constant.
     Set(Location, i64),
+    /// Set the vector values of a destination.
+    VecSet(Location, Vec<i64>),
+
     /// Set the value of a register, or any location in memory, to the value of a label's ID.
     SetLabel(Location, String),
     /// Get the address of a location, and store it in a destination
@@ -299,6 +302,8 @@ pub enum CoreOp {
         addr: Location,
         dst: Location,
     },
+    /// Get the address of a location and push it to the stack.
+    PushAddress(Location),
 
     /// Get a value in memory and call it as a label ID.
     Call(Location),
@@ -520,6 +525,40 @@ pub enum CoreOp {
         dst: Location,
     },
 
+    /// Perform a SIMD "is >= zero" operation over a vector of integers.
+    /// Store the result in the destination vector.
+    VecGez {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Negate a vector of integers using SIMD.
+    VecNeg {
+        size: usize,
+        dst: Location,
+    },
+
+    /// Perform a SIMD pointer arithmetic operation over a vector of integers.
+    /// This will add the "offset" to every value in the vector, so that each
+    /// pointer in the vector is offset by the same amount.
+    VecOffset {
+        size: usize,
+        dst: Location,
+        offset: isize
+    },
+
+    /// Perform a SIMD pointer index operation over a vector of integers.
+    /// This will index every pointer in the vector by the integers in the
+    /// source vector.
+    VecIndex {
+        size: usize,
+        src: Location,
+        offset: Location,
+        dst: Location,
+    },
+
+
     /// Push a number of cells starting at a memory location on the stack.
     Push(Location, usize),
     /// Pop a number of cells from the stack and store it in a memory location.
@@ -738,6 +777,14 @@ impl CoreOp {
                 dst.vec_arithmetic_right_shift(&src, *size, result);
             }
 
+            CoreOp::VecSet(dst, vals) => {
+                let dst = env.resolve(dst)?;
+                result.set_vector(vals.clone());
+                dst.to(result);
+                result.store_vector(vals.len());
+                dst.from(result);
+            }
+
 
             CoreOp::VecAdd { size, src, dst } => {
                 let src = env.resolve(src)?;
@@ -794,6 +841,26 @@ impl CoreOp {
                 dst.vec_or(&src, *size, result);
             }
 
+            CoreOp::VecIndex { size, offset, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+                src.vec_copy_to(&dst, *size, result);
+                dst.vec_index(&offset, *size, result);
+            }
+
+            CoreOp::VecOffset { size, dst, offset } => {
+                let dst = env.resolve(dst)?;
+
+                dst.vec_offset(*offset, *size, result);
+            }
+
+            CoreOp::VecGez { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+                src.vec_copy_to(&dst, *size, result);
+                dst.vec_whole_int(*size, result);
+            }
+
             CoreOp::VecInc { size, dst } => {
                 let dst = env.resolve(dst)?;
 
@@ -804,6 +871,12 @@ impl CoreOp {
                 let dst = env.resolve(dst)?;
 
                 dst.vec_dec(*size, result);
+            }
+
+            CoreOp::VecNeg { size, dst } => {
+                let dst = env.resolve(dst)?;
+
+                dst.vec_neg(*size, result);
             }
 
             CoreOp::VecBitwiseAnd { size, src, dst } => {
@@ -928,7 +1001,11 @@ impl CoreOp {
                 // SP.deref().offset(vals.len() as isize).from(result);
                 // SP.save_to(result);
             }
-
+            CoreOp::PushAddress(addr) => {
+                let addr = env.resolve(addr)?;
+                SP.next(1, result);
+                addr.copy_address_to(&SP.deref(), result);
+            }
             CoreOp::GetAddress { addr, dst } => {
                 let addr = env.resolve(addr)?;
                 let dst = env.resolve(dst)?;
@@ -1374,6 +1451,9 @@ impl fmt::Display for CoreOp {
             Self::Comment(comment) => write!(f, "// {comment}"),
             Self::Global { name, size } => write!(f, "global ${name}, {size}"),
 
+            Self::VecSet(dst, vals) => {
+                write!(f, "vset {dst}, {vals:?}")
+            }
             Self::VecLeftShift { size, src, dst } => {
                 write!(f, "vlsh {src}, {dst}, {size}")
             }
@@ -1450,6 +1530,22 @@ impl fmt::Display for CoreOp {
                 write!(f, "vbnot {dst}, {size}")
             }
 
+            Self::VecGez { size, src, dst } => {
+                write!(f, "vgez {src}, {dst}, {size}")
+            }
+
+            Self::VecNeg { size, dst } => {
+                write!(f, "vneg {dst}, {size}")
+            }
+
+            Self::VecOffset { size, dst, offset } => {
+                write!(f, "voffset {dst}, {offset}, {size}")
+            }
+
+            Self::VecIndex { size, offset, src, dst } => {
+                write!(f, "vindex {src}, {offset}, {dst}, {size}")
+            }
+
             Self::LeftShift { src, dst } => {
                 write!(f, "lsh {src}, {dst}")
             }
@@ -1518,6 +1614,7 @@ impl fmt::Display for CoreOp {
             Self::Call(loc) => write!(f, "call {loc}"),
             Self::CallLabel(label) => write!(f, "call @{label}"),
 
+            Self::PushAddress(addr) => write!(f, "lea-push {addr}"),
             Self::GetAddress { addr, dst } => write!(f, "lea {addr}, {dst}"),
             Self::Return => write!(f, "ret"),
 

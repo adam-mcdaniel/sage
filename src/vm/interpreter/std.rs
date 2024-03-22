@@ -621,9 +621,13 @@ where
                         self.reg_mut_vector()[i] = as_int(as_float(self.reg_vector()[i]).atan());
                     }
                 }
-                StandardOp::Pow => {
-                    *self.reg_mut_scalar() =
-                        as_int(as_float(self.reg_scalar()).powf(as_float(*self.get_cell())))
+                StandardOp::Pow(n) => {
+                    // *self.reg_mut_scalar() =
+                    //     as_int(as_float(self.reg_scalar()).powf(as_float(*self.get_cell())))
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] =
+                            as_int(as_float(self.reg_vector()[i]).powf(as_float(self.cells[self.pointer + i])));
+                    }
                 }
 
                 StandardOp::Poke => {

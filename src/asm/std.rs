@@ -276,6 +276,8 @@ pub enum StandardOp {
 
     /// Set the value of a cell to a constant float.
     Set(Location, f64),
+    /// Set the vector values of a destination.
+    VecSet(Location, Vec<f64>),
     /// Take the integer value stored in a cell and store the equivalent float
     /// value in the same cell.
     ToFloat(Location),
@@ -382,6 +384,98 @@ pub enum StandardOp {
 
     /// Call a foreign function.
     Call(FFIBinding),
+
+
+    /// Perform a SIMD floating point addition operation.
+    VecAdd {
+        src: Location,
+        dst: Location,
+        size: usize
+    },
+
+    /// Perform a SIMD floating point subtraction operation.
+    VecSub {
+        src: Location,
+        dst: Location,
+        size: usize
+    },
+
+    /// Perform a SIMD floating point multiplication operation.
+    VecMul {
+        src: Location,
+        dst: Location,
+        size: usize
+    },
+
+    /// Perform a SIMD floating point division operation.
+    VecDiv {
+        src: Location,
+        dst: Location,
+        size: usize
+    },
+
+    /// Perform a SIMD floating point remainder operation.
+    VecRem {
+        src: Location,
+        dst: Location,
+        size: usize
+    },
+
+    /// Perform a SIMD floating point negation operation.
+    VecNeg {
+        dst: Location,
+        size: usize
+    },
+
+    /// Perform a SIMD floating point power operation.
+    VecPow {
+        src: Location,
+        dst: Location,
+        size: usize
+    },
+
+    /// Perform a SIMD floating point sine operation.
+    VecSin {
+        dst: Location,
+        size: usize
+    },
+    
+    /// Perform a SIMD floating point cosine operation.
+    VecCos {
+        dst: Location,
+        size: usize
+    },
+
+    /// Perform a SIMD floating point tangent operation.
+    VecTan {
+        dst: Location,
+        size: usize
+    },
+
+    /// Perform a SIMD floating point inverse sine operation.
+    VecASin {
+        dst: Location,
+        size: usize
+    },
+
+    /// Perform a SIMD floating point inverse cosine operation.
+    VecACos {
+        dst: Location,
+        size: usize
+    },
+
+    /// Perform a SIMD floating point inverse tangent operation.
+    VecATan {
+        dst: Location,
+        size: usize
+    },
+
+    /// Perform a SIMD floating point greater than or equal to zero operation.
+    VecGez {
+        src: Location,
+        dst: Location,
+        size: usize
+    },
 }
 
 fn unsupported(op: StandardOp) -> Result<(), Error> {
@@ -398,6 +492,101 @@ impl StandardOp {
     ) -> Result<(), Error> {
         match self {
             Self::CoreOp(op) => op.assemble(current_instruction, env, result)?,
+            Self::VecSet(dst, vals) => {
+                let dst = env.resolve(dst)?;
+                if result.set_float_vector(vals.clone()).is_err() {
+                    unsupported(self.clone())?
+                }
+                dst.to(result);
+                result.store_vector(vals.len());
+                dst.from(result);
+            }
+            Self::VecAdd { src, dst, size } => {
+                if dst.vec_float_add(src, *size, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::VecSub { src, dst, size } => {
+                if dst.vec_float_sub(src, *size, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::VecMul { src, dst, size } => {
+                if dst.vec_float_mul(src, *size, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::VecDiv { src, dst, size } => {
+                if dst.vec_float_div(src, *size, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::VecRem { src, dst, size } => {
+                if dst.vec_float_rem(src, *size, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::VecNeg { dst, size } => {
+                if dst.vec_float_neg(*size, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::VecPow { src, dst, size } => {
+                if dst.vec_float_pow(src, *size, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::VecSin { dst, size } => {
+                if dst.vec_float_sin(*size, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::VecCos { dst, size } => {
+                if dst.vec_float_cos(*size, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::VecTan { dst, size } => {
+                if dst.vec_float_tan(*size, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::VecASin { dst, size } => {
+                if dst.vec_float_asin(*size, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::VecACos { dst, size } => {
+                if dst.vec_float_acos(*size, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::VecATan { dst, size } => {
+                if dst.vec_float_atan(*size, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
+
+            Self::VecGez { src, dst, size } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+                src.vec_copy_to(&dst, *size, result);
+                if dst.vec_float_whole_int(*size, result).is_err() {
+                    unsupported(self.clone())?
+                }
+            }
 
             Self::Set(loc, val) => {
                 if loc.set_float(*val, result).is_err() {
@@ -691,6 +880,24 @@ impl fmt::Display for StandardOp {
             // Self::Peek(loc) => write!(f, "peek {loc}"),
             // Self::Poke(loc) => write!(f, "poke {loc}"),
             Self::Call(binding) => write!(f, "call {:?}", binding),
+
+            Self::VecSet(dst, vals) => {
+                write!(f, "vset-f {dst}, {vals:?}")
+            }
+            Self::VecAdd { src, dst, size } => write!(f, "vadd-f {src}, {dst}, {size}"),
+            Self::VecSub { src, dst, size } => write!(f, "vsub-f {src}, {dst}, {size}"),
+            Self::VecMul { src, dst, size } => write!(f, "vmul-f {src}, {dst}, {size}"),
+            Self::VecDiv { src, dst, size } => write!(f, "vdiv-f {src}, {dst}, {size}"),
+            Self::VecRem { src, dst, size } => write!(f, "vrem-f {src}, {dst}, {size}"),
+            Self::VecNeg { dst, size } => write!(f, "vneg-f {dst}, {size}"),
+            Self::VecPow { src, dst, size } => write!(f, "vpow {src}, {dst}, {size}"),
+            Self::VecSin { dst, size } => write!(f, "vsin {dst}, {size}"),
+            Self::VecCos { dst, size } => write!(f, "vcos {dst}, {size}"),
+            Self::VecTan { dst, size } => write!(f, "vtan {dst}, {size}"),
+            Self::VecASin { dst, size } => write!(f, "vasin {dst}, {size}"),
+            Self::VecACos { dst, size } => write!(f, "vacos {dst}, {size}"),
+            Self::VecATan { dst, size } => write!(f, "vatan {dst}, {size}"),
+            Self::VecGez { src, dst, size } => write!(f, "vgez-f {src}, {dst}, {size}"),
         }
     }
 }

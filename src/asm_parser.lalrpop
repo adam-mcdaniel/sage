@@ -26,6 +26,7 @@ CoreOp: CoreOp = {
         size: size as usize,
     },
 
+    "lea-push" <addr: Location> => CoreOp::PushAddress(addr),
     "lea" <addr: Location> "," <dst: Location> => CoreOp::GetAddress { addr, dst },
 
     "call" <Location> => CoreOp::Call(<>),
@@ -109,7 +110,96 @@ CoreOp: CoreOp = {
         let mut vals: Vec<i64> = vals.chars().map(|c| c as i64).collect();
         vals.push(0);
         CoreOp::Array { src, dst, vals }
-    }
+    },
+
+    "lsh" <src: Location> "," <dst: Location> => CoreOp::LeftShift { src, dst },
+    "lrsh" <src: Location> "," <dst: Location> => CoreOp::LogicalRightShift { src, dst },
+    "arsh" <src: Location> "," <dst: Location> => CoreOp::ArithmeticRightShift { src, dst },
+
+    "vlsh" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecLeftShift {
+        src, dst, size: size as usize
+    },
+
+    "vlrsh" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecLogicalRightShift {
+        src, dst, size: size as usize
+    },
+
+    "varsh" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecArithmeticRightShift {
+        src, dst, size: size as usize
+    },
+
+    "vset" <dst: Location> "," <vals: List<"[", IntLit, ",", "]">> => CoreOp::VecSet(dst, vals),
+    "vadd" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecAdd {
+        src, dst, size: size as usize
+    },
+    "vsub" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecSub {
+        src, dst, size: size as usize
+    },
+    "vmul" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecMul {
+        src, dst, size: size as usize
+    },
+    "vdiv" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecDiv {
+        src, dst, size: size as usize
+    },
+    "vrem" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecRem {
+        src, dst, size: size as usize
+    },
+    "vneg" <dst: Location> "," <size: IntLit> => CoreOp::VecNeg {
+        dst, size: size as usize
+    },
+    "vand" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecAnd {
+        src, dst, size: size as usize
+    },
+    "vor" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecOr {
+        src, dst, size: size as usize
+    },
+    "vnot" <dst: Location> "," <size: IntLit> => CoreOp::VecNot {
+        dst, size: size as usize
+    },
+
+    "vinc" <dst: Location> "," <size: IntLit> => CoreOp::VecInc {
+        dst, size: size as usize
+    },
+
+    "vdec" <dst: Location> "," <size: IntLit> => CoreOp::VecDec {
+        dst, size: size as usize
+    },
+
+    "vband" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecBitwiseAnd {
+        src, dst, size: size as usize
+    },
+
+    "vbor" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecBitwiseOr {
+        src, dst, size: size as usize
+    },
+
+    "vbxor" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecBitwiseXor {
+        src, dst, size: size as usize
+    },
+
+    "vbnand" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecBitwiseNand {
+        src, dst, size: size as usize
+    },
+
+    "vbnor" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecBitwiseNor {
+        src, dst, size: size as usize
+    },
+
+    "vbnot" <dst: Location> "," <size: IntLit> => CoreOp::VecBitwiseNot {
+        dst, size: size as usize
+    },
+
+    "vgez" <src: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecGez {
+        src, dst, size: size as usize
+    },
+
+    "vindex" <src: Location> "," <offset: Location> "," <dst: Location> "," <size: IntLit> => CoreOp::VecIndex {
+        src, offset, dst, size: size as usize
+    },
+
+    "voffset" <dst: Location> "," <offset: IntLit> "," <size: IntLit> => CoreOp::VecOffset {
+        offset: offset as isize, dst, size: size as usize
+    },
 }
 
 StandardOp: StandardOp = {
@@ -147,6 +237,64 @@ StandardOp: StandardOp = {
     "push-const-f" <vals: List<"[", FloatLit, ",", "]">> => StandardOp::PushConst(vals),
     // "peek" <Location> => StandardOp::Peek(<>),
     // "poke" <Location> => StandardOp::Poke(<>),
+
+    "vset-f" <dst: Location> "," <vals: List<"[", FloatLit, ",", "]">> => StandardOp::VecSet(dst, vals),
+
+    "vadd-f" <src: Location> "," <dst: Location> "," <size: IntLit> => StandardOp::VecAdd {
+        src, dst, size: size as usize
+    },
+
+    "vsub-f" <src: Location> "," <dst: Location> "," <size: IntLit> => StandardOp::VecSub {
+        src, dst, size: size as usize
+    },
+
+    "vmul-f" <src: Location> "," <dst: Location> "," <size: IntLit> => StandardOp::VecMul {
+        src, dst, size: size as usize
+    },
+
+    "vdiv-f" <src: Location> "," <dst: Location> "," <size: IntLit> => StandardOp::VecDiv {
+        src, dst, size: size as usize
+    },
+
+    "vrem-f" <src: Location> "," <dst: Location> "," <size: IntLit> => StandardOp::VecRem {
+        src, dst, size: size as usize
+    },
+
+    "vneg-f" <dst: Location> "," <size: IntLit> => StandardOp::VecNeg {
+        dst, size: size as usize
+    },
+
+    "vgez-f" <src: Location> "," <dst: Location> "," <size: IntLit> => StandardOp::VecGez {
+        src, dst, size: size as usize
+    },
+
+    "vpow" <src: Location> "," <dst: Location> "," <size: IntLit> => StandardOp::VecPow {
+        src, dst, size: size as usize
+    },
+
+    "vsin" <dst: Location> "," <size: IntLit> => StandardOp::VecSin {
+        dst, size: size as usize
+    },
+
+    "vcos" <dst: Location> "," <size: IntLit> => StandardOp::VecCos {
+        dst, size: size as usize
+    },
+
+    "vtan" <dst: Location> "," <size: IntLit> => StandardOp::VecTan {
+        dst, size: size as usize
+    },
+
+    "vasin" <dst: Location> "," <size: IntLit> => StandardOp::VecASin {
+        dst, size: size as usize
+    },
+
+    "vacos" <dst: Location> "," <size: IntLit> => StandardOp::VecACos {
+        dst, size: size as usize
+    },
+
+    "vatan" <dst: Location> "," <size: IntLit> => StandardOp::VecATan {
+        dst, size: size as usize
+    },
 }
 
 Location: Location = {

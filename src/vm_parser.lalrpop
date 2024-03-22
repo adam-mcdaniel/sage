@@ -56,7 +56,7 @@ StandardOp: StandardOp = {
     "to-float" <IntLit?> => StandardOp::ToFloat(<>.unwrap_or(1) as usize),
     "to-int" <IntLit?> => StandardOp::ToInt(<>.unwrap_or(1) as usize),
     
-    "pow" => StandardOp::Pow,
+    "pow" <IntLit?> => StandardOp::Pow(<>.unwrap_or(1) as usize),
     // "add-f" => StandardOp::Add,
     // "sub-f" => StandardOp::Sub,
     // "mul-f" => StandardOp::Mul,

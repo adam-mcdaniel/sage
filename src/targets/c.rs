@@ -475,7 +475,14 @@ impl Architecture for C {
                     format!("for (int i = 0; i < {n}; i++) vector_reg[i].f = fmod(vector_reg[i].f, ptr[i].f);", n = n)
                 }
             }
-            StandardOp::Pow => "scalar_reg.f = pow(scalar_reg.f, ptr->f);".to_string(),
+            // StandardOp::Pow => "scalar_reg.f = pow(scalar_reg.f, ptr->f);".to_string(),
+            StandardOp::Pow(n) => {
+                if *n == 1 {
+                    "scalar_reg.f = pow(scalar_reg.f, ptr->f);".to_string()
+                } else {
+                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].f = pow(vector_reg[i].f, ptr[i].f);")
+                }
+            }
             // StandardOp::IsNonNegative => "scalar_reg.i = scalar_reg.f >= 0;".to_string(),
             StandardOp::IsNonNegative(n) => {
                 if *n == 1 {

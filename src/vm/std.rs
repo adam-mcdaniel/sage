@@ -344,7 +344,7 @@ pub enum StandardOp {
     /// Store the inverse-tangent of the register (as a float) into the register.
     ATan(usize),
     /// Store the value of the register (as a float) to the power of the value pointed to on the tape (as a float) into the register.
-    Pow,
+    Pow(usize),
 
     /// Get a value from the input interface / device and store it in the register.
     /// This is intended to function something like system calls for using any external
@@ -389,7 +389,7 @@ impl fmt::Display for StandardOp {
             StandardOp::ASin(n) => write!(f, "asin {n}"),
             StandardOp::ACos(n) => write!(f, "acos {n}"),
             StandardOp::ATan(n) => write!(f, "atan {n}"),
-            StandardOp::Pow => write!(f, "pow"),
+            StandardOp::Pow(n) => write!(f, "pow {n}"),
             StandardOp::Peek => write!(f, "peek"),
             StandardOp::Poke => write!(f, "poke"),
             StandardOp::Call(binding) => write!(f, "call {}", binding),
