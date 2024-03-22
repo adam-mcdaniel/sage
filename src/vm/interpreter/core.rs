@@ -305,8 +305,6 @@ where
                         self.cells[self.pointer + i] = val;
                     }
                 }
-                // CoreOp::Load(n) => *self.get_cell() = self.reg_scalar(),
-                // CoreOp::Store(n) => self.register = *self.get_cell(),
                 CoreOp::Move(n) => {
                     if *n >= 0 {
                         self.pointer += *n as usize
@@ -322,9 +320,9 @@ where
                 }
 
                 CoreOp::Where => *self.reg_mut_scalar() = self.pointer as i64,
-                CoreOp::Offset(n, size) => {
-                    for i in 0..*size {
-                        self.reg_mut_vector()[i] += *n as i64;
+                CoreOp::Offset(offset, n) => {
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] += *offset as i64;
                     }
                 }
                 CoreOp::Deref => self.deref(),
@@ -337,7 +335,6 @@ where
                 }
                 CoreOp::BitwiseNand(n) => {
                     for i in 0..*n {
-                        // self.reg_mut_vector()[i] &= !self.cells[self.pointer + i];
                         self.reg_mut_vector()[i] =
                             !(self.reg_vector()[i] & self.cells[self.pointer + i]);
                     }
@@ -453,9 +450,6 @@ where
                 }
 
                 CoreOp::Swap(n) => {
-                    // let temp = self.reg_scalar();
-                    // *self.reg_mut_scalar() = *self.get_cell();
-                    // *self.get_cell() = temp;
                     for i in 0..*n {
                         let temp = self.reg_vector()[i];
                         self.reg_mut_vector()[i] = self.cells[self.pointer + i];
@@ -463,13 +457,6 @@ where
                     }
                 }
 
-                /*
-                CoreOp::CompareEqual => *self.reg_mut_scalar() = i64::from(self.reg_scalar() == *self.get_cell()),
-                CoreOp::CompareGreater => *self.reg_mut_scalar() = i64::from(self.reg_scalar() > *self.get_cell()),
-                CoreOp::CompareLess => *self.reg_mut_scalar() = i64::from(self.reg_scalar() < *self.get_cell()),
-                CoreOp::CompareGreaterEqual => *self.reg_mut_scalar() = i64::from(self.reg_scalar() >= *self.get_cell()),
-                CoreOp::CompareLessEqual => *self.reg_mut_scalar() = i64::from(self.reg_scalar() <= *self.get_cell()),
-                */
                 CoreOp::IsNonNegative(n) => {
                     // *self.reg_mut_scalar() = i64::from(self.reg_scalar() >= 0);
                     for i in 0..*n {

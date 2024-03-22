@@ -1424,10 +1424,7 @@ fn parse_match(pair: Pair<Rule>) -> Expr {
         patterns.push(pattern);
         stmts.push(stmt);
     }
-    Expr::Match(
-        Box::new(expr),
-        patterns.into_iter().zip(stmts).collect(),
-    )
+    Expr::Match(Box::new(expr), patterns.into_iter().zip(stmts).collect())
 }
 
 fn parse_pattern(pair: Pair<Rule>) -> Pattern {

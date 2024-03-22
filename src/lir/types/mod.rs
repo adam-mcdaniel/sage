@@ -6,8 +6,8 @@
 use super::{ConstExpr, Env, Error, Expr, Simplify};
 use core::fmt;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::sync::Mutex;
 use std::hash::{Hash, Hasher};
+use std::sync::Mutex;
 
 mod check;
 mod inference;
@@ -41,11 +41,13 @@ impl Mutability {
     /// Mutable pointers can decay to immutable pointers, but immutable pointers
     /// cannot decay to mutable pointers. `Any`  pointers are unchecked..
     pub fn can_decay_to(&self, other: &Self) -> bool {
-        matches!((self, other),
+        matches!(
+            (self, other),
             (Self::Mutable, _)
-            | (Self::Immutable, Self::Immutable)
-            | (Self::Any, _)
-            | (_, Self::Any))
+                | (Self::Immutable, Self::Immutable)
+                | (Self::Any, _)
+                | (_, Self::Any)
+        )
     }
 
     /// Can this data be accessed mutably?

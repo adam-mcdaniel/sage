@@ -385,96 +385,74 @@ pub enum StandardOp {
     /// Call a foreign function.
     Call(FFIBinding),
 
-
     /// Perform a SIMD floating point addition operation.
     VecAdd {
         src: Location,
         dst: Location,
-        size: usize
+        size: usize,
     },
 
     /// Perform a SIMD floating point subtraction operation.
     VecSub {
         src: Location,
         dst: Location,
-        size: usize
+        size: usize,
     },
 
     /// Perform a SIMD floating point multiplication operation.
     VecMul {
         src: Location,
         dst: Location,
-        size: usize
+        size: usize,
     },
 
     /// Perform a SIMD floating point division operation.
     VecDiv {
         src: Location,
         dst: Location,
-        size: usize
+        size: usize,
     },
 
     /// Perform a SIMD floating point remainder operation.
     VecRem {
         src: Location,
         dst: Location,
-        size: usize
+        size: usize,
     },
 
     /// Perform a SIMD floating point negation operation.
-    VecNeg {
-        dst: Location,
-        size: usize
-    },
+    VecNeg { dst: Location, size: usize },
 
     /// Perform a SIMD floating point power operation.
     VecPow {
         src: Location,
         dst: Location,
-        size: usize
+        size: usize,
     },
 
     /// Perform a SIMD floating point sine operation.
-    VecSin {
-        dst: Location,
-        size: usize
-    },
-    
+    VecSin { dst: Location, size: usize },
+
     /// Perform a SIMD floating point cosine operation.
-    VecCos {
-        dst: Location,
-        size: usize
-    },
+    VecCos { dst: Location, size: usize },
 
     /// Perform a SIMD floating point tangent operation.
-    VecTan {
-        dst: Location,
-        size: usize
-    },
+    VecTan { dst: Location, size: usize },
 
     /// Perform a SIMD floating point inverse sine operation.
-    VecASin {
-        dst: Location,
-        size: usize
-    },
+    VecASin { dst: Location, size: usize },
 
     /// Perform a SIMD floating point inverse cosine operation.
-    VecACos {
-        dst: Location,
-        size: usize
-    },
+    VecACos { dst: Location, size: usize },
 
     /// Perform a SIMD floating point inverse tangent operation.
-    VecATan {
-        dst: Location,
-        size: usize
-    },
+    VecATan { dst: Location, size: usize },
 
     /// Perform a SIMD floating point greater than or equal to zero operation.
     VecGez {
         src: Location,
         dst: Location,
-        size: usize
+        size: usize,
     },
 }
 

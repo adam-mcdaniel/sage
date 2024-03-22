@@ -545,7 +545,7 @@ pub enum CoreOp {
     VecOffset {
         size: usize,
         dst: Location,
-        offset: isize
+        offset: isize,
     },
 
     /// Perform a SIMD pointer index operation over a vector of integers.
@@ -557,7 +557,6 @@ pub enum CoreOp {
         offset: Location,
         dst: Location,
     },
-
 
     /// Push a number of cells starting at a memory location on the stack.
     Push(Location, usize),
@@ -785,7 +784,6 @@ impl CoreOp {
                 dst.from(result);
             }
 
-
             CoreOp::VecAdd { size, src, dst } => {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
@@ -841,7 +839,12 @@ impl CoreOp {
                 dst.vec_or(&src, *size, result);
             }
 
-            CoreOp::VecIndex { size, offset, src, dst } => {
+            CoreOp::VecIndex {
+                size,
+                offset,
+                src,
+                dst,
+            } => {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
                 src.vec_copy_to(&dst, *size, result);
@@ -1542,7 +1545,12 @@ impl fmt::Display for CoreOp {
                 write!(f, "voffset {dst}, {offset}, {size}")
             }
 
-            Self::VecIndex { size, offset, src, dst } => {
+            Self::VecIndex {
+                size,
+                offset,
+                src,
+                dst,
+            } => {
                 write!(f, "vindex {src}, {offset}, {dst}, {size}")
             }
 
