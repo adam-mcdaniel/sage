@@ -396,11 +396,11 @@
     }
 
     <span class="kw">fn </span>index(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.op(CoreOp::Index)
+        <span class="self">self</span>.op(CoreOp::Index(<span class="number">1</span>))
     }
 
     <span class="kw">fn </span>bitwise_nand(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.op(CoreOp::BitwiseNand)
+        <span class="self">self</span>.op(CoreOp::BitwiseNand(<span class="number">1</span>))
     }
 
     <span class="kw">fn </span>get(<span class="kw-2">&amp;mut </span><span class="self">self</span>, src: Input) {
@@ -412,7 +412,7 @@
     }
 
     <span class="kw">fn </span>is_non_negative(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.op(CoreOp::IsNonNegative)
+        <span class="self">self</span>.op(CoreOp::IsNonNegative(<span class="number">1</span>))
     }
 }
 </code></pre></div></section></main></body></html>

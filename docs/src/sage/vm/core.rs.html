@@ -397,6 +397,16 @@
 <a href="#396" id="396">396</a>
 <a href="#397" id="397">397</a>
 <a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The core instructions of the virtual machine are defined here.
 //!
 //! Core instructions are instructions that **must** be implemented for
@@ -645,72 +655,83 @@
     <span class="doccomment">/// Interpret the register's value as a pointer to a cell.
     /// Index that pointer by the value on the tape. Store the address
     /// of the index into the register.
-    </span>Index,
+    /// The argument is the size of the vector to index.
+    </span>Index(usize),
 
     <span class="doccomment">/// Interpret the register's value as a pointer to a cell.
     /// Offset the pointer by a constant value.
-    </span>Offset(isize),
+    /// The first argument is the offset to add to the pointer.
+    /// The second argument is the size of the vector to add to the pointer.
+    </span>Offset(isize, usize),
 
     <span class="doccomment">/// Perform bitwise nand on the cell and the value pointed to on the tape,
     /// and store the result in the register.
-    </span>BitwiseNand,
+    </span>BitwiseNand(usize),
     <span class="doccomment">/// Perform bitwise and on the cell and the value pointed to on the tape,
     /// and store the result in the register.
-    </span>BitwiseAnd,
+    </span>BitwiseAnd(usize),
     <span class="doccomment">/// Perform bitwise or on the cell and the value pointed to on the tape,
     /// and store the result in the register.
-    </span>BitwiseOr,
+    </span>BitwiseOr(usize),
     <span class="doccomment">/// Perform a bitwise xor on the cell and the value pointed to on the tape,
     /// and store the result in the register.
-    </span>BitwiseXor,
+    </span>BitwiseXor(usize),
     <span class="doccomment">/// Bitwise not the register. Store the result in the register.
-    </span>BitwiseNot,
+    </span>BitwiseNot(usize),
 
     <span class="doccomment">/// Left shift the cell by the value pointed to on the tape.
     /// Store the result in the register.
-    </span>LeftShift,
+    </span>LeftShift(usize),
     <span class="doccomment">/// Logical right shift the cell by the value pointed to on the tape.
     /// Store the result in the register.
-    </span>LogicalRightShift,
+    </span>LogicalRightShift(usize),
     <span class="doccomment">/// Interpret the register's value as a signed integer.
     /// Arithmetic right shift the cell by the value pointed to on the tape.
     /// Store the result in the register.
-    </span>ArithmeticRightShift,
+    </span>ArithmeticRightShift(usize),
 
     <span class="doccomment">/// Boolean-and the register and the value pointed to on the tape.
     /// Store the result in the register.
-    </span>And,
+    </span>And(usize),
     <span class="doccomment">/// Boolean-or the register and the value pointed to on the tape.
     /// Store the result in the register.
-    </span>Or,
+    </span>Or(usize),
     <span class="doccomment">/// Boolean-not the register (0 if the register is non-zero, 1 if the register is zero)
     /// Store the result in the register.
-    </span>Not,
+    </span>Not(usize),
 
     <span class="doccomment">/// Add the value pointed to on the tape to the register.
-    </span>Add,
+    /// The argument is the size of the vector to add to the register.
+    </span>Add(usize),
     <span class="doccomment">/// Subtract the value pointed to on the tape from the register.
-    </span>Sub,
+    /// The argument is the size of the vector to subtract from the register.
+    </span>Sub(usize),
     <span class="doccomment">/// Multiply the register by the value pointed to on the tape.
-    </span>Mul,
+    /// The argument is the size of the vector to multiply the register by.
+    </span>Mul(usize),
     <span class="doccomment">/// Divide the register by the value pointed to on the tape.
-    </span>Div,
+    /// The argument is the size of the vector to divide the register by.
+    </span>Div(usize),
     <span class="doccomment">/// Store the remainder of the register and the value pointed to in the tape into the register.
-    </span>Rem,
+    /// The argument is the size of the vector to take the remainder of the register by.
+    </span>Rem(usize),
     <span class="doccomment">/// Negate the register.
-    </span>Neg,
+    /// The argument is the size of the vector to negate the register by.
+    </span>Neg(usize),
 
     <span class="doccomment">/// Increment the register.
-    </span>Inc,
+    /// The argument is the size of the vector to increment.
+    </span>Inc(usize),
     <span class="doccomment">/// Decrement the register.
-    </span>Dec,
+    </span>Dec(usize),
 
     <span class="doccomment">/// Swap the value of the register with the value pointed to on the tape.
-    </span>Swap,
+    /// The argument is the size of the vector to swap the register with.
+    </span>Swap(usize),
 
     <span class="doccomment">/// Make the register equal to 1 if the register is non-negative, otherwise make it equal to 0.
-    </span>IsNonNegative,
-
+    /// The argument is the size of the vector to check if the register is non-negative.
+    </span>IsNonNegative(usize),
 
     <span class="comment">/*
     /// Compare the register to a value on the tape.
@@ -734,7 +755,6 @@
     /// Otherwise, make the register equal to 0.
     CompareGreaterEqual,
     */
-
     </span><span class="doccomment">/// Get a value from an input source and store it in the register.
     </span>Get(Input),
     <span class="doccomment">/// Write the value of the register to an output source.
@@ -756,32 +776,32 @@
             CoreOp::Store(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"store {n}"</span>),
             CoreOp::Load(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"load {n}"</span>),
             CoreOp::Move(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"mov {n}"</span>),
-            CoreOp::Offset(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"offset {n}"</span>),
+            CoreOp::Offset(offset, n) =&gt; <span class="macro">write!</span>(f, <span class="string">"offset {offset}, {n}"</span>),
             CoreOp::Where =&gt; <span class="macro">write!</span>(f, <span class="string">"where"</span>),
             CoreOp::Deref =&gt; <span class="macro">write!</span>(f, <span class="string">"deref"</span>),
             CoreOp::Refer =&gt; <span class="macro">write!</span>(f, <span class="string">"ref"</span>),
-            CoreOp::Index =&gt; <span class="macro">write!</span>(f, <span class="string">"index"</span>),
-            CoreOp::BitwiseNand =&gt; <span class="macro">write!</span>(f, <span class="string">"bitwise-nand"</span>),
-            CoreOp::BitwiseAnd =&gt; <span class="macro">write!</span>(f, <span class="string">"bitwise-and"</span>),
-            CoreOp::BitwiseOr =&gt; <span class="macro">write!</span>(f, <span class="string">"bitwise-or"</span>),
-            CoreOp::BitwiseXor =&gt; <span class="macro">write!</span>(f, <span class="string">"bitwise-xor"</span>),
-            CoreOp::BitwiseNot =&gt; <span class="macro">write!</span>(f, <span class="string">"bitwise-not"</span>),
-            CoreOp::LeftShift =&gt; <span class="macro">write!</span>(f, <span class="string">"lsh"</span>),
-            CoreOp::LogicalRightShift =&gt; <span class="macro">write!</span>(f, <span class="string">"lrsh"</span>),
-            CoreOp::ArithmeticRightShift =&gt; <span class="macro">write!</span>(f, <span class="string">"arsh"</span>),
-            CoreOp::And =&gt; <span class="macro">write!</span>(f, <span class="string">"and"</span>),
-            CoreOp::Or =&gt; <span class="macro">write!</span>(f, <span class="string">"or"</span>),
-            CoreOp::Not =&gt; <span class="macro">write!</span>(f, <span class="string">"not"</span>),
-            CoreOp::Neg =&gt; <span class="macro">write!</span>(f, <span class="string">"neg"</span>),
-            CoreOp::Inc =&gt; <span class="macro">write!</span>(f, <span class="string">"inc"</span>),
-            CoreOp::Dec =&gt; <span class="macro">write!</span>(f, <span class="string">"dec"</span>),
-            CoreOp::Add =&gt; <span class="macro">write!</span>(f, <span class="string">"add"</span>),
-            CoreOp::Sub =&gt; <span class="macro">write!</span>(f, <span class="string">"sub"</span>),
-            CoreOp::Mul =&gt; <span class="macro">write!</span>(f, <span class="string">"mul"</span>),
-            CoreOp::Div =&gt; <span class="macro">write!</span>(f, <span class="string">"div"</span>),
-            CoreOp::Rem =&gt; <span class="macro">write!</span>(f, <span class="string">"rem"</span>),
-            CoreOp::Swap =&gt; <span class="macro">write!</span>(f, <span class="string">"swap"</span>),
-            CoreOp::IsNonNegative =&gt; <span class="macro">write!</span>(f, <span class="string">"gez"</span>),
+            CoreOp::Index(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"index {n}"</span>),
+            CoreOp::BitwiseNand(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"bitwise-nand {n}"</span>),
+            CoreOp::BitwiseAnd(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"bitwise-and {n}"</span>),
+            CoreOp::BitwiseOr(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"bitwise-or {n}"</span>),
+            CoreOp::BitwiseXor(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"bitwise-xor {n}"</span>),
+            CoreOp::BitwiseNot(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"bitwise-not {n}"</span>),
+            CoreOp::LeftShift(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"lsh {n}"</span>),
+            CoreOp::LogicalRightShift(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"lrsh {n}"</span>),
+            CoreOp::ArithmeticRightShift(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"arsh {n}"</span>),
+            CoreOp::And(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"and {n}"</span>),
+            CoreOp::Or(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"or {n}"</span>),
+            CoreOp::Not(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"not {n}"</span>),
+            CoreOp::Neg(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"neg {n}"</span>),
+            CoreOp::Add(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"add {n}"</span>),
+            CoreOp::Sub(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"sub {n}"</span>),
+            CoreOp::Mul(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"mul {n}"</span>),
+            CoreOp::Div(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"div {n}"</span>),
+            CoreOp::Rem(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"rem {n}"</span>),
+            CoreOp::Inc(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"inc {n}"</span>),
+            CoreOp::Dec(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"dec {n}"</span>),
+            CoreOp::Swap(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"swap {n}"</span>),
+            CoreOp::IsNonNegative(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"gez {n}"</span>),
 
             <span class="comment">/*
             CoreOp::CompareEqual =&gt; write!(f, "ceq"),

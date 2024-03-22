@@ -396,6 +396,13 @@
 <a href="#395" id="395">395</a>
 <a href="#396" id="396">396</a>
 <a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The standard instructions of the virtual machine are defined here.
 //!
 //! ## Purpose of the Standard Instructions
@@ -469,17 +476,20 @@
                         <span class="self">self</span>.op(CoreOp::Set(m));
                         <span class="self">self</span>.op(CoreOp::Move(n));
                     }
-                    <span class="comment">// (CoreOp::Refer, CoreOp::Deref) =&gt; {
-                    //     self.0.pop();
-                    // }
-                    </span>(CoreOp::Store(m), CoreOp::Store(n)) <span class="kw">if </span>n == m =&gt; {}
+                    (CoreOp::Move(n), CoreOp::Offset(off, m)) =&gt; {
+                        <span class="self">self</span>.<span class="number">0</span>.pop();
+                        <span class="self">self</span>.op(CoreOp::Offset(off, m));
+                        <span class="self">self</span>.op(CoreOp::Move(n));
+                    }
+                    (CoreOp::Store(m), CoreOp::Store(n)) <span class="kw">if </span>n == m =&gt; {}
                     (CoreOp::Load(m), CoreOp::Load(n)) <span class="kw">if </span>n == m =&gt; {}
                     (CoreOp::Store(m), CoreOp::Load(n)) <span class="kw">if </span>n == m =&gt; {}
                     (CoreOp::Load(m), CoreOp::Store(n)) <span class="kw">if </span>n == m =&gt; {}
-                    (CoreOp::Set(n), CoreOp::IsNonNegative) <span class="kw">if </span>n.len() == <span class="number">1 </span>=&gt; {
+                    (CoreOp::Set(n), CoreOp::IsNonNegative(<span class="number">1</span>)) <span class="kw">if </span>n.len() == <span class="number">1 </span>=&gt; {
                         <span class="self">self</span>.<span class="number">0</span>.pop();
                         <span class="self">self</span>.op(CoreOp::Set(<span class="macro">vec!</span>[(n[<span class="number">0</span>] &gt;= <span class="number">0</span>) <span class="kw">as </span>i64]))
                     }
+
                     (<span class="kw">_</span>, op) =&gt; {
                         <span class="self">self</span>.<span class="number">0</span>.push(StandardOp::CoreOp(op));
                     }
@@ -703,40 +713,43 @@
     </span>Free,
 
     <span class="doccomment">/// Convert the register from a float to an integer.
-    </span>ToInt,
+    </span>ToInt(usize),
     <span class="doccomment">/// Convert the register from an integer to a float.
-    </span>ToFloat,
+    </span>ToFloat(usize),
 
     <span class="doccomment">/// Add the value pointed to on the tape to the register (as floats).
-    </span>Add,
+    </span>Add(usize),
     <span class="doccomment">/// Subtract the value pointed to on the tape from the register (as floats).
-    </span>Sub,
+    </span>Sub(usize),
     <span class="doccomment">/// Multiply the register by the value pointed to on the tape (as floats).
-    </span>Mul,
+    </span>Mul(usize),
     <span class="doccomment">/// Divide the register by the value pointed to on the tape (as floats).
-    </span>Div,
+    </span>Div(usize),
     <span class="doccomment">/// Store the remainder of the register and the value pointed to in the
     /// tape (as floats) into the register.
-    </span>Rem,
+    </span>Rem(usize),
+    <span class="doccomment">/// Negate the value of the register (as a float).
+    </span>Neg(usize),
 
     <span class="doccomment">/// Make the register equal to the integer 1 if the register (as a float)
     /// is not negative, otherwise make it equal to 0.
-    </span>IsNonNegative,
+    </span>IsNonNegative(usize),
 
     <span class="doccomment">/// Store the sine of the register (as a float) into the register.
-    </span>Sin,
+    /// The argument is the size of the register vector.
+    </span>Sin(usize),
     <span class="doccomment">/// Store the cosine of the register (as a float) into the register.
-    </span>Cos,
+    </span>Cos(usize),
     <span class="doccomment">/// Store the tangent of the register (as a float) into the register.
-    </span>Tan,
+    </span>Tan(usize),
     <span class="doccomment">/// Store the inverse-sine of the register (as a float) into the register.
-    </span>ASin,
+    </span>ASin(usize),
     <span class="doccomment">/// Store the inverse-cosine of the register (as a float) into the register.
-    </span>ACos,
+    </span>ACos(usize),
     <span class="doccomment">/// Store the inverse-tangent of the register (as a float) into the register.
-    </span>ATan,
+    </span>ATan(usize),
     <span class="doccomment">/// Store the value of the register (as a float) to the power of the value pointed to on the tape (as a float) into the register.
-    </span>Pow,
+    </span>Pow(usize),
 
     <span class="doccomment">/// Get a value from the input interface / device and store it in the register.
     /// This is intended to function something like system calls for using any external
@@ -766,21 +779,22 @@
             StandardOp::Set(val) =&gt; <span class="macro">write!</span>(f, <span class="string">"set-f {:?}"</span>, val),
             StandardOp::Alloc =&gt; <span class="macro">write!</span>(f, <span class="string">"alloc"</span>),
             StandardOp::Free =&gt; <span class="macro">write!</span>(f, <span class="string">"free"</span>),
-            StandardOp::ToInt =&gt; <span class="macro">write!</span>(f, <span class="string">"to-int"</span>),
-            StandardOp::ToFloat =&gt; <span class="macro">write!</span>(f, <span class="string">"to-float"</span>),
-            StandardOp::Add =&gt; <span class="macro">write!</span>(f, <span class="string">"add-f"</span>),
-            StandardOp::Sub =&gt; <span class="macro">write!</span>(f, <span class="string">"sub-f"</span>),
-            StandardOp::Mul =&gt; <span class="macro">write!</span>(f, <span class="string">"mul-f"</span>),
-            StandardOp::Div =&gt; <span class="macro">write!</span>(f, <span class="string">"div-f"</span>),
-            StandardOp::Rem =&gt; <span class="macro">write!</span>(f, <span class="string">"rem-f"</span>),
-            StandardOp::IsNonNegative =&gt; <span class="macro">write!</span>(f, <span class="string">"gez-f"</span>),
-            StandardOp::Sin =&gt; <span class="macro">write!</span>(f, <span class="string">"sin"</span>),
-            StandardOp::Cos =&gt; <span class="macro">write!</span>(f, <span class="string">"cos"</span>),
-            StandardOp::Tan =&gt; <span class="macro">write!</span>(f, <span class="string">"tan"</span>),
-            StandardOp::ASin =&gt; <span class="macro">write!</span>(f, <span class="string">"asin"</span>),
-            StandardOp::ACos =&gt; <span class="macro">write!</span>(f, <span class="string">"acos"</span>),
-            StandardOp::ATan =&gt; <span class="macro">write!</span>(f, <span class="string">"atan"</span>),
-            StandardOp::Pow =&gt; <span class="macro">write!</span>(f, <span class="string">"pow"</span>),
+            StandardOp::ToInt(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"to-int {n}"</span>),
+            StandardOp::ToFloat(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"to-float {n}"</span>),
+            StandardOp::Add(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"add-f {n}"</span>),
+            StandardOp::Sub(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"sub-f {n}"</span>),
+            StandardOp::Mul(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"mul-f {n}"</span>),
+            StandardOp::Div(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"div-f {n}"</span>),
+            StandardOp::Rem(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"rem-f {n}"</span>),
+            StandardOp::Neg(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"neg-f {n}"</span>),
+            StandardOp::IsNonNegative(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"gez-f {n}"</span>),
+            StandardOp::Sin(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"sin {n}"</span>),
+            StandardOp::Cos(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"cos {n}"</span>),
+            StandardOp::Tan(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"tan {n}"</span>),
+            StandardOp::ASin(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"asin {n}"</span>),
+            StandardOp::ACos(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"acos {n}"</span>),
+            StandardOp::ATan(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"atan {n}"</span>),
+            StandardOp::Pow(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"pow {n}"</span>),
             StandardOp::Peek =&gt; <span class="macro">write!</span>(f, <span class="string">"peek"</span>),
             StandardOp::Poke =&gt; <span class="macro">write!</span>(f, <span class="string">"poke"</span>),
             StandardOp::Call(binding) =&gt; <span class="macro">write!</span>(f, <span class="string">"call {}"</span>, binding),

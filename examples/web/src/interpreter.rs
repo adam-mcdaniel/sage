@@ -499,16 +499,20 @@ impl<T> WasmInterpreter<T> where T: Device {
                     *self.reg_mut_vector() = n.iter().map(|n| as_int(*n as f32)).collect()
                 }
 
-                StandardOp::ToInt => {
-                    // self.register = f32::from_bits(self.register as u64) as i64
-                    *self.reg_mut_scalar() = as_float(self.reg_scalar()) as i64;
+                StandardOp::ToInt(n) => {
+                    // *self.reg_mut_scalar() = as_float(self.reg_scalar()) as i64;
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = as_float(self.reg_vector()[i]) as i64;
+                    }
                 }
-                StandardOp::ToFloat => {
-                    // self.register = (self.register as f32).to_bits() as i64
-                    *self.reg_mut_scalar() = as_int(self.reg_scalar() as f32);
+                StandardOp::ToFloat(n) => {
+                    // *self.reg_mut_scalar() = as_int(self.reg_scalar() as f64);
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = as_int(self.reg_vector()[i] as f32);
+                    }
                 }
-                // let cell = f32::from_bits(*self.get_cell() as u64);
-                // self.register = (f32::from_bits(self.register as u64) + cell).to_bits() as i64;
+                // let cell = f64::from_bits(*self.get_cell() as u64);
+                // self.register = (f64::from_bits(self.register as u64) + cell).to_bits() as i64;
                 StandardOp::Add(n) => {
                     // let a = as_float(self.reg_scalar());
                     // let b = as_float(*self.get_cell());
@@ -563,30 +567,55 @@ impl<T> WasmInterpreter<T> where T: Device {
                     }
                 }
 
-                StandardOp::IsNonNegative => {
-                    *self.reg_mut_scalar() = i64::from(self.reg_scalar() >= 0)
+                StandardOp::IsNonNegative(n) => {
+                    // *self.reg_mut_scalar() = i64::from(self.reg_scalar() >= 0)
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = i64::from(as_float(self.reg_vector()[i]) >= 0.0);
+                    }
                 }
-                StandardOp::Sin => {
-                    *self.reg_mut_scalar() = as_int(as_float(self.reg_scalar()).sin())
+                StandardOp::Sin(n) => {
+                    // *self.reg_mut_scalar() = as_int(as_float(self.reg_scalar()).sin())
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = as_int(as_float(self.reg_vector()[i]).sin());
+                    }
                 }
-                StandardOp::Cos => {
-                    *self.reg_mut_scalar() = as_int(as_float(self.reg_scalar()).cos())
+                StandardOp::Cos(n) => {
+                    // *self.reg_mut_scalar() = as_int(as_float(self.reg_scalar()).cos())
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = as_int(as_float(self.reg_vector()[i]).cos());
+                    }
                 }
-                StandardOp::Tan => {
-                    *self.reg_mut_scalar() = as_int(as_float(self.reg_scalar()).tan())
+                StandardOp::Tan(n) => {
+                    // *self.reg_mut_scalar() = as_int(as_float(self.reg_scalar()).tan())
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = as_int(as_float(self.reg_vector()[i]).tan());
+                    }
                 }
-                StandardOp::ASin => {
-                    *self.reg_mut_scalar() = as_int(as_float(self.reg_scalar()).asin())
+                StandardOp::ASin(n) => {
+                    // *self.reg_mut_scalar() = as_int(as_float(self.reg_scalar()).asin())
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = as_int(as_float(self.reg_vector()[i]).asin());
+                    }
                 }
-                StandardOp::ACos => {
-                    *self.reg_mut_scalar() = as_int(as_float(self.reg_scalar()).acos())
+                StandardOp::ACos(n) => {
+                    // *self.reg_mut_scalar() = as_int(as_float(self.reg_scalar()).acos())
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = as_int(as_float(self.reg_vector()[i]).acos());
+                    }
                 }
-                StandardOp::ATan => {
-                    *self.reg_mut_scalar() = as_int(as_float(self.reg_scalar()).atan())
+                StandardOp::ATan(n) => {
+                    // *self.reg_mut_scalar() = as_int(as_float(self.reg_scalar()).atan())
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = as_int(as_float(self.reg_vector()[i]).atan());
+                    }
                 }
-                StandardOp::Pow => {
-                    *self.reg_mut_scalar() =
-                        as_int(as_float(self.reg_scalar()).powf(as_float(*self.get_cell())))
+                StandardOp::Pow(n) => {
+                    // *self.reg_mut_scalar() =
+                    //     as_int(as_float(self.reg_scalar()).powf(as_float(*self.get_cell())))
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] =
+                            as_int(as_float(self.reg_vector()[i]).powf(as_float(self.cells[self.pointer + i])));
+                    }
                 }
 
                 StandardOp::Poke => {

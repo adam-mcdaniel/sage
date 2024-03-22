@@ -1376,7 +1376,6 @@
 <a href="#1375" id="1375">1375</a>
 <a href="#1376" id="1376">1376</a>
 <a href="#1377" id="1377">1377</a>
-<a href="#1378" id="1378">1378</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compile
 //!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
@@ -1459,10 +1458,10 @@
 
         <span class="comment">// Compile the expression.
         </span><span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Annotated(expr, metdata) =&gt; {
+            <span class="self">Self</span>::Annotated(expr, metadata) =&gt; {
                 <span class="comment">// Compile the expression.
                 </span>expr.compile_expr(env, output)
-                    .map_err(|e| e.annotate(metdata))<span class="question-mark">?</span>;
+                    .map_err(|e| e.annotate(metadata))<span class="question-mark">?</span>;
             }
 
             <span class="self">Self</span>::Match(expr, branches) =&gt; {
@@ -2129,7 +2128,6 @@
                                 dst: SP.deref(),
                             },
                         )
-
                     } <span class="kw">else if let </span><span class="prelude-val">Some</span>((found_mutability, _ty, location)) =
                         env.get_static_var(<span class="kw-2">&amp;</span>name)
                     {
@@ -2257,7 +2255,7 @@
                             <span class="kw">if </span>elem_size &gt; <span class="number">1 </span>{
                                 <span class="comment">// Store the size of the element in `C`.
                                 </span>output.op(CoreOp::Set(C, elem_size <span class="kw">as </span>i64));
-    
+
                                 <span class="comment">// Calculate the offset of the element from the address of the array.
                                 // (the index times the size of the element).
                                 </span>output.op(CoreOp::Mul { dst: B, src: C });
@@ -2297,7 +2295,7 @@
                             <span class="kw">if </span>elem_size &gt; <span class="number">1 </span>{
                                 <span class="comment">// Store the size of the element in `C`.
                                 </span>output.op(CoreOp::Set(C, elem_size <span class="kw">as </span>i64));
-    
+
                                 <span class="comment">// Calculate the offset of the element from the address of the array.
                                 // (the index times the size of the element).
                                 </span>output.op(CoreOp::Mul { dst: B, src: C });

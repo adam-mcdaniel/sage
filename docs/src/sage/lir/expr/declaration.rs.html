@@ -846,6 +846,8 @@
 <a href="#845" id="845">845</a>
 <a href="#846" id="846">846</a>
 <a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{PolyProcedure, Procedure};
 <span class="kw">use crate</span>::{
     asm::{AssemblyProgram, CoreOp, Location, SP},
@@ -933,7 +935,9 @@
             <span class="self">Self</span>::PolyProc(..) =&gt; <span class="bool-val">true</span>,
             <span class="self">Self</span>::ExternProc(..) =&gt; <span class="bool-val">true</span>,
             <span class="self">Self</span>::Impl(..) =&gt; <span class="bool-val">true</span>,
-            <span class="self">Self</span>::Many(decls) =&gt; decls.par_iter().all(|decl| decl.is_compile_time_declaration()),
+            <span class="self">Self</span>::Many(decls) =&gt; decls
+                .par_iter()
+                .all(|decl| decl.is_compile_time_declaration()),
             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
