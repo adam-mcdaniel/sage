@@ -254,9 +254,7 @@ where
         if let Some(op) = self.fetch(code) {
             match op {
                 CoreOp::Comment(_) => {}
-                CoreOp::Set(n) => {
-                    *self.reg_mut_vector() = n.clone()
-                }
+                CoreOp::Set(n) => *self.reg_mut_vector() = n.clone(),
                 CoreOp::Function => {
                     if !self.functions.contains(&self.i) {
                         self.functions.push(self.i);
@@ -340,7 +338,8 @@ where
                 CoreOp::BitwiseNand(n) => {
                     for i in 0..*n {
                         // self.reg_mut_vector()[i] &= !self.cells[self.pointer + i];
-                        self.reg_mut_vector()[i] = !(self.reg_vector()[i] & self.cells[self.pointer + i]);
+                        self.reg_mut_vector()[i] =
+                            !(self.reg_vector()[i] & self.cells[self.pointer + i]);
                     }
                 }
                 CoreOp::BitwiseAnd(n) => {
@@ -371,7 +370,9 @@ where
 
                 CoreOp::LogicalRightShift(n) => {
                     for i in 0..*n {
-                        self.reg_mut_vector()[i] = (self.reg_vector()[i] as u64 >> self.cells[self.pointer + i] as u64) as i64;
+                        self.reg_mut_vector()[i] = (self.reg_vector()[i] as u64
+                            >> self.cells[self.pointer + i] as u64)
+                            as i64;
                     }
                 }
 
@@ -422,12 +423,16 @@ where
                 }
                 CoreOp::And(n) => {
                     for i in 0..*n {
-                        self.reg_mut_vector()[i] = i64::from(self.reg_vector()[i] != 0 && self.cells[self.pointer + i] != 0);
+                        self.reg_mut_vector()[i] = i64::from(
+                            self.reg_vector()[i] != 0 && self.cells[self.pointer + i] != 0,
+                        );
                     }
                 }
                 CoreOp::Or(n) => {
                     for i in 0..*n {
-                        self.reg_mut_vector()[i] = i64::from(self.reg_vector()[i] != 0 || self.cells[self.pointer + i] != 0);
+                        self.reg_mut_vector()[i] = i64::from(
+                            self.reg_vector()[i] != 0 || self.cells[self.pointer + i] != 0,
+                        );
                     }
                 }
                 CoreOp::Not(n) => {
@@ -440,17 +445,22 @@ where
                     for i in 0..*n {
                         self.reg_mut_vector()[i] += 1;
                     }
-                },
+                }
                 CoreOp::Dec(n) => {
                     for i in 0..*n {
                         self.reg_mut_vector()[i] -= 1;
                     }
-                },
+                }
 
-                CoreOp::Swap => {
-                    let temp = self.reg_scalar();
-                    *self.reg_mut_scalar() = *self.get_cell();
-                    *self.get_cell() = temp;
+                CoreOp::Swap(n) => {
+                    // let temp = self.reg_scalar();
+                    // *self.reg_mut_scalar() = *self.get_cell();
+                    // *self.get_cell() = temp;
+                    for i in 0..*n {
+                        let temp = self.reg_vector()[i];
+                        self.reg_mut_vector()[i] = self.cells[self.pointer + i];
+                        self.cells[self.pointer + i] = temp;
+                    }
                 }
 
                 /*
@@ -460,8 +470,12 @@ where
                 CoreOp::CompareGreaterEqual => *self.reg_mut_scalar() = i64::from(self.reg_scalar() >= *self.get_cell()),
                 CoreOp::CompareLessEqual => *self.reg_mut_scalar() = i64::from(self.reg_scalar() <= *self.get_cell()),
                 */
-
-                CoreOp::IsNonNegative => *self.reg_mut_scalar() = i64::from(self.reg_scalar() >= 0),
+                CoreOp::IsNonNegative(n) => {
+                    // *self.reg_mut_scalar() = i64::from(self.reg_scalar() >= 0);
+                    for i in 0..*n {
+                        self.reg_mut_vector()[i] = i64::from(self.reg_vector()[i] >= 0);
+                    }
+                }
                 CoreOp::Get(i) => *self.reg_mut_scalar() = self.device.get(i.clone())?,
                 CoreOp::Put(o) => self.device.put(self.reg_scalar(), o.clone())?,
             }

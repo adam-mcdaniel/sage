@@ -90,10 +90,12 @@ impl Architecture for C {
                 if *n == 1 {
                     "scalar_reg.p += ptr->i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].p += ptr[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].p += ptr[i].i;",
+                        n = n
+                    )
                 }
             }
-
 
             // CoreOp::Add => "scalar_reg.i += ptr->i;".to_string(),
             // CoreOp::Sub => "scalar_reg.i -= ptr->i;".to_string(),
@@ -105,7 +107,10 @@ impl Architecture for C {
                 if *n == 1 {
                     "scalar_reg.i += ptr->i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].i += ptr[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i += ptr[i].i;",
+                        n = n
+                    )
                 }
             }
 
@@ -113,7 +118,10 @@ impl Architecture for C {
                 if *n == 1 {
                     "scalar_reg.i -= ptr->i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].i -= ptr[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i -= ptr[i].i;",
+                        n = n
+                    )
                 }
             }
 
@@ -121,7 +129,10 @@ impl Architecture for C {
                 if *n == 1 {
                     "scalar_reg.i *= ptr->i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].i *= ptr[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i *= ptr[i].i;",
+                        n = n
+                    )
                 }
             }
 
@@ -129,7 +140,10 @@ impl Architecture for C {
                 if *n == 1 {
                     "scalar_reg.i /= ptr->i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].i /= ptr[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i /= ptr[i].i;",
+                        n = n
+                    )
                 }
             }
 
@@ -137,7 +151,10 @@ impl Architecture for C {
                 if *n == 1 {
                     "scalar_reg.i %= ptr->i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].i %= ptr[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i %= ptr[i].i;",
+                        n = n
+                    )
                 }
             }
 
@@ -145,7 +162,10 @@ impl Architecture for C {
                 if *n == 1 {
                     "scalar_reg.i = -scalar_reg.i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].i = -vector_reg[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i = -vector_reg[i].i;",
+                        n = n
+                    )
                 }
             }
 
@@ -163,7 +183,16 @@ impl Architecture for C {
                     format!("for (int i = 0; i < {n}; i++) vector_reg[i].i--;", n = n)
                 }
             }
-            CoreOp::Swap => "tmp_reg = scalar_reg; scalar_reg = *ptr; *ptr = tmp_reg;".to_string(),
+            // CoreOp::Swap => "tmp_reg = scalar_reg; scalar_reg = *ptr; *ptr = tmp_reg;".to_string(),
+            CoreOp::Swap(n) => {
+                if *n == 1 {
+                    "tmp_reg = scalar_reg; scalar_reg = *ptr; *ptr = tmp_reg;".to_string()
+                } else {
+                    format!(
+                        "for (int i = 0; i < {n}; i++) {{ tmp_reg = vector_reg[i]; vector_reg[i] = ptr[i]; ptr[i] = tmp_reg; }}",
+                    )
+                }
+            }
 
             CoreOp::And(n) => {
                 if *n == 1 {
@@ -183,7 +212,10 @@ impl Architecture for C {
                 if *n == 1 {
                     "scalar_reg.i = !scalar_reg.i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].i = !vector_reg[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i = !vector_reg[i].i;",
+                        n = n
+                    )
                 }
             }
 
@@ -198,28 +230,40 @@ impl Architecture for C {
                 if *n == 1 {
                     "scalar_reg.i &= ptr->i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].i &= ptr[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i &= ptr[i].i;",
+                        n = n
+                    )
                 }
             }
             CoreOp::BitwiseOr(n) => {
                 if *n == 1 {
                     "scalar_reg.i |= ptr->i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].i |= ptr[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i |= ptr[i].i;",
+                        n = n
+                    )
                 }
             }
             CoreOp::BitwiseXor(n) => {
                 if *n == 1 {
                     "scalar_reg.i ^= ptr->i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].i ^= ptr[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i ^= ptr[i].i;",
+                        n = n
+                    )
                 }
             }
             CoreOp::BitwiseNot(n) => {
                 if *n == 1 {
                     "scalar_reg.i = ~scalar_reg.i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].i = ~vector_reg[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i = ~vector_reg[i].i;",
+                        n = n
+                    )
                 }
             }
 
@@ -227,25 +271,42 @@ impl Architecture for C {
                 if *n == 1 {
                     "scalar_reg.i <<= ptr->i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].i <<= ptr[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i <<= ptr[i].i;",
+                        n = n
+                    )
                 }
             }
             CoreOp::LogicalRightShift(n) => {
                 if *n == 1 {
                     "scalar_reg.i >>= ptr->i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].i >>= ptr[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i >>= ptr[i].i;",
+                        n = n
+                    )
                 }
             }
             CoreOp::ArithmeticRightShift(n) => {
                 if *n == 1 {
                     "scalar_reg.i >>= ptr->i;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].i >>= ptr[i].i;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i >>= ptr[i].i;",
+                        n = n
+                    )
                 }
             }
 
-            CoreOp::IsNonNegative => "scalar_reg.i = scalar_reg.i >= 0;".to_string(),
+            CoreOp::IsNonNegative(n) => {
+                if *n == 1 {
+                    "scalar_reg.i = scalar_reg.i >= 0;".to_string()
+                } else {
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i = vector_reg[i].i >= 0;",
+                    )
+                }
+            }
 
             /*
             CoreOp::CompareEqual => "scalar_reg.i = scalar_reg.i == ptr->i;".to_string(),
@@ -254,7 +315,6 @@ impl Architecture for C {
             CoreOp::CompareLessEqual => "scalar_reg.i = scalar_reg.i <= ptr->i;".to_string(),
             CoreOp::CompareGreaterEqual => "scalar_reg.i = scalar_reg.i >= ptr->i;".to_string(),
             */
-
             CoreOp::End | CoreOp::Function | CoreOp::Put(_) | CoreOp::Get(_) => {
                 unreachable!("Invalid core op for C target")
             }
@@ -280,40 +340,132 @@ impl Architecture for C {
                 tmp
                 // format!("scalar_reg.i = {};", n)
             }
-            StandardOp::ToInt => "scalar_reg.i = scalar_reg.f;".to_string(),
-            StandardOp::ToFloat => "scalar_reg.f = scalar_reg.i;".to_string(),
-            StandardOp::ACos => "scalar_reg.f = acos(scalar_reg.f);".to_string(),
-            StandardOp::ASin => "scalar_reg.f = asin(scalar_reg.f);".to_string(),
-            StandardOp::ATan => "scalar_reg.f = atan(scalar_reg.f);".to_string(),
-            StandardOp::Sin => "scalar_reg.f = sin(scalar_reg.f);".to_string(),
-            StandardOp::Cos => "scalar_reg.f = cos(scalar_reg.f);".to_string(),
-            StandardOp::Tan => "scalar_reg.f = tan(scalar_reg.f);".to_string(),
+            // StandardOp::ToInt => "scalar_reg.i = scalar_reg.f;".to_string(),
+            // StandardOp::ToFloat => "scalar_reg.f = scalar_reg.i;".to_string(),
+            // StandardOp::ACos => "scalar_reg.f = acos(scalar_reg.f);".to_string(),
+            // StandardOp::ASin => "scalar_reg.f = asin(scalar_reg.f);".to_string(),
+            // StandardOp::ATan => "scalar_reg.f = atan(scalar_reg.f);".to_string(),
+            // StandardOp::Sin => "scalar_reg.f = sin(scalar_reg.f);".to_string(),
+            // StandardOp::Cos => "scalar_reg.f = cos(scalar_reg.f);".to_string(),
+            // StandardOp::Tan => "scalar_reg.f = tan(scalar_reg.f);".to_string(),
+            StandardOp::ToInt(n) => {
+                if *n == 1 {
+                    "scalar_reg.i = scalar_reg.f;".to_string()
+                } else {
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i = vector_reg[i].f;",
+                    )
+                }
+            }
+
+            StandardOp::ToFloat(n) => {
+                if *n == 1 {
+                    "scalar_reg.f = scalar_reg.i;".to_string()
+                } else {
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].f = vector_reg[i].i;",
+                    )
+                }
+            }
+
+            StandardOp::ACos(n) => {
+                if *n == 1 {
+                    "scalar_reg.f = acos(scalar_reg.f);".to_string()
+                } else {
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].f = acos(vector_reg[i].f);",
+                    )
+                }
+            }
+
+            StandardOp::ASin(n) => {
+                if *n == 1 {
+                    "scalar_reg.f = asin(scalar_reg.f);".to_string()
+                } else {
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].f = asin(vector_reg[i].f);",
+                    )
+                }
+            }
+
+            StandardOp::ATan(n) => {
+                if *n == 1 {
+                    "scalar_reg.f = atan(scalar_reg.f);".to_string()
+                } else {
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].f = atan(vector_reg[i].f);",
+                    )
+                }
+            }
+
+            StandardOp::Sin(n) => {
+                if *n == 1 {
+                    "scalar_reg.f = sin(scalar_reg.f);".to_string()
+                } else {
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].f = sin(vector_reg[i].f);",
+                    )
+                }
+            }
+
+            StandardOp::Cos(n) => {
+                if *n == 1 {
+                    "scalar_reg.f = cos(scalar_reg.f);".to_string()
+                } else {
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].f = cos(vector_reg[i].f);",
+                    )
+                }
+            }
+
+            StandardOp::Tan(n) => {
+                if *n == 1 {
+                    "scalar_reg.f = tan(scalar_reg.f);".to_string()
+                } else {
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].f = tan(vector_reg[i].f);",
+                    )
+                }
+            }
+
             StandardOp::Add(n) => {
                 if *n == 1 {
                     "scalar_reg.f += ptr->f;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].f += ptr[i].f;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].f += ptr[i].f;",
+                        n = n
+                    )
                 }
             }
             StandardOp::Sub(n) => {
                 if *n == 1 {
                     "scalar_reg.f -= ptr->f;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].f -= ptr[i].f;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].f -= ptr[i].f;",
+                        n = n
+                    )
                 }
             }
             StandardOp::Mul(n) => {
                 if *n == 1 {
                     "scalar_reg.f *= ptr->f;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].f *= ptr[i].f;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].f *= ptr[i].f;",
+                        n = n
+                    )
                 }
             }
             StandardOp::Div(n) => {
                 if *n == 1 {
                     "scalar_reg.f /= ptr->f;".to_string()
                 } else {
-                    format!("for (int i = 0; i < {n}; i++) vector_reg[i].f /= ptr[i].f;", n = n)
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].f /= ptr[i].f;",
+                        n = n
+                    )
                 }
             }
             StandardOp::Rem(n) => {
@@ -324,7 +476,16 @@ impl Architecture for C {
                 }
             }
             StandardOp::Pow => "scalar_reg.f = pow(scalar_reg.f, ptr->f);".to_string(),
-            StandardOp::IsNonNegative => "scalar_reg.i = scalar_reg.f >= 0;".to_string(),
+            // StandardOp::IsNonNegative => "scalar_reg.i = scalar_reg.f >= 0;".to_string(),
+            StandardOp::IsNonNegative(n) => {
+                if *n == 1 {
+                    "scalar_reg.i = scalar_reg.f >= 0;".to_string()
+                } else {
+                    format!(
+                        "for (int i = 0; i < {n}; i++) vector_reg[i].i = vector_reg[i].f >= 0;",
+                    )
+                }
+            }
             StandardOp::Alloc => {
                 "scalar_reg.p = (cell*)malloc(scalar_reg.i * sizeof(cell));".to_string()
             }

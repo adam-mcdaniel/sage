@@ -85,7 +85,9 @@ impl Declaration {
             Self::PolyProc(..) => true,
             Self::ExternProc(..) => true,
             Self::Impl(..) => true,
-            Self::Many(decls) => decls.par_iter().all(|decl| decl.is_compile_time_declaration()),
+            Self::Many(decls) => decls
+                .par_iter()
+                .all(|decl| decl.is_compile_time_declaration()),
             _ => false,
         }
     }

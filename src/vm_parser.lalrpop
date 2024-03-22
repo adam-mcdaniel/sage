@@ -41,7 +41,7 @@ CoreOp: CoreOp = {
     "div" <IntLit?> => CoreOp::Div(<>.unwrap_or(1) as usize),
     "rem" <IntLit?> => CoreOp::Rem(<>.unwrap_or(1) as usize),
     "neg" <IntLit?> => CoreOp::Neg(<>.unwrap_or(1) as usize),
-    "gez" => CoreOp::IsNonNegative,
+    "gez" <IntLit?> => CoreOp::IsNonNegative(<>.unwrap_or(1) as usize),
 
     "get" <Input> => CoreOp::Get(<>),
     "put" <Output> => CoreOp::Put(<>),
@@ -53,8 +53,8 @@ StandardOp: StandardOp = {
     "set-f" <IntLit> => StandardOp::Set(vec![<> as f64]),
     "set-f" <List<"[", FloatLit, ",", "]">> => StandardOp::Set(<>),
     
-    "to-float" => StandardOp::ToFloat,
-    "to-int" => StandardOp::ToInt,
+    "to-float" <IntLit?> => StandardOp::ToFloat(<>.unwrap_or(1) as usize),
+    "to-int" <IntLit?> => StandardOp::ToInt(<>.unwrap_or(1) as usize),
     
     "pow" => StandardOp::Pow,
     // "add-f" => StandardOp::Add,
@@ -70,14 +70,14 @@ StandardOp: StandardOp = {
     "rem-f" <IntLit?> => StandardOp::Rem(<>.unwrap_or(1) as usize),
     "neg-f" <IntLit?> => StandardOp::Neg(<>.unwrap_or(1) as usize),
 
-    "gez-f" => StandardOp::IsNonNegative,
+    "gez-f" <IntLit?> => StandardOp::IsNonNegative(<>.unwrap_or(1) as usize),
 
-    "sin" => StandardOp::Sin,
-    "cos" => StandardOp::Cos,
-    "tan" => StandardOp::Tan,
-    "asin" => StandardOp::ASin,
-    "acos" => StandardOp::ACos,
-    "atan" => StandardOp::ATan,
+    "sin" <IntLit?> => StandardOp::Sin(<>.unwrap_or(1) as usize),
+    "cos" <IntLit?> => StandardOp::Cos(<>.unwrap_or(1) as usize),
+    "tan" <IntLit?> => StandardOp::Tan(<>.unwrap_or(1) as usize),
+    "asin" <IntLit?> => StandardOp::ASin(<>.unwrap_or(1) as usize),
+    "acos" <IntLit?> => StandardOp::ACos(<>.unwrap_or(1) as usize),
+    "atan" <IntLit?> => StandardOp::ATan(<>.unwrap_or(1) as usize),
 
     "alloc" => StandardOp::Alloc,
     "free" => StandardOp::Free,

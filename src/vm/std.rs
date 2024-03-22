@@ -80,7 +80,7 @@ impl VirtualMachineProgram for StandardProgram {
                     (CoreOp::Load(m), CoreOp::Load(n)) if n == m => {}
                     (CoreOp::Store(m), CoreOp::Load(n)) if n == m => {}
                     (CoreOp::Load(m), CoreOp::Store(n)) if n == m => {}
-                    (CoreOp::Set(n), CoreOp::IsNonNegative) if n.len() == 1 => {
+                    (CoreOp::Set(n), CoreOp::IsNonNegative(1)) if n.len() == 1 => {
                         self.0.pop();
                         self.op(CoreOp::Set(vec![(n[0] >= 0) as i64]))
                     }
@@ -308,9 +308,9 @@ pub enum StandardOp {
     Free,
 
     /// Convert the register from a float to an integer.
-    ToInt,
+    ToInt(usize),
     /// Convert the register from an integer to a float.
-    ToFloat,
+    ToFloat(usize),
 
     /// Add the value pointed to on the tape to the register (as floats).
     Add(usize),
@@ -328,20 +328,21 @@ pub enum StandardOp {
 
     /// Make the register equal to the integer 1 if the register (as a float)
     /// is not negative, otherwise make it equal to 0.
-    IsNonNegative,
+    IsNonNegative(usize),
 
     /// Store the sine of the register (as a float) into the register.
-    Sin,
+    /// The argument is the size of the register vector.
+    Sin(usize),
     /// Store the cosine of the register (as a float) into the register.
-    Cos,
+    Cos(usize),
     /// Store the tangent of the register (as a float) into the register.
-    Tan,
+    Tan(usize),
     /// Store the inverse-sine of the register (as a float) into the register.
-    ASin,
+    ASin(usize),
     /// Store the inverse-cosine of the register (as a float) into the register.
-    ACos,
+    ACos(usize),
     /// Store the inverse-tangent of the register (as a float) into the register.
-    ATan,
+    ATan(usize),
     /// Store the value of the register (as a float) to the power of the value pointed to on the tape (as a float) into the register.
     Pow,
 
@@ -373,21 +374,21 @@ impl fmt::Display for StandardOp {
             StandardOp::Set(val) => write!(f, "set-f {:?}", val),
             StandardOp::Alloc => write!(f, "alloc"),
             StandardOp::Free => write!(f, "free"),
-            StandardOp::ToInt => write!(f, "to-int"),
-            StandardOp::ToFloat => write!(f, "to-float"),
+            StandardOp::ToInt(n) => write!(f, "to-int {n}"),
+            StandardOp::ToFloat(n) => write!(f, "to-float {n}"),
             StandardOp::Add(n) => write!(f, "add-f {n}"),
             StandardOp::Sub(n) => write!(f, "sub-f {n}"),
             StandardOp::Mul(n) => write!(f, "mul-f {n}"),
             StandardOp::Div(n) => write!(f, "div-f {n}"),
             StandardOp::Rem(n) => write!(f, "rem-f {n}"),
             StandardOp::Neg(n) => write!(f, "neg-f {n}"),
-            StandardOp::IsNonNegative => write!(f, "gez-f"),
-            StandardOp::Sin => write!(f, "sin"),
-            StandardOp::Cos => write!(f, "cos"),
-            StandardOp::Tan => write!(f, "tan"),
-            StandardOp::ASin => write!(f, "asin"),
-            StandardOp::ACos => write!(f, "acos"),
-            StandardOp::ATan => write!(f, "atan"),
+            StandardOp::IsNonNegative(n) => write!(f, "gez-f {n}"),
+            StandardOp::Sin(n) => write!(f, "sin {n}"),
+            StandardOp::Cos(n) => write!(f, "cos {n}"),
+            StandardOp::Tan(n) => write!(f, "tan {n}"),
+            StandardOp::ASin(n) => write!(f, "asin {n}"),
+            StandardOp::ACos(n) => write!(f, "acos {n}"),
+            StandardOp::ATan(n) => write!(f, "atan {n}"),
             StandardOp::Pow => write!(f, "pow"),
             StandardOp::Peek => write!(f, "peek"),
             StandardOp::Poke => write!(f, "poke"),

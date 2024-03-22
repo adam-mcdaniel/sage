@@ -394,6 +394,46 @@ pub enum CoreOp {
     /// Negate an integer.
     Neg(Location),
 
+    /// Perform a SIMD addition over a vector of integers.
+    /// This will add the source vector to the destination vector.
+    VecAdd {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD subtraction over a vector of integers.
+    /// This will subtract the source vector from the destination vector.
+    VecSub {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD multiplication over a vector of integers.
+    /// This will multiply the source vector with the destination vector.
+    VecMul {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD division over a vector of integers.
+    /// This will divide the destination vector by the source vector.
+    VecDiv {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD remainder over a vector of integers.
+    /// This will store the remainder of the destination vector divided by the source vector.
+    VecRem {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
     /// Replace a value in memory with its boolean complement.
     Not(Location),
     /// Logical "and" a destination with a source value.
@@ -403,6 +443,79 @@ pub enum CoreOp {
     },
     /// Logical "or" a destination with a source value.
     Or {
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a vector "Not" operation.
+    /// This will replace every value in the vector with its boolean complement.
+    VecNot {
+        size: usize,
+        dst: Location,
+    },
+
+    /// Perform a vector "And" operation.
+    /// This will perform a logical "and" operation on every value in the vectors.
+    VecAnd {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a vector "Or" operation.
+    /// This will perform a logical "or" operation on every value in the vectors.
+    VecOr {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Increment a vector of integers.
+    VecInc {
+        size: usize,
+        dst: Location,
+    },
+    /// Decrement a vector of integers.
+    VecDec {
+        size: usize,
+        dst: Location,
+    },
+
+    /// Left shift a destination by a source value.
+    LeftShift {
+        src: Location,
+        dst: Location,
+    },
+    /// Logical right shift a destination by a source value.
+    /// This will fill the leftmost bits with zeroes.
+    LogicalRightShift {
+        src: Location,
+        dst: Location,
+    },
+    /// Arithmetic right shift a destination by a source value.
+    /// This will fill the leftmost bits with the sign bit.
+    ArithmeticRightShift {
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD left shift operation over a vector of integers.
+    VecLeftShift {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD logical right shift operation over a vector of integers.
+    VecLogicalRightShift {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD arithmetic right shift operation over a vector of integers.
+    VecArithmeticRightShift {
+        size: usize,
         src: Location,
         dst: Location,
     },
@@ -513,17 +626,41 @@ pub enum CoreOp {
         dst: Location,
     },
     BitwiseNot(Location),
-    LeftShift {
+
+    // Perform a SIMD bitwise "and" operation over a vector of integers.
+    VecBitwiseAnd {
+        size: usize,
         src: Location,
-        dst: Location
+        dst: Location,
     },
-    LogicalRightShift {
+    // Perform a SIMD bitwise "or" operation over a vector of integers.
+    VecBitwiseOr {
+        size: usize,
         src: Location,
-        dst: Location
+        dst: Location,
     },
-    ArithmeticRightShift {
+    // Perform a SIMD bitwise "xor" operation over a vector of integers.
+    VecBitwiseXor {
+        size: usize,
         src: Location,
-        dst: Location
+        dst: Location,
+    },
+    // Perform a SIMD bitwise "nor" operation over a vector of integers.
+    VecBitwiseNor {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+    // Perform a SIMD bitwise "nand" operation over a vector of integers.
+    VecBitwiseNand {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+    // Perform a SIMD bitwise "not" operation over a vector of integers.
+    VecBitwiseNot {
+        size: usize,
+        dst: Location,
     },
 }
 
@@ -580,6 +717,136 @@ impl CoreOp {
         result: &mut dyn VirtualMachineProgram,
     ) -> Result<(), Error> {
         match self {
+            CoreOp::VecLeftShift { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_left_shift(&src, *size, result);
+            }
+
+            CoreOp::VecLogicalRightShift { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_logical_right_shift(&src, *size, result);
+            }
+
+            CoreOp::VecArithmeticRightShift { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_arithmetic_right_shift(&src, *size, result);
+            }
+
+
+            CoreOp::VecAdd { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_add(&src, *size, result);
+            }
+
+            CoreOp::VecSub { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_sub(&src, *size, result);
+            }
+
+            CoreOp::VecMul { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_mul(&src, *size, result);
+            }
+
+            CoreOp::VecDiv { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_div(&src, *size, result);
+            }
+
+            CoreOp::VecRem { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_rem(&src, *size, result);
+            }
+
+            CoreOp::VecNot { size, dst } => {
+                let dst = env.resolve(dst)?;
+
+                dst.vec_not(*size, result);
+            }
+
+            CoreOp::VecAnd { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_and(&src, *size, result);
+            }
+
+            CoreOp::VecOr { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_or(&src, *size, result);
+            }
+
+            CoreOp::VecInc { size, dst } => {
+                let dst = env.resolve(dst)?;
+
+                dst.vec_inc(*size, result);
+            }
+
+            CoreOp::VecDec { size, dst } => {
+                let dst = env.resolve(dst)?;
+
+                dst.vec_dec(*size, result);
+            }
+
+            CoreOp::VecBitwiseAnd { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_bitwise_and(&src, *size, result);
+            }
+
+            CoreOp::VecBitwiseOr { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_bitwise_or(&src, *size, result);
+            }
+
+            CoreOp::VecBitwiseXor { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_bitwise_xor(&src, *size, result);
+            }
+
+            CoreOp::VecBitwiseNor { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_bitwise_nor(&src, *size, result);
+            }
+
+            CoreOp::VecBitwiseNand { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_bitwise_nand(&src, *size, result);
+            }
+
+            CoreOp::VecBitwiseNot { size, dst } => {
+                let dst = env.resolve(dst)?;
+
+                dst.vec_bitwise_not(*size, result);
+            }
+
             CoreOp::Many(many) => {
                 for op in many {
                     op.assemble(current_instruction, env, result)?
@@ -812,8 +1079,12 @@ impl CoreOp {
             CoreOp::Div { src, dst } => env.resolve(dst)?.div(src, result),
             CoreOp::Rem { src, dst } => env.resolve(dst)?.rem(src, result),
             CoreOp::LeftShift { src, dst } => env.resolve(dst)?.left_shift(src, result),
-            CoreOp::LogicalRightShift { src, dst } => env.resolve(dst)?.logical_right_shift(src, result),
-            CoreOp::ArithmeticRightShift { src, dst } => env.resolve(dst)?.arithmetic_right_shift(src, result),
+            CoreOp::LogicalRightShift { src, dst } => {
+                env.resolve(dst)?.logical_right_shift(src, result)
+            }
+            CoreOp::ArithmeticRightShift { src, dst } => {
+                env.resolve(dst)?.arithmetic_right_shift(src, result)
+            }
 
             CoreOp::DivRem { src, dst } => {
                 let src = env.resolve(src)?;
@@ -1102,6 +1373,82 @@ impl fmt::Display for CoreOp {
             }
             Self::Comment(comment) => write!(f, "// {comment}"),
             Self::Global { name, size } => write!(f, "global ${name}, {size}"),
+
+            Self::VecLeftShift { size, src, dst } => {
+                write!(f, "vlsh {src}, {dst}, {size}")
+            }
+
+            Self::VecLogicalRightShift { size, src, dst } => {
+                write!(f, "vlrsh {src}, {dst}, {size}")
+            }
+
+            Self::VecArithmeticRightShift { size, src, dst } => {
+                write!(f, "varsh {src}, {dst}, {size}")
+            }
+
+            Self::VecAdd { size, src, dst } => {
+                write!(f, "vadd {src}, {dst}, {size}")
+            }
+
+            Self::VecSub { size, src, dst } => {
+                write!(f, "vsub {src}, {dst}, {size}")
+            }
+
+            Self::VecMul { size, src, dst } => {
+                write!(f, "vmul {src}, {dst}, {size}")
+            }
+
+            Self::VecDiv { size, src, dst } => {
+                write!(f, "vdiv {src}, {dst}, {size}")
+            }
+
+            Self::VecRem { size, src, dst } => {
+                write!(f, "vrem {src}, {dst}, {size}")
+            }
+
+            Self::VecNot { size, dst } => {
+                write!(f, "vnot {dst}, {size}")
+            }
+
+            Self::VecAnd { size, src, dst } => {
+                write!(f, "vand {src}, {dst}, {size}")
+            }
+
+            Self::VecOr { size, src, dst } => {
+                write!(f, "vor {src}, {dst}, {size}")
+            }
+
+            Self::VecInc { size, dst } => {
+                write!(f, "vinc {dst}, {size}")
+            }
+
+            Self::VecDec { size, dst } => {
+                write!(f, "vdec {dst}, {size}")
+            }
+
+            Self::VecBitwiseAnd { size, src, dst } => {
+                write!(f, "vband {src}, {dst}, {size}")
+            }
+
+            Self::VecBitwiseOr { size, src, dst } => {
+                write!(f, "vbor {src}, {dst}, {size}")
+            }
+
+            Self::VecBitwiseXor { size, src, dst } => {
+                write!(f, "vbxor {src}, {dst}, {size}")
+            }
+
+            Self::VecBitwiseNor { size, src, dst } => {
+                write!(f, "vbnor {src}, {dst}, {size}")
+            }
+
+            Self::VecBitwiseNand { size, src, dst } => {
+                write!(f, "vbnand {src}, {dst}, {size}")
+            }
+
+            Self::VecBitwiseNot { size, dst } => {
+                write!(f, "vbnot {dst}, {size}")
+            }
 
             Self::LeftShift { src, dst } => {
                 write!(f, "lsh {src}, {dst}")

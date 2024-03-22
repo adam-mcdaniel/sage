@@ -203,6 +203,6 @@ pub trait VirtualMachineProgram {
     }
 
     fn is_non_negative(&mut self) {
-        self.op(CoreOp::IsNonNegative)
+        self.op(CoreOp::IsNonNegative(1))
     }
 }

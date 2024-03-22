@@ -750,7 +750,6 @@ impl Compile for Expr {
                                 dst: SP.deref(),
                             },
                         )
-
                     } else if let Some((found_mutability, _ty, location)) =
                         env.get_static_var(&name)
                     {
@@ -878,7 +877,7 @@ impl Compile for Expr {
                             if elem_size > 1 {
                                 // Store the size of the element in `C`.
                                 output.op(CoreOp::Set(C, elem_size as i64));
-    
+
                                 // Calculate the offset of the element from the address of the array.
                                 // (the index times the size of the element).
                                 output.op(CoreOp::Mul { dst: B, src: C });
@@ -918,7 +917,7 @@ impl Compile for Expr {
                             if elem_size > 1 {
                                 // Store the size of the element in `C`.
                                 output.op(CoreOp::Set(C, elem_size as i64));
-    
+
                                 // Calculate the offset of the element from the address of the array.
                                 // (the index times the size of the element).
                                 output.op(CoreOp::Mul { dst: B, src: C });

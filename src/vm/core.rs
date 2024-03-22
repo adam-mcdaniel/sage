@@ -317,11 +317,12 @@ pub enum CoreOp {
     Dec(usize),
 
     /// Swap the value of the register with the value pointed to on the tape.
-    Swap,
+    /// The argument is the size of the vector to swap the register with.
+    Swap(usize),
 
     /// Make the register equal to 1 if the register is non-negative, otherwise make it equal to 0.
-    IsNonNegative,
-
+    /// The argument is the size of the vector to check if the register is non-negative.
+    IsNonNegative(usize),
 
     /*
     /// Compare the register to a value on the tape.
@@ -345,7 +346,6 @@ pub enum CoreOp {
     /// Otherwise, make the register equal to 0.
     CompareGreaterEqual,
     */
-
     /// Get a value from an input source and store it in the register.
     Get(Input),
     /// Write the value of the register to an output source.
@@ -391,8 +391,8 @@ impl fmt::Display for CoreOp {
             CoreOp::Rem(n) => write!(f, "rem {n}"),
             CoreOp::Inc(n) => write!(f, "inc {n}"),
             CoreOp::Dec(n) => write!(f, "dec {n}"),
-            CoreOp::Swap => write!(f, "swap"),
-            CoreOp::IsNonNegative => write!(f, "gez"),
+            CoreOp::Swap(n) => write!(f, "swap {n}"),
+            CoreOp::IsNonNegative(n) => write!(f, "gez {n}"),
 
             /*
             CoreOp::CompareEqual => write!(f, "ceq"),

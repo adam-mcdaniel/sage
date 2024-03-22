@@ -234,7 +234,7 @@ impl Location {
             Location::Address(addr) => {
                 result.where_is_pointer();
                 result.op(vm::CoreOp::Offset(*addr as isize, 1));
-            },
+            }
             Location::Indirect(loc) => {
                 loc.restore_from(result);
             }
@@ -374,6 +374,143 @@ impl Location {
         self.from(result);
     }
 
+    fn vec_restore_from(&self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.to(result);
+        result.load_vector(size);
+        self.from(result);
+    }
+
+    fn vec_save_to(&self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.to(result);
+        result.store_vector(size);
+        self.from(result);
+    }
+
+    pub(crate) fn vec_add(&self, src: &Self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_binop(vm::CoreOp::Add(size), src, size, result);
+    }
+
+    pub(crate) fn vec_sub(&self, src: &Self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_binop(vm::CoreOp::Sub(size), src, size, result);
+    }
+
+    pub(crate) fn vec_mul(&self, src: &Self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_binop(vm::CoreOp::Mul(size), src, size, result);
+    }
+
+    pub(crate) fn vec_div(&self, src: &Self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_binop(vm::CoreOp::Div(size), src, size, result);
+    }
+
+    pub(crate) fn vec_rem(&self, src: &Self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_binop(vm::CoreOp::Rem(size), src, size, result);
+    }
+
+    pub(crate) fn vec_left_shift(&self, src: &Self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_binop(vm::CoreOp::LeftShift(size), src, size, result);
+    }
+
+    pub(crate) fn vec_arithmetic_right_shift(
+        &self,
+        src: &Self,
+        size: usize,
+        result: &mut dyn VirtualMachineProgram,
+    ) {
+        self.vec_binop(vm::CoreOp::ArithmeticRightShift(size), src, size, result);
+    }
+
+    pub(crate) fn vec_logical_right_shift(
+        &self,
+        src: &Self,
+        size: usize,
+        result: &mut dyn VirtualMachineProgram,
+    ) {
+        self.vec_binop(vm::CoreOp::LogicalRightShift(size), src, size, result);
+    }
+
+    pub(crate) fn vec_bitwise_nand(&self, src: &Self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_binop(vm::CoreOp::BitwiseNand(size), src, size, result);
+    }
+
+    pub(crate) fn vec_bitwise_and(&self, src: &Self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_binop(vm::CoreOp::BitwiseAnd(size), src, size, result);
+    }
+
+    pub(crate) fn vec_bitwise_or(&self, src: &Self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_binop(vm::CoreOp::BitwiseOr(size), src, size, result);
+    }
+    pub(crate) fn vec_bitwise_nor(&self, src: &Self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_restore_from(size, result);
+        src.to(result);
+        result.op(vm::CoreOp::BitwiseOr(size));
+        result.op(vm::CoreOp::BitwiseNot(size));
+        src.from(result);
+        self.vec_save_to(size, result);
+    }
+
+    pub(crate) fn vec_bitwise_xor(&self, src: &Self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_binop(vm::CoreOp::BitwiseXor(size), src, size, result);
+    }
+
+    pub(crate) fn vec_bitwise_not(&self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_restore_from(size, result);
+        result.op(vm::CoreOp::BitwiseNot(size));
+        self.vec_save_to(size, result);
+    }
+
+    pub(crate) fn vec_not(&self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_restore_from(size, result);
+        result.op(vm::CoreOp::Not(size));
+        self.vec_save_to(size, result);
+    }
+
+    pub(crate) fn vec_and(&self, src: &Self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_binop(vm::CoreOp::And(size), src, size, result);
+    }
+
+    pub(crate) fn vec_or(&self, src: &Self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_binop(vm::CoreOp::Or(size), src, size, result);
+    }
+
+    pub(crate) fn vec_whole_int(&self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_restore_from(size, result);
+        result.op(vm::CoreOp::IsNonNegative(size));
+        self.vec_save_to(size, result);
+    }
+
+    pub(crate) fn vec_inc(&self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_restore_from(size, result);
+        result.op(vm::CoreOp::Inc(size));
+        self.vec_save_to(size, result);
+    }
+
+    pub(crate) fn vec_dec(&self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_restore_from(size, result);
+        result.op(vm::CoreOp::Dec(size));
+        self.vec_save_to(size, result);
+    }
+
+    pub(crate) fn vec_neg(&self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_restore_from(size, result);
+        result.op(vm::CoreOp::Neg(size));
+        self.vec_save_to(size, result);
+    }
+
+    pub(crate) fn vec_offset(&self, offset: isize, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_restore_from(size, result);
+        result.op(vm::CoreOp::Offset(offset, size));
+        self.vec_save_to(size, result);
+    }
+
+    fn vec_binop(&self, op: vm::CoreOp, src: &Self, size: usize, result: &mut dyn VirtualMachineProgram) {
+        self.vec_restore_from(size, result);
+        src.to(result);
+        result.op(op);
+        src.from(result);
+        self.vec_save_to(size, result);
+    }
+    
+
     /// Perform a `CoreOp` as an abstract binary operation.
     /// Essentially, if you pass an instruction such as `Add`, `Sub`, etc.,
     /// then the corresponding operation will be performed such that:
@@ -472,9 +609,8 @@ impl Location {
         // result.end();
         // result.save();
         // self.from(result);
-        
-        self.binop(vm::CoreOp::And(1), src, result);
 
+        self.binop(vm::CoreOp::And(1), src, result);
     }
 
     /// Perform boolean or on the value of this cell and a source cell.
@@ -513,7 +649,7 @@ impl Location {
     ) -> Result<(), Error> {
         self.copy_to(dst, result);
         dst.sub_float(src, result)?;
-        dst.std_op(vm::StandardOp::IsNonNegative, result)
+        dst.std_op(vm::StandardOp::IsNonNegative(1), result)
     }
 
     /// dst = this cell >= source cell.
@@ -552,7 +688,7 @@ impl Location {
     ) -> Result<(), Error> {
         src.copy_to(dst, result);
         dst.sub_float(self, result)?;
-        dst.std_op(vm::StandardOp::IsNonNegative, result)
+        dst.std_op(vm::StandardOp::IsNonNegative(1), result)
     }
     /// dst = this cell <= source cell.
     pub(crate) fn is_less_or_equal_to(
@@ -613,7 +749,11 @@ impl Location {
 
     /// This cell >>= source cell.
     /// This is an arithmetic shift right.
-    pub(crate) fn arithmetic_right_shift(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
+    pub(crate) fn arithmetic_right_shift(
+        &self,
+        src: &Self,
+        result: &mut dyn VirtualMachineProgram,
+    ) {
         self.binop(vm::CoreOp::ArithmeticRightShift(1), src, result);
     }
 
@@ -726,6 +866,8 @@ impl Location {
         Ok(())
     }
 
+
+
     /// Read the value of this cell, allocate that number of cells, store the address
     /// of the first cell in this cell.
     pub(crate) fn alloc(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
@@ -745,31 +887,31 @@ impl Location {
     }
 
     pub(crate) fn sin(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
-        self.std_op(vm::StandardOp::Sin, result)
+        self.std_op(vm::StandardOp::Sin(1), result)
     }
     pub(crate) fn cos(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
-        self.std_op(vm::StandardOp::Cos, result)
+        self.std_op(vm::StandardOp::Cos(1), result)
     }
     pub(crate) fn tan(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
-        self.std_op(vm::StandardOp::Tan, result)
+        self.std_op(vm::StandardOp::Tan(1), result)
     }
 
     pub(crate) fn asin(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
-        self.std_op(vm::StandardOp::ASin, result)
+        self.std_op(vm::StandardOp::ASin(1), result)
     }
     pub(crate) fn acos(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
-        self.std_op(vm::StandardOp::ACos, result)
+        self.std_op(vm::StandardOp::ACos(1), result)
     }
     pub(crate) fn atan(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
-        self.std_op(vm::StandardOp::ATan, result)
+        self.std_op(vm::StandardOp::ATan(1), result)
     }
 
     pub(crate) fn to_float(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
-        self.std_op(vm::StandardOp::ToFloat, result)
+        self.std_op(vm::StandardOp::ToFloat(1), result)
     }
 
     pub(crate) fn to_int(&self, result: &mut dyn VirtualMachineProgram) -> Result<(), Error> {
-        self.std_op(vm::StandardOp::ToInt, result)
+        self.std_op(vm::StandardOp::ToInt(1), result)
     }
 
     pub(crate) fn get(&self, src: Input, result: &mut dyn VirtualMachineProgram) {
