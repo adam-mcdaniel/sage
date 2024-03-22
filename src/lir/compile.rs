@@ -746,7 +746,7 @@ impl Compile for Expr {
                         output.op(
                             // Calculate the address of the variable from the offset
                             CoreOp::GetAddress {
-                                addr: FP.deref().offset(*offset as isize),
+                                addr: FP.deref().offset(*offset),
                                 dst: SP.deref(),
                             },
                         )
@@ -1074,13 +1074,13 @@ impl Compile for ConstExpr {
             Self::Cell(n) => {
                 // output.op(CoreOp::Next(SP, None));
                 // output.op(CoreOp::Set(SP.deref(), n));
-                output.op(CoreOp::PushConst(vec![n as i64]));
+                output.op(CoreOp::PushConst(vec![n]));
             }
             // Compile an integer constant.
             Self::Int(n) => {
                 // output.op(CoreOp::Next(SP, None));
                 // output.op(CoreOp::Set(SP.deref(), n));
-                output.op(CoreOp::PushConst(vec![n as i64]));
+                output.op(CoreOp::PushConst(vec![n]));
             }
             // Compile a float constant.
             Self::Float(f) => {

@@ -208,10 +208,10 @@ impl AssemblyProgram for CoreProgram {
                 (CoreOp::Next(SP, Some(n)), CoreOp::Pop(None, m)) if n == m as isize => {
                     self.code.pop();
                 }
-                (CoreOp::Pop(None, n), CoreOp::Next(SP, None)) if n == 1 => {
+                (CoreOp::Pop(None, 1), CoreOp::Next(SP, None)) => {
                     self.code.pop();
                 }
-                (CoreOp::Next(SP, None), CoreOp::Pop(None, n)) if n == 1 => {
+                (CoreOp::Next(SP, None), CoreOp::Pop(None, 1)) => {
                     self.code.pop();
                 }
                 (CoreOp::Pop(None, n), CoreOp::Pop(None, m)) => {
@@ -845,7 +845,7 @@ impl CoreOp {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
                 src.vec_copy_to(&dst, *size, result);
-                dst.vec_index(&offset, *size, result);
+                dst.vec_index(offset, *size, result);
             }
 
             CoreOp::VecOffset { size, dst, offset } => {

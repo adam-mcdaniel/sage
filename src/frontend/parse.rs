@@ -1426,7 +1426,7 @@ fn parse_match(pair: Pair<Rule>) -> Expr {
     }
     Expr::Match(
         Box::new(expr),
-        patterns.into_iter().zip(stmts.into_iter()).collect(),
+        patterns.into_iter().zip(stmts).collect(),
     )
 }
 

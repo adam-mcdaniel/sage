@@ -45,11 +45,11 @@ impl Add {
                     }
                 }
                 Ok(Type::Struct(
-                    elems1.into_iter().chain(elems2.into_iter()).collect(),
+                    elems1.into_iter().chain(elems2).collect(),
                 ))
             }
             (Type::Tuple(elems1), Type::Tuple(elems2)) => Ok(Type::Tuple(
-                elems1.into_iter().chain(elems2.into_iter()).collect(),
+                elems1.into_iter().chain(elems2).collect(),
             )),
             (Type::Unit(_, a), b) => self.return_type_from_types(&b, &a, env),
             _ => Err(Error::InvalidBinaryOpTypes(

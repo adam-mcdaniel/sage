@@ -460,10 +460,8 @@ impl TypeCheck for Expr {
                     .map_err(|e| e.annotate(metadata)),
                 Expr::ConstExpr(ConstExpr::Symbol(name)) => {
                     // Check if the symbol is defined as mutable
-                    if env.is_defined_as_mutable(&name) {
+                    if env.is_defined_as_mutable(&name) || expected_mutability.is_constant(){
                         // If it is, then return success. (We can reference it however we want.)
-                        Ok(())
-                    } else if expected_mutability.is_constant() {
                         // If the symbol is not defined as mutable, but we expect it to be constant,
                         // then return success. (We can reference it as a constant.)
                         Ok(())

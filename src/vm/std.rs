@@ -42,55 +42,51 @@ use std::collections::HashMap;
 
 impl VirtualMachineProgram for StandardProgram {
     fn op(&mut self, op: CoreOp) {
-        if let Some(last_op) = self.0.last().cloned() {
-            if let StandardOp::CoreOp(last_core_op) = last_op {
-                match (last_core_op, op) {
-                    (CoreOp::Move(n), CoreOp::Move(m)) => {
-                        self.0.pop();
-                        if m + n != 0 {
-                            self.0.push(StandardOp::CoreOp(CoreOp::Move(n + m)))
-                        }
-                    }
-                    (CoreOp::Set(_), CoreOp::Set(m)) => {
-                        self.0.pop();
-                        self.op(CoreOp::Set(m))
-                    }
-                    (CoreOp::Deref, CoreOp::Refer) => {
-                        self.0.pop();
-                    }
-                    (CoreOp::Else, CoreOp::End) => {
-                        self.0.pop();
-                        self.op(CoreOp::End);
-                    }
-                    (CoreOp::Move(_), CoreOp::Refer) => {
-                        self.0.pop();
-                        self.op(CoreOp::Refer)
-                    }
-                    (CoreOp::Move(n), CoreOp::Set(m)) => {
-                        self.0.pop();
-                        self.op(CoreOp::Set(m));
-                        self.op(CoreOp::Move(n));
-                    }
-                    (CoreOp::Move(n), CoreOp::Offset(off, m)) => {
-                        self.0.pop();
-                        self.op(CoreOp::Offset(off, m));
-                        self.op(CoreOp::Move(n));
-                    }
-                    (CoreOp::Store(m), CoreOp::Store(n)) if n == m => {}
-                    (CoreOp::Load(m), CoreOp::Load(n)) if n == m => {}
-                    (CoreOp::Store(m), CoreOp::Load(n)) if n == m => {}
-                    (CoreOp::Load(m), CoreOp::Store(n)) if n == m => {}
-                    (CoreOp::Set(n), CoreOp::IsNonNegative(1)) if n.len() == 1 => {
-                        self.0.pop();
-                        self.op(CoreOp::Set(vec![(n[0] >= 0) as i64]))
-                    }
-
-                    (_, op) => {
-                        self.0.push(StandardOp::CoreOp(op));
+        if let Some(StandardOp::CoreOp(last_core_op)) = self.0.last().cloned() {
+            match (last_core_op, op) {
+                (CoreOp::Move(n), CoreOp::Move(m)) => {
+                    self.0.pop();
+                    if m + n != 0 {
+                        self.0.push(StandardOp::CoreOp(CoreOp::Move(n + m)))
                     }
                 }
-            } else {
-                self.0.push(StandardOp::CoreOp(op));
+                (CoreOp::Set(_), CoreOp::Set(m)) => {
+                    self.0.pop();
+                    self.op(CoreOp::Set(m))
+                }
+                (CoreOp::Deref, CoreOp::Refer) => {
+                    self.0.pop();
+                }
+                (CoreOp::Else, CoreOp::End) => {
+                    self.0.pop();
+                    self.op(CoreOp::End);
+                }
+                (CoreOp::Move(_), CoreOp::Refer) => {
+                    self.0.pop();
+                    self.op(CoreOp::Refer)
+                }
+                (CoreOp::Move(n), CoreOp::Set(m)) => {
+                    self.0.pop();
+                    self.op(CoreOp::Set(m));
+                    self.op(CoreOp::Move(n));
+                }
+                (CoreOp::Move(n), CoreOp::Offset(off, m)) => {
+                    self.0.pop();
+                    self.op(CoreOp::Offset(off, m));
+                    self.op(CoreOp::Move(n));
+                }
+                (CoreOp::Store(m), CoreOp::Store(n)) if n == m => {}
+                (CoreOp::Load(m), CoreOp::Load(n)) if n == m => {}
+                (CoreOp::Store(m), CoreOp::Load(n)) if n == m => {}
+                (CoreOp::Load(m), CoreOp::Store(n)) if n == m => {}
+                (CoreOp::Set(n), CoreOp::IsNonNegative(1)) if n.len() == 1 => {
+                    self.0.pop();
+                    self.op(CoreOp::Set(vec![(n[0] >= 0) as i64]))
+                }
+
+                (_, op) => {
+                    self.0.push(StandardOp::CoreOp(op));
+                }
             }
         } else {
             self.0.push(StandardOp::CoreOp(op));
