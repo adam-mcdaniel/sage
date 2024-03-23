@@ -120,6 +120,7 @@ fn test_c_target_frontend_examples_helper() {
                 .arg(&c_code_path)
                 .arg("-o")
                 .arg(&c_exe_path)
+                .arg("-lm")
                 .output()
                 .unwrap();
 
