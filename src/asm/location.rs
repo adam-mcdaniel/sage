@@ -250,10 +250,6 @@ impl Location {
 
     /// Copy the address of this location to another location.
     pub(crate) fn copy_address_to(&self, dst: &Self, result: &mut dyn VirtualMachineProgram) {
-        // self.to(result);
-        // result.where_is_pointer();
-        // self.from(result);
-        // dst.save_to(result);
         self.restore_address(result);
         dst.save_to(result);
     }
@@ -301,7 +297,6 @@ impl Location {
     /// Take the pointer value of this location, and make it point
     /// `count` number of cells to the right of its original position.
     pub(crate) fn next(&self, count: isize, result: &mut dyn VirtualMachineProgram) {
-        // self.deref().offset(count).copy_address_to(self, result);
         self.to(result);
         result.restore();
         result.op(vm::CoreOp::Offset(count, 1));
@@ -312,7 +307,6 @@ impl Location {
     /// Take the pointer value of this location, and make it point
     /// `count` number of cells to the left of its original position.
     pub(crate) fn prev(&self, count: isize, result: &mut dyn VirtualMachineProgram) {
-        // self.deref().offset(-count).copy_address_to(self, result);
         self.to(result);
         result.restore();
         result.op(vm::CoreOp::Offset(-count, 1));
@@ -346,12 +340,6 @@ impl Location {
 
     /// Increment the value of this location.
     pub(crate) fn inc(&self, result: &mut dyn VirtualMachineProgram) {
-        // self.to(result);
-        // result.set_register(1);
-        // result.op(vm::CoreOp::Add);
-        // result.save();
-        // self.from(result);
-
         self.to(result);
         result.restore();
         result.op(vm::CoreOp::Inc(1));
@@ -361,12 +349,6 @@ impl Location {
 
     /// Decrement the value of this location.
     pub(crate) fn dec(&self, result: &mut dyn VirtualMachineProgram) {
-        // self.to(result);
-        // result.set_register(-1);
-        // result.op(vm::CoreOp::Add);
-        // result.save();
-        // self.from(result);
-
         self.to(result);
         result.restore();
         result.op(vm::CoreOp::Dec(1));
