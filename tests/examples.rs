@@ -61,6 +61,17 @@ fn test_frontend_examples_helper() {
                 Ok(contents) => contents.replace("\r\n", "\n"),
                 Err(_) if correct_error.is_none() => {
                     warn!("Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
+                    // Just compile the program to confirm it doesn't error.
+                    let frontend_src = read_to_string(&path)
+                        .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
+                    let frontend_code = parse_frontend(&frontend_src, path.to_str())
+                        .unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
+                    let asm_code = frontend_code.compile().unwrap();
+                    let _vm_code = match asm_code {
+                        Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
+                        Err(std_asm_code) => std_asm_code.assemble(CALL_STACK_SIZE).map(Err),
+                    }
+                    .unwrap();
                     continue;
                 }
                 Err(_) => String::new(),
