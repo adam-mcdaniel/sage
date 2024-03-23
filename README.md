@@ -152,15 +152,13 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 ## Feature Roadmap
 
 - [x] Compiler Backends
-  - [x] x86 (semi-implemented and unoptimized)
-  - [ ] RISC-V
-  - [ ] ARM
   - [ ] LLVM (highly desired!)
   - [x] C (fully-implemented but unoptimized)
   - [x] Interpreter (fully-implemented but unoptimized)
   - [x] Web Backend
     - [x] Interpreter
     - [ ] Visual demo like the [web-demo](https://adam-mcdaniel.net/harbor) for [Harbor](https://github.com/adam-mcdaniel/harbor)
+- [x] SIMD vector instruction support
 - [x] Static variables and constant expressions
 - [x] Conditional compilation
 - [x] Polymorphic functions
