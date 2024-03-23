@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/declaration.rs`."><title>declaration.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.1 (eb26296b5 2023-08-03)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/declaration.rs`."><title>declaration.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -755,6 +756,98 @@
 <a href="#755" id="755">755</a>
 <a href="#756" id="756">756</a>
 <a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{PolyProcedure, Procedure};
 <span class="kw">use crate</span>::{
     asm::{AssemblyProgram, CoreOp, Location, SP},
@@ -768,6 +861,7 @@
     ops::{Add, AddAssign},
 };
 <span class="kw">use </span>log::<span class="kw-2">*</span>;
+<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::hash::{Hash, Hasher};
 
@@ -832,6 +926,22 @@
         }
     }
 
+    <span class="doccomment">/// Is this a compile time declaration?
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_compile_time_declaration(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::Type(..) =&gt; <span class="bool-val">true</span>,
+            <span class="self">Self</span>::Const(..) =&gt; <span class="bool-val">true</span>,
+            <span class="self">Self</span>::Proc(..) =&gt; <span class="bool-val">true</span>,
+            <span class="self">Self</span>::PolyProc(..) =&gt; <span class="bool-val">true</span>,
+            <span class="self">Self</span>::ExternProc(..) =&gt; <span class="bool-val">true</span>,
+            <span class="self">Self</span>::Impl(..) =&gt; <span class="bool-val">true</span>,
+            <span class="self">Self</span>::Many(decls) =&gt; decls
+                .par_iter()
+                .all(|decl| decl.is_compile_time_declaration()),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+        }
+    }
+
     <span class="doccomment">/// Compile a declaration with a body in a new scope. This will copy the old environment,
     /// and add the declaration to the new environment.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compile(
@@ -858,14 +968,14 @@
         // in these declarations.
         </span>env.add_compile_time_declaration(<span class="self">self</span>)<span class="question-mark">?</span>;
         <span class="comment">// The size of the variables declared.
-        // This is used to pop the stack when we&#39;re done.
+        // This is used to pop the stack when we're done.
         </span><span class="kw">let </span><span class="kw-2">mut </span>var_size = <span class="number">0</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Declaration::Var(name, _mutability, specifier, expr) =&gt; {
                 <span class="comment">// Get the current instruction (for logging)
                 </span><span class="kw">let </span>current_instruction = output.current_instruction();
                 <span class="comment">// A log message
-                </span><span class="kw">let </span>log_message = <span class="macro">format!</span>(<span class="string">&quot;Initializing &#39;{name}&#39; with expression &#39;{expr}&#39;&quot;</span>);
+                </span><span class="kw">let </span>log_message = <span class="macro">format!</span>(<span class="string">"Initializing '{name}' with expression '{expr}'"</span>);
 
                 <span class="comment">// Get the type of the variable using its specifier,
                 // or by deducing the type ourselves.
@@ -899,7 +1009,7 @@
                 </span><span class="kw">let </span>current_instruction = output.current_instruction();
                 <span class="comment">// A log message
                 </span><span class="kw">let </span>log_message =
-                    <span class="macro">format!</span>(<span class="string">&quot;Initializing static variable &#39;{name}&#39; with expression &#39;{expr}&#39;&quot;</span>);
+                    <span class="macro">format!</span>(<span class="string">"Initializing static variable '{name}' with expression '{expr}'"</span>);
 
                 <span class="comment">// Get the type of the variable.
                 </span><span class="kw">let </span>var_ty = ty.clone();
@@ -927,7 +1037,7 @@
                     <span class="comment">// Compile all the sub-declarations,
                     // and leave their variables on the stack.
                     // Add their variable sizes to the total variable size.
-                    // This will be used to pop the stack when we&#39;re done.
+                    // This will be used to pop the stack when we're done.
                     </span>var_size += decl.compile_helper(<span class="prelude-val">None</span>, env, output)<span class="question-mark">?</span>;
                 }
             }
@@ -935,7 +1045,7 @@
         }
 
         <span class="comment">// If there is some body to execute under the new scope,
-        // then compile it and pop the stack when we&#39;re done.
+        // then compile it and pop the stack when we're done.
         // Otherwise, leave the stack unpopped with all the variables
         // still on the stack.
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(body) = body {
@@ -947,10 +1057,10 @@
             </span>body.compile_expr(env, output)<span class="question-mark">?</span>;
             <span class="kw">if </span>var_size != <span class="number">0 </span>{
                 <span class="comment">// Copy the return value over where the arguments were stored,
-                // so that when we pop the stack, it&#39;s as if we popped the variables
+                // so that when we pop the stack, it's as if we popped the variables
                 // and arguments, and pushed our return value.
                 </span><span class="macro">debug!</span>(
-                    <span class="string">&quot;Destroying {var_size} cells of stack, leaving {result_size} cells of stack&quot;
+                    <span class="string">"Destroying {var_size} cells of stack, leaving {result_size} cells of stack"
                 </span>);
                 output.op(CoreOp::Copy {
                     <span class="comment">// The address of the return value (the values we pushed)
@@ -1028,14 +1138,20 @@
                 proc.substitute(substitution_name, substitution_ty);
             }
             <span class="self">Self</span>::Impl(_name, impls) =&gt; {
-                <span class="kw">for </span>(_name, expr) <span class="kw">in </span>impls {
+                <span class="comment">// for (_name, expr) in impls {
+                //     expr.substitute(substitution_name, substitution_ty);
+                // }
+                </span>impls.par_iter_mut().for_each(|(_name, expr)| {
                     expr.substitute(substitution_name, substitution_ty);
-                }
+                });
             }
             <span class="self">Self</span>::Many(decls) =&gt; {
-                <span class="kw">for </span>decl <span class="kw">in </span>decls {
+                <span class="comment">// for decl in decls {
+                //     decl.substitute(substitution_name, substitution_ty);
+                // }
+                </span>decls.par_iter_mut().for_each(|decl| {
                     decl.substitute(substitution_name, substitution_ty);
-                }
+                });
             }
         }
     }
@@ -1056,7 +1172,7 @@
                     <span class="comment">// Make sure the type of the expression can decay to the specified type.
                     </span><span class="kw">if </span>!found_ty.can_decay_to(expected_ty, env)<span class="question-mark">? </span>{
                         <span class="macro">error!</span>(
-                            <span class="string">&quot;Invalid declaration {}: {found_ty:?} != {expected_ty:?}&quot;</span>,
+                            <span class="string">"Invalid declaration {}: {found_ty:?} != {expected_ty:?}"</span>,
                             <span class="self">self</span>.clone()
                         );
                         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
@@ -1140,8 +1256,13 @@
                 </span><span class="kw">let </span>bindings = pat.get_bindings(expr, <span class="kw-2">&amp;</span>ty, env)<span class="question-mark">?</span>;
                 <span class="comment">// Get the size of all the bindings
                 </span><span class="kw">let </span>size_of_bindings = bindings
-                    .iter()
-                    .map(|(_name, (_mut, ty))| ty.get_size(env).unwrap_or(<span class="number">0</span>))
+                    <span class="comment">// .iter()
+                    // .map(|(_name, (_mut, ty))| ty.get_size(env).unwrap_or(0))
+                    // .sum::&lt;usize&gt;();
+                    </span>.values()
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+                    .par_iter()
+                    .map(|(_mut, ty)| ty.get_size(env).unwrap_or(<span class="number">0</span>))
                     .sum::&lt;usize&gt;();
                 <span class="comment">// Make sure the size of the bindings is the same as the size of the expression.
                 </span><span class="kw">if </span>size_of_bindings != size {
@@ -1181,7 +1302,7 @@
                             } <span class="kw">else </span>{
                                 <span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                     expected: Type::Symbol(
-                                        <span class="string">&quot;A symbol, not a concrete type&quot;</span>.to_owned(),
+                                        <span class="string">"A symbol, not a concrete type"</span>.to_owned(),
                                     ),
                                     found: ty.clone(),
                                     expr: Expr::NONE.with(<span class="self">self</span>.clone()),
@@ -1205,39 +1326,103 @@
                         </span>templated_consts.push(templated_const);
                     }
 
-                    <span class="kw">for </span>templated_const <span class="kw">in </span>templated_consts {
-                        <span class="macro">debug!</span>(
-                            <span class="string">&quot;About to type check templated const: {templated_const}&quot;</span>,
-                            templated_const = templated_const
-                        );
-                        templated_const.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
-                    }
+                    <span class="comment">// If we are at the limit of parallel recursion, then we should
+                    // type check the associated constants sequentially.
+                    // for templated_const in templated_consts {
+                    //     templated_const.type_check(&amp;new_env)?;
+                    // }
+
+                    </span>templated_consts
+                        .par_iter()
+                        .try_for_each(|templated_const| templated_const.type_check(<span class="kw-2">&amp;</span>new_env))<span class="question-mark">?</span>;
                 } <span class="kw">else </span>{
                     <span class="comment">// ty.add_monomorphized_associated_consts(env)?;
                     </span><span class="kw">for </span>(name, associated_const) <span class="kw">in </span>impls {
                         new_env.add_associated_const(ty.clone(), name, associated_const.clone())<span class="question-mark">?</span>;
                     }
 
-                    <span class="kw">for </span>(_name, associated_const) <span class="kw">in </span>impls {
-                        associated_const.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
-                    }
+                    <span class="comment">// If we are at the limit of parallel recursion, then we should
+                    // type check the associated constants sequentially.
+                    // for (_name, associated_const) in impls {
+                    //     associated_const.type_check(&amp;new_env)?;
+                    // }
+
+                    </span>impls.par_iter().try_for_each(|(_name, associated_const)| {
+                        associated_const.type_check(<span class="kw-2">&amp;</span>new_env)
+                    })<span class="question-mark">?</span>;
                 }
-                <span class="comment">// for (_name, expr) in impls {
-                //     expr.type_check(&amp;new_env)?;
-                // }
-            </span>}
+            }
             <span class="comment">// Typecheck a multi-declaration.
             </span><span class="self">Self</span>::Many(decls) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                 <span class="comment">// Add all the compile-time declarations to the environment.
                 </span>new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span><span class="self">self</span>.clone())<span class="question-mark">?</span>;
-                <span class="kw">for </span>decl <span class="kw">in </span>decls {
-                    <span class="comment">// Typecheck any variable declarations in the old scope
-                    </span>decl.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
-                    <span class="comment">// Add them to the new scope.
-                    </span>new_env.add_declaration(decl)<span class="question-mark">?</span>;
+
+                <span class="comment">// Get all the compile time declarations so we can type check them in parallel.
+                </span><span class="kw">let </span>(comp_time_decls, run_time_decls): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = decls
+                    .iter()
+                    .partition(|decl| decl.is_compile_time_declaration());
+
+                <span class="kw">if </span>!comp_time_decls.is_empty() {
+                    <span class="comment">// Type check all the compile time declarations in parallel.
+                    </span>comp_time_decls
+                        .par_iter()
+                        .try_for_each(|decl| decl.type_check(<span class="kw-2">&amp;</span>new_env))<span class="question-mark">?</span>;
                 }
-            }
+
+                <span class="comment">/*
+                lazy_static! {
+                    // Use this to limit recursive parallelism.
+                    static ref PARALLEL_RECURSION_DEPTH: RwLock&lt;usize&gt; = RwLock::new(0);
+                }
+
+                const PARALLEL_RECURSION_LIMIT: usize = 16;
+
+                // Get the current recursion depth.
+                let depth = *PARALLEL_RECURSION_DEPTH.read().unwrap();
+
+                if depth &lt; PARALLEL_RECURSION_LIMIT &amp;&amp; comp_time_decls.len() &gt; 2 {
+                    // Increment the recursion depth.
+                    *PARALLEL_RECURSION_DEPTH.write().unwrap() += 1;
+
+                    // Type check all the compile time declarations in parallel.
+                    // for chunk in comp_time_decls.chunks(2) {
+                    //     info!("Typechecking {} declarations in parallel", chunk.len());
+
+                    //     chunk.par_iter().try_for_each(|decl| {
+                    //         decl.type_check(&amp;new_env)
+                    //     })?;
+                    // }
+                    info!("Typechecking {} declarations in parallel", comp_time_decls.len());
+                    comp_time_decls.par_iter().try_for_each(|decl| {
+                        decl.type_check(&amp;new_env)
+                    })?;
+                    // for decl in comp_time_decls {
+                    //     decl.type_check(&amp;new_env)?;
+                    // }
+                } else {
+                    // Type check all the compile time declarations sequentially.
+                    for decl in comp_time_decls {
+                        decl.type_check(&amp;new_env)?;
+                    }
+                }
+                 */
+
+                </span>run_time_decls
+                    .iter()
+                    <span class="comment">// .map(|decl| decl.type_check(&amp;new_env))
+                    </span>.try_for_each(|decl| {
+                        decl.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
+                        new_env.add_declaration(decl)
+                    })<span class="question-mark">?</span>;
+
+                <span class="comment">// for decl in decls {
+                //     // Typecheck any variable declarations in the old scope
+                //     decl.type_check(&amp;new_env)?;
+                //     // Add them to the new scope.
+                //     new_env.add_declaration(decl)?;
+                // }
+            </span>}
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1247,47 +1432,47 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::StaticVar(name, mutability, ty, expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;static {mutability} {name}: {ty} = {expr}&quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"static {mutability} {name}: {ty} = {expr}"</span>)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::Var(name, _mutability, ty, expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{} = {}&quot;</span>, name, expr)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"{} = {}"</span>, name, expr)<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(ty) = ty {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;: {}&quot;</span>, ty)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">": {}"</span>, ty)<span class="question-mark">?</span>;
                 }
             }
             <span class="self">Self</span>::Proc(name, proc) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, proc)<span class="question-mark">?</span>;
-                <span class="macro">write!</span>(f, <span class="string">&quot; {}&quot;</span>, name)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"{}"</span>, proc)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">" {}"</span>, name)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::PolyProc(name, proc) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, proc)<span class="question-mark">?</span>;
-                <span class="macro">write!</span>(f, <span class="string">&quot; {}&quot;</span>, name)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"{}"</span>, proc)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">" {}"</span>, name)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::Type(name, ty) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;type {}&quot;</span>, name)<span class="question-mark">?</span>;
-                <span class="macro">write!</span>(f, <span class="string">&quot; = {}&quot;</span>, ty)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"type {}"</span>, name)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">" = {}"</span>, ty)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::Const(name, expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;const {}: {}&quot;</span>, name, expr)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"const {}: {}"</span>, name, expr)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::VarPat(pat, expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{} = {}&quot;</span>, pat, expr)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"{} = {}"</span>, pat, expr)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::ExternProc(name, proc) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;extern {}&quot;</span>, proc)<span class="question-mark">?</span>;
-                <span class="macro">write!</span>(f, <span class="string">&quot; {}&quot;</span>, name)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"extern {}"</span>, proc)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">" {}"</span>, name)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::Impl(name, impls) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;impl {}&quot;</span>, name)<span class="question-mark">?</span>;
-                <span class="macro">write!</span>(f, <span class="string">&quot; {{&quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"impl {}"</span>, name)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">" {{"</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(name, expr) <span class="kw">in </span>impls {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{} = {}&quot;</span>, name, expr)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">"{} = {}"</span>, name, expr)<span class="question-mark">?</span>;
                 }
-                <span class="macro">write!</span>(f, <span class="string">&quot;}}&quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"}}"</span>)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::Many(decls) =&gt; {
                 <span class="kw">for </span>decl <span class="kw">in </span>decls {
-                    <span class="macro">writeln!</span>(f, <span class="string">&quot;{}&quot;</span>, decl)<span class="question-mark">?</span>;
+                    <span class="macro">writeln!</span>(f, <span class="string">"{}"</span>, decl)<span class="question-mark">?</span>;
                 }
             }
         }

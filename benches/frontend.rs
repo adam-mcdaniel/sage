@@ -5,7 +5,7 @@ use sage::{
     targets::{self, CompiledTarget},
     vm::*,
 };
-use std::{fs::{read_to_string, write}, time::Duration};
+use std::fs::{read_to_string, write};
 
 const CALL_STACK_SIZE: usize = 8192;
 
@@ -39,18 +39,18 @@ fn compile_with_gcc(filename: &str) {
         .arg("-O3")
         .arg("-o")
         .arg("benches/temp")
-        .arg("-fwhole-program")
-        .arg("-floop-interchange")
-        .arg("-ftree-loop-linear")
-        .arg("-floop-block")
-        .arg("-fcheck-data-deps")
-        .arg("-ftree-loop-distribution")
-        .arg("-ftree-vect-loop-version")
+        // .arg("-fwhole-program")
+        // .arg("-floop-interchange")
+        // .arg("-ftree-loop-linear")
+        // .arg("-floop-block")
+        // .arg("-fcheck-data-deps")
+        // .arg("-ftree-loop-distribution")
+        // .arg("-ftree-vect-loop-version")
         .arg("-ffp-contract=fast")
         .arg("-funsafe-math-optimizations")
         .arg("-fassociative-math")
         .arg("-Wstrict-aliasing=3")
-        .arg("-fipa-strict-aliasing")
+        // .arg("-fipa-strict-aliasing")
         // Flags: -O3 -fwhole-program -floop-interchange -ftree-loop-linear -floop-block -fcheck-data-deps -ftree-loop-distribution -ftree-vect-loop-version -ffp-contract=fast -funsafe-math-optimizations -fassociative-math -Wstrict-aliasing=3 -fipa-strict-aliasing
         .output()
         .expect("failed to execute process");

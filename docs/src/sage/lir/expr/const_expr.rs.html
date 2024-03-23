@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/const_expr.rs`."><title>const_expr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.1 (eb26296b5 2023-08-03)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/const_expr.rs`."><title>const_expr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1084,6 +1085,26 @@
 <a href="#1084" id="1084">1084</a>
 <a href="#1085" id="1085">1085</a>
 <a href="#1086" id="1086">1086</a>
+<a href="#1087" id="1087">1087</a>
+<a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a>
+<a href="#1099" id="1099">1099</a>
+<a href="#1100" id="1100">1100</a>
+<a href="#1101" id="1101">1101</a>
+<a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Constant Expressions
 //!
 //! Constant expressions are expressions that can be evaluated at compile time.
@@ -1114,7 +1135,7 @@
     <span class="doccomment">/// Bind a list of types in a constant expression.
     </span>Declare(Box&lt;Declaration&gt;, Box&lt;<span class="self">Self</span>&gt;),
 
-    <span class="doccomment">/// The unit, or &quot;void&quot; instance.
+    <span class="doccomment">/// The unit, or "void" instance.
     </span><span class="prelude-val">None</span>,
     <span class="doccomment">/// The null pointer constant.
     </span>Null,
@@ -1141,7 +1162,7 @@
 
     <span class="doccomment">/// Get the size of a type (in cells) as a constant int.
     </span>SizeOfType(Type),
-    <span class="doccomment">/// Get the size of an expression&#39;s type (in cells) as a constant int.
+    <span class="doccomment">/// Get the size of an expression's type (in cells) as a constant int.
     /// This will not evaluate the inner expression.
     </span>SizeOfExpr(Box&lt;Expr&gt;),
 
@@ -1179,6 +1200,9 @@
     <span class="doccomment">/// Cast a constant expression to another type.
     </span>As(Box&lt;<span class="self">Self</span>&gt;, Type),
 }
+
+<span class="kw">unsafe impl </span>Send <span class="kw">for </span>ConstExpr {}
+<span class="kw">unsafe impl </span>Sync <span class="kw">for </span>ConstExpr {}
 
 <span class="kw">impl </span>ConstExpr {
     <span class="kw">pub fn </span>monomorphize(<span class="self">self</span>, ty_args: Vec&lt;Type&gt;) -&gt; <span class="self">Self </span>{
@@ -1272,20 +1296,20 @@
     </span><span class="kw">fn </span>eval_checked(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env, i: usize) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
         <span class="kw">let </span>i = i + <span class="number">1</span>;
         <span class="kw">if </span>i &gt; <span class="number">10 </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;Recursion depth exceeded while evaluating: {self}&quot;</span>);
+            <span class="macro">error!</span>(<span class="string">"Recursion depth exceeded while evaluating: {self}"</span>);
             <span class="prelude-val">Err</span>(Error::RecursionDepthConst(<span class="self">self</span>))
         } <span class="kw">else </span>{
-            <span class="macro">trace!</span>(<span class="string">&quot;Evaluating constexpr: {self}&quot;</span>);
+            <span class="macro">trace!</span>(<span class="string">"Evaluating constexpr: {self}"</span>);
             <span class="kw">match </span><span class="self">self </span>{
                 <span class="self">Self</span>::Template(params, expr) =&gt; {
                     <span class="comment">// If the inner expr is a procedure, return a `polyproc`.
                     </span><span class="kw">match </span>expr.clone().eval_checked(env, i) {
                         <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Proc(proc)) =&gt; {
-                            <span class="macro">info!</span>(<span class="string">&quot;Creating polyproc from mono proc: {proc}&quot;</span>);
+                            <span class="macro">info!</span>(<span class="string">"Creating polyproc from mono proc: {proc}"</span>);
                             <span class="prelude-val">Ok</span>(<span class="self">Self</span>::PolyProc(PolyProcedure::from_mono(proc, params)))
                         }
                         <span class="kw">_ </span>=&gt; {
-                            <span class="macro">info!</span>(<span class="string">&quot;Creating template from expr: {expr}&quot;</span>);
+                            <span class="macro">info!</span>(<span class="string">"Creating template from expr: {expr}"</span>);
                             <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Template(params, expr))
                         }
                     }
@@ -1297,7 +1321,7 @@
 
                 <span class="self">Self</span>::Member(container, member) =&gt; {
                     <span class="kw">let </span>container_ty = container.get_type_checked(env, i)<span class="question-mark">?</span>;
-                    <span class="macro">trace!</span>(<span class="string">&quot;Member access on type: {container_ty}: {container} . {member}&quot;</span>);
+                    <span class="macro">trace!</span>(<span class="string">"Member access on type: {container_ty}: {container} . {member}"</span>);
                     <span class="comment">// container_ty.add_monomorphized_associated_consts(env)?;
                     </span><span class="prelude-val">Ok</span>(<span class="kw">match </span>(container.clone().eval(env)<span class="question-mark">?</span>, <span class="kw-2">*</span>member.clone()) {
                         (<span class="self">Self</span>::Tuple(tuple), <span class="self">Self</span>::Int(n)) =&gt; {
@@ -1333,7 +1357,7 @@
                                     <span class="comment">// return Ok(constant.clone());
                                 </span>}
                                 <span class="macro">error!</span>(
-                                    <span class="string">&quot;Member access not implemented for: {container_ty} . {member}&quot;
+                                    <span class="string">"Member access not implemented for: {container_ty} . {member}"
                                 </span>);
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::SymbolNotDefined(name));
                             }
@@ -1345,7 +1369,7 @@
                                 constant.eval_checked(env, i)<span class="question-mark">?
                             </span>} <span class="kw">else </span>{
                                 <span class="macro">error!</span>(
-                                    <span class="string">&quot;Member access not implemented for: {container_ty} . {member}&quot;
+                                    <span class="string">"Member access not implemented for: {container_ty} . {member}"
                                 </span>);
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), <span class="kw-2">*</span>member));
                             }
@@ -1359,7 +1383,7 @@
                                 <span class="kw">return </span>constant.eval_checked(env, i);
                                 <span class="comment">// return Ok(constant.clone());
                             </span>}
-                            <span class="macro">error!</span>(<span class="string">&quot;Member access not implemented for: {container_ty} . {member}&quot;</span>);
+                            <span class="macro">error!</span>(<span class="string">"Member access not implemented for: {container_ty} . {member}"</span>);
                             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), <span class="kw-2">*</span>member));
                         }
                     })
@@ -1380,7 +1404,7 @@
                 | <span class="self">Self</span>::Type(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="self">self</span>),
 
                 <span class="self">Self</span>::Declare(bindings, expr) =&gt; {
-                    <span class="macro">debug!</span>(<span class="string">&quot;Declaring compile time bindings: {bindings}&quot;</span>);
+                    <span class="macro">debug!</span>(<span class="string">"Declaring compile time bindings: {bindings}"</span>);
                     <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                     new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span>bindings)<span class="question-mark">?</span>;
                     expr.eval_checked(<span class="kw-2">&amp;</span>new_env, i)
@@ -1501,7 +1525,7 @@
 
     <span class="doccomment">/// Try to get this constant expression as an integer.
     </span><span class="kw">pub fn </span>as_int(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;i64, Error&gt; {
-        <span class="macro">trace!</span>(<span class="string">&quot;Getting int from constexpr: {self}&quot;</span>);
+        <span class="macro">trace!</span>(<span class="string">"Getting int from constexpr: {self}"</span>);
         <span class="comment">// match self.eval_checked(env, 0) {
         //     Ok(Self::Int(n)) =&gt; Ok(n),
         //     Ok(other) =&gt; Err(Error::NonIntegralConst(other)),
@@ -1516,9 +1540,26 @@
         }
     }
 
+    <span class="doccomment">/// Try to get this constant expression as a character.
+    </span><span class="kw">pub fn </span>as_char(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;char, Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">"Getting char from constexpr: {self}"</span>);
+        <span class="comment">// match self.eval_checked(env, 0) {
+        //     Ok(Self::Int(n)) =&gt; Ok(n),
+        //     Ok(other) =&gt; Err(Error::NonIntegralConst(other)),
+        //     Err(err) =&gt; Err(err),
+        // }
+        </span><span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::Char(ch) =&gt; <span class="prelude-val">Ok</span>(ch),
+            other =&gt; <span class="kw">match </span>other.eval(env)<span class="question-mark">? </span>{
+                <span class="self">Self</span>::Char(ch) =&gt; <span class="prelude-val">Ok</span>(ch),
+                other =&gt; <span class="prelude-val">Err</span>(Error::NonIntegralConst(other)),
+            },
+        }
+    }
+
     <span class="doccomment">/// Try to get this constant expression as a float.
     </span><span class="kw">pub fn </span>as_float(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;f64, Error&gt; {
-        <span class="macro">trace!</span>(<span class="string">&quot;Getting float from constexpr: {self}&quot;</span>);
+        <span class="macro">trace!</span>(<span class="string">"Getting float from constexpr: {self}"</span>);
         <span class="comment">// match self.eval_checked(env, 0) {
         //     Ok(Self::Float(n)) =&gt; Ok(n),
         //     Ok(other) =&gt; Err(Error::NonIntegralConst(other)),
@@ -1535,7 +1576,7 @@
 
     <span class="doccomment">/// Try to get this constant expression as a boolean value.
     </span><span class="kw">pub fn </span>as_bool(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
-        <span class="macro">trace!</span>(<span class="string">&quot;Getting bool from constexpr: {self}&quot;</span>);
+        <span class="macro">trace!</span>(<span class="string">"Getting bool from constexpr: {self}"</span>);
         <span class="comment">// match self.eval_checked(env, 0) {
         //     Ok(Self::Bool(b)) =&gt; Ok(b),
         //     Ok(other) =&gt; Err(Error::NonIntegralConst(other)),
@@ -1552,11 +1593,11 @@
 
     <span class="doccomment">/// Try to get this constant expression as a symbol (like in LISP).
     </span><span class="kw">pub fn </span>as_symbol(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;String, Error&gt; {
-        <span class="macro">trace!</span>(<span class="string">&quot;Getting symbol from constexpr: {self} ---- {self:?}&quot;</span>);
+        <span class="macro">trace!</span>(<span class="string">"Getting symbol from constexpr: {self} ---- {self:?}"</span>);
         <span class="kw">match </span><span class="self">self </span>{
             <span class="comment">// Check to see if the constexpr is already a symbol.
             </span><span class="self">Self</span>::Symbol(name) =&gt; <span class="prelude-val">Ok</span>(name),
-            <span class="comment">// If not, evaluate it and see if it&#39;s a symbol.
+            <span class="comment">// If not, evaluate it and see if it's a symbol.
             </span>other =&gt; <span class="kw">match </span>other.eval(env)<span class="question-mark">? </span>{
                 <span class="self">Self</span>::Symbol(name) =&gt; <span class="prelude-val">Ok</span>(name),
                 other =&gt; <span class="prelude-val">Err</span>(Error::NonSymbol(other)),
@@ -1573,7 +1614,7 @@
 
 <span class="kw">impl </span>GetType <span class="kw">for </span>ConstExpr {
     <span class="kw">fn </span>get_type_checked(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env, i: usize) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
-        <span class="macro">trace!</span>(<span class="string">&quot;Getting type from constexpr: {self} -- {self:?}&quot;</span>);
+        <span class="macro">trace!</span>(<span class="string">"Getting type from constexpr: {self} -- {self:?}"</span>);
         <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self</span>.clone() {
             <span class="self">Self</span>::Template(params, expr) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
@@ -1606,15 +1647,15 @@
                     </span>}
 
                     Type::Type(ty) =&gt; {
-                        <span class="comment">// Get the associated constant expression&#39;s type.
+                        <span class="comment">// Get the associated constant expression's type.
                         </span>env.get_type_of_associated_const(ty, <span class="kw-2">&amp;</span>as_symbol<span class="question-mark">?</span>)
                             .ok_or(Error::MemberNotFound((<span class="kw-2">*</span>val.clone()).into(), <span class="kw-2">*</span>field.clone()))<span class="question-mark">?
                     </span>}
-                    <span class="comment">// If we&#39;re accessing a member of a tuple,
+                    <span class="comment">// If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
                     // This is because tuples are accesed by integer index.
                     </span>Type::Tuple(items) =&gt; {
-                        <span class="macro">trace!</span>(<span class="string">&quot;Getting type of associated const: {val_type} . {as_int:?} {as_symbol:?}&quot;</span>);
+                        <span class="macro">trace!</span>(<span class="string">"Getting type of associated const: {val_type} . {as_int:?} {as_symbol:?}"</span>);
                         <span class="kw">if </span>as_symbol.is_ok() {
                             <span class="kw">return </span>env
                                 .get_type_of_associated_const(<span class="kw-2">&amp;</span>val_type, <span class="kw-2">&amp;</span>as_symbol<span class="question-mark">?</span>)
@@ -1641,7 +1682,7 @@
                             });
                         }
                     }
-                    <span class="comment">// If we&#39;re accessing a member of a struct,
+                    <span class="comment">// If we're accessing a member of a struct,
                     // we use the `as_symbol` interpretation of the field.
                     // This is because struct members are accessed by name.
                     </span>Type::Struct(fields) =&gt; {
@@ -1661,7 +1702,7 @@
                             });
                         }
                     }
-                    <span class="comment">// If we&#39;re accessing a member of a union,
+                    <span class="comment">// If we're accessing a member of a union,
                     // we use the `as_symbol` interpretation of the field.
                     // This is because union members are accessed by name.
                     </span>Type::Union(types) =&gt; {
@@ -1684,7 +1725,7 @@
                         }
                     }
 
-                    <span class="comment">// If we&#39;re accessing a member of a type that is not a tuple,
+                    <span class="comment">// If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
                     </span><span class="kw">_ </span>=&gt; {
                         <span class="kw">return </span>ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone())
@@ -1813,13 +1854,13 @@
                     <span class="comment">// Otherwise, evaluate the symbol as a constant.
                     </span><span class="kw">match </span><span class="self">Self</span>::Symbol(name).eval(env)<span class="question-mark">? </span>{
                         <span class="self">Self</span>::Symbol(name) =&gt; {
-                            <span class="comment">// If the symbol isn&#39;t a constant, try to get the procedure
+                            <span class="comment">// If the symbol isn't a constant, try to get the procedure
                             // with the same name.
                             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(proc) = env.get_proc(<span class="kw-2">&amp;</span>name) {
                                 <span class="comment">// Then, return the type of the procedure.
                                 </span>proc.get_type_checked(env, i)<span class="question-mark">?
                             </span>} <span class="kw">else </span>{
-                                <span class="comment">// If the procedure isn&#39;t defined, then this symbol isn&#39;t defined.
+                                <span class="comment">// If the procedure isn't defined, then this symbol isn't defined.
                                 </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::SymbolNotDefined(name));
                             }
                         }
@@ -1932,107 +1973,107 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Template(params, expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;&lt;&quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"&lt;"</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, param) <span class="kw">in </span>params.iter().enumerate() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{param}&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">"{param}"</span>)<span class="question-mark">?</span>;
                     <span class="kw">if </span>i &lt; params.len() - <span class="number">1 </span>{
-                        <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
+                        <span class="macro">write!</span>(f, <span class="string">", "</span>)<span class="question-mark">?
                     </span>}
                 }
-                <span class="macro">write!</span>(f, <span class="string">&quot;&gt; {expr}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"&gt; {expr}"</span>)
             }
 
             <span class="self">Self</span>::Type(t) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{t}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"{t}"</span>)
             }
             <span class="self">Self</span>::Member(container, member) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{container}.{member}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"{container}.{member}"</span>)
             }
             <span class="self">Self</span>::Annotated(expr, <span class="kw">_</span>) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{expr}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"{expr}"</span>)
             }
             <span class="self">Self</span>::FFIProcedure(ffi_proc) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{ffi_proc}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"{ffi_proc}"</span>)
             }
             <span class="self">Self</span>::CoreBuiltin(builtin) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{builtin}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"{builtin}"</span>)
             }
             <span class="self">Self</span>::StandardBuiltin(builtin) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{builtin}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"{builtin}"</span>)
             }
             <span class="self">Self</span>::TypeOf(expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;typeof({expr})&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"typeof({expr})"</span>)
             }
             <span class="self">Self</span>::Proc(proc) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{proc}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"{proc}"</span>)
             }
             <span class="self">Self</span>::PolyProc(proc) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{proc}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"{proc}"</span>)
             }
             <span class="self">Self</span>::Declare(bindings, expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;let {bindings} in {expr}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"let {bindings} in {expr}"</span>)
             }
             <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{expr}&lt;&quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"{expr}&lt;"</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, ty) <span class="kw">in </span>ty_args.iter().enumerate() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{ty}&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">"{ty}"</span>)<span class="question-mark">?</span>;
                     <span class="kw">if </span>i &lt; ty_args.len() - <span class="number">1 </span>{
-                        <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
+                        <span class="macro">write!</span>(f, <span class="string">", "</span>)<span class="question-mark">?
                     </span>}
                 }
-                <span class="macro">write!</span>(f, <span class="string">&quot;&gt;&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"&gt;"</span>)
             }
             <span class="self">Self</span>::As(expr, ty) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{expr} as {ty}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"{expr} as {ty}"</span>)
             }
             <span class="self">Self</span>::Tuple(items) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;(&quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"("</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, item) <span class="kw">in </span>items.iter().enumerate() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{item}&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">"{item}"</span>)<span class="question-mark">?</span>;
                     <span class="kw">if </span>i &lt; items.len() - <span class="number">1 </span>{
-                        <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
+                        <span class="macro">write!</span>(f, <span class="string">", "</span>)<span class="question-mark">?
                     </span>}
                 }
-                <span class="macro">write!</span>(f, <span class="string">&quot;)&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">")"</span>)
             }
             <span class="self">Self</span>::Struct(fields) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;struct {{&quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"struct {{"</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, (field, val)) <span class="kw">in </span>fields.iter().enumerate() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{field} = {val}&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">"{field} = {val}"</span>)<span class="question-mark">?</span>;
                     <span class="kw">if </span>i &lt; fields.len() - <span class="number">1 </span>{
-                        <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
+                        <span class="macro">write!</span>(f, <span class="string">", "</span>)<span class="question-mark">?
                     </span>}
                 }
-                <span class="macro">write!</span>(f, <span class="string">&quot;}}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"}}"</span>)
             }
             <span class="self">Self</span>::Union(ty, variant, val) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;union {{ {variant} = {val}, {ty}.. }}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"union {{ {variant} = {val}, {ty}.. }}"</span>)
             }
             <span class="self">Self</span>::EnumUnion(ty, variant, val) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;union {{ {variant} = {val}, {ty}.. }}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"union {{ {variant} = {val}, {ty}.. }}"</span>)
             }
             <span class="self">Self</span>::Array(items) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;[&quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"["</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, val) <span class="kw">in </span>items.iter().enumerate() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{val}&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">"{val}"</span>)<span class="question-mark">?</span>;
                     <span class="kw">if </span>i &lt; items.len() - <span class="number">1 </span>{
-                        <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
+                        <span class="macro">write!</span>(f, <span class="string">", "</span>)<span class="question-mark">?
                     </span>}
                 }
-                <span class="macro">write!</span>(f, <span class="string">&quot;]&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"]"</span>)
             }
-            <span class="self">Self</span>::Bool(x) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="kw">if </span><span class="kw-2">*</span>x { <span class="string">&quot;true&quot; </span>} <span class="kw">else </span>{ <span class="string">&quot;false&quot; </span>}),
-            <span class="self">Self</span>::Char(ch) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{ch:?}&quot;</span>),
-            <span class="self">Self</span>::Cell(n) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{n:x}&quot;</span>),
-            <span class="self">Self</span>::Int(n) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{n}&quot;</span>),
-            <span class="self">Self</span>::Float(n) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{n}&quot;</span>),
-            <span class="self">Self</span>::None =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;None&quot;</span>),
-            <span class="self">Self</span>::Null =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Null&quot;</span>),
+            <span class="self">Self</span>::Bool(x) =&gt; <span class="macro">write!</span>(f, <span class="string">"{}"</span>, <span class="kw">if </span><span class="kw-2">*</span>x { <span class="string">"true" </span>} <span class="kw">else </span>{ <span class="string">"false" </span>}),
+            <span class="self">Self</span>::Char(ch) =&gt; <span class="macro">write!</span>(f, <span class="string">"{ch:?}"</span>),
+            <span class="self">Self</span>::Cell(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"{n:x}"</span>),
+            <span class="self">Self</span>::Int(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"{n}"</span>),
+            <span class="self">Self</span>::Float(n) =&gt; <span class="macro">write!</span>(f, <span class="string">"{n}"</span>),
+            <span class="self">Self</span>::None =&gt; <span class="macro">write!</span>(f, <span class="string">"None"</span>),
+            <span class="self">Self</span>::Null =&gt; <span class="macro">write!</span>(f, <span class="string">"Null"</span>),
 
-            <span class="self">Self</span>::Symbol(name) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{name}&quot;</span>),
-            <span class="self">Self</span>::Of(t, name) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{t} of {name}&quot;</span>),
-            <span class="self">Self</span>::SizeOfExpr(expr) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;sizeof({expr}&quot;</span>),
-            <span class="self">Self</span>::SizeOfType(ty) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;sizeof&lt;{ty}&gt;()&quot;</span>),
+            <span class="self">Self</span>::Symbol(name) =&gt; <span class="macro">write!</span>(f, <span class="string">"{name}"</span>),
+            <span class="self">Self</span>::Of(t, name) =&gt; <span class="macro">write!</span>(f, <span class="string">"{t} of {name}"</span>),
+            <span class="self">Self</span>::SizeOfExpr(expr) =&gt; <span class="macro">write!</span>(f, <span class="string">"sizeof({expr}"</span>),
+            <span class="self">Self</span>::SizeOfType(ty) =&gt; <span class="macro">write!</span>(f, <span class="string">"sizeof&lt;{ty}&gt;()"</span>),
         }
     }
 }

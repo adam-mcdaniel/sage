@@ -10,7 +10,8 @@ pub CoreProgram: CoreProgram = CoreOp* => CoreProgram(<>);
 pub StandardProgram: StandardProgram = StandardOp* => StandardProgram(<>);
 
 CoreOp: CoreOp = {
-    "set" <IntLit> => CoreOp::Set(<>),
+    "set" <List<"[", IntLit, ",", "]">> => CoreOp::Set(<>),
+    "set" <IntLit> => CoreOp::Set(vec![<>]),
     "fun" => CoreOp::Function,
     "call" => CoreOp::Call,
     "ret" => CoreOp::Return,
@@ -20,22 +21,27 @@ CoreOp: CoreOp = {
     "else" => CoreOp::Else,
     "end" => CoreOp::End,
     
-    "sav" => CoreOp::Save,
-    "res" => CoreOp::Restore,
+    "sav" => CoreOp::Store(1),
+    "res" => CoreOp::Load(1),
+
+    "load" <IntLit> => CoreOp::Load(<> as usize),
+    "store" <IntLit> => CoreOp::Store(<> as usize),
+
     "mov" <IntLit> => CoreOp::Move(<> as isize),
 
     "where" => CoreOp::Where,
     "deref" => CoreOp::Deref,
     "ref" => CoreOp::Refer,
 
-    "index" => CoreOp::Index,
-    "bitwise-nand" => CoreOp::BitwiseNand,
-    "add" => CoreOp::Add,
-    "sub" => CoreOp::Sub,
-    "mul" => CoreOp::Mul,
-    "div" => CoreOp::Div,
-    "rem" => CoreOp::Rem,
-    "gez" => CoreOp::IsNonNegative,
+    "index" <IntLit?> => CoreOp::Index(<>.unwrap_or(1) as usize),
+    "bitwise-nand" <IntLit?> => CoreOp::BitwiseNand(<>.unwrap_or(1) as usize),
+    "add" <IntLit?> => CoreOp::Add(<>.unwrap_or(1) as usize),
+    "sub" <IntLit?> => CoreOp::Sub(<>.unwrap_or(1) as usize),
+    "mul" <IntLit?> => CoreOp::Mul(<>.unwrap_or(1) as usize),
+    "div" <IntLit?> => CoreOp::Div(<>.unwrap_or(1) as usize),
+    "rem" <IntLit?> => CoreOp::Rem(<>.unwrap_or(1) as usize),
+    "neg" <IntLit?> => CoreOp::Neg(<>.unwrap_or(1) as usize),
+    "gez" <IntLit?> => CoreOp::IsNonNegative(<>.unwrap_or(1) as usize),
 
     "get" <Input> => CoreOp::Get(<>),
     "put" <Output> => CoreOp::Put(<>),
@@ -43,25 +49,35 @@ CoreOp: CoreOp = {
 
 StandardOp: StandardOp = {
     CoreOp => StandardOp::CoreOp(<>),
-    "set-f" <FloatLit> => StandardOp::Set(<>),
-    "set-f" <IntLit> => StandardOp::Set(<> as f64),
-    "to-float" => StandardOp::ToFloat,
-    "to-int" => StandardOp::ToInt,
+    "set-f" <FloatLit> => StandardOp::Set(vec![<>]),
+    "set-f" <IntLit> => StandardOp::Set(vec![<> as f64]),
+    "set-f" <List<"[", FloatLit, ",", "]">> => StandardOp::Set(<>),
     
-    "pow" => StandardOp::Pow,
-    "add-f" => StandardOp::Add,
-    "sub-f" => StandardOp::Sub,
-    "mul-f" => StandardOp::Mul,
-    "div-f" => StandardOp::Mul,
-    "rem-f" => StandardOp::Rem,
-    "gez-f" => StandardOp::IsNonNegative,
+    "to-float" <IntLit?> => StandardOp::ToFloat(<>.unwrap_or(1) as usize),
+    "to-int" <IntLit?> => StandardOp::ToInt(<>.unwrap_or(1) as usize),
+    
+    "pow" <IntLit?> => StandardOp::Pow(<>.unwrap_or(1) as usize),
+    // "add-f" => StandardOp::Add,
+    // "sub-f" => StandardOp::Sub,
+    // "mul-f" => StandardOp::Mul,
+    // "div-f" => StandardOp::Mul,
+    // "rem-f" => StandardOp::Rem,
 
-    "sin" => StandardOp::Sin,
-    "cos" => StandardOp::Cos,
-    "tan" => StandardOp::Tan,
-    "asin" => StandardOp::ASin,
-    "acos" => StandardOp::ACos,
-    "atan" => StandardOp::ATan,
+    "add-f" <IntLit?> => StandardOp::Add(<>.unwrap_or(1) as usize),
+    "sub-f" <IntLit?> => StandardOp::Sub(<>.unwrap_or(1) as usize),
+    "mul-f" <IntLit?> => StandardOp::Mul(<>.unwrap_or(1) as usize),
+    "div-f" <IntLit?> => StandardOp::Div(<>.unwrap_or(1) as usize),
+    "rem-f" <IntLit?> => StandardOp::Rem(<>.unwrap_or(1) as usize),
+    "neg-f" <IntLit?> => StandardOp::Neg(<>.unwrap_or(1) as usize),
+
+    "gez-f" <IntLit?> => StandardOp::IsNonNegative(<>.unwrap_or(1) as usize),
+
+    "sin" <IntLit?> => StandardOp::Sin(<>.unwrap_or(1) as usize),
+    "cos" <IntLit?> => StandardOp::Cos(<>.unwrap_or(1) as usize),
+    "tan" <IntLit?> => StandardOp::Tan(<>.unwrap_or(1) as usize),
+    "asin" <IntLit?> => StandardOp::ASin(<>.unwrap_or(1) as usize),
+    "acos" <IntLit?> => StandardOp::ACos(<>.unwrap_or(1) as usize),
+    "atan" <IntLit?> => StandardOp::ATan(<>.unwrap_or(1) as usize),
 
     "alloc" => StandardOp::Alloc,
     "free" => StandardOp::Free,

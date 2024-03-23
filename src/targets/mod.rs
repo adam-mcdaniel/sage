@@ -39,11 +39,11 @@
 pub mod c;
 pub use c::*;
 
-pub mod sage_os;
-pub use sage_os::*;
+// pub mod sage_os;
+// pub use sage_os::*;
 
-pub mod x86;
-pub use x86::*;
+// pub mod x86;
+// pub use x86::*;
 
 use log::info;
 

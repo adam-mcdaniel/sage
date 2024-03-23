@@ -12,6 +12,7 @@
 use super::*;
 
 use log::trace;
+use rayon::prelude::*;
 
 /// Get the type associated with a value under a given environment.
 pub trait GetType {
@@ -244,7 +245,7 @@ impl GetType for Expr {
                 items
                     .clone()
                     // Make an iterator over the items.
-                    .into_iter()
+                    .into_par_iter()
                     // Get the type of each item.
                     .map(|c| c.get_type_checked(env, i))
                     // Collect the results into a vector.
@@ -269,7 +270,7 @@ impl GetType for Expr {
                 fields
                     .clone()
                     // Make an iterator over the fields.
-                    .into_iter()
+                    .into_par_iter()
                     // Get the type of each field.
                     .map(|(k, c)| Ok((k, c.get_type_checked(env, i)?)))
                     // Collect the results into a map.
@@ -433,9 +434,12 @@ impl GetType for Expr {
             }
 
             Self::Many(exprs) => {
-                for expr in exprs.iter_mut() {
-                    expr.substitute(name, ty);
-                }
+                // for expr in exprs.iter_mut() {
+                //     expr.substitute(name, ty);
+                // }
+                exprs
+                    .par_iter_mut()
+                    .for_each(|expr| expr.substitute(name, ty));
             }
             Self::When(cond, then_body, else_body) => {
                 cond.substitute(name, ty);
@@ -445,9 +449,11 @@ impl GetType for Expr {
 
             Self::Match(expr, arms) => {
                 expr.substitute(name, ty);
-                for (_, arm) in arms.iter_mut() {
-                    arm.substitute(name, ty);
-                }
+                // for (_, arm) in arms.iter_mut() {
+                //     arm.substitute(name, ty);
+                // }
+                arms.par_iter_mut()
+                    .for_each(|(_, arm)| arm.substitute(name, ty));
             }
 
             Self::IfLet(_pat, expr, then_body, else_body) => {
@@ -485,17 +491,21 @@ impl GetType for Expr {
 
             Self::Apply(expr, args) => {
                 expr.substitute(name, ty);
-                for arg in args.iter_mut() {
-                    arg.substitute(name, ty);
-                }
+                // for arg in args.iter_mut() {
+                //     arg.substitute(name, ty);
+                // }
+                args.par_iter_mut().for_each(|arg| arg.substitute(name, ty));
             }
 
             Self::Return(expr) => expr.substitute(name, ty),
 
             Self::Array(exprs) | Self::Tuple(exprs) => {
-                for expr in exprs.iter_mut() {
-                    expr.substitute(name, ty);
-                }
+                // for expr in exprs.iter_mut() {
+                //     expr.substitute(name, ty);
+                // }
+                exprs
+                    .par_iter_mut()
+                    .for_each(|expr| expr.substitute(name, ty));
             }
 
             Self::Union(t, _, expr) => {
@@ -509,9 +519,12 @@ impl GetType for Expr {
             }
 
             Self::Struct(fields) => {
-                for (_, expr) in fields.iter_mut() {
-                    expr.substitute(name, ty);
-                }
+                // for (_, expr) in fields.iter_mut() {
+                //     expr.substitute(name, ty);
+                // }
+                fields
+                    .par_iter_mut()
+                    .for_each(|(_, expr)| expr.substitute(name, ty));
             }
 
             Self::As(expr, t) => {

@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/error.rs`."><title>error.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.1 (eb26296b5 2023-08-03)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../sage/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/error.rs`."><title>error.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -356,9 +357,9 @@
     </span>MemberNotFound(Expr, ConstExpr),
     <span class="doccomment">/// Recursion depth exceeded when trying to evaluate a constant expression.
     </span>RecursionDepthConst(ConstExpr),
-    <span class="doccomment">/// Recursion depth exceeded when trying to confirm a type&#39;s equality to another type.
+    <span class="doccomment">/// Recursion depth exceeded when trying to confirm a type's equality to another type.
     </span>CouldntSimplify(Type, Type),
-    <span class="doccomment">/// Recursion depth exceeded when trying to confirm a type&#39;s equality to another type.
+    <span class="doccomment">/// Recursion depth exceeded when trying to confirm a type's equality to another type.
     </span>RecursionDepthTypeEquality(Type, Type),
     <span class="doccomment">/// Got another type when expecting an integer, bool, or char.
     </span>NonIntegralConst(ConstExpr),
@@ -481,7 +482,7 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Annotated(err, <span class="kw">_</span>) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{err}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"{err}"</span>)
             }
             <span class="self">Self</span>::MismatchedTypes {
                 expected,
@@ -490,7 +491,7 @@
             } =&gt; {
                 <span class="macro">write!</span>(
                     f,
-                    <span class="string">&quot;mismatched types: expected {}, found {} in {}&quot;</span>,
+                    <span class="string">"mismatched types: expected {}, found {} in {}"</span>,
                     expected, found, expr
                 )
             }
@@ -501,157 +502,157 @@
             } =&gt; {
                 <span class="macro">write!</span>(
                     f,
-                    <span class="string">&quot;mismatched mutability: expected {}, found {} in {}&quot;</span>,
+                    <span class="string">"mismatched mutability: expected {}, found {} in {}"</span>,
                     expected, found, expr
                 )
             }
             <span class="self">Self</span>::VariantNotFound(ty, variant) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;variant {} not found in {}&quot;</span>, variant, ty)
+                <span class="macro">write!</span>(f, <span class="string">"variant {} not found in {}"</span>, variant, ty)
             }
             <span class="self">Self</span>::MemberNotFound(expr, member) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;member {} not found in {}&quot;</span>, member, expr)
+                <span class="macro">write!</span>(f, <span class="string">"member {} not found in {}"</span>, member, expr)
             }
             <span class="self">Self</span>::RecursionDepthConst(expr) =&gt; {
                 <span class="macro">write!</span>(
                     f,
-                    <span class="string">&quot;recursion depth exceeded when trying to evaluate {}&quot;</span>,
+                    <span class="string">"recursion depth exceeded when trying to evaluate {}"</span>,
                     expr
                 )
             }
             <span class="self">Self</span>::CouldntSimplify(ty1, ty2) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;couldn&#39;t simplify {} to {}&quot;</span>, ty1, ty2)
+                <span class="macro">write!</span>(f, <span class="string">"couldn't simplify {} to {}"</span>, ty1, ty2)
             }
             <span class="self">Self</span>::RecursionDepthTypeEquality(ty1, ty2) =&gt; {
                 <span class="macro">write!</span>(
                     f,
-                    <span class="string">&quot;recursion depth exceeded when trying to confirm {} == {}&quot;</span>,
+                    <span class="string">"recursion depth exceeded when trying to confirm {} == {}"</span>,
                     ty1, ty2
                 )
             }
             <span class="self">Self</span>::NonIntegralConst(expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;got non-integral constant expression {}&quot;</span>, expr)
+                <span class="macro">write!</span>(f, <span class="string">"got non-integral constant expression {}"</span>, expr)
             }
             <span class="self">Self</span>::UnsizedType(ty) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;tried to instantiate unsized type {}&quot;</span>, ty)
+                <span class="macro">write!</span>(f, <span class="string">"tried to instantiate unsized type {}"</span>, ty)
             }
             <span class="self">Self</span>::DerefNonPointer(expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;tried to dereference non-pointer {}&quot;</span>, expr)
+                <span class="macro">write!</span>(f, <span class="string">"tried to dereference non-pointer {}"</span>, expr)
             }
             <span class="self">Self</span>::ApplyNonProc(expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;tried to apply non-procedure {}&quot;</span>, expr)
+                <span class="macro">write!</span>(f, <span class="string">"tried to apply non-procedure {}"</span>, expr)
             }
             <span class="self">Self</span>::NonSymbol(expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;expected symbol, found {}&quot;</span>, expr)
+                <span class="macro">write!</span>(f, <span class="string">"expected symbol, found {}"</span>, expr)
             }
             <span class="self">Self</span>::InvalidIndex(expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;invalid index expression {}&quot;</span>, expr)
+                <span class="macro">write!</span>(f, <span class="string">"invalid index expression {}"</span>, expr)
             }
             <span class="self">Self</span>::InvalidRefer(expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;invalid refer expression {}&quot;</span>, expr)
+                <span class="macro">write!</span>(f, <span class="string">"invalid refer expression {}"</span>, expr)
             }
             <span class="self">Self</span>::InvalidUnaryOp(op, expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;invalid unary operation {} {}&quot;</span>, op, expr)
+                <span class="macro">write!</span>(f, <span class="string">"invalid unary operation {} {}"</span>, op, expr)
             }
             <span class="self">Self</span>::InvalidUnaryOpTypes(op, ty) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;invalid unary operation {} for type {}&quot;</span>, op, ty)
+                <span class="macro">write!</span>(f, <span class="string">"invalid unary operation {} for type {}"</span>, op, ty)
             }
             <span class="self">Self</span>::InvalidBinaryOp(op, expr1, expr2) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;invalid binary operation {} {} {}&quot;</span>, op, expr1, expr2)
+                <span class="macro">write!</span>(f, <span class="string">"invalid binary operation {} {} {}"</span>, op, expr1, expr2)
             }
             <span class="self">Self</span>::InvalidBinaryOpTypes(op, ty1, ty2) =&gt; {
                 <span class="macro">write!</span>(
                     f,
-                    <span class="string">&quot;invalid binary operation {} for types {} and {}&quot;</span>,
+                    <span class="string">"invalid binary operation {} for types {} and {}"</span>,
                     op, ty1, ty2
                 )
             }
             <span class="self">Self</span>::InvalidTernaryOp(op, expr1, expr2, expr3) =&gt; {
                 <span class="macro">write!</span>(
                     f,
-                    <span class="string">&quot;invalid ternary operation {} {} {} {}&quot;</span>,
+                    <span class="string">"invalid ternary operation {} {} {} {}"</span>,
                     op, expr1, expr2, expr3
                 )
             }
             <span class="self">Self</span>::InvalidTernaryOpTypes(op, ty1, ty2, ty3) =&gt; {
                 <span class="macro">write!</span>(
                     f,
-                    <span class="string">&quot;invalid ternary operation {} for types {}, {}, and {}&quot;</span>,
+                    <span class="string">"invalid ternary operation {} for types {}, {}, and {}"</span>,
                     op, ty1, ty2, ty3
                 )
             }
             <span class="self">Self</span>::InvalidAssignOp(op, expr1, expr2) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;invalid assignment operation {} {} {}&quot;</span>, op, expr1, expr2)
+                <span class="macro">write!</span>(f, <span class="string">"invalid assignment operation {} {} {}"</span>, op, expr1, expr2)
             }
             <span class="self">Self</span>::InvalidAssignOpTypes(op, ty1, ty2) =&gt; {
                 <span class="macro">write!</span>(
                     f,
-                    <span class="string">&quot;invalid assignment operation {} for types {} and {}&quot;</span>,
+                    <span class="string">"invalid assignment operation {} for types {} and {}"</span>,
                     op, ty1, ty2
                 )
             }
             <span class="self">Self</span>::SymbolNotDefined(sym) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;symbol {} not defined&quot;</span>, sym)
+                <span class="macro">write!</span>(f, <span class="string">"symbol {} not defined"</span>, sym)
             }
             <span class="self">Self</span>::TypeNotDefined(ty) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;type {} not defined&quot;</span>, ty)
+                <span class="macro">write!</span>(f, <span class="string">"type {} not defined"</span>, ty)
             }
             <span class="self">Self</span>::NegativeArrayLength(expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;negative array length {}&quot;</span>, expr)
+                <span class="macro">write!</span>(f, <span class="string">"negative array length {}"</span>, expr)
             }
             <span class="self">Self</span>::InvalidPatternForType(ty, pat) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;invalid pattern {} for type {}&quot;</span>, pat, ty)
+                <span class="macro">write!</span>(f, <span class="string">"invalid pattern {} for type {}"</span>, pat, ty)
             }
             <span class="self">Self</span>::InvalidPatternForExpr(expr, pat) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;invalid pattern {} for expression {}&quot;</span>, pat, expr)
+                <span class="macro">write!</span>(f, <span class="string">"invalid pattern {} for expression {}"</span>, pat, expr)
             }
             <span class="self">Self</span>::InvalidMatchExpr(expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;invalid match expression {}&quot;</span>, expr)
+                <span class="macro">write!</span>(f, <span class="string">"invalid match expression {}"</span>, expr)
             }
             <span class="self">Self</span>::NonExhaustivePatterns { patterns, expr } =&gt; {
                 <span class="macro">write!</span>(
                     f,
-                    <span class="string">&quot;non-exhaustive patterns {:?} for expression {}&quot;</span>,
+                    <span class="string">"non-exhaustive patterns {:?} for expression {}"</span>,
                     patterns, expr
                 )
             }
             <span class="self">Self</span>::InvalidAs(expr, ty1, ty2) =&gt; {
                 <span class="macro">write!</span>(
                     f,
-                    <span class="string">&quot;invalid as expression {} for types {} and {}&quot;</span>,
+                    <span class="string">"invalid as expression {} for types {} and {}"</span>,
                     expr, ty1, ty2
                 )
             }
             <span class="self">Self</span>::InvalidConstExpr(expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;invalid constant expression {}&quot;</span>, expr)
+                <span class="macro">write!</span>(f, <span class="string">"invalid constant expression {}"</span>, expr)
             }
             <span class="self">Self</span>::UnsupportedOperation(expr) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;unsupported operation {}&quot;</span>, expr)
+                <span class="macro">write!</span>(f, <span class="string">"unsupported operation {}"</span>, expr)
             }
             <span class="self">Self</span>::TypeRedefined(ty) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;type {} redefined&quot;</span>, ty)
+                <span class="macro">write!</span>(f, <span class="string">"type {} redefined"</span>, ty)
             }
             <span class="self">Self</span>::UnusedExpr(expr, ty) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;unused expression {} of type {}&quot;</span>, expr, ty)
+                <span class="macro">write!</span>(f, <span class="string">"unused expression {} of type {}"</span>, expr, ty)
             }
             <span class="self">Self</span>::InvalidTemplateArgs(ty) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;invalid template arguments for type {}&quot;</span>, ty)
+                <span class="macro">write!</span>(f, <span class="string">"invalid template arguments for type {}"</span>, ty)
             }
             <span class="self">Self</span>::ApplyNonTemplate(ty) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;tried to apply non-template type {}&quot;</span>, ty)
+                <span class="macro">write!</span>(f, <span class="string">"tried to apply non-template type {}"</span>, ty)
             }
             <span class="self">Self</span>::SizeOfTemplate(ty) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;tried to get size of template type {}&quot;</span>, ty)
+                <span class="macro">write!</span>(f, <span class="string">"tried to get size of template type {}"</span>, ty)
             }
             <span class="self">Self</span>::CompilePolyProc(proc) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;tried to compile polymorphic procedure {}&quot;</span>, proc)
+                <span class="macro">write!</span>(f, <span class="string">"tried to compile polymorphic procedure {}"</span>, proc)
             }
             <span class="self">Self</span>::AssemblyError(e) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;assembly error: {}&quot;</span>, e)
+                <span class="macro">write!</span>(f, <span class="string">"assembly error: {}"</span>, e)
             }
             <span class="self">Self</span>::InvalidMonomorphize(expr) =&gt; {
                 <span class="macro">write!</span>(
                     f,
-                    <span class="string">&quot;invalid monomorphization of constant expression {}&quot;</span>,
+                    <span class="string">"invalid monomorphization of constant expression {}"</span>,
                     expr
                 )
             }

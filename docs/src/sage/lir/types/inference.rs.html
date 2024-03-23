@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/types/inference.rs`."><title>inference.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.1 (eb26296b5 2023-08-03)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/types/inference.rs`."><title>inference.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -531,6 +532,19 @@
 <a href="#531" id="531">531</a>
 <a href="#532" id="532">532</a>
 <a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Inference
 //!
 //! This module contains the type inference algorithm for the language.
@@ -545,6 +559,7 @@
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use </span>log::trace;
+<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Get the type associated with a value under a given environment.
 </span><span class="kw">pub trait </span>GetType {
@@ -570,7 +585,7 @@
 <span class="doccomment">/// Infer the type associated with an expression under a given environment.
 </span><span class="kw">impl </span>GetType <span class="kw">for </span>Expr {
     <span class="kw">fn </span>get_type_checked(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env, i: usize) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
-        <span class="macro">trace!</span>(<span class="string">&quot;Getting type of expression {}&quot;</span>, <span class="self">self</span>);
+        <span class="macro">trace!</span>(<span class="string">"Getting type of expression {}"</span>, <span class="self">self</span>);
         <span class="kw">let </span>i = i + <span class="number">1</span>;
         <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Annotated(expr, annotation) =&gt; {
@@ -608,7 +623,7 @@
             <span class="self">Self</span>::IfLet(_pat, _expr, _a, b) =&gt; {
                 <span class="comment">// We could get the type of the then branch,
                 // but the else branch should always be the same type.
-                // (and if it isn&#39;t, the type checker will catch it)
+                // (and if it isn't, the type checker will catch it)
                 // return pat.get_branch_result_type(&amp;expr, a, env)
                 </span>b.get_type_checked(env, i)<span class="question-mark">?
             </span>}
@@ -756,7 +771,7 @@
             <span class="comment">// The result of an assignment to a pointer is None.
             </span><span class="self">Self</span>::DerefMut(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; Type::None,
 
-            <span class="comment">// The type of a return is &quot;Never&quot; - it never allows
+            <span class="comment">// The type of a return is "Never" - it never allows
             // the following instructions to be executed.
             </span><span class="self">Self</span>::Return(<span class="kw">_</span>) =&gt; Type::Never,
             <span class="comment">// Get the type of a procedure call.
@@ -777,7 +792,7 @@
                 </span>items
                     .clone()
                     <span class="comment">// Make an iterator over the items.
-                    </span>.into_iter()
+                    </span>.into_par_iter()
                     <span class="comment">// Get the type of each item.
                     </span>.map(|c| c.get_type_checked(env, i))
                     <span class="comment">// Collect the results into a vector.
@@ -802,7 +817,7 @@
                 </span>fields
                     .clone()
                     <span class="comment">// Make an iterator over the fields.
-                    </span>.into_iter()
+                    </span>.into_par_iter()
                     <span class="comment">// Get the type of each field.
                     </span>.map(|(k, c)| <span class="prelude-val">Ok</span>((k, c.get_type_checked(env, i)<span class="question-mark">?</span>)))
                     <span class="comment">// Collect the results into a map.
@@ -830,12 +845,12 @@
                     Type::Type(ty) =&gt; {
                         <span class="comment">// ty.add_monomorphized_associated_consts(env)?;
 
-                        // Get the associated constant expression&#39;s type.
+                        // Get the associated constant expression's type.
                         </span>env.get_type_of_associated_const(<span class="kw-2">&amp;</span>ty, <span class="kw-2">&amp;</span>as_symbol<span class="question-mark">?</span>)
                             .ok_or(Error::MemberNotFound(<span class="kw-2">*</span>val.clone(), field.clone()))<span class="question-mark">?
                     </span>}
                     Type::Unit(_unit_name, inner_ty) =&gt; {
-                        <span class="comment">// Get the associated constant expression&#39;s type.
+                        <span class="comment">// Get the associated constant expression's type.
                         </span>env.get_type_of_associated_const(<span class="kw-2">&amp;</span>inner_ty, <span class="kw-2">&amp;</span>as_symbol<span class="question-mark">?</span>)
                             .ok_or(Error::MemberNotFound(<span class="kw-2">*</span>val.clone(), field.clone()))<span class="question-mark">?
                     </span>}
@@ -852,7 +867,7 @@
                             }
                         }
                     }
-                    <span class="comment">// If we&#39;re accessing a member of a tuple,
+                    <span class="comment">// If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
                     // This is because tuples are accesed by integer index.
                     </span>Type::Tuple(items) =&gt; {
@@ -871,7 +886,7 @@
                             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(<span class="kw-2">*</span>val.clone(), field.clone()));
                         }
                     }
-                    <span class="comment">// If we&#39;re accessing a member of a struct,
+                    <span class="comment">// If we're accessing a member of a struct,
                     // we use the `as_symbol` interpretation of the field.
                     // This is because struct members are accessed by name.
                     </span>Type::Struct(fields) =&gt; {
@@ -887,7 +902,7 @@
                                 .ok_or(Error::MemberNotFound(<span class="kw-2">*</span>val.clone(), field.clone()));
                         }
                     }
-                    <span class="comment">// If we&#39;re accessing a member of a union,
+                    <span class="comment">// If we're accessing a member of a union,
                     // we use the `as_symbol` interpretation of the field.
                     // This is because union members are accessed by name.
                     </span>Type::Union(types) =&gt; {
@@ -904,13 +919,13 @@
                         }
                     }
 
-                    <span class="comment">// If we&#39;re accessing a member of a type that is not a tuple,
+                    <span class="comment">// If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
                     </span>val_type =&gt; {
-                        <span class="comment">// error!(&quot;BING BONG&quot;);
+                        <span class="comment">// error!("BING BONG");
                         // Try to get the member of the underlying type.
                         </span><span class="kw">if let </span><span class="prelude-val">Ok</span>((t, <span class="kw">_</span>)) = val_type.get_member_offset(field, val, env) {
-                            <span class="macro">info!</span>(<span class="string">&quot;BING BONG&quot;</span>);
+                            <span class="macro">info!</span>(<span class="string">"BING BONG"</span>);
                             <span class="kw">return </span><span class="prelude-val">Ok</span>(t);
                         }
 
@@ -933,7 +948,7 @@
                 </span>Type::Array(item, <span class="kw">_</span>) =&gt; <span class="kw-2">*</span>item,
                 Type::Pointer(<span class="kw">_</span>, item) =&gt; <span class="kw-2">*</span>item,
 
-                <span class="comment">// If we&#39;re accessing an index of a type that is not an array or pointer,
+                <span class="comment">// If we're accessing an index of a type that is not an array or pointer,
                 // we cannot access an index.
                 </span><span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidIndex(<span class="self">self</span>.clone())),
             },
@@ -942,7 +957,7 @@
 
     <span class="doccomment">/// Substitute a type in a given expression.
     </span><span class="kw">fn </span>substitute(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str, ty: <span class="kw-2">&amp;</span>Type) {
-        <span class="macro">trace!</span>(<span class="string">&quot;Substituting {name} for {ty} in {self}&quot;</span>);
+        <span class="macro">trace!</span>(<span class="string">"Substituting {name} for {ty} in {self}"</span>);
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Annotated(expr, <span class="kw">_</span>) =&gt; {
                 expr.substitute(name, ty);
@@ -966,9 +981,12 @@
             }
 
             <span class="self">Self</span>::Many(exprs) =&gt; {
-                <span class="kw">for </span>expr <span class="kw">in </span>exprs.iter_mut() {
-                    expr.substitute(name, ty);
-                }
+                <span class="comment">// for expr in exprs.iter_mut() {
+                //     expr.substitute(name, ty);
+                // }
+                </span>exprs
+                    .par_iter_mut()
+                    .for_each(|expr| expr.substitute(name, ty));
             }
             <span class="self">Self</span>::When(cond, then_body, else_body) =&gt; {
                 cond.substitute(name, ty);
@@ -978,9 +996,11 @@
 
             <span class="self">Self</span>::Match(expr, arms) =&gt; {
                 expr.substitute(name, ty);
-                <span class="kw">for </span>(<span class="kw">_</span>, arm) <span class="kw">in </span>arms.iter_mut() {
-                    arm.substitute(name, ty);
-                }
+                <span class="comment">// for (_, arm) in arms.iter_mut() {
+                //     arm.substitute(name, ty);
+                // }
+                </span>arms.par_iter_mut()
+                    .for_each(|(<span class="kw">_</span>, arm)| arm.substitute(name, ty));
             }
 
             <span class="self">Self</span>::IfLet(_pat, expr, then_body, else_body) =&gt; {
@@ -1018,17 +1038,21 @@
 
             <span class="self">Self</span>::Apply(expr, args) =&gt; {
                 expr.substitute(name, ty);
-                <span class="kw">for </span>arg <span class="kw">in </span>args.iter_mut() {
-                    arg.substitute(name, ty);
-                }
+                <span class="comment">// for arg in args.iter_mut() {
+                //     arg.substitute(name, ty);
+                // }
+                </span>args.par_iter_mut().for_each(|arg| arg.substitute(name, ty));
             }
 
             <span class="self">Self</span>::Return(expr) =&gt; expr.substitute(name, ty),
 
             <span class="self">Self</span>::Array(exprs) | <span class="self">Self</span>::Tuple(exprs) =&gt; {
-                <span class="kw">for </span>expr <span class="kw">in </span>exprs.iter_mut() {
-                    expr.substitute(name, ty);
-                }
+                <span class="comment">// for expr in exprs.iter_mut() {
+                //     expr.substitute(name, ty);
+                // }
+                </span>exprs
+                    .par_iter_mut()
+                    .for_each(|expr| expr.substitute(name, ty));
             }
 
             <span class="self">Self</span>::Union(t, <span class="kw">_</span>, expr) =&gt; {
@@ -1042,9 +1066,12 @@
             }
 
             <span class="self">Self</span>::Struct(fields) =&gt; {
-                <span class="kw">for </span>(<span class="kw">_</span>, expr) <span class="kw">in </span>fields.iter_mut() {
-                    expr.substitute(name, ty);
-                }
+                <span class="comment">// for (_, expr) in fields.iter_mut() {
+                //     expr.substitute(name, ty);
+                // }
+                </span>fields
+                    .par_iter_mut()
+                    .for_each(|(<span class="kw">_</span>, expr)| expr.substitute(name, ty));
             }
 
             <span class="self">Self</span>::As(expr, t) =&gt; {

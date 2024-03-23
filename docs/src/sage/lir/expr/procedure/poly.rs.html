@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/procedure/poly.rs`."><title>poly.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.1 (eb26296b5 2023-08-03)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../../sage/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/procedure/poly.rs`."><title>poly.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../../src-files.js"></script><script defer src="../../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -284,6 +285,9 @@
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Poly-Procedure
 //!
 //! A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
@@ -292,7 +296,10 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>log::{debug, error, trace};
-<span class="kw">use </span>std::{collections::HashMap, rc::Rc, sync::RwLock};
+<span class="kw">use </span>std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 <span class="kw">use </span>std::{hash::Hash, hash::Hasher};
 
 <span class="kw">use </span><span class="kw">super</span>::Procedure;
@@ -313,8 +320,8 @@
     <span class="doccomment">/// The body of the procedure.
     </span>body: Box&lt;Expr&gt;,
     <span class="doccomment">/// The monomorphs of the procedure.
-    </span>monomorphs: Rc&lt;RwLock&lt;HashMap&lt;String, Procedure&gt;&gt;&gt;,
-    has_type_checked: Rc&lt;RwLock&lt;bool&gt;&gt;,
+    </span>monomorphs: Arc&lt;RwLock&lt;HashMap&lt;String, Procedure&gt;&gt;&gt;,
+    has_type_checked: Arc&lt;RwLock&lt;bool&gt;&gt;,
 }
 
 <span class="kw">impl </span>PartialEq <span class="kw">for </span>PolyProcedure {
@@ -343,13 +350,13 @@
             args,
             ret,
             body: Box::new(body.into()),
-            monomorphs: Rc::new(RwLock::new(HashMap::new())),
-            has_type_checked: Rc::new(RwLock::new(<span class="bool-val">false</span>)),
+            monomorphs: Arc::new(RwLock::new(HashMap::new())),
+            has_type_checked: Arc::new(RwLock::new(<span class="bool-val">false</span>)),
         }
     }
 
     <span class="kw">pub fn </span>from_mono(mono: Procedure, ty_params: Vec&lt;String&gt;) -&gt; <span class="self">Self </span>{
-        <span class="macro">debug!</span>(target: <span class="string">&quot;mono&quot;</span>, <span class="string">&quot;Creating polymorphic procedure from monomorph {}&quot;</span>, mono);
+        <span class="macro">debug!</span>(target: <span class="string">"mono"</span>, <span class="string">"Creating polymorphic procedure from monomorph {}"</span>, mono);
         <span class="kw">let </span>name = mono
             .get_common_name()
             .unwrap_or_else(|| mono.get_mangled_name())
@@ -361,8 +368,8 @@
             args: mono.get_args().to_vec(),
             ret: mono.get_ret().clone(),
             body: mono.get_body().clone().into(),
-            monomorphs: Rc::new(RwLock::new(HashMap::new())),
-            has_type_checked: Rc::new(RwLock::new(<span class="bool-val">false</span>)),
+            monomorphs: Arc::new(RwLock::new(HashMap::new())),
+            has_type_checked: Arc::new(RwLock::new(<span class="bool-val">false</span>)),
         }
     }
 
@@ -377,7 +384,7 @@
     /// This monomorphized version can then be compiled directly. Additionally, the
     /// mono version of the procedure is memoized, so that it is only compiled once.
     </span><span class="kw">pub fn </span>monomorphize(<span class="kw-2">&amp;</span><span class="self">self</span>, ty_args: Vec&lt;Type&gt;, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Procedure, Error&gt; {
-        <span class="macro">debug!</span>(target: <span class="string">&quot;mono&quot;</span>, <span class="string">&quot;Monomorphizing {} with {:?}&quot;</span>, <span class="self">self</span>, ty_args);
+        <span class="macro">debug!</span>(target: <span class="string">"mono"</span>, <span class="string">"Monomorphizing {} with {:?}"</span>, <span class="self">self</span>, ty_args);
 
         <span class="comment">// This is a helper function to distribute the defined type
         // arguments over the body and arguments of the function.
@@ -394,7 +401,7 @@
             })
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, Error&gt;&gt;()<span class="question-mark">?</span>;
 
-        <span class="macro">debug!</span>(target: <span class="string">&quot;mono&quot;</span>, <span class="string">&quot;Simplified type arguments: {:?}&quot;</span>, simplified_ty_args);
+        <span class="macro">debug!</span>(target: <span class="string">"mono"</span>, <span class="string">"Simplified type arguments: {:?}"</span>, simplified_ty_args);
         <span class="comment">// This is a helper function to bind the type arguments to the type parameters.
         </span><span class="kw">let </span>bind_type_args = |ty: Type| -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
             <span class="comment">// Add the type parameters to the given type,
@@ -410,36 +417,36 @@
             </span><span class="prelude-val">Ok</span>(concrete)
         };
         <span class="comment">// Distribute the type parameters over the body and arguments of the function.
-        </span><span class="macro">debug!</span>(target: <span class="string">&quot;mono&quot;</span>, <span class="string">&quot;Distributing type arguments over the arguments of the function {}&quot;</span>, <span class="self">self</span>.name);
+        </span><span class="macro">debug!</span>(target: <span class="string">"mono"</span>, <span class="string">"Distributing type arguments over the arguments of the function {}"</span>, <span class="self">self</span>.name);
         <span class="kw">let </span>args = <span class="self">self
             </span>.args
             .clone()
             .into_iter()
             .map(|(name, mutability, t)| <span class="prelude-val">Ok</span>((name, mutability, bind_type_args(t)<span class="question-mark">?</span>)))
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, Error&gt;&gt;()<span class="question-mark">?</span>;
-        <span class="macro">debug!</span>(target: <span class="string">&quot;mono&quot;</span>, <span class="string">&quot;Distributed type arguments over the return type of the function {}&quot;</span>, <span class="self">self</span>.name);
+        <span class="macro">debug!</span>(target: <span class="string">"mono"</span>, <span class="string">"Distributed type arguments over the return type of the function {}"</span>, <span class="self">self</span>.name);
         <span class="kw">let </span>ret = bind_type_args(<span class="self">self</span>.ret.clone())<span class="question-mark">?</span>;
         <span class="comment">// Generate a mangled name for the monomorphized procedure.
-        </span><span class="kw">let </span>mangled_name = <span class="macro">format!</span>(<span class="string">&quot;__MONOMORPHIZED_({ty_args:?}){}{args:?}{ret:?}&quot;</span>, <span class="self">self</span>.name);
+        </span><span class="kw">let </span>mangled_name = <span class="macro">format!</span>(<span class="string">"__MONOMORPHIZED_({ty_args:?}){}{args:?}{ret:?}"</span>, <span class="self">self</span>.name);
         <span class="comment">// Check if the procedure has already been memoized.
-        </span><span class="macro">debug!</span>(target: <span class="string">&quot;mono&quot;</span>, <span class="string">&quot;Checking if monomorphized procedure {} has already been memoized&quot;</span>, mangled_name);
+        </span><span class="macro">debug!</span>(target: <span class="string">"mono"</span>, <span class="string">"Checking if monomorphized procedure {} has already been memoized"</span>, mangled_name);
         <span class="kw">let </span>monomorphs = <span class="self">self</span>.monomorphs.read().unwrap();
         <span class="kw">if </span>monomorphs.contains_key(<span class="kw-2">&amp;</span>mangled_name) {
-            <span class="macro">debug!</span>(target: <span class="string">&quot;mono&quot;</span>, <span class="string">&quot;Monomorphized procedure {} has already been memoized&quot;</span>, mangled_name);
+            <span class="macro">debug!</span>(target: <span class="string">"mono"</span>, <span class="string">"Monomorphized procedure {} has already been memoized"</span>, mangled_name);
             <span class="comment">// If the monomorphized procedure has already been memoized, return it.
             </span><span class="kw">return </span><span class="prelude-val">Ok</span>(monomorphs.get(<span class="kw-2">&amp;</span>mangled_name).unwrap().clone());
         }
-        <span class="macro">debug!</span>(target: <span class="string">&quot;mono&quot;</span>, <span class="string">&quot;Monomorphized procedure {} has not been memoized yet&quot;</span>, mangled_name);
+        <span class="macro">debug!</span>(target: <span class="string">"mono"</span>, <span class="string">"Monomorphized procedure {} has not been memoized yet"</span>, mangled_name);
         <span class="comment">// Otherwise, we need to memoize the monomorphized procedure.
         </span>drop(monomorphs);
         <span class="kw">let </span><span class="kw-2">mut </span>monomorphs = <span class="self">self</span>.monomorphs.write().unwrap();
 
         <span class="comment">// If the monomorphized procedure has already been memoized, return it, otherwise memoize it.
-        </span><span class="macro">debug!</span>(target: <span class="string">&quot;mono&quot;</span>, <span class="string">&quot;Inserting entry for {}&quot;</span>, mangled_name);
+        </span><span class="macro">debug!</span>(target: <span class="string">"mono"</span>, <span class="string">"Inserting entry for {}"</span>, mangled_name);
         <span class="kw">let </span>monomorph = monomorphs
             .entry(mangled_name.clone())
             .or_insert_with(|| {
-                <span class="macro">debug!</span>(target: <span class="string">&quot;mono&quot;</span>, <span class="string">&quot;Memoizing monomorphized procedure {}&quot;</span>, mangled_name);
+                <span class="macro">debug!</span>(target: <span class="string">"mono"</span>, <span class="string">"Memoizing monomorphized procedure {}"</span>, mangled_name);
                 <span class="kw">let </span><span class="kw-2">mut </span>body = <span class="kw-2">*</span><span class="self">self</span>.body.clone();
 
                 <span class="comment">// Substitute the type arguments into the body of the function.
@@ -494,8 +501,8 @@
         }
 
         <span class="kw-2">*</span><span class="self">self</span>.has_type_checked.write().unwrap() = <span class="bool-val">true</span>;
-        <span class="macro">trace!</span>(<span class="string">&quot;Type checking {self}&quot;</span>);
-        <span class="comment">// Create a new scope for the procedure&#39;s body, and define the arguments for the scope.
+        <span class="macro">trace!</span>(<span class="string">"Type checking {self}"</span>);
+        <span class="comment">// Create a new scope for the procedure's body, and define the arguments for the scope.
         </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.new_scope();
         <span class="comment">// Define the type parameters of the procedure.
         </span>new_env.define_types(
@@ -515,12 +522,12 @@
         }
         <span class="self">self</span>.ret.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
 
-        <span class="comment">// Get the type of the procedure&#39;s body, and confirm that it matches the return type.
+        <span class="comment">// Get the type of the procedure's body, and confirm that it matches the return type.
         </span><span class="kw">let </span>body_type = <span class="self">self</span>.body.get_type(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
 
         <span class="kw">if </span>!body_type.can_decay_to(<span class="kw-2">&amp;</span><span class="self">self</span>.ret, <span class="kw-2">&amp;</span>new_env)<span class="question-mark">? </span>{
             <span class="macro">error!</span>(
-                <span class="string">&quot;Mismatched types: expected {}, found {}&quot;</span>,
+                <span class="string">"Mismatched types: expected {}, found {}"</span>,
                 <span class="self">self</span>.ret, body_type
             );
 
@@ -530,7 +537,7 @@
                 expr: ConstExpr::PolyProc(<span class="self">self</span>.clone()).into(),
             })
         } <span class="kw">else </span>{
-            <span class="comment">// Typecheck the procedure&#39;s body.
+            <span class="comment">// Typecheck the procedure's body.
             </span><span class="self">self</span>.body.type_check(<span class="kw-2">&amp;</span>new_env)
         }
     }
@@ -538,24 +545,24 @@
 
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>PolyProcedure {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;proc[&quot;</span>)<span class="question-mark">?</span>;
+        <span class="macro">write!</span>(f, <span class="string">"proc["</span>)<span class="question-mark">?</span>;
         <span class="kw">for </span>(i, ty_param) <span class="kw">in </span><span class="self">self</span>.ty_params.iter().enumerate() {
-            <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, ty_param)<span class="question-mark">?</span>;
+            <span class="macro">write!</span>(f, <span class="string">"{}"</span>, ty_param)<span class="question-mark">?</span>;
             <span class="kw">if </span>i &lt; <span class="self">self</span>.ty_params.len() - <span class="number">1 </span>{
-                <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">", "</span>)<span class="question-mark">?</span>;
             }
         }
-        <span class="macro">write!</span>(f, <span class="string">&quot;](&quot;</span>)<span class="question-mark">?</span>;
+        <span class="macro">write!</span>(f, <span class="string">"]("</span>)<span class="question-mark">?</span>;
         <span class="kw">for </span>(i, (name, mutability, ty)) <span class="kw">in </span><span class="self">self</span>.args.iter().enumerate() {
             <span class="kw">if </span>mutability.is_mutable() {
-                <span class="macro">write!</span>(f, <span class="string">&quot;mut &quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"mut "</span>)<span class="question-mark">?</span>;
             }
-            <span class="macro">write!</span>(f, <span class="string">&quot;{name}: {ty}&quot;</span>)<span class="question-mark">?</span>;
+            <span class="macro">write!</span>(f, <span class="string">"{name}: {ty}"</span>)<span class="question-mark">?</span>;
             <span class="kw">if </span>i &lt; <span class="self">self</span>.args.len() - <span class="number">1 </span>{
-                <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
+                <span class="macro">write!</span>(f, <span class="string">", "</span>)<span class="question-mark">?
             </span>}
         }
-        <span class="macro">write!</span>(f, <span class="string">&quot;) -&gt; {} = {}&quot;</span>, <span class="self">self</span>.ret, <span class="self">self</span>.body)
+        <span class="macro">write!</span>(f, <span class="string">") -&gt; {} = {}"</span>, <span class="self">self</span>.ret, <span class="self">self</span>.body)
     }
 }
 

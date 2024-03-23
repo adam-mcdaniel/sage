@@ -62,10 +62,7 @@ impl Annotation {
 
     /// Is this annotation a location?
     pub fn is_location(&self) -> bool {
-        match self {
-            Annotation::Location(_) => true,
-            _ => false,
-        }
+        matches!(self, Annotation::Location(_))
     }
 
     /// Get the location of this annotation.

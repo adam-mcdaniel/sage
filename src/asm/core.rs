@@ -208,10 +208,10 @@ impl AssemblyProgram for CoreProgram {
                 (CoreOp::Next(SP, Some(n)), CoreOp::Pop(None, m)) if n == m as isize => {
                     self.code.pop();
                 }
-                (CoreOp::Pop(None, n), CoreOp::Next(SP, None)) if n == 1 => {
+                (CoreOp::Pop(None, 1), CoreOp::Next(SP, None)) => {
                     self.code.pop();
                 }
-                (CoreOp::Next(SP, None), CoreOp::Pop(None, n)) if n == 1 => {
+                (CoreOp::Next(SP, None), CoreOp::Pop(None, 1)) => {
                     self.code.pop();
                 }
                 (CoreOp::Pop(None, n), CoreOp::Pop(None, m)) => {
@@ -234,14 +234,14 @@ impl AssemblyProgram for CoreProgram {
                 }
                 (CoreOp::PushConst(vals), CoreOp::PushConst(vals2)) => {
                     self.code.pop();
-                    self.op(CoreOp::PushConst(vals.iter().chain(vals2.iter()).cloned().collect()));
+                    self.op(CoreOp::PushConst(
+                        vals.iter().chain(vals2.iter()).cloned().collect(),
+                    ));
                 }
                 (_, CoreOp::Move { src, dst }) if src == dst => {}
                 (_, CoreOp::Copy { size: 0, .. }) => {}
                 (_, CoreOp::Copy { src, dst, .. }) if src == dst => {}
-                (_, op) => {
-                    self.code.push(op)
-                }
+                (_, op) => self.code.push(op),
             }
         } else {
             self.code.push(op)
@@ -292,6 +292,9 @@ pub enum CoreOp {
 
     /// Set the value of a register, or any location in memory, to a given constant.
     Set(Location, i64),
+    /// Set the vector values of a destination.
+    VecSet(Location, Vec<i64>),
+
     /// Set the value of a register, or any location in memory, to the value of a label's ID.
     SetLabel(Location, String),
     /// Get the address of a location, and store it in a destination
@@ -299,6 +302,8 @@ pub enum CoreOp {
         addr: Location,
         dst: Location,
     },
+    /// Get the address of a location and push it to the stack.
+    PushAddress(Location),
 
     /// Get a value in memory and call it as a label ID.
     Call(Location),
@@ -394,6 +399,46 @@ pub enum CoreOp {
     /// Negate an integer.
     Neg(Location),
 
+    /// Perform a SIMD addition over a vector of integers.
+    /// This will add the source vector to the destination vector.
+    VecAdd {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD subtraction over a vector of integers.
+    /// This will subtract the source vector from the destination vector.
+    VecSub {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD multiplication over a vector of integers.
+    /// This will multiply the source vector with the destination vector.
+    VecMul {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD division over a vector of integers.
+    /// This will divide the destination vector by the source vector.
+    VecDiv {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD remainder over a vector of integers.
+    /// This will store the remainder of the destination vector divided by the source vector.
+    VecRem {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
     /// Replace a value in memory with its boolean complement.
     Not(Location),
     /// Logical "and" a destination with a source value.
@@ -404,6 +449,112 @@ pub enum CoreOp {
     /// Logical "or" a destination with a source value.
     Or {
         src: Location,
+        dst: Location,
+    },
+
+    /// Perform a vector "Not" operation.
+    /// This will replace every value in the vector with its boolean complement.
+    VecNot {
+        size: usize,
+        dst: Location,
+    },
+
+    /// Perform a vector "And" operation.
+    /// This will perform a logical "and" operation on every value in the vectors.
+    VecAnd {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a vector "Or" operation.
+    /// This will perform a logical "or" operation on every value in the vectors.
+    VecOr {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Increment a vector of integers.
+    VecInc {
+        size: usize,
+        dst: Location,
+    },
+    /// Decrement a vector of integers.
+    VecDec {
+        size: usize,
+        dst: Location,
+    },
+
+    /// Left shift a destination by a source value.
+    LeftShift {
+        src: Location,
+        dst: Location,
+    },
+    /// Logical right shift a destination by a source value.
+    /// This will fill the leftmost bits with zeroes.
+    LogicalRightShift {
+        src: Location,
+        dst: Location,
+    },
+    /// Arithmetic right shift a destination by a source value.
+    /// This will fill the leftmost bits with the sign bit.
+    ArithmeticRightShift {
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD left shift operation over a vector of integers.
+    VecLeftShift {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD logical right shift operation over a vector of integers.
+    VecLogicalRightShift {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD arithmetic right shift operation over a vector of integers.
+    VecArithmeticRightShift {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Perform a SIMD "is >= zero" operation over a vector of integers.
+    /// Store the result in the destination vector.
+    VecGez {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+
+    /// Negate a vector of integers using SIMD.
+    VecNeg {
+        size: usize,
+        dst: Location,
+    },
+
+    /// Perform a SIMD pointer arithmetic operation over a vector of integers.
+    /// This will add the "offset" to every value in the vector, so that each
+    /// pointer in the vector is offset by the same amount.
+    VecOffset {
+        size: usize,
+        dst: Location,
+        offset: isize,
+    },
+
+    /// Perform a SIMD pointer index operation over a vector of integers.
+    /// This will index every pointer in the vector by the integers in the
+    /// source vector.
+    VecIndex {
+        size: usize,
+        src: Location,
+        offset: Location,
         dst: Location,
     },
 
@@ -513,6 +664,42 @@ pub enum CoreOp {
         dst: Location,
     },
     BitwiseNot(Location),
+
+    // Perform a SIMD bitwise "and" operation over a vector of integers.
+    VecBitwiseAnd {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+    // Perform a SIMD bitwise "or" operation over a vector of integers.
+    VecBitwiseOr {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+    // Perform a SIMD bitwise "xor" operation over a vector of integers.
+    VecBitwiseXor {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+    // Perform a SIMD bitwise "nor" operation over a vector of integers.
+    VecBitwiseNor {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+    // Perform a SIMD bitwise "nand" operation over a vector of integers.
+    VecBitwiseNand {
+        size: usize,
+        src: Location,
+        dst: Location,
+    },
+    // Perform a SIMD bitwise "not" operation over a vector of integers.
+    VecBitwiseNot {
+        size: usize,
+        dst: Location,
+    },
 }
 
 impl CoreOp {
@@ -568,6 +755,174 @@ impl CoreOp {
         result: &mut dyn VirtualMachineProgram,
     ) -> Result<(), Error> {
         match self {
+            CoreOp::VecLeftShift { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_left_shift(&src, *size, result);
+            }
+
+            CoreOp::VecLogicalRightShift { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_logical_right_shift(&src, *size, result);
+            }
+
+            CoreOp::VecArithmeticRightShift { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_arithmetic_right_shift(&src, *size, result);
+            }
+
+            CoreOp::VecSet(dst, vals) => {
+                let dst = env.resolve(dst)?;
+                result.set_vector(vals.clone());
+                dst.to(result);
+                result.store_vector(vals.len());
+                dst.from(result);
+            }
+
+            CoreOp::VecAdd { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_add(&src, *size, result);
+            }
+
+            CoreOp::VecSub { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_sub(&src, *size, result);
+            }
+
+            CoreOp::VecMul { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_mul(&src, *size, result);
+            }
+
+            CoreOp::VecDiv { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_div(&src, *size, result);
+            }
+
+            CoreOp::VecRem { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_rem(&src, *size, result);
+            }
+
+            CoreOp::VecNot { size, dst } => {
+                let dst = env.resolve(dst)?;
+
+                dst.vec_not(*size, result);
+            }
+
+            CoreOp::VecAnd { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_and(&src, *size, result);
+            }
+
+            CoreOp::VecOr { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_or(&src, *size, result);
+            }
+
+            CoreOp::VecIndex {
+                size,
+                offset,
+                src,
+                dst,
+            } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+                src.vec_copy_to(&dst, *size, result);
+                dst.vec_index(offset, *size, result);
+            }
+
+            CoreOp::VecOffset { size, dst, offset } => {
+                let dst = env.resolve(dst)?;
+
+                dst.vec_offset(*offset, *size, result);
+            }
+
+            CoreOp::VecGez { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+                src.vec_copy_to(&dst, *size, result);
+                dst.vec_whole_int(*size, result);
+            }
+
+            CoreOp::VecInc { size, dst } => {
+                let dst = env.resolve(dst)?;
+
+                dst.vec_inc(*size, result);
+            }
+
+            CoreOp::VecDec { size, dst } => {
+                let dst = env.resolve(dst)?;
+
+                dst.vec_dec(*size, result);
+            }
+
+            CoreOp::VecNeg { size, dst } => {
+                let dst = env.resolve(dst)?;
+
+                dst.vec_neg(*size, result);
+            }
+
+            CoreOp::VecBitwiseAnd { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_bitwise_and(&src, *size, result);
+            }
+
+            CoreOp::VecBitwiseOr { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_bitwise_or(&src, *size, result);
+            }
+
+            CoreOp::VecBitwiseXor { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_bitwise_xor(&src, *size, result);
+            }
+
+            CoreOp::VecBitwiseNor { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_bitwise_nor(&src, *size, result);
+            }
+
+            CoreOp::VecBitwiseNand { size, src, dst } => {
+                let src = env.resolve(src)?;
+                let dst = env.resolve(dst)?;
+
+                dst.vec_bitwise_nand(&src, *size, result);
+            }
+
+            CoreOp::VecBitwiseNot { size, dst } => {
+                let dst = env.resolve(dst)?;
+
+                dst.vec_bitwise_not(*size, result);
+            }
+
             CoreOp::Many(many) => {
                 for op in many {
                     op.assemble(current_instruction, env, result)?
@@ -587,14 +942,9 @@ impl CoreOp {
                 // For every character in the message
                 // Go to the top of the stack, and push the ASCII value of the character
                 src.to(result);
-                for val in vals {
-                    // Set the register to the ASCII value
-                    result.set_register(*val);
-                    // Save the register to the memory location
-                    result.save();
-                    // Move to the next cell
-                    result.move_pointer(1);
-                }
+                result.set_vector(vals.clone());
+                result.store_vector(vals.len());
+                result.move_pointer(vals.len() as isize);
                 // Save where we ended up
                 result.where_is_pointer();
                 // Move the pointer back where we came from
@@ -608,39 +958,24 @@ impl CoreOp {
             CoreOp::Const { dst, vals } => {
                 let dst = env.resolve(dst)?;
 
-                // Go to the dst
+                result.set_vector(vals.clone());
                 dst.to(result);
-                // For every value in the list
-                for (i, val) in vals.iter().enumerate() {
-                    // Set the register to the value
-                    result.set_register(*val);
-                    // Save the register to the memory location
-                    result.save();
-                    if i < vals.len() - 1 {
-                        // Move to the next cell
-                        result.move_pointer(1);
-                    }
-                }
-                dst.offset(vals.len() as isize).from(result);
+                result.store_vector(vals.len());
+                dst.from(result);
             }
 
             CoreOp::PushConst(vals) => {
-                // Go to the dst
-                SP.deref().to(result);
-                // For every value in the list
-                for val in vals.iter() {
-                    // Move to the next cell
-                    result.move_pointer(1);
-                    // Set the register to the value
-                    result.set_register(*val);
-                    // Save the register to the memory location
-                    result.save();
-                }
-                result.where_is_pointer();
-                SP.deref().offset(vals.len() as isize).from(result);
-                SP.save_to(result);
+                SP.deref().offset(1).to(result);
+                result.set_vector(vals.clone());
+                result.store_vector(vals.len());
+                SP.deref().offset(1).from(result);
+                SP.next(vals.len() as isize, result);
             }
-
+            CoreOp::PushAddress(addr) => {
+                let addr = env.resolve(addr)?;
+                SP.next(1, result);
+                addr.copy_address_to(&SP.deref(), result);
+            }
             CoreOp::GetAddress { addr, dst } => {
                 let addr = env.resolve(addr)?;
                 let dst = env.resolve(dst)?;
@@ -790,6 +1125,14 @@ impl CoreOp {
             CoreOp::Mul { src, dst } => env.resolve(dst)?.mul(src, result),
             CoreOp::Div { src, dst } => env.resolve(dst)?.div(src, result),
             CoreOp::Rem { src, dst } => env.resolve(dst)?.rem(src, result),
+            CoreOp::LeftShift { src, dst } => env.resolve(dst)?.left_shift(src, result),
+            CoreOp::LogicalRightShift { src, dst } => {
+                env.resolve(dst)?.logical_right_shift(src, result)
+            }
+            CoreOp::ArithmeticRightShift { src, dst } => {
+                env.resolve(dst)?.arithmetic_right_shift(src, result)
+            }
+
             CoreOp::DivRem { src, dst } => {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
@@ -801,12 +1144,7 @@ impl CoreOp {
             }
             CoreOp::Neg(dst) => {
                 let dst = env.resolve(dst)?;
-
-                result.set_register(-1);
-                dst.to(result);
-                result.op(vm::CoreOp::Mul);
-                result.save();
-                dst.from(result)
+                dst.neg(result);
             }
 
             Self::BitwiseNand { src, dst } => {
@@ -819,68 +1157,30 @@ impl CoreOp {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
 
-                src.copy_to(&TMP, result);
-                TMP.bitwise_nand(&dst, result);
-                TMP.bitwise_nand(&dst, result);
-                dst.bitwise_nand(&src, result);
-                dst.bitwise_nand(&src, result);
-                dst.bitwise_nand(&TMP, result);
+                dst.bitwise_xor(&src, result);
             }
             Self::BitwiseOr { src, dst } => {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
 
-                dst.to(result);
-                result.restore();
-                result.bitwise_nand();
-                result.save();
-                dst.from(result);
-                src.to(result);
-                result.restore();
-                result.bitwise_nand();
-                src.from(result);
-                dst.to(result);
-                result.bitwise_nand();
-                result.save();
-                dst.from(result);
+                dst.bitwise_or(&src, result);
             }
             Self::BitwiseNor { src, dst } => {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
 
-                dst.to(result);
-                result.restore();
-                result.bitwise_nand();
-                result.save();
-                dst.from(result);
-                src.to(result);
-                result.restore();
-                result.bitwise_nand();
-                src.from(result);
-                dst.to(result);
-                result.save();
-                dst.from(result);
+                dst.bitwise_nor(&src, result);
             }
             Self::BitwiseAnd { src, dst } => {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
 
-                src.restore_from(result);
-                dst.to(result);
-                result.bitwise_nand();
-                result.save();
-                result.bitwise_nand();
-                result.save();
-                dst.from(result);
+                dst.bitwise_and(&src, result);
             }
             Self::BitwiseNot(dst) => {
                 let dst = env.resolve(dst)?;
 
-                dst.to(result);
-                result.restore();
-                result.bitwise_nand();
-                result.save();
-                dst.from(result);
+                dst.bitwise_not(result);
             }
 
             CoreOp::Not(dst) => env.resolve(dst)?.not(result),
@@ -892,10 +1192,14 @@ impl CoreOp {
                 let src = env.resolve(src)?;
                 let size = *size;
 
-                for i in 0..size {
-                    src.offset(i as isize)
-                        .copy_to(&sp.deref().offset(i as isize + 1), result);
-                }
+                src.to(result);
+                result.load_vector(size);
+                src.from(result);
+
+                sp.deref().offset(1).to(result);
+                result.store_vector(size);
+                sp.deref().offset(1).from(result);
+
                 sp.next(size as isize, result);
             }
 
@@ -903,17 +1207,28 @@ impl CoreOp {
                 let sp = env.resolve(sp)?;
                 let size = *size as isize;
 
+                if size == 0 {
+                    return Ok(());
+                }
+
                 if let Some(dst) = dst {
                     let dst = env.resolve(dst)?;
-                    for i in 1..=size {
-                        dst.offset(size - i).pop_from(&sp, result)
-                    }
+                    sp.prev(size, result);
+                    sp.deref().offset(1).to(result);
+                    result.load_vector(size as usize);
+                    sp.deref().offset(1).from(result);
+                    dst.to(result);
+                    result.store_vector(size as usize);
+                    dst.from(result);
                 } else {
                     sp.prev(size, result)
                 }
             }
             CoreOp::Push(src, size) => {
                 let src = env.resolve(src)?;
+                if *size == 0 {
+                    return Ok(());
+                }
 
                 CoreOp::PushTo {
                     sp: SP,
@@ -1010,13 +1325,16 @@ impl CoreOp {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
 
-                for i in 0..*size {
-                    if src.offset(i as isize) == dst.offset(i as isize) {
-                        continue;
-                    }
-                    src.offset(i as isize)
-                        .copy_to(&dst.offset(i as isize), result);
+                if src == dst {
+                    return Ok(());
                 }
+
+                src.to(result);
+                result.load_vector(*size);
+                src.from(result);
+                dst.to(result);
+                result.store_vector(*size);
+                dst.from(result);
             }
         }
 
@@ -1036,6 +1354,118 @@ impl fmt::Display for CoreOp {
             Self::Comment(comment) => write!(f, "// {comment}"),
             Self::Global { name, size } => write!(f, "global ${name}, {size}"),
 
+            Self::VecSet(dst, vals) => {
+                write!(f, "vset {dst}, {vals:?}")
+            }
+            Self::VecLeftShift { size, src, dst } => {
+                write!(f, "vlsh {src}, {dst}, {size}")
+            }
+
+            Self::VecLogicalRightShift { size, src, dst } => {
+                write!(f, "vlrsh {src}, {dst}, {size}")
+            }
+
+            Self::VecArithmeticRightShift { size, src, dst } => {
+                write!(f, "varsh {src}, {dst}, {size}")
+            }
+
+            Self::VecAdd { size, src, dst } => {
+                write!(f, "vadd {src}, {dst}, {size}")
+            }
+
+            Self::VecSub { size, src, dst } => {
+                write!(f, "vsub {src}, {dst}, {size}")
+            }
+
+            Self::VecMul { size, src, dst } => {
+                write!(f, "vmul {src}, {dst}, {size}")
+            }
+
+            Self::VecDiv { size, src, dst } => {
+                write!(f, "vdiv {src}, {dst}, {size}")
+            }
+
+            Self::VecRem { size, src, dst } => {
+                write!(f, "vrem {src}, {dst}, {size}")
+            }
+
+            Self::VecNot { size, dst } => {
+                write!(f, "vnot {dst}, {size}")
+            }
+
+            Self::VecAnd { size, src, dst } => {
+                write!(f, "vand {src}, {dst}, {size}")
+            }
+
+            Self::VecOr { size, src, dst } => {
+                write!(f, "vor {src}, {dst}, {size}")
+            }
+
+            Self::VecInc { size, dst } => {
+                write!(f, "vinc {dst}, {size}")
+            }
+
+            Self::VecDec { size, dst } => {
+                write!(f, "vdec {dst}, {size}")
+            }
+
+            Self::VecBitwiseAnd { size, src, dst } => {
+                write!(f, "vband {src}, {dst}, {size}")
+            }
+
+            Self::VecBitwiseOr { size, src, dst } => {
+                write!(f, "vbor {src}, {dst}, {size}")
+            }
+
+            Self::VecBitwiseXor { size, src, dst } => {
+                write!(f, "vbxor {src}, {dst}, {size}")
+            }
+
+            Self::VecBitwiseNor { size, src, dst } => {
+                write!(f, "vbnor {src}, {dst}, {size}")
+            }
+
+            Self::VecBitwiseNand { size, src, dst } => {
+                write!(f, "vbnand {src}, {dst}, {size}")
+            }
+
+            Self::VecBitwiseNot { size, dst } => {
+                write!(f, "vbnot {dst}, {size}")
+            }
+
+            Self::VecGez { size, src, dst } => {
+                write!(f, "vgez {src}, {dst}, {size}")
+            }
+
+            Self::VecNeg { size, dst } => {
+                write!(f, "vneg {dst}, {size}")
+            }
+
+            Self::VecOffset { size, dst, offset } => {
+                write!(f, "voffset {dst}, {offset}, {size}")
+            }
+
+            Self::VecIndex {
+                size,
+                offset,
+                src,
+                dst,
+            } => {
+                write!(f, "vindex {src}, {offset}, {dst}, {size}")
+            }
+
+            Self::LeftShift { src, dst } => {
+                write!(f, "lsh {src}, {dst}")
+            }
+
+            Self::LogicalRightShift { src, dst } => {
+                write!(f, "lrsh {src}, {dst}")
+            }
+
+            Self::ArithmeticRightShift { src, dst } => {
+                write!(f, "arsh {src}, {dst}")
+            }
+
             Self::PushTo { src, sp, size } => {
                 write!(f, "push-to {src}, {sp}, {size}")
             }
@@ -1054,7 +1484,7 @@ impl fmt::Display for CoreOp {
                 }
                 Ok(())
             }
-            Self::Const {dst, vals} => {
+            Self::Const { dst, vals } => {
                 write!(f, "const {dst}, [")?;
                 for (i, val) in vals.iter().enumerate() {
                     if i < vals.len() - 1 {
@@ -1092,6 +1522,7 @@ impl fmt::Display for CoreOp {
             Self::Call(loc) => write!(f, "call {loc}"),
             Self::CallLabel(label) => write!(f, "call @{label}"),
 
+            Self::PushAddress(addr) => write!(f, "lea-push {addr}"),
             Self::GetAddress { addr, dst } => write!(f, "lea {addr}, {dst}"),
             Self::Return => write!(f, "ret"),
 

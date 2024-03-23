@@ -25,6 +25,7 @@
 
 use super::*;
 use log::*;
+use rayon::prelude::*;
 
 /// Get the size of something in memory (number of cells).
 pub trait GetSize {
@@ -105,7 +106,10 @@ impl GetSize for Type {
             | Self::Proc(_, _) => 1,
 
             // Tuple types are the sum of the sizes of their elements.
-            Self::Tuple(items) => items.iter().flat_map(|t| t.get_size_checked(env, i)).sum(),
+            Self::Tuple(items) => items
+                .par_iter()
+                .flat_map(|t| t.get_size_checked(env, i))
+                .sum(),
             // Array types are the size of their element type times the size of
             // the array.
             Self::Array(elem, size) => {
@@ -114,7 +118,7 @@ impl GetSize for Type {
             // Struct types are the sum of the sizes of their fields.
             Self::Struct(fields) => fields
                 // Make an iterator over the fields.
-                .iter()
+                .par_iter()
                 // Get the size of each field.
                 .map(|(_, t)| t.get_size_checked(env, i))
                 // Catch any errors.
@@ -125,7 +129,7 @@ impl GetSize for Type {
             // Union types are the size of the largest field. (All other fields are padded to this size.)
             Self::Union(types) => types
                 // Make an iterator over the fields.
-                .iter()
+                .par_iter()
                 // Get the size of each field.
                 .map(|(_, t)| t.get_size_checked(env, i))
                 // Catch any errors.
@@ -140,11 +144,12 @@ impl GetSize for Type {
             Self::EnumUnion(types) => {
                 types
                 // Make an iterator over the fields.
-                .iter()
+                .par_iter()
                 // Get the size of each field.
                 .map(|(_, t)| t.get_size_checked(env, i))
                 // Catch any errors.
-                .collect::<Result<Vec<_>, _>>()?.into_iter()
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
                 // Get the largest size.
                 .max()
                 // If there are no fields, just return 0.

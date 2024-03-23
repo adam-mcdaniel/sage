@@ -250,17 +250,17 @@ pub fn compile_and_run() -> Result<(), JsValue> {
                                     .unwrap(),
                             }
                         }
-                        "x86" => {
-                            match asm_code {
-                                // If we got back a valid program, assemble it and return the result.
-                                Ok(asm_code) => targets::X86::default()
-                                    .build_core(&asm_code.assemble(8192).unwrap())
-                                    .unwrap(),
-                                Err(asm_code) => targets::X86::default()
-                                    .build_std(&asm_code.assemble(8192).unwrap())
-                                    .unwrap(),
-                            }
-                        }
+                        // "x86" => {
+                        //     match asm_code {
+                        //         // If we got back a valid program, assemble it and return the result.
+                        //         Ok(asm_code) => targets::X86::default()
+                        //             .build_core(&asm_code.assemble(8192).unwrap())
+                        //             .unwrap(),
+                        //         Err(asm_code) => targets::X86::default()
+                        //             .build_std(&asm_code.assemble(8192).unwrap())
+                        //             .unwrap(),
+                        //     }
+                        // }
                         otherwise => {
                             console_log!("unknown target `{otherwise:?}`");
                             unreachable!()

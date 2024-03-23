@@ -14,10 +14,7 @@ use crate::lir::{
 };
 use core::fmt;
 use std::hash::Hash;
-use std::{
-    rc::Rc,
-    sync::{Mutex, RwLock},
-};
+use std::sync::{Arc, Mutex, RwLock};
 
 use log::trace;
 
@@ -43,7 +40,7 @@ pub struct Procedure {
     ret: Type,
     /// The procedure's body expression
     body: Box<Expr>,
-    has_type_checked: Rc<RwLock<bool>>,
+    has_type_checked: Arc<RwLock<bool>>,
 }
 
 impl PartialEq for Procedure {
@@ -73,7 +70,7 @@ impl Procedure {
             args,
             ret,
             body: Box::new(body.into()),
-            has_type_checked: Rc::new(RwLock::new(false)),
+            has_type_checked: Arc::new(RwLock::new(false)),
         }
     }
 
