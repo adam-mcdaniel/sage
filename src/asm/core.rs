@@ -962,47 +962,14 @@ impl CoreOp {
                 dst.to(result);
                 result.store_vector(vals.len());
                 dst.from(result);
-
-                // // Go to the dst
-                // dst.to(result);
-                // // For every value in the list
-                // for (i, val) in vals.iter().enumerate() {
-                //     // Set the register to the value
-                //     result.set_register(*val);
-                //     // Save the register to the memory location
-                //     result.save();
-                //     if i < vals.len() - 1 {
-                //         // Move to the next cell
-                //         result.move_pointer(1);
-                //     }
-                // }
-                // dst.offset(vals.len() as isize).from(result);
             }
 
             CoreOp::PushConst(vals) => {
-                SP.deref().to(result);
+                SP.deref().offset(1).to(result);
                 result.set_vector(vals.clone());
-                result.move_pointer(1);
                 result.store_vector(vals.len());
-                result.move_pointer(vals.len() as isize - 1);
-                result.where_is_pointer();
-                SP.deref().offset(vals.len() as isize).from(result);
-                SP.save_to(result);
-
-                // // Go to the dst
-                // SP.deref().to(result);
-                // // For every value in the list
-                // for val in vals.iter() {
-                //     // Move to the next cell
-                //     result.move_pointer(1);
-                //     // Set the register to the value
-                //     result.set_register(*val);
-                //     // Save the register to the memory location
-                //     result.save();
-                // }
-                // result.where_is_pointer();
-                // SP.deref().offset(vals.len() as isize).from(result);
-                // SP.save_to(result);
+                SP.deref().offset(1).from(result);
+                SP.next(vals.len() as isize, result);
             }
             CoreOp::PushAddress(addr) => {
                 let addr = env.resolve(addr)?;
@@ -1178,11 +1145,6 @@ impl CoreOp {
             CoreOp::Neg(dst) => {
                 let dst = env.resolve(dst)?;
                 dst.neg(result);
-                // result.set_register(-1);
-                // dst.to(result);
-                // result.op(vm::CoreOp::Mul);
-                // result.save();
-                // dst.from(result)
             }
 
             Self::BitwiseNand { src, dst } => {
@@ -1196,76 +1158,29 @@ impl CoreOp {
                 let dst = env.resolve(dst)?;
 
                 dst.bitwise_xor(&src, result);
-
-                // src.copy_to(&TMP, result);
-                // TMP.bitwise_nand(&dst, result);
-                // TMP.bitwise_nand(&dst, result);
-                // dst.bitwise_nand(&src, result);
-                // dst.bitwise_nand(&src, result);
-                // dst.bitwise_nand(&TMP, result);
             }
             Self::BitwiseOr { src, dst } => {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
 
                 dst.bitwise_or(&src, result);
-
-                // dst.to(result);
-                // result.restore();
-                // result.bitwise_nand();
-                // result.save();
-                // dst.from(result);
-                // src.to(result);
-                // result.restore();
-                // result.bitwise_nand();
-                // src.from(result);
-                // dst.to(result);
-                // result.bitwise_nand();
-                // result.save();
-                // dst.from(result);
             }
             Self::BitwiseNor { src, dst } => {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
 
                 dst.bitwise_nor(&src, result);
-
-                // dst.to(result);
-                // result.restore();
-                // result.bitwise_nand();
-                // result.save();
-                // dst.from(result);
-                // src.to(result);
-                // result.restore();
-                // result.bitwise_nand();
-                // src.from(result);
-                // dst.to(result);
-                // result.save();
-                // dst.from(result);
             }
             Self::BitwiseAnd { src, dst } => {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
 
                 dst.bitwise_and(&src, result);
-
-                // src.restore_from(result);
-                // dst.to(result);
-                // result.bitwise_nand();
-                // result.save();
-                // result.bitwise_nand();
-                // result.save();
-                // dst.from(result);
             }
             Self::BitwiseNot(dst) => {
                 let dst = env.resolve(dst)?;
 
                 dst.bitwise_not(result);
-                // dst.to(result);
-                // result.restore();
-                // result.bitwise_nand();
-                // result.save();
-                // dst.from(result);
             }
 
             CoreOp::Not(dst) => env.resolve(dst)?.not(result),
@@ -1277,10 +1192,6 @@ impl CoreOp {
                 let src = env.resolve(src)?;
                 let size = *size;
 
-                // for i in 0..size {
-                //     src.offset(i as isize)
-                //         .copy_to(&sp.deref().offset(i as isize + 1), result);
-                // }
                 src.to(result);
                 result.load_vector(size);
                 src.from(result);
@@ -1302,9 +1213,6 @@ impl CoreOp {
 
                 if let Some(dst) = dst {
                     let dst = env.resolve(dst)?;
-                    // for i in 1..=size {
-                    //     dst.offset(size - i).pop_from(&sp, result)
-                    // }
                     sp.prev(size, result);
                     sp.deref().offset(1).to(result);
                     result.load_vector(size as usize);
@@ -1427,14 +1335,6 @@ impl CoreOp {
                 dst.to(result);
                 result.store_vector(*size);
                 dst.from(result);
-
-                // for i in 0..*size {
-                //     if src.offset(i as isize) == dst.offset(i as isize) {
-                //         continue;
-                //     }
-                //     src.offset(i as isize)
-                //         .copy_to(&dst.offset(i as isize), result);
-                // }
             }
         }
 
