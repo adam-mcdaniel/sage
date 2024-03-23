@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/types/check.rs`."><title>check.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.1 (eb26296b5 2023-08-03)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/types/check.rs`."><title>check.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1210,6 +1211,72 @@
 <a href="#1210" id="1210">1210</a>
 <a href="#1211" id="1211">1211</a>
 <a href="#1212" id="1212">1212</a>
+<a href="#1213" id="1213">1213</a>
+<a href="#1214" id="1214">1214</a>
+<a href="#1215" id="1215">1215</a>
+<a href="#1216" id="1216">1216</a>
+<a href="#1217" id="1217">1217</a>
+<a href="#1218" id="1218">1218</a>
+<a href="#1219" id="1219">1219</a>
+<a href="#1220" id="1220">1220</a>
+<a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
+<a href="#1229" id="1229">1229</a>
+<a href="#1230" id="1230">1230</a>
+<a href="#1231" id="1231">1231</a>
+<a href="#1232" id="1232">1232</a>
+<a href="#1233" id="1233">1233</a>
+<a href="#1234" id="1234">1234</a>
+<a href="#1235" id="1235">1235</a>
+<a href="#1236" id="1236">1236</a>
+<a href="#1237" id="1237">1237</a>
+<a href="#1238" id="1238">1238</a>
+<a href="#1239" id="1239">1239</a>
+<a href="#1240" id="1240">1240</a>
+<a href="#1241" id="1241">1241</a>
+<a href="#1242" id="1242">1242</a>
+<a href="#1243" id="1243">1243</a>
+<a href="#1244" id="1244">1244</a>
+<a href="#1245" id="1245">1245</a>
+<a href="#1246" id="1246">1246</a>
+<a href="#1247" id="1247">1247</a>
+<a href="#1248" id="1248">1248</a>
+<a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Checking
 //!
 //! This module contains the type checking logic for the Lower Intermediate Representation.
@@ -1220,12 +1287,13 @@
 //! - Ensuring that all procedures are defined.
 //! - Ensuring that all variables are defined.
 //! - Ensuring that all array lengths are non-negative.
-//! - Ensuring that you don&#39;t attempt to access a variable that is out of scope.
+//! - Ensuring that you don't attempt to access a variable that is out of scope.
 </span><span class="kw">use super</span>::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::lir::Pattern;
 
-<span class="kw">use </span>log::{error, trace};
+<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 
+<span class="kw">use </span>log::{error, trace};
 <span class="doccomment">/// A trait used to enforce type checking.
 ///
 /// Whenever this is applied, it will return `Ok(())`
@@ -1238,7 +1306,7 @@
 <span class="doccomment">/// Check the soundness of a given type in the environment.
 </span><span class="kw">impl </span>TypeCheck <span class="kw">for </span>Type {
     <span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="macro">trace!</span>(<span class="string">&quot;Type checking type: {self}&quot;</span>);
+        <span class="macro">trace!</span>(<span class="string">"Type checking type: {self}"</span>);
         <span class="comment">// TODO: Also add checks for infinitely sized types.
         </span><span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Any
@@ -1261,7 +1329,7 @@
                 <span class="kw">if </span>env.get_type(name).is_some() {
                     <span class="prelude-val">Ok</span>(())
                 } <span class="kw">else </span>{
-                    <span class="macro">debug!</span>(<span class="string">&quot;Type {name} not defined in environment {env}&quot;</span>);
+                    <span class="macro">debug!</span>(<span class="string">"Type {name} not defined in environment {env}"</span>);
                     <span class="prelude-val">Err</span>(Error::TypeNotDefined(name.clone()))
                 }
             }
@@ -1283,7 +1351,7 @@
                 <span class="comment">// Check that the length is non-negative.
                 </span><span class="kw">if </span>len.clone().as_int(env)<span class="question-mark">? </span>&lt; <span class="number">0 </span>{
                     <span class="comment">// If it is negative, return an error.
-                    </span><span class="macro">error!</span>(<span class="string">&quot;Negative array length detected in type {self} in environment {env}&quot;</span>);
+                    </span><span class="macro">error!</span>(<span class="string">"Negative array length detected in type {self} in environment {env}"</span>);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NegativeArrayLength(Expr::ConstExpr(<span class="kw-2">*</span>len.clone())));
                 }
                 <span class="comment">// Otherwise, return success.
@@ -1291,29 +1359,43 @@
             }
             <span class="self">Self</span>::Tuple(ts) =&gt; {
                 <span class="comment">// Check each inner type.
-                </span><span class="kw">for </span>t <span class="kw">in </span>ts {
-                    <span class="comment">// Check the inner type.
-                    </span>t.type_check(env)<span class="question-mark">?</span>;
+                /*
+                for t in ts {
+                    // Check the inner type.
+                    t.type_check(env)?;
                 }
+                */
+                </span>ts.into_par_iter().try_for_each(|t| t.type_check(env))<span class="question-mark">?</span>;
                 <span class="comment">// Return success if all the types are sound.
                 </span><span class="prelude-val">Ok</span>(())
             }
             <span class="self">Self</span>::Struct(fields) | <span class="self">Self</span>::Union(fields) | <span class="self">Self</span>::EnumUnion(fields) =&gt; {
                 <span class="comment">// Check each inner type.
-                </span><span class="kw">for </span>t <span class="kw">in </span>fields.values() {
-                    <span class="comment">// Check the inner type.
-                    </span>t.type_check(env)<span class="question-mark">?</span>;
+                /*
+                for t in fields.values() {
+                    // Check the inner type.
+                    t.type_check(env)?;
                 }
+                */
+                </span>fields
+                    .values()
+                    .collect::&lt;Vec&lt;<span class="kw-2">&amp;</span>Type&gt;&gt;()
+                    .into_par_iter()
+                    .try_for_each(|t| t.type_check(env))<span class="question-mark">?</span>;
                 <span class="comment">// Return success if all the types are sound.
                 </span><span class="prelude-val">Ok</span>(())
             }
 
             <span class="self">Self</span>::Proc(args, ret) =&gt; {
                 <span class="comment">// Check each argument type.
-                </span><span class="kw">for </span>t <span class="kw">in </span>args {
-                    <span class="comment">// Check the argument type.
-                    </span>t.type_check(env)<span class="question-mark">?</span>;
+                /*
+                for t in args {
+                    // Check the argument type.
+                    t.type_check(env)?;
                 }
+                */
+                </span>args.into_par_iter().try_for_each(|t| t.type_check(env))<span class="question-mark">?</span>;
+
                 <span class="comment">// Check the return type.
                 </span>ret.type_check(env)
             }
@@ -1338,10 +1420,15 @@
                 </span>poly.type_check(env)<span class="question-mark">?</span>;
 
                 <span class="comment">// Check each type argument.
-                </span><span class="kw">for </span>t <span class="kw">in </span>ty_args {
-                    <span class="comment">// Check the type argument.
-                    </span>t.type_check(env)<span class="question-mark">?</span>;
+                /*
+                for t in ty_args {
+                    // Check the type argument.
+                    t.type_check(env)?;
                 }
+                */
+                </span>ty_args
+                    .into_par_iter()
+                    .try_for_each(|t| t.type_check(env))<span class="question-mark">?</span>;
 
                 <span class="comment">// Try to confirm that the polymorphic type is a template.
                 </span><span class="kw">match </span>poly.simplify_until_poly(env)<span class="question-mark">? </span>{
@@ -1355,12 +1442,12 @@
                             Type::Poly(ty_params, <span class="kw">_</span>) =&gt; {
                                 <span class="comment">// Check that the number of type arguments matches the number of type parameters.
                                 </span><span class="kw">if </span>ty_args.len() != ty_params.len() {
-                                    <span class="macro">error!</span>(<span class="string">&quot;Expected {} type arguments for type {name}, but found {} in environment {env}&quot;</span>, ty_params.len(), ty_args.len());
+                                    <span class="macro">error!</span>(<span class="string">"Expected {} type arguments for type {name}, but found {} in environment {env}"</span>, ty_params.len(), ty_args.len());
                                     <span class="prelude-val">Err</span>(Error::InvalidTemplateArgs(<span class="self">self</span>.clone()))<span class="question-mark">?</span>;
                                 }
                             }
                             <span class="kw">_ </span>=&gt; {
-                                <span class="macro">error!</span>(<span class="string">&quot;Type {name} is not a template in environment {env}&quot;</span>);
+                                <span class="macro">error!</span>(<span class="string">"Type {name} is not a template in environment {env}"</span>);
                                 <span class="prelude-val">Err</span>(Error::ApplyNonTemplate(<span class="self">self</span>.clone()))<span class="question-mark">?
                             </span>}
                         }
@@ -1368,12 +1455,12 @@
                     Type::Poly(ty_params, <span class="kw">_</span>) =&gt; {
                         <span class="comment">// Check that the number of type arguments matches the number of type parameters.
                         </span><span class="kw">if </span>ty_params.len() != ty_args.len() {
-                            <span class="macro">error!</span>(<span class="string">&quot;Expected {} type arguments for type {self}, but found {} in environment {env}&quot;</span>, ty_params.len(), ty_args.len());
+                            <span class="macro">error!</span>(<span class="string">"Expected {} type arguments for type {self}, but found {} in environment {env}"</span>, ty_params.len(), ty_args.len());
                             <span class="prelude-val">Err</span>(Error::InvalidTemplateArgs(<span class="self">self</span>.clone()))<span class="question-mark">?</span>;
                         }
                     }
                     <span class="kw">_ </span>=&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;Type {self} is not a template in environment {env}&quot;</span>);
+                        <span class="macro">error!</span>(<span class="string">"Type {self} is not a template in environment {env}"</span>);
                         <span class="prelude-val">Err</span>(Error::ApplyNonTemplate(<span class="self">self</span>.clone()))<span class="question-mark">?
                     </span>}
                 }
@@ -1390,7 +1477,7 @@
 <span class="doccomment">/// Check the type-soundness of a given expression.
 </span><span class="kw">impl </span>TypeCheck <span class="kw">for </span>Expr {
     <span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="macro">trace!</span>(<span class="string">&quot;Type checking expression: {self}&quot;</span>);
+        <span class="macro">trace!</span>(<span class="string">"Type checking expression: {self}"</span>);
         <span class="kw">let </span>ty = <span class="self">self</span>.get_type(env)<span class="question-mark">?</span>;
         ty.type_check(env)<span class="question-mark">?</span>;
 
@@ -1470,14 +1557,14 @@
             }
 
             <span class="self">Self</span>::Match(expr, branches) =&gt; {
-                <span class="comment">// Check the expression we&#39;re matching on.
+                <span class="comment">// Check the expression we're matching on.
                 </span>expr.type_check(env)<span class="question-mark">?</span>;
                 <span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
 
                 <span class="kw">if </span>ty == Type::Never || ty == Type::Any {
                     <span class="comment">// If the expression is an opaque type like `Any` or `Never`, then
                     // throw an `InvalidMatchExpr` error. We do this
-                    // because `Never` is an opaque type, and we can&#39;t
+                    // because `Never` is an opaque type, and we can't
                     // match on it.
                     </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidMatchExpr(<span class="kw-2">*</span>expr.clone()));
                 }
@@ -1500,11 +1587,11 @@
                     <span class="comment">// Check that the branch has the same type as the others.
                     // Get the type of the branch.
                     </span><span class="kw">let </span>branch_ty = branch.get_type(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
-                    <span class="comment">// If we haven&#39;t found a type yet, set it.
+                    <span class="comment">// If we haven't found a type yet, set it.
                     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(result_ty) = <span class="kw-2">&amp;mut </span>result_ty {
                         <span class="comment">// Check that the branch type matches the result type.
                         </span><span class="kw">if </span>!branch_ty.can_decay_to(result_ty, <span class="kw-2">&amp;</span>new_env)<span class="question-mark">? </span>{
-                            <span class="comment">// If it doesn&#39;t, return an error.
+                            <span class="comment">// If it doesn't, return an error.
                             </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                 found: branch_ty,
                                 expected: result_ty.clone(),
@@ -1517,12 +1604,12 @@
                     }
                 }
 
-                <span class="comment">// Now collect patterns into a list and check if they&#39;re exhaustive with Pattern::are_patterns_exhaustive.
-                </span><span class="kw">let </span><span class="kw-2">mut </span>patterns = Vec::new();
-                <span class="kw">for </span>(pat, <span class="kw">_</span>) <span class="kw">in </span>branches {
-                    patterns.push(pat.clone());
-                }
-                <span class="comment">// If they&#39;re not exhaustive, return an error.
+                <span class="comment">// Now collect patterns into a list and check if they're exhaustive with Pattern::are_patterns_exhaustive.
+                </span><span class="kw">let </span>patterns = branches
+                    .iter()
+                    .map(|(pat, <span class="kw">_</span>)| pat.clone())
+                    .collect::&lt;Vec&lt;Pattern&gt;&gt;();
+                <span class="comment">// If they're not exhaustive, return an error.
                 </span><span class="kw">if </span>!Pattern::are_patterns_exhaustive(<span class="self">self</span>, <span class="kw-2">&amp;</span>patterns, <span class="kw-2">&amp;</span>ty, env)<span class="question-mark">? </span>{
                     <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NonExhaustivePatterns {
                         patterns,
@@ -1536,7 +1623,7 @@
 
             <span class="comment">// Typecheck an if-let expression.
             </span><span class="self">Self</span>::IfLet(pat, expr, then, otherwise) =&gt; {
-                <span class="comment">// Check the expression we&#39;re matching on.
+                <span class="comment">// Check the expression we're matching on.
                 </span>expr.type_check(env)<span class="question-mark">?</span>;
                 <span class="comment">// Typecheck the else branch.
                 </span>otherwise.type_check(env)<span class="question-mark">?</span>;
@@ -1562,20 +1649,41 @@
             <span class="comment">// Typecheck a block of expressions.
             </span><span class="self">Self</span>::Many(exprs) =&gt; {
                 <span class="comment">// Typecheck each expression.
-                </span><span class="kw">for </span>(i, expr) <span class="kw">in </span>exprs.iter().enumerate() {
-                    <span class="comment">// Check the inner expression.
-                    </span>expr.type_check(env)<span class="question-mark">?</span>;
-                    <span class="kw">if </span>i &lt; exprs.len() - <span class="number">1 </span>{
-                        <span class="comment">// If it&#39;s not the last expression, confirm that it&#39;s of type `None`.
+                /*
+                for (i, expr) in exprs.iter().enumerate() {
+                    // Check the inner expression.
+                    expr.type_check(env)?;
+                    if i &lt; exprs.len() - 1 {
+                        // If it's not the last expression, confirm that it's of type `None`.
                         // Otherwise, return an error.
-                        </span><span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
-                        <span class="kw">if </span>!ty.can_decay_to(<span class="kw-2">&amp;</span>Type::None, env)<span class="question-mark">? </span>{
-                            <span class="macro">error!</span>(<span class="string">&quot;Expected type {} for expression {expr}, but found type {ty} in environment {env}&quot;</span>, Type::None);
-                            <span class="comment">// If it&#39;s not, return an error.
-                            </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnusedExpr(expr.clone(), ty));
+                        let ty = expr.get_type(env)?;
+                        if !ty.can_decay_to(&amp;Type::None, env)? {
+                            error!("Expected type {} for expression {expr}, but found type {ty} in environment {env}", Type::None);
+                            // If it's not, return an error.
+                            return Err(Error::UnusedExpr(expr.clone(), ty));
                         }
                     }
                 }
+                */
+
+                </span><span class="kw">let </span>count = exprs.len();
+                exprs.into_par_iter()
+                    .enumerate()
+                    .try_for_each(|(i, expr)| {
+                        expr.type_check(env)<span class="question-mark">?</span>;
+                        <span class="kw">if </span>i &lt; count - <span class="number">1 </span>{
+                            <span class="comment">// If it's not the last expression, confirm that it's of type `None`.
+                            // Otherwise, return an error.
+                            </span><span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>;
+                            <span class="kw">if </span>!ty.can_decay_to(<span class="kw-2">&amp;</span>Type::None, env)<span class="question-mark">? </span>{
+                                <span class="macro">error!</span>(<span class="string">"Expected type {} for expression {expr}, but found type {ty} in environment {env}"</span>, Type::None);
+                                <span class="comment">// If it's not, return an error.
+                                </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnusedExpr(expr.clone(), ty));
+                            }
+                        }
+                        <span class="prelude-val">Ok</span>(())
+                    })<span class="question-mark">?</span>;
+
                 <span class="comment">// Return success if all the expressions are sound.
                 </span><span class="prelude-val">Ok</span>(())
             }
@@ -1599,7 +1707,7 @@
                 <span class="kw">let </span>e_type = e.get_type(env)<span class="question-mark">?</span>;
                 <span class="comment">// Check that the types of the then and else branches are compatible.
                 </span><span class="kw">if </span>!e_type.can_decay_to(<span class="kw-2">&amp;</span>t_type, env)<span class="question-mark">? </span>{
-                    <span class="comment">// If they&#39;re not, return an error.
+                    <span class="comment">// If they're not, return an error.
                     </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                         expected: t_type,
                         found: e_type,
@@ -1620,7 +1728,7 @@
                     </span>e.type_check(env)<span class="question-mark">?</span>;
                 }
                 <span class="comment">// Since `when` expressions are computed at compile time,
-                // we don&#39;t have to care about matching the types of the then and else branches.
+                // we don't have to care about matching the types of the then and else branches.
                 </span><span class="prelude-val">Ok</span>(())
             }
 
@@ -1631,16 +1739,14 @@
                     .map_err(|e| e.annotate(metadata)),
                 Expr::ConstExpr(ConstExpr::Symbol(name)) =&gt; {
                     <span class="comment">// Check if the symbol is defined as mutable
-                    </span><span class="kw">if </span>env.is_defined_as_mutable(<span class="kw-2">&amp;</span>name) {
+                    </span><span class="kw">if </span>env.is_defined_as_mutable(<span class="kw-2">&amp;</span>name) || expected_mutability.is_constant() {
                         <span class="comment">// If it is, then return success. (We can reference it however we want.)
-                        </span><span class="prelude-val">Ok</span>(())
-                    } <span class="kw">else if </span>expected_mutability.is_constant() {
-                        <span class="comment">// If the symbol is not defined as mutable, but we expect it to be constant,
+                        // If the symbol is not defined as mutable, but we expect it to be constant,
                         // then return success. (We can reference it as a constant.)
                         </span><span class="prelude-val">Ok</span>(())
                     } <span class="kw">else </span>{
-                        <span class="macro">error!</span>(<span class="string">&quot;Expected mutability {expected_mutability} for expression {self}, but found incompatible mutability in environment {env}&quot;</span>);
-                        <span class="comment">// If it isn&#39;t, then return an error.
+                        <span class="macro">error!</span>(<span class="string">"Expected mutability {expected_mutability} for expression {self}, but found incompatible mutability in environment {env}"</span>);
+                        <span class="comment">// If it isn't, then return an error.
                         </span><span class="prelude-val">Err</span>(Error::InvalidRefer(<span class="self">self</span>.clone()))
                     }
                 }
@@ -1652,8 +1758,8 @@
                         // confirm that the inner pointer has the expected mutability.
                         </span>Type::Pointer(found_mutability, <span class="kw">_</span>) =&gt; {
                             <span class="kw">if </span>!found_mutability.can_decay_to(expected_mutability) {
-                                <span class="comment">// If if doesn&#39;t, then return an error.
-                                </span><span class="macro">error!</span>(<span class="string">&quot;Expected mutability {expected_mutability} for expression {self}, but found mutability {found_mutability} in environment {env}&quot;</span>);
+                                <span class="comment">// If if doesn't, then return an error.
+                                </span><span class="macro">error!</span>(<span class="string">"Expected mutability {expected_mutability} for expression {self}, but found mutability {found_mutability} in environment {env}"</span>);
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedMutability {
                                     expected: <span class="kw-2">*</span>expected_mutability,
                                     found: found_mutability,
@@ -1684,8 +1790,8 @@
                         // confirm that the inner pointer has the expected mutability.
                         </span>Type::Pointer(found_mutability, <span class="kw">_</span>) =&gt; {
                             <span class="kw">if </span>!found_mutability.can_decay_to(expected_mutability) {
-                                <span class="comment">// If if doesn&#39;t, then return an error.
-                                </span><span class="macro">error!</span>(<span class="string">&quot;Expected mutability {expected_mutability} for expression {self}, but found mutability {found_mutability} in environment {env}&quot;</span>);
+                                <span class="comment">// If if doesn't, then return an error.
+                                </span><span class="macro">error!</span>(<span class="string">"Expected mutability {expected_mutability} for expression {self}, but found mutability {found_mutability} in environment {env}"</span>);
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedMutability {
                                     expected: <span class="kw-2">*</span>expected_mutability,
                                     found: found_mutability,
@@ -1713,7 +1819,7 @@
                     <span class="comment">// If it is, return success.
                     </span><span class="prelude-val">Ok</span>(())
                 } <span class="kw">else </span>{
-                    <span class="comment">// If it isn&#39;t, return an error.
+                    <span class="comment">// If it isn't, return an error.
                     </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                         <span class="comment">// The expected type is a pointer.
                         </span>expected: Type::Pointer(Mutability::Any, Box::new(Type::Any)),
@@ -1735,7 +1841,7 @@
                 <span class="comment">// Check that the pointer is a pointer.
                 </span><span class="kw">if let </span>Type::Pointer(mutability, ptr_elem_ty) = ptr_type {
                     <span class="comment">// Check that the type of the value is compatible
-                    // with the type of data stored at the pointer&#39;s
+                    // with the type of data stored at the pointer's
                     // address.
                     </span><span class="kw">if </span>ptr_elem_ty.can_decay_to(<span class="kw-2">&amp;</span>val_type, env)<span class="question-mark">? </span>{
                         <span class="comment">// If it is, return success.
@@ -1749,7 +1855,7 @@
                             })
                         }
                     } <span class="kw">else </span>{
-                        <span class="comment">// If it isn&#39;t, return an error.
+                        <span class="comment">// If it isn't, return an error.
                         </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                             expected: val_type,
                             found: <span class="kw-2">*</span>ptr_elem_ty,
@@ -1757,7 +1863,7 @@
                         })
                     }
                 } <span class="kw">else </span>{
-                    <span class="comment">// If the destination to store isn&#39;t a pointer, return an error.
+                    <span class="comment">// If the destination to store isn't a pointer, return an error.
                     </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                         expected: Type::Pointer(Mutability::Mutable, Box::new(Type::Any)),
                         found: ptr_type,
@@ -1769,9 +1875,9 @@
             <span class="comment">// Typecheck a function application.
             </span><span class="self">Self</span>::Apply(f, args) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.is_method_call(env)<span class="question-mark">? </span>{
-                    <span class="comment">// Get the type of the object we&#39;re calling the method on.
+                    <span class="comment">// Get the type of the object we're calling the method on.
                     </span><span class="kw">let </span>method_call = <span class="self">self</span>.transform_method_call(env)<span class="question-mark">?</span>;
-                    <span class="macro">info!</span>(<span class="string">&quot;Transformed method call: {method_call}&quot;</span>);
+                    <span class="macro">debug!</span>(<span class="string">"Transformed method call: {method_call}"</span>);
 
                     <span class="kw">if let </span><span class="self">Self</span>::Apply(f, args) = method_call.clone() {
                         <span class="comment">// Typecheck the supplied arguments.
@@ -1803,7 +1909,7 @@
                                 </span><span class="kw">for </span>(expected, found) <span class="kw">in
                                     </span>expected_arg_tys.into_iter().zip(found_arg_tys.into_iter())
                                 {
-                                    <span class="comment">// If the types don&#39;t match, return an error.
+                                    <span class="comment">// If the types don't match, return an error.
                                     </span><span class="kw">if </span>!found.can_decay_to(<span class="kw-2">&amp;</span>expected, env)<span class="question-mark">? </span>{
                                         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                             expected,
@@ -1855,7 +1961,7 @@
                         </span><span class="kw">for </span>(expected, found) <span class="kw">in
                             </span>expected_arg_tys.into_iter().zip(found_arg_tys.into_iter())
                         {
-                            <span class="comment">// If the types don&#39;t match, return an error.
+                            <span class="comment">// If the types don't match, return an error.
                             </span><span class="kw">if </span>!found.can_decay_to(<span class="kw-2">&amp;</span>expected, env)<span class="question-mark">? </span>{
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                     expected,
@@ -1895,29 +2001,23 @@
 
             <span class="comment">// Typecheck an array or tuple literal.
             </span><span class="self">Self</span>::Array(items) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>last_type: <span class="prelude-ty">Option</span>&lt;Type&gt; = <span class="prelude-val">None</span>;
-                <span class="comment">// Typecheck each item in the array.
-                </span><span class="kw">for </span>item <span class="kw">in </span>items {
-                    <span class="comment">// Typecheck the item.
-                    </span>item.type_check(env)<span class="question-mark">?</span>;
-                    <span class="comment">// Get the type of the item.
-                    </span><span class="kw">let </span>item_type = item.get_type(env)<span class="question-mark">?</span>;
-                    <span class="comment">// If the type of the item is different from the last item,
-                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_type) = last_type {
-                        <span class="comment">// Confirm that the type of the item is the same as the
-                        // last item.
-                        </span><span class="kw">if </span>!item_type.can_decay_to(<span class="kw-2">&amp;</span>last_type, env)<span class="question-mark">? </span>{
-                            <span class="comment">// If it isn&#39;t, return an error.
-                            </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
-                                expected: last_type,
-                                found: item_type,
-                                expr: <span class="self">self</span>.clone(),
-                            });
-                        }
+                <span class="kw">let </span>last_type = items[<span class="number">0</span>].get_type(env)<span class="question-mark">?</span>;
+                items.into_par_iter().try_for_each(|item| {
+                    item.type_check(env)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>item_type = item.get_type(env)<span class="question-mark">?</span>;
+                    <span class="kw">if </span>!last_type.can_decay_to(<span class="kw-2">&amp;</span>item_type, env)<span class="question-mark">? </span>{
+                        <span class="macro">error!</span>(<span class="string">"Mismatched types: {last_type} != {item_type} in environment {env}"</span>);
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
+                            expected: last_type.clone(),
+                            found: item_type,
+                            expr: <span class="self">self</span>.clone(),
+                        });
                     }
-                    last_type = <span class="prelude-val">Some</span>(item_type);
-                }
-                <span class="prelude-val">Ok</span>(())
+                    <span class="prelude-val">Ok</span>(())
+                })<span class="question-mark">?</span>;
+
+                <span class="comment">// Return success.
+                </span><span class="prelude-val">Ok</span>(())
             }
             <span class="self">Self</span>::Tuple(elems) =&gt; {
                 <span class="kw">for </span>elem <span class="kw">in </span>elems {
@@ -2012,7 +2112,7 @@
                     <span class="comment">// If it is, return success.
                     </span><span class="prelude-val">Ok</span>(())
                 } <span class="kw">else </span>{
-                    <span class="comment">// Otherwise, it isn&#39;t a valid cast, so return an error.
+                    <span class="comment">// Otherwise, it isn't a valid cast, so return an error.
                     </span><span class="prelude-val">Err</span>(Error::InvalidAs(<span class="self">self</span>.clone(), found_ty, desired_ty.clone()))
                 }
             }
@@ -2054,7 +2154,7 @@
                 <span class="comment">// Confirm that the type is an array or pointer.
                 </span><span class="kw">match </span>val_type {
                     Type::Array(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Pointer(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {}
-                    <span class="comment">// If it isn&#39;t, return an error.
+                    <span class="comment">// If it isn't, return an error.
                     </span><span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidIndex(<span class="self">self</span>.clone())),
                 }
 
@@ -2078,7 +2178,7 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
-        <span class="macro">trace!</span>(<span class="string">&quot;Typechecking constant expression: {}&quot;</span>, <span class="self">self</span>);
+        <span class="macro">trace!</span>(<span class="string">"Typechecking constant expression: {}"</span>, <span class="self">self</span>);
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Template(_ty_params, _template) =&gt; {
                 <span class="comment">// Create a new environment with the type parameters defined.
@@ -2156,7 +2256,7 @@
             }
             <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; {
                 <span class="macro">debug!</span>(
-                    <span class="string">&quot;Monomorphizing {expr} with type arguments {ty_args:?} in environment {env}&quot;
+                    <span class="string">"Monomorphizing {expr} with type arguments {ty_args:?} in environment {env}"
                 </span>);
                 <span class="kw">match </span><span class="kw-2">**</span>expr {
                     <span class="self">Self</span>::Template(<span class="kw-2">ref </span>ty_params, <span class="kw-2">ref </span>template) =&gt; {
@@ -2192,9 +2292,14 @@
                         <span class="comment">// if let Self::PolyProc(poly) = *expr.clone() {
                         //     poly.type_check(env)?
                         // }
-                        </span><span class="kw">for </span>ty <span class="kw">in </span>ty_args {
-                            ty.type_check(env)<span class="question-mark">?</span>;
+                        /*
+                        for ty in ty_args {
+                            ty.type_check(env)?;
                         }
+                        */
+                        </span>ty_args
+                            .into_par_iter()
+                            .try_for_each(|ty| ty.type_check(env))<span class="question-mark">?</span>;
                         <span class="prelude-val">Ok</span>(())
                     }
                 }
@@ -2208,15 +2313,15 @@
                 </span><span class="kw">let </span>found = expr.get_type(env)<span class="question-mark">?</span>;
                 <span class="comment">// Confirm that the cast is valid.
                 </span><span class="kw">if </span>!found.can_cast_to(cast_ty, env)<span class="question-mark">? </span>{
-                    <span class="macro">error!</span>(<span class="string">&quot;Invalid cast: {found} as {cast_ty} in environment {env}&quot;</span>);
-                    <span class="comment">// If it isn&#39;t, return an error.
+                    <span class="macro">error!</span>(<span class="string">"Invalid cast: {found} as {cast_ty} in environment {env}"</span>);
+                    <span class="comment">// If it isn't, return an error.
                     </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidAs(
                         Expr::ConstExpr(<span class="kw-2">*</span>expr.clone()),
                         found,
                         cast_ty.clone(),
                     ));
                 }
-                <span class="comment">// If it is, return the result of the inner expression&#39;s typechecking result.
+                <span class="comment">// If it is, return the result of the inner expression's typechecking result.
                 </span>expr.type_check(env)
             }
 
@@ -2245,7 +2350,7 @@
                     <span class="comment">// Return success.
                     </span><span class="prelude-val">Ok</span>(())
                 } <span class="kw">else </span>{
-                    <span class="macro">error!</span>(<span class="string">&quot;Symbol {name} not defined in environment {env}&quot;</span>);
+                    <span class="macro">error!</span>(<span class="string">"Symbol {name} not defined in environment {env}"</span>);
                     <span class="comment">// If there is no binding for the symbol, return an error.
                     </span><span class="prelude-val">Err</span>(Error::SymbolNotDefined(name.clone()))
                 }
@@ -2264,7 +2369,7 @@
                             <span class="comment">// Return success.
                             </span><span class="prelude-val">Ok</span>(())
                         } <span class="kw">else </span>{
-                            <span class="comment">// Otherwise, the variant isn&#39;t contained in the enum,
+                            <span class="comment">// Otherwise, the variant isn't contained in the enum,
                             // so return an error.
                             </span><span class="prelude-val">Err</span>(Error::VariantNotFound(
                                 Type::Enum(variants),
@@ -2280,7 +2385,7 @@
                             <span class="comment">// Return success.
                             </span><span class="prelude-val">Ok</span>(())
                         } <span class="kw">else </span>{
-                            <span class="comment">// Otherwise, the variant isn&#39;t contained in the enum,
+                            <span class="comment">// Otherwise, the variant isn't contained in the enum,
                             // so return an error.
                             </span><span class="prelude-val">Err</span>(Error::VariantNotFound(
                                 Type::EnumUnion(variants),
@@ -2295,41 +2400,62 @@
             <span class="comment">// Typecheck a tuple literal.
             </span><span class="self">Self</span>::Tuple(items) =&gt; {
                 <span class="comment">// Typecheck each item in the tuple.
-                </span><span class="kw">for </span>item <span class="kw">in </span>items {
-                    <span class="comment">// Typecheck the item.
-                    </span>item.type_check(env)<span class="question-mark">?</span>;
+                /*
+                for item in items {
+                    // Typecheck the item.
+                    item.type_check(env)?;
                 }
+                */
+                </span>items
+                    .into_par_iter()
+                    .try_for_each(|item| item.type_check(env))<span class="question-mark">?</span>;
                 <span class="comment">// Return success.
                 </span><span class="prelude-val">Ok</span>(())
             }
 
             <span class="comment">// Typecheck an array literal.
             </span><span class="self">Self</span>::Array(items) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>last_type: <span class="prelude-ty">Option</span>&lt;Type&gt; = <span class="prelude-val">None</span>;
+                <span class="kw">let </span>last_type = items[<span class="number">0</span>].get_type(env)<span class="question-mark">?</span>;
                 <span class="comment">// Typecheck each item in the array.
-                </span><span class="kw">for </span>item <span class="kw">in </span>items {
-                    <span class="comment">// Typecheck the item.
-                    </span>item.type_check(env)<span class="question-mark">?</span>;
-                    <span class="comment">// Get the type of the item.
-                    </span><span class="kw">let </span>item_type = item.get_type(env)<span class="question-mark">?</span>;
-                    <span class="comment">// If the type of the item is different from the last item,
-                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_type) = last_type {
-                        <span class="comment">// Confirm that the type of the item is the same as the
+                /*
+                for item in items {
+                    // Typecheck the item.
+                    item.type_check(env)?;
+                    // Get the type of the item.
+                    let item_type = item.get_type(env)?;
+                    // If the type of the item is different from the last item,
+                    if let Some(last_type) = last_type {
+                        // Confirm that the type of the item is the same as the
                         // last item.
-                        </span><span class="kw">if </span>!last_type.can_decay_to(<span class="kw-2">&amp;</span>item_type, env)<span class="question-mark">? </span>{
-                            <span class="macro">error!</span>(
-                                <span class="string">&quot;Mismatched types: {last_type} != {item_type} in environment {env}&quot;
-                            </span>);
-                            <span class="comment">// If it isn&#39;t, return an error.
-                            </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
+                        if !last_type.can_decay_to(&amp;item_type, env)? {
+                            error!(
+                                "Mismatched types: {last_type} != {item_type} in environment {env}"
+                            );
+                            // If it isn't, return an error.
+                            return Err(Error::MismatchedTypes {
                                 expected: last_type,
                                 found: item_type,
-                                expr: Expr::ConstExpr(<span class="self">self</span>.clone()),
+                                expr: Expr::ConstExpr(self.clone()),
                             });
                         }
                     }
-                    last_type = <span class="prelude-val">Some</span>(item_type);
+                    last_type = Some(item_type);
                 }
+                 */
+                </span>items.into_par_iter().try_for_each(|item| {
+                    item.type_check(env)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>item_type = item.get_type(env)<span class="question-mark">?</span>;
+                    <span class="kw">if </span>!last_type.can_decay_to(<span class="kw-2">&amp;</span>item_type, env)<span class="question-mark">? </span>{
+                        <span class="macro">error!</span>(<span class="string">"Mismatched types: {last_type} != {item_type} in environment {env}"</span>);
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
+                            expected: last_type.clone(),
+                            found: item_type,
+                            expr: Expr::ConstExpr(<span class="self">self</span>.clone()),
+                        });
+                    }
+                    <span class="prelude-val">Ok</span>(())
+                })<span class="question-mark">?</span>;
+
                 <span class="comment">// Return success.
                 </span><span class="prelude-val">Ok</span>(())
             }
@@ -2337,10 +2463,17 @@
             <span class="comment">// Typecheck a struct literal.
             </span><span class="self">Self</span>::Struct(fields) =&gt; {
                 <span class="comment">// Typecheck each field in the struct.
-                </span><span class="kw">for </span>item <span class="kw">in </span>fields.values() {
-                    <span class="comment">// Typecheck the item.
-                    </span>item.type_check(env)<span class="question-mark">?</span>;
+                /*
+                for item in fields.values() {
+                    // Typecheck the item.
+                    item.type_check(env)?;
                 }
+                */
+                </span>fields
+                    .values()
+                    .collect::&lt;Vec&lt;<span class="kw-2">&amp;</span>ConstExpr&gt;&gt;()
+                    .into_par_iter()
+                    .try_for_each(|item| item.type_check(env))<span class="question-mark">?</span>;
                 <span class="comment">// Return success.
                 </span><span class="prelude-val">Ok</span>(())
             }
@@ -2358,7 +2491,7 @@
                             </span>val.type_check(env)<span class="question-mark">?</span>;
                             <span class="kw">let </span>found = val.get_type(env)<span class="question-mark">?</span>;
                             <span class="kw">if </span>!found.can_decay_to(expected_ty, env)<span class="question-mark">? </span>{
-                                <span class="macro">error!</span>(<span class="string">&quot;Mismatched types: {expected_ty} != {found} in environment {env}&quot;</span>);
+                                <span class="macro">error!</span>(<span class="string">"Mismatched types: {expected_ty} != {found} in environment {env}"</span>);
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
                                     found,
@@ -2367,7 +2500,7 @@
                             }
                             <span class="prelude-val">Ok</span>(())
                         } <span class="kw">else </span>{
-                            <span class="macro">error!</span>(<span class="string">&quot;Member {field} not found in type {self} in environment {env}&quot;</span>);
+                            <span class="macro">error!</span>(<span class="string">"Member {field} not found in type {self} in environment {env}"</span>);
                             <span class="prelude-val">Err</span>(Error::MemberNotFound(
                                 Expr::ConstExpr(<span class="self">self</span>.clone()),
                                 ConstExpr::Symbol(field.clone()),
@@ -2375,7 +2508,7 @@
                         }
                     }
                     <span class="kw">_ </span>=&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;Member {field} not found in type {self} in environment {env}&quot;</span>);
+                        <span class="macro">error!</span>(<span class="string">"Member {field} not found in type {self} in environment {env}"</span>);
                         <span class="prelude-val">Err</span>(Error::MemberNotFound(
                             Expr::ConstExpr(<span class="self">self</span>.clone()),
                             ConstExpr::Symbol(field.clone()),
@@ -2396,7 +2529,7 @@
                             </span>val.type_check(env)<span class="question-mark">?</span>;
                             <span class="kw">let </span>found = val.get_type(env)<span class="question-mark">?</span>;
                             <span class="kw">if </span>!found.can_decay_to(expected_ty, env)<span class="question-mark">? </span>{
-                                <span class="macro">error!</span>(<span class="string">&quot;Mismatched types: {found} != {expected_ty} in environment {env}&quot;</span>);
+                                <span class="macro">error!</span>(<span class="string">"Mismatched types: {found} != {expected_ty} in environment {env}"</span>);
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
                                     found,
@@ -2406,7 +2539,7 @@
                             <span class="prelude-val">Ok</span>(())
                         } <span class="kw">else </span>{
                             <span class="macro">error!</span>(
-                                <span class="string">&quot;Variant {variant} not found in type {self} in environment {env}&quot;
+                                <span class="string">"Variant {variant} not found in type {self} in environment {env}"
                             </span>);
                             <span class="prelude-val">Err</span>(Error::VariantNotFound(
                                 Type::EnumUnion(fields),

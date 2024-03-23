@@ -1,5 +1,5 @@
 //! # I/O Module
-//! 
+//!
 //! This module implements all the types related to the I/O operations available
 //! to the core instruction set. This allows the core VM to communicate with various
 //! instruments connected to the VM, without directly calling foreign functions.

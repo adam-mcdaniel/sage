@@ -1,5 +1,5 @@
 //! # Foreign Function Interface
-//! 
+//!
 //! This module contains the definition of the foreign function interface (FFI) bindings, which
 //! are used in the various stages of IR to represent calls to foreign functions.
 

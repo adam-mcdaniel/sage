@@ -257,36 +257,31 @@ impl BinaryOp for Arithmetic {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        match (lhs, self, rhs) {
-            // Check for array multiplication.
-            (Type::Array(_, _), Arithmetic::Multiply, Type::Int) => {
-                // Copy the loop RHS times.
-                // This will just evaluate the array, evaluate the int, and then repeatedly
-                // copy the array back onto the stack `rhs` times.
-                let arr_size = lhs.get_size(env)?;
-                // Copy the integer into a register.
-                output.op(CoreOp::Many(vec![
-                    // Pop into B
-                    CoreOp::Pop(Some(B), 1),
-                    // Store the address of the array in A.
-                    CoreOp::GetAddress {
-                        addr: SP.deref().offset(1 - arr_size as isize),
-                        dst: A,
-                    },
-                    // While B != 0
-                    CoreOp::Dec(B),
-                    CoreOp::While(B),
-                    // Push the array back onto the stack, starting at A
-                    CoreOp::Push(A.deref(), arr_size),
-                    // Decrement B
-                    CoreOp::Dec(B),
-                    CoreOp::End,
-                ]));
+        if let (Type::Array(_, _), Arithmetic::Multiply, Type::Int) = (lhs, self, rhs) {
+            // Copy the loop RHS times.
+            // This will just evaluate the array, evaluate the int, and then repeatedly
+            // copy the array back onto the stack `rhs` times.
+            let arr_size = lhs.get_size(env)?;
+            // Copy the integer into a register.
+            output.op(CoreOp::Many(vec![
+                // Pop into B
+                CoreOp::Pop(Some(B), 1),
+                // Store the address of the array in A.
+                CoreOp::GetAddress {
+                    addr: SP.deref().offset(1 - arr_size as isize),
+                    dst: A,
+                },
+                // While B != 0
+                CoreOp::Dec(B),
+                CoreOp::While(B),
+                // Push the array back onto the stack, starting at A
+                CoreOp::Push(A.deref(), arr_size),
+                // Decrement B
+                CoreOp::Dec(B),
+                CoreOp::End,
+            ]));
 
-                return Ok(());
-            }
-
-            _ => {}
+            return Ok(());
         }
 
         let src = SP.deref();

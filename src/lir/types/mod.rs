@@ -6,6 +6,7 @@
 use super::{ConstExpr, Env, Error, Expr, Simplify};
 use core::fmt;
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 use std::sync::Mutex;
 
 mod check;
@@ -23,7 +24,7 @@ use log::*;
 /// An immutable pointer can only be used to read the value it points to.
 /// An `Any` pointer can be used to read or write the value it points to; this is
 /// used to override pointer access protections for compiler-builtins.
-#[derive(Copy, Clone, Default, Debug, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialOrd, Ord)]
 pub enum Mutability {
     /// Mutable access to a value.
     Mutable,
@@ -40,13 +41,13 @@ impl Mutability {
     /// Mutable pointers can decay to immutable pointers, but immutable pointers
     /// cannot decay to mutable pointers. `Any`  pointers are unchecked..
     pub fn can_decay_to(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Mutable, _) => true,
-            (Self::Immutable, Self::Immutable) => true,
-            (Self::Any, _) => true,
-            (_, Self::Any) => true,
-            _ => false,
-        }
+        matches!(
+            (self, other),
+            (Self::Mutable, _)
+                | (Self::Immutable, Self::Immutable)
+                | (Self::Any, _)
+                | (_, Self::Any)
+        )
     }
 
     /// Can this data be accessed mutably?
@@ -57,6 +58,16 @@ impl Mutability {
     /// Is this data protected against mutation?
     pub fn is_constant(&self) -> bool {
         matches!(self, Self::Immutable) || matches!(self, Self::Any)
+    }
+}
+
+impl Hash for Mutability {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Mutable => 0.hash(state),
+            Self::Immutable => 1.hash(state),
+            Self::Any => 2.hash(state),
+        }
     }
 }
 
@@ -281,7 +292,7 @@ impl Type {
                 Ok(false)
             }
             Self::Struct(fields) => {
-                for (_, t) in fields {
+                for t in fields.values() {
                     if t.is_recursive_helper(symbols, env)? {
                         return Ok(true);
                     }
@@ -289,7 +300,7 @@ impl Type {
                 Ok(false)
             }
             Self::Union(fields) => {
-                for (_, t) in fields {
+                for t in fields.values() {
                     if t.is_recursive_helper(symbols, env)? {
                         return Ok(true);
                     }
@@ -297,7 +308,7 @@ impl Type {
                 Ok(false)
             }
             Self::EnumUnion(fields) => {
-                for (_, t) in fields {
+                for t in fields.values() {
                     if t.is_recursive_helper(symbols, env)? {
                         return Ok(true);
                     }
@@ -742,11 +753,7 @@ impl Type {
     pub fn is_self_param_reference(&self, env: &Env) -> Result<bool, Error> {
         Ok(match self.simplify_until_concrete(env)? {
             Self::Proc(args, _) => {
-                if let Some(Self::Pointer(_, _)) = args.first() {
-                    true
-                } else {
-                    false
-                }
+                matches!(args.first(), Some(Self::Pointer(_, _)))
             }
             _ => false,
         })

@@ -1,6 +1,6 @@
 println("Hello world!\n");
 
-const IS_RISCV = True;
+const IS_RISCV = False;
 
 
 enum Option<T> {

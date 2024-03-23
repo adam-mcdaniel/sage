@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/ops/arithmetic/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../../../" data-static-root-path="../../../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.1 (eb26296b5 2023-08-03)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../../../../source-files.js"></script><script defer src="../../../../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../../../sage/index.html"><img class="rust-logo" src="../../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/ops/arithmetic/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../../../" data-static-root-path="../../../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../../../src-files.js"></script><script defer src="../../../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -396,11 +397,6 @@
 <a href="#396" id="396">396</a>
 <a href="#397" id="397">397</a>
 <a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Arithmetic Operations
 //!
 //! This module implements several arithmetic operations:
@@ -492,7 +488,7 @@
                     <span class="kw">let </span>size = size.as_int(env)<span class="question-mark">?</span>;
                     <span class="kw">let </span>n = const_rhs.clone().as_int(env)<span class="question-mark">?</span>;
                     <span class="kw">if </span>n &lt;= <span class="number">0 </span>{
-                        <span class="macro">error!</span>(<span class="string">&quot;Cannot multiply array {lhs} by {n} (not positive)&quot;</span>);
+                        <span class="macro">error!</span>(<span class="string">"Cannot multiply array {lhs} by {n} (not positive)"</span>);
                         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidBinaryOp(
                             Box::new(<span class="kw-2">*</span><span class="self">self</span>),
                             lhs.clone(),
@@ -501,7 +497,7 @@
                     }
                     Type::Array(elem, Box::new(ConstExpr::Int(size * n)))
                 } <span class="kw">else </span>{
-                    <span class="macro">error!</span>(<span class="string">&quot;Cannot multiply array {lhs} by {rhs} (not constant = {rhs:?})&quot;</span>);
+                    <span class="macro">error!</span>(<span class="string">"Cannot multiply array {lhs} by {rhs} (not constant = {rhs:?})"</span>);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidBinaryOp(
                         Box::new(<span class="kw-2">*</span><span class="self">self</span>),
                         lhs.clone(),
@@ -660,36 +656,31 @@
         env: <span class="kw-2">&amp;mut </span>Env,
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">match </span>(lhs, <span class="self">self</span>, rhs) {
-            <span class="comment">// Check for array multiplication.
-            </span>(Type::Array(<span class="kw">_</span>, <span class="kw">_</span>), Arithmetic::Multiply, Type::Int) =&gt; {
-                <span class="comment">// Copy the loop RHS times.
-                // This will just evaluate the array, evaluate the int, and then repeatedly
-                // copy the array back onto the stack `rhs` times.
-                </span><span class="kw">let </span>arr_size = lhs.get_size(env)<span class="question-mark">?</span>;
-                <span class="comment">// Copy the integer into a register.
-                </span>output.op(CoreOp::Many(<span class="macro">vec!</span>[
-                    <span class="comment">// Pop into B
-                    </span>CoreOp::Pop(<span class="prelude-val">Some</span>(B), <span class="number">1</span>),
-                    <span class="comment">// Store the address of the array in A.
-                    </span>CoreOp::GetAddress {
-                        addr: SP.deref().offset(<span class="number">1 </span>- arr_size <span class="kw">as </span>isize),
-                        dst: A,
-                    },
-                    <span class="comment">// While B != 0
-                    </span>CoreOp::Dec(B),
-                    CoreOp::While(B),
-                    <span class="comment">// Push the array back onto the stack, starting at A
-                    </span>CoreOp::Push(A.deref(), arr_size),
-                    <span class="comment">// Decrement B
-                    </span>CoreOp::Dec(B),
-                    CoreOp::End,
-                ]));
+        <span class="kw">if let </span>(Type::Array(<span class="kw">_</span>, <span class="kw">_</span>), Arithmetic::Multiply, Type::Int) = (lhs, <span class="self">self</span>, rhs) {
+            <span class="comment">// Copy the loop RHS times.
+            // This will just evaluate the array, evaluate the int, and then repeatedly
+            // copy the array back onto the stack `rhs` times.
+            </span><span class="kw">let </span>arr_size = lhs.get_size(env)<span class="question-mark">?</span>;
+            <span class="comment">// Copy the integer into a register.
+            </span>output.op(CoreOp::Many(<span class="macro">vec!</span>[
+                <span class="comment">// Pop into B
+                </span>CoreOp::Pop(<span class="prelude-val">Some</span>(B), <span class="number">1</span>),
+                <span class="comment">// Store the address of the array in A.
+                </span>CoreOp::GetAddress {
+                    addr: SP.deref().offset(<span class="number">1 </span>- arr_size <span class="kw">as </span>isize),
+                    dst: A,
+                },
+                <span class="comment">// While B != 0
+                </span>CoreOp::Dec(B),
+                CoreOp::While(B),
+                <span class="comment">// Push the array back onto the stack, starting at A
+                </span>CoreOp::Push(A.deref(), arr_size),
+                <span class="comment">// Decrement B
+                </span>CoreOp::Dec(B),
+                CoreOp::End,
+            ]));
 
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
-            }
-
-            <span class="kw">_ </span>=&gt; {}
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
         <span class="kw">let </span>src = SP.deref();
@@ -703,7 +694,7 @@
             <span class="self">Self</span>::Divide =&gt; CoreOp::Div { src, dst },
             <span class="self">Self</span>::Remainder =&gt; CoreOp::Rem { src, dst },
             <span class="self">Self</span>::Power =&gt; CoreOp::Many(<span class="macro">vec!</span>[
-                <span class="comment">// We can&#39;t use the `Pow` operation, because it&#39;s not supported by
+                <span class="comment">// We can't use the `Pow` operation, because it's not supported by
                 // the core variant. So we have to do it with a loop.
                 </span>CoreOp::Move {
                     src: dst.clone(),
@@ -782,12 +773,12 @@
 <span class="kw">impl </span>Debug <span class="kw">for </span>Arithmetic {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
         <span class="kw">match </span><span class="self">self </span>{
-            Arithmetic::Add =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;+&quot;</span>),
-            Arithmetic::Subtract =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;-&quot;</span>),
-            Arithmetic::Multiply =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;*&quot;</span>),
-            Arithmetic::Divide =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;/&quot;</span>),
-            Arithmetic::Remainder =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;%&quot;</span>),
-            Arithmetic::Power =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;**&quot;</span>),
+            Arithmetic::Add =&gt; <span class="macro">write!</span>(f, <span class="string">"+"</span>),
+            Arithmetic::Subtract =&gt; <span class="macro">write!</span>(f, <span class="string">"-"</span>),
+            Arithmetic::Multiply =&gt; <span class="macro">write!</span>(f, <span class="string">"*"</span>),
+            Arithmetic::Divide =&gt; <span class="macro">write!</span>(f, <span class="string">"/"</span>),
+            Arithmetic::Remainder =&gt; <span class="macro">write!</span>(f, <span class="string">"%"</span>),
+            Arithmetic::Power =&gt; <span class="macro">write!</span>(f, <span class="string">"**"</span>),
         }
     }
 }
@@ -795,12 +786,12 @@
 <span class="kw">impl </span>Display <span class="kw">for </span>Arithmetic {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
         <span class="kw">match </span><span class="self">self </span>{
-            Arithmetic::Add =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;+&quot;</span>),
-            Arithmetic::Subtract =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;-&quot;</span>),
-            Arithmetic::Multiply =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;*&quot;</span>),
-            Arithmetic::Divide =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;/&quot;</span>),
-            Arithmetic::Remainder =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;%&quot;</span>),
-            Arithmetic::Power =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;**&quot;</span>),
+            Arithmetic::Add =&gt; <span class="macro">write!</span>(f, <span class="string">"+"</span>),
+            Arithmetic::Subtract =&gt; <span class="macro">write!</span>(f, <span class="string">"-"</span>),
+            Arithmetic::Multiply =&gt; <span class="macro">write!</span>(f, <span class="string">"*"</span>),
+            Arithmetic::Divide =&gt; <span class="macro">write!</span>(f, <span class="string">"/"</span>),
+            Arithmetic::Remainder =&gt; <span class="macro">write!</span>(f, <span class="string">"%"</span>),
+            Arithmetic::Power =&gt; <span class="macro">write!</span>(f, <span class="string">"**"</span>),
         }
     }
 }

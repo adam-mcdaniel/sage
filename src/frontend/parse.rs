@@ -1,6 +1,7 @@
 use crate::{lir::*, parse::SourceCodeLocation};
 use pest::{error::Error, iterators::Pair, Parser};
 use pest_derive::Parser;
+use rayon::prelude::*;
 
 #[derive(Parser)]
 #[grammar = "frontend/parse.pest"] // relative to src
@@ -27,6 +28,9 @@ pub enum Statement {
     LetStaticIn(Vec<(String, Mutability, Type, ConstExpr)>, Box<Self>),
     Expr(Expr),
 }
+
+unsafe impl Send for Statement {}
+unsafe impl Sync for Statement {}
 
 impl Statement {
     fn with_loc(self, loc: SourceCodeLocation) -> Self {
@@ -100,7 +104,7 @@ impl Statement {
             (Self::Block(stmts), Some(Expr::Many(mut rest))) => {
                 rest.insert(
                     0,
-                    Expr::Many(stmts.into_iter().map(|s| s.to_expr(None)).collect()),
+                    Expr::Many(stmts.into_par_iter().map(|s| s.to_expr(None)).collect()),
                 );
                 return Expr::Many(rest);
             }
@@ -1420,10 +1424,7 @@ fn parse_match(pair: Pair<Rule>) -> Expr {
         patterns.push(pattern);
         stmts.push(stmt);
     }
-    Expr::Match(
-        Box::new(expr),
-        patterns.into_iter().zip(stmts.into_iter()).collect(),
-    )
+    Expr::Match(Box::new(expr), patterns.into_iter().zip(stmts).collect())
 }
 
 fn parse_pattern(pair: Pair<Rule>) -> Pattern {

@@ -6,7 +6,10 @@
 use crate::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
 use core::fmt;
 use log::{debug, error, trace};
-use std::{collections::HashMap, rc::Rc, sync::RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 use std::{hash::Hash, hash::Hasher};
 
 use super::Procedure;
@@ -27,8 +30,8 @@ pub struct PolyProcedure {
     /// The body of the procedure.
     body: Box<Expr>,
     /// The monomorphs of the procedure.
-    monomorphs: Rc<RwLock<HashMap<String, Procedure>>>,
-    has_type_checked: Rc<RwLock<bool>>,
+    monomorphs: Arc<RwLock<HashMap<String, Procedure>>>,
+    has_type_checked: Arc<RwLock<bool>>,
 }
 
 impl PartialEq for PolyProcedure {
@@ -57,8 +60,8 @@ impl PolyProcedure {
             args,
             ret,
             body: Box::new(body.into()),
-            monomorphs: Rc::new(RwLock::new(HashMap::new())),
-            has_type_checked: Rc::new(RwLock::new(false)),
+            monomorphs: Arc::new(RwLock::new(HashMap::new())),
+            has_type_checked: Arc::new(RwLock::new(false)),
         }
     }
 
@@ -75,8 +78,8 @@ impl PolyProcedure {
             args: mono.get_args().to_vec(),
             ret: mono.get_ret().clone(),
             body: mono.get_body().clone().into(),
-            monomorphs: Rc::new(RwLock::new(HashMap::new())),
-            has_type_checked: Rc::new(RwLock::new(false)),
+            monomorphs: Arc::new(RwLock::new(HashMap::new())),
+            has_type_checked: Arc::new(RwLock::new(false)),
         }
     }
 

@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/ops/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.1 (eb26296b5 2023-08-03)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../../sage/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/ops/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../../src-files.js"></script><script defer src="../../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -647,14 +648,14 @@
 <span class="doccomment">/// A trait used to implemented an assignment operation.
 ///
 /// This trait is used to implement assignment operations like `+=` and `-=`.
-</span><span class="kw">pub trait </span>AssignOp: std::fmt::Debug + std::fmt::Display {
+</span><span class="kw">pub trait </span>AssignOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
     <span class="doccomment">/// Typechecks the operation on the given expressions.
     </span><span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, dst: <span class="kw-2">&amp;</span>Expr, src: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="comment">// trace!(&quot;Type checking assign op: {dst} {self} {src} ({self:?})&quot;);
+        <span class="comment">// trace!("Type checking assign op: {dst} {self} {src} ({self:?})");
         </span><span class="kw">if </span><span class="self">self</span>.can_apply(<span class="kw-2">&amp;</span>dst.get_type(env)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span>src.get_type(env)<span class="question-mark">?</span>, env)<span class="question-mark">? </span>{
             dst.type_check(env).and(src.type_check(env))
         } <span class="kw">else </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;Invalid assign op: {dst} {self} {src} ({self:?}) in environment {env}&quot;</span>);
+            <span class="macro">error!</span>(<span class="string">"Invalid assign op: {dst} {self} {src} ({self:?}) in environment {env}"</span>);
             <span class="prelude-val">Err</span>(Error::InvalidAssignOp(
                 <span class="self">self</span>.clone_box(),
                 dst.clone(),
@@ -679,7 +680,7 @@
         <span class="kw">if </span><span class="self">self</span>.can_apply_exprs(dst, src, env)<span class="question-mark">? </span>{
             dst.get_type(env)
         } <span class="kw">else </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;Invalid assign op: {dst} {self} {src} ({self:?}) in environment {env}&quot;</span>);
+            <span class="macro">error!</span>(<span class="string">"Invalid assign op: {dst} {self} {src} ({self:?}) in environment {env}"</span>);
             <span class="prelude-val">Err</span>(Error::InvalidAssignOp(
                 <span class="self">self</span>.clone_box(),
                 dst.clone(),
@@ -691,7 +692,7 @@
     </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>AssignOp&gt;;
     <span class="doccomment">/// Formats the operation for display.
     </span><span class="kw">fn </span>display(<span class="kw-2">&amp;</span><span class="self">self</span>, dst: <span class="kw-2">&amp;</span>Expr, src: <span class="kw-2">&amp;</span>Expr) -&gt; String {
-        <span class="macro">format!</span>(<span class="string">&quot;{} {} {}&quot;</span>, dst, <span class="self">self</span>, src)
+        <span class="macro">format!</span>(<span class="string">"{} {} {}"</span>, dst, <span class="self">self</span>, src)
     }
 
     <span class="doccomment">/// Checks if the operation can be applied to the given types.
@@ -732,7 +733,7 @@
                 </span>.compile(dst, src, env, output)
                 .map_err(|err| err.annotate(metadata.clone()));
         }
-        <span class="comment">// trace!(&quot;Compiling assign op: {dst} {self} {src} ({self:?})&quot;);
+        <span class="comment">// trace!("Compiling assign op: {dst} {self} {src} ({self:?})");
         </span>dst.clone().compile_expr(env, output)<span class="question-mark">?</span>;
         src.clone().compile_expr(env, output)<span class="question-mark">?</span>;
         <span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>dst.get_type(env)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span>src.get_type(env)<span class="question-mark">?</span>, env, output)
@@ -750,7 +751,7 @@
 <span class="doccomment">/// A trait used to implement a unary operation.
 ///
 /// This trait is used to implement unary operations like `not` and `~`.
-</span><span class="kw">pub trait </span>UnaryOp: std::fmt::Debug + std::fmt::Display {
+</span><span class="kw">pub trait </span>UnaryOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
     <span class="doccomment">/// Typechecks the operation on the given expression.
     </span><span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if let </span>Expr::Annotated(expr, metadata) = expr {
@@ -759,11 +760,11 @@
                 .map_err(|err| err.annotate(metadata.clone()));
         }
 
-        <span class="comment">// trace!(&quot;Type checking unary op: {self} {expr} ({self:?})&quot;);
+        <span class="comment">// trace!("Type checking unary op: {self} {expr} ({self:?})");
         </span><span class="kw">if </span><span class="self">self</span>.can_apply(<span class="kw-2">&amp;</span>expr.get_type(env)<span class="question-mark">?</span>, env)<span class="question-mark">? </span>{
             expr.type_check(env)
         } <span class="kw">else </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;Invalid unary op: {self} {expr} ({self:?}) in environment {env}&quot;</span>);
+            <span class="macro">error!</span>(<span class="string">"Invalid unary op: {self} {expr} ({self:?}) in environment {env}"</span>);
             <span class="prelude-val">Err</span>(Error::InvalidUnaryOp(<span class="self">self</span>.clone_box(), expr.clone()))
         }
     }
@@ -778,7 +779,7 @@
         <span class="kw">if </span><span class="self">self</span>.can_apply_exprs(expr, env)<span class="question-mark">? </span>{
             <span class="prelude-val">Ok</span>(expr.get_type(env)<span class="question-mark">?</span>)
         } <span class="kw">else </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;Invalid unary op: {self} {expr} ({self:?}) in environment {env}&quot;</span>);
+            <span class="macro">error!</span>(<span class="string">"Invalid unary op: {self} {expr} ({self:?}) in environment {env}"</span>);
             <span class="prelude-val">Err</span>(Error::InvalidUnaryOp(<span class="self">self</span>.clone_box(), expr.clone()))
         }
     }
@@ -786,7 +787,7 @@
     </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>UnaryOp&gt;;
     <span class="doccomment">/// Formats the operation for display.
     </span><span class="kw">fn </span>display(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr) -&gt; String {
-        <span class="macro">format!</span>(<span class="string">&quot;{} {}&quot;</span>, <span class="self">self</span>, expr)
+        <span class="macro">format!</span>(<span class="string">"{} {}"</span>, <span class="self">self</span>, expr)
     }
     <span class="doccomment">/// Checks if the operation can be applied to the given type.
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt;;
@@ -808,11 +809,11 @@
                 </span>.compile(expr, env, output)
                 .map_err(|err| err.annotate(metadata.clone()));
         }
-        <span class="comment">// trace!(&quot;Compiling unary op: {self} {expr} ({self:?})&quot;);
+        <span class="comment">// trace!("Compiling unary op: {self} {expr} ({self:?})");
         </span><span class="kw">let </span>current_instruction = output.current_instruction();
         expr.clone().compile_expr(env, output)<span class="question-mark">?</span>;
         <span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>expr.get_type(env)<span class="question-mark">?</span>, env, output)<span class="question-mark">?</span>;
-        <span class="kw">let </span>message = <span class="macro">format!</span>(<span class="string">&quot;Compiled unary op: {self} &#39;{expr}&#39; (with operator {self:?})&quot;</span>);
+        <span class="kw">let </span>message = <span class="macro">format!</span>(<span class="string">"Compiled unary op: {self} '{expr}' (with operator {self:?})"</span>);
         output.log_instructions_after(<span class="kw-2">&amp;</span><span class="self">self</span>.display(expr), <span class="kw-2">&amp;</span>message, current_instruction);
         <span class="prelude-val">Ok</span>(())
     }
@@ -828,7 +829,7 @@
 <span class="doccomment">/// A trait used to implement a binary operation.
 ///
 /// This trait is used to implement binary operations like `+` and `==`.
-</span><span class="kw">pub trait </span>BinaryOp: std::fmt::Debug + std::fmt::Display {
+</span><span class="kw">pub trait </span>BinaryOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
     <span class="doccomment">/// Typechecks the operation on the given expressions.
     </span><span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, lhs: <span class="kw-2">&amp;</span>Expr, rhs: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if let </span>Expr::Annotated(lhs, metadata) = lhs {
@@ -842,11 +843,11 @@
                 .map_err(|err| err.annotate(metadata.clone()));
         }
 
-        <span class="comment">// trace!(&quot;Type checking binary op: {lhs} {self} {rhs} ({self:?})&quot;);
+        <span class="comment">// trace!("Type checking binary op: {lhs} {self} {rhs} ({self:?})");
         </span><span class="kw">if </span><span class="self">self</span>.can_apply(<span class="kw-2">&amp;</span>lhs.get_type(env)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span>rhs.get_type(env)<span class="question-mark">?</span>, env)<span class="question-mark">? </span>{
             lhs.type_check(env).and(rhs.type_check(env))
         } <span class="kw">else </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;Invalid binary op: {lhs} {self} {rhs} ({self:?}) in environment {env}&quot;</span>);
+            <span class="macro">error!</span>(<span class="string">"Invalid binary op: {lhs} {self} {rhs} ({self:?}) in environment {env}"</span>);
             <span class="prelude-val">Err</span>(Error::InvalidBinaryOp(
                 <span class="self">self</span>.clone_box(),
                 lhs.clone(),
@@ -870,7 +871,7 @@
         <span class="kw">if </span><span class="self">self</span>.can_apply_exprs(lhs, rhs, env)<span class="question-mark">? </span>{
             lhs.get_type(env)
         } <span class="kw">else </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;Invalid binary op: {lhs} {self} {rhs} ({self:?}) in environment {env}&quot;</span>);
+            <span class="macro">error!</span>(<span class="string">"Invalid binary op: {lhs} {self} {rhs} ({self:?}) in environment {env}"</span>);
             <span class="prelude-val">Err</span>(Error::InvalidBinaryOp(
                 <span class="self">self</span>.clone_box(),
                 lhs.clone(),
@@ -882,7 +883,7 @@
     </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>BinaryOp&gt;;
     <span class="doccomment">/// Formats the operation for display.
     </span><span class="kw">fn </span>display(<span class="kw-2">&amp;</span><span class="self">self</span>, lhs: <span class="kw-2">&amp;</span>Expr, rhs: <span class="kw-2">&amp;</span>Expr) -&gt; String {
-        <span class="macro">format!</span>(<span class="string">&quot;{} {} {}&quot;</span>, lhs, <span class="self">self</span>, rhs)
+        <span class="macro">format!</span>(<span class="string">"{} {} {}"</span>, lhs, <span class="self">self</span>, rhs)
     }
 
     <span class="doccomment">/// Checks if the operation can be applied to the given types.
@@ -912,7 +913,7 @@
                 .map_err(|err| err.annotate(metadata.clone()));
         }
 
-        <span class="comment">// trace!(&quot;Compiling binary op: {lhs} {self} {rhs} ({self:?})&quot;);
+        <span class="comment">// trace!("Compiling binary op: {lhs} {self} {rhs} ({self:?})");
         </span>lhs.clone().compile_expr(env, output)<span class="question-mark">?</span>;
         rhs.clone().compile_expr(env, output)<span class="question-mark">?</span>;
         <span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>lhs.get_type(env)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span>rhs.get_type(env)<span class="question-mark">?</span>, env, output)<span class="question-mark">?</span>;
@@ -929,7 +930,7 @@
 }
 
 <span class="doccomment">/// A trait used to implement a ternary operation.
-</span><span class="kw">pub trait </span>TernaryOp: std::fmt::Debug + std::fmt::Display {
+</span><span class="kw">pub trait </span>TernaryOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
     <span class="doccomment">/// Typechecks the operation on the given expressions.
     </span><span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, a: <span class="kw-2">&amp;</span>Expr, b: <span class="kw-2">&amp;</span>Expr, c: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="kw">if let </span>Expr::Annotated(a, metadata) = a {
@@ -999,7 +1000,7 @@
     </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>TernaryOp&gt;;
     <span class="doccomment">/// Formats the operation for display.
     </span><span class="kw">fn </span>display(<span class="kw-2">&amp;</span><span class="self">self</span>, a: <span class="kw-2">&amp;</span>Expr, b: <span class="kw-2">&amp;</span>Expr, c: <span class="kw-2">&amp;</span>Expr) -&gt; String {
-        <span class="macro">format!</span>(<span class="string">&quot;{} {} {} {}&quot;</span>, a, <span class="self">self</span>, b, c)
+        <span class="macro">format!</span>(<span class="string">"{} {} {} {}"</span>, a, <span class="self">self</span>, b, c)
     }
 
     <span class="doccomment">/// Checks if the operation can be applied to the given types.
@@ -1040,7 +1041,7 @@
                 </span>.compile(a, b, c, env, output)
                 .map_err(|err| err.annotate(metadata.clone()));
         }
-        <span class="comment">// trace!(&quot;Compiling ternary op: {a} {self} {b} {c} ({self:?})&quot;);
+        <span class="comment">// trace!("Compiling ternary op: {a} {self} {b} {c} ({self:?})");
         // Evaluate the three expression on the stack.
         </span>a.clone().compile_expr(env, output)<span class="question-mark">?</span>;
         b.clone().compile_expr(env, output)<span class="question-mark">?</span>;

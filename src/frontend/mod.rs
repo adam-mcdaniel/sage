@@ -1,5 +1,5 @@
 //! # Frontend Module
-//! 
+//!
 //! This module implements the frontend of the compiler, which is responsible for parsing
 //! the source code and converting it into the LIR.
 

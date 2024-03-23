@@ -197,7 +197,7 @@ pub enum CoreOp {
     Comment(String),
 
     /// Set the register equal to a constant value.
-    Set(i64),
+    Set(Vec<i64>),
 
     /// Create a new function.
     Function,
@@ -229,9 +229,9 @@ pub enum CoreOp {
     End,
 
     /// Store the register to the value pointed to on the tape.
-    Save,
+    Store(usize),
     /// Store the value pointed to on the tape to the register.
-    Restore,
+    Load(usize),
 
     /// Move the pointer on the tape by a number of cells.
     Move(isize),
@@ -246,26 +246,106 @@ pub enum CoreOp {
     /// Interpret the register's value as a pointer to a cell.
     /// Index that pointer by the value on the tape. Store the address
     /// of the index into the register.
-    Index,
+    /// The argument is the size of the vector to index.
+    Index(usize),
+
+    /// Interpret the register's value as a pointer to a cell.
+    /// Offset the pointer by a constant value.
+    /// The first argument is the offset to add to the pointer.
+    /// The second argument is the size of the vector to add to the pointer.
+    Offset(isize, usize),
 
     /// Perform bitwise nand on the cell and the value pointed to on the tape,
     /// and store the result in the register.
-    BitwiseNand,
+    BitwiseNand(usize),
+    /// Perform bitwise and on the cell and the value pointed to on the tape,
+    /// and store the result in the register.
+    BitwiseAnd(usize),
+    /// Perform bitwise or on the cell and the value pointed to on the tape,
+    /// and store the result in the register.
+    BitwiseOr(usize),
+    /// Perform a bitwise xor on the cell and the value pointed to on the tape,
+    /// and store the result in the register.
+    BitwiseXor(usize),
+    /// Bitwise not the register. Store the result in the register.
+    BitwiseNot(usize),
+
+    /// Left shift the cell by the value pointed to on the tape.
+    /// Store the result in the register.
+    LeftShift(usize),
+    /// Logical right shift the cell by the value pointed to on the tape.
+    /// Store the result in the register.
+    LogicalRightShift(usize),
+    /// Interpret the register's value as a signed integer.
+    /// Arithmetic right shift the cell by the value pointed to on the tape.
+    /// Store the result in the register.
+    ArithmeticRightShift(usize),
+
+    /// Boolean-and the register and the value pointed to on the tape.
+    /// Store the result in the register.
+    And(usize),
+    /// Boolean-or the register and the value pointed to on the tape.
+    /// Store the result in the register.
+    Or(usize),
+    /// Boolean-not the register (0 if the register is non-zero, 1 if the register is zero)
+    /// Store the result in the register.
+    Not(usize),
 
     /// Add the value pointed to on the tape to the register.
-    Add,
+    /// The argument is the size of the vector to add to the register.
+    Add(usize),
     /// Subtract the value pointed to on the tape from the register.
-    Sub,
+    /// The argument is the size of the vector to subtract from the register.
+    Sub(usize),
     /// Multiply the register by the value pointed to on the tape.
-    Mul,
+    /// The argument is the size of the vector to multiply the register by.
+    Mul(usize),
     /// Divide the register by the value pointed to on the tape.
-    Div,
+    /// The argument is the size of the vector to divide the register by.
+    Div(usize),
     /// Store the remainder of the register and the value pointed to in the tape into the register.
-    Rem,
+    /// The argument is the size of the vector to take the remainder of the register by.
+    Rem(usize),
+    /// Negate the register.
+    /// The argument is the size of the vector to negate the register by.
+    Neg(usize),
+
+    /// Increment the register.
+    /// The argument is the size of the vector to increment.
+    Inc(usize),
+    /// Decrement the register.
+    Dec(usize),
+
+    /// Swap the value of the register with the value pointed to on the tape.
+    /// The argument is the size of the vector to swap the register with.
+    Swap(usize),
 
     /// Make the register equal to 1 if the register is non-negative, otherwise make it equal to 0.
-    IsNonNegative,
+    /// The argument is the size of the vector to check if the register is non-negative.
+    IsNonNegative(usize),
 
+    /*
+    /// Compare the register to a value on the tape.
+    /// If the register is equal to the value on the tape, make the register equal to 1.
+    /// Otherwise, make the register equal to 0.
+    CompareEqual,
+    /// Compare the register to a value on the tape.
+    /// If the register is less than the value on the tape, make the register equal to 1.
+    /// Otherwise, make the register equal to 0.
+    CompareLess,
+    /// Compare the register to a value on the tape.
+    /// If the register is greater than the value on the tape, make the register equal to 1.
+    /// Otherwise, make the register equal to 0.
+    CompareGreater,
+    /// Compare the register to a value on the tape.
+    /// If the register is less than or equal to the value on the tape, make the register equal to 1.
+    /// Otherwise, make the register equal to 0.
+    CompareLessEqual,
+    /// Compare the register to a value on the tape.
+    /// If the register is greater than or equal to the value on the tape, make the register equal to 1.
+    /// Otherwise, make the register equal to 0.
+    CompareGreaterEqual,
+    */
     /// Get a value from an input source and store it in the register.
     Get(Input),
     /// Write the value of the register to an output source.
@@ -275,8 +355,8 @@ pub enum CoreOp {
 impl fmt::Display for CoreOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CoreOp::Comment(s) => write!(f, "// {}", s),
-            CoreOp::Set(n) => write!(f, "set {}", n),
+            CoreOp::Comment(s) => write!(f, "// {s}"),
+            CoreOp::Set(n) => write!(f, "set {n:?}"),
             CoreOp::Function => write!(f, "fun"),
             CoreOp::Call => write!(f, "call"),
             CoreOp::Return => write!(f, "ret"),
@@ -284,20 +364,43 @@ impl fmt::Display for CoreOp {
             CoreOp::If => write!(f, "if"),
             CoreOp::Else => write!(f, "else"),
             CoreOp::End => write!(f, "end"),
-            CoreOp::Save => write!(f, "sav"),
-            CoreOp::Restore => write!(f, "res"),
-            CoreOp::Move(n) => write!(f, "mov {}", n),
+            CoreOp::Store(n) => write!(f, "store {n}"),
+            CoreOp::Load(n) => write!(f, "load {n}"),
+            CoreOp::Move(n) => write!(f, "mov {n}"),
+            CoreOp::Offset(offset, n) => write!(f, "offset {offset}, {n}"),
             CoreOp::Where => write!(f, "where"),
             CoreOp::Deref => write!(f, "deref"),
             CoreOp::Refer => write!(f, "ref"),
-            CoreOp::Index => write!(f, "index"),
-            CoreOp::BitwiseNand => write!(f, "bitwise-nand"),
-            CoreOp::Add => write!(f, "add"),
-            CoreOp::Sub => write!(f, "sub"),
-            CoreOp::Mul => write!(f, "mul"),
-            CoreOp::Div => write!(f, "div"),
-            CoreOp::Rem => write!(f, "rem"),
-            CoreOp::IsNonNegative => write!(f, "gez"),
+            CoreOp::Index(n) => write!(f, "index {n}"),
+            CoreOp::BitwiseNand(n) => write!(f, "bitwise-nand {n}"),
+            CoreOp::BitwiseAnd(n) => write!(f, "bitwise-and {n}"),
+            CoreOp::BitwiseOr(n) => write!(f, "bitwise-or {n}"),
+            CoreOp::BitwiseXor(n) => write!(f, "bitwise-xor {n}"),
+            CoreOp::BitwiseNot(n) => write!(f, "bitwise-not {n}"),
+            CoreOp::LeftShift(n) => write!(f, "lsh {n}"),
+            CoreOp::LogicalRightShift(n) => write!(f, "lrsh {n}"),
+            CoreOp::ArithmeticRightShift(n) => write!(f, "arsh {n}"),
+            CoreOp::And(n) => write!(f, "and {n}"),
+            CoreOp::Or(n) => write!(f, "or {n}"),
+            CoreOp::Not(n) => write!(f, "not {n}"),
+            CoreOp::Neg(n) => write!(f, "neg {n}"),
+            CoreOp::Add(n) => write!(f, "add {n}"),
+            CoreOp::Sub(n) => write!(f, "sub {n}"),
+            CoreOp::Mul(n) => write!(f, "mul {n}"),
+            CoreOp::Div(n) => write!(f, "div {n}"),
+            CoreOp::Rem(n) => write!(f, "rem {n}"),
+            CoreOp::Inc(n) => write!(f, "inc {n}"),
+            CoreOp::Dec(n) => write!(f, "dec {n}"),
+            CoreOp::Swap(n) => write!(f, "swap {n}"),
+            CoreOp::IsNonNegative(n) => write!(f, "gez {n}"),
+
+            /*
+            CoreOp::CompareEqual => write!(f, "ceq"),
+            CoreOp::CompareLess => write!(f, "clt"),
+            CoreOp::CompareGreater => write!(f, "cgt"),
+            CoreOp::CompareLessEqual => write!(f, "cle"),
+            CoreOp::CompareGreaterEqual => write!(f, "cge"),
+            */
             CoreOp::Get(i) => write!(f, "get {i}"),
             CoreOp::Put(o) => write!(f, "put {o}"),
         }

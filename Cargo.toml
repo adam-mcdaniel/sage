@@ -1,7 +1,7 @@
 [package]
 name = "sage"
 authors = ["Adam McDaniel <adam.mcdaniel17@gmail.com> (https://adam-mcdaniel.net)"]
-version = "0.0.3-alpha"
+version = "0.0.4-alpha"
 edition = "2021"
 license = "MIT"
 description = "A portable programming language with a compact backend"
@@ -28,8 +28,9 @@ pest = "2.6.0"
 pest_derive = "2.6.0"
 snailquote = "0.3.1"
 codespan-reporting = "0.11.1"
-log = {version = "0.4.20", features = ["release_max_level_warn"] }
+log = {version = "0.4.20", features = ["release_max_level_info"] }
 env_logger = "0.10.0"
+rayon = "1.9.0"
 
 [dev-dependencies]
 criterion = "0.5"

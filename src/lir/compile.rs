@@ -15,6 +15,7 @@ use crate::asm::{
 };
 use crate::NULL;
 use log::*;
+use rayon::prelude::*;
 use std::sync::Mutex;
 
 use log::{error, info, trace, warn};
@@ -36,7 +37,6 @@ pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
         info!("Type checking...");
         // First, type check the expression.
         self.type_check(&Env::default())?;
-        info!("Type checked successfully.");
         // Then, attempt to compile the expression into a core assembly program.
         let mut core_asm = CoreProgram::default();
 
@@ -52,11 +52,11 @@ pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
             let mut std_asm = StandardProgram::default();
             // Compile the expression into the standard assembly program.
             self.compile_expr(&mut Env::default(), &mut std_asm)?;
-            info!("Compiled to standard assembly successfully.");
+            info!("Compiled to standard assembly successfully");
             // Return the fallback standard assembly program.
             Ok(Err(std_asm))
         } else {
-            info!("Compiled to core assembly successfully.");
+            info!("Compiled to core assembly successfully");
             // Return the successfully compiled core assembly program.
             Ok(Ok(core_asm))
         }
@@ -80,10 +80,10 @@ impl Compile for Expr {
 
         // Compile the expression.
         match self {
-            Self::Annotated(expr, metdata) => {
+            Self::Annotated(expr, metadata) => {
                 // Compile the expression.
                 expr.compile_expr(env, output)
-                    .map_err(|e| e.annotate(metdata))?;
+                    .map_err(|e| e.annotate(metadata))?;
             }
 
             Self::Match(expr, branches) => {
@@ -570,7 +570,7 @@ impl Compile for Expr {
                         // If the array is a literal, then we will have to push the array
                         // on the stack and essentially do the same address calculations,
                         // but the difference is that the operation is not in-place.
-                        if optimized_idx.type_check(env).is_ok() {
+                        if optimized_idx.get_type(env).is_ok() {
                             return optimized_idx.compile_expr(env, output);
                         }
 
@@ -584,8 +584,10 @@ impl Compile for Expr {
                         // Calculate the offset of the element we want to return
                         // (the index times the size of the element), and store it in `B`.
                         output.op(CoreOp::Pop(Some(B), 1));
-                        output.op(CoreOp::Set(A, elem_size as i64));
-                        output.op(CoreOp::Mul { dst: B, src: A });
+                        if elem_size > 1 {
+                            output.op(CoreOp::Set(A, elem_size as i64));
+                            output.op(CoreOp::Mul { dst: B, src: A });
+                        }
 
                         // Get the address of the array's first element, and store it in `A`.
                         output.op(CoreOp::GetAddress {
@@ -623,11 +625,14 @@ impl Compile for Expr {
                         output.op(CoreOp::Pop(Some(A), 1));
                         // Store the index in `B`.
                         output.op(CoreOp::Pop(Some(B), 1));
-                        // Store the size of the element in `C`.
-                        output.op(CoreOp::Set(C, elem_size as i64));
-                        // Store the offset of the element from the pointer in `B`
-                        // (the index times the size of the element).
-                        output.op(CoreOp::Mul { dst: B, src: C });
+                        if elem_size > 1 {
+                            // Store the size of the element in `C`.
+                            output.op(CoreOp::Set(C, elem_size as i64));
+
+                            // Calculate the offset of the element from the address of the array.
+                            // (the index times the size of the element).
+                            output.op(CoreOp::Mul { dst: B, src: C });
+                        }
                         // Get the address of the element and store it in `C`.
                         output.op(CoreOp::Index {
                             src: A,
@@ -723,19 +728,28 @@ impl Compile for Expr {
                         }
 
                         // Calculate the address of the variable from the offset
-                        output.op(CoreOp::Many(vec![
-                            CoreOp::Move { src: FP, dst: A },
-                            CoreOp::Set(B, *offset as i64),
-                            // Index the frame pointer with the offset of the variable.
-                            // This is the address of the variable.
-                            CoreOp::Index {
-                                src: A,
-                                offset: B,
-                                dst: C,
+                        // output.op(CoreOp::Many(vec![
+                        //     CoreOp::Move { src: FP, dst: A },
+                        //     CoreOp::Set(B, *offset as i64),
+                        //     // Index the frame pointer with the offset of the variable.
+                        //     // This is the address of the variable.
+                        //     CoreOp::Index {
+                        //         src: A,
+                        //         offset: B,
+                        //         dst: C,
+                        //     },
+                        //     // Push the address of the variable onto the stack.
+                        //     CoreOp::Push(C, 1),
+                        // ]))
+                        // Push the address of the variable onto the stack.
+                        output.op(CoreOp::Next(SP, None));
+                        output.op(
+                            // Calculate the address of the variable from the offset
+                            CoreOp::GetAddress {
+                                addr: FP.deref().offset(*offset),
+                                dst: SP.deref(),
                             },
-                            // Push the address of the variable onto the stack.
-                            CoreOp::Push(C, 1),
-                        ]))
+                        )
                     } else if let Some((found_mutability, _ty, location)) =
                         env.get_static_var(&name)
                     {
@@ -746,16 +760,15 @@ impl Compile for Expr {
                                 expr: Expr::ConstExpr(ConstExpr::Symbol(name)),
                             });
                         }
-
-                        // Calculate the address of the variable from the offset
-                        output.op(CoreOp::Many(vec![
-                            // Push the address of the variable onto the stack.
-                            CoreOp::Next(SP, None),
+                        // Push the address of the variable onto the stack.
+                        output.op(CoreOp::Next(SP, None));
+                        output.op(
+                            // Calculate the address of the variable from the offset
                             CoreOp::GetAddress {
                                 addr: location.clone(),
                                 dst: SP.deref(),
                             },
-                        ]))
+                        )
                     } else {
                         error!("Tried to get the reference of a symbol that isn't a variable: {name} in environment {env}");
                         // Return an error if the symbol isn't defined.
@@ -861,12 +874,14 @@ impl Compile for Expr {
                             output.op(CoreOp::Pop(Some(B), 1));
                             // Store the address of the array in `A`.
                             output.op(CoreOp::Pop(Some(A), 1));
-                            // Store the size of the element in `C`.
-                            output.op(CoreOp::Set(C, elem_size as i64));
+                            if elem_size > 1 {
+                                // Store the size of the element in `C`.
+                                output.op(CoreOp::Set(C, elem_size as i64));
 
-                            // Calculate the offset of the element from the address of the array.
-                            // (the index times the size of the element).
-                            output.op(CoreOp::Mul { dst: B, src: C });
+                                // Calculate the offset of the element from the address of the array.
+                                // (the index times the size of the element).
+                                output.op(CoreOp::Mul { dst: B, src: C });
+                            }
 
                             // Index the address of the array with the offset of the element.
                             // This is the address of the element.
@@ -899,12 +914,14 @@ impl Compile for Expr {
                             output.op(CoreOp::Pop(Some(A), 1));
                             // Store the index in `B`.
                             output.op(CoreOp::Pop(Some(B), 1));
-                            // Store the size of the element in `C`.
-                            output.op(CoreOp::Set(C, elem_size as i64));
+                            if elem_size > 1 {
+                                // Store the size of the element in `C`.
+                                output.op(CoreOp::Set(C, elem_size as i64));
 
-                            // Calculate the offset of the element from the pointer.
-                            // (the index times the size of the element).
-                            output.op(CoreOp::Mul { dst: B, src: C });
+                                // Calculate the offset of the element from the address of the array.
+                                // (the index times the size of the element).
+                                output.op(CoreOp::Mul { dst: B, src: C });
+                            }
                             output.op(CoreOp::Index {
                                 src: A,
                                 offset: B,
@@ -986,7 +1003,7 @@ impl Compile for ConstExpr {
                 Self::PolyProc(poly_proc) => {
                     // Simplify the type arguments.
                     let ty_args = ty_args
-                        .into_iter()
+                        .into_par_iter()
                         .map(|ty| ty.simplify(env))
                         .collect::<Result<Vec<_>, _>>()?;
 
@@ -1002,8 +1019,8 @@ impl Compile for ConstExpr {
                     let current_instruction = output.current_instruction();
                     // Monomorphize the function
                     let proc = poly_proc.monomorphize(ty_args, env)?;
-                    // Typecheck the monomorphized function.
-                    proc.type_check(env)?;
+                    // // Typecheck the monomorphized function.
+                    // proc.type_check(env)?;
                     // Compile the monomorphized function.
                     proc.compile_expr(env, output)?;
 
@@ -1057,13 +1074,13 @@ impl Compile for ConstExpr {
             Self::Cell(n) => {
                 // output.op(CoreOp::Next(SP, None));
                 // output.op(CoreOp::Set(SP.deref(), n));
-                output.op(CoreOp::PushConst(vec![n as i64]));
+                output.op(CoreOp::PushConst(vec![n]));
             }
             // Compile an integer constant.
             Self::Int(n) => {
                 // output.op(CoreOp::Next(SP, None));
                 // output.op(CoreOp::Set(SP.deref(), n));
-                output.op(CoreOp::PushConst(vec![n as i64]));
+                output.op(CoreOp::PushConst(vec![n]));
             }
             // Compile a float constant.
             Self::Float(f) => {
@@ -1117,43 +1134,43 @@ impl Compile for ConstExpr {
                         Type::Int => {
                             output.op(CoreOp::PushConst(
                                 items
-                                    .iter()
+                                    .par_iter()
                                     .map(|elem| elem.clone().as_int(env))
                                     .collect::<Result<Vec<_>, _>>()?,
                             ));
-                        },
+                        }
                         Type::Float => {
                             output.std_op(StandardOp::PushConst(
                                 items
-                                    .iter()
+                                    .par_iter()
                                     .map(|elem| elem.clone().as_float(env))
                                     .collect::<Result<Vec<_>, _>>()?,
                             ))?;
-                        },
+                        }
                         Type::Cell => {
                             output.op(CoreOp::PushConst(
                                 items
-                                    .iter()
+                                    .par_iter()
                                     .map(|elem| elem.clone().as_int(env))
                                     .collect::<Result<Vec<_>, _>>()?,
                             ));
-                        },
+                        }
                         Type::Bool => {
                             output.op(CoreOp::PushConst(
                                 items
-                                    .iter()
+                                    .par_iter()
                                     .map(|elem| elem.clone().as_bool(env).map(|x| x as i64))
                                     .collect::<Result<Vec<_>, _>>()?,
                             ));
-                        },
+                        }
                         Type::Char => {
                             output.op(CoreOp::PushConst(
                                 items
-                                    .iter()
+                                    .par_iter()
                                     .map(|elem| elem.clone().as_char(env).map(|x| x as u8 as i64))
                                     .collect::<Result<Vec<_>, _>>()?,
                             ));
-                        },
+                        }
                         _ => {
                             let mut items = items.into_iter().peekable();
                             while let Some(item) = items.next() {
@@ -1166,7 +1183,7 @@ impl Compile for ConstExpr {
                                         break;
                                     }
                                 }
-        
+
                                 let item_size = item.get_size(env)?;
                                 if count > 2 || item_size >= 8 {
                                     item.compile_expr(env, output)?;

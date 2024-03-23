@@ -148,8 +148,10 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
 
 /// Parse frontend sage code into an LIR expression.
 pub fn parse_frontend(input: impl ToString, filename: Option<&str>) -> Result<Expr, String> {
+    // let start = std::time::Instant::now();
     let result = frontend::parse(input, filename)?;
     trace!(target: "parse", "Parsed frontend code: {result}");
+    // info!(target: "parse", "Parsed frontend code in {time}ms", time = start.elapsed().as_millis());
     Ok(result)
 }
 

@@ -42,52 +42,51 @@ use std::collections::HashMap;
 
 impl VirtualMachineProgram for StandardProgram {
     fn op(&mut self, op: CoreOp) {
-        if let Some(last_op) = self.0.last().cloned() {
-            if let StandardOp::CoreOp(last_core_op) = last_op {
-                match (last_core_op, op) {
-                    (CoreOp::Move(n), CoreOp::Move(m)) => {
-                        self.0.pop();
-                        if m + n != 0 {
-                            self.0.push(StandardOp::CoreOp(CoreOp::Move(n + m)))
-                        }
-                    }
-                    (CoreOp::Set(_), CoreOp::Set(m)) => {
-                        self.0.pop();
-                        self.op(CoreOp::Set(m))
-                    }
-                    (CoreOp::Deref, CoreOp::Refer) => {
-                        self.0.pop();
-                    }
-                    (CoreOp::Else, CoreOp::End) => {
-                        self.0.pop();
-                        self.op(CoreOp::End);
-                    }
-                    (CoreOp::Move(_), CoreOp::Refer) => {
-                        self.0.pop();
-                        self.op(CoreOp::Refer)
-                    }
-                    (CoreOp::Move(n), CoreOp::Set(m)) => {
-                        self.0.pop();
-                        self.op(CoreOp::Set(m));
-                        self.op(CoreOp::Move(n));
-                    }
-                    // (CoreOp::Refer, CoreOp::Deref) => {
-                    //     self.0.pop();
-                    // }
-                    (CoreOp::Save, CoreOp::Save) => {}
-                    (CoreOp::Restore, CoreOp::Restore) => {}
-                    (CoreOp::Save, CoreOp::Restore) => {}
-                    (CoreOp::Restore, CoreOp::Save) => {}
-                    (CoreOp::Set(n), CoreOp::IsNonNegative) => {
-                        self.0.pop();
-                        self.op(CoreOp::Set((n >= 0) as i64))
-                    }
-                    (_, op) => {
-                        self.0.push(StandardOp::CoreOp(op));
+        if let Some(StandardOp::CoreOp(last_core_op)) = self.0.last().cloned() {
+            match (last_core_op, op) {
+                (CoreOp::Move(n), CoreOp::Move(m)) => {
+                    self.0.pop();
+                    if m + n != 0 {
+                        self.0.push(StandardOp::CoreOp(CoreOp::Move(n + m)))
                     }
                 }
-            } else {
-                self.0.push(StandardOp::CoreOp(op));
+                (CoreOp::Set(_), CoreOp::Set(m)) => {
+                    self.0.pop();
+                    self.op(CoreOp::Set(m))
+                }
+                (CoreOp::Deref, CoreOp::Refer) => {
+                    self.0.pop();
+                }
+                (CoreOp::Else, CoreOp::End) => {
+                    self.0.pop();
+                    self.op(CoreOp::End);
+                }
+                (CoreOp::Move(_), CoreOp::Refer) => {
+                    self.0.pop();
+                    self.op(CoreOp::Refer)
+                }
+                (CoreOp::Move(n), CoreOp::Set(m)) => {
+                    self.0.pop();
+                    self.op(CoreOp::Set(m));
+                    self.op(CoreOp::Move(n));
+                }
+                (CoreOp::Move(n), CoreOp::Offset(off, m)) => {
+                    self.0.pop();
+                    self.op(CoreOp::Offset(off, m));
+                    self.op(CoreOp::Move(n));
+                }
+                (CoreOp::Store(m), CoreOp::Store(n)) if n == m => {}
+                (CoreOp::Load(m), CoreOp::Load(n)) if n == m => {}
+                (CoreOp::Store(m), CoreOp::Load(n)) if n == m => {}
+                (CoreOp::Load(m), CoreOp::Store(n)) if n == m => {}
+                (CoreOp::Set(n), CoreOp::IsNonNegative(1)) if n.len() == 1 => {
+                    self.0.pop();
+                    self.op(CoreOp::Set(vec![(n[0] >= 0) as i64]))
+                }
+
+                (_, op) => {
+                    self.0.push(StandardOp::CoreOp(op));
+                }
             }
         } else {
             self.0.push(StandardOp::CoreOp(op));
@@ -295,7 +294,7 @@ pub enum StandardOp {
     CoreOp(CoreOp),
 
     /// Set the register equal to a constant floating point value.
-    Set(f64),
+    Set(Vec<f64>),
 
     /// Take the value of the register, and allocate that number of cells in memory.
     /// Set the register to the lowest address of the allocated memory.
@@ -305,40 +304,43 @@ pub enum StandardOp {
     Free,
 
     /// Convert the register from a float to an integer.
-    ToInt,
+    ToInt(usize),
     /// Convert the register from an integer to a float.
-    ToFloat,
+    ToFloat(usize),
 
     /// Add the value pointed to on the tape to the register (as floats).
-    Add,
+    Add(usize),
     /// Subtract the value pointed to on the tape from the register (as floats).
-    Sub,
+    Sub(usize),
     /// Multiply the register by the value pointed to on the tape (as floats).
-    Mul,
+    Mul(usize),
     /// Divide the register by the value pointed to on the tape (as floats).
-    Div,
+    Div(usize),
     /// Store the remainder of the register and the value pointed to in the
     /// tape (as floats) into the register.
-    Rem,
+    Rem(usize),
+    /// Negate the value of the register (as a float).
+    Neg(usize),
 
     /// Make the register equal to the integer 1 if the register (as a float)
     /// is not negative, otherwise make it equal to 0.
-    IsNonNegative,
+    IsNonNegative(usize),
 
     /// Store the sine of the register (as a float) into the register.
-    Sin,
+    /// The argument is the size of the register vector.
+    Sin(usize),
     /// Store the cosine of the register (as a float) into the register.
-    Cos,
+    Cos(usize),
     /// Store the tangent of the register (as a float) into the register.
-    Tan,
+    Tan(usize),
     /// Store the inverse-sine of the register (as a float) into the register.
-    ASin,
+    ASin(usize),
     /// Store the inverse-cosine of the register (as a float) into the register.
-    ACos,
+    ACos(usize),
     /// Store the inverse-tangent of the register (as a float) into the register.
-    ATan,
+    ATan(usize),
     /// Store the value of the register (as a float) to the power of the value pointed to on the tape (as a float) into the register.
-    Pow,
+    Pow(usize),
 
     /// Get a value from the input interface / device and store it in the register.
     /// This is intended to function something like system calls for using any external
@@ -365,24 +367,25 @@ impl fmt::Display for StandardOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             StandardOp::CoreOp(op) => write!(f, "{}", op),
-            StandardOp::Set(val) => write!(f, "set-f {}", val),
+            StandardOp::Set(val) => write!(f, "set-f {:?}", val),
             StandardOp::Alloc => write!(f, "alloc"),
             StandardOp::Free => write!(f, "free"),
-            StandardOp::ToInt => write!(f, "to-int"),
-            StandardOp::ToFloat => write!(f, "to-float"),
-            StandardOp::Add => write!(f, "add-f"),
-            StandardOp::Sub => write!(f, "sub-f"),
-            StandardOp::Mul => write!(f, "mul-f"),
-            StandardOp::Div => write!(f, "div-f"),
-            StandardOp::Rem => write!(f, "rem-f"),
-            StandardOp::IsNonNegative => write!(f, "gez-f"),
-            StandardOp::Sin => write!(f, "sin"),
-            StandardOp::Cos => write!(f, "cos"),
-            StandardOp::Tan => write!(f, "tan"),
-            StandardOp::ASin => write!(f, "asin"),
-            StandardOp::ACos => write!(f, "acos"),
-            StandardOp::ATan => write!(f, "atan"),
-            StandardOp::Pow => write!(f, "pow"),
+            StandardOp::ToInt(n) => write!(f, "to-int {n}"),
+            StandardOp::ToFloat(n) => write!(f, "to-float {n}"),
+            StandardOp::Add(n) => write!(f, "add-f {n}"),
+            StandardOp::Sub(n) => write!(f, "sub-f {n}"),
+            StandardOp::Mul(n) => write!(f, "mul-f {n}"),
+            StandardOp::Div(n) => write!(f, "div-f {n}"),
+            StandardOp::Rem(n) => write!(f, "rem-f {n}"),
+            StandardOp::Neg(n) => write!(f, "neg-f {n}"),
+            StandardOp::IsNonNegative(n) => write!(f, "gez-f {n}"),
+            StandardOp::Sin(n) => write!(f, "sin {n}"),
+            StandardOp::Cos(n) => write!(f, "cos {n}"),
+            StandardOp::Tan(n) => write!(f, "tan {n}"),
+            StandardOp::ASin(n) => write!(f, "asin {n}"),
+            StandardOp::ACos(n) => write!(f, "acos {n}"),
+            StandardOp::ATan(n) => write!(f, "atan {n}"),
+            StandardOp::Pow(n) => write!(f, "pow {n}"),
             StandardOp::Peek => write!(f, "peek"),
             StandardOp::Poke => write!(f, "poke"),
             StandardOp::Call(binding) => write!(f, "call {}", binding),

@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/expression.rs`."><title>expression.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.1 (eb26296b5 2023-08-03)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../sage/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/lir/expr/expression.rs`."><title>expression.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="sage" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1153,7 +1154,7 @@
 <span class="kw">use </span>log::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
-///       This way, we don&#39;t overflow the stack with several clones of the environment.
+///       This way, we don't overflow the stack with several clones of the environment.
 /// A runtime expression.
 </span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub enum </span>Expr {
@@ -1229,7 +1230,7 @@
     <span class="doccomment">/// A tagged union: a typechecked union of different variants.
     /// The `Type` value is the type of the tagged union.
     /// The `String` field is the variant the tagged union is being initialized with.
-    /// The `Box&lt;Self&gt;` field is the value of the union&#39;s data we want to initialize.
+    /// The `Box&lt;Self&gt;` field is the value of the union's data we want to initialize.
     </span>EnumUnion(Type, String, Box&lt;<span class="self">Self</span>&gt;),
 
     <span class="doccomment">/// A structure of fields to expressions.
@@ -1254,7 +1255,7 @@
 
 <span class="kw">impl </span>Expr {
     <span class="doccomment">/// A constant expression that evaluates to `None`.
-    /// This constant is defined so that we don&#39;t have to write `Expr::ConstExpr`
+    /// This constant is defined so that we don't have to write `Expr::ConstExpr`
     /// every time we want to use `None`.
     </span><span class="kw">pub const </span>NONE: <span class="self">Self </span>= <span class="self">Self</span>::ConstExpr(ConstExpr::None);
 
@@ -1331,12 +1332,12 @@
 
             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         };
-        <span class="macro">debug!</span>(<span class="string">&quot;is_method_call: {self} = {result}&quot;</span>);
+        <span class="macro">debug!</span>(<span class="string">"is_method_call: {self} = {result}"</span>);
         <span class="prelude-val">Ok</span>(result)
     }
 
     <span class="kw">pub fn </span>transform_method_call(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
-        <span class="macro">debug!</span>(<span class="string">&quot;transform_method_call: {self} -- {self:?}&quot;</span>);
+        <span class="macro">debug!</span>(<span class="string">"transform_method_call: {self} -- {self:?}"</span>);
 
         <span class="kw">let </span>result = <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Annotated(inner, metadata) =&gt; inner
@@ -1349,7 +1350,7 @@
                         .map_err(|e| e.annotate(metadata.clone())),
 
                     <span class="self">Self</span>::ConstExpr(ConstExpr::Monomorphize(template, ty_args)) =&gt; {
-                        <span class="macro">debug!</span>(<span class="string">&quot;transform_method_call: template={template} -- ty_args={ty_args:?}&quot;</span>);
+                        <span class="macro">debug!</span>(<span class="string">"transform_method_call: template={template} -- ty_args={ty_args:?}"</span>);
                         <span class="kw">match </span><span class="kw-2">*</span>template {
                             ConstExpr::Member(val, member) =&gt; {
                                 <span class="comment">// Apply the type arguments to the method.
@@ -1358,9 +1359,9 @@
                                 <span class="comment">// Check if the value actually has a member with this name.
                                 </span><span class="kw">let </span>val_type = val.get_type(env)<span class="question-mark">?</span>;
                                 <span class="comment">// val_type.add_monomorphized_associated_consts(env)?;
-                                </span><span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;got value type: {:#?}: {val}.{name}&quot;</span>, val_type);
+                                </span><span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"got value type: {:#?}: {val}.{name}"</span>, val_type);
                                 <span class="comment">// If the value has a member with this name,
-                                </span><span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;WHOOP WHOOP&quot;</span>);
+                                </span><span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"WHOOP WHOOP"</span>);
                                 <span class="kw">let </span>(<span class="kw-2">mut </span>associated_function, <span class="kw-2">mut </span>associated_function_type) = env
                                     .get_associated_const(<span class="kw-2">&amp;</span>val_type, <span class="kw-2">&amp;</span>name)
                                     .ok_or_else(|| Error::SymbolNotDefined(name.clone()))<span class="question-mark">?</span>;
@@ -1372,13 +1373,13 @@
                                 <span class="comment">// let associated_function = ConstExpr::Type(val_type.clone())
                                 //     .field(*member)
                                 //     .monomorphize(ty_args.clone());
-                                </span><span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;function value: {associated_function} in {env}&quot;</span>);
+                                </span><span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"function value: {associated_function} in {env}"</span>);
                                 <span class="comment">// Get the type of the function
                                 // let associated_function_type = env
                                 //     .get_type_of_associated_const(&amp;val_type, &amp;name)
                                 //     .ok_or_else(|| Error::SymbolNotDefined(name))?
                                 //     .apply(ty_args);
-                                // trace!(target: &quot;member&quot;, &quot;got function type: {}&quot;, associated_function_type);
+                                // trace!(target: "member", "got function type: {}", associated_function_type);
 
                                 </span><span class="kw">let </span><span class="kw-2">mut </span>new_args = <span class="macro">vec!</span>[];
                                 <span class="kw">if let </span><span class="prelude-val">Some</span>(expected_mutability) =
@@ -1388,17 +1389,17 @@
                                         <span class="kw-2">&amp;</span>Type::Pointer(expected_mutability, Type::Any.into()),
                                         env,
                                     )<span class="question-mark">? </span>{
-                                        <span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;decaying {val} to {expected_mutability} pointer&quot;</span>);
+                                        <span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"decaying {val} to {expected_mutability} pointer"</span>);
                                         new_args.push(Expr::ConstExpr(<span class="kw-2">*</span>val.clone()));
                                     } <span class="kw">else </span>{
-                                        <span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;referencing {val} as {expected_mutability} pointer&quot;</span>);
+                                        <span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"referencing {val} as {expected_mutability} pointer"</span>);
                                         new_args.push(
                                             Expr::ConstExpr(<span class="kw-2">*</span>val.clone())
                                                 .refer(expected_mutability),
                                         );
                                     }
                                 } <span class="kw">else </span>{
-                                    <span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;passing by value {val}&quot;</span>);
+                                    <span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"passing by value {val}"</span>);
                                     <span class="kw">if </span>val_type.can_decay_to(
                                         <span class="kw-2">&amp;</span>Type::Pointer(Mutability::Any, Type::Any.into()),
                                         env,
@@ -1432,9 +1433,9 @@
                             <span class="comment">// Check if the value actually has a member with this name.
                             </span><span class="kw">let </span>val_type = val.get_type(env)<span class="question-mark">?</span>;
                             <span class="comment">// val_type.add_monomorphized_associated_consts(env)?;
-                            </span><span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;got value type: {:#?}: {val}.{name}&quot;</span>, val_type);
+                            </span><span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"got value type: {:#?}: {val}.{name}"</span>, val_type);
                             <span class="comment">// If the value has a member with this name,
-                            </span><span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;WHOOP WHOOP&quot;</span>);
+                            </span><span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"WHOOP WHOOP"</span>);
 
                             <span class="kw">let </span>(associated_function, associated_function_type) = env
                                 .get_associated_const(<span class="kw-2">&amp;</span>val_type, <span class="kw-2">&amp;</span>name)
@@ -1446,14 +1447,14 @@
                             // let associated_function = ConstExpr::Type(val_type.clone())
                             //     .field(*member)
                             //     .monomorphize(ty_args.clone());
-                            </span><span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;function value: {associated_function} in {env}&quot;</span>);
+                            </span><span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"function value: {associated_function} in {env}"</span>);
 
                             <span class="comment">// Get the type of the function
                             // let associated_function_type = env
                             //     .get_type_of_associated_const(&amp;val_type, &amp;name)
                             //     .ok_or_else(|| Error::SymbolNotDefined(name))?;
-                            </span><span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;got function type: {}&quot;</span>, associated_function_type);
-                            <span class="comment">// Get the first argument&#39;s type
+                            </span><span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"got function type: {}"</span>, associated_function_type);
+                            <span class="comment">// Get the first argument's type
                             </span><span class="kw">let </span><span class="kw-2">mut </span>new_args = <span class="macro">vec!</span>[];
                             <span class="kw">if let </span><span class="prelude-val">Some</span>(expected_mutability) =
                                 associated_function_type.get_self_param_mutability(env)
@@ -1462,16 +1463,16 @@
                                     <span class="kw-2">&amp;</span>Type::Pointer(expected_mutability, Type::Any.into()),
                                     env,
                                 )<span class="question-mark">? </span>{
-                                    <span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;decaying {val} to {expected_mutability} pointer&quot;</span>);
+                                    <span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"decaying {val} to {expected_mutability} pointer"</span>);
                                     new_args.push(Expr::ConstExpr(<span class="kw-2">*</span>val.clone()));
                                 } <span class="kw">else </span>{
-                                    <span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;referencing {val} as {expected_mutability} pointer&quot;</span>);
+                                    <span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"referencing {val} as {expected_mutability} pointer"</span>);
                                     new_args.push(
                                         Expr::ConstExpr(<span class="kw-2">*</span>val.clone()).refer(expected_mutability),
                                     );
                                 }
                             } <span class="kw">else </span>{
-                                <span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;passing by value {val}&quot;</span>);
+                                <span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"passing by value {val}"</span>);
                                 <span class="kw">if </span>val_type.can_decay_to(
                                     <span class="kw-2">&amp;</span>Type::Pointer(Mutability::Any, Type::Any.into()),
                                     env,
@@ -1501,21 +1502,21 @@
                             <span class="comment">// Check if the value actually has a member with this name.
                             </span><span class="kw">let </span>val_type = val.get_type(env)<span class="question-mark">?</span>;
                             <span class="comment">// val_type.add_monomorphized_associated_consts(env)?;
-                            </span><span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;got value type: {:#?}: {val}.{name}&quot;</span>, val_type);
+                            </span><span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"got value type: {:#?}: {val}.{name}"</span>, val_type);
                             <span class="comment">// If the value has a member with this name,
-                            </span><span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;WHOOP WHOOP&quot;</span>);
+                            </span><span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"WHOOP WHOOP"</span>);
                             <span class="kw">let </span>(associated_function, associated_function_type) = env
                                 .get_associated_const(<span class="kw-2">&amp;</span>val_type, <span class="kw-2">&amp;</span>name)
                                 .ok_or_else(|| Error::SymbolNotDefined(name.clone()))<span class="question-mark">?</span>;
-                            <span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;function value: {associated_function} in {env}&quot;</span>);
+                            <span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"function value: {associated_function} in {env}"</span>);
 
                             <span class="comment">// Get the type of the function
                             // let associated_function_type = env
                             //     .get_type_of_associated_const(&amp;val_type, &amp;name)
                             //     .ok_or_else(|| Error::SymbolNotDefined(name))?
                             //     .clone();
-                            </span><span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;got function type: {}&quot;</span>, associated_function_type);
-                            <span class="comment">// Get the first argument&#39;s type
+                            </span><span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"got function type: {}"</span>, associated_function_type);
+                            <span class="comment">// Get the first argument's type
                             </span><span class="kw">let </span><span class="kw-2">mut </span>new_args = <span class="macro">vec!</span>[];
                             <span class="kw">if let </span><span class="prelude-val">Some</span>(expected_mutability) =
                                 associated_function_type.get_self_param_mutability(env)
@@ -1524,14 +1525,14 @@
                                     <span class="kw-2">&amp;</span>Type::Pointer(expected_mutability, Type::Any.into()),
                                     env,
                                 )<span class="question-mark">? </span>{
-                                    <span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;decaying {val} to {expected_mutability} pointer&quot;</span>);
+                                    <span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"decaying {val} to {expected_mutability} pointer"</span>);
                                     new_args.push(<span class="kw-2">*</span>val.clone());
                                 } <span class="kw">else </span>{
-                                    <span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;referencing {val} as {expected_mutability} pointer&quot;</span>);
+                                    <span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"referencing {val} as {expected_mutability} pointer"</span>);
                                     new_args.push(val.refer(expected_mutability));
                                 }
                             } <span class="kw">else </span>{
-                                <span class="macro">trace!</span>(target: <span class="string">&quot;member&quot;</span>, <span class="string">&quot;passing by value {val}&quot;</span>);
+                                <span class="macro">trace!</span>(target: <span class="string">"member"</span>, <span class="string">"passing by value {val}"</span>);
                                 <span class="kw">if </span>val_type.can_decay_to(
                                     <span class="kw-2">&amp;</span>Type::Pointer(Mutability::Any, Type::Any.into()),
                                     env,
@@ -1558,7 +1559,7 @@
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(<span class="self">self</span>.clone()),
         }<span class="question-mark">?</span>;
 
-        <span class="macro">debug!</span>(<span class="string">&quot;transform_method_call result: {}&quot;</span>, result);
+        <span class="macro">debug!</span>(<span class="string">"transform_method_call result: {}"</span>, result);
         <span class="prelude-val">Ok</span>(result)
     }
 
@@ -1638,7 +1639,7 @@
     }
 
     <span class="doccomment">/// Apply a unary operation to this expression.
-    </span><span class="kw">pub fn </span>unop(<span class="self">self</span>, op: <span class="kw">impl </span>UnaryOp + <span class="lifetime">&#39;static</span>) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>unop(<span class="self">self</span>, op: <span class="kw">impl </span>UnaryOp + <span class="lifetime">'static</span>) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::UnaryOp(Box::new(op), Box::new(<span class="self">self</span>))
     }
 
@@ -1713,7 +1714,7 @@
         <span class="self">self</span>.binop(And, other)
     }
 
-    <span class="kw">fn </span>binop(<span class="self">self</span>, op: <span class="kw">impl </span>BinaryOp + <span class="lifetime">&#39;static</span>, other: <span class="kw">impl </span>Into&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">fn </span>binop(<span class="self">self</span>, op: <span class="kw">impl </span>BinaryOp + <span class="lifetime">'static</span>, other: <span class="kw">impl </span>Into&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
         Expr::BinaryOp(Box::new(op), Box::new(<span class="self">self</span>), Box::new(other.into()))
     }
 
@@ -1895,7 +1896,7 @@
     }
 
     <span class="doccomment">/// Perform an AssignOp on this expression.
-    </span><span class="kw">pub fn </span>assign_op(<span class="self">self</span>, op: <span class="kw">impl </span>AssignOp + <span class="lifetime">&#39;static</span>, e: <span class="kw">impl </span>Into&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>assign_op(<span class="self">self</span>, op: <span class="kw">impl </span>AssignOp + <span class="lifetime">'static</span>, e: <span class="kw">impl </span>Into&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
         Expr::AssignOp(Box::new(op), Box::new(<span class="self">self</span>), Box::new(e.into()))
     }
 
@@ -1909,109 +1910,109 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Declare(declaration, result) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;let {declaration} in {result}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"let {declaration} in {result}"</span>)
             }
-            <span class="self">Self</span>::Annotated(expr, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{expr}&quot;</span>),
-            <span class="self">Self</span>::ConstExpr(expr) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{expr}&quot;</span>),
+            <span class="self">Self</span>::Annotated(expr, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">"{expr}"</span>),
+            <span class="self">Self</span>::ConstExpr(expr) =&gt; <span class="macro">write!</span>(f, <span class="string">"{expr}"</span>),
             <span class="self">Self</span>::Many(exprs) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{{ &quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"{{ "</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, item) <span class="kw">in </span>exprs.iter().enumerate() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{item}&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">"{item}"</span>)<span class="question-mark">?</span>;
                     <span class="kw">if </span>i &lt; exprs.len() - <span class="number">1 </span>{
-                        <span class="macro">write!</span>(f, <span class="string">&quot;; &quot;</span>)<span class="question-mark">?
+                        <span class="macro">write!</span>(f, <span class="string">"; "</span>)<span class="question-mark">?
                     </span>}
                 }
-                <span class="macro">write!</span>(f, <span class="string">&quot; }}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">" }}"</span>)
             }
             <span class="self">Self</span>::Array(exprs) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;[&quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"["</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, item) <span class="kw">in </span>exprs.iter().enumerate() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{item}&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">"{item}"</span>)<span class="question-mark">?</span>;
                     <span class="kw">if </span>i &lt; exprs.len() - <span class="number">1 </span>{
-                        <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
+                        <span class="macro">write!</span>(f, <span class="string">", "</span>)<span class="question-mark">?
                     </span>}
                 }
-                <span class="macro">write!</span>(f, <span class="string">&quot;]&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"]"</span>)
             }
             <span class="self">Self</span>::Tuple(exprs) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;(&quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"("</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, item) <span class="kw">in </span>exprs.iter().enumerate() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{item}&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">"{item}"</span>)<span class="question-mark">?</span>;
                     <span class="kw">if </span>i &lt; exprs.len() - <span class="number">1 </span>{
-                        <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
+                        <span class="macro">write!</span>(f, <span class="string">", "</span>)<span class="question-mark">?
                     </span>}
                 }
-                <span class="macro">write!</span>(f, <span class="string">&quot;)&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">")"</span>)
             }
 
             <span class="self">Self</span>::While(cond, body) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;while ({cond}) {body}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"while ({cond}) {body}"</span>)
             }
             <span class="self">Self</span>::If(cond, t, e) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;if ({cond}) {t} else {e}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"if ({cond}) {t} else {e}"</span>)
             }
             <span class="self">Self</span>::Match(expr, branches) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;match {expr} {{&quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"match {expr} {{"</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, (pat, val)) <span class="kw">in </span>branches.iter().enumerate() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{pat} =&gt; {val}&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">"{pat} =&gt; {val}"</span>)<span class="question-mark">?</span>;
                     <span class="kw">if </span>i &lt; branches.len() - <span class="number">1 </span>{
-                        <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
+                        <span class="macro">write!</span>(f, <span class="string">", "</span>)<span class="question-mark">?
                     </span>}
                 }
-                <span class="macro">write!</span>(f, <span class="string">&quot;}}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"}}"</span>)
             }
             <span class="self">Self</span>::IfLet(pat, expr, t, e) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;if let {pat} = {expr} {t} else {e}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"if let {pat} = {expr} {t} else {e}"</span>)
             }
             <span class="self">Self</span>::When(cond, t, e) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;when ({cond}) {t} else {e}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"when ({cond}) {t} else {e}"</span>)
             }
-            <span class="self">Self</span>::As(val, ty) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{val} as {ty}&quot;</span>),
+            <span class="self">Self</span>::As(val, ty) =&gt; <span class="macro">write!</span>(f, <span class="string">"{val} as {ty}"</span>),
 
             <span class="self">Self</span>::Struct(items) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;struct {{&quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"struct {{"</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, (name, val)) <span class="kw">in </span>items.iter().enumerate() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{name} = {val}&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">"{name} = {val}"</span>)<span class="question-mark">?</span>;
                     <span class="kw">if </span>i &lt; items.len() - <span class="number">1 </span>{
-                        <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
+                        <span class="macro">write!</span>(f, <span class="string">", "</span>)<span class="question-mark">?
                     </span>}
                 }
-                <span class="macro">write!</span>(f, <span class="string">&quot;}}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"}}"</span>)
             }
             <span class="self">Self</span>::Union(ty, variant, val) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;union {{ {variant} = {val}, {ty}.. }}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"union {{ {variant} = {val}, {ty}.. }}"</span>)
             }
             <span class="self">Self</span>::EnumUnion(ty, variant, val) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{ty} of {variant} {val}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"{ty} of {variant} {val}"</span>)
             }
 
-            <span class="self">Self</span>::UnaryOp(op, x) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, op.display(x)),
-            <span class="self">Self</span>::BinaryOp(op, x, y) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, op.display(x, y)),
-            <span class="self">Self</span>::TernaryOp(op, x, y, z) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, op.display(x, y, z)),
-            <span class="self">Self</span>::AssignOp(op, x, y) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, op.display(x, y)),
+            <span class="self">Self</span>::UnaryOp(op, x) =&gt; <span class="macro">write!</span>(f, <span class="string">"{}"</span>, op.display(x)),
+            <span class="self">Self</span>::BinaryOp(op, x, y) =&gt; <span class="macro">write!</span>(f, <span class="string">"{}"</span>, op.display(x, y)),
+            <span class="self">Self</span>::TernaryOp(op, x, y, z) =&gt; <span class="macro">write!</span>(f, <span class="string">"{}"</span>, op.display(x, y, z)),
+            <span class="self">Self</span>::AssignOp(op, x, y) =&gt; <span class="macro">write!</span>(f, <span class="string">"{}"</span>, op.display(x, y)),
 
-            <span class="self">Self</span>::Member(val, field) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;({val}).{field}&quot;</span>),
-            <span class="self">Self</span>::Index(val, idx) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{val}[{idx}]&quot;</span>),
+            <span class="self">Self</span>::Member(val, field) =&gt; <span class="macro">write!</span>(f, <span class="string">"({val}).{field}"</span>),
+            <span class="self">Self</span>::Index(val, idx) =&gt; <span class="macro">write!</span>(f, <span class="string">"{val}[{idx}]"</span>),
 
-            <span class="self">Self</span>::Return(val) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;return {val}&quot;</span>),
+            <span class="self">Self</span>::Return(val) =&gt; <span class="macro">write!</span>(f, <span class="string">"return {val}"</span>),
             <span class="self">Self</span>::Refer(mutability, val) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;&amp;&quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"&amp;"</span>)<span class="question-mark">?</span>;
                 <span class="kw">if </span>mutability.is_mutable() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;mut &quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">"mut "</span>)<span class="question-mark">?</span>;
                 }
-                <span class="macro">write!</span>(f, <span class="string">&quot;{val}&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">"{val}"</span>)
             }
-            <span class="self">Self</span>::Deref(ptr) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;*{ptr}&quot;</span>),
-            <span class="self">Self</span>::DerefMut(ptr, val) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;(*{ptr}) = {val}&quot;</span>),
+            <span class="self">Self</span>::Deref(ptr) =&gt; <span class="macro">write!</span>(f, <span class="string">"*{ptr}"</span>),
+            <span class="self">Self</span>::DerefMut(ptr, val) =&gt; <span class="macro">write!</span>(f, <span class="string">"(*{ptr}) = {val}"</span>),
             <span class="self">Self</span>::Apply(fun, args) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{fun}(&quot;</span>)<span class="question-mark">?</span>;
+                <span class="macro">write!</span>(f, <span class="string">"{fun}("</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(i, arg) <span class="kw">in </span>args.iter().enumerate() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{arg}&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">"{arg}"</span>)<span class="question-mark">?</span>;
                     <span class="kw">if </span>i &lt; args.len() - <span class="number">1 </span>{
-                        <span class="macro">write!</span>(f, <span class="string">&quot;, &quot;</span>)<span class="question-mark">?
+                        <span class="macro">write!</span>(f, <span class="string">", "</span>)<span class="question-mark">?
                     </span>}
                 }
-                <span class="macro">write!</span>(f, <span class="string">&quot;)&quot;</span>)
+                <span class="macro">write!</span>(f, <span class="string">")"</span>)
             }
         }
     }
@@ -2090,7 +2091,7 @@
             <span class="comment">// A tagged union: a typechecked union of different variants.
             // The `Type` value is the type of the tagged union.
             // The `String` field is the variant the tagged union is being initialized with.
-            // The `Box&lt;Self&gt;` field is the value of the union&#39;s data we want to initialize.
+            // The `Box&lt;Self&gt;` field is the value of the union's data we want to initialize.
             </span>(EnumUnion(ty1, field1, val1), EnumUnion(ty2, field2, val2)) =&gt; {
                 ty1 == ty2 &amp;&amp; field1 == field2 &amp;&amp; val1 == val2
             }

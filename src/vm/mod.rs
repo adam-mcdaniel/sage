@@ -92,6 +92,22 @@ pub trait VirtualMachineProgram {
     fn std_op(&mut self, op: StandardOp) -> Result<(), Error>;
     fn code(&self) -> Result<CoreProgram, StandardProgram>;
 
+    fn set_float_vector(&mut self, vector: Vec<f64>) -> Result<(), Error> {
+        self.std_op(StandardOp::Set(vector))
+    }
+
+    fn set_vector(&mut self, vector: Vec<i64>) {
+        self.op(CoreOp::Set(vector))
+    }
+
+    fn store_vector(&mut self, n: usize) {
+        self.op(CoreOp::Store(n))
+    }
+
+    fn load_vector(&mut self, n: usize) {
+        self.op(CoreOp::Load(n))
+    }
+
     fn ffi_call(&mut self, ffi: FFIBinding) -> Result<(), Error> {
         self.std_op(StandardOp::Call(ffi))
     }
@@ -109,11 +125,11 @@ pub trait VirtualMachineProgram {
     }
 
     fn restore(&mut self) {
-        self.op(CoreOp::Restore);
+        self.op(CoreOp::Load(1));
     }
 
     fn save(&mut self) {
-        self.op(CoreOp::Save);
+        self.op(CoreOp::Store(1));
     }
 
     fn ret(&mut self) {
@@ -139,7 +155,11 @@ pub trait VirtualMachineProgram {
     }
 
     fn set_register(&mut self, val: i64) {
-        self.op(CoreOp::Set(val))
+        self.op(CoreOp::Set(vec![val]))
+    }
+
+    fn set_float_register(&mut self, val: f64) -> Result<(), Error> {
+        self.std_op(StandardOp::Set(vec![val]))
     }
 
     fn begin_while(&mut self) {
@@ -167,11 +187,11 @@ pub trait VirtualMachineProgram {
     }
 
     fn index(&mut self) {
-        self.op(CoreOp::Index)
+        self.op(CoreOp::Index(1))
     }
 
     fn bitwise_nand(&mut self) {
-        self.op(CoreOp::BitwiseNand)
+        self.op(CoreOp::BitwiseNand(1))
     }
 
     fn get(&mut self, src: Input) {
@@ -183,6 +203,6 @@ pub trait VirtualMachineProgram {
     }
 
     fn is_non_negative(&mut self) {
-        self.op(CoreOp::IsNonNegative)
+        self.op(CoreOp::IsNonNegative(1))
     }
 }

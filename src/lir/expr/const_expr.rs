@@ -94,6 +94,9 @@ pub enum ConstExpr {
     As(Box<Self>, Type),
 }
 
+unsafe impl Send for ConstExpr {}
+unsafe impl Sync for ConstExpr {}
+
 impl ConstExpr {
     pub fn monomorphize(self, ty_args: Vec<Type>) -> Self {
         Self::Monomorphize(Box::new(self), ty_args)

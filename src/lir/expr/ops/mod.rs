@@ -27,7 +27,7 @@ use std::cmp::Ordering;
 /// A trait used to implemented an assignment operation.
 ///
 /// This trait is used to implement assignment operations like `+=` and `-=`.
-pub trait AssignOp: std::fmt::Debug + std::fmt::Display {
+pub trait AssignOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
     /// Typechecks the operation on the given expressions.
     fn type_check(&self, dst: &Expr, src: &Expr, env: &Env) -> Result<(), Error> {
         // trace!("Type checking assign op: {dst} {self} {src} ({self:?})");
@@ -130,7 +130,7 @@ pub trait AssignOp: std::fmt::Debug + std::fmt::Display {
 /// A trait used to implement a unary operation.
 ///
 /// This trait is used to implement unary operations like `not` and `~`.
-pub trait UnaryOp: std::fmt::Debug + std::fmt::Display {
+pub trait UnaryOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
     /// Typechecks the operation on the given expression.
     fn type_check(&self, expr: &Expr, env: &Env) -> Result<(), Error> {
         if let Expr::Annotated(expr, metadata) = expr {
@@ -208,7 +208,7 @@ pub trait UnaryOp: std::fmt::Debug + std::fmt::Display {
 /// A trait used to implement a binary operation.
 ///
 /// This trait is used to implement binary operations like `+` and `==`.
-pub trait BinaryOp: std::fmt::Debug + std::fmt::Display {
+pub trait BinaryOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
     /// Typechecks the operation on the given expressions.
     fn type_check(&self, lhs: &Expr, rhs: &Expr, env: &Env) -> Result<(), Error> {
         if let Expr::Annotated(lhs, metadata) = lhs {
@@ -309,7 +309,7 @@ pub trait BinaryOp: std::fmt::Debug + std::fmt::Display {
 }
 
 /// A trait used to implement a ternary operation.
-pub trait TernaryOp: std::fmt::Debug + std::fmt::Display {
+pub trait TernaryOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
     /// Typechecks the operation on the given expressions.
     fn type_check(&self, a: &Expr, b: &Expr, c: &Expr, env: &Env) -> Result<(), Error> {
         if let Expr::Annotated(a, metadata) = a {
