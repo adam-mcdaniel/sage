@@ -366,21 +366,10 @@ fn compile(
             // If the code is standard variant virtual machine code
             Err(vm_code) => {
                 StandardInterpreter::new(StandardDevice::default())
-                    .run(&vm_code)
+                    .run(&vm_code) 
                     .map_err(Error::InterpreterError)?;
             }
         },
-
-        // // If the target is SageOS source code, then compile the code to virtual machine code,
-        // // and then use the SageOS target implementation to build the output source code.
-        // TargetType::SageOS => write_file(
-        //     format!("{output}.c"),
-        //     match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
-        //         Ok(vm_code) => targets::SageOS.build_core(&vm_code.flatten()),
-        //         Err(vm_code) => targets::SageOS.build_std(&vm_code.flatten()),
-        //     }
-        //     .map_err(Error::BuildError)?,
-        // )?,
 
         // If the target is C source code, then compile the code to virtual machine code,
         // and then use the C target implementation to build the output source code.
@@ -392,17 +381,6 @@ fn compile(
             }
             .map_err(Error::BuildError)?,
         )?,
-
-        // // If the target is x86 assembly code, then compile the code to virtual machine code,
-        // // and then use the x86 target implementation to build the output source code.
-        // TargetType::X86 => write_file(
-        //     format!("{output}.s"),
-        //     match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
-        //         Ok(vm_code) => targets::X86::default().build_core(&vm_code.flatten()),
-        //         Err(vm_code) => targets::X86::default().build_std(&vm_code.flatten()),
-        //     }
-        //     .map_err(Error::BuildError)?,
-        // )?,
 
         // If the target is core virtual machine code, then try to compile the source to the core variant.
         // If not possible, throw an error.

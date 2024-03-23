@@ -785,45 +785,16 @@ impl Location {
         result.restore();
         result.op(vm::CoreOp::Not(1));
         result.save();
-        // result.begin_if();
-        // result.set_register(0);
-        // result.begin_else();
-        // result.set_register(1);
-        // result.end();
-        // result.save();
         self.from(result);
     }
 
     /// Perform boolean and on the value of this cell and a source cell.
     pub(crate) fn and(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
-        // self.to(result);
-        // result.restore();
-        // result.begin_if();
-        // self.from(result);
-        // src.restore_from(result);
-        // self.to(result);
-        // result.begin_else();
-        // result.set_register(0);
-        // result.end();
-        // result.save();
-        // self.from(result);
-
         self.binop(vm::CoreOp::And(1), src, result);
     }
 
     /// Perform boolean or on the value of this cell and a source cell.
     pub(crate) fn or(&self, src: &Self, result: &mut dyn VirtualMachineProgram) {
-        // self.to(result);
-        // result.restore();
-        // result.begin_if();
-        // result.set_register(1);
-        // result.begin_else();
-        // self.from(result);
-        // src.restore_from(result);
-        // self.to(result);
-        // result.end();
-        // result.save();
-        // self.from(result);
         self.binop(vm::CoreOp::Or(1), src, result);
     }
 
