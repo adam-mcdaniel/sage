@@ -54,6 +54,8 @@ pub fn boolean(token: Token) -> bool {
         _ => unreachable!(),
     }
 }
+
+#[derive(Debug)]
 pub enum LexicalError {
     Unexpected {
         range: Range<usize>,
@@ -67,18 +69,21 @@ pub fn tokenize<'a>(input: &'a str) -> impl Iterator<Item = Result<(usize, Token
     std::iter::from_fn(move || {
         let token = lexer.next();
         let range = lexer.span();
+        println!("TOKEN: {}", input[range.clone()].to_string());
         match token {
             Some(Ok(token)) => {
-                let triple = Token::to_lalr_triple((token, range));
+                let triple = Token::to_lalr_triple((token, range.clone()));
                 // Some(triple)
                 if let Ok(triple) = triple {
                     Some(Ok(triple))
                 } else {
-                    Some(Err("Unexpected".to_string()))
+                    println!("SOME ERROR: {:?} at {:?}", triple, &range);
+                    Some(Err("Unexpected token".to_string()))
                 }
             }
-            Some(Err(_)) => {
+            Some(Err(e)) => {
                 // Some(Err(LexicalError::Unexpected { range }))
+                println!("ERR ERROR: {:?} at {:?}", e, range);
                 Some(Err("Unexpected".to_string()))
             },
             None => None,
@@ -214,14 +219,15 @@ pub enum Token {
     // RAngle,
 
     // Parse template parameters
-    #[regex(r"<[^>]*>", |tok| {
-        // Parse the template parameters
-        let inner = &tok.slice()[1..tok.slice().len()-1];
-        let tokens = Token::lexer(inner);
-        let result = tokens.into_iter().map(|t| t.unwrap()).collect::<Vec<_>>();
-        result
-    }, priority=5)]
-    Template(Vec<Token>),
+    // #[regex(r"<+[^ ]([^>]*>+\,[ ]*)*[^>]*>+", |tok| {
+    //     // Parse the template parameters
+    //     println!("TEMPLATE: {:?}", tok.slice());
+    //     let inner = &tok.slice()[1..tok.slice().len()-1];
+    //     let tokens = Token::lexer(inner);
+    //     let result = tokens.into_iter().map(|t| t.unwrap()).collect::<Vec<_>>();
+    //     result
+    // }, priority=5)]
+    // Template(Vec<Token>),
 
 
     #[token("<")]
@@ -251,12 +257,15 @@ pub enum Token {
     #[token("~")]
     Negate,
 
-    #[token(r"&&|and")]
+    #[regex(r"and|&&", priority=5)]
     And,
-    #[token(r"\|\||or")]
+    #[regex(r"\|\||or", priority=5)]
     Or,
-    #[token("!|not")]
+    #[token("!")]
+    Bang,
+    #[token("not")]
     Not,
+
 
     #[token(":")]
     Specifier,

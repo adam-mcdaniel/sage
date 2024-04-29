@@ -35,8 +35,6 @@ extern {
         "!="     => Token::NotEqual,
         "<="     => Token::LessEqual,
         ">="     => Token::GreaterEqual,
-        "&&"     => Token::And,
-        "||"     => Token::Or,
         "string" => Token::String(_),
         "int"    => Token::Integer(_),
         "float"  => Token::Float(_),
@@ -58,7 +56,7 @@ extern {
         ")"      => Token::RParen,
         "<"      => Token::Less,
         ">"      => Token::Greater,
-        "template" => Token::Template(_),
+        // "template" => Token::Template(_),
 
         "."      => Token::Dot,
 
@@ -88,7 +86,7 @@ extern {
         "and"    => Token::And,
         "or"     => Token::Or,
         "not"    => Token::Not,
-
+        "!"      => Token::Bang,
 
         "import" => Token::Import,
         "?"      => Token::Try,
@@ -108,21 +106,30 @@ Suite: Expr = {
         let rev_stmts = <>.into_iter().rev().collect::<Vec<_>>();
         let mut body = Expr::NONE;
         let mut result = VecDeque::new();
+        let mut decls = VecDeque::new();
         for stmt in rev_stmts {
             match stmt {
                 Statement::Expr(e) => {
                     result.push_front(e);
                 },
                 Statement::Declaration(decl) => {
-                    if !result.is_empty() {
-                        if body != Expr::NONE {
-                            result.push_back(body);
+                    if decl.is_compile_time_declaration() {
+                        decls.push_front(decl);
+                    } else {
+                        if !result.is_empty() {
+                            if body != Expr::NONE {
+                                result.push_back(body);
+                                body = Expr::Many(result.into());
+                            } else if result.len() > 1 {
+                                body = Expr::Many(result.into());
+                            } else {
+                                body = result.pop_front().unwrap();
+                            }
+                            result = VecDeque::new();
                         }
-                        body = Expr::Many(result.into());
-                        result = VecDeque::new();
+                        body = body.with(decl);
                     }
-                    body = body.with(decl);
-                }
+                },
             }
         }
         if !result.is_empty() {
@@ -131,36 +138,63 @@ Suite: Expr = {
             }
             body = Expr::Many(result.into());
         }
-        // println!("{}", body);
-        body
+        if decls.is_empty() {
+            body
+        } else {
+            body.with(Declaration::Many(decls.into()))
+        }
     },
 }
 
+// pub Index: Expr = {
+//     <e: Expr> <l: @L> <template: "template"> <r: @R> => {
+//         if let Token::Template(args) = t {
+//             let parser = ExprParser::new();
+//             let tokens = args.into_iter().enumerate().map(|(i, t)| (l+i, t, l+i+1)).collect::<Vec<_>>();
+//             println!("{:?}", tokens);
+//             let parsed = parser.parse(tokens);
+//             match parsed {
+//                 Ok(parsed) => Ok(e.idx(parsed)),
+//                 Err(err) => {
+//                     println!("ERROR: {:?}", err);
+//                     Err(lalrpop_util::ParseError::User {
+//                         error: String::from("Expected an expression")
+//                     })
+//                 }
+//             }
+//         } else {
+//             unreachable!()
+//         }
+//     }
+// }
 
 pub TemplateArgsInner: Vec<Type> = {
     <CommaSep<Type>> => <>
 }
 
 TemplateArgs: Vec<Type> = {
-    <l: @L> <t: "template"> <r: @R> =>? {
-        if let Token::Template(args) = t {
-            let parser = TemplateArgsInnerParser::new();
-            let tokens = args.into_iter().enumerate().map(|(i, t)| (l+i, t, l+i+1)).collect::<Vec<_>>();
-            println!("{:?}", tokens);
-            let parsed = parser.parse(tokens);
-            match parsed {
-                Ok(parsed) => Ok(parsed),
-                Err(err) => {
-                    println!("ERROR: {:?}", err);
-                    Err(lalrpop_util::ParseError::User {
-                        error: String::from("Expected a type")
-                    })
-                }
-            }
-        } else {
-            unreachable!()
-        }
-    }
+    // <l: @L> <t: "template"> <r: @R> =>? {
+    //     if let Token::Template(args) = t {
+    //         let parser = TemplateArgsInnerParser::new();
+    //         let tokens = args.into_iter().enumerate().map(|(i, t)| (l+i, t, l+i+1)).collect::<Vec<_>>();
+    //         println!("{:?}", tokens);
+    //         let parsed = parser.parse(tokens);
+    //         match parsed {
+    //             Ok(parsed) => Ok(parsed),
+    //             Err(err) => {
+    //                 println!("ERROR: {:?}", err);
+    //                 Err(lalrpop_util::ParseError::User {
+    //                     error: String::from("Expected a type")
+    //                 })
+    //             }
+    //         }
+    //     } else {
+    //         unreachable!()
+    //     }
+    // }
+
+    "!" "[" <args: TemplateArgsInner> "]" => args,
+    // "<" <args: TemplateArgsInner> ">" => args,
 }
 
 pub TemplateParamInner: Vec<String> = {
@@ -168,21 +202,22 @@ pub TemplateParamInner: Vec<String> = {
 }
 
 TemplateParams: Vec<String> = {
-    <l: @L> <t: "template"> <r: @R> =>? {
-        if let Token::Template(args) = t {
-            let parser = TemplateParamInnerParser::new();
-            let tokens = args.into_iter().enumerate().map(|(i, t)| (l+i, t, l+i+1)).collect::<Vec<_>>();
-            let parsed = parser.parse(tokens);
-            match parsed {
-                Ok(parsed) => Ok(parsed),
-                Err(err) => Err(lalrpop_util::ParseError::User {
-                    error: String::from("Expected a symbol")
-                }),
-            }
-        } else {
-            unreachable!()
-        }
-    }
+    // <l: @L> <t: "template"> <r: @R> =>? {
+    //     if let Token::Template(args) = t {
+    //         let parser = TemplateParamInnerParser::new();
+    //         let tokens = args.into_iter().enumerate().map(|(i, t)| (l+i, t, l+i+1)).collect::<Vec<_>>();
+    //         let parsed = parser.parse(tokens);
+    //         match parsed {
+    //             Ok(parsed) => Ok(parsed),
+    //             Err(err) => Err(lalrpop_util::ParseError::User {
+    //                 error: String::from("Expected a symbol")
+    //             }),
+    //         }
+    //     } else {
+    //         unreachable!()
+    //     }
+    // }
+    "[" <args: TemplateParamInner> "]" => args,
 }
 
 
@@ -195,8 +230,6 @@ pub Type: Type = {
             Type::Tuple(tup)
         }
     },
-    "struct" <fields: StructType<Symbol, Type>> => Type::Struct(fields),
-    StructType<Symbol, Type> => Type::Struct(<>),
     <ty: Type> <args: TemplateArgs> => {
         ty.apply(args)
     },
@@ -204,18 +237,44 @@ pub Type: Type = {
 }
 
 TypeAtom: Type = {
-    <name: "symbol"> => {
-        let name = symbol(name);
+    "&" <ty: TypeAtom> => Type::Pointer(Mutability::Immutable, Box::new(ty)),
+    "&" "mut" <ty: TypeAtom> => Type::Pointer(Mutability::Mutable, Box::new(ty)),
+    "struct" <fields: StructType<Symbol, Type>> => Type::Struct(fields),
+    StructType<Symbol, Type> => Type::Struct(<>),
+
+    "enum" "{" <variants: CommaSep<(<Symbol> <Type?>)>> "}" => {
+        let mut all_none = true;
+        for (_, ty) in &variants {
+            if ty.is_some() {
+                all_none = false;
+                break;
+            }
+        }
+        if all_none {
+            return Type::Enum(variants.into_iter().map(|(name, _)| name).collect());
+        }
+
+        let mut map = BTreeMap::new();
+        for (name, ty) in variants {
+            if let Some(ty) = ty {
+                map.insert(name, ty);
+            } else {
+                map.insert(name, Type::None);
+            }
+        }
+        Type::EnumUnion(map)
+    },
+
+    <name: Symbol> => {
         match name.as_str() {
             "Int" => Type::Int,
             "Float" => Type::Float,
             "Bool" => Type::Bool,
             "Char" => Type::Char,
+            "Cell" => Type::Cell,
             _ => Type::Symbol(name),
         }
     },
-    "&" <ty: TypeAtom> => Type::Pointer(Mutability::Immutable, Box::new(ty)),
-    "&" "mut" <ty: TypeAtom> => Type::Pointer(Mutability::Mutable, Box::new(ty)),
 }
 
 Statement: Statement = {
@@ -225,7 +284,22 @@ Statement: Statement = {
 
 LongStatement: Statement = {
     "enum" <name: Symbol> "{" <variants: CommaSep<(<Symbol> <Type?>)>> "}" => {
+        // First check if all the variants are none and don't use an enumunion if so
+        let mut all_none = true;
+        for (_, ty) in &variants {
+            if ty.is_some() {
+                all_none = false;
+                break;
+            }
+        }
+        if all_none {
+            return Statement::Declaration(Declaration::Type(name, Type::Enum(
+                variants.into_iter().map(|(name, _)| name).collect()
+            )));
+        }
+
         let mut map = BTreeMap::new();
+        
         for (name, ty) in variants {
             if let Some(ty) = ty {
                 map.insert(name, ty);
@@ -237,6 +311,20 @@ LongStatement: Statement = {
     },
     
     "enum" <name: Symbol> <ty_params: TemplateParams> "{" <variants: CommaSep<(<Symbol> <Type?>)>> "}" => {
+        let mut all_none = true;
+        for (_, ty) in &variants {
+            if ty.is_some() {
+                all_none = false;
+                break;
+            }
+        }
+
+        if all_none {
+            return Statement::Declaration(Declaration::Type(name, Type::Poly(ty_params, Type::Enum(
+                variants.into_iter().map(|(name, _)| name).collect()
+            ).into())));
+        }
+
         let mut map = BTreeMap::new();
         for (name, ty) in variants {
             if let Some(ty) = ty {
@@ -344,6 +432,8 @@ ShortStatement: Statement = {
     "let" "static" <name: Symbol> ":" <ty: Type> "=" <value: ConstExpr> => Statement::Declaration(Declaration::StaticVar(name, Mutability::Immutable, ty, value)),
     "let" "static" "mut" <name: Symbol> ":" <ty: Type> "=" <value: ConstExpr> => Statement::Declaration(Declaration::StaticVar(name, Mutability::Mutable, ty, value)),
 
+    "type" <name: Symbol> "=" <ty: Type> => Statement::Declaration(Declaration::Type(name, ty)),
+
     "return" <value: Expr> => Statement::Expr(Expr::Return(value.into())),
 
     <dst: Expr> "=" <val: Expr> => {
@@ -365,7 +455,42 @@ ShortStatement: Statement = {
 }
 
 Term: Expr = {
-    <e: Expr> => e,
+    // <e: Expr> => e,
+    // Parse at the highest precedence
+    #[precedence(level="0")]
+    <l: @L> <e: Expr> <r: @R> => {
+        println!("{} {} {}", l, e, r);
+        e
+    },
+    // #[precedence(level="1")]
+    // <l: @L> <e: ConstExpr> <r: @R> => {
+    //     println!("{} {} {}", l, e, r);
+    //     Expr::ConstExpr(e)
+    // },
+}
+
+EnumUnionInstance: Expr = {
+    <ty: Symbol> <ty_args: TemplateArgs> <tail: ("of" <Symbol> <Expr?>)?> => {
+        if let Some(tail) = tail {
+            let ty = Type::Symbol(ty).apply(ty_args);
+            let field = tail.0;
+            let value = tail.1;
+            match value {
+                Some(value) => Expr::EnumUnion(ty, field, Box::new(value)),
+                None => Expr::ConstExpr(ConstExpr::Of(ty, field)),
+            }
+        } else {
+            Expr::ConstExpr(ConstExpr::Symbol(ty).monomorphize(ty_args))
+        }
+    },
+    <ty: TypeAtom> "of" <field: Symbol> <value: Expr?> => {
+        // let ty = Type::Symbol(ty);
+
+        match value {
+            Some(value) => Expr::EnumUnion(ty, field, Box::new(value)),
+            None => Expr::ConstExpr(ConstExpr::Of(ty, field)),
+        }
+    },
 }
 
 pub Expr: Expr = {
@@ -398,47 +523,106 @@ pub Expr: Expr = {
     ConstAtom => Expr::ConstExpr(<>),
 
     #[precedence(level="1")] #[assoc(side="left")]
-    <container: Expr> "." <field: Symbol> => {
+    // <container: Expr> "." <field: Symbol> <template: TemplateArgs?> => {
+    //     match container {
+    //         Expr::ConstExpr(e) => {
+    //             Expr::ConstExpr(e.field(ConstExpr::Symbol(field)))
+    //         },
+    //         e => e.field(ConstExpr::Symbol(field))
+    //     }
+    // },
+    <container: Expr> "." <field: Symbol> <template: TemplateArgs?> => {
         match container {
             Expr::ConstExpr(e) => {
-                Expr::ConstExpr(e.field(ConstExpr::Symbol(field)))
+                Expr::ConstExpr(match template {
+                    Some(template) => e.field(ConstExpr::Symbol(field)).monomorphize(template),
+                    None => e.field(ConstExpr::Symbol(field))
+                })
             },
             e => e.field(ConstExpr::Symbol(field))
         }
     },
     #[precedence(level="1")] #[assoc(side="left")]
-    <container: Expr> "." <field: Integer> => {
+    <container: Expr> "." <field: Integer> <template: TemplateArgs?> => {
         match container {
             Expr::ConstExpr(e) => {
-                Expr::ConstExpr(e.field(ConstExpr::Int(field)))
+                Expr::ConstExpr(match template {
+                    Some(template) => e.field(ConstExpr::Int(field)).monomorphize(template),
+                    None => e.field(ConstExpr::Int(field))
+                })
             },
             e => e.field(ConstExpr::Int(field))
         }
     },
-    #[precedence(level="1")] #[assoc(side="left")]
-    <e: Expr> <ty_args: TemplateArgs> => {
-        match e {
-            Expr::ConstExpr(ConstExpr::Symbol(name)) => {
-                if name == "sizeof" {
-                    if ty_args.len() == 1 {
-                        Expr::ConstExpr(ConstExpr::SizeOfType(ty_args.into_iter().next().unwrap()))
-                    } else {
-                        panic!("Expected one type argument")
-                    }
-                } else {
-                    Expr::ConstExpr(ConstExpr::Symbol(name).monomorphize(ty_args))
-                }
-            },
-            Expr::ConstExpr(e) => Expr::ConstExpr(e.monomorphize(ty_args)),
-            e => {
-                // Err(String::from("Cannot monomorphize a non-constant expression"))
-                e
-            }
-        }
-    },
+    // #[precedence(level="2")] #[assoc(side="left")]
+    // <e: Expr> <ty_args: TemplateArgs> => {//<tail: ("of" <Symbol> <Expr?>)> => {
+    //     // if let Some(tail) = tail {
+    //     // }
+    //     match e {
+    //         Expr::ConstExpr(ConstExpr::Symbol(name)) => {
+    //             if name == "sizeof" {
+    //                 if ty_args.len() == 1 {
+    //                     Expr::ConstExpr(ConstExpr::SizeOfType(ty_args.into_iter().next().unwrap()))
+    //                 } else {
+    //                     panic!("Expected one type argument")
+    //                 }
+    //             } else {
+    //                 Expr::ConstExpr(ConstExpr::Symbol(name).monomorphize(ty_args))
+    //             }
+    //         },
+    //         Expr::ConstExpr(e) => Expr::ConstExpr(e.monomorphize(ty_args)),
+    //         e => {
+    //             // Err(String::from("Cannot monomorphize a non-constant expression"))
+    //             e
+    //         }
+    //     }
+    // },
+    // #[precedence(level="13")]
+    // <ty: Symbol> "of" <field: Symbol> <value: ("(" <Term> ")")?> => {
+    //     let ty = Type::Symbol(ty);
+    //     // let ty = match ty_args {
+    //     //     Some(ty_args) => ty.apply(ty_args),
+    //     //     None => ty
+    //     // };
+    //     match value {
+    //         Some(value) => Expr::EnumUnion(ty, field, Box::new(value)),
+    //         None => Expr::ConstExpr(ConstExpr::Of(ty, field)),
+    //     }
+    // },
+    // #[precedence(level="13")]
+    // <ty: Symbol> <ty_args: TemplateArgs> "of" <field: Symbol> <value: ("(" <Term> ")")?> => {
+    //     let ty = Type::Symbol(ty).apply(ty_args);
+    //     // let ty = match ty_args {
+    //     //     Some(ty_args) => ty.apply(ty_args),
+    //     //     None => ty
+    //     // };
+    //     match value {
+    //         Some(value) => Expr::EnumUnion(ty, field, Box::new(value)),
+    //         None => Expr::ConstExpr(ConstExpr::Of(ty, field)),
+    //     }
+    // },
     
-    #[precedence(level="2")]
+    #[precedence(level="13")]
+    EnumUnionInstance => <>,
+
+    #[precedence(level="2")] #[assoc(side="left")]
+    <e: Symbol> <ty_args: TemplateArgs> <args: Tuple<Term>> => {
+        // let e = match (e, ty_args) {
+        //     (e, Some(ty_args)) => ,
+        //     (e, None) => Expr::var(e),
+        // };
+
+        Expr::ConstExpr(ConstExpr::Symbol(e).monomorphize(ty_args)).app(args)
+    },
+    #[precedence(level="2")] #[assoc(side="left")]
     <e: Expr> <args: Tuple<Term>> => {
+        // let e = match (e, ty_args) {
+        //     (Expr::ConstExpr(e), Some(ty_args)) => e.monomorphize(ty_args),
+        //     (e, None) => {
+        //         e
+        //     },
+        //     _ => panic!("Expected a constant expression")
+        // }
         use crate::lir::Put;
         if e == Expr::var("println") {
             Expr::Many(args.into_iter().chain(
@@ -457,16 +641,22 @@ pub Expr: Expr = {
     },
     #[precedence(level="2")] #[assoc(side="left")]
     <e: Expr> "[" <index: Term> "]" => e.idx(index),
+    // #[precedence(level="2")] #[assoc(side="left")]
+    // Index => <>,
 
-    #[precedence(level="3")]
+    #[precedence(level="3")] #[assoc(side="right")]
     "-" <e: Expr> => e.neg(),
-    #[precedence(level="3")]
+    #[precedence(level="3")] #[assoc(side="right")]
     "*" <e: Expr> => e.deref(),
-    #[precedence(level="3")]
+    #[precedence(level="3")] #[assoc(side="right")]
+    "new" <e: Expr> => e.unop(New),
+    #[precedence(level="3")] #[assoc(side="right")]
     "not" <e: Expr> => e.not(),
-    #[precedence(level="3")]
+    #[precedence(level="3")] #[assoc(side="right")]
+    "!" <e: Expr> => e.not(),
+    #[precedence(level="3")] #[assoc(side="right")]
     "&" <e: Expr> => e.refer(Mutability::Immutable),
-    #[precedence(level="3")]
+    #[precedence(level="3")] #[assoc(side="right")]
     "&" "mut" <e: Expr> => e.refer(Mutability::Mutable),
 
     #[precedence(level="4")]
@@ -508,19 +698,19 @@ pub Expr: Expr = {
     #[precedence(level="10")] #[assoc(side="left")]
     <lhs: Expr> "!=" <rhs: Expr> => lhs.neq(rhs),
 
+    #[precedence(level="11")] #[assoc(side="left")]
+    <lhs: Expr> "and" <rhs: Expr> => lhs.and(rhs),
     #[precedence(level="12")] #[assoc(side="left")]
-    <lhs: Expr> "and" <rhs: Expr> => lhs.or(rhs),
-    #[precedence(level="13")] #[assoc(side="left")]
-    <lhs: Expr> "or" <rhs: Expr> => lhs.and(rhs),
+    <lhs: Expr> "or" <rhs: Expr> => lhs.or(rhs),
 
-    #[precedence(level="14")] #[assoc(side="right")]
-    <ty: TypeAtom> "of" <field: Symbol> <value: Expr?> => {
-        // Expr::EnumUnion(ty, field, Box::new(value))
-        match value {
-            Some(value) => Expr::EnumUnion(ty, field, Box::new(value)),
-            None => Expr::ConstExpr(ConstExpr::Of(ty, field)),
-        }
-    },
+    // #[precedence(level="15")]
+    // <ty: Symbol> "of" <field: Symbol> <value: Expr?> => {
+    //     let ty = Type::Symbol(ty).apply(ty_args);
+    //     match value {
+    //         Some(value) => Expr::EnumUnion(ty, field, Box::new(value)),
+    //         None => Expr::ConstExpr(ConstExpr::Of(ty, field)),
+    //     }
+    // },
 }
 
 // pub Expr: Expr = {
@@ -762,6 +952,16 @@ Delimited<T, Sep>: Vec<T> = {
 Tuple<T>: Vec<T> = {
     "(" <es: CommaSep<T>> ")" => es,
     "(" ")" => vec![],
+}
+
+// A comma separated list of expressions in parentheses
+TupleAtLeastOne<T>: Vec<T> = {
+    "(" <head: (<T> ",")+> <last: T> ")" => {
+        let mut head = head;
+        head.push(last);
+        head
+    },
+    "(" <head: (<T> ",")+> ")" => head,
 }
 
 // A comma separated list of expressions in square brackets

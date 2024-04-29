@@ -42,18 +42,31 @@ pub fn parse_frontend(
 #[test]
 fn test_parser() {
     match parse_frontend("
-    fun testing(mut dir: Direction): Int {
+    // let x = Direction![Int] of North {
+    //     radius = 5,
+    //     center = {x = 0, y = 0}
+    // };
+    // return {test=Direction![Int] of North {
+    //     radius = 5,
+    //     center = {x = 0, y = 0}
+    // }};
+
+    // let x = 4;
+    // let y = 10;
+    // println(x < 5 and y > 6);
+
+    fun testing[T](mut dir: Direction, x: T): Int {
         dir = Direction of North;
-        let test = Shape of Circle {
-            radius = 5,
+        let test = Shape![T] of Circle {
+            radius = x,
             center = {x = 0, y = 0}
         };
         5;
     }
 
-    enum Shape {
+    enum Shape[T] {
         Circle {
-            radius: Int,
+            radius: T,
             center: Position
         },
         Rectangle {
@@ -62,21 +75,27 @@ fn test_parser() {
         }
     }
 
-    // def testing2(x: Int, y: Int, z: Int): Int = x + y * z * 2;
+    let shape = Shape![Int] of Circle {
+        radius=5, center = {x = 5, y = 6}
+    };
+    println(shape);
 
-    def poly_proc<A, B>(a: A, b: B): A = a;
+    // // def testing2(x: Int, y: Int, z: Int): Int = x + y * z * 2;
+    // // let x = 5 && 6;
 
-    // // let x: Int = 1;
-    // // const y = { x = 5, y = {a = 1, b = 2} };
+    // def poly_proc[A, B](a: A, b: B): A = a;
 
-    // // let static TEST: Int = 5;
-    // // let mut x: Int = 5;
-    // // x = 7;
-    // // let ref = &mut x;
-    // // *ref = 8;
-    // // ref[1] = 9;
-    // // 5;6;7;
-    // // -x.y;
+    // // // let x: Int = 1;
+    // // // const y = { x = 5, y = {a = 1, b = 2} };
+
+    // // // let static TEST: Int = 5;
+    // // // let mut x: Int = 5;
+    // // // x = 7;
+    // // // let ref = &mut x;
+    // // // *ref = 8;
+    // // // ref[1] = 9;
+    // // // 5;6;7;
+    // // // -x.y;
 
     // struct Rectangle {
     //     width: Int,
@@ -92,24 +111,65 @@ fn test_parser() {
         North, South, East, West
     }
 
-    let x = poly_proc<Int, Int>(5, 6);
+    // // let x = poly_proc![Int, Int](5, 6);
 
-    struct Vec<T> {
-        data: &mut T,
-        length: Int,
-        cap: Int
-    }
+    // struct HashMap[K, V] {
+    //     data: Vec![(K, V)]
+    // }
+
+    // struct Vec[T] {
+    //     data: &mut T,
+    //     length: Int,
+    //     cap: Int
+    // }
     
-    struct HashMap<K, V> {
-        data: Vec<(K, V)>
-    }
 
-    let test = 5;
-    let test2 = 6;
+    // def alloc(n: Int): &mut Cell {
+    //     // let data = malloc(n);
+    //     // data as &mut Cell
+    //     return new 5 as &mut Cell;
+    // }
 
-    println(test + test2);
+    // def Vec_make[T](): Vec![T] {
+    //     return {
+    //         data=alloc(100) as &mut T,
+    //         length=0,
+    //         cap=100  
+    //     };
+    // }
 
-    // testing(Direction of North);
+    // let x = enum {Some Int, None} of Some 5;
+    // let y: Option![Int] = x;
+    // println(x);
+    // let z = y;
+
+    // println(y);
+    // enum Option[T] {
+    //     Some(T),
+    //     None
+    // }
+    // println(z);
+
+
+    // // let y = (5);
+    // // let x = println(Option![Int] of Some 5);
+
+    // def HashMap_make[K, V](): HashMap![K, V] {
+    //     return {
+    //         data=Vec_make![(K, V)](),
+    //     };
+    // }
+
+    // // type Test = HashMap![
+    // //     Vec![(Int, Int)],
+    // //     Vec![(Int, Int)]
+    // // ];
+    // let test = 5;
+    // let test2 = 6;
+
+    // println(test + test2);
+
+    // test.testing![Float](Direction of North, 5.0);
 
 ") {
         Ok(expr) => {
