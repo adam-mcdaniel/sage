@@ -89,6 +89,7 @@ lalrpop_mod!(
     lir_parser
 );
 
+
 /// Parse Core and Standard variants of virtual machine source code.
 /// This will return core code by default, but will fallback on standard.
 pub fn parse_vm(
@@ -155,7 +156,8 @@ pub fn parse_frontend(input: impl ToString, filename: Option<&str>) -> Result<Ex
     Ok(result)
 }
 
-type SyntaxError<'a, T> = lalrpop_util::ParseError<usize, T, &'a str>;
+// type SyntaxError<'a, T> = lalrpop_util::ParseError<usize, T, &'a str>;
+// type SyntaxError<'a, T> = lalrpop_util::ParseError<usize, T, &'a dyn ToString>;
 
 /// This formats an error properly given the line, the `unexpected` token as a string,
 /// the line number, and the column number of the unexpected token.
@@ -229,9 +231,9 @@ fn get_line(script: &str, location: usize) -> (usize, String, usize) {
 
 /// This is used to take an LALRPOP error and convert
 /// it into a nicely formatted error message
-fn format_error<T: core::fmt::Debug>(script: &str, err: SyntaxError<T>) -> String {
+pub(crate) fn format_error<T: core::fmt::Debug>(script: &str, err: lalrpop_util::ParseError<usize, T, impl ToString>) -> String {
     match err {
-        SyntaxError::InvalidToken { location } => {
+        lalrpop_util::ParseError::InvalidToken { location } => {
             let (line_number, line, column) = get_line(script, location);
             make_error(
                 &line,
@@ -240,11 +242,11 @@ fn format_error<T: core::fmt::Debug>(script: &str, err: SyntaxError<T>) -> Strin
                 column,
             )
         }
-        SyntaxError::UnrecognizedEOF { location, .. } => {
+        lalrpop_util::ParseError::UnrecognizedEOF { location, .. } => {
             let (line_number, line, _) = get_line(script, location);
             make_error(&line, "EOF", line_number, line.len())
         }
-        SyntaxError::UnrecognizedToken { token, .. } => {
+        lalrpop_util::ParseError::UnrecognizedToken { token, .. } => {
             // The start and end of the unrecognized token
             let start = token.0;
             let end = token.2;
@@ -253,7 +255,7 @@ fn format_error<T: core::fmt::Debug>(script: &str, err: SyntaxError<T>) -> Strin
             let unexpected = &script[start..end];
             make_error(&line, unexpected, line_number, column)
         }
-        SyntaxError::ExtraToken { token } => {
+        lalrpop_util::ParseError::ExtraToken { token } => {
             // The start and end of the extra token
             let start = token.0;
             let end = token.2;
@@ -263,10 +265,13 @@ fn format_error<T: core::fmt::Debug>(script: &str, err: SyntaxError<T>) -> Strin
 
             make_error(&line, unexpected, line_number, column)
         }
-        SyntaxError::User { error } => format!(
-            "  |\n? | {}\n  | ^{}\n  |\n  = unexpected compiling error",
-            error,
-            "-".repeat(error.len() - 1)
-        ),
+        lalrpop_util::ParseError::User { error } => {
+            let error = error.to_string();
+            format!(
+                "  |\n? | {}\n  | ^{}\n  |\n  = unexpected compiling error",
+                error,
+                "-".repeat(error.len() - 1)
+            )
+        },
     }
 }
