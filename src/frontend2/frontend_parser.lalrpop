@@ -8,7 +8,7 @@ grammar;
 
 extern {
     type Location = usize;
-    type Error = String;
+    type Error = ParseError;
     enum Token {
         "if"    => Token::If,
         "when" => Token::When,
@@ -93,6 +93,9 @@ extern {
         "new"    => Token::New,
         "del"    => Token::Delete,
         "sizeof" => Token::SizeOf,
+
+        "attribute" => Token::Attribute(_),
+        "decorator" => Token::Decorator(_),
     }
 }
 
@@ -102,7 +105,7 @@ pub Program: Expr = {
 }
 
 Suite: Expr = {
-    <Statement+> => {
+    <Statements> => {
         let rev_stmts = <>.into_iter().rev().collect::<Vec<_>>();
         let mut body = Expr::NONE;
         let mut result = VecDeque::new();
@@ -144,6 +147,106 @@ Suite: Expr = {
             body.with(Declaration::Many(decls.into()))
         }
     },
+}
+
+pub Statements: Vec<Statement> = {
+    // <Statement+> => <>
+    <lisp_code: Attribute> =>? {
+        let expr_parser = StatementsParser::new();
+        let eval_result = match eval_attribute(lisp_code) {
+            Ok(eval_result) => eval_result,
+            Err(err) => return Err(lalrpop_util::ParseError::User {
+                error: ParseError::Preprocessor(format!("Error evaluating attribute: {}", err))
+            }),
+        };
+        if eval_result.trim().is_empty() {
+            return Ok(vec![]);
+        }
+        let tokens = tokenize(&eval_result);
+        let parsed = expr_parser.parse(tokens);
+        match parsed {
+            Ok(parsed) => Ok(parsed),
+            Err(err) => Err(lalrpop_util::ParseError::User {
+                error: ParseError::Preprocessor(format!("Error parsing result from attribute: {:?}", err))
+            }),
+        }
+    },
+
+    // <lisp_code: Decorator> <expr: Statement> =>? {
+    //     let expr_parser = StatementsParser::new();
+    //     let expr = match expr {
+    //         Statement::Expr(e) => e,
+    //         Statement::Declaration(d) => Expr::NONE.with(d),
+    //         // _ => unreachable!(),
+    //     };
+
+    //     let eval_result = match eval_decorator(lisp_code, Some(expr)) {
+    //         Ok(eval_result) => eval_result,
+    //         Err(err) => return Err(lalrpop_util::ParseError::User {
+    //             error: ParseError::Preprocessor(format!("Error evaluating decorator: {}", err))
+    //         }),
+    //     };
+
+    //     let tokens = tokenize(&eval_result);
+    //     let parsed = expr_parser.parse(tokens);
+    //     match parsed {
+    //         Ok(parsed) => Ok(parsed),
+    //         Err(err) => Err(lalrpop_util::ParseError::User {
+    //             error: ParseError::Preprocessor(format!("Error parsing decorator: {:?}", err))
+    //         }),
+    //     }
+    // },
+
+    Statement => vec![<>],
+
+    <mut head: Statements> <tail: Statement> => {
+        head.push(tail);
+        head
+        // let mut head = vec![head];
+        // head.append(&mut tail);
+        // head
+    },
+
+    <mut head: Statements> <lisp_code: Attribute> =>? {
+        let expr_parser = StatementsParser::new();
+        let eval_result = match eval_attribute(lisp_code) {
+            Ok(eval_result) => eval_result,
+            Err(err) => return Err(lalrpop_util::ParseError::User {
+                error: ParseError::Preprocessor(format!("Error evaluating attribute: {}", err))
+            }),
+        };
+        if eval_result.trim().is_empty() {
+            return Ok(vec![]);
+        }
+
+        let tokens = tokenize(&eval_result);
+        let parsed = expr_parser.parse(tokens);
+        match parsed {
+            Ok(mut parsed) => {
+                head.append(&mut parsed);
+                Ok(head)
+            },
+            Err(err) => Err(lalrpop_util::ParseError::User {
+                error: ParseError::Preprocessor(format!("Error parsing result from attribute: {:?}", err))
+            }),
+        }
+    },
+
+
+
+    // <Decorator> =>? {
+    //     let attr = eval_decorator(<>, None)?;
+    //     let parser = StatementsParser::new();
+    //     let tokens = tokenize(&attr).into_iter().enumerate().map(|(i, t)| (i, t, i+1)).collect::<Vec<_>>();
+    //     let parsed = parser.parse(tokens);
+    //     match parsed {
+    //         Ok(parsed) => Ok(parsed),
+    //         Err(err) => Err(lalrpop_util::ParseError::User {
+    //             error: String::from("Expected a statement")
+    //         }),
+    //     }
+    // },
+
 }
 
 // pub Index: Expr = {
@@ -703,187 +806,46 @@ pub Expr: Expr = {
     #[precedence(level="12")] #[assoc(side="left")]
     <lhs: Expr> "or" <rhs: Expr> => lhs.or(rhs),
 
-    // #[precedence(level="15")]
-    // <ty: Symbol> "of" <field: Symbol> <value: Expr?> => {
-    //     let ty = Type::Symbol(ty).apply(ty_args);
-    //     match value {
-    //         Some(value) => Expr::EnumUnion(ty, field, Box::new(value)),
-    //         None => Expr::ConstExpr(ConstExpr::Of(ty, field)),
+    #[precedence(level="15")]
+    <lisp_code: Decorator> <operand: Expr?> =>? {
+        let expr_parser = ExprParser::new();
+        let eval_result = match eval_decorator(lisp_code, operand) {
+            Ok(eval_result) => eval_result,
+            Err(err) => return Err(lalrpop_util::ParseError::User {
+                error: ParseError::Preprocessor(format!("Error evaluating decorator: {}", err))
+            }),
+        };
+
+        let tokens = tokenize(&eval_result);
+        let parsed = expr_parser.parse(tokens);
+        match parsed {
+            Ok(parsed) => Ok(parsed),
+            Err(err) => Err(lalrpop_util::ParseError::User {
+                error: ParseError::Preprocessor(format!("Error parsing result from decorator: {:?}", err))
+            }),
+        }
+    },
+
+    // #[precedence(level="0")]
+    // <lisp_code: Attribute> =>? {
+    //     let expr_parser = ExprParser::new();
+    //     let eval_result = match eval_attribute(lisp_code) {
+    //         Ok(eval_result) => eval_result,
+    //         Err(err) => return Err(lalrpop_util::ParseError::User {
+    //             error: ParseError::Preprocessor(format!("Error evaluating attribute: {}", err))
+    //         }),
+    //     };
+
+    //     let tokens = tokenize(&eval_result);
+    //     let parsed = expr_parser.parse(tokens);
+    //     match parsed {
+    //         Ok(parsed) => Ok(parsed),
+    //         Err(err) => Err(lalrpop_util::ParseError::User {
+    //             error: ParseError::Preprocessor(format!("Error parsing attribute: {:?}", err))
+    //         }),
     //     }
     // },
 }
-
-// pub Expr: Expr = {
-//     <ty: TypeAtom> "of" <field: Symbol> <value: Atom?> => {
-//         // Expr::EnumUnion(ty, field, Box::new(value))
-//         match value {
-//             Some(value) => Expr::EnumUnion(ty, field, Box::new(value)),
-//             None => Expr::ConstExpr(ConstExpr::Of(ty, field)),
-//         }
-//     },
-//     ExprPrec15 => <>,
-// }
-
-// ExprPrec15: Expr = {
-//     // Binary or
-//     <lhs: ExprPrec15> "or" <rhs: ExprPrec14> => lhs.or(rhs),
-//     ExprPrec14 => <>,
-// }
-
-// ExprPrec14: Expr = {
-//     // Binary and
-//     <lhs: ExprPrec14> "and" <rhs: ExprPrec13> => lhs.and(rhs),
-//     ExprPrec13 => <>,
-// }
-
-// ExprPrec13: Expr = {
-//     // Binary == != >= <= > <
-//     <lhs: ExprPrec12> "==" <rhs: ExprPrec12> => lhs.eq(rhs),
-//     <lhs: ExprPrec12> "!=" <rhs: ExprPrec12> => lhs.neq(rhs),
-//     <lhs: ExprPrec12> ">=" <rhs: ExprPrec12> => lhs.ge(rhs),
-//     <lhs: ExprPrec12> "<=" <rhs: ExprPrec12> => lhs.le(rhs),
-//     <lhs: ExprPrec12> ">" <rhs: ExprPrec12> => lhs.gt(rhs),
-//     <lhs: ExprPrec12> "<" <rhs: ExprPrec12> => lhs.lt(rhs),
-//     ExprPrec12 => <>,
-// }
-
-// ExprPrec12: Expr = {
-//     // Binary ||
-//     <lhs: ExprPrec12> "|" <rhs: ExprPrec11> => lhs.bitor(rhs),
-//     ExprPrec11 => <>,
-// }
-
-// ExprPrec11: Expr = {
-//     // Binary ^
-//     <lhs: ExprPrec11> "^" <rhs: ExprPrec10> => lhs.bitxor(rhs),
-//     ExprPrec10 => <>,
-// }
-
-// ExprPrec10: Expr = {
-//     // Binary &
-//     <lhs: ExprPrec10> "&" <rhs: ExprPrec9> => lhs.bitand(rhs),
-//     ExprPrec9 => <>,
-// }
-
-// ExprPrec9: Expr = {
-//     // Binary << >>
-//     // <lhs: ExprPrec9> "<<" <rhs: ExprPrec8> => lhs.shl(rhs),
-//     // <lhs: ExprPrec9> ">>" <rhs: ExprPrec8> => lhs.shr(rhs),
-//     ExprPrec8 => <>,
-// }
-
-// ExprPrec8: Expr = {
-//     // Binary + -
-//     <lhs: ExprPrec8> "+" <rhs: ExprPrec7> => lhs.add(rhs),
-//     <lhs: ExprPrec8> "-" <rhs: ExprPrec7> => lhs.sub(rhs),
-//     ExprPrec7 => <>,
-// }
-
-// ExprPrec7: Expr = {
-//     // Binary * / %
-//     <lhs: ExprPrec7> "*" <rhs: ExprPrec6> => lhs.mul(rhs),
-//     <lhs: ExprPrec7> "/" <rhs: ExprPrec6> => lhs.div(rhs),
-//     <lhs: ExprPrec7> "%" <rhs: ExprPrec6> => lhs.rem(rhs),
-//     ExprPrec6 => <>,
-// }
-
-// ExprPrec6: Expr = {
-//     // Type casting with "as"
-//     <e: ExprPrec6> "as" <ty: Type> => e.as_type(ty),
-//     ExprPrec5 => <>,
-// }
-
-// ExprPrec5: Expr = {
-//     // Unary - * ! & &mut
-//     "-" <e: ExprPrec5> => e.neg(),
-//     "*" <e: ExprPrec5> => e.deref(),
-//     "not" <e: ExprPrec5> => e.not(),
-//     "&" <e: ExprPrec5> => e.refer(Mutability::Immutable),
-//     "&" "mut" <e: ExprPrec5> => e.refer(Mutability::Mutable),
-
-//     ExprPrec4 => <>,
-// }
-
-// ExprPrec4: Expr = {
-//     // Try operator
-//     ExprPrec3 => <>,
-// }
-
-// ExprPrec3: Expr = {
-//     // Function calls, array indexing
-//     <e: ExprPrec3> "(" <args: CommaSep<Expr>> ")" => e.app(args),
-//     <e: ExprPrec3> "[" <index: Expr> "]" => e.idx(index),
-//     <e: ExprPrec3> <ty_args: TemplateArgs> =>? {
-//         match e {
-//             Expr::ConstExpr(e) => {
-//                 Ok(Expr::ConstExpr(e.monomorphize(ty_args)))
-//             },
-//             e => {
-//                 // Err(String::from("Cannot monomorphize a non-constant expression"))
-//                 Err(lalrpop_util::ParseError::User {
-//                     error: String::from("Cannot monomorphize a non-constant expression"),
-//                 })
-//             }
-//         }
-//     },
-//     ExprPrec2 => <>,
-//     // #[precedence(level="25")]
-//     // ConstPrec3 => <>,
-// }
-
-// ExprPrec2: Expr = {
-//     ExprPrec1 => <>,
-// }
-
-// ExprPrec1: Expr = {
-//     // Field accesses
-//     <e: ExprPrec2> "." <field: Symbol> => {
-//         match e {
-//             Expr::ConstExpr(e) => {
-//                 Expr::ConstExpr(e.field(ConstExpr::Symbol(field)))
-//             },
-//             e => e.field(ConstExpr::Symbol(field))
-//         }
-//     },
-//     <e: ExprPrec2> "." <field: Integer> => {
-//         match e {
-//             Expr::ConstExpr(e) => {
-//                 Expr::ConstExpr(e.field(ConstExpr::Int(field)))
-//             },
-//             e => e.field(ConstExpr::Int(field))
-//         }
-//     },
-
-//     Atom => <>,
-// }
-
-// Atom: Expr = {
-//     #[precedence(level="20")]
-//     Tuple<Expr> => {
-//         let vals = <>;
-//         if vals.len() == 1 {
-//             vals.into_iter().next().unwrap()
-//         } else {
-//             Expr::Tuple(vals)
-//         }
-//     },
-//     #[precedence(level="20")]
-//     Array<Expr> => {
-//         let vals = <>;
-//         if vals.len() == 1 {
-//             vals.into_iter().next().unwrap()
-//         } else {
-//             Expr::Array(vals)
-//         }
-//     },
-//     // <ty: TypeAtom> "of" <field: Symbol> => {
-//     //     // Expr::EnumUnion(ty, field, Box::new(value))
-//     //     Expr::ConstExpr(ConstExpr::Of(ty, field))
-//     // },
-//     StructValue<Symbol, Expr> => Expr::Struct(<>),
-//     // <expr: ConstAtom> <ty_args: TemplateArgs> => Expr::ConstExpr(expr.monomorphize(ty_args)),
-//     ConstAtom => Expr::ConstExpr(<>),
-// }
 
 pub ConstExpr: ConstExpr = {
     ConstPrec3 => <>,
@@ -1001,6 +963,8 @@ Float: f64 = "float" => float(<>);
 Char: char = "char" => character(<>);
 Boolean: bool = "bool" => boolean(<>);
 String: String = "string" => string(<>);
+Decorator: sage_lisp::Expr = "decorator" => decorator(<>);
+Attribute: sage_lisp::Expr = "attribute" => attribute(<>);
 
 Mutability: Mutability = {
     "mut" => Mutability::Mutable,

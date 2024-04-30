@@ -1,12 +1,34 @@
 mod lexer;
+mod preprocessor;
+pub use preprocessor::*;
 pub use lexer::*;
 use lalrpop_util::lalrpop_mod;
 use crate::lir::*;
-use crate::parse;
+use std::fmt::Display;
 lalrpop_mod!(
     #[allow(clippy::all)]
     frontend_parser, "/frontend2/frontend_parser.rs"
 );
+
+#[derive(Debug, PartialEq, Clone, Default)]
+pub enum ParseError {
+    Preprocessor(String),
+    Lexical(LexicalError),
+    Syntax(String),
+    #[default]
+    Unknown
+}
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseError::Lexical(e) => write!(f, "Lexical error: {}", e),
+            ParseError::Syntax(e) => write!(f, "Syntax error: {}", e),
+            ParseError::Preprocessor(e) => write!(f, "Preprocessor error: {}", e),
+            ParseError::Unknown => write!(f, "Unknown error"),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum Statement {
@@ -31,12 +53,47 @@ pub fn parse_frontend(
         Ok(parsed) => Ok(parsed),
         Err(e) => Err(crate::parse::format_error(&code, e)),
     }
+}
 
-    // let tokens = lexer::tokenize(&code);
-    // match frontend_parser::ProgramParser::new().parse(tokens) {
-    //     Ok(parsed) => Ok(parsed),
-    //     Err(e) => Err(crate::parse::format_error(&code, e)),
-    // }
+#[test]
+fn test_preprocessor() {
+    println!("{:?}", sage_lisp::Expr::parse("\"hello world!\""));
+
+    match parse_frontend(r#"
+    // A curried compile time function that adds two compile time values
+    #![defun add (x) (\(y) (+ x y))]
+    
+    println(
+        // Add a value to an expression at compile time
+        #[add 10]
+        12
+    );
+    
+    // A hashmap with a single key value pair
+    #![define hashmap #["key" 6]]
+    
+    // Some code that returns a string to add to the compiled code
+    #!["let x = 5;"]
+    
+    // Add a compile time variable to a runtime variable
+    println(
+        x + (
+            #[hashmap "key"]
+        )
+    );
+    "#) {
+        Ok(expr) => {
+            println!("{expr}\n-----\n{expr:?}");
+            // Try to compile
+            println!("\n\nRESULT {:?}", expr.compile());
+        },
+        Err(e) => panic!("{e}"),
+    }
+}
+
+#[test]
+fn test_functions() {
+
 }
 
 #[test]

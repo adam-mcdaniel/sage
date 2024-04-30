@@ -1,13 +1,7 @@
-use lalrpop_util::lalrpop_mod;
-use no_comment::{languages, IntoWithoutComments};
-
-// lalrpop_mod!(
-//     #[allow(clippy::all)]
-//     frontend_parser
-// );
-// Use Logos to create a lexer for the frontend.
+use log::trace;
 use logos::Logos;
-use std::ops::Range;
+use std::{fmt::Display, ops::Range};
+use super::*;
 
 pub struct Lexer<'input> {
     input: &'input str,
@@ -55,21 +49,53 @@ pub fn boolean(token: Token) -> bool {
     }
 }
 
-#[derive(Debug)]
+pub fn decorator(token: Token) -> sage_lisp::Expr {
+    match token {
+        Token::Decorator(d) => d,
+        _ => unreachable!(),
+    }
+}
+
+pub fn attribute(token: Token) -> sage_lisp::Expr {
+    match token {
+        Token::Attribute(a) => a,
+        _ => unreachable!(),
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Default)]
 pub enum LexicalError {
     Unexpected {
         range: Range<usize>,
     },
+    InvalidLisp {
+        error: String,
+        range: Range<usize>,
+    },
     // UnexpectedCharacter(char),
     UnexpectedEndOfInput,
+
+    #[default]
+    Unknown
 }
 
-pub fn tokenize<'a>(input: &'a str) -> impl Iterator<Item = Result<(usize, Token, usize), String>> + 'a {
+impl Display for LexicalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LexicalError::Unexpected { range } => write!(f, "Unexpected token at {:?}", range),
+            LexicalError::InvalidLisp { error, range } => write!(f, "Invalid Lisp expression at {:?}: {}", range, error),
+            LexicalError::UnexpectedEndOfInput => write!(f, "Unexpected end of input"),
+            LexicalError::Unknown => write!(f, "Unknown error"),
+        }
+    }
+}
+
+pub fn tokenize<'a>(input: &'a str) -> impl Iterator<Item = Result<(usize, Token, usize), ParseError>> + 'a {
     let mut lexer = Token::lexer(input);
     std::iter::from_fn(move || {
         let token = lexer.next();
         let range = lexer.span();
-        println!("TOKEN: {}", input[range.clone()].to_string());
+        trace!("TOKEN: {}", input[range.clone()].to_string());
         match token {
             Some(Ok(token)) => {
                 let triple = Token::to_lalr_triple((token, range.clone()));
@@ -77,14 +103,16 @@ pub fn tokenize<'a>(input: &'a str) -> impl Iterator<Item = Result<(usize, Token
                 if let Ok(triple) = triple {
                     Some(Ok(triple))
                 } else {
-                    println!("SOME ERROR: {:?} at {:?}", triple, &range);
-                    Some(Err("Unexpected token".to_string()))
+                    trace!("SOME ERROR: {:?} at {:?}: {}", triple, range.clone(), &input[range]);
+                    Some(Err(ParseError::Lexical(LexicalError::Unknown)))
+                    // Some(Err("Unexpected token".to_string()))
                 }
             }
             Some(Err(e)) => {
-                // Some(Err(LexicalError::Unexpected { range }))
-                println!("ERR ERROR: {:?} at {:?}", e, range);
-                Some(Err("Unexpected".to_string()))
+                // println!("ERR ERROR: {:?} at {:?}: {}", e, range.clone(), &input[range]);
+                let next_token = lexer.next().unwrap().unwrap();
+                trace!("Next token: {:?} = {}", next_token, &input[lexer.span()]);
+                Some(Err(ParseError::Lexical(e)))
             },
             None => None,
         }
@@ -156,6 +184,7 @@ fn extract_char(lexer: &mut logos::Lexer<Token>) -> Option<char> {
 
 #[derive(Logos, Debug, PartialEq, Clone)]
 #[logos(skip r"[\t\r ]+")]
+#[logos(error=LexicalError)]
 pub enum Token {
     #[regex(r"//[^\n]*", logos::skip)]
     Comment,
@@ -173,49 +202,110 @@ pub enum Token {
     String(String),
     #[regex(r"'(:?[^']|\\')*'", extract_char)]
     Char(char),
-    #[token("false|False", |_| false)]
-    #[token("true|True", |_| true)]
+    #[regex("false|False", |_| false, priority=5)]
+    #[regex("true|True", |_| true, priority=5)]
     Bool(bool),
-    #[regex("None|()")]
+    #[regex("None|none|()", priority=5)]
     None,
-    #[regex("Null|null|NULL")]
+    #[regex("Null|null|NULL", priority=5)]
     Null,
 
-    #[token("=")]
+    // #[regex(r"#\[[^(\]\n)]*\]\n", |tok| {
+    //     println!("DECORATOR: {:?}", tok.slice());
+    //     sage_lisp::Expr::parse(&tok.slice()[2..tok.slice().len()-2]).map_err(|error| LexicalError::InvalidLisp {
+    //         error,
+    //         range: tok.span(),
+    //     })
+    // }, priority=99999999)]
+    // Make decorator beat all other symbols
+    #[regex(r"#\[[^\n]*\n", |tok| {
+        println!("DECORATOR: {:?}", tok.slice());
+        if tok.slice().trim().chars().last() != Some(']') {
+            return Err(LexicalError::InvalidLisp {
+                error: "Expected ']'".to_string(),
+                range: tok.span(),
+            });
+        }
+        let code = &tok.slice()[2..tok.slice().len()-2];
+        println!("CODE: {}", code);
+        match sage_lisp::Expr::parse(&code) {
+            Ok(expr) => Ok(expr),
+            Err(error) => {
+                if let Ok(expr) = sage_lisp::Expr::parse(&format!("({})", &code)) {
+                    return Ok(expr);
+                }
+                println!("ERROR: {:?}", error);
+                Err(LexicalError::InvalidLisp {
+                    error,
+                    range: tok.span(),
+                })
+            }
+        }
+    }, priority=1000)]
+    Decorator(sage_lisp::Expr),
+
+    #[regex(r"#!\[[^\n]*\n", |tok| {
+        println!("ATTRIBUTE: {:?}", tok.slice());
+        if tok.slice().trim().chars().last() != Some(']') {
+            return Err(LexicalError::InvalidLisp {
+                error: "Expected ']'".to_string(),
+                range: tok.span(),
+            });
+        }
+        let code = &tok.slice()[3..tok.slice().len()-2];
+        println!("CODE: {}", code);
+        match sage_lisp::Expr::parse(&code) {
+            Ok(expr) => Ok(expr),
+            Err(error) => {
+                if let Ok(expr) = sage_lisp::Expr::parse(&format!("({})", &code)) {
+                    return Ok(expr);
+                }
+                println!("ERROR: {:?}", error);
+                Err(LexicalError::InvalidLisp {
+                    error,
+                    range: tok.span(),
+                })
+            }
+        }
+    }, priority=1000)]
+    Attribute(sage_lisp::Expr),
+
+
+    #[regex(r"=")]
     Assign,
-    #[token("+=")]
+    #[regex(r"\+=")]
     PlusAssign,
-    #[token("-=")]
+    #[regex(r"-=")]
     MinusAssign,
-    #[token("*=")]
+    #[regex(r"\*=")]
     StarAssign,
-    #[token("/=")]
+    #[regex(r"/=")]
     DivideAssign,
-    #[token("&=")]
+    #[regex(r"&=")]
     AndAssign,
-    #[token("|=")]
+    #[regex(r"|=")]
     OrAssign,
-    #[token("^=")]
+    #[regex(r"\^=")]
     XorAssign,
-    #[token("%=")]
+    #[regex(r"%=")]
     ModAssign,
-    #[token("<<=")]
+    #[regex(r"<<=")]
     LeftShiftAssign,
-    #[token(">>=")]
+    #[regex(r">>=")]
     RightShiftAssign,
 
 
-    #[token("==")]
+    #[regex(r"==")]
     Equal,
-    #[token("!=")]
+    #[regex(r"!=")]
     NotEqual,
-    #[token("<=")]
+    #[regex(r"<=")]
     LessEqual,
-    #[token(">=")]
+    #[regex(r">=")]
     GreaterEqual,
-    // #[token("<")]
+    // #[regex(r"<")]
     // LAngle,
-    // #[token(">")]
+    // #[regex(r">")]
     // RAngle,
 
     // Parse template parameters
@@ -230,119 +320,119 @@ pub enum Token {
     // Template(Vec<Token>),
 
 
-    #[token("<")]
+    #[regex(r"<")]
     Less,
-    #[token(">")]
+    #[regex(r">")]
     Greater,
-    #[token("<<")]
+    #[regex(r"<<")]
     LeftShift,
-    #[token(">>")]
+    #[regex(r">>")]
     RightShift,
-    #[token("+")]
+    #[regex(r"\+")]
     Plus,
-    #[token("-")]
+    #[regex(r"-")]
     Minus,
-    #[token("*")]
+    #[regex(r"\*")]
     Star,
-    #[token("%")]
+    #[regex(r"%")]
     Mod,
-    #[token("/")]
+    #[regex(r"/")]
     Divide,
-    #[token("&")]
+    #[regex(r"&")]
     Ampersand,
-    #[token("^")]
+    #[regex(r"\^")]
     Xor,
-    #[token("|")]
+    #[regex(r"|")]
     Bar,
-    #[token("~")]
+    #[regex(r"~")]
     Negate,
 
     #[regex(r"and|&&", priority=5)]
     And,
     #[regex(r"\|\||or", priority=5)]
     Or,
-    #[token("!")]
+    #[regex(r"!")]
     Bang,
-    #[token("not")]
+    #[regex(r"not")]
     Not,
 
 
-    #[token(":")]
+    #[regex(r":")]
     Specifier,
-    #[token(".")]
+    #[regex(r"\.")]
     Dot,
 
 
-    #[token("(")]
+    #[regex(r"\(", priority=0)]
     LParen,
-    #[token(")")]
+    #[regex(r"\)", priority=0)]
     RParen,
-    #[token("{")]
+    #[regex(r"\{", priority=0)]
     LBrace,
-    #[token("}")]
+    #[regex(r"\}", priority=0)]
     RBrace,
-    #[token("[")]
+    #[regex(r"\[", priority=0)]
     LBracket,
-    #[token("]")]
+    #[regex(r"\]", priority=0)]
     RBracket,
 
-    #[token(",")]
+    #[regex(r",")]
     Comma,
-    #[token(";")]
+    #[regex(r";")]
     Semicolon,
     
-    #[token("type")]
+    #[regex(r"type")]
     Type,
-    #[token("struct")]
+    #[regex(r"struct")]
     Struct,
-    #[token("enum")]
+    #[regex(r"enum")]
     Enum,
-    #[token("match")]
+    #[regex(r"match")]
     Match,
-    #[token("of")]
+    #[regex(r"of")]
     Of,
-    #[token("static")]
+    #[regex(r"static")]
     Static,
-    #[token("when")]
+    #[regex(r"when")]
     When,
-    #[token("if")]
+    #[regex(r"if")]
     If,
-    #[token("else")]
+    #[regex(r"else")]
     Else,
-    #[token("as")]
+    #[regex(r"as")]
     As,
-    #[token("for")]
+    #[regex(r"for")]
     For,
-    #[token("while")]
+    #[regex(r"while")]
     While,
-    #[token("return")]
+    #[regex(r"return")]
     Return,
     #[regex(r"def|fun")]
     Function,
-    #[token("let")]
+    #[regex(r"let")]
     Let,
-    #[token("mut")]
+    #[regex(r"mut")]
     Mut,
-    #[token("const")]
+    #[regex(r"const")]
     Const,
-    #[token("impl")]
+    #[regex(r"impl")]
     Impl,
-    #[token("extern")]
+    #[regex(r"extern")]
     Extern,
-    #[token("import")]
+    #[regex(r"import")]
     Import,
-    #[token("->")]
+    #[regex(r"->")]
     Arrow,
-    #[token("=>")]
+    #[regex(r"=>")]
     FatArrow,
 
-    #[token("?")]
+    #[regex(r"\?")]
     Try,
-    #[token("new")]
+    #[regex(r"new")]
     New,
-    #[token("del")]
+    #[regex(r"del")]
     Delete,
-    #[token("sizeof")]
+    #[regex(r"sizeof")]
     SizeOf,
     
 }
