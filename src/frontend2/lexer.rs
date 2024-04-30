@@ -205,10 +205,12 @@ pub enum Token {
     #[regex("false|False", |_| false, priority=5)]
     #[regex("true|True", |_| true, priority=5)]
     Bool(bool),
-    #[regex("None|none|()", priority=5)]
+    #[regex("None|none|()|pass", priority=5)]
     None,
     #[regex("Null|null|NULL", priority=5)]
     Null,
+    #[regex(r"case", priority=5)]
+    Case,
 
     // #[regex(r"#\[[^(\]\n)]*\]\n", |tok| {
     //     println!("DECORATOR: {:?}", tok.slice());

@@ -32,6 +32,8 @@ log = {version = "0.4.20", features = ["release_max_level_info"] }
 env_logger = "0.10.0"
 rayon = "1.9.0"
 logos = "0.14.0"
+sage-lisp = { git = "https://github.com/adam-mcdaniel/sage-lisp" }
+rand = "0.8.5"
 
 [dev-dependencies]
 criterion = "0.5"

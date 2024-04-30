@@ -259,6 +259,7 @@ impl ConstExpr {
                             if let Some((constant, _)) =
                                 env.get_associated_const(&container_ty, &name)
                             {
+                                debug!("Found associated const: {constant}");
                                 constant.eval_checked(env, i)?
                             } else {
                                 error!(
@@ -274,7 +275,6 @@ impl ConstExpr {
                                 .map(|name| env.get_associated_const(&container_ty, &name))
                             {
                                 return constant.eval_checked(env, i);
-                                // return Ok(constant.clone());
                             }
                             error!("Member access not implemented for: {container_ty} . {member}");
                             return Err(Error::MemberNotFound((*container).into(), *member));

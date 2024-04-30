@@ -312,6 +312,15 @@ fn make_lisp_env() -> sage_lisp::Env {
         Expr::Many(Vec::from(exprs))
     });
 
+    env.bind_builtin("str", |env, exprs| {
+        let mut s = String::new();
+        for e in exprs {
+            let e = env.eval(e.clone());
+            s.push_str(&e.to_string());
+        }
+        Expr::String(s)
+    });
+
     env.bind_builtin("sqrt", |env, expr| {
         let e = env.eval(expr[0].clone());
         match e {
