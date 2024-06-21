@@ -7,9 +7,15 @@
     <img src="./assets/code1.png" width="29.5%"/>
     <a href="https://adam-mcdaniel.net/sage"><img src="./assets/sage.png" width="68%"/></a>
   </p>
+  <p>
+    <a href="https://adam-mcdaniel.net/sage"><b><i>Use the online compiler playground!</i></b></a>
+    | <a href="https://discord.gg/rSGkM4bcdP"><b><i>Join the Discord server!</i></b></a>
+    | <a href="https://www.youtube.com/watch?v=QdnxjYj1pS0"><b><i>Check out a video covering Sage!</i></b></a>
+  </p>
+  <!-- [***Here's a link to the online compiler playground!***](https://adam-mcdaniel.net/sage)
+  [***Here's a link to the online compiler playground!***](https://adam-mcdaniel.net/sage) -->
 </div>
 
-[***Here's a link to the online compiler playground!***](https://adam-mcdaniel.net/sage)
 
 ## Table of Contents
 
