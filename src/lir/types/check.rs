@@ -934,14 +934,21 @@ impl TypeCheck for ConstExpr {
                 // Typecheck the member we want to access.
                 match e_type.type_check_member(field, &Expr::ConstExpr(*e.clone()), env) {
                     Ok(_) => Ok(()),
-                    Err(e) => {
+                    Err(err) => {
                         match field
                             .clone()
                             .as_symbol(env)
                             .map(|name| env.get_associated_const(&e_type, &name))
                         {
                             Ok(_) => Ok(()),
-                            Err(_) => Err(e),
+                            Err(_) => {
+                                // Try to compile with a runtime expression.
+                                if let Ok(result) = Expr::ConstExpr(*e.clone()).field(*field.clone()).type_check(env) {
+                                    return Ok(result);
+                                }
+        
+                                Err(err)
+                            },
                         }
                     }
                 }

@@ -1,0 +1,1073 @@
+use crate::frontend2::LexicalError;
+use crate::frontend2::{self, Token, *};
+use crate::lir::{ConstExpr, Expr, Type, Mutability, Declaration, Procedure, PolyProcedure, FFIProcedure, Pattern};
+use std::collections::{BTreeMap, VecDeque};
+
+grammar;
+
+
+extern {
+    type Location = usize;
+    type Error = ParseError;
+    enum Token {
+        "if"    => Token::If,
+        "when" => Token::When,
+        "else"  => Token::Else,
+        "while" => Token::While,
+        "for"   => Token::For,
+        "return" => Token::Return,
+        "def"    => Token::Function,
+        "extern" => Token::Extern,
+        "struct" => Token::Struct,
+        "enum"   => Token::Enum,
+        "impl"   => Token::Impl,
+        "type"   => Token::Type,
+        "let"    => Token::Let,
+        "mut"    => Token::Mut,
+        "as"     => Token::As,
+        "match"  => Token::Match,
+        "static" => Token::Static,
+        "const"  => Token::Const,
+        "of"     => Token::Of,
+        "->"     => Token::Arrow,
+        "=>"     => Token::FatArrow,
+        "=="     => Token::Equal,
+        "!="     => Token::NotEqual,
+        "<="     => Token::LessEqual,
+        ">="     => Token::GreaterEqual,
+        "string" => Token::String(_),
+        "int"    => Token::Integer(_),
+        "float"  => Token::Float(_),
+        "char"   => Token::Char(_),
+        "bool"   => Token::Bool(_),
+        "null"   => Token::Null,
+        "none"   => Token::None,
+        "symbol" => Token::Symbol(_),
+        "="      => Token::Assign,
+        ";"      => Token::Semicolon,
+        ":"      => Token::Specifier,
+        ","      => Token::Comma,
+
+        "["      => Token::LBracket,
+        "]"      => Token::RBracket,
+        "{"      => Token::LBrace,
+        "}"      => Token::RBrace,
+        "("      => Token::LParen,
+        ")"      => Token::RParen,
+        "<"      => Token::Less,
+        ">"      => Token::Greater,
+        // "template" => Token::Template(_),
+
+        "."      => Token::Dot,
+
+        "+"      => Token::Plus,
+        "-"      => Token::Minus,
+        "*"      => Token::Star,
+        "/"      => Token::Divide,
+        "%"      => Token::Mod,
+        "^"      => Token::Xor,
+        "&"      => Token::Ampersand,
+        "|"      => Token::Bar,
+        "~"      => Token::Negate,
+        "<<"     => Token::LeftShift,
+        ">>"     => Token::RightShift,
+        
+        "+="     => Token::PlusAssign,
+        "-="     => Token::MinusAssign,
+        "*="     => Token::StarAssign,
+        "/="     => Token::DivideAssign,
+        "%="     => Token::ModAssign,
+        "^="     => Token::XorAssign,
+        "&="     => Token::AndAssign,
+        "|="     => Token::OrAssign,
+        "<<="    => Token::LeftShiftAssign,
+        ">>="    => Token::RightShiftAssign,
+
+        "and"    => Token::And,
+        "or"     => Token::Or,
+        "not"    => Token::Not,
+        "!"      => Token::Bang,
+
+        "import" => Token::Import,
+        "?"      => Token::Try,
+        "new"    => Token::New,
+        "del"    => Token::Delete,
+        "sizeof" => Token::SizeOf,
+
+        "attribute" => Token::Attribute(_),
+        "decorator" => Token::Decorator(_),
+    }
+}
+
+pub Program: Expr = {
+    // <es: Delimited<Expr, ";">> => Expr::Many(es),
+    Suite => <>,
+}
+
+Suite: Expr = {
+    Expr => <>,
+    <mut stmts: Statements> <last: Expr?> => {
+        if let Some(last) = last {
+            stmts.push(Statement::Expr(last));
+        }
+
+        let rev_stmts = stmts.into_iter().rev().collect::<Vec<_>>();
+        let mut body = Expr::NONE;
+        let mut result = VecDeque::new();
+        let mut decls = VecDeque::new();
+        for stmt in rev_stmts {
+            match stmt {
+                Statement::Expr(e) => {
+                    result.push_front(e);
+                },
+                Statement::Declaration(decl) => {
+                    if decl.is_compile_time_declaration() {
+                        decls.push_front(decl);
+                    } else {
+                        if !result.is_empty() {
+                            if body != Expr::NONE {
+                                result.push_back(body);
+                                body = Expr::Many(result.into());
+                            } else if result.len() > 1 {
+                                body = Expr::Many(result.into());
+                            } else {
+                                body = result.pop_front().unwrap();
+                            }
+                            result = VecDeque::new();
+                        }
+                        body = body.with(decl);
+                    }
+                },
+            }
+        }
+        if !result.is_empty() {
+            if body != Expr::NONE {
+                result.push_back(body);
+            }
+            body = Expr::Many(result.into());
+        }
+        if decls.is_empty() {
+            body
+        } else {
+            body.with(Declaration::Many(decls.into()))
+        }
+    },
+}
+
+pub Statements: Vec<Statement> = {
+    // <Statement+> => <>
+    <lisp_code: Attribute> =>? {
+        let expr_parser = StatementsParser::new();
+        let eval_result = match eval_attribute(lisp_code) {
+            Ok(eval_result) => eval_result,
+            Err(err) => return Err(lalrpop_util::ParseError::User {
+                error: ParseError::Preprocessor(format!("Error evaluating attribute: {}", err))
+            }),
+        };
+        if eval_result.trim().is_empty() {
+            return Ok(vec![]);
+        }
+        let tokens = tokenize(&eval_result);
+        let parsed = expr_parser.parse(tokens);
+        match parsed {
+            Ok(parsed) => Ok(parsed),
+            Err(err) => Err(lalrpop_util::ParseError::User {
+                error: ParseError::Preprocessor(format!("Error parsing result from attribute: {:?}", err))
+            }),
+        }
+    },
+
+    <Statement> => vec![<>],
+
+    <mut head: Statements> <tail: Statement> => {
+        // println!("{:?} {:?}", head, tail);
+        head.push(tail);
+        head
+    },
+
+    <mut head: Statements> <lisp_code: Attribute> =>? {
+        let expr_parser = StatementsParser::new();
+        let eval_result = match eval_attribute(lisp_code) {
+            Ok(eval_result) => eval_result,
+            Err(err) => return Err(lalrpop_util::ParseError::User {
+                error: ParseError::Preprocessor(format!("Error evaluating attribute: {}", err))
+            }),
+        };
+        if eval_result.trim().is_empty() {
+            return Ok(head);
+        }
+
+        let tokens = tokenize(&eval_result);
+        let parsed = expr_parser.parse(tokens);
+        match parsed {
+            Ok(mut parsed) => {
+                head.append(&mut parsed);
+                Ok(head)
+            },
+            Err(err) => Err(lalrpop_util::ParseError::User {
+                error: ParseError::Preprocessor(format!("Error parsing result from attribute: {:?}", err))
+            }),
+        }
+    },
+}
+
+// pub Index: Expr = {
+//     <e: Expr> <l: @L> <template: "template"> <r: @R> => {
+//         if let Token::Template(args) = t {
+//             let parser = ExprParser::new();
+//             let tokens = args.into_iter().enumerate().map(|(i, t)| (l+i, t, l+i+1)).collect::<Vec<_>>();
+//             // println!("{:?}", tokens);
+//             let parsed = parser.parse(tokens);
+//             match parsed {
+//                 Ok(parsed) => Ok(e.idx(parsed)),
+//                 Err(err) => {
+//                     // println!("ERROR: {:?}", err);
+//                     Err(lalrpop_util::ParseError::User {
+//                         error: String::from("Expected an expression")
+//                     })
+//                 }
+//             }
+//         } else {
+//             unreachable!()
+//         }
+//     }
+// }
+
+pub TemplateArgsInner: Vec<Type> = {
+    <CommaSep<Type>> => <>
+}
+
+TemplateArgs: Vec<Type> = {
+    // <l: @L> <t: "template"> <r: @R> =>? {
+    //     if let Token::Template(args) = t {
+    //         let parser = TemplateArgsInnerParser::new();
+    //         let tokens = args.into_iter().enumerate().map(|(i, t)| (l+i, t, l+i+1)).collect::<Vec<_>>();
+    //         // println!("{:?}", tokens);
+    //         let parsed = parser.parse(tokens);
+    //         match parsed {
+    //             Ok(parsed) => Ok(parsed),
+    //             Err(err) => {
+    //                 // println!("ERROR: {:?}", err);
+    //                 Err(lalrpop_util::ParseError::User {
+    //                     error: String::from("Expected a type")
+    //                 })
+    //             }
+    //         }
+    //     } else {
+    //         unreachable!()
+    //     }
+    // }
+
+    "!" "[" <args: TemplateArgsInner> "]" => args,
+    // "<" <args: TemplateArgsInner> ">" => args,
+}
+
+pub TemplateParamInner: Vec<String> = {
+    <CommaSep<Symbol>> => <>
+}
+
+TemplateParams: Vec<String> = {
+    // <l: @L> <t: "template"> <r: @R> =>? {
+    //     if let Token::Template(args) = t {
+    //         let parser = TemplateParamInnerParser::new();
+    //         let tokens = args.into_iter().enumerate().map(|(i, t)| (l+i, t, l+i+1)).collect::<Vec<_>>();
+    //         let parsed = parser.parse(tokens);
+    //         match parsed {
+    //             Ok(parsed) => Ok(parsed),
+    //             Err(err) => Err(lalrpop_util::ParseError::User {
+    //                 error: String::from("Expected a symbol")
+    //             }),
+    //         }
+    //     } else {
+    //         unreachable!()
+    //     }
+    // }
+    "[" <args: TemplateParamInner> "]" => args,
+}
+
+
+pub Type: Type = {
+    #[precedence(level="0")]
+    "[" <ty: Type> "*" <cexpr: ConstExpr> "]" => Type::Array(Box::new(ty), cexpr.into()),
+    #[precedence(level="0")]
+    <tup: Tuple<Type>> => {
+        if tup.len() == 1 {
+            tup.into_iter().next().unwrap()
+        } else {
+            Type::Tuple(tup)
+        }
+    },
+    #[precedence(level="1")]
+    "&" <ty: Type> => Type::Pointer(Mutability::Immutable, Box::new(ty)),
+    #[precedence(level="1")]
+    "&" "mut" <ty: Type> => Type::Pointer(Mutability::Mutable, Box::new(ty)),
+    #[precedence(level="1")]
+    "def" <args: Tuple<Type>> ":" <ret: Type> => Type::Proc(args, Box::new(ret)),
+    #[precedence(level="1")]
+    "def" <ty_params: TemplateParams> <args: Tuple<Type>> ":" <ret: Type> => Type::Poly(ty_params, Type::Proc(args, Box::new(ret)).into()),
+
+    #[precedence(level="0")]
+    <ty: Type> <args: TemplateArgs> => {
+        ty.apply(args)
+    },
+    #[precedence(level="0")]
+    <TypeAtom> => <>,
+}
+
+TypeAtom: Type = {
+    "struct" <fields: StructType<Symbol, Type>> => Type::Struct(fields),
+    StructType<Symbol, Type> => Type::Struct(<>),
+
+    "enum" "{" <variants: CommaSep<(<Symbol> <Type?>)>> "}" => {
+        let mut all_none = true;
+        for (_, ty) in &variants {
+            if ty.is_some() {
+                all_none = false;
+                break;
+            }
+        }
+        if all_none {
+            return Type::Enum(variants.into_iter().map(|(name, _)| name).collect());
+        }
+
+        let mut map = BTreeMap::new();
+        for (name, ty) in variants {
+            if let Some(ty) = ty {
+                map.insert(name, ty);
+            } else {
+                map.insert(name, Type::None);
+            }
+        }
+        Type::EnumUnion(map)
+    },
+
+    "!" => Type::Never,
+
+    <name: Symbol> => {
+        match name.as_str() {
+            "Int" => Type::Int,
+            "Float" => Type::Float,
+            "Bool" => Type::Bool,
+            "Char" => Type::Char,
+            "Cell" => Type::Cell,
+            "Never" => Type::Never,
+            _ => Type::Symbol(name),
+        }
+    },
+}
+
+Statement: Statement = {
+    <ShortStatement> ";"+ => <>,
+    <LongStatement> => <>
+}
+
+MatchResult: Expr = {
+    "{" <Suite> "}" => <>,
+    <e: Expr> => e,
+}
+
+LongStatement: Statement = {
+    "match" "(" <e: Expr> ")" "{" <arms: CommaSep<(<Pattern> "=>" "{" <Suite> "}")>> "}" => {
+        Statement::Expr(Expr::Match(e.into(), arms.into()))
+    },
+
+    // Handle else ifs
+    "if" "(" <cond: Expr> ")" "{" <body: Suite> "}" <else_ifs: ("else" "if" "(" <Expr> ")" "{" <Suite> "}")*> <else_body: ("else" "{" <Suite> "}")?> => {
+        if else_ifs.len() >= 1 {
+            let mut branches = vec![];
+            for (cond, body) in else_ifs {
+                branches.push((cond, body));
+            }
+            let (last_cond, last_body) = branches.pop().unwrap();
+            let mut result = Expr::If(last_cond.into(), last_body.into(), else_body.unwrap_or(Expr::NONE).into());
+
+            for (cond, body) in branches.into_iter().rev() {
+                result = Expr::If(cond.into(), body.into(), result.into());
+            }
+            Statement::Expr(result)
+        } else {
+            Statement::Expr(Expr::If(cond.into(), body.into(), else_body.unwrap_or(Expr::NONE).into()))
+        }
+    },
+
+    "while" "(" <cond: Expr> ")" "{" <body: Suite> "}" => {
+        Statement::Expr(Expr::While(cond.into(), body.into()))
+    },
+
+    "for" "(" <init: ShortStatement> ";" <cond: Expr> ";" <step: ShortStatement> ")" "{" <body: Suite> "}" => {
+        let mut init_expr = Expr::NONE;
+        let mut init_decl = Declaration::Many(vec![]);
+        match init {
+            Statement::Declaration(decl) => init_decl = decl,
+            Statement::Expr(e) => init_expr = e,
+        };
+
+        let mut step_expr = Expr::NONE;
+        if let Statement::Expr(e) = step {
+            step_expr = e;
+        }
+
+        Statement::Expr(Expr::While(cond.into(), Expr::Many(vec![
+            init_expr,
+            body,
+            step_expr,
+        ]).into()).with(init_decl))
+    },
+
+    "when" "(" <cond: ConstExpr> ")" "{" <body: Suite> "}" <else_body: ("else" "{" <Suite> "}")?> => {
+        Statement::Expr(Expr::When(cond, body.into(), else_body.unwrap_or(Expr::NONE).into()))
+    },
+
+    "impl" <ty: Type> "{" <attrs: ImplAttribute*> "}" => {
+        Statement::Declaration(Declaration::Impl(ty, attrs))
+    },
+    "impl" <ty: Type> "[" <ty_args: CommaSep<Symbol>> "]" "{" <attrs: ImplAttribute*> "}" => {
+        let ty = ty.apply(ty_args.into_iter().map(|s| Type::Symbol(s)).collect());
+        Statement::Declaration(Declaration::Impl(ty, attrs))
+    },
+
+    "enum" <name: Symbol> "{" <variants: CommaSep<(<Symbol> <Type?>)>> "}" => {
+        // First check if all the variants are none and don't use an enumunion if so
+        let mut all_none = true;
+        for (_, ty) in &variants {
+            if ty.is_some() {
+                all_none = false;
+                break;
+            }
+        }
+        if all_none {
+            return Statement::Declaration(Declaration::Type(name, Type::Enum(
+                variants.into_iter().map(|(name, _)| name).collect()
+            )));
+        }
+
+        let mut map = BTreeMap::new();
+        
+        for (name, ty) in variants {
+            if let Some(ty) = ty {
+                map.insert(name, ty);
+            } else {
+                map.insert(name, Type::None);
+            }
+        }
+        Statement::Declaration(Declaration::Type(name, Type::EnumUnion(map)))
+    },
+    
+    "enum" <name: Symbol> <ty_params: TemplateParams> "{" <variants: CommaSep<(<Symbol> <Type?>)>> "}" => {
+        let mut all_none = true;
+        for (_, ty) in &variants {
+            if ty.is_some() {
+                all_none = false;
+                break;
+            }
+        }
+
+        if all_none {
+            return Statement::Declaration(Declaration::Type(name, Type::Poly(ty_params, Type::Enum(
+                variants.into_iter().map(|(name, _)| name).collect()
+            ).into())));
+        }
+
+        let mut map = BTreeMap::new();
+        for (name, ty) in variants {
+            if let Some(ty) = ty {
+                map.insert(name, ty);
+            } else {
+                map.insert(name, Type::None);
+            }
+        }
+        Statement::Declaration(Declaration::Type(name, Type::Poly(ty_params, Type::EnumUnion(map).into())))
+    },
+
+    "struct" <name: Symbol> <fields: StructType<Symbol, Type>> => {
+        Statement::Declaration(Declaration::Type(name, Type::Struct(fields)))
+    },
+
+    "struct" <name: Symbol> <ty_params: TemplateParams> <fields: StructType<Symbol, Type>> => {
+        Statement::Declaration(Declaration::Type(name, Type::Poly(ty_params, Type::Struct(fields).into())))
+    },
+
+    <proc: Procedure> => {
+        let name = proc.get_common_name().unwrap().to_owned();
+        Statement::Declaration(Declaration::Proc(name, <>))
+    },
+
+    <poly_proc: PolyProcedure> => {
+        let name = poly_proc.get_name().to_owned();
+        Statement::Declaration(Declaration::PolyProc(name, <>))
+    }
+}
+
+ImplAttribute: (String, ConstExpr) = {
+    <p: Procedure> => {
+        let name = p.get_common_name().unwrap().to_owned();
+        (name, ConstExpr::Proc(p))
+    },
+    <p: PolyProcedure> => {
+        let name = p.get_name().to_owned();
+        (name, ConstExpr::PolyProc(p))
+    },
+    "const" <name: Symbol> "=" <value: ConstExpr> =>(name, value),
+}
+
+Procedure: Procedure = {
+    "def" <name: Symbol> <args: Tuple<(<Mutability?> <Symbol> ":" <Type>)>> ":" <ret: Type> "=" <body: Expr> ";" => {
+        let args = args.into_iter().map(|(mutability, name, ty)| (name, mutability.unwrap_or(Mutability::Immutable), ty)).collect();
+        let proc = Procedure::new(Some(name.clone()), args, ret, body);
+        // Statement::Declaration(Declaration::Proc(name, proc))
+        // ConstExpr::Proc(proc)
+        proc
+    },
+    "def" <name: Symbol> <args: Tuple<(<Mutability?> <Symbol> ":" <Type>)>> "=" <body: Expr> ";" => {
+        let args = args.into_iter().map(|(mutability, name, ty)| (name, mutability.unwrap_or(Mutability::Immutable), ty)).collect();
+        let proc = Procedure::new(Some(name.clone()), args, Type::None, body);
+        // Statement::Declaration(Declaration::Proc(name, proc))
+        // ConstExpr::Proc(proc)
+        proc
+    },
+
+    "def" <name: Symbol> <args: Tuple<(<Mutability?> <Symbol> ":" <Type>)>> ":" <ret: Type> "{" <body: Suite?> "}" => {
+        let args = args.into_iter().map(|(mutability, name, ty)| (name, mutability.unwrap_or(Mutability::Immutable), ty)).collect();
+        let proc = Procedure::new(Some(name.clone()), args, ret, body.unwrap_or(Expr::NONE));
+        // Statement::Declaration(Declaration::Proc(name, proc))
+        // ConstExpr::Proc(proc)
+        proc
+    },
+    "def" <name: Symbol> <args: Tuple<(<Mutability?> <Symbol> ":" <Type>)>> "{" <body: Suite?> "}" => {
+        let args = args.into_iter().map(|(mutability, name, ty)| (name, mutability.unwrap_or(Mutability::Immutable), ty)).collect();
+        let proc = Procedure::new(Some(name.clone()), args, Type::None, body.unwrap_or(Expr::NONE));
+        // Statement::Declaration(Declaration::Proc(name, proc))
+        // ConstExpr::Proc(proc)
+        proc
+    },
+}
+
+PolyProcedure: PolyProcedure = {
+    "def" <name: Symbol> <ty_params: TemplateParams> <args: Tuple<(<Mutability?> <Symbol> ":" <Type>)>> ":" <ret: Type> "=" <body: Expr> ";" => {
+        let args = args.into_iter().map(|(mutability, name, ty)| (name, mutability.unwrap_or(Mutability::Immutable), ty)).collect();
+        let proc = PolyProcedure::new(name.clone(), ty_params, args, ret, body);
+        // Statement::Declaration(Declaration::Proc(name, proc))
+        // ConstExpr::Proc(proc)
+        proc
+    },
+    "def" <name: Symbol> <ty_params: TemplateParams> <args: Tuple<(<Mutability?> <Symbol> ":" <Type>)>> "=" <body: Expr> ";" => {
+        let args = args.into_iter().map(|(mutability, name, ty)| (name, mutability.unwrap_or(Mutability::Immutable), ty)).collect();
+        let proc = PolyProcedure::new(name.clone(), ty_params, args, Type::None, body);
+        // Statement::Declaration(Declaration::Proc(name, proc))
+        // ConstExpr::Proc(proc)
+        proc
+    },
+    "def" <name: Symbol> <ty_params: TemplateParams> <args: Tuple<(<Mutability?> <Symbol> ":" <Type>)>> ":" <ret: Type> "{" <body: Suite?> "}" => {
+        let args = args.into_iter().map(|(mutability, name, ty)| (name, mutability.unwrap_or(Mutability::Immutable), ty)).collect();
+        let proc = PolyProcedure::new(name.clone(), ty_params, args, ret, body.unwrap_or(Expr::NONE));
+        // Statement::Declaration(Declaration::Proc(name, proc))
+        // ConstExpr::Proc(proc)
+        proc
+    },
+    "def" <name: Symbol> <ty_params: TemplateParams> <args: Tuple<(<Mutability?> <Symbol> ":" <Type>)>> "{" <body: Suite?> "}" => {
+        let args = args.into_iter().map(|(mutability, name, ty)| (name, mutability.unwrap_or(Mutability::Immutable), ty)).collect();
+        let proc = PolyProcedure::new(name.clone(), ty_params, args, Type::None, body.unwrap_or(Expr::NONE));
+        // Statement::Declaration(Declaration::Proc(name, proc))
+        // ConstExpr::Proc(proc)
+        proc
+    },
+}
+
+ShortStatement: Statement = {
+    "extern" <name: Symbol> <args: Tuple<(<(<Symbol> ":")?> <Type>)>> ":" <ret: Type> => {
+        let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
+        Statement::Declaration(Declaration::ExternProc(name.clone(), FFIProcedure::new(name, args, ret)))
+    },
+
+    "const" <name: Symbol> "=" <value: ConstExpr> => Statement::Declaration(Declaration::Const(name, value)),
+    "let" <name: Symbol> ":" <ty: Type> "=" <value: Expr> => Statement::Declaration(Declaration::Var(name, Mutability::Immutable, Some(ty), value)),
+    "let" <name: Symbol> "=" <value: Expr> => Statement::Declaration(Declaration::Var(name, Mutability::Immutable, None, value)),
+
+    "let" "mut" <name: Symbol> ":" <ty: Type> "=" <value: Expr> => Statement::Declaration(Declaration::Var(name, Mutability::Mutable, Some(ty), value)),
+    "let" "mut" <name: Symbol> "=" <value: Expr> => Statement::Declaration(Declaration::Var(name, Mutability::Mutable, None, value)),
+
+    "let" "static" <name: Symbol> ":" <ty: Type> "=" <value: ConstExpr> => Statement::Declaration(Declaration::StaticVar(name, Mutability::Immutable, ty, value)),
+    "let" "static" "mut" <name: Symbol> ":" <ty: Type> "=" <value: ConstExpr> => Statement::Declaration(Declaration::StaticVar(name, Mutability::Mutable, ty, value)),
+
+    "type" <name: Symbol> "=" <ty: Type> => Statement::Declaration(Declaration::Type(name, ty)),
+
+    "return" <value: Expr> => Statement::Expr(Expr::Return(value.into())),
+
+    <dst: Expr> "=" <val: Expr> => {
+        // Check if the expr is a dereference
+        match dst {
+            Expr::Deref(e) => Statement::Expr(e.deref_mut(val)),
+            Expr::Index(e, idx) => Statement::Expr(e.idx(*idx).refer(Mutability::Mutable).deref_mut(val)),
+            Expr::ConstExpr(ConstExpr::Symbol(name)) => {
+                Statement::Expr(
+                    Expr::var(name).refer(Mutability::Mutable)
+                        .deref_mut(val)
+                )
+            }
+            _ => unreachable!(),
+        }
+    },
+
+    <dst: Expr> "+=" <val: Expr> => Statement::Expr(dst.refer(Mutability::Mutable).assign_op(crate::lir::Assign::new(crate::lir::Add), val)),
+    <dst: Expr> "-=" <val: Expr> => Statement::Expr(dst.refer(Mutability::Mutable).assign_op(crate::lir::Assign::new(crate::lir::Arithmetic::Subtract), val)),
+    <dst: Expr> "*=" <val: Expr> => Statement::Expr(dst.refer(Mutability::Mutable).assign_op(crate::lir::Assign::new(crate::lir::Arithmetic::Multiply), val)),
+    <dst: Expr> "/=" <val: Expr> => Statement::Expr(dst.refer(Mutability::Mutable).assign_op(crate::lir::Assign::new(crate::lir::Arithmetic::Divide), val)),
+    <dst: Expr> "%=" <val: Expr> => Statement::Expr(dst.refer(Mutability::Mutable).assign_op(crate::lir::Assign::new(crate::lir::Arithmetic::Remainder), val)),
+    <dst: Expr> "^=" <val: Expr> => Statement::Expr(dst.refer(Mutability::Mutable).assign_op(crate::lir::Assign::new(crate::lir::BitwiseXor), val)),
+    <dst: Expr> "&=" <val: Expr> => Statement::Expr(dst.refer(Mutability::Mutable).assign_op(crate::lir::Assign::new(crate::lir::BitwiseAnd), val)),
+    <dst: Expr> "|=" <val: Expr> => Statement::Expr(dst.refer(Mutability::Mutable).assign_op(crate::lir::Assign::new(crate::lir::BitwiseOr), val)),
+    // <dst: Expr> "<<=" <val: Expr> => dst.assign_op(crate::lir::Assign::new(crate::lir::Shl), val),
+
+    <e: Expr> => Statement::Expr(e)
+}
+
+Term: Expr = {
+    // <e: Expr> => e,
+    // Parse at the highest precedence
+    #[precedence(level="0")]
+    <l: @L> <e: Expr> <r: @R> => {
+        // println!("{} {} {}", l, e, r);
+        e
+    },
+    // #[precedence(level="1")]
+    // <l: @L> <e: ConstExpr> <r: @R> => {
+    //     // println!("{} {} {}", l, e, r);
+    //     Expr::ConstExpr(e)
+    // },
+}
+
+EnumUnionInstance: Expr = {
+    <ty: Symbol> <ty_args: TemplateArgs> <tail: ("of" <Symbol> <Expr?>)?> => {
+        if let Some(tail) = tail {
+            let ty = Type::Symbol(ty).apply(ty_args);
+            let field = tail.0;
+            let value = tail.1;
+            match value {
+                Some(value) => Expr::EnumUnion(ty, field, Box::new(value)),
+                None => Expr::ConstExpr(ConstExpr::Of(ty, field)),
+            }
+        } else {
+            Expr::ConstExpr(ConstExpr::Symbol(ty).monomorphize(ty_args))
+        }
+    },
+    <ty: TypeAtom> "of" <field: Symbol> <value: Expr?> => {
+        // let ty = Type::Symbol(ty);
+
+        match value {
+            Some(value) => Expr::EnumUnion(ty, field, Box::new(value)),
+            None => Expr::ConstExpr(ConstExpr::Of(ty, field)),
+        }
+    },
+}
+
+Field: ConstExpr = {
+    "." <s: Symbol> => ConstExpr::Symbol(s),
+    "." <i: Integer> => ConstExpr::Int(i),
+}
+
+Pattern: Pattern = {
+    // #[precedence(level="0")]
+    // <name: Symbol> => {
+    //     if name == "_" {
+    //         Pattern::Wildcard
+    //     } else {
+    //         Pattern::Symbol(<>)
+    //     }
+    // },
+
+    // A struct
+    #[precedence(level="0")]
+    "struct"? <StructValue<Symbol, Pattern>> => {
+        // Construct a BTree
+        Pattern::Struct(<>.into_iter().collect())
+    },
+
+    // A tuple
+    #[precedence(level="0")]
+    <Tuple<Pattern>> => {
+        if <>.len() == 1 {
+            <>.into_iter().next().unwrap()
+        } else {
+            Pattern::Tuple(<>.into_iter().collect())
+        }
+    },
+
+    // An alt
+    #[precedence(level="1")] #[assoc(side="left")]
+    <lhs: Pattern> "|" <rhs: Pattern> => {
+        match lhs {
+            Pattern::Alt(mut alts) => {
+                alts.push(rhs);
+                Pattern::Alt(alts)
+            },
+            _ => Pattern::Alt(vec![lhs, rhs])
+        }
+
+        // let mut alts = vec![head];
+        // for alt in tail {
+        //     alts.push(alt);
+        // }
+        // Pattern::Alt(alts)
+    },
+
+    #[precedence(level="0")]
+    "mut" <Symbol> => Pattern::Symbol(Mutability::Mutable, <>),
+
+    // A constant
+    #[precedence(level="0")]
+    <c: ConstAtom> => {
+        match c {
+            ConstExpr::Symbol(s) if s == "_" => Pattern::Wildcard,
+            ConstExpr::Symbol(s) => Pattern::Symbol(Mutability::Immutable, s),
+            c => Pattern::ConstExpr(c)
+        }
+    },
+
+    // A variant
+    #[precedence(level="0")]
+    "of" <name: Symbol> <value: Pattern?> => {
+        match value {
+            Some(value) => Pattern::Variant(name, Some(Box::new(value))),
+            None => Pattern::Variant(name, None),
+        }
+    },
+
+    // A pointer
+    #[precedence(level="2")]
+    "&" <p: Pattern> => Pattern::Pointer(Box::new(p)),
+}
+
+pub Expr: Expr = {
+    #[precedence(level="0")]
+    Tuple<Term> => {
+        let vals = <>;
+        if vals.len() == 1 {
+            vals.into_iter().next().unwrap()
+        } else {
+            Expr::Tuple(vals)
+        }
+    },
+    #[precedence(level="0")]
+    Array<Term> => {
+        let vals = <>;
+        if vals.len() == 1 {
+            vals.into_iter().next().unwrap()
+        } else {
+            Expr::Array(vals)
+        }
+    },
+
+    // #[precedence(level="16")]
+    // "match" "(" <e: Expr> ")" "{" <arms: CommaSep<(<Pattern> "=>" <Expr>)>> "}" => {
+    //     Expr::Match(e.into(), arms)
+    // },
+    
+    #[precedence(level="0")]
+    StructValue<Symbol, Term> => Expr::Struct(<>),
+    #[precedence(level="0")]
+    ConstAtom => Expr::ConstExpr(<>),
+
+    #[precedence(level="1")] #[assoc(side="left")]
+    <container: Expr> <field: Field> <template: TemplateArgs?> => {
+        if let Some(template) = template {
+            // Find the inner most container
+            let mut container = container;
+            let mut fields = vec![field];
+            while let Expr::Member(e, f) = container {
+                container = *e;
+                fields.push(f);
+            }
+            
+            let mut expr = match container {
+                Expr::ConstExpr(e) => e,
+                e => panic!("Expected a constant expression"),
+            };
+
+            for field in fields.into_iter().rev() {
+                expr = expr.field(field);
+            }
+
+            Expr::ConstExpr(expr.monomorphize(template))
+        } else {
+            // match container {
+            //     Expr::ConstExpr(e) => Expr::ConstExpr(e.field(field)),
+            //     e => e.field(field)
+            // }
+            container.field(field)
+        }
+    },
+    #[precedence(level="1")] #[assoc(side="left")]
+    <e: Expr> <args: Tuple<Term>> => {
+        use crate::lir::Put;
+        if e == Expr::var("println") {
+            Expr::Many(args.into_iter().chain(
+                std::iter::once(Expr::ConstExpr(
+                    ConstExpr::Char('\n')))
+            ).map(|arg| arg.unop(Put::Display)).collect())
+        } else if e == Expr::var("print") {
+            Expr::Many(args.into_iter().map(|arg| arg.unop(Put::Display)).collect())
+        } else if e == Expr::var("debug") {
+            Expr::Many(args.into_iter().map(|arg| arg.unop(Put::Debug)).collect())
+        } else if e == Expr::var("sizeof") {
+            Expr::ConstExpr(ConstExpr::SizeOfExpr(args.into_iter().next().unwrap().into()))
+        } else {
+            e.app(args)
+        }
+    },
+    
+    #[precedence(level="13")]
+    EnumUnionInstance => <>,
+
+    #[precedence(level="2")] #[assoc(side="left")]
+    <e: Symbol> <ty_args: TemplateArgs> <args: Tuple<Term>> => {
+        Expr::ConstExpr(ConstExpr::Symbol(e).monomorphize(ty_args)).app(args)
+    },
+    #[precedence(level="2")] #[assoc(side="left")]
+    <e: Expr> "[" <index: Term> "]" => e.idx(index),
+
+    #[precedence(level="3")] #[assoc(side="right")]
+    "-" <e: Expr> => e.neg(),
+    #[precedence(level="3")] #[assoc(side="right")]
+    "*" <e: Expr> => e.deref(),
+    #[precedence(level="3")] #[assoc(side="right")]
+    "new" <e: Expr> => e.unop(New),
+    #[precedence(level="3")] #[assoc(side="right")]
+    "not" <e: Expr> => e.not(),
+    #[precedence(level="3")] #[assoc(side="right")]
+    "!" <e: Expr> => e.not(),
+    #[precedence(level="3")] #[assoc(side="left")]
+    "&" <e: Expr> => e.refer(Mutability::Immutable),
+    #[precedence(level="3")] #[assoc(side="left")]
+    "&" "mut" <e: Expr> => e.refer(Mutability::Mutable),
+
+    #[precedence(level="4")]
+    <lhs: Expr> "as" <ty: Type> => lhs.as_type(ty),
+
+    #[precedence(level="5")] #[assoc(side="left")]
+    <lhs: Expr> "%" <rhs: Expr> => lhs.rem(rhs),
+    #[precedence(level="5")] #[assoc(side="left")]
+    <lhs: Expr> "/" <rhs: Expr> => lhs.div(rhs),
+    #[precedence(level="5")] #[assoc(side="left")]
+    <lhs: Expr> "*" <rhs: Expr> => lhs.mul(rhs),
+
+    #[precedence(level="6")] #[assoc(side="left")]
+    <lhs: Expr> "+" <rhs: Expr> => lhs.add(rhs),
+    #[precedence(level="6")] #[assoc(side="left")]
+    <lhs: Expr> "-" <rhs: Expr> => lhs.sub(rhs),
+    // #[precedence(level="6")] #[assoc(side="left")]
+    // <lhs: Expr> "<<" <rhs: Expr> => lhs.shl(rhs),
+    // #[precedence(level="6")] #[assoc(side="left")]
+    // <lhs: Expr> ">>" <rhs: Expr> => lhs.shr(rhs),
+
+    #[precedence(level="7")] #[assoc(side="left")]
+    <lhs: Expr> "&" <rhs: Expr> => lhs.bitand(rhs),
+    #[precedence(level="8")] #[assoc(side="left")]
+    <lhs: Expr> "^" <rhs: Expr> => lhs.bitxor(rhs),
+    #[precedence(level="9")] #[assoc(side="left")]
+    <lhs: Expr> "|" <rhs: Expr> => lhs.bitor(rhs),
+
+    #[precedence(level="10")] #[assoc(side="left")]
+    <lhs: Expr> ">" <rhs: Expr> => lhs.gt(rhs),
+    #[precedence(level="10")] #[assoc(side="left")]
+    <lhs: Expr> "<" <rhs: Expr> => lhs.lt(rhs),
+    #[precedence(level="10")] #[assoc(side="left")]
+    <lhs: Expr> ">=" <rhs: Expr> => lhs.ge(rhs),
+    #[precedence(level="10")] #[assoc(side="left")]
+    <lhs: Expr> "<=" <rhs: Expr> => lhs.le(rhs),
+    #[precedence(level="10")] #[assoc(side="left")]
+    <lhs: Expr> "==" <rhs: Expr> => lhs.eq(rhs),
+    #[precedence(level="10")] #[assoc(side="left")]
+    <lhs: Expr> "!=" <rhs: Expr> => lhs.neq(rhs),
+
+    #[precedence(level="11")] #[assoc(side="left")]
+    <lhs: Expr> "and" <rhs: Expr> => lhs.and(rhs),
+    #[precedence(level="12")] #[assoc(side="left")]
+    <lhs: Expr> "or" <rhs: Expr> => lhs.or(rhs),
+
+    #[precedence(level="15")]
+    <lisp_code: Decorator> <operand: Expr?> =>? {
+        let expr_parser = ExprParser::new();
+        let eval_result = match eval_decorator(lisp_code, operand) {
+            Ok(eval_result) => eval_result,
+            Err(err) => return Err(lalrpop_util::ParseError::User {
+                error: ParseError::Preprocessor(format!("Error evaluating decorator: {}", err))
+            }),
+        };
+
+        let tokens = tokenize(&eval_result);
+        let parsed = expr_parser.parse(tokens);
+        let result = match parsed {
+            Ok(parsed) => Ok(parsed),
+            Err(err) => Err(lalrpop_util::ParseError::User {
+                error: ParseError::Preprocessor(format!("Error parsing result from decorator: {:?}", err))
+            }),
+        };
+        // println!("GOT BACK RESULT: {:?}", result);
+        result
+    },
+
+    // #[precedence(level="0")]
+    // <lisp_code: Attribute> =>? {
+    //     let expr_parser = ExprParser::new();
+    //     let eval_result = match eval_attribute(lisp_code) {
+    //         Ok(eval_result) => eval_result,
+    //         Err(err) => return Err(lalrpop_util::ParseError::User {
+    //             error: ParseError::Preprocessor(format!("Error evaluating attribute: {}", err))
+    //         }),
+    //     };
+
+    //     let tokens = tokenize(&eval_result);
+    //     let parsed = expr_parser.parse(tokens);
+    //     match parsed {
+    //         Ok(parsed) => Ok(parsed),
+    //         Err(err) => Err(lalrpop_util::ParseError::User {
+    //             error: ParseError::Preprocessor(format!("Error parsing attribute: {:?}", err))
+    //         }),
+    //     }
+    // },
+}
+
+pub ConstExpr: ConstExpr = {
+    ConstPrec3 => <>,
+}
+
+ConstPrec3: ConstExpr = {
+    <poly: ConstPrec3> <ty_args: TemplateArgs> => poly.monomorphize(ty_args),
+    ConstPrec2 => <>,
+}
+
+ConstPrec2: ConstExpr = {
+    <e: ConstPrec2> "." <field: Symbol> => e.field(ConstExpr::Symbol(field)),
+    <e: ConstPrec2> "." <field: Integer> => e.field(ConstExpr::Int(field)),
+    
+    ConstPrec1 => <>,
+}
+
+ConstPrec1: ConstExpr = {
+    Tuple<ConstExpr> => {
+        let vals = <>;
+        if vals.len() == 1 {
+            vals.into_iter().next().unwrap()
+        } else {
+            ConstExpr::Tuple(vals)
+        }
+    },
+    Array<ConstExpr> => {
+        let vals = <>;
+        if vals.len() == 1 {
+            vals.into_iter().next().unwrap()
+        } else {
+            ConstExpr::Array(vals)
+        }
+    },
+    StructValue<Symbol, ConstExpr> => ConstExpr::Struct(<>),
+
+    ConstAtom => <>,
+}
+
+ConstAtom: ConstExpr = {
+    String => {
+        let ch = <>.chars()
+            .map(ConstExpr::Char)
+            // Add a null terminator
+            .chain(std::iter::once(ConstExpr::Char('\0')))
+            .collect();
+        ConstExpr::Array(ch)
+    },
+    Integer => ConstExpr::Int(<>),
+    Float => ConstExpr::Float(<>),
+    Char => ConstExpr::Char(<>),
+    Boolean => ConstExpr::Bool(<>),
+    "def" <args: Tuple<(<Mutability?> <Symbol> ":" <Type>)>> ":" <ret: Type> "{" <body: Suite> "}" => {
+        let args: Vec<_> = args.into_iter().map(|(mutability, name, ty)| (name, mutability.unwrap_or(Mutability::Immutable), ty)).collect();
+        ConstExpr::Proc(Procedure::new(None, args, ret, body))
+    },
+    <name: Symbol> => {
+        match name.as_str() {
+            "Int" => ConstExpr::Type(Type::Int),
+            "Float" => ConstExpr::Type(Type::Float),
+            "Bool" => ConstExpr::Type(Type::Bool),
+            "Char" => ConstExpr::Type(Type::Char),
+            "Cell" => ConstExpr::Type(Type::Cell),
+            _ => ConstExpr::Symbol(name),
+        }
+    },
+    "null" => ConstExpr::Null,
+    "none" => ConstExpr::None,
+}
+
+// Allow trailing separators
+Delimited<T, Sep>: Vec<T> = {
+    // <es: Delimited<T, Sep>> Sep <e: T> => {let mut es = es; es.push(e); es },
+    // <es: Delimited<T, Sep>> Sep => es,
+    // <e: T> => vec![e],
+    <es: Delimited<T, Sep>> Sep <e: T> => {let mut es = es; es.push(e); es },
+    <e: T> => vec![e]
+}
+
+// A comma separated list of expressions in parentheses
+Tuple<T>: Vec<T> = {
+    "(" <es: CommaSep<T>> ")" => es,
+    "(" ")" => vec![],
+}
+
+// A comma separated list of expressions in parentheses
+TupleAtLeastOne<T>: Vec<T> = {
+    "(" <head: (<T> ",")+> <last: T> ")" => {
+        let mut head = head;
+        head.push(last);
+        head
+    },
+    "(" <head: (<T> ",")+> ")" => head,
+}
+
+// A comma separated list of expressions in square brackets
+Array<T>: Vec<T> = {
+    "[" <es: CommaSep<T>> "]" => es,
+    "[" "]" => vec![],
+}
+
+// A comma separated list of expressions
+CommaSep<T>: Vec<T> = {
+    <es: Delimited<T, ",">> => es,
+}
+
+StructValue<K, V>: BTreeMap<K, V> = {
+    Dict<K, "=", V> => {
+        let mut map = BTreeMap::new();
+        for (k, v) in <> {
+            map.insert(k, v);
+        }
+        map
+    }
+}
+
+StructType<K, V>: BTreeMap<K, V> = {
+    Dict<K, ":", V> => {
+        let mut map = BTreeMap::new();
+        for (k, v) in <> {
+            map.insert(k, v);
+        }
+        map
+    }
+}
+
+pub Symbol: String = "symbol" => symbol(<>);
+Integer: i64 = "int" => integer(<>);
+Float: f64 = "float" => float(<>);
+Char: char = "char" => character(<>);
+Boolean: bool = "bool" => boolean(<>);
+String: String = "string" => string(<>);
+Decorator: sage_lisp::Expr = "decorator" => decorator(<>);
+Attribute: sage_lisp::Expr = "attribute" => attribute(<>);
+
+Mutability: Mutability = {
+    "mut" => Mutability::Mutable,
+    "const" => Mutability::Immutable,
+}
+
+// A comma separated list of key value pairs, separated by some binding token
+Dict<K, Bind, V>: Vec<(K, V)> = {
+    "{" <es: CommaSep<(<K> Bind <V>)>> "}" => es,
+    "{" "}" => vec![],
+}

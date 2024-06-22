@@ -305,6 +305,29 @@ impl Compile for Expr {
                         }
                     }
 
+                    Expr::ConstExpr(ConstExpr::Member(val, name)) => {
+                        // Try to get the member of the underlying type.
+                        if self_clone.is_method_call(env)? {
+                            self_clone
+                                .transform_method_call(env)?
+                                .compile_expr(env, output)?;
+                        } else {
+                            // Push the arguments to the procedure on the stack.
+                            for arg in &args {
+                                // Compile the argument (push it on the stack)
+                                arg.clone().compile_expr(env, output)?;
+                            }
+
+                            // Compile it normally:
+                            // Push the procedure on the stack.
+                            val.field(*name).compile_expr(env, output)?;
+                            // Pop the "function pointer" from the stack.
+                            output.op(CoreOp::Pop(Some(A), 1));
+                            // Call the procedure on the arguments.
+                            output.op(CoreOp::Call(A));
+                        }
+                    }
+
                     Expr::Member(val, name) => {
                         // Try to get the member of the underlying type.
                         if self_clone.is_method_call(env)? {
@@ -988,6 +1011,11 @@ impl Compile for ConstExpr {
                         }
                     }
                     _ => {
+                        // Try to compile with a runtime expression.
+                        if let Ok(result) = Expr::ConstExpr(*container.clone()).field(*member.clone()).compile_expr(env, output) {
+                            return Ok(result);
+                        }
+
                         return Err(Error::MemberNotFound((*container).into(), *member));
                     }
                 }
