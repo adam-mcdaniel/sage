@@ -8,7 +8,7 @@ use crate::asm::{AssemblyProgram, CoreOp, StandardOp};
 use crate::lir::{Compile, Env, Error, GetType, Type, TypeCheck};
 use core::fmt;
 use std::hash::{Hash, Hasher};
-
+use serde_derive::{Deserialize, Serialize};
 use log::trace;
 
 /// A builtin pseudo-procedure implemented in the core assembly variant.
@@ -18,7 +18,7 @@ use log::trace;
 ///
 /// The arguments of the procedure are pushed to the stack in the order they are given.
 /// The builtin must pop its arguments. The return value is left on the stack in their place by the builtin.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CoreBuiltin {
     /// The name of the builtin. This isn't used in compilation, just for debugging.
     pub name: String,
@@ -84,7 +84,7 @@ impl Eq for CoreBuiltin {}
 /// The builtin must pop its arguments. The return value is left on the stack in their place by the builtin.
 ///
 /// This should be used to implement important standard library functions, like `alloc` and `free`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct StandardBuiltin {
     /// The name of the builtin. This isn't used in compilation, just for debugging.
     pub name: String,

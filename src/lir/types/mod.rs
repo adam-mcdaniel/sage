@@ -8,6 +8,7 @@ use core::fmt;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::sync::Mutex;
+use serde_derive::{Deserialize, Serialize};
 
 mod check;
 mod inference;
@@ -24,7 +25,7 @@ use log::*;
 /// An immutable pointer can only be used to read the value it points to.
 /// An `Any` pointer can be used to read or write the value it points to; this is
 /// used to override pointer access protections for compiler-builtins.
-#[derive(Copy, Clone, Default, Debug, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Mutability {
     /// Mutable access to a value.
     Mutable,
@@ -117,7 +118,7 @@ impl fmt::Display for Mutability {
 }
 
 /// The representation of a type in the LIR type system.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum Type {
     /// Bind a type to a name in a temporary scope.
     Let(String, Box<Self>, Box<Self>),

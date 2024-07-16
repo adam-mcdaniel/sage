@@ -12,11 +12,12 @@ use crate::asm::{CoreOp, Error, Location, GP};
 
 use core::fmt;
 use std::collections::HashMap;
+use serde_derive::{Serialize, Deserialize};
 
 use log::*;
 
 /// A lookup for all the global variables in an assembly program.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Globals {
     /// The locations, offsets, and sizes of global variables.
     globals: HashMap<String, (Location, usize, usize)>,

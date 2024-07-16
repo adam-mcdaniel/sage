@@ -6,7 +6,7 @@
 
 use super::{
     Compile, ConstExpr, Declaration, Error, Expr, FFIProcedure, GetSize, GetType, Mutability,
-    PolyProcedure, Procedure, Type,
+    PolyProcedure, Procedure, Type, UnaryOp, BinaryOp, TernaryOp, AssignOp
 };
 use crate::asm::{AssemblyProgram, Globals, Location};
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
@@ -22,6 +22,15 @@ use log::*;
 /// This is essentially the scope of an expression.
 #[derive(Clone, Debug)]
 pub struct Env {
+    /// Unary Operators
+    unops: Arc<HashMap<String, Box<dyn UnaryOp>>>,
+    /// Binary Operators
+    binops: Arc<HashMap<String, Box<dyn BinaryOp>>>,
+    /// Ternary Operators
+    ternops: Arc<HashMap<String, Box<dyn TernaryOp>>>,
+    /// Assignment Operators
+    assignops: Arc<HashMap<String, Box<dyn AssignOp>>>,
+
     /// The types (and also their sizes) defined under the environment.
     types: Arc<HashMap<String, Type>>,
     /// The constants defined under the environment.
@@ -58,6 +67,76 @@ pub struct Env {
 impl Default for Env {
     fn default() -> Self {
         Self {
+            unops: Arc::new({
+                let mut map: HashMap<String, Box<dyn UnaryOp>>  = HashMap::new();
+                map.insert("!".to_owned(), Box::new(crate::lir::Not));
+                map.insert("-".to_owned(), Box::new(crate::lir::Negate));
+                map.insert("~".to_owned(), Box::new(crate::lir::BitwiseNot));
+                map.insert("get".to_owned(), Box::new(crate::lir::Get));
+                map.insert("put".to_owned(), Box::new(crate::lir::Put::Display));
+                map.insert("debug".to_owned(), Box::new(crate::lir::Put::Debug));
+                map.insert("new".to_owned(), Box::new(crate::lir::New));
+                map.insert("del".to_owned(), Box::new(crate::lir::Delete));
+                map.insert("tag".to_owned(), Box::new(crate::lir::Tag));
+                map.insert("data".to_owned(), Box::new(crate::lir::Data));
+
+                map
+            }),
+            binops: Arc::new({
+                let mut map: HashMap<String, Box<dyn BinaryOp>> = HashMap::new();
+                map.insert("+".to_owned(), Box::new(crate::lir::Add));
+                map.insert("-".to_owned(), Box::new(crate::lir::Arithmetic::Subtract));
+                map.insert("*".to_owned(), Box::new(crate::lir::Arithmetic::Multiply));
+                map.insert("/".to_owned(), Box::new(crate::lir::Arithmetic::Divide));
+                map.insert("%".to_owned(), Box::new(crate::lir::Arithmetic::Remainder));
+                map.insert("==".to_owned(), Box::new(crate::lir::Comparison::Equal));
+                map.insert("!=".to_owned(), Box::new(crate::lir::Comparison::NotEqual));
+                map.insert("<".to_owned(), Box::new(crate::lir::Comparison::LessThan));
+                map.insert("<=".to_owned(), Box::new(crate::lir::Comparison::LessThanOrEqual));
+                map.insert(">".to_owned(), Box::new(crate::lir::Comparison::GreaterThan));
+                map.insert(">=".to_owned(), Box::new(crate::lir::Comparison::GreaterThanOrEqual));
+                
+                map.insert("&&".to_owned(), Box::new(crate::lir::And));
+                map.insert("||".to_owned(), Box::new(crate::lir::Or));
+                map.insert("&".to_owned(), Box::new(crate::lir::BitwiseAnd));
+                map.insert("|".to_owned(), Box::new(crate::lir::BitwiseOr));
+                map.insert("^".to_owned(), Box::new(crate::lir::BitwiseXor));
+                // map.insert("<<".to_owned(), Box::new(crate::lir::ShiftLeft));
+                // map.insert(">>".to_owned(), Box::new(crate::lir::ShiftRight));
+                // map.insert(">>>".to_owned(), Box::new(crate::lir::UnsignedShiftRight));
+                // map.insert("=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::Assign))));
+                // map.insert("+=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::Add))));
+                // map.insert("-=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::Subtract))));
+                // map.insert("*=".to_owned(), Box::new(crate:: lir::Assign(Assign::new(crate::lir::AssignOp::Multiply))));
+                // map.insert("/=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::Divide))));
+                // map.insert("%=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::Modulo))));
+                // map.insert("&=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::BitwiseAnd))));
+                // map.insert("|=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::BitwiseOr))));
+                // map.insert("^=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::BitwiseXor))));
+                // map.insert("<<=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::ShiftLeft))));
+                // map.insert(">>=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::ShiftRight))));
+                // map.insert(">>>=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::UnsignedShiftRight))));
+                map
+            }),
+
+            ternops: Arc::new({
+                let mut map: HashMap<String, Box<dyn TernaryOp>> = HashMap::new();
+                map
+            }),
+
+            assignops: Arc::new({
+                let mut map: HashMap<String, Box<dyn AssignOp>> = HashMap::new();
+                map.insert("+=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Add)));
+                map.insert("-=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Subtract)));
+                map.insert("*=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Multiply)));
+                map.insert("/=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Divide)));
+                map.insert("%=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Remainder)));
+                map.insert("&=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::BitwiseAnd)));
+                map.insert("|=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::BitwiseOr)));
+                map.insert("^=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::BitwiseXor)));
+                map
+            }),
+            
             // It is important that we use reference counting for the tables because the environment
             // will be copied many times during the compilation process to create new scopes.
             types: Arc::new(HashMap::new()),
@@ -80,6 +159,22 @@ impl Default for Env {
 }
 
 impl Env {
+    pub(super) fn get_unop(&self, op: &str) -> Option<&Box<dyn UnaryOp>> {
+        self.unops.get(op).map(|op| op)
+    }
+
+    pub(super) fn get_binop(&self, op: &str) -> Option<&Box<dyn BinaryOp>> {
+        self.binops.get(op).map(|op| op)
+    }
+
+    pub(super) fn get_ternop(&self, op: &str) -> Option<&Box<dyn TernaryOp>> {
+        self.ternops.get(op).map(|op| op)
+    }
+
+    pub(super) fn get_assignop(&self, op: &str) -> Option<&Box<dyn AssignOp>> {
+        self.assignops.get(op).map(|op| op)
+    }
+
     /// Create a copy of the current environment but without any variables or arguments defined.
     pub(super) fn new_scope(&self) -> Self {
         Self {

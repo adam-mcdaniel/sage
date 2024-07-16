@@ -221,6 +221,7 @@ impl TypeCheck for Expr {
             }
 
             Self::UnaryOp(unop, expr) => {
+                let unop = env.get_unop(unop).ok_or(Error::UnimplementedOperator(unop.clone()))?;
                 if let Self::Annotated(expr, metadata) = &**expr {
                     return unop
                         .type_check(expr, env)
@@ -229,6 +230,7 @@ impl TypeCheck for Expr {
                 unop.type_check(expr, env)
             }
             Self::BinaryOp(binop, lhs, rhs) => {
+                let binop = env.get_binop(binop).ok_or(Error::UnimplementedOperator(binop.clone()))?;
                 if let Self::Annotated(lhs, metadata) = &**lhs {
                     return binop
                         .type_check(lhs, rhs, env)
@@ -243,6 +245,7 @@ impl TypeCheck for Expr {
                 binop.type_check(lhs, rhs, env)
             }
             Self::TernaryOp(ternop, a, b, c) => {
+                let ternop = env.get_ternop(ternop).ok_or(Error::UnimplementedOperator(ternop.clone()))?;
                 if let Self::Annotated(a, metadata) = &**a {
                     return ternop
                         .type_check(a, b, c, env)
@@ -261,6 +264,7 @@ impl TypeCheck for Expr {
                 ternop.type_check(a, b, c, env)
             }
             Self::AssignOp(op, dst, src) => {
+                let op = env.get_assignop(op).ok_or(Error::UnimplementedOperator(op.clone()))?;
                 if let Self::Annotated(src, metadata) = &**src {
                     return op
                         .type_check(dst, src, env)

@@ -15,10 +15,11 @@ use crate::vm::{self, VirtualMachineProgram};
 use std::{collections::BTreeSet, fmt};
 
 use log::info;
+use serde_derive::{Serialize, Deserialize};
 
 /// A program composed of standard instructions, which can be assembled
 /// into the standard virtual machine instructions.
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct StandardProgram {
     /// The list of standard assembly instructions in the program.
     pub code: Vec<StandardOp>,
@@ -269,7 +270,7 @@ impl From<CoreProgram> for StandardProgram {
 /// that should be implemented for every target possible. Standard instructions
 /// should only not be implemented for targets like physical hardware, where the
 /// program is executed on the bare metal (a custom CPU or FPGA).
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum StandardOp {
     /// Execute a core instruction.
     CoreOp(CoreOp),

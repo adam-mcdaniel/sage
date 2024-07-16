@@ -82,6 +82,8 @@ impl GetType for Expr {
             }
 
             Self::UnaryOp(unop, expr) => {
+                let unop = env.get_unop(unop).ok_or(Error::UnimplementedOperator(unop.clone()))?;
+
                 if let Self::Annotated(expr, metadata) = &**expr {
                     return unop
                         .return_type(expr, env)
@@ -92,6 +94,7 @@ impl GetType for Expr {
                 unop.return_type(expr, env)?
             }
             Self::BinaryOp(binop, lhs, rhs) => {
+                let binop = env.get_binop(binop).ok_or(Error::UnimplementedOperator(binop.clone()))?;
                 // Infer the type of the binary operation
                 // on the two expressions.
                 if let Self::Annotated(lhs, metadata) = &**lhs {
@@ -108,6 +111,8 @@ impl GetType for Expr {
                 binop.return_type(lhs, rhs, env)?
             }
             Self::TernaryOp(ternop, a, b, c) => {
+                let ternop = env.get_ternop(ternop).ok_or(Error::UnimplementedOperator(ternop.clone()))?;
+
                 if let Self::Annotated(a, metadata) = &**a {
                     return ternop
                         .return_type(a, b, c, env)
@@ -128,6 +133,8 @@ impl GetType for Expr {
                 ternop.return_type(a, b, c, env)?
             }
             Self::AssignOp(op, dst, src) => {
+                let op = env.get_assignop(op).ok_or(Error::UnimplementedOperator(op.clone()))?;
+
                 if let Self::Annotated(dst, metadata) = &**dst {
                     return op
                         .return_type(dst, src, env)

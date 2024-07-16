@@ -18,9 +18,10 @@ use log::*;
 use core::fmt;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
+use serde_derive::{Deserialize, Serialize};
 
 /// A compiletime expression.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ConstExpr {
     // A constant expression annotated with its source code location.
     Annotated(Box<Self>, Annotation),

@@ -14,11 +14,12 @@ use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 
 use log::*;
+use serde_derive::{Deserialize, Serialize};
 
 /// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
 ///       This way, we don't overflow the stack with several clones of the environment.
 /// A runtime expression.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub enum Expr {
     /// An expression along with data about its source code location.
     /// This is used for error reporting.
@@ -59,13 +60,13 @@ pub enum Expr {
     IfLet(Pattern, Box<Self>, Box<Self>, Box<Self>),
 
     /// Perform a unary operation on two expressions.
-    UnaryOp(Box<dyn UnaryOp>, Box<Self>),
+    UnaryOp(String, Box<Self>),
     /// Perform a binary operation on two expressions.
-    BinaryOp(Box<dyn BinaryOp>, Box<Self>, Box<Self>),
+    BinaryOp(String, Box<Self>, Box<Self>),
     /// Perform a ternary operation on three expressions.
-    TernaryOp(Box<dyn TernaryOp>, Box<Self>, Box<Self>, Box<Self>),
+    TernaryOp(String, Box<Self>, Box<Self>, Box<Self>),
     /// Perform an assignment operation on two expressions.
-    AssignOp(Box<dyn AssignOp>, Box<Self>, Box<Self>),
+    AssignOp(String, Box<Self>, Box<Self>),
 
     /// Reference this expression (i.e. get a pointer to it).
     Refer(Mutability, Box<Self>),
@@ -501,8 +502,8 @@ impl Expr {
     }
 
     /// Apply a unary operation to this expression.
-    pub fn unop(self, op: impl UnaryOp + 'static) -> Self {
-        Self::UnaryOp(Box::new(op), Box::new(self))
+    pub fn unop(self, op: impl ToString) -> Self {
+        Self::UnaryOp(op.to_string(), Box::new(self))
     }
 
     /// Logical not this expression.
@@ -576,8 +577,8 @@ impl Expr {
         self.binop(And, other)
     }
 
-    fn binop(self, op: impl BinaryOp + 'static, other: impl Into<Self>) -> Self {
-        Expr::BinaryOp(Box::new(op), Box::new(self), Box::new(other.into()))
+    fn binop(self, op: impl ToString, other: impl Into<Self>) -> Self {
+        Expr::BinaryOp(op.to_string(), Box::new(self), Box::new(other.into()))
     }
 
     /// Logical or this expression with another.
@@ -758,13 +759,13 @@ impl Expr {
     }
 
     /// Perform an AssignOp on this expression.
-    pub fn assign_op(self, op: impl AssignOp + 'static, e: impl Into<Self>) -> Self {
-        Expr::AssignOp(Box::new(op), Box::new(self), Box::new(e.into()))
+    pub fn assign_op(self, op: impl ToString, e: impl Into<Self>) -> Self {
+        Expr::AssignOp(op.to_string(), Box::new(self), Box::new(e.into()))
     }
 
     /// Perform an AssignOp on this expression.
-    pub fn assign(self, op: Box<dyn AssignOp>, e: impl Into<Self>) -> Self {
-        Expr::AssignOp(op, Box::new(self), Box::new(e.into()))
+    pub fn assign(self, op: impl ToString, e: impl Into<Self>) -> Self {
+        Expr::AssignOp(op.to_string(), Box::new(self), Box::new(e.into()))
     }
 }
 
@@ -848,10 +849,10 @@ impl fmt::Display for Expr {
                 write!(f, "{ty} of {variant} {val}")
             }
 
-            Self::UnaryOp(op, x) => write!(f, "{}", op.display(x)),
-            Self::BinaryOp(op, x, y) => write!(f, "{}", op.display(x, y)),
-            Self::TernaryOp(op, x, y, z) => write!(f, "{}", op.display(x, y, z)),
-            Self::AssignOp(op, x, y) => write!(f, "{}", op.display(x, y)),
+            Self::UnaryOp(op, x) => write!(f, "{op}{x}"),
+            Self::BinaryOp(op, x, y) => write!(f, "{x}{op}{y}"),
+            Self::TernaryOp(op, x, y, z) => write!(f, "{x}{op}{y}, {z}"),
+            Self::AssignOp(op, x, y) => write!(f, "{x} {op}= {y}"),
 
             Self::Member(val, field) => write!(f, "({val}).{field}"),
             Self::Index(val, idx) => write!(f, "{val}[{idx}]"),
@@ -975,163 +976,164 @@ impl PartialEq for Expr {
     }
 }
 
-impl Hash for Expr {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        use Expr::*;
-        match self {
-            ConstExpr(expr) => {
-                state.write_u8(0);
-                expr.hash(state)
-            }
-            Many(exprs) => {
-                state.write_u8(1);
-                exprs.hash(state)
-            }
-            Match(expr, branches) => {
-                state.write_u8(2);
-                expr.hash(state);
-                branches.hash(state);
-            }
-            IfLet(pat, expr, t, e) => {
-                state.write_u8(3);
-                pat.hash(state);
-                expr.hash(state);
-                t.hash(state);
-                e.hash(state);
-            }
+// impl Hash for Expr {
+//     fn hash<H: Hasher>(&self, state: &mut H) {
+//         use Expr::*;
+//         match self {
+//             ConstExpr(expr) => {
+//                 state.write_u8(0);
+//                 expr.hash(state)
+//             }
+//             Many(exprs) => {
+//                 state.write_u8(1);
+//                 exprs.hash(state)
+//             }
+//             Match(expr, branches) => {
+//                 state.write_u8(2);
+//                 expr.hash(state);
+//                 branches.hash(state);
+//             }
+//             IfLet(pat, expr, t, e) => {
+//                 state.write_u8(3);
+//                 pat.hash(state);
+//                 expr.hash(state);
+//                 t.hash(state);
+//                 e.hash(state);
+//             }
 
-            While(cond, body) => {
-                state.write_u8(2);
-                cond.hash(state);
-                body.hash(state);
-            }
+//             While(cond, body) => {
+//                 state.write_u8(2);
+//                 cond.hash(state);
+//                 body.hash(state);
+//             }
 
-            If(cond, then, else_) => {
-                state.write_u8(3);
-                cond.hash(state);
-                then.hash(state);
-                else_.hash(state);
-            }
+//             If(cond, then, else_) => {
+//                 state.write_u8(3);
+//                 cond.hash(state);
+//                 then.hash(state);
+//                 else_.hash(state);
+//             }
 
-            When(cond, then, else_) => {
-                state.write_u8(4);
-                cond.hash(state);
-                then.hash(state);
-                else_.hash(state);
-            }
+//             When(cond, then, else_) => {
+//                 state.write_u8(4);
+//                 cond.hash(state);
+//                 then.hash(state);
+//                 else_.hash(state);
+//             }
 
-            UnaryOp(op, val) => {
-                state.write_u8(5);
-                op.display(val).hash(state);
-                val.hash(state);
-            }
+//             UnaryOp(op, val) => {
+//                 state.write_u8(5);
+//                 // op.display(val).hash(state);
+//                 op.hash(state);
+//                 val.hash(state);
+//             }
 
-            BinaryOp(op, lhs, rhs) => {
-                state.write_u8(6);
-                op.display(lhs, rhs).hash(state);
-                lhs.hash(state);
-                rhs.hash(state);
-            }
+//             BinaryOp(op, lhs, rhs) => {
+//                 state.write_u8(6);
+//                 op.display(lhs, rhs).hash(state);
+//                 lhs.hash(state);
+//                 rhs.hash(state);
+//             }
 
-            TernaryOp(op, a, b, c) => {
-                state.write_u8(7);
-                op.display(a, b, c).hash(state);
-                a.hash(state);
-                b.hash(state);
-                c.hash(state);
-            }
+//             TernaryOp(op, a, b, c) => {
+//                 state.write_u8(7);
+//                 op.display(a, b, c).hash(state);
+//                 a.hash(state);
+//                 b.hash(state);
+//                 c.hash(state);
+//             }
 
-            AssignOp(op, lhs, rhs) => {
-                state.write_u8(8);
-                op.display(lhs, rhs).hash(state);
-                lhs.hash(state);
-                rhs.hash(state);
-            }
+//             AssignOp(op, lhs, rhs) => {
+//                 state.write_u8(8);
+//                 op.display(lhs, rhs).hash(state);
+//                 lhs.hash(state);
+//                 rhs.hash(state);
+//             }
 
-            Refer(m, val) => {
-                state.write_u8(9);
-                m.hash(state);
-                val.hash(state);
-            }
+//             Refer(m, val) => {
+//                 state.write_u8(9);
+//                 m.hash(state);
+//                 val.hash(state);
+//             }
 
-            Deref(val) => {
-                state.write_u8(10);
-                val.hash(state);
-            }
+//             Deref(val) => {
+//                 state.write_u8(10);
+//                 val.hash(state);
+//             }
 
-            DerefMut(dst, src) => {
-                state.write_u8(11);
-                dst.hash(state);
-                src.hash(state);
-            }
+//             DerefMut(dst, src) => {
+//                 state.write_u8(11);
+//                 dst.hash(state);
+//                 src.hash(state);
+//             }
 
-            Apply(func, args) => {
-                state.write_u8(12);
-                func.hash(state);
-                args.hash(state);
-            }
+//             Apply(func, args) => {
+//                 state.write_u8(12);
+//                 func.hash(state);
+//                 args.hash(state);
+//             }
 
-            Return(val) => {
-                state.write_u8(13);
-                val.hash(state);
-            }
+//             Return(val) => {
+//                 state.write_u8(13);
+//                 val.hash(state);
+//             }
 
-            Array(vals) => {
-                state.write_u8(14);
-                vals.hash(state);
-            }
+//             Array(vals) => {
+//                 state.write_u8(14);
+//                 vals.hash(state);
+//             }
 
-            Tuple(vals) => {
-                state.write_u8(15);
-                vals.hash(state);
-            }
+//             Tuple(vals) => {
+//                 state.write_u8(15);
+//                 vals.hash(state);
+//             }
 
-            Union(ty, field, val) => {
-                state.write_u8(16);
-                ty.hash(state);
-                field.hash(state);
-                val.hash(state);
-            }
+//             Union(ty, field, val) => {
+//                 state.write_u8(16);
+//                 ty.hash(state);
+//                 field.hash(state);
+//                 val.hash(state);
+//             }
 
-            EnumUnion(ty, field, val) => {
-                state.write_u8(17);
-                ty.hash(state);
-                field.hash(state);
-                val.hash(state);
-            }
+//             EnumUnion(ty, field, val) => {
+//                 state.write_u8(17);
+//                 ty.hash(state);
+//                 field.hash(state);
+//                 val.hash(state);
+//             }
 
-            Struct(fields) => {
-                state.write_u8(18);
-                fields.hash(state);
-            }
+//             Struct(fields) => {
+//                 state.write_u8(18);
+//                 fields.hash(state);
+//             }
 
-            As(val, ty) => {
-                state.write_u8(19);
-                val.hash(state);
-                ty.hash(state);
-            }
+//             As(val, ty) => {
+//                 state.write_u8(19);
+//                 val.hash(state);
+//                 ty.hash(state);
+//             }
 
-            Member(val, field) => {
-                state.write_u8(20);
-                val.hash(state);
-                field.hash(state);
-            }
+//             Member(val, field) => {
+//                 state.write_u8(20);
+//                 val.hash(state);
+//                 field.hash(state);
+//             }
 
-            Index(val, idx) => {
-                state.write_u8(21);
-                val.hash(state);
-                idx.hash(state);
-            }
+//             Index(val, idx) => {
+//                 state.write_u8(21);
+//                 val.hash(state);
+//                 idx.hash(state);
+//             }
 
-            Annotated(expr, _) => {
-                expr.hash(state);
-            }
+//             Annotated(expr, _) => {
+//                 expr.hash(state);
+//             }
 
-            Declare(decl, expr) => {
-                state.write_u8(22);
-                decl.hash(state);
-                expr.hash(state);
-            }
-        }
-    }
-}
+//             Declare(decl, expr) => {
+//                 state.write_u8(22);
+//                 decl.hash(state);
+//                 expr.hash(state);
+//             }
+//         }
+//     }
+// }

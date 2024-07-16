@@ -8,8 +8,10 @@
 
 use core::fmt::{Display, Formatter, Result as FmtResult};
 
+use serde_derive::{Serialize, Deserialize};
+
 /// The different axes an input or output might use.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum Axis {
     X,
     Y,
@@ -17,7 +19,7 @@ pub enum Axis {
 }
 
 /// The different directions a D-Pad a might use.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum Direction {
     Up,
     Down,
@@ -26,7 +28,7 @@ pub enum Direction {
 }
 
 /// The different output colors a program might use.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum Color {
     /// Black
     Black,
@@ -51,7 +53,7 @@ pub enum Color {
 }
 
 /// The different types of input modes a program might use.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum InputMode {
     ///////////////////////////////////////////////////////////////
     /// Standard input modes
@@ -182,7 +184,7 @@ pub enum InputMode {
 }
 
 /// The different types of output modes a program might use.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum OutputMode {
     ///////////////////////////////////////////////////////////////
     /// Standard output modes
@@ -298,11 +300,11 @@ pub enum OutputMode {
 }
 
 /// The channel to use for a given I/O mode.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Channel(pub usize);
 
 /// An input source for a program.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Input {
     /// The mode of the input.
     pub mode: InputMode,
@@ -344,7 +346,7 @@ impl Input {
 }
 
 /// An output destination for a program.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct Output {
     /// The mode of the output.
     pub mode: OutputMode,

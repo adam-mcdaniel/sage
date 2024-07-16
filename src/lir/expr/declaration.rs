@@ -14,9 +14,10 @@ use log::*;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
+use serde_derive::{Deserialize, Serialize};
 
 /// A declaration of a variable, function, type, etc.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Declaration {
     /// A static variable declaration.
     StaticVar(String, Mutability, Type, ConstExpr),

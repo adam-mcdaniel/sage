@@ -17,6 +17,7 @@ use std::hash::Hash;
 use std::sync::{Arc, Mutex, RwLock};
 
 use log::trace;
+use serde_derive::{Deserialize, Serialize};
 
 // TODO: Do this without lazy_static. This is used to create unique mangled IDs for each compiled function.
 use lazy_static::lazy_static;
@@ -28,7 +29,7 @@ lazy_static! {
 /// A monomorphic procedure of LIR code which can be applied to a list of arguments.
 /// A procedure is compiled down to a label in the assembly code.
 /// The label is called with the `Call` instruction.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Procedure {
     /// The name of the procedure, if it was given one.
     common_name: Option<String>,
@@ -40,6 +41,8 @@ pub struct Procedure {
     ret: Type,
     /// The procedure's body expression
     body: Box<Expr>,
+
+    #[serde(skip)]
     has_type_checked: Arc<RwLock<bool>>,
 }
 

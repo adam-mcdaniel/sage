@@ -5,12 +5,14 @@
 
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
+use serde_derive::{Serialize, Deserialize};
+
 /// This is an FFI binding, which is used to call a foreign function in the virtual machine code.
 ///
 /// The name is the symbol for the foreign function. The input cells is the number of cells that
 /// the foreign function will read from the FFI channel. The output cells is the number of cells
 /// that the foreign function will write to the FFI channel.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct FFIBinding {
     pub name: String,
     pub input_cells: usize,

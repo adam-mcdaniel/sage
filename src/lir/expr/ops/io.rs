@@ -59,7 +59,7 @@ impl UnaryOp for Get {
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_float()));
         } else {
             return Err(Error::UnsupportedOperation(Expr::UnaryOp(
-                self.clone_box(),
+                self.name(),
                 Box::new(Expr::ConstExpr(ConstExpr::None)),
             )));
         }

@@ -35,7 +35,7 @@ impl UnaryOp for New {
         output.op(CoreOp::Set(A, size as i64));
         output.std_op(StandardOp::Alloc(A)).map_err(|_| {
             Error::UnsupportedOperation(Expr::UnaryOp(
-                self.clone_box(),
+                self.name(),
                 Box::new(Expr::ConstExpr(ConstExpr::None)),
             ))
         })?;
@@ -97,7 +97,7 @@ impl UnaryOp for Delete {
     ) -> Result<(), Error> {
         output.std_op(StandardOp::Free(SP.deref())).map_err(|_| {
             Error::UnsupportedOperation(Expr::UnaryOp(
-                self.clone_box(),
+                self.name(),
                 Box::new(Expr::ConstExpr(ConstExpr::None)),
             ))
         })?;

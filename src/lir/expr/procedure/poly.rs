@@ -4,20 +4,21 @@
 //! This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 //! A procedure is compiled down to a label in the assembly code.
 use crate::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
-use core::fmt;
-use log::{debug, error, trace};
 use std::{
+    fmt,
     collections::HashMap,
     sync::{Arc, RwLock},
 };
 use std::{hash::Hash, hash::Hasher};
-
 use super::Procedure;
+
+use serde_derive::{Serialize, Deserialize};
+use log::{debug, error, trace};
 
 /// A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 /// This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 /// A procedure is compiled down to a label in the assembly code.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PolyProcedure {
     /// The name of the procedure.
     name: String,
@@ -30,7 +31,9 @@ pub struct PolyProcedure {
     /// The body of the procedure.
     body: Box<Expr>,
     /// The monomorphs of the procedure.
+    #[serde(skip)]
     monomorphs: Arc<RwLock<HashMap<String, Procedure>>>,
+    #[serde(skip)]
     has_type_checked: Arc<RwLock<bool>>,
 }
 

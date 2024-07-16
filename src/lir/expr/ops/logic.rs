@@ -153,36 +153,36 @@ impl UnaryOp for Not {
 
 impl Debug for And {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "and")
+        write!(f, "&&")
     }
 }
 
 impl Display for And {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "and")
+        write!(f, "&&")
     }
 }
 
 impl Debug for Or {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "or")
+        write!(f, "||")
     }
 }
 
 impl Display for Or {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "or")
+        write!(f, "||")
     }
 }
 
 impl Debug for Not {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "not")
+        write!(f, "!")
     }
 }
 
 impl Display for Not {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "not")
+        write!(f, "!")
     }
 }

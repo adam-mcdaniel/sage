@@ -101,6 +101,7 @@ impl Compile for Expr {
             }
 
             Self::UnaryOp(unop, expr) => {
+                let unop = env.get_unop(&unop).ok_or(Error::UnimplementedOperator(unop))?.clone();
                 if let Expr::Annotated(expr, metadata) = *expr {
                     return unop
                         .compile(&expr, env, output)
@@ -111,6 +112,7 @@ impl Compile for Expr {
                 unop.compile(&expr, env, output)?;
             }
             Self::BinaryOp(binop, lhs, rhs) => {
+                let binop = env.get_binop(&binop).ok_or(Error::UnimplementedOperator(binop))?.clone();
                 if let Expr::Annotated(lhs, metadata) = &*lhs {
                     return binop
                         .compile(lhs, &rhs, env, output)
@@ -126,6 +128,7 @@ impl Compile for Expr {
                 binop.compile(&lhs, &rhs, env, output)?;
             }
             Self::TernaryOp(ternop, a, b, c) => {
+                let ternop = env.get_ternop(&ternop).ok_or(Error::UnimplementedOperator(ternop))?.clone();
                 if let Expr::Annotated(a, metadata) = &*a {
                     return ternop
                         .compile(a, &b, &c, env, output)
@@ -146,6 +149,7 @@ impl Compile for Expr {
                 ternop.compile(&a, &b, &c, env, output)?;
             }
             Self::AssignOp(op, dst, src) => {
+                let op = env.get_assignop(&op).ok_or(Error::UnimplementedOperator(op))?.clone();
                 if let Expr::Annotated(dst, metadata) = &*dst {
                     return op
                         .compile(dst, &src, env, output)

@@ -8,6 +8,7 @@ use crate::asm::{AssemblyProgram, StandardOp};
 use crate::lir::{Compile, Env, Error, GetSize, GetType, Type, TypeCheck};
 use crate::side_effects::FFIBinding;
 use core::fmt::{Display, Formatter, Result as FmtResult};
+use serde_derive::{Serialize, Deserialize};
 
 use log::debug;
 
@@ -15,7 +16,7 @@ use log::debug;
 /// This is compiled down to a standard assembly `Call` instruction.
 /// The label is the name of the foreign function. The types determine the
 /// size of the cells for the arguments and return value.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct FFIProcedure {
     /// The name of the foreign function.
     name: String,
