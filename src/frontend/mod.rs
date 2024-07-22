@@ -4,6 +4,7 @@
 //! the source code and converting it into the LIR.
 
 mod parse;
+mod nom_parse;
 use crate::side_effects::Output;
 use no_comment::{languages, IntoWithoutComments};
 use parse::*;

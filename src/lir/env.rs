@@ -968,7 +968,18 @@ impl Env {
     pub(super) fn define_const(&mut self, name: impl ToString, e: ConstExpr) {
         let name = name.to_string();
         trace!("Defining constant {name} as {e}");
+        match e.get_type(self) {
+            Ok(Type::Type(t)) => {
+                trace!("{name} is a type declaration for {t}");
+                self.define_type(name.clone(), *t);
+            }
+            _ => {
+                trace!("{name} is a constant declaration for {e}");
+            }
+        }
+
         Arc::make_mut(&mut self.consts).insert(name, e);
+
     }
 
     /// Get a constant definition from this environment.

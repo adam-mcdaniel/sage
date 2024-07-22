@@ -653,6 +653,19 @@ impl Compile for Expr {
 
             // Compile a member access operation.
             Self::Member(ref val, ref member) => {
+                if let Self::Annotated(expr, metadata) = val.as_ref() {
+                    return Self::Member(expr.clone(), member.clone())
+                        .compile_expr(env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+
+                if let Self::ConstExpr(val) = val.as_ref() {
+                    // Write more elegantly
+                    if let Ok(val) = val.clone().field(member.clone()).eval(env) {
+                        return val.compile_expr(env, output);
+                    }
+                }
+
                 // If the value we're getting a field from is a pointer,
                 // then dereference it and get the field from the value.
                 match val.get_type(env)? {
