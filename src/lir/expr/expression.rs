@@ -577,7 +577,7 @@ impl Expr {
         self.binop(And, other)
     }
 
-    fn binop(self, op: impl ToString, other: impl Into<Self>) -> Self {
+    pub(crate) fn binop(self, op: impl ToString, other: impl Into<Self>) -> Self {
         Expr::BinaryOp(op.to_string(), Box::new(self), Box::new(other.into()))
     }
 

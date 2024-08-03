@@ -112,6 +112,11 @@ impl ConstExpr {
         // Self::Template(params, Box::new(self.clone()))
     }
 
+    /// Evaluate a variable in the current scope.
+    pub fn var(var: impl ToString) -> Self {
+        Self::Symbol(var.to_string())
+    }
+
     /// Construct a procedure.
     pub fn proc(
         common_name: Option<String>,
