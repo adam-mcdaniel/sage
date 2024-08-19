@@ -199,7 +199,7 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 
 ## Where can I learn more?
 
-You can read [my blog post](https://adam-mcdaniel-blog.github.io/compilers-for-the-future) (~20 minute read) about the programming language to learn more about the implementation!
+You can read [my blog post](https://adam-mcdaniel.github.io/blog/compilers-for-the-future) (~20 minute read) about the programming language to learn more about the implementation!
 
 Join the [Discord server](https://discord.gg/rSGkM4bcdP) to chat about Sage!
 
