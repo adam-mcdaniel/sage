@@ -1091,11 +1091,13 @@
 <a href="#1090" id="1090">1090</a>
 <a href="#1091" id="1091">1091</a>
 <a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::lir::<span class="kw-2">*</span>;
 <span class="kw">use </span>core::fmt::{Debug, Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 
 <span class="kw">use </span>log::{error, trace};
+<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 
 <span class="doccomment">/// A pattern which can be matched against an expression.
 ///
@@ -1104,7 +1106,7 @@
 /// When `match`ing, the pattern just checks if the expression matches the pattern.
 /// When `bind`ing, the pattern binds the expression to corresponding variables in the
 /// pattern, and evaluates an expression with those variables.
-</span><span class="attr">#[derive(Clone, PartialEq, Eq, Hash)]
+</span><span class="attr">#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>Pattern {
     Tuple(Vec&lt;Pattern&gt;),
     Struct(BTreeMap&lt;String, Pattern&gt;),

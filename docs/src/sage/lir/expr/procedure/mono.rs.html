@@ -260,6 +260,9 @@
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Mono-Procedure
 //!
 //! A procedure of LIR code which can be applied to a list of arguments.
@@ -279,6 +282,7 @@
 <span class="kw">use </span>std::sync::{Arc, Mutex, RwLock};
 
 <span class="kw">use </span>log::trace;
+<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 
 <span class="comment">// TODO: Do this without lazy_static. This is used to create unique mangled IDs for each compiled function.
 </span><span class="kw">use </span>lazy_static::lazy_static;
@@ -290,7 +294,7 @@
 <span class="doccomment">/// A monomorphic procedure of LIR code which can be applied to a list of arguments.
 /// A procedure is compiled down to a label in the assembly code.
 /// The label is called with the `Call` instruction.
-</span><span class="attr">#[derive(Clone, Debug)]
+</span><span class="attr">#[derive(Clone, Debug, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>Procedure {
     <span class="doccomment">/// The name of the procedure, if it was given one.
     </span>common_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
@@ -302,7 +306,9 @@
     </span>ret: Type,
     <span class="doccomment">/// The procedure's body expression
     </span>body: Box&lt;Expr&gt;,
-    has_type_checked: Arc&lt;RwLock&lt;bool&gt;&gt;,
+
+    <span class="attr">#[serde(skip)]
+    </span>has_type_checked: Arc&lt;RwLock&lt;bool&gt;&gt;,
 }
 
 <span class="kw">impl </span>PartialEq <span class="kw">for </span>Procedure {

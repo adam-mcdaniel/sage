@@ -1120,6 +1120,8 @@
 <a href="#1119" id="1119">1119</a>
 <a href="#1120" id="1120">1120</a>
 <a href="#1121" id="1121">1121</a>
+<a href="#1122" id="1122">1122</a>
+<a href="#1123" id="1123">1123</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Assembly Memory Location
 //!
 //! This module contains the `Location` type, which represents a memory
@@ -1183,7 +1185,9 @@
 //!   ```rs
 //!   Indirect(Address(6)) // go the address pointed to by the value in the 6th cell of the tape
 //!   ```
-</span><span class="kw">use crate</span>::{
+</span><span class="kw">use </span>serde_derive::{Serialize, Deserialize};
+
+<span class="kw">use crate</span>::{
     side_effects::{Input, Output},
     vm::{<span class="self">self</span>, Error, VirtualMachineProgram},
     NULL,
@@ -1224,7 +1228,7 @@
 <span class="kw">pub const </span>REGISTERS: [Location; <span class="number">12</span>] = [SP, TMP, FP, FP_STACK, GP, A, B, C, D, E, F, STACK_START];
 
 <span class="doccomment">/// A location in memory (on the tape of the virtual machine).
-</span><span class="attr">#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+</span><span class="attr">#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>Location {
     <span class="doccomment">/// A fixed position in the tape (a constant address known at compile time).
     </span>Address(usize),

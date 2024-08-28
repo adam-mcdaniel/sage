@@ -1105,6 +1105,7 @@
 <a href="#1104" id="1104">1104</a>
 <a href="#1105" id="1105">1105</a>
 <a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Constant Expressions
 //!
 //! Constant expressions are expressions that can be evaluated at compile time.
@@ -1125,9 +1126,10 @@
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::hash::{Hash, Hasher};
+<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 
 <span class="doccomment">/// A compiletime expression.
-</span><span class="attr">#[derive(Clone, Debug, PartialEq)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>ConstExpr {
     <span class="comment">// A constant expression annotated with its source code location.
     </span>Annotated(Box&lt;<span class="self">Self</span>&gt;, Annotation),

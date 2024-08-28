@@ -1136,6 +1136,8 @@
 <a href="#1135" id="1135">1135</a>
 <a href="#1136" id="1136">1136</a>
 <a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Expression
 //!
 //! An expression is a runtime value.
@@ -1152,11 +1154,12 @@
 <span class="kw">use </span>std::hash::{Hash, Hasher};
 
 <span class="kw">use </span>log::<span class="kw-2">*</span>;
+<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 
 <span class="doccomment">/// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
 ///       This way, we don't overflow the stack with several clones of the environment.
 /// A runtime expression.
-</span><span class="attr">#[derive(Clone, Debug)]
+</span><span class="attr">#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 </span><span class="kw">pub enum </span>Expr {
     <span class="doccomment">/// An expression along with data about its source code location.
     /// This is used for error reporting.
@@ -1197,13 +1200,13 @@
     </span>IfLet(Pattern, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
 
     <span class="doccomment">/// Perform a unary operation on two expressions.
-    </span>UnaryOp(Box&lt;<span class="kw">dyn </span>UnaryOp&gt;, Box&lt;<span class="self">Self</span>&gt;),
+    </span>UnaryOp(String, Box&lt;<span class="self">Self</span>&gt;),
     <span class="doccomment">/// Perform a binary operation on two expressions.
-    </span>BinaryOp(Box&lt;<span class="kw">dyn </span>BinaryOp&gt;, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
+    </span>BinaryOp(String, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
     <span class="doccomment">/// Perform a ternary operation on three expressions.
-    </span>TernaryOp(Box&lt;<span class="kw">dyn </span>TernaryOp&gt;, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
+    </span>TernaryOp(String, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
     <span class="doccomment">/// Perform an assignment operation on two expressions.
-    </span>AssignOp(Box&lt;<span class="kw">dyn </span>AssignOp&gt;, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
+    </span>AssignOp(String, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
 
     <span class="doccomment">/// Reference this expression (i.e. get a pointer to it).
     </span>Refer(Mutability, Box&lt;<span class="self">Self</span>&gt;),
@@ -1639,8 +1642,8 @@
     }
 
     <span class="doccomment">/// Apply a unary operation to this expression.
-    </span><span class="kw">pub fn </span>unop(<span class="self">self</span>, op: <span class="kw">impl </span>UnaryOp + <span class="lifetime">'static</span>) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::UnaryOp(Box::new(op), Box::new(<span class="self">self</span>))
+    </span><span class="kw">pub fn </span>unop(<span class="self">self</span>, op: <span class="kw">impl </span>ToString) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::UnaryOp(op.to_string(), Box::new(<span class="self">self</span>))
     }
 
     <span class="doccomment">/// Logical not this expression.
@@ -1714,8 +1717,8 @@
         <span class="self">self</span>.binop(And, other)
     }
 
-    <span class="kw">fn </span>binop(<span class="self">self</span>, op: <span class="kw">impl </span>BinaryOp + <span class="lifetime">'static</span>, other: <span class="kw">impl </span>Into&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
-        Expr::BinaryOp(Box::new(op), Box::new(<span class="self">self</span>), Box::new(other.into()))
+    <span class="kw">fn </span>binop(<span class="self">self</span>, op: <span class="kw">impl </span>ToString, other: <span class="kw">impl </span>Into&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
+        Expr::BinaryOp(op.to_string(), Box::new(<span class="self">self</span>), Box::new(other.into()))
     }
 
     <span class="doccomment">/// Logical or this expression with another.
@@ -1896,13 +1899,13 @@
     }
 
     <span class="doccomment">/// Perform an AssignOp on this expression.
-    </span><span class="kw">pub fn </span>assign_op(<span class="self">self</span>, op: <span class="kw">impl </span>AssignOp + <span class="lifetime">'static</span>, e: <span class="kw">impl </span>Into&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
-        Expr::AssignOp(Box::new(op), Box::new(<span class="self">self</span>), Box::new(e.into()))
+    </span><span class="kw">pub fn </span>assign_op(<span class="self">self</span>, op: <span class="kw">impl </span>ToString, e: <span class="kw">impl </span>Into&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
+        Expr::AssignOp(op.to_string(), Box::new(<span class="self">self</span>), Box::new(e.into()))
     }
 
     <span class="doccomment">/// Perform an AssignOp on this expression.
-    </span><span class="kw">pub fn </span>assign(<span class="self">self</span>, op: Box&lt;<span class="kw">dyn </span>AssignOp&gt;, e: <span class="kw">impl </span>Into&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
-        Expr::AssignOp(op, Box::new(<span class="self">self</span>), Box::new(e.into()))
+    </span><span class="kw">pub fn </span>assign(<span class="self">self</span>, op: <span class="kw">impl </span>ToString, e: <span class="kw">impl </span>Into&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
+        Expr::AssignOp(op.to_string(), Box::new(<span class="self">self</span>), Box::new(e.into()))
     }
 }
 
@@ -1986,10 +1989,10 @@
                 <span class="macro">write!</span>(f, <span class="string">"{ty} of {variant} {val}"</span>)
             }
 
-            <span class="self">Self</span>::UnaryOp(op, x) =&gt; <span class="macro">write!</span>(f, <span class="string">"{}"</span>, op.display(x)),
-            <span class="self">Self</span>::BinaryOp(op, x, y) =&gt; <span class="macro">write!</span>(f, <span class="string">"{}"</span>, op.display(x, y)),
-            <span class="self">Self</span>::TernaryOp(op, x, y, z) =&gt; <span class="macro">write!</span>(f, <span class="string">"{}"</span>, op.display(x, y, z)),
-            <span class="self">Self</span>::AssignOp(op, x, y) =&gt; <span class="macro">write!</span>(f, <span class="string">"{}"</span>, op.display(x, y)),
+            <span class="self">Self</span>::UnaryOp(op, x) =&gt; <span class="macro">write!</span>(f, <span class="string">"{op}{x}"</span>),
+            <span class="self">Self</span>::BinaryOp(op, x, y) =&gt; <span class="macro">write!</span>(f, <span class="string">"{x}{op}{y}"</span>),
+            <span class="self">Self</span>::TernaryOp(op, x, y, z) =&gt; <span class="macro">write!</span>(f, <span class="string">"{x}{op}{y}, {z}"</span>),
+            <span class="self">Self</span>::AssignOp(op, x, y) =&gt; <span class="macro">write!</span>(f, <span class="string">"{x} {op}= {y}"</span>),
 
             <span class="self">Self</span>::Member(val, field) =&gt; <span class="macro">write!</span>(f, <span class="string">"({val}).{field}"</span>),
             <span class="self">Self</span>::Index(val, idx) =&gt; <span class="macro">write!</span>(f, <span class="string">"{val}[{idx}]"</span>),
@@ -2113,164 +2116,165 @@
     }
 }
 
-<span class="kw">impl </span>Hash <span class="kw">for </span>Expr {
-    <span class="kw">fn </span>hash&lt;H: Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H) {
-        <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
-        <span class="kw">match </span><span class="self">self </span>{
-            ConstExpr(expr) =&gt; {
-                state.write_u8(<span class="number">0</span>);
-                expr.hash(state)
-            }
-            Many(exprs) =&gt; {
-                state.write_u8(<span class="number">1</span>);
-                exprs.hash(state)
-            }
-            Match(expr, branches) =&gt; {
-                state.write_u8(<span class="number">2</span>);
-                expr.hash(state);
-                branches.hash(state);
-            }
-            IfLet(pat, expr, t, e) =&gt; {
-                state.write_u8(<span class="number">3</span>);
-                pat.hash(state);
-                expr.hash(state);
-                t.hash(state);
-                e.hash(state);
-            }
+<span class="comment">// impl Hash for Expr {
+//     fn hash&lt;H: Hasher&gt;(&amp;self, state: &amp;mut H) {
+//         use Expr::*;
+//         match self {
+//             ConstExpr(expr) =&gt; {
+//                 state.write_u8(0);
+//                 expr.hash(state)
+//             }
+//             Many(exprs) =&gt; {
+//                 state.write_u8(1);
+//                 exprs.hash(state)
+//             }
+//             Match(expr, branches) =&gt; {
+//                 state.write_u8(2);
+//                 expr.hash(state);
+//                 branches.hash(state);
+//             }
+//             IfLet(pat, expr, t, e) =&gt; {
+//                 state.write_u8(3);
+//                 pat.hash(state);
+//                 expr.hash(state);
+//                 t.hash(state);
+//                 e.hash(state);
+//             }
 
-            While(cond, body) =&gt; {
-                state.write_u8(<span class="number">2</span>);
-                cond.hash(state);
-                body.hash(state);
-            }
+//             While(cond, body) =&gt; {
+//                 state.write_u8(2);
+//                 cond.hash(state);
+//                 body.hash(state);
+//             }
 
-            If(cond, then, else_) =&gt; {
-                state.write_u8(<span class="number">3</span>);
-                cond.hash(state);
-                then.hash(state);
-                else_.hash(state);
-            }
+//             If(cond, then, else_) =&gt; {
+//                 state.write_u8(3);
+//                 cond.hash(state);
+//                 then.hash(state);
+//                 else_.hash(state);
+//             }
 
-            When(cond, then, else_) =&gt; {
-                state.write_u8(<span class="number">4</span>);
-                cond.hash(state);
-                then.hash(state);
-                else_.hash(state);
-            }
+//             When(cond, then, else_) =&gt; {
+//                 state.write_u8(4);
+//                 cond.hash(state);
+//                 then.hash(state);
+//                 else_.hash(state);
+//             }
 
-            UnaryOp(op, val) =&gt; {
-                state.write_u8(<span class="number">5</span>);
-                op.display(val).hash(state);
-                val.hash(state);
-            }
+//             UnaryOp(op, val) =&gt; {
+//                 state.write_u8(5);
+//                 // op.display(val).hash(state);
+//                 op.hash(state);
+//                 val.hash(state);
+//             }
 
-            BinaryOp(op, lhs, rhs) =&gt; {
-                state.write_u8(<span class="number">6</span>);
-                op.display(lhs, rhs).hash(state);
-                lhs.hash(state);
-                rhs.hash(state);
-            }
+//             BinaryOp(op, lhs, rhs) =&gt; {
+//                 state.write_u8(6);
+//                 op.display(lhs, rhs).hash(state);
+//                 lhs.hash(state);
+//                 rhs.hash(state);
+//             }
 
-            TernaryOp(op, a, b, c) =&gt; {
-                state.write_u8(<span class="number">7</span>);
-                op.display(a, b, c).hash(state);
-                a.hash(state);
-                b.hash(state);
-                c.hash(state);
-            }
+//             TernaryOp(op, a, b, c) =&gt; {
+//                 state.write_u8(7);
+//                 op.display(a, b, c).hash(state);
+//                 a.hash(state);
+//                 b.hash(state);
+//                 c.hash(state);
+//             }
 
-            AssignOp(op, lhs, rhs) =&gt; {
-                state.write_u8(<span class="number">8</span>);
-                op.display(lhs, rhs).hash(state);
-                lhs.hash(state);
-                rhs.hash(state);
-            }
+//             AssignOp(op, lhs, rhs) =&gt; {
+//                 state.write_u8(8);
+//                 op.display(lhs, rhs).hash(state);
+//                 lhs.hash(state);
+//                 rhs.hash(state);
+//             }
 
-            Refer(m, val) =&gt; {
-                state.write_u8(<span class="number">9</span>);
-                m.hash(state);
-                val.hash(state);
-            }
+//             Refer(m, val) =&gt; {
+//                 state.write_u8(9);
+//                 m.hash(state);
+//                 val.hash(state);
+//             }
 
-            Deref(val) =&gt; {
-                state.write_u8(<span class="number">10</span>);
-                val.hash(state);
-            }
+//             Deref(val) =&gt; {
+//                 state.write_u8(10);
+//                 val.hash(state);
+//             }
 
-            DerefMut(dst, src) =&gt; {
-                state.write_u8(<span class="number">11</span>);
-                dst.hash(state);
-                src.hash(state);
-            }
+//             DerefMut(dst, src) =&gt; {
+//                 state.write_u8(11);
+//                 dst.hash(state);
+//                 src.hash(state);
+//             }
 
-            Apply(func, args) =&gt; {
-                state.write_u8(<span class="number">12</span>);
-                func.hash(state);
-                args.hash(state);
-            }
+//             Apply(func, args) =&gt; {
+//                 state.write_u8(12);
+//                 func.hash(state);
+//                 args.hash(state);
+//             }
 
-            Return(val) =&gt; {
-                state.write_u8(<span class="number">13</span>);
-                val.hash(state);
-            }
+//             Return(val) =&gt; {
+//                 state.write_u8(13);
+//                 val.hash(state);
+//             }
 
-            Array(vals) =&gt; {
-                state.write_u8(<span class="number">14</span>);
-                vals.hash(state);
-            }
+//             Array(vals) =&gt; {
+//                 state.write_u8(14);
+//                 vals.hash(state);
+//             }
 
-            Tuple(vals) =&gt; {
-                state.write_u8(<span class="number">15</span>);
-                vals.hash(state);
-            }
+//             Tuple(vals) =&gt; {
+//                 state.write_u8(15);
+//                 vals.hash(state);
+//             }
 
-            Union(ty, field, val) =&gt; {
-                state.write_u8(<span class="number">16</span>);
-                ty.hash(state);
-                field.hash(state);
-                val.hash(state);
-            }
+//             Union(ty, field, val) =&gt; {
+//                 state.write_u8(16);
+//                 ty.hash(state);
+//                 field.hash(state);
+//                 val.hash(state);
+//             }
 
-            EnumUnion(ty, field, val) =&gt; {
-                state.write_u8(<span class="number">17</span>);
-                ty.hash(state);
-                field.hash(state);
-                val.hash(state);
-            }
+//             EnumUnion(ty, field, val) =&gt; {
+//                 state.write_u8(17);
+//                 ty.hash(state);
+//                 field.hash(state);
+//                 val.hash(state);
+//             }
 
-            Struct(fields) =&gt; {
-                state.write_u8(<span class="number">18</span>);
-                fields.hash(state);
-            }
+//             Struct(fields) =&gt; {
+//                 state.write_u8(18);
+//                 fields.hash(state);
+//             }
 
-            As(val, ty) =&gt; {
-                state.write_u8(<span class="number">19</span>);
-                val.hash(state);
-                ty.hash(state);
-            }
+//             As(val, ty) =&gt; {
+//                 state.write_u8(19);
+//                 val.hash(state);
+//                 ty.hash(state);
+//             }
 
-            Member(val, field) =&gt; {
-                state.write_u8(<span class="number">20</span>);
-                val.hash(state);
-                field.hash(state);
-            }
+//             Member(val, field) =&gt; {
+//                 state.write_u8(20);
+//                 val.hash(state);
+//                 field.hash(state);
+//             }
 
-            Index(val, idx) =&gt; {
-                state.write_u8(<span class="number">21</span>);
-                val.hash(state);
-                idx.hash(state);
-            }
+//             Index(val, idx) =&gt; {
+//                 state.write_u8(21);
+//                 val.hash(state);
+//                 idx.hash(state);
+//             }
 
-            Annotated(expr, <span class="kw">_</span>) =&gt; {
-                expr.hash(state);
-            }
+//             Annotated(expr, _) =&gt; {
+//                 expr.hash(state);
+//             }
 
-            Declare(decl, expr) =&gt; {
-                state.write_u8(<span class="number">22</span>);
-                decl.hash(state);
-                expr.hash(state);
-            }
-        }
-    }
-}
-</code></pre></div></section></main></body></html>
+//             Declare(decl, expr) =&gt; {
+//                 state.write_u8(22);
+//                 decl.hash(state);
+//                 expr.hash(state);
+//             }
+//         }
+//     }
+// }
+</span></code></pre></div></section></main></body></html>

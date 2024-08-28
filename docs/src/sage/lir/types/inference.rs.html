@@ -545,6 +545,13 @@
 <a href="#544" id="544">544</a>
 <a href="#545" id="545">545</a>
 <a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Inference
 //!
 //! This module contains the type inference algorithm for the language.
@@ -629,6 +636,8 @@
             </span>}
 
             <span class="self">Self</span>::UnaryOp(unop, expr) =&gt; {
+                <span class="kw">let </span>unop = env.get_unop(unop).ok_or(Error::UnimplementedOperator(unop.clone()))<span class="question-mark">?</span>;
+
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(expr, metadata) = <span class="kw-2">&amp;**</span>expr {
                     <span class="kw">return </span>unop
                         .return_type(expr, env)
@@ -639,6 +648,7 @@
                 </span>unop.return_type(expr, env)<span class="question-mark">?
             </span>}
             <span class="self">Self</span>::BinaryOp(binop, lhs, rhs) =&gt; {
+                <span class="kw">let </span>binop = env.get_binop(binop).ok_or(Error::UnimplementedOperator(binop.clone()))<span class="question-mark">?</span>;
                 <span class="comment">// Infer the type of the binary operation
                 // on the two expressions.
                 </span><span class="kw">if let </span><span class="self">Self</span>::Annotated(lhs, metadata) = <span class="kw-2">&amp;**</span>lhs {
@@ -655,6 +665,8 @@
                 binop.return_type(lhs, rhs, env)<span class="question-mark">?
             </span>}
             <span class="self">Self</span>::TernaryOp(ternop, a, b, c) =&gt; {
+                <span class="kw">let </span>ternop = env.get_ternop(ternop).ok_or(Error::UnimplementedOperator(ternop.clone()))<span class="question-mark">?</span>;
+
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(a, metadata) = <span class="kw-2">&amp;**</span>a {
                     <span class="kw">return </span>ternop
                         .return_type(a, b, c, env)
@@ -675,6 +687,8 @@
                 </span>ternop.return_type(a, b, c, env)<span class="question-mark">?
             </span>}
             <span class="self">Self</span>::AssignOp(op, dst, src) =&gt; {
+                <span class="kw">let </span>op = env.get_assignop(op).ok_or(Error::UnimplementedOperator(op.clone()))<span class="question-mark">?</span>;
+
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(dst, metadata) = <span class="kw-2">&amp;**</span>dst {
                     <span class="kw">return </span>op
                         .return_type(dst, src, env)

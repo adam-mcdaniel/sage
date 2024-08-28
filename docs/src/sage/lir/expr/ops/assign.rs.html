@@ -184,7 +184,7 @@
                     </span>Box::new(Expr::var(lhs.to_string())),
                     <span class="comment">// Perform the operation.
                     </span>Box::new(Expr::BinaryOp(
-                        <span class="self">self</span>.<span class="number">0</span>.clone_box(),
+                        <span class="self">self</span>.<span class="number">0</span>.name(),
                         Box::new(Expr::var(lhs.to_string()).deref()),
                         Box::new(rhs.clone()),
                     )),

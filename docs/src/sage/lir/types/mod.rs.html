@@ -2358,6 +2358,7 @@
 <a href="#2357" id="2357">2357</a>
 <a href="#2358" id="2358">2358</a>
 <a href="#2359" id="2359">2359</a>
+<a href="#2360" id="2360">2360</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Types Module
 //!
 //! This module contains a collection of types and traits
@@ -2368,6 +2369,7 @@
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet};
 <span class="kw">use </span>std::hash::{Hash, Hasher};
 <span class="kw">use </span>std::sync::Mutex;
+<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 
 <span class="kw">mod </span>check;
 <span class="kw">mod </span>inference;
@@ -2384,7 +2386,7 @@
 /// An immutable pointer can only be used to read the value it points to.
 /// An `Any` pointer can be used to read or write the value it points to; this is
 /// used to override pointer access protections for compiler-builtins.
-</span><span class="attr">#[derive(Copy, Clone, Default, Debug, Eq, PartialOrd, Ord)]
+</span><span class="attr">#[derive(Copy, Clone, Default, Debug, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>Mutability {
     <span class="doccomment">/// Mutable access to a value.
     </span>Mutable,
@@ -2477,7 +2479,7 @@
 }
 
 <span class="doccomment">/// The representation of a type in the LIR type system.
-</span><span class="attr">#[derive(Clone, Debug, PartialEq)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 </span><span class="kw">pub enum </span>Type {
     <span class="doccomment">/// Bind a type to a name in a temporary scope.
     </span>Let(String, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),

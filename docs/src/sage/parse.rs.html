@@ -271,6 +271,12 @@
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Parsing Module
 //!
 //! This module contains all the related functions for parsing
@@ -305,12 +311,13 @@
 
 <span class="kw">use </span>log::trace;
 
+<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 <span class="kw">use </span>lalrpop_util::lalrpop_mod;
 <span class="kw">use </span>no_comment::{languages, IntoWithoutComments};
 
 <span class="doccomment">/// A struct representing a location in the source code.
 /// This is used to format errors properly.
-</span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>SourceCodeLocation {
     <span class="kw">pub </span>line: usize,
     <span class="kw">pub </span>column: usize,
@@ -422,10 +429,15 @@
 <span class="doccomment">/// Parse frontend sage code into an LIR expression.
 </span><span class="kw">pub fn </span>parse_frontend(input: <span class="kw">impl </span>ToString, filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, String&gt; {
     <span class="comment">// let start = std::time::Instant::now();
-    </span><span class="kw">let </span>result = frontend::parse(input, filename)<span class="question-mark">?</span>;
+    </span><span class="kw">let </span>result = frontend::parse(input, filename, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
     <span class="macro">trace!</span>(target: <span class="string">"parse"</span>, <span class="string">"Parsed frontend code: {result}"</span>);
     <span class="comment">// info!(target: "parse", "Parsed frontend code in {time}ms", time = start.elapsed().as_millis());
     </span><span class="prelude-val">Ok</span>(result)
+}
+
+<span class="kw">pub fn </span>parse_frontend_minimal(input: <span class="kw">impl </span>ToString, filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, String&gt; {
+    <span class="kw">let </span>result = frontend::parse(input, filename, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+    <span class="prelude-val">Ok</span>(result)
 }
 
 <span class="kw">type </span>SyntaxError&lt;<span class="lifetime">'a</span>, T&gt; = lalrpop_util::ParseError&lt;usize, T, <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;;

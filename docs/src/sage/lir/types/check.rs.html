@@ -1277,6 +1277,10 @@
 <a href="#1276" id="1276">1276</a>
 <a href="#1277" id="1277">1277</a>
 <a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Checking
 //!
 //! This module contains the type checking logic for the Lower Intermediate Representation.
@@ -1500,6 +1504,7 @@
             }
 
             <span class="self">Self</span>::UnaryOp(unop, expr) =&gt; {
+                <span class="kw">let </span>unop = env.get_unop(unop).ok_or(Error::UnimplementedOperator(unop.clone()))<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(expr, metadata) = <span class="kw-2">&amp;**</span>expr {
                     <span class="kw">return </span>unop
                         .type_check(expr, env)
@@ -1508,6 +1513,7 @@
                 unop.type_check(expr, env)
             }
             <span class="self">Self</span>::BinaryOp(binop, lhs, rhs) =&gt; {
+                <span class="kw">let </span>binop = env.get_binop(binop).ok_or(Error::UnimplementedOperator(binop.clone()))<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(lhs, metadata) = <span class="kw-2">&amp;**</span>lhs {
                     <span class="kw">return </span>binop
                         .type_check(lhs, rhs, env)
@@ -1522,6 +1528,7 @@
                 binop.type_check(lhs, rhs, env)
             }
             <span class="self">Self</span>::TernaryOp(ternop, a, b, c) =&gt; {
+                <span class="kw">let </span>ternop = env.get_ternop(ternop).ok_or(Error::UnimplementedOperator(ternop.clone()))<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(a, metadata) = <span class="kw-2">&amp;**</span>a {
                     <span class="kw">return </span>ternop
                         .type_check(a, b, c, env)
@@ -1540,6 +1547,7 @@
                 ternop.type_check(a, b, c, env)
             }
             <span class="self">Self</span>::AssignOp(op, dst, src) =&gt; {
+                <span class="kw">let </span>op = env.get_assignop(op).ok_or(Error::UnimplementedOperator(op.clone()))<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(src, metadata) = <span class="kw-2">&amp;**</span>src {
                     <span class="kw">return </span>op
                         .type_check(dst, src, env)

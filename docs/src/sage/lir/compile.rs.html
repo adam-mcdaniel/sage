@@ -1376,6 +1376,20 @@
 <a href="#1375" id="1375">1375</a>
 <a href="#1376" id="1376">1376</a>
 <a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
+<a href="#1387" id="1387">1387</a>
+<a href="#1388" id="1388">1388</a>
+<a href="#1389" id="1389">1389</a>
+<a href="#1390" id="1390">1390</a>
+<a href="#1391" id="1391">1391</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compile
 //!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
@@ -1479,6 +1493,7 @@
             }
 
             <span class="self">Self</span>::UnaryOp(unop, expr) =&gt; {
+                <span class="kw">let </span>unop = env.get_unop(<span class="kw-2">&amp;</span>unop).ok_or(Error::UnimplementedOperator(unop))<span class="question-mark">?</span>.clone();
                 <span class="kw">if let </span>Expr::Annotated(expr, metadata) = <span class="kw-2">*</span>expr {
                     <span class="kw">return </span>unop
                         .compile(<span class="kw-2">&amp;</span>expr, env, output)
@@ -1489,6 +1504,7 @@
                 </span>unop.compile(<span class="kw-2">&amp;</span>expr, env, output)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::BinaryOp(binop, lhs, rhs) =&gt; {
+                <span class="kw">let </span>binop = env.get_binop(<span class="kw-2">&amp;</span>binop).ok_or(Error::UnimplementedOperator(binop))<span class="question-mark">?</span>.clone();
                 <span class="kw">if let </span>Expr::Annotated(lhs, metadata) = <span class="kw-2">&amp;*</span>lhs {
                     <span class="kw">return </span>binop
                         .compile(lhs, <span class="kw-2">&amp;</span>rhs, env, output)
@@ -1504,6 +1520,7 @@
                 </span>binop.compile(<span class="kw-2">&amp;</span>lhs, <span class="kw-2">&amp;</span>rhs, env, output)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::TernaryOp(ternop, a, b, c) =&gt; {
+                <span class="kw">let </span>ternop = env.get_ternop(<span class="kw-2">&amp;</span>ternop).ok_or(Error::UnimplementedOperator(ternop))<span class="question-mark">?</span>.clone();
                 <span class="kw">if let </span>Expr::Annotated(a, metadata) = <span class="kw-2">&amp;*</span>a {
                     <span class="kw">return </span>ternop
                         .compile(a, <span class="kw-2">&amp;</span>b, <span class="kw-2">&amp;</span>c, env, output)
@@ -1524,6 +1541,7 @@
                 </span>ternop.compile(<span class="kw-2">&amp;</span>a, <span class="kw-2">&amp;</span>b, <span class="kw-2">&amp;</span>c, env, output)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::AssignOp(op, dst, src) =&gt; {
+                <span class="kw">let </span>op = env.get_assignop(<span class="kw-2">&amp;</span>op).ok_or(Error::UnimplementedOperator(op))<span class="question-mark">?</span>.clone();
                 <span class="kw">if let </span>Expr::Annotated(dst, metadata) = <span class="kw-2">&amp;*</span>dst {
                     <span class="kw">return </span>op
                         .compile(dst, <span class="kw-2">&amp;</span>src, env, output)
@@ -2027,6 +2045,16 @@
 
             <span class="comment">// Compile a member access operation.
             </span><span class="self">Self</span>::Member(<span class="kw-2">ref </span>val, <span class="kw-2">ref </span>member) =&gt; {
+                <span class="kw">if let </span><span class="self">Self</span>::Annotated(expr, metadata) = val.as_ref() {
+                    <span class="kw">return </span><span class="self">Self</span>::Member(expr.clone(), member.clone())
+                        .compile_expr(env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+
+                <span class="kw">if let </span><span class="self">Self</span>::ConstExpr(val) = val.as_ref() {
+                    <span class="kw">return </span>val.clone().field(member.clone()).eval(env)<span class="question-mark">?</span>.compile_expr(env, output);
+                }
+
                 <span class="comment">// If the value we're getting a field from is a pointer,
                 // then dereference it and get the field from the value.
                 </span><span class="kw">match </span>val.get_type(env)<span class="question-mark">? </span>{

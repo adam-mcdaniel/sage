@@ -288,26 +288,30 @@
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Poly-Procedure
 //!
 //! A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 //! This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 //! A procedure is compiled down to a label in the assembly code.
 </span><span class="kw">use </span><span class="kw">crate</span>::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
-<span class="kw">use </span>core::fmt;
-<span class="kw">use </span>log::{debug, error, trace};
 <span class="kw">use </span>std::{
+    fmt,
     collections::HashMap,
     sync::{Arc, RwLock},
 };
 <span class="kw">use </span>std::{hash::Hash, hash::Hasher};
-
 <span class="kw">use </span><span class="kw">super</span>::Procedure;
+
+<span class="kw">use </span>serde_derive::{Serialize, Deserialize};
+<span class="kw">use </span>log::{debug, error, trace};
 
 <span class="doccomment">/// A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 /// This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 /// A procedure is compiled down to a label in the assembly code.
-</span><span class="attr">#[derive(Clone, Debug)]
+</span><span class="attr">#[derive(Clone, Debug, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>PolyProcedure {
     <span class="doccomment">/// The name of the procedure.
     </span>name: String,
@@ -320,8 +324,10 @@
     <span class="doccomment">/// The body of the procedure.
     </span>body: Box&lt;Expr&gt;,
     <span class="doccomment">/// The monomorphs of the procedure.
+    </span><span class="attr">#[serde(skip)]
     </span>monomorphs: Arc&lt;RwLock&lt;HashMap&lt;String, Procedure&gt;&gt;&gt;,
-    has_type_checked: Arc&lt;RwLock&lt;bool&gt;&gt;,
+    <span class="attr">#[serde(skip)]
+    </span>has_type_checked: Arc&lt;RwLock&lt;bool&gt;&gt;,
 }
 
 <span class="kw">impl </span>PartialEq <span class="kw">for </span>PolyProcedure {

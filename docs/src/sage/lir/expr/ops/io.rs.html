@@ -696,7 +696,7 @@
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_float()));
         } <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsupportedOperation(Expr::UnaryOp(
-                <span class="self">self</span>.clone_box(),
+                <span class="self">self</span>.name(),
                 Box::new(Expr::ConstExpr(ConstExpr::None)),
             )));
         }

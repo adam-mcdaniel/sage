@@ -14,6 +14,7 @@ use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 
 use log::*;
+use rayon::vec;
 use serde_derive::{Deserialize, Serialize};
 
 /// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
@@ -121,6 +122,17 @@ impl Expr {
     /// This constant is defined so that we don't have to write `Expr::ConstExpr`
     /// every time we want to use `None`.
     pub const NONE: Self = Self::ConstExpr(ConstExpr::None);
+
+    pub fn print(self) -> Self {
+        self.unop(Put::Display)
+    }
+
+    pub fn println(self) -> Self {
+        Self::Many(vec![
+            self.clone().print(),
+            Self::ConstExpr(ConstExpr::Char('\n')).print(),
+        ])
+    }
 
     pub fn is_method_call(&self, env: &Env) -> Result<bool, Error> {
         let result = match self {

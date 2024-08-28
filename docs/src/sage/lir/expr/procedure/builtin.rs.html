@@ -195,7 +195,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::lir::{Compile, Env, Error, GetType, Type, TypeCheck};
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::hash::{Hash, Hasher};
-
+<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 <span class="kw">use </span>log::trace;
 
 <span class="doccomment">/// A builtin pseudo-procedure implemented in the core assembly variant.
@@ -205,7 +205,7 @@
 ///
 /// The arguments of the procedure are pushed to the stack in the order they are given.
 /// The builtin must pop its arguments. The return value is left on the stack in their place by the builtin.
-</span><span class="attr">#[derive(Clone, Debug, PartialEq)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>CoreBuiltin {
     <span class="doccomment">/// The name of the builtin. This isn't used in compilation, just for debugging.
     </span><span class="kw">pub </span>name: String,
@@ -271,7 +271,7 @@
 /// The builtin must pop its arguments. The return value is left on the stack in their place by the builtin.
 ///
 /// This should be used to implement important standard library functions, like `alloc` and `free`.
-</span><span class="attr">#[derive(Clone, Debug, PartialEq)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>StandardBuiltin {
     <span class="doccomment">/// The name of the builtin. This isn't used in compilation, just for debugging.
     </span><span class="kw">pub </span>name: String,

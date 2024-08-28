@@ -145,6 +145,7 @@
 <a href="#144" id="144">144</a>
 <a href="#145" id="145">145</a>
 <a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Assembly Global Variables
 //!
 //! This module contains all the logic for managing global variables in assembly programs.
@@ -159,11 +160,12 @@
 
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>serde_derive::{Serialize, Deserialize};
 
 <span class="kw">use </span>log::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// A lookup for all the global variables in an assembly program.
-</span><span class="attr">#[derive(Clone, Debug)]
+</span><span class="attr">#[derive(Clone, Debug, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>Globals {
     <span class="doccomment">/// The locations, offsets, and sizes of global variables.
     </span>globals: HashMap&lt;String, (Location, usize, usize)&gt;,

@@ -835,6 +835,7 @@
 <a href="#834" id="834">834</a>
 <a href="#835" id="835">835</a>
 <a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Standard Assembly Variant
 //!
 //! This variant of the assembly language is intended to be used
@@ -852,10 +853,11 @@
 <span class="kw">use </span>std::{collections::BTreeSet, fmt};
 
 <span class="kw">use </span>log::info;
+<span class="kw">use </span>serde_derive::{Serialize, Deserialize};
 
 <span class="doccomment">/// A program composed of standard instructions, which can be assembled
 /// into the standard virtual machine instructions.
-</span><span class="attr">#[derive(Clone, Debug, PartialEq, PartialOrd)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>StandardProgram {
     <span class="doccomment">/// The list of standard assembly instructions in the program.
     </span><span class="kw">pub </span>code: Vec&lt;StandardOp&gt;,
@@ -1106,7 +1108,7 @@
 /// that should be implemented for every target possible. Standard instructions
 /// should only not be implemented for targets like physical hardware, where the
 /// program is executed on the bare metal (a custom CPU or FPGA).
-</span><span class="attr">#[derive(Clone, Debug, PartialEq, PartialOrd)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>StandardOp {
     <span class="doccomment">/// Execute a core instruction.
     </span>CoreOp(CoreOp),
