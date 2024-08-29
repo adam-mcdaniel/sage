@@ -596,12 +596,12 @@ impl TypeCheck for Declaration {
                 let mut new_env = env.clone();
                 // Add all the compile-time declarations to the environment.
                 new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
-                println!("Typechecking module {}", name);
+                trace!("Typechecking module {}", name);
                 // Get all the compile time declarations so we can type check them in parallel.
                 let (comp_time_decls, run_time_decls): (Vec<_>, Vec<_>) = decls
                     .iter()
                     .partition(|decl| decl.is_compile_time_declaration());
-                println!("Compile time declarations: {:?}", comp_time_decls);
+                trace!("Compile time declarations: {:?}", comp_time_decls);
                 if !comp_time_decls.is_empty() {
                     // Type check all the compile time declarations in parallel.
                     comp_time_decls
