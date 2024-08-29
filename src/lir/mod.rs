@@ -79,6 +79,7 @@ pub use error::*;
 pub use expr::*;
 pub use types::*;
 
+
 /// Simplify an expression while maintaining structural equality.
 pub trait Simplify: Sized {
     /// Simplify an expression while maintaining structural equality.

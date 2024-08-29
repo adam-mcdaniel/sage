@@ -724,6 +724,57 @@ impl Env {
     ) -> Result<(), Error> {
         trace!("Adding compile-time declaration {declaration}");
         match declaration {
+            Declaration::Module(module_name, decls) => {
+                let mut new_env = self.clone();
+                for decl in decls {
+                    new_env.add_compile_time_declaration(decl)?;
+                }
+
+                // Get all the declaration names
+                let mut exports = vec![];
+                for decl in decls {
+                    match decl {
+                        Declaration::Type(name, _) => {
+                            self.add_compile_time_declaration(decl)?;
+                            exports.push(name.clone());
+                        }
+                        Declaration::Const(name, _) => {
+                            exports.push(name.clone());
+                        }
+                        Declaration::Proc(name, _) => {
+                            exports.push(name.clone());
+                        }
+                        Declaration::PolyProc(name, _) => {
+                            exports.push(name.clone());
+                        }
+                        Declaration::ExternProc(name, _) => {
+                            exports.push(name.clone());
+                        }
+                        Declaration::Impl(_ty, _attrs) => {
+                            self.add_compile_time_declaration(decl)?;
+                        }
+                        Declaration::Many(decls) => {
+                            for decl in decls {
+                                self.add_compile_time_declaration(decl)?;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                // Create a const struct with all the exported names.
+                let exports = ConstExpr::Struct(
+                    exports
+                        .into_iter()
+                        .map(|name| (name.clone(), ConstExpr::Symbol(name)))
+                        .collect(),
+                );
+
+                println!("Exports: {exports}");
+                println!("Decls: {decls:?}");
+                let result = exports.with(decls.clone()).eval(self)?;
+                self.define_const(module_name, result)
+            }
             Declaration::Type(name, ty) => {
                 self.define_type(name, ty.clone());
             }
@@ -857,6 +908,9 @@ impl Env {
             Declaration::Impl(_, _) => {
                 // Implementations are not defined at runtime.
             }
+            Declaration::Module(_, _) => {
+                // Modules are not defined at runtime.
+            }
             Declaration::Var(name, mutability, ty, expr) => {
                 let ty = match ty {
                     Some(ty) => ty.clone(),
@@ -915,6 +969,7 @@ impl Env {
             }
             _ => {
                 trace!("Defining type {name} as {ty}");
+                Arc::make_mut(&mut self.consts).insert(name.clone(), ConstExpr::Type(ty.clone()));
                 Arc::make_mut(&mut self.types).insert(name, ty.clone());
 
                 if let Ok(simplified) = ty.simplify_until_concrete(self) {
@@ -941,6 +996,7 @@ impl Env {
                 }
                 _ => {
                     trace!("Defining type {name} as {ty}");
+                    Arc::make_mut(&mut self.consts).insert(name.clone(), ConstExpr::Type(ty.clone()));
                     Arc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
                 }
             }
@@ -979,7 +1035,6 @@ impl Env {
         }
 
         Arc::make_mut(&mut self.consts).insert(name, e);
-
     }
 
     /// Get a constant definition from this environment.
@@ -991,7 +1046,8 @@ impl Env {
     pub(super) fn define_proc(&mut self, name: impl ToString, proc: Procedure) {
         let name = name.to_string();
         trace!("Defining procedure {name} as {proc}");
-        Arc::make_mut(&mut self.procs).insert(name, proc);
+        Arc::make_mut(&mut self.procs).insert(name.clone(), proc.clone());
+        Arc::make_mut(&mut self.consts).insert(name, ConstExpr::Proc(proc));
     }
 
     /// Define a polymorphic procedure with a given name under this environment.

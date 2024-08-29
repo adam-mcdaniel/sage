@@ -1126,6 +1126,16 @@ impl Compile for ConstExpr {
             }
             // Compile an array constant.
             Self::Array(items) => {
+                for item in items {
+                    // Compile the item.
+                    item.compile_expr(env, output)?;
+                }
+                /*
+                // WARNING:
+                // This optimizes how arrays are compiled *when their values are known at compile time*
+                // This causes issues when arrays contain values like variables which are not known at compile time.
+                // So, this optimization is disabled for now.
+
                 // If all the items are the same, we can compile the array as a single value.
                 if !items.is_empty() && items.iter().all(|item| item == &items[0]) {
                     let item_size = items[0].get_size(env)?;
@@ -1226,6 +1236,7 @@ impl Compile for ConstExpr {
                         }
                     }
                 }
+                */
             }
             // Compile a struct constant.
             Self::Struct(items) => {

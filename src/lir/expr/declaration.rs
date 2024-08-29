@@ -39,6 +39,8 @@ pub enum Declaration {
     Impl(Type, Vec<(String, ConstExpr)>),
     /// Many declarations.
     Many(Vec<Declaration>),
+    /// Declare a module
+    Module(String, Vec<Declaration>),
 }
 
 impl Declaration {
@@ -183,6 +185,15 @@ impl Declaration {
                 // Log the instructions for the declaration.
                 output.log_instructions_after(&name, &log_message, current_instruction);
             }
+
+            Declaration::Module(name, decls) => {
+
+                // let mut new_env = env.clone();
+                // // Add all the compile-time declarations to the environment.
+                // new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
+
+                env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
+            }
             Declaration::Many(decls) => {
                 for decl in decls {
                     // Compile all the sub-declarations,
@@ -300,6 +311,11 @@ impl Declaration {
                 // for decl in decls {
                 //     decl.substitute(substitution_name, substitution_ty);
                 // }
+                decls.par_iter_mut().for_each(|decl| {
+                    decl.substitute(substitution_name, substitution_ty);
+                });
+            }
+            Self::Module(_name, decls) => {
                 decls.par_iter_mut().for_each(|decl| {
                     decl.substitute(substitution_name, substitution_ty);
                 });
@@ -574,6 +590,24 @@ impl TypeCheck for Declaration {
                 //     new_env.add_declaration(decl)?;
                 // }
             }
+
+            Self::Module(name, decls) => {
+                let mut new_env = env.clone();
+                // Add all the compile-time declarations to the environment.
+                new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
+                println!("Typechecking module {}", name);
+                // Get all the compile time declarations so we can type check them in parallel.
+                let (comp_time_decls, run_time_decls): (Vec<_>, Vec<_>) = decls
+                    .iter()
+                    .partition(|decl| decl.is_compile_time_declaration());
+                println!("Compile time declarations: {:?}", comp_time_decls);
+                if !comp_time_decls.is_empty() {
+                    // Type check all the compile time declarations in parallel.
+                    comp_time_decls
+                        .par_iter()
+                        .try_for_each(|decl| decl.type_check(&new_env))?;
+                }
+            }
         }
         Ok(())
     }
@@ -625,6 +659,14 @@ impl Display for Declaration {
                 for decl in decls {
                     writeln!(f, "{}", decl)?;
                 }
+            }
+            Self::Module(name, decls) => {
+                write!(f, "module {}", name)?;
+                write!(f, " {{")?;
+                for decl in decls {
+                    writeln!(f, "{}", decl)?;
+                }
+                write!(f, "}}")?;
             }
         }
         Ok(())
@@ -843,6 +885,11 @@ impl Hash for Declaration {
             }
             Self::Many(decls) => {
                 state.write_u8(9);
+                decls.hash(state);
+            }
+            Self::Module(name, decls) => {
+                state.write_u8(10);
+                name.hash(state);
                 decls.hash(state);
             }
         }

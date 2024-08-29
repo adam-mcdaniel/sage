@@ -12,6 +12,11 @@ readme = "README.md"
 bench = false
 
 [[bin]]
+name = "tests"
+path = "src/tests.rs"
+bench = false
+
+[[bin]]
 name = "sage"
 path = "src/cli.rs"
 bench = false

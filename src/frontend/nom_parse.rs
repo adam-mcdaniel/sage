@@ -3,7 +3,7 @@ use std::{
 };
 
 use nom::{
-    branch::alt, bytes::complete::{escaped_transform, tag, take_while, take_while1}, character::complete::{char, crlf, digit1, multispace0, multispace1, one_of}, combinator::{all_consuming, cut, map, map_res, not, opt, recognize, verify}, error::{context, ContextError, ParseError}, multi::{many0, many0_count, many1}, sequence::{delimited, pair, preceded, terminated}, IResult
+    branch::alt, bytes::complete::{escaped_transform, tag, take_while, take_while1}, character::complete::{char, hex_digit1, oct_digit1, crlf, digit1, multispace0, multispace1, one_of}, combinator::{all_consuming, cut, map, map_res, not, opt, recognize, verify}, error::{context, ContextError, ParseError}, multi::{many0, many0_count, many1}, sequence::{delimited, pair, preceded, terminated}, IResult
 };
 
 
@@ -37,6 +37,10 @@ const KEYWORDS: &[&str] = &[
     "Never",
     "!",
 ];
+
+fn bin_digit1<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
+    take_while1(|c: char| c == '0' || c == '1')(input)
+}
 
 use lazy_static::lazy_static;
 enum Associativity {
@@ -536,8 +540,8 @@ fn parse_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a st
 fn parse_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
     let (input, _) = whitespace(input)?;
     let (input, stmt) = alt((
-        context("short statement", parse_short_stmt),
         context("long statement", parse_long_stmt),
+        context("short statement", parse_short_stmt),
         // map(parse_expr, Statement::Expr),
         // map(parse_decl, Statement::Declaration),
     ))(input)?;
@@ -557,6 +561,8 @@ fn parse_long_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
         context("impl", parse_impl_stmt),
         context("enum", parse_enum_stmt),
         context("struct", parse_struct_stmt),
+        context("module", parse_module_stmt),
+        context("import", parse_import_stmt),
         map(context("block", parse_block), Statement::Expr),
     ))(input)?;
 
@@ -565,8 +571,82 @@ fn parse_long_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     Ok((input, stmt))
 }
 
-fn parse_if_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
-    // "if" <condition: Expr> <then: Block> <else: Option<Block>> => Statement::If(condition, Box::new(then), else.map(Box::new)),
+fn parse_import_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+    // "import" <path: String> => Statement::Import(path),
+    let (input, _) = tag("from")(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, module_name) = cut(parse_symbol)(input)?;
+    let (input, _) = whitespace(input)?;
+    let (mut input, _) = tag("import")(input)?;
+
+    let mut imports = vec![];
+    let mut status = input;
+    loop {
+        input = status;
+        let (input, _) = whitespace(input)?;
+        let (input, path) = cut(parse_symbol)(input)?;
+        // Optionally parse an alias
+        let (input, alias) = opt(preceded(whitespace, preceded(tag("as"), cut(parse_symbol))))(input)?;
+        let alias = alias.map(|x| x.to_owned());
+        // If there's a comma, continue parsing
+        let (input, _) = whitespace(input)?;
+
+        imports.push((path.to_owned(), alias.unwrap_or(path.to_owned())));
+        if let Ok((input, _)) = tag::<&str, &str, E>(",")(input) {
+            status = input;
+            continue;
+        }
+        
+        let mut decls = vec![];
+        for (name, alias) in &imports {
+            decls.push(Declaration::Const(alias.clone(), ConstExpr::var(module_name).field(ConstExpr::var(name))));
+        }
+
+        return Ok((input, Statement::Declaration(Declaration::Many(decls))));
+    }
+    
+}
+
+fn parse_module_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+    let (input, _) = whitespace(input)?;
+
+    let (input, _) = tag("module")(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, name) = cut(parse_symbol)(input)?;
+    let (input, _) = whitespace(input)?;
+
+    let (input, _) = tag("{")(input)?;
+
+    let (input, _) = whitespace(input)?;
+
+    let (input, stmts) = many0(context("statement", parse_decl))(input)?;
+
+    let (input, _) = whitespace(input)?;
+    let (input, _) = tag("}")(input)?;
+
+    Ok((input, Statement::Declaration(Declaration::Module(name.to_owned(), stmts.into_iter().map(|x| x.to_owned()).collect()))))
+}
+
+fn parse_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Declaration, E> {
+    let (input, _) = whitespace(input)?;
+    let (input, decl) = alt((
+        context("function", parse_fun_stmt),
+        context("type", parse_type_stmt),
+        context("enum", parse_enum_stmt),
+        context("struct", parse_struct_stmt),
+        context("extern", parse_extern_stmt),
+        context("impl", parse_impl_stmt),
+        context("module", parse_module_stmt),
+    ))(input)?;
+
+    match decl {
+        Statement::Declaration(decl) => Ok((input, decl)),
+        _ => unreachable!(),
+    }
+}
+
+fn parse_if_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+    // "if" <condition: Expr> <then: Block> <else: Option<Block>> => Expr::If(condition, Box::new(then), else.map(Box::new)),
     let (input, _) = tag("if")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, condition) = cut(parse_expr)(input)?;
@@ -584,8 +664,6 @@ fn parse_if_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a 
         else_branches.push((condition, then));
     }
 
-
-
     let (input, mut result) = if let Ok((input, _)) = preceded(whitespace::<E>, preceded(tag("else"), whitespace::<E>))(input) {
         // Parse the else block
         cut(parse_block)(input)?
@@ -597,7 +675,12 @@ fn parse_if_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a 
         result = Expr::If(condition.into(), Box::new(then), Box::new(result));
     }
 
-    Ok((input, Statement::Expr(Expr::If(condition.into(), Box::new(then), Box::new(result)))))
+    Ok((input, Expr::If(condition.into(), Box::new(then), Box::new(result))))
+}
+
+fn parse_if_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+    let (input, expr) = parse_if_expr(input)?;
+    Ok((input, Statement::Expr(expr)))
 }
 
 fn parse_when_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
@@ -673,7 +756,37 @@ fn parse_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a
     let (input, (params, ret)) = cut(parse_fun_params)(input)?;
     println!("Parsed function parameters: {params:#?}, {ret:#?}");
     let (input, _) = whitespace(input)?;
-    let (input, body) = cut(parse_block)(input)?;
+    let (input, body) = parse_block(input)?;
+    println!("Parsed function body: {body}");
+    // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)))))
+    if let Some(args) = template_args {
+        Ok((input, Statement::Declaration(Declaration::PolyProc(name.to_owned(), PolyProcedure::new(name.to_owned(), args.into_iter().map(|x| x.to_owned()).collect(), params, ret, body)))))
+    } else {
+        Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)))))
+    }
+}
+
+fn parse_short_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+    // "fun" <name: Symbol> <args: Tuple<(<(<Symbol> ":")?> <Type>)>> ":" <ret: Type> <body: Block> => {
+    //     let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
+    //     Statement::Declaration(Declaration::Proc(name.clone(), Procedure::new(name, args, ret, body)))
+    // },
+    let (input, _) = tag("fun")(input)?;
+    println!("Parsing function");
+    let (input, _) = whitespace(input)?;
+    let (input, name) = cut(parse_symbol)(input)?;
+    let (input, _) = whitespace(input)?;
+    // Check if there are any template args
+    let (input, template_args) = cut(opt(parse_type_params))(input)?;
+    // Get the function parameters with mutability
+    println!("Parsing function parameters");
+    println!("Input: {input}");
+    let (input, (params, ret)) = cut(parse_fun_params)(input)?;
+    println!("Parsed function parameters: {params:#?}, {ret:#?}");
+    let (input, _) = whitespace(input)?;
+    let (input, _) = tag("=")(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, body) = cut(parse_expr)(input)?;
     println!("Parsed function body: {body}");
     // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)))))
     if let Some(args) = template_args {
@@ -696,6 +809,9 @@ fn parse_fun_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
         ),
         tag(",")
     ))(input)?;
+
+    println!("Input: {input}");
+    let (input, _) = whitespace(input)?;
     let (input, last) = opt(
         pair(
             // parse_symbol,
@@ -711,6 +827,7 @@ fn parse_fun_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     if let Some(((mutability, name), ty)) = last {
         params.push((name.to_owned(), mutability, ty));
     }
+    println!("Parsed function parameters: {params:#?}");
 
     let (input, _) = whitespace(input)?;
     let (input, _) = cut(tag(")"))(input)?;
@@ -787,11 +904,10 @@ fn parse_extern_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     let (input, _) = whitespace(input)?;
     let (input, name) =cut(parse_symbol)(input)?;
     let (input, _) = whitespace(input)?;
-    
-    let (input, _) = whitespace(input)?;
     // let (input, _) = tag(":")(input)?;
     // let (input, ret) = parse_type(input)?;
     let (input, (params, ret)) = cut(parse_fun_params)(input)?;
+    let (input, _) = cut(tag(";"))(input)?;
     
     let args: Vec<_> = params.into_iter().map(|(_name, _mutability, ty)| ty).collect();
     Ok((input, Statement::Declaration(Declaration::ExternProc(name.to_owned(), FFIProcedure::new(name.to_owned(), args, ret)))))
@@ -1063,6 +1179,7 @@ fn parse_short_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
         context("let static", parse_static_var_stmt),
         context("type", parse_type_stmt),
         context("return", parse_return_stmt),
+        context("function", parse_short_fun_stmt),
         context("assignment", parse_assign_stmt),
         context("expression", map(parse_expr, Statement::Expr)),
     ))(input)?;
@@ -1521,7 +1638,7 @@ fn parse_expr_prec<'a, E: ParseError<&'a str> + ContextError<&'a str>>(mut input
                 continue;
             }
             match tag::<&str, &str, E>(op.as_str())(input) {
-                Ok((i, op)) if i.chars().next().unwrap() != '=' => {
+                Ok((i, op)) if !['=', '&'].contains(&i.chars().next().unwrap()) => {
                     println!("FOUND OPERATOR: {op}");
                     input = i;
                     has_found_op = true;
@@ -1709,6 +1826,7 @@ fn parse_expr_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
         parse_expr_array,
         parse_expr_struct,
         parse_expr_block,
+        parse_if_expr,
     ))(input)?;
 
     Ok((input, expr))
@@ -1895,6 +2013,7 @@ fn parse_const_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
         parse_const_bool,
         parse_const_null,
         parse_const_none,
+        map(parse_char_literal, ConstExpr::Char),
         map(parse_float_literal, ConstExpr::Float),
         map(parse_int_literal, ConstExpr::Int),
         map(parse_string_literal, |s| ConstExpr::Array(s.to_string().chars().map(ConstExpr::Char)
@@ -1907,16 +2026,44 @@ fn parse_const_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     ))(input)
 }
 
+fn parse_char_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, char, E> {
+    let (input, _) = tag("'")(input)?;
+    let (input, c) = none_of("'")(input)?;
+    let (input, _) = tag("'")(input)?;
+
+    Ok((input, c))
+}
+
 fn parse_int_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, i64, E> {
-    let (input, result) = map(digit1, |s: &str| s.parse().unwrap())(input)?;
-    // println!("Got number: {:?}", result);
-    // println!("Next char: {:?}", input.chars().next());
-    // Peek and make sure the next character is not a symbol character
+    // First try to parse hex
+    // Check if its negative
+    let (input, _) = whitespace(input)?;
+    let (input, is_negative) = opt(tag("-"))(input)?;
+    let is_negative = is_negative.is_some();
+    let (input, _) = whitespace(input)?;
+
+
+    let (input, result) = alt((
+        map(preceded(tag("0x"), hex_digit1), |s: &str| i64::from_str_radix(s, 16).unwrap()),
+        // Try octal
+        map(preceded(tag("0o"), oct_digit1), |s: &str| i64::from_str_radix(s, 8).unwrap()),
+        // Try binary
+        map(preceded(tag("0b"), bin_digit1), |s: &str| i64::from_str_radix(s, 2).unwrap()),
+        map(digit1, |s: &str| s.parse().unwrap()),
+    ))(input)?;
+
+    // let (input, result) = map(digit1, |s: &str| s.parse().unwrap())(input)?;
     if let Some(c) = input.chars().next() {
         if is_symbol_char(c) {
             return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Digit)));
         }
     }
+
+    let result = if is_negative {
+        -result
+    } else {
+        result
+    };
 
     Ok((input, result))
 }
@@ -2126,432 +2273,434 @@ fn parse_const_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input:
 }
 
 
-#[cfg(test)]
-mod tests {
-    use rayon::iter::Zip;
 
-    use super::*;
+pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
+    // fn helper(code: &str, input: &str) -> Result<String, String> {
+    //     use crate::{lir::Compile, parse::*, vm::*};
+    //     use std::{
+    //         fs::{read_dir, read_to_string},
+    //         path::PathBuf,
+    //     };
+    //     let parsed = parse(code)?;
+    //     println!("{parsed}");
+    //     let asm_code = parsed.compile();
+    //     const CALL_STACK_SIZE: usize = 1024;
+    //     if let Err(ref e) = asm_code {
+    //         return Err(format!("{e}"));
+    //     }
+    //     let asm_code = asm_code.unwrap();
 
-    fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
-        // fn helper(code: &str, input: &str) -> Result<String, String> {
-        //     use crate::{lir::Compile, parse::*, vm::*};
-        //     use std::{
-        //         fs::{read_dir, read_to_string},
-        //         path::PathBuf,
-        //     };
-        //     let parsed = parse(code)?;
-        //     println!("{parsed}");
-        //     let asm_code = parsed.compile();
-        //     const CALL_STACK_SIZE: usize = 1024;
-        //     if let Err(ref e) = asm_code {
-        //         return Err(format!("{e}"));
-        //     }
-        //     let asm_code = asm_code.unwrap();
-    
-        //     let vm_code = match asm_code {
-        //         Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
-        //         Err(std_asm_code) => std_asm_code.assemble(CALL_STACK_SIZE).map(Err),
-        //     }
-        //     .unwrap();
-    
-        //     let device = match vm_code {
-        //         Ok(vm_code) => CoreInterpreter::new(TestingDevice::new(input))
-        //             .run(&vm_code)?,
-        //             // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
-        //         Err(vm_code) => StandardInterpreter::new(TestingDevice::new(input))
-        //             .run(&vm_code)?
-        //             // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
-        //     };
-    
-        //     let output_text = device.output_str();
-    
-        //     Ok(output_text)
-        // }
+    //     let vm_code = match asm_code {
+    //         Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
+    //         Err(std_asm_code) => std_asm_code.assemble(CALL_STACK_SIZE).map(Err),
+    //     }
+    //     .unwrap();
+
+    //     let device = match vm_code {
+    //         Ok(vm_code) => CoreInterpreter::new(TestingDevice::new(input))
+    //             .run(&vm_code)?,
+    //             // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
+    //         Err(vm_code) => StandardInterpreter::new(TestingDevice::new(input))
+    //             .run(&vm_code)?
+    //             // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
+    //     };
+
+    //     let output_text = device.output_str();
+
+    //     Ok(output_text)
+    // }
 
 
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(1)
-            .stack_size(512 * 1024 * 1024)
-            .build_global()
-            .unwrap();
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(1)
+        .stack_size(512 * 1024 * 1024)
+        .build_global()
+        .unwrap();
 
-        use crate::side_effects::Output;
-        use no_comment::{languages, IntoWithoutComments};
-        // Compiling most examples overflows the tiny stack for tests.
-        // So, we spawn a new thread with a larger stack size.
-        std::thread::scope(|s| {
-            let child = std::thread::Builder::new()
-                    .stack_size(512 * 1024 * 1024)
-                    .spawn_scoped(s, move || {
-                        use crate::{lir::Compile, parse::*, vm::*};
-                        use ::std::{
-                            fs::{read_dir, read_to_string},
-                            path::PathBuf,
-                        };
-                        let parsed = parse(code)?;
+    use crate::side_effects::Output;
+    use no_comment::{languages, IntoWithoutComments};
+    // Compiling most examples overflows the tiny stack for tests.
+    // So, we spawn a new thread with a larger stack size.
+    std::thread::scope(|s| {
+        let child = std::thread::Builder::new()
+                .stack_size(2512 * 1024 * 1024)
+                .spawn_scoped(s, move || {
+                    use crate::{lir::Compile, parse::*, vm::*};
+                    use ::std::{
+                        fs::{read_dir, read_to_string},
+                        path::PathBuf,
+                    };
+                    let parsed = parse(code)?;
+                    println!("PARSED: {parsed}");
 
-                        let alloc = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
-                            name: "alloc".to_string(),
-                            args: vec![("size".to_string(), crate::lir::Type::Int)],
-                            ret: crate::lir::Type::Pointer(
-                                crate::lir::Mutability::Mutable,
+                    let alloc = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
+                        name: "alloc".to_string(),
+                        args: vec![("size".to_string(), crate::lir::Type::Int)],
+                        ret: crate::lir::Type::Pointer(
+                            crate::lir::Mutability::Mutable,
+                            Box::new(crate::lir::Type::Any),
+                        ),
+                        body: vec![crate::asm::StandardOp::Alloc(crate::asm::SP.deref())],
+                    });
+                    let free = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
+                        name: "free".to_string(),
+                        args: vec![(
+                            "ptr".to_string(),
+                            crate::lir::Type::Pointer(
+                                crate::lir::Mutability::Any,
                                 Box::new(crate::lir::Type::Any),
                             ),
-                            body: vec![crate::asm::StandardOp::Alloc(crate::asm::SP.deref())],
-                        });
-                        let free = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
-                            name: "free".to_string(),
-                            args: vec![(
-                                "ptr".to_string(),
-                                crate::lir::Type::Pointer(
-                                    crate::lir::Mutability::Any,
-                                    Box::new(crate::lir::Type::Any),
-                                ),
-                            )],
-                            ret: crate::lir::Type::None,
-                            body: vec![
-                                crate::asm::StandardOp::Free(crate::asm::SP.deref()),
-                                crate::asm::StandardOp::CoreOp(crate::asm::CoreOp::Pop(None, 1)),
-                            ],
-                        });
-                        use crate::asm::CoreOp::*;
+                        )],
+                        ret: crate::lir::Type::None,
+                        body: vec![
+                            crate::asm::StandardOp::Free(crate::asm::SP.deref()),
+                            crate::asm::StandardOp::CoreOp(crate::asm::CoreOp::Pop(None, 1)),
+                        ],
+                    });
+                    use crate::asm::CoreOp::*;
 
-                        use crate::asm::*;
-                        // let realloc_fp_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
-                        //     name: "realloc_fp_stack".to_string(),
-                        //     args: vec![("size".to_string(), crate::lir::Type::Int)],
-                        //     ret: crate::lir::Type::None,
-                        //     body: vec![
-                        //         // Allocate the new frame pointer stack with the given size
-                        //         Alloc(SP.deref()),
-                        //         CoreOp(Many(vec![
-                        //             Pop(Some(C), 1),
-                        //             Move {
-                        //                 src: C,
-                        //                 dst: D
-                        //             },
-                        //             // Copy all the data from the old frame pointer stack to the new one
-                        //             // Copy the start of the old frame pointer stack to the new one
-                        //             GetAddress {
-                        //                 addr: START_OF_FP_STACK,
-                        //                 dst: A,
-                        //             },
-                        //             // Subtract from the current FP_STACK
-                        //             crate::asm::CoreOp::IsLess {
-                        //                 a: A,
-                        //                 b: FP_STACK,
-                        //                 dst: B,
-                        //             },
-                        //             While(B),
-                        //             Move {
-                        //                 src: A.deref(),
-                        //                 dst: C.deref(),
-                        //             },
-                        //             Next(A, None),
-                        //             Next(C, None),
-                        //             crate::asm::CoreOp::IsLess {
-                        //                 a: A,
-                        //                 b: FP_STACK,
-                        //                 dst: B,
-                        //             },
-                        //             End,
-                        //             Move {
-                        //                 src: C,
-                        //                 dst: FP_STACK,
-                        //             }
-                        //         ]))
-                        //     ],
-                        // });
+                    use crate::asm::*;
+                    // let realloc_fp_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
+                    //     name: "realloc_fp_stack".to_string(),
+                    //     args: vec![("size".to_string(), crate::lir::Type::Int)],
+                    //     ret: crate::lir::Type::None,
+                    //     body: vec![
+                    //         // Allocate the new frame pointer stack with the given size
+                    //         Alloc(SP.deref()),
+                    //         CoreOp(Many(vec![
+                    //             Pop(Some(C), 1),
+                    //             Move {
+                    //                 src: C,
+                    //                 dst: D
+                    //             },
+                    //             // Copy all the data from the old frame pointer stack to the new one
+                    //             // Copy the start of the old frame pointer stack to the new one
+                    //             GetAddress {
+                    //                 addr: START_OF_FP_STACK,
+                    //                 dst: A,
+                    //             },
+                    //             // Subtract from the current FP_STACK
+                    //             crate::asm::CoreOp::IsLess {
+                    //                 a: A,
+                    //                 b: FP_STACK,
+                    //                 dst: B,
+                    //             },
+                    //             While(B),
+                    //             Move {
+                    //                 src: A.deref(),
+                    //                 dst: C.deref(),
+                    //             },
+                    //             Next(A, None),
+                    //             Next(C, None),
+                    //             crate::asm::CoreOp::IsLess {
+                    //                 a: A,
+                    //                 b: FP_STACK,
+                    //                 dst: B,
+                    //             },
+                    //             End,
+                    //             Move {
+                    //                 src: C,
+                    //                 dst: FP_STACK,
+                    //             }
+                    //         ]))
+                    //     ],
+                    // });
 
-                        // let realloc_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
-                        //     name: "realloc_stack".to_string(),
-                        //     args: vec![("size".to_string(), crate::lir::Type::Int)],
-                        //     ret: crate::lir::Type::None,
-                        //     body: vec![
-                        //         // Allocate the new frame pointer stack with the given size
-                        //         Alloc(SP.deref()),
-                        //         CoreOp(Many(vec![
-                        //             Pop(Some(C), 1),
-                        //             Move {
-                        //                 src: C,
-                        //                 dst: D
-                        //             },
-                        //             // Copy all the data from the old frame pointer stack to the new one
-                        //             // Copy the start of the old frame pointer stack to the new one
-                        //             Move {
-                        //                 src: STACK_START,
-                        //                 dst: A,
-                        //             },
-                        //             // Subtract from the current FP_STACK
-                        //             crate::asm::CoreOp::IsLess {
-                        //                 a: A,
-                        //                 b: SP,
-                        //                 dst: B,
-                        //             },
-                        //             crate::asm::CoreOp::Set(E, 0),
-                        //             While(B),
-                        //             Move {
-                        //                 src: A.deref(),
-                        //                 dst: C.deref(),
-                        //             },
-                        //             Next(A, None),
-                        //             Next(C, None),
-                        //             Inc(E),
-                        //             crate::asm::CoreOp::IsLess {
-                        //                 a: A,
-                        //                 b: SP,
-                        //                 dst: B,
-                        //             },
-                        //             End,
-                        //             // Index the FP by E
-                        //             Index {
-                        //                 src: FP,
-                        //                 offset: E,
-                        //                 dst: F,
-                        //             },
-                        //             Move {
-                        //                 src: F,
-                        //                 dst: FP,
-                        //             },
+                    // let realloc_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
+                    //     name: "realloc_stack".to_string(),
+                    //     args: vec![("size".to_string(), crate::lir::Type::Int)],
+                    //     ret: crate::lir::Type::None,
+                    //     body: vec![
+                    //         // Allocate the new frame pointer stack with the given size
+                    //         Alloc(SP.deref()),
+                    //         CoreOp(Many(vec![
+                    //             Pop(Some(C), 1),
+                    //             Move {
+                    //                 src: C,
+                    //                 dst: D
+                    //             },
+                    //             // Copy all the data from the old frame pointer stack to the new one
+                    //             // Copy the start of the old frame pointer stack to the new one
+                    //             Move {
+                    //                 src: STACK_START,
+                    //                 dst: A,
+                    //             },
+                    //             // Subtract from the current FP_STACK
+                    //             crate::asm::CoreOp::IsLess {
+                    //                 a: A,
+                    //                 b: SP,
+                    //                 dst: B,
+                    //             },
+                    //             crate::asm::CoreOp::Set(E, 0),
+                    //             While(B),
+                    //             Move {
+                    //                 src: A.deref(),
+                    //                 dst: C.deref(),
+                    //             },
+                    //             Next(A, None),
+                    //             Next(C, None),
+                    //             Inc(E),
+                    //             crate::asm::CoreOp::IsLess {
+                    //                 a: A,
+                    //                 b: SP,
+                    //                 dst: B,
+                    //             },
+                    //             End,
+                    //             // Index the FP by E
+                    //             Index {
+                    //                 src: FP,
+                    //                 offset: E,
+                    //                 dst: F,
+                    //             },
+                    //             Move {
+                    //                 src: F,
+                    //                 dst: FP,
+                    //             },
 
-                        //             Move {
-                        //                 src: C,
-                        //                 dst: SP,
-                        //             },
-                        //             Move {
-                        //                 src: D,
-                        //                 dst: STACK_START,
-                        //             }
-                        //         ]))
-                        //     ],
-                        // });
+                    //             Move {
+                    //                 src: C,
+                    //                 dst: SP,
+                    //             },
+                    //             Move {
+                    //                 src: D,
+                    //                 dst: STACK_START,
+                    //             }
+                    //         ]))
+                    //     ],
+                    // });
 
-                        let get_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                            name: "get_sp".to_string(),
-                            args: vec![],
-                            ret: crate::lir::Type::Pointer(
+                    let get_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                        name: "get_sp".to_string(),
+                        args: vec![],
+                        ret: crate::lir::Type::Pointer(
+                            crate::lir::Mutability::Any,
+                            Box::new(crate::lir::Type::Cell),
+                        ),
+                        body: vec![crate::asm::CoreOp::Push(crate::asm::SP, 1)],
+                    });
+
+                    let set_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                        name: "set_sp".to_string(),
+                        args: vec![(
+                            "new_sp".to_string(),
+                            crate::lir::Type::Pointer(
                                 crate::lir::Mutability::Any,
                                 Box::new(crate::lir::Type::Cell),
                             ),
-                            body: vec![crate::asm::CoreOp::Push(crate::asm::SP, 1)],
-                        });
+                        )],
+                        ret: crate::lir::Type::None,
+                        body: vec![Pop(Some(A), 1), Move { src: A, dst: SP }],
+                    });
 
-                        let set_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                            name: "set_sp".to_string(),
-                            args: vec![(
-                                "new_sp".to_string(),
-                                crate::lir::Type::Pointer(
-                                    crate::lir::Mutability::Any,
-                                    Box::new(crate::lir::Type::Cell),
-                                ),
-                            )],
-                            ret: crate::lir::Type::None,
-                            body: vec![Pop(Some(A), 1), Move { src: A, dst: SP }],
-                        });
-
-                        let set_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                            name: "set_fp".to_string(),
-                            args: vec![(
-                                "new_fp".to_string(),
-                                crate::lir::Type::Pointer(
-                                    crate::lir::Mutability::Any,
-                                    Box::new(crate::lir::Type::Cell),
-                                ),
-                            )],
-                            ret: crate::lir::Type::None,
-                            body: vec![Pop(Some(FP), 1)],
-                        });
-
-                        let set_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                            name: "set_stack_start".to_string(),
-                            args: vec![(
-                                "new_stack_start".to_string(),
-                                crate::lir::Type::Pointer(
-                                    crate::lir::Mutability::Any,
-                                    Box::new(crate::lir::Type::Cell),
-                                ),
-                            )],
-                            ret: crate::lir::Type::None,
-                            body: vec![Pop(Some(STACK_START), 1)],
-                        });
-
-                        let get_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                            name: "get_fp".to_string(),
-                            args: vec![],
-                            ret: crate::lir::Type::Pointer(
+                    let set_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                        name: "set_fp".to_string(),
+                        args: vec![(
+                            "new_fp".to_string(),
+                            crate::lir::Type::Pointer(
                                 crate::lir::Mutability::Any,
                                 Box::new(crate::lir::Type::Cell),
                             ),
-                            body: vec![crate::asm::CoreOp::Push(crate::asm::FP, 1)],
-                        });
+                        )],
+                        ret: crate::lir::Type::None,
+                        body: vec![Pop(Some(FP), 1)],
+                    });
 
-                        let get_gp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                            name: "get_gp".to_string(),
-                            args: vec![],
-                            ret: crate::lir::Type::Pointer(
+                    let set_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                        name: "set_stack_start".to_string(),
+                        args: vec![(
+                            "new_stack_start".to_string(),
+                            crate::lir::Type::Pointer(
                                 crate::lir::Mutability::Any,
                                 Box::new(crate::lir::Type::Cell),
                             ),
-                            body: vec![crate::asm::CoreOp::Push(crate::asm::GP, 1)],
-                        });
-                        let set_gp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                            name: "set_gp".to_string(),
-                            args: vec![(
-                                "new_gp".to_string(),
-                                crate::lir::Type::Pointer(
-                                    crate::lir::Mutability::Any,
-                                    Box::new(crate::lir::Type::Cell),
-                                ),
-                            )],
-                            ret: crate::lir::Type::None,
-                            body: vec![Pop(Some(GP), 1)],
-                        });
+                        )],
+                        ret: crate::lir::Type::None,
+                        body: vec![Pop(Some(STACK_START), 1)],
+                    });
 
-                        let get_fp_stack = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                            name: "get_fp_stack".to_string(),
-                            args: vec![],
-                            ret: crate::lir::Type::Pointer(
+                    let get_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                        name: "get_fp".to_string(),
+                        args: vec![],
+                        ret: crate::lir::Type::Pointer(
+                            crate::lir::Mutability::Any,
+                            Box::new(crate::lir::Type::Cell),
+                        ),
+                        body: vec![crate::asm::CoreOp::Push(crate::asm::FP, 1)],
+                    });
+
+                    let get_gp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                        name: "get_gp".to_string(),
+                        args: vec![],
+                        ret: crate::lir::Type::Pointer(
+                            crate::lir::Mutability::Any,
+                            Box::new(crate::lir::Type::Cell),
+                        ),
+                        body: vec![crate::asm::CoreOp::Push(crate::asm::GP, 1)],
+                    });
+                    let set_gp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                        name: "set_gp".to_string(),
+                        args: vec![(
+                            "new_gp".to_string(),
+                            crate::lir::Type::Pointer(
                                 crate::lir::Mutability::Any,
                                 Box::new(crate::lir::Type::Cell),
                             ),
-                            body: vec![crate::asm::CoreOp::Push(crate::asm::FP_STACK, 1)],
-                        });
+                        )],
+                        ret: crate::lir::Type::None,
+                        body: vec![Pop(Some(GP), 1)],
+                    });
 
-                        let get_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                            name: "get_stack_start".to_string(),
-                            args: vec![],
-                            ret: crate::lir::Type::Pointer(
-                                crate::lir::Mutability::Any,
-                                Box::new(crate::lir::Type::Cell),
-                            ),
-                            body: vec![crate::asm::CoreOp::Push(crate::asm::STACK_START, 1)],
-                        });
+                    let get_fp_stack = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                        name: "get_fp_stack".to_string(),
+                        args: vec![],
+                        ret: crate::lir::Type::Pointer(
+                            crate::lir::Mutability::Any,
+                            Box::new(crate::lir::Type::Cell),
+                        ),
+                        body: vec![crate::asm::CoreOp::Push(crate::asm::FP_STACK, 1)],
+                    });
 
-                        let mut debug_body = vec![];
-                        for ch in "Debug\n".to_string().chars() {
+                    let get_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                        name: "get_stack_start".to_string(),
+                        args: vec![],
+                        ret: crate::lir::Type::Pointer(
+                            crate::lir::Mutability::Any,
+                            Box::new(crate::lir::Type::Cell),
+                        ),
+                        body: vec![crate::asm::CoreOp::Push(crate::asm::STACK_START, 1)],
+                    });
+
+                    let mut debug_body = vec![];
+                    for ch in "Debug\n".to_string().chars() {
+                        debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, ch as i64));
+                        debug_body.push(crate::asm::CoreOp::Put(
+                            crate::asm::TMP,
+                            Output::stdout_char(),
+                        ));
+                    }
+                    for reg in crate::asm::REGISTERS {
+                        for ch in format!("   {reg} = ").chars() {
                             debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, ch as i64));
                             debug_body.push(crate::asm::CoreOp::Put(
                                 crate::asm::TMP,
                                 Output::stdout_char(),
                             ));
                         }
-                        for reg in crate::asm::REGISTERS {
-                            for ch in format!("   {reg} = ").chars() {
-                                debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, ch as i64));
-                                debug_body.push(crate::asm::CoreOp::Put(
-                                    crate::asm::TMP,
-                                    Output::stdout_char(),
-                                ));
-                            }
-                            debug_body.push(crate::asm::CoreOp::Put(reg, Output::stdout_int()));
-                            debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, '\n' as i64));
-                            debug_body.push(crate::asm::CoreOp::Put(
-                                crate::asm::TMP,
-                                Output::stdout_char(),
-                            ));
-                        }
-                        // Debug function
-                        // Prints out stack pointer, frame pointer, and the value at the top of the stack.
-                        let debug = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                            name: "debug".to_string(),
-                            args: vec![],
-                            ret: crate::lir::Type::None,
-                            body: debug_body,
-                        });
+                        debug_body.push(crate::asm::CoreOp::Put(reg, Output::stdout_int()));
+                        debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, '\n' as i64));
+                        debug_body.push(crate::asm::CoreOp::Put(
+                            crate::asm::TMP,
+                            Output::stdout_char(),
+                        ));
+                    }
+                    // Debug function
+                    // Prints out stack pointer, frame pointer, and the value at the top of the stack.
+                    let debug = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                        name: "debug".to_string(),
+                        args: vec![],
+                        ret: crate::lir::Type::None,
+                        body: debug_body,
+                    });
 
-                        // body: vec![
-                        //     crate::asm::StandardOp::CoreOp(
-                        //         crate::asm::CoreOp::Many(vec![
-                        //             crate::asm::CoreOp::Set(crate::asm::A, 'S' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                        //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                        //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                        //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                        //             crate::asm::CoreOp::Put(crate::asm::SP, Output::stdout_int()),
-                        //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    // body: vec![
+                    //     crate::asm::StandardOp::CoreOp(
+                    //         crate::asm::CoreOp::Many(vec![
+                    //             crate::asm::CoreOp::Set(crate::asm::A, 'S' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //             crate::asm::CoreOp::Put(crate::asm::SP, Output::stdout_int()),
+                    //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
 
-                        //             crate::asm::CoreOp::Set(crate::asm::A, 'F' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                        //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                        //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                        //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                        //             crate::asm::CoreOp::Put(crate::asm::FP, Output::stdout_int()),
-                        //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //             crate::asm::CoreOp::Set(crate::asm::A, 'F' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //             crate::asm::CoreOp::Put(crate::asm::FP, Output::stdout_int()),
+                    //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
 
-                        //             crate::asm::CoreOp::Set(crate::asm::A, 'T' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                        //             crate::asm::CoreOp::Set(crate::asm::A, 'O' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                        //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                        //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                        //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                        //             crate::asm::CoreOp::Put(crate::asm::SP.deref(), Output::stdout_int()),
-                        //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
-                        //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                        //         ])
-                        //     )
-                        // ],
+                    //             crate::asm::CoreOp::Set(crate::asm::A, 'T' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //             crate::asm::CoreOp::Set(crate::asm::A, 'O' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //             crate::asm::CoreOp::Put(crate::asm::SP.deref(), Output::stdout_int()),
+                    //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
+                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+                    //         ])
+                    //     )
+                    // ],
 
-                        let asm_code = crate::lir::Expr::let_consts(
-                            vec![
-                                ("free", free),
-                                ("alloc", alloc),
-                                // ("realloc_fp_stack", realloc_fp_stack),
-                                // ("realloc_stack", realloc_stack),
-                                ("debug", debug),
-                                ("get_sp", get_sp),
-                                ("get_fp", get_fp),
-                                ("set_sp", set_sp),
-                                ("set_fp", set_fp),
-                                ("set_gp", set_gp),
-                                ("get_fp_stack", get_fp_stack),
-                                ("get_stack_start", get_stack_start),
-                                ("set_stack_start", set_stack_start),
-                                ("get_gp", get_gp),
-                            ],
-                            parsed,
-                        ).compile();
-                        // let asm_code = parsed.compile();
-                        const CALL_STACK_SIZE: usize = 1024;
-                        if let Err(ref e) = asm_code {
-                            return Err(format!("{e}"));
-                        }
-                        let asm_code = asm_code.unwrap();
-                
-                        let vm_code = match asm_code {
-                            Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
-                            Err(std_asm_code) => std_asm_code.assemble(CALL_STACK_SIZE).map(Err),
-                        }
-                        .unwrap();
-                
-                        let device = match vm_code {
-                            Ok(vm_code) => CoreInterpreter::new(TestingDevice::new(input))
-                                .run(&vm_code)?,
-                                // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
-                            Err(vm_code) => StandardInterpreter::new(TestingDevice::new(input))
-                                .run(&vm_code)?
-                                // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
-                        };
-                
-                        let output_text = device.output_str();
-                
-                        Ok(output_text)
-                    })
+                    let asm_code = crate::lir::Expr::let_consts(
+                        vec![
+                            ("free", free),
+                            ("alloc", alloc),
+                            // ("realloc_fp_stack", realloc_fp_stack),
+                            // ("realloc_stack", realloc_stack),
+                            ("debug", debug),
+                            ("get_sp", get_sp),
+                            ("get_fp", get_fp),
+                            ("set_sp", set_sp),
+                            ("set_fp", set_fp),
+                            ("set_gp", set_gp),
+                            ("get_fp_stack", get_fp_stack),
+                            ("get_stack_start", get_stack_start),
+                            ("set_stack_start", set_stack_start),
+                            ("get_gp", get_gp),
+                        ],
+                        parsed,
+                    ).compile();
+                    // let asm_code = parsed.compile();
+                    const CALL_STACK_SIZE: usize = 1024;
+                    if let Err(ref e) = asm_code {
+                        return Err(format!("{e}"));
+                    }
+                    let asm_code = asm_code.unwrap();
+            
+                    let vm_code = match asm_code {
+                        Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
+                        Err(std_asm_code) => std_asm_code.assemble(CALL_STACK_SIZE).map(Err),
+                    }
                     .unwrap();
-            child.join().unwrap()
-        })
-    }
+            
+                    let device = match vm_code {
+                        Ok(vm_code) => CoreInterpreter::new(TestingDevice::new(input))
+                            .run(&vm_code)?,
+                            // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
+                        Err(vm_code) => StandardInterpreter::new(TestingDevice::new(input))
+                            .run(&vm_code)?
+                            // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
+                    };
+            
+                    let output_text = device.output_str();
+            
+                    Ok(output_text)
+                })
+                .unwrap();
+        child.join().unwrap()
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use rayon::iter::Zip;
+
+    use super::*;
 
     fn assert_parse_const(input: &str, expected: Option<ConstExpr>) {
         let result = parse_const::<nom::error::VerboseError<&str>>(input);
@@ -2778,6 +2927,73 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_module() {
+        // Set logging level to debug
+        // env_logger::builder().filter_level(log::LevelFilter::Trace).init();
+
+        match compile_and_run(r#"
+module std {
+    module fs {
+        fun open(path: &Char, mode: &Char): Int {
+            println("Opening file");
+            0
+        }
+    }
+
+    fun println<T>(x: T) {
+        println(fs.open(&"stdout", &"w"));
+        test();
+        print(x);
+        print("\n");
+    }
+
+    struct Point {
+        x: Int,
+        y: Int,
+    }
+
+    impl Point {
+        fun new(x: Int, y: Int): Point {
+            return {x = x, y = y};
+        }
+
+        fun move(&mut self, dx: Int, dy: Int) {
+            self.x += dx;
+            self.y += dy;
+        }
+    }
+
+    extern fun memcpy(dst: &mut Cell, src: &Cell, n: Int);
+
+    fun test() {
+        println("Hello, world!");
+
+        let p = Point.new(5, 10);
+
+        println(p.x);
+
+        let mut p2 = p;
+        p2.move(5, 5);
+
+        println(p2.x);
+    }
+}
+
+from std import println as p;
+from std import Point;
+
+p<Int>(5);
+        "#, "hello!") {
+            Ok(expr) => {
+                // println!("{:#?}", expr)
+                // Compile and run
+                println!("{}", expr)
+            },
+            Err(e) => println!("Error: {}", e),
+        }
+    }
+
+    #[test]
     fn test_parse_expr() {
         match compile_and_run(r#"
             fun memcpy<T>(dst: &mut T, src: &T, n: Int) {
@@ -2904,7 +3120,6 @@ mod tests {
             },
             Err(e) => println!("Error: {}", e),
         }
-        return;
         assert_parse_expr("1", Some(Expr::ConstExpr(ConstExpr::Int(1))));
         assert_parse_expr("1.0", Some(Expr::ConstExpr(ConstExpr::Float(1.0))));
 
