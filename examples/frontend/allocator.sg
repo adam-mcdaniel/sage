@@ -3,7 +3,7 @@ enum Option<T> {
     Nothing
 }
 
-def allocate<T>(count: Int): Option<&mut T> {
+fun allocate<T>(count: Int): Option<&mut T> {
     if (count <= 0) {
         return Option<&mut T> of Nothing;
     }
@@ -22,7 +22,7 @@ struct Point<T> {
 
 match allocate<Point<Int>>(5) {
     of Some(val) => {
-        for let mut i=0; i<5; i+=1 {
+        for let mut i=0; i<5; i+=1; {
             val[i].x = i;
             val[i].y = i * 2;
         }
