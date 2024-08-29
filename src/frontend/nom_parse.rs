@@ -1,14 +1,14 @@
 use std::{
     collections::{BTreeMap, HashMap}, hash::Hash, result, sync::RwLock
 };
-
+use log::{trace, info, warn, error, debug};
 use nom::{
-    branch::alt, bytes::complete::{escaped_transform, tag, take_while, take_while1}, character::complete::{char, hex_digit1, oct_digit1, crlf, digit1, multispace0, multispace1, one_of}, combinator::{all_consuming, cut, map, map_res, not, opt, recognize, verify}, error::{context, ContextError, ParseError}, multi::{many0, many0_count, many1}, sequence::{delimited, pair, preceded, terminated}, IResult
+    branch::alt, bytes::complete::{escaped_transform, is_not, tag, take_while, take_while1, take_while_m_n}, character::complete::{char, crlf, digit1, hex_digit1, multispace0, multispace1, oct_digit1, one_of}, combinator::{all_consuming, cut, map, map_opt, map_res, not, opt, recognize, verify}, error::{context, ContextError, ParseError}, multi::{fold_many0, fold_many1, many0, many0_count, many1}, sequence::{delimited, pair, preceded, terminated}, IResult, Parser
 };
 
 
 use nom::{
-    bytes::complete::{escaped, }, character::complete::{alpha1, alphanumeric0, alphanumeric1, anychar, none_of}, combinator::{value}, error::{convert_error, ErrorKind, VerboseError}
+    bytes::complete::{escaped, }, character::complete::{alpha1, alphanumeric0, alphanumeric1, anychar, none_of}, combinator::{value}, error::{convert_error, ErrorKind, VerboseError, FromExternalError}
 };
 use crate::{lir::{self, *}, parse::SourceCodeLocation};
 const KEYWORDS: &[&str] = &[
@@ -137,12 +137,12 @@ fn til_first_non_ws_line<'a, E: ParseError<&'a str> + ContextError<&'a str>>(inp
 fn get_indentation(ws: &str) -> u8 {
     let spaces = ws.chars().filter(|c| *c == ' ').count() as u8;
     let tabs = ws.chars().filter(|c| *c == '\t').count() as u8;
-    println!("Spaces: {spaces}, Tabs: {tabs}");
+    trace!("Spaces: {spaces}, Tabs: {tabs}");
     spaces + tabs * 4
 }
 
 fn parse_whitespace_sensitive_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: u8, mut input: &'a str) -> IResult<&'a str, Expr, E> {
-    println!("Parsing block with indentation {indentation}");
+    trace!("Parsing block with indentation {indentation}");
     let mut input_updater = input;
     let mut is_first = true;
 
@@ -151,37 +151,37 @@ fn parse_whitespace_sensitive_block<'a, E: ParseError<&'a str> + ContextError<&'
         input = input_updater;
         let (input, _) = til_first_non_ws_line(input)?;
         let beginning_of_line = input;
-        println!("Parsing line: {input}");
+        trace!("Parsing line: {input}");
         // Get new indentation level
         let (input, new_indentation_ws) = whitespace(input)?;
         if input.is_empty() {
-            println!("Empty line, breaking out of block");
+            trace!("Empty line, breaking out of block");
             break;
         }
 
-        println!("Parsing line: {input}");
+        trace!("Parsing line: {input}");
         let new_indentation = get_indentation(new_indentation_ws);
-        println!("New indentation: {new_indentation}, `{new_indentation_ws}`");
+        trace!("New indentation: {new_indentation}, `{new_indentation_ws}`");
         // Confirm that the new indentation is 4 spaces greater than the current indentation
         if new_indentation != indentation && is_first {
             // Throw an error
-            println!("Indentation error: {new_indentation} != {indentation}");
+            trace!("Indentation error: {new_indentation} != {indentation}");
             return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Verify)));
         } else if new_indentation != indentation {
-            println!("Indentation error: {new_indentation} != {indentation}");
+            trace!("Indentation error: {new_indentation} != {indentation}");
             // If the remainder of the line is empty, skip it
             if let Ok((input, _)) = crlf::<&str, E>(input) {
                 input_updater = input;
                 continue;
             }
-            println!("Non-indented line, breaking out of block");
+            trace!("Non-indented line, breaking out of block");
             break;
         }
 
         // Parse the expression
-        println!("Parsing expression: {input}");
+        trace!("Parsing expression: {input}");
         if let Ok((input, expr)) = parse_expr::<E>(input) {
-            println!("Parsed expression: {expr}");
+            trace!("Parsed expression: {expr}");
             input_updater = input;
             result.push(expr);
         } else {
@@ -190,7 +190,7 @@ fn parse_whitespace_sensitive_block<'a, E: ParseError<&'a str> + ContextError<&'
             }
 
             let (input, expr) = parse_suite(indentation, beginning_of_line)?;
-            println!("Parsed expression: {expr}");
+            trace!("Parsed expression: {expr}");
             input_updater = input;
             result.push(expr);
         }
@@ -264,11 +264,11 @@ pub fn parse(input: &str) -> Result<Expr, String> {
     match all_consuming(parse_helper::<VerboseError<&str>>)(input) {
         Ok((_, expr)) => Ok(expr),
         Err(nom::Err::Error(e)) => {
-            println!("Error: {e}");
+            trace!("Error: {e}");
             Err(format!("{}", convert_error(input, e)))
         },
         Err(nom::Err::Failure(e)) => {
-            println!("Failure: {e}");
+            trace!("Failure: {e}");
             Err(format!("{}", convert_error(input, e)))
         },
         Err(nom::Err::Incomplete(e)) => {
@@ -285,24 +285,24 @@ fn parse_impl_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     //     let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
     //     Statement::Declaration(Declaration::Impl(name, args, body))
     // },
-    println!("Parsing impl");
+    trace!("Parsing impl");
     let (input, _) = tag("impl")(input)?;
 
     let (input, ty) = cut(parse_type)(input)?;
 
     let (input, _) = whitespace(input)?;
-    let (input, _) = tag("{")(input)?;
+    let (input, _) = cut(tag("{"))(input)?;
     let (mut input, _) = whitespace(input)?;
     let mut impl_items = vec![];
     while let Ok((i, item)) = parse_impl_item::<E>(input, &ty) {
-        println!("Parsed impl item: {item:?}");
+        trace!("Parsed impl item: {item:?}");
         impl_items.push(item);
         let (i, _) = whitespace(i)?;
         input = i;
     }
 
     let (input, _) = whitespace(input)?;
-    let (input, _) = tag("}")(input)?;
+    let (input, _) = cut(tag("}"))(input)?;
 
 
     Ok((input, Statement::Declaration(Declaration::Impl(ty, impl_items))))
@@ -368,20 +368,20 @@ fn parse_impl_method<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     //     let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
     //     Statement::Declaration(Declaration::Proc(name.clone(), Procedure::new(name, args, ret, body)))
     // },
-    println!("Parsing impl method");
+    trace!("Parsing impl method");
     let (input, _) = tag("fun")(input)?;
-    println!("Parsing method");
+    trace!("Parsing method");
     let (input, _) = whitespace(input)?;
-    println!("Parsing method name");
+    trace!("Parsing method name");
     let (input, name) = cut(parse_symbol)(input)?;
-    println!("Parsed method name: {name}");
+    trace!("Parsed method name: {name}");
     let (input, _) = whitespace(input)?;
     // Check if there are any template args
     let (input, template_args) = cut(opt(parse_type_params))(input)?;
-    println!("Parsed template args: {template_args:#?}");
+    trace!("Parsed template args: {template_args:#?}");
     // Get the function parameters with mutability
     let (input, (params, ret)) = parse_method_params(input, ty)?;
-    println!("Parsed method parameters: {params:#?}, {ret:#?}");
+    trace!("Parsed method parameters: {params:#?}, {ret:#?}");
     let (input, _) = whitespace(input)?;
     let (input, body) = cut(parse_block)(input)?;
     // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body))))
@@ -392,33 +392,33 @@ fn parse_impl_method<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     }
 }
 
-fn parse_match_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_match_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
     // "match" <expr: Expr> "{" <branches: Tuple<(<pattern: Pattern> "=>" <body: Block>)>> "}" => Statement::Match(expr, branches.into_iter().map(|(pat, body)| (pat, body)).collect()),
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("match")(input)?;
-    println!("Parsing match");
+    trace!("Parsing match");
     let (input, _) = whitespace(input)?;
     let (input, expr) = cut(parse_expr)(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, _) = tag("{")(input)?;
+    let (input, _) = cut(tag("{"))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, mut branches) = many0(terminated(
         pair(
             parse_pattern,
             preceded(
-                pair(whitespace, tag("=>")),
+                pair(whitespace, cut(tag("=>"))),
                 cut(alt((parse_block, parse_expr)))
             )
         ),
         preceded(tag(","), whitespace)
     ))(input)?;
-    println!("Parsed branches: {input}");
-    println!("Parsed branches: {branches:#?}");
+    trace!("Parsed branches: {input}");
+    trace!("Parsed branches: {branches:#?}");
     let (input, branch) = opt(terminated(
         pair(
             parse_pattern,
             preceded(
-                pair(whitespace, tag("=>")),
+                pair(whitespace, cut(tag("=>"))),
                 cut(alt((parse_block, parse_expr)))
             )
         ),
@@ -431,21 +431,51 @@ fn parse_match_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
 
 
     let (input, _) = whitespace(input)?;
-    let (input, _) = tag("}")(input)?;
-    Ok((input, Statement::Expr(Expr::Match(expr.into(), branches.into_iter().map(|(pat, body)| (pat, body)).collect()))))
+    let (input, _) = cut(tag("}"))(input)?;
+    Ok((input, Expr::Match(expr.into(), branches.into_iter().map(|(pat, body)| (pat, body)).collect())))
+}
+
+fn parse_match_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+    let (input, expr) = parse_match_expr(input)?;
+    Ok((input, Statement::Expr(expr)))
 }
 
 fn parse_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Pattern, E> {
     let (input, _) = whitespace(input)?;
     let (input, pattern) = alt((
+        context("alt", parse_alt_pattern),
+        parse_pattern_atom,
+    ))(input)?;
+    trace!("Got pattern: {pattern:#?}");
+    Ok((input, pattern))
+}
+
+fn parse_alt_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Pattern, E> {
+    let (input, _) = whitespace(input)?;
+    let (input, mut patterns) = many0(terminated(parse_pattern_atom, preceded(whitespace, preceded(whitespace, tag("|")))))(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, pattern) = opt(parse_pattern_atom)(input)?;
+    if let Some(p) = pattern {
+        patterns.push(p);
+    }
+    trace!("Got alt pattern: {patterns:#?}");
+    if patterns.len() == 1 {
+        return Ok((input, patterns.pop().unwrap()));
+    }
+    Ok((input, Pattern::Alt(patterns)))
+}
+
+fn parse_pattern_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Pattern, E> {
+    let (input, _) = whitespace(input)?;
+    let (input, pattern) = alt((
         context("pointer", parse_pointer_pattern),
         context("struct", parse_struct_pattern),
         context("variant", parse_variant_pattern),
-        context("group", delimited(tag("("), cut(parse_pattern), tag(")"))),
-        context("tuple", parse_tuple_pattern),
         context("wildcard", map(tag("_"), |_| Pattern::Wildcard)),
         context("mutable symbol", map(preceded(tag("mut"), parse_symbol), |name| Pattern::Symbol(Mutability::Mutable, name.to_owned()))),
         context("symbol", map(parse_symbol, |name| Pattern::Symbol(Mutability::Immutable, name.to_owned()))),
+        context("tuple", parse_tuple_pattern),
+        context("group", delimited(tag("("), cut(parse_pattern), tag(")"))),
         // context("tuple", map(ma
     ))(input)?;
     Ok((input, pattern))
@@ -455,7 +485,7 @@ fn parse_tuple_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("(")(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, mut patterns) = many0(terminated(parse_pattern, tag(",")))(input)?;
+    let (input, mut patterns) = many1(terminated(parse_pattern, tag(",")))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, pattern) = opt(parse_pattern)(input)?;
     if let Some(p) = pattern {
@@ -470,7 +500,7 @@ fn parse_pointer_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(inp
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("&")(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, pattern) = parse_pattern(input)?;
+    let (input, pattern) = parse_pattern_atom(input)?;
     Ok((input, Pattern::Pointer(Box::new(pattern))))
 }
 
@@ -480,7 +510,7 @@ fn parse_variant_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(inp
     let (input, _) = whitespace(input)?;
     let (input, variant) = parse_symbol(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, pattern) = opt(parse_pattern)(input)?;
+    let (input, pattern) = opt(parse_pattern_atom)(input)?;
     Ok((input, Pattern::Variant(variant.to_owned(), pattern.map(Box::new))))
 }
 
@@ -552,11 +582,13 @@ fn parse_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str
 fn parse_long_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
     let (input, _) = whitespace(input)?;
     let (input, stmt) = alt((
+        context("if let", parse_if_let_stmt),
         context("if", parse_if_stmt),
         context("when", parse_when_stmt),
         context("match", parse_match_stmt),
         context("while", parse_while_stmt),
         context("for", parse_for_stmt),
+        context("function", parse_quick_fun_stmt),
         context("function", parse_fun_stmt),
         context("impl", parse_impl_stmt),
         context("enum", parse_enum_stmt),
@@ -683,6 +715,29 @@ fn parse_if_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a 
     Ok((input, Statement::Expr(expr)))
 }
 
+fn parse_if_let_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+    // "if" <condition: Expr> <then: Block> <else: Option<Block>> => Expr::If(condition, Box::new(then), else.map(Box::new)),
+    let (input, _) = tag("if")(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, _) = tag("let")(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, pattern) = cut(parse_pattern)(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, _) = tag("=")(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, value) = cut(parse_expr)(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, then) = cut(parse_block)(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, else_) = opt(preceded(tag("else"), cut(parse_block)))(input)?;
+    Ok((input, Expr::IfLet(pattern, value.into(), Box::new(then), else_.unwrap_or(Expr::NONE).into())))
+}
+
+fn parse_if_let_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+    let (input, expr) = parse_if_let_expr(input)?;
+    Ok((input, Statement::Expr(expr)))
+}
+
 fn parse_when_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
     // "when" <condition: Expr> <then: Block> <else: Option<Block>> => Statement::If(condition, Box::new(then), else.map(Box::new)),
     let (input, _) = tag("when")(input)?;
@@ -744,20 +799,20 @@ fn parse_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a
     //     Statement::Declaration(Declaration::Proc(name.clone(), Procedure::new(name, args, ret, body)))
     // },
     let (input, _) = tag("fun")(input)?;
-    println!("Parsing function");
+    trace!("Parsing function");
     let (input, _) = whitespace(input)?;
     let (input, name) = cut(parse_symbol)(input)?;
     let (input, _) = whitespace(input)?;
     // Check if there are any template args
     let (input, template_args) = cut(opt(parse_type_params))(input)?;
     // Get the function parameters with mutability
-    println!("Parsing function parameters");
-    println!("Input: {input}");
+    trace!("Parsing function parameters");
+    trace!("Input: {input}");
     let (input, (params, ret)) = cut(parse_fun_params)(input)?;
-    println!("Parsed function parameters: {params:#?}, {ret:#?}");
+    trace!("Parsed function parameters: {params:#?}, {ret:#?}");
     let (input, _) = whitespace(input)?;
     let (input, body) = parse_block(input)?;
-    println!("Parsed function body: {body}");
+    trace!("Parsed function body: {body}");
     // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)))))
     if let Some(args) = template_args {
         Ok((input, Statement::Declaration(Declaration::PolyProc(name.to_owned(), PolyProcedure::new(name.to_owned(), args.into_iter().map(|x| x.to_owned()).collect(), params, ret, body)))))
@@ -766,28 +821,30 @@ fn parse_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a
     }
 }
 
-fn parse_short_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_quick_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
     // "fun" <name: Symbol> <args: Tuple<(<(<Symbol> ":")?> <Type>)>> ":" <ret: Type> <body: Block> => {
     //     let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
     //     Statement::Declaration(Declaration::Proc(name.clone(), Procedure::new(name, args, ret, body)))
     // },
     let (input, _) = tag("fun")(input)?;
-    println!("Parsing function");
+    trace!("Parsing function");
     let (input, _) = whitespace(input)?;
     let (input, name) = cut(parse_symbol)(input)?;
     let (input, _) = whitespace(input)?;
     // Check if there are any template args
     let (input, template_args) = cut(opt(parse_type_params))(input)?;
     // Get the function parameters with mutability
-    println!("Parsing function parameters");
-    println!("Input: {input}");
+    trace!("Parsing function parameters");
+    trace!("Input: {input}");
     let (input, (params, ret)) = cut(parse_fun_params)(input)?;
-    println!("Parsed function parameters: {params:#?}, {ret:#?}");
+    trace!("Parsed function parameters: {params:#?}, {ret:#?}");
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("=")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, body) = cut(parse_expr)(input)?;
-    println!("Parsed function body: {body}");
+    let (input, _) = whitespace(input)?;
+    let (input, _) = cut(tag(";"))(input)?;
+    trace!("Parsed function body: {body}");
     // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)))))
     if let Some(args) = template_args {
         Ok((input, Statement::Declaration(Declaration::PolyProc(name.to_owned(), PolyProcedure::new(name.to_owned(), args.into_iter().map(|x| x.to_owned()).collect(), params, ret, body)))))
@@ -807,10 +864,9 @@ fn parse_fun_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
                 cut(parse_type)
             )
         ),
-        tag(",")
+        delimited(whitespace, tag(","), whitespace)
     ))(input)?;
 
-    println!("Input: {input}");
     let (input, _) = whitespace(input)?;
     let (input, last) = opt(
         pair(
@@ -827,7 +883,7 @@ fn parse_fun_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     if let Some(((mutability, name), ty)) = last {
         params.push((name.to_owned(), mutability, ty));
     }
-    println!("Parsed function parameters: {params:#?}");
+    trace!("Parsed function parameters: {params:#?}");
 
     let (input, _) = whitespace(input)?;
     let (input, _) = cut(tag(")"))(input)?;
@@ -850,7 +906,7 @@ fn parse_method_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input
         context("&self", map(delimited(tag("&"), whitespace, tag("self")), |_| ("self".to_owned(), Mutability::Immutable, Type::Pointer(Mutability::Immutable, Box::new(ty.clone()))))),
         context("&mut self", map(delimited(delimited(tag("&"), whitespace, tag("mut")), whitespace, tag("self")), |_| ("self".to_owned(), Mutability::Immutable, Type::Pointer(Mutability::Mutable, Box::new(ty.clone()))))),
     ))(input)?;
-    println!("Parsed self parameter: {self_param:#?}");
+    trace!("Parsed self parameter: {self_param:#?}");
     let (input, _) = whitespace(input)?;
     let (input, _) = opt(tag(","))(input)?;
 
@@ -864,7 +920,7 @@ fn parse_method_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input
         ),
         tag(",")
     ))(input)?;
-    println!("Parsed self parameter: {params:#?}");
+    trace!("Parsed self parameter: {params:#?}");
     let (input, last) = opt(
         pair(
             // parse_symbol,
@@ -875,8 +931,8 @@ fn parse_method_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input
             )
         )
     )(input)?;
-    println!("Parsed method parameters: {params:#?}, {last:#?}");
-    println!("Parsed method parameters: {input}");
+    trace!("Parsed method parameters: {params:#?}, {last:#?}");
+    trace!("Parsed method parameters: {input}");
 
     let mut params: Vec<_> = std::iter::once(self_param).chain(params.into_iter().map(|((mutability, name), ty)| (name.to_owned(), mutability, ty))).collect();
     if let Some(((mutability, name), ty)) = last {
@@ -923,6 +979,22 @@ fn parse_const_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     let (input, _) = whitespace(input)?;
     let (input, value) = cut(parse_const)(input)?;
     Ok((input, Statement::Declaration(Declaration::Const(name.to_owned(), value))))
+}
+
+fn parse_pattern_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+    // "let" <name: Symbol> ":" <ty: Type> "=" <value: Expr> => Statement::Declaration(Declaration::Var(name, Mutability::Immutable, Some(ty), value)),
+    // "let" <name: Symbol> "=" <value: Expr> => Statement::Declaration(Declaration::Var(name, Mutability::Immutable, None, value)),
+    let (input, _) = tag("let")(input)?;
+    let (input, _) = whitespace(input)?;
+
+    let (input, pattern) = parse_pattern(input)?;
+    let (input, _) = whitespace(input)?;
+
+    let (input, _) = tag("=")(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, value) = parse_expr(input)?;
+
+    Ok((input, Statement::Declaration(Declaration::VarPat(pattern, value))))
 }
 
 fn parse_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
@@ -1017,7 +1089,7 @@ fn parse_struct_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
 
     let (input, _) = tag("{")(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, fields) = many1(terminated(
+    let (input, mut fields) = many1(terminated(
         pair(
             parse_symbol,
             preceded(
@@ -1025,8 +1097,23 @@ fn parse_struct_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
                 parse_type
             )
         ),
-        tag(",")
+        preceded(whitespace, tag(","))
     ))(input)?;
+    let (input, _) = whitespace(input)?;
+
+    // Check for the last field
+    let (input, last) = opt(
+        pair(
+            parse_symbol,
+            preceded(
+                pair(whitespace, tag(":")),
+                parse_type
+            )
+        )
+    )(input)?;
+    if let Some((name, ty)) = last {
+        fields.push((name, ty));
+    }
     let (input, _) = whitespace(input)?;
     let (input, _) = cut(tag("}"))(input)?;
     let fields = fields.into_iter().map(|(name, ty)| (name.to_owned(), ty)).collect();
@@ -1073,8 +1160,8 @@ fn parse_enum_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
 
     // For all the fields that don't have a type, assign them the "None" type
     let fields = fields.into_iter().map(|(k, v)| (k.to_owned(), v.unwrap_or(Type::None))).collect();
-    // println!("Fields: {fields}");
-    // println!("Template params: {template_params}");
+    // trace!("Fields: {fields}");
+    // trace!("Template params: {template_params}");
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("}")(input)?;
 
@@ -1176,10 +1263,10 @@ fn parse_short_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
         context("extern", parse_extern_stmt),
         context("const", parse_const_stmt),
         context("let", parse_var_stmt),
+        context("let", parse_pattern_var_stmt),
         context("let static", parse_static_var_stmt),
         context("type", parse_type_stmt),
         context("return", parse_return_stmt),
-        context("function", parse_short_fun_stmt),
         context("assignment", parse_assign_stmt),
         context("expression", map(parse_expr, Statement::Expr)),
     ))(input)?;
@@ -1435,26 +1522,26 @@ fn parse_type<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str
 }
 
 fn parse_indentation<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: u8, input: &'a str) -> IResult<&'a str, u8, E> {
-    println!("Checking for indentation against {indentation}...");
+    trace!("Checking for indentation against {indentation}...");
     let (input, ws) = whitespace(input)?;
     let new_indentation = get_indentation(ws);
     if new_indentation != indentation && !input.is_empty() {
-        println!("Failed");
+        trace!("Failed");
         return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Verify)));
     }
     Ok((input, new_indentation))
 }
 
 fn parse_suite<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: u8, mut input: &'a str) -> IResult<&'a str, Expr, E> {
-    println!("Parsing suite with indentation {indentation}");
+    trace!("Parsing suite with indentation {indentation}");
     let mut input_updater = input;
     let mut result = vec![];
     loop {
         input = input_updater;
         // Try to match an `if`
         til_first_non_ws_line(input)?;
-        println!("Checking for indentation against {indentation}...");
-        println!("Input: {input}");
+        trace!("Checking for indentation against {indentation}...");
+        trace!("Input: {input}");
         let Ok((input, _)) = parse_indentation::<E>(indentation, input) else {
             break;
         };
@@ -1466,7 +1553,7 @@ fn parse_suite<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: 
             tag::<&str, &str, E>("enum")
         ))(input) {
             Ok((input, "if")) => {
-                println!("Parsing if");
+                trace!("Parsing if");
                 let (input, _) = whitespace(input)?;
                 let (input, cond) = parse_expr(input)?;
                 let (input, _) = whitespace(input)?;
@@ -1476,7 +1563,7 @@ fn parse_suite<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: 
                 result.push(Expr::If(cond.into(), body.into(), Expr::NONE.into()))
             },
             Ok((input, "while")) => {
-                println!("Parsing while");
+                trace!("Parsing while");
                 let (input, _) = whitespace(input)?;
                 let (input, cond) = parse_expr(input)?;
                 let (input, _) = whitespace(input)?;
@@ -1495,10 +1582,10 @@ fn parse_suite<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: 
                 let mut variants = BTreeMap::new();
                 input_updater = input;
                 loop {
-                    println!("Parsing enum variant");
+                    trace!("Parsing enum variant");
                     input = input_updater;
                     let Ok((input, _)) = parse_indentation::<E>(indentation + 4, input) else {
-                        println!("Indentation error");
+                        trace!("Indentation error");
                         break;
                     };
                     if input.is_empty() {
@@ -1513,7 +1600,7 @@ fn parse_suite<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: 
                     variants.insert(name.to_string(), ty);
                     input_updater = input;
                 }
-                println!("Parsed enum: {name} {variants:?}");
+                trace!("Parsed enum: {name} {variants:?}");
                 let mut ty = Type::EnumUnion(variants);
                 if let Some(template) = template {
                     ty = Type::Poly(template, Box::new(ty));
@@ -1532,10 +1619,10 @@ fn parse_suite<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: 
                 let mut members = BTreeMap::new();
                 input_updater = input;
                 loop {
-                    println!("Parsing struct variant");
+                    trace!("Parsing struct variant");
                     input = input_updater;
                     let Ok((input, _)) = parse_indentation::<E>(indentation + 4, input) else {
-                        println!("Indentation error");
+                        trace!("Indentation error");
                         break;
                     };
                     if input.is_empty() {
@@ -1548,7 +1635,7 @@ fn parse_suite<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: 
                     members.insert(name.to_string(), ty);
                     input_updater = input;
                 }
-                println!("Parsed enum: {name} {members:?}");
+                trace!("Parsed enum: {name} {members:?}");
                 let mut ty = Type::Struct(members);
                 if let Some(template) = template {
                     ty = Type::Poly(template, Box::new(ty));
@@ -1556,13 +1643,13 @@ fn parse_suite<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: 
                 result = vec![Expr::Many(result).with(Declaration::Type(name.to_owned(), ty))];
             },
             _ => {
-                println!("Parsing block");
+                trace!("Parsing block");
                 if input.is_empty() || input.chars().all(|c| c.is_whitespace()) {
                     break;
                 }
 
                 let (input, expr) = parse_whitespace_sensitive_block(indentation, input)?;
-                println!("Parsed block: {expr}");
+                trace!("Parsed block: {expr}");
                 input_updater = input;
                 result.push(expr);
                 break;
@@ -1589,10 +1676,10 @@ fn parse_expr_prec<'a, E: ParseError<&'a str> + ContextError<&'a str>>(mut input
     //     return parse_expr_atom(input);
     // }
 
-    // println!("Parsing at prec={prec}");
+    // trace!("Parsing at prec={prec}");
     let (mut input, _) = whitespace(input)?;
     if prec >= get_max_precedence() {
-        // println!("Max prec reached, falling back to atom");
+        // trace!("Max prec reached, falling back to atom");
         return parse_expr_term(input);
     }
 
@@ -1623,7 +1710,7 @@ fn parse_expr_prec<'a, E: ParseError<&'a str> + ContextError<&'a str>>(mut input
         parse_expr_prec(input, prec + 1)?
     };
 
-    // println!("Parsed lhs: {lhs}");
+    // trace!("Parsed lhs: {lhs}");
     let mut input_updater = input;
     loop {
         input = input_updater;
@@ -1639,7 +1726,7 @@ fn parse_expr_prec<'a, E: ParseError<&'a str> + ContextError<&'a str>>(mut input
             }
             match tag::<&str, &str, E>(op.as_str())(input) {
                 Ok((i, op)) if !['=', '&'].contains(&i.chars().next().unwrap()) => {
-                    println!("FOUND OPERATOR: {op}");
+                    trace!("FOUND OPERATOR: {op}");
                     input = i;
                     has_found_op = true;
                     found_op = Some(op);
@@ -1661,12 +1748,12 @@ fn parse_expr_prec<'a, E: ParseError<&'a str> + ContextError<&'a str>>(mut input
         let op_prec = BIN_OPS.read().unwrap().get(found_op).unwrap().0;
 
         if op_prec < prec {
-            // println!("Operator precedence is less than current precedence, returning {lhs}");
+            // trace!("Operator precedence is less than current precedence, returning {lhs}");
             return Ok((input_updater, lhs));
         }
 
         let (input, rhs) = parse_expr_prec(input, prec + 1)?;
-        // println!("Parsed rhs: {rhs}");
+        // trace!("Parsed rhs: {rhs}");
         // lhs = lhs.binop(BIN_OPS.read().unwrap().get(found_op).unwrap().2.clone(), rhs);
         let f = BIN_OPS.read().unwrap().get(found_op).unwrap().2;
         lhs = f(lhs, rhs);
@@ -1699,7 +1786,6 @@ fn parse_expr_term<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
             expr = cast;
             found = true;
         }
-    
         if let Ok((i, call)) = parse_expr_call::<E>(&expr, input) {
             input = i;
             expr = call;
@@ -1760,6 +1846,7 @@ fn parse_expr_cast<'a, E: ParseError<&'a str> + ContextError<&'a str>>(expr: &Ex
 fn parse_expr_call<'a, E: ParseError<&'a str> + ContextError<&'a str>>(expr: &Expr, input: &'a str) -> IResult<&'a str, Expr, E> {
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("(")(input)?;
+    trace!("Parsing call!");
     let (input, _) = whitespace(input)?;
     let (input, mut args) = many0(terminated(parse_expr, tag(",")))(input)?;
     let (input, _) = whitespace(input)?;
@@ -1775,6 +1862,10 @@ fn parse_expr_call<'a, E: ParseError<&'a str> + ContextError<&'a str>>(expr: &Ex
         Expr::ConstExpr(ConstExpr::Symbol(name)) => {
             // Ok((input, Expr::var(name).app(args)))
             match name.as_str() {
+                "input" => {
+                    // return Ok((input, args.print()))
+                    return Ok((input, Expr::Many(args.into_iter().map(|x: Expr| x.unop(Get)).collect())))
+                },
                 "print" => {
                     // return Ok((input, args.print()))
                     return Ok((input, Expr::Many(args.into_iter().map(|x| x.print()).collect())))
@@ -1826,7 +1917,9 @@ fn parse_expr_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
         parse_expr_array,
         parse_expr_struct,
         parse_expr_block,
+        parse_if_let_expr,
         parse_if_expr,
+        parse_match_expr,
     ))(input)?;
 
     Ok((input, expr))
@@ -1918,7 +2011,7 @@ fn parse_expr_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
 fn parse_expr_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("{")(input)?;
-    println!("Parsing block");
+    trace!("Parsing block");
     let (input, _) = whitespace(input)?;
     let (input, mut exprs) = cut(many0(terminated(parse_expr, tag(";"))))(input)?;
     let (input, _) = whitespace(input)?;
@@ -2026,14 +2119,6 @@ fn parse_const_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     ))(input)
 }
 
-fn parse_char_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, char, E> {
-    let (input, _) = tag("'")(input)?;
-    let (input, c) = none_of("'")(input)?;
-    let (input, _) = tag("'")(input)?;
-
-    Ok((input, c))
-}
-
 fn parse_int_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, i64, E> {
     // First try to parse hex
     // Check if its negative
@@ -2084,28 +2169,222 @@ fn parse_float_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input
     Ok((input, result))
 }
 
-fn parse_inner_str_double<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, String, E> {
-    let (a, b) = escaped_transform(
-        none_of("\\\""),
-        '\\',
-        alt((
-            value("\n", tag("n")),
-            value("\"", tag("\"")),
-            value("\\", tag("\\")),
-        ))
-    )(i)?;
+/// Parse a unicode sequence, of the form u{XXXX}, where XXXX is 1 to 6
+/// hexadecimal numerals. We will combine this later with parse_escaped_char
+/// to parse sequences like \u{00AC}.
+fn parse_unicode<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
+where
+  E: ParseError<&'a str>,
+{
+  // `take_while_m_n` parses between `m` and `n` bytes (inclusive) that match
+  // a predicate. `parse_hex` here parses between 1 and 6 hexadecimal numerals.
+  let parse_hex = take_while_m_n(1, 6, |c: char| c.is_ascii_hexdigit());
 
-    Ok((a, b))
+  // `preceded` takes a prefix parser, and if it succeeds, returns the result
+  // of the body parser. In this case, it parses u{XXXX}.
+  let parse_delimited_hex = preceded(
+    char('u'),
+    // `delimited` is like `preceded`, but it parses both a prefix and a suffix.
+    // It returns the result of the middle parser. In this case, it parses
+    // {XXXX}, where XXXX is 1 to 6 hex numerals, and returns XXXX
+    delimited(char('{'), parse_hex, char('}')),
+  );
+
+  // `map_res` takes the result of a parser and applies a function that returns
+  // a Result. In this case we take the hex bytes from parse_hex and attempt to
+  // convert them to a u32.
+  let parse_u32 = map(parse_delimited_hex, move |hex| u32::from_str_radix(hex, 16).unwrap());
+
+  // map_opt is like map_res, but it takes an Option instead of a Result. If
+  // the function returns None, map_opt returns an error. In this case, because
+  // not all u32 values are valid unicode code points, we have to fallibly
+  // convert to char with from_u32.
+  map_opt(parse_u32, std::char::from_u32).parse(input)
 }
-    
+
+/// Parse an escaped character: \n, \t, \r, \u{00AC}, etc.
+fn parse_escaped_char<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
+where
+  E: ParseError<&'a str>,
+{
+  preceded(
+    char('\\'),
+    // `alt` tries each parser in sequence, returning the result of
+    // the first successful match
+    alt((
+      parse_unicode,
+      // The `value` parser returns a fixed value (the first argument) if its
+      // parser (the second argument) succeeds. In these cases, it looks for
+      // the marker characters (n, r, t, etc) and returns the matching
+      // character (\n, \r, \t, etc).
+      value('\0', char('0')),
+      value('\n', char('n')),
+      value('\r', char('r')),
+      value('\t', char('t')),
+      value('\u{08}', char('b')),
+      value('\u{0C}', char('f')),
+      value('\\', char('\\')),
+      value('/', char('/')),
+      value('"', char('"')),
+    )),
+  )
+  .parse(input)
+}
+
+/// Parse a backslash, followed by any amount of whitespace. This is used later
+/// to discard any escaped whitespace.
+fn parse_escaped_whitespace<'a, E: ParseError<&'a str>>(
+  input: &'a str,
+) -> IResult<&'a str, &'a str, E> {
+  preceded(char('\\'), multispace1).parse(input)
+}
+
+/// Parse a non-empty block of text that doesn't include \ or "
+fn parse_literal_intermediate<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
+  // `is_not` parses a string of 0 or more characters that aren't one of the
+  // given characters.
+  let not_quote_slash = is_not("\"\\");
+
+  // `verify` runs a parser, then runs a verification function on the output of
+  // the parser. The verification function accepts out output only if it
+  // returns true. In this case, we want to ensure that the output of is_not
+  // is non-empty.
+  verify(not_quote_slash, |s: &str| !s.is_empty()).parse(input)
+}
+
+/// Parse a non-empty block of text that doesn't include \ or "
+fn parse_literal_intermediate_char<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
+  // `is_not` parses a string of 0 or more characters that aren't one of the
+  // given characters.
+  let not_quote_slash = is_not("\'\\");
+
+  // `verify` runs a parser, then runs a verification function on the output of
+  // the parser. The verification function accepts out output only if it
+  // returns true. In this case, we want to ensure that the output of is_not
+  // is non-empty.
+  verify(not_quote_slash, |s: &str| !s.is_empty()).parse(input)
+}
+
+/// A string fragment contains a fragment of a string being parsed: either
+/// a non-empty Literal (a series of non-escaped characters), a single
+/// parsed escaped character, or a block of escaped whitespace.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StringFragment<'a> {
+  Literal(&'a str),
+  EscapedChar(char),
+  EscapedWS,
+}
+
+/// Combine parse_literal, parse_escaped_whitespace, and parse_escaped_char
+/// into a StringFragment.
+fn parse_fragment_str<'a, E>(input: &'a str) -> IResult<&'a str, StringFragment<'a>, E>
+where
+  E: ParseError<&'a str>,
+{
+  alt((
+    // The `map` combinator runs a parser, then applies a function to the output
+    // of that parser.
+    map(parse_literal_intermediate, StringFragment::Literal),
+    map(parse_escaped_char, StringFragment::EscapedChar),
+    value(StringFragment::EscapedWS, parse_escaped_whitespace),
+  ))
+  .parse(input)
+}
+
+fn parse_fragment_char<'a, E>(input: &'a str) -> IResult<&'a str, StringFragment, E>
+where
+  E: ParseError<&'a str>,
+{
+  alt((
+    // The `map` combinator runs a parser, then applies a function to the output
+    // of that parser.
+    map(parse_literal_intermediate_char, StringFragment::Literal),
+    map(parse_escaped_char, StringFragment::EscapedChar),
+    value(StringFragment::EscapedWS, parse_escaped_whitespace),
+  ))
+  .parse(input)
+}
+
+/// Parse a string. Use a loop of parse_fragment and push all of the fragments
+/// into an output string.
+fn parse_string<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
+where
+  E: ParseError<&'a str> + FromExternalError<&'a str, std::num::ParseIntError>,
+{
+  // fold is the equivalent of iterator::fold. It runs a parser in a loop,
+  // and for each output value, calls a folding function on each output value.
+  let build_string = fold_many0(
+    // Our parser function – parses a single string fragment
+    parse_fragment_str,
+    // Our init value, an empty string
+    String::new,
+    // Our folding function. For each fragment, append the fragment to the
+    // string.
+    |mut string, fragment| {
+      match fragment {
+        StringFragment::Literal(s) => string.push_str(s),
+        StringFragment::EscapedChar(c) => string.push(c),
+        StringFragment::EscapedWS => {}
+      }
+      string
+    },
+  );
+
+  // Finally, parse the string. Note that, if `build_string` could accept a raw
+  // " character, the closing delimiter " would never match. When using
+  // `delimited` with a looping parser (like fold), be sure that the
+  // loop won't accidentally match your closing delimiter!
+  delimited(char('"'), build_string, char('"')).parse(input)
+}
+
+
+fn parse_char_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, char, E> {
+    let (input, _) = whitespace(input)?;
+    // fold is the equivalent of iterator::fold. It runs a parser in a loop,
+    // and for each output value, calls a folding function on each output value.
+    let build_string = fold_many0(
+      // Our parser function – parses a single string fragment
+      parse_fragment_char,
+      // Our init value, an empty string
+      String::new,
+      // Our folding function. For each fragment, append the fragment to the
+      // string.
+      |mut string, fragment| {
+        match fragment {
+          StringFragment::Literal(s) => string.push_str(s),
+          StringFragment::EscapedChar(c) => string.push(c),
+          StringFragment::EscapedWS => {}
+        }
+        string
+      },
+    );
+  
+    // Finally, parse the string. Note that, if `build_string` could accept a raw
+    // " character, the closing delimiter " would never match. When using
+    // `delimited` with a looping parser (like fold), be sure that the
+    // loop won't accidentally match your closing delimiter!
+    let (input, result) = delimited(char('\''), cut(build_string), cut(char('\''))).parse(input)?;
+    if result.len() != 1 {
+        trace!("Invalid char literal: {result}");
+        return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Digit)));
+    }
+    Ok((input, result.chars().next().unwrap()))
+}
+
 fn parse_string_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, String, E> {
-    map(context(
-      "string",
-      alt((
-            // preceded(char('\''), cut(terminated(parse_inner_str_single, char('\'')))),
-            preceded(char('"'), cut(terminated(parse_inner_str_double, char('"')))),
-      )),
-    ), |s| s.to_string())(input)
+    // map(context(
+    //   "string",
+    //   alt((
+    //         // preceded(char('\''), cut(terminated(parse_inner_str_single, char('\'')))),
+    //         preceded(char('"'), cut(terminated(parse_inner_str_double, char('"')))),
+    //   )),
+    // ), |s| s.to_string())(input)
+
+    if let Ok((input, s)) = parse_string::<VerboseError<&str>>(input) {
+        Ok((input, s))
+    } else {
+        Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Digit)))
+    }
 }
 
 fn parse_const_bool<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
@@ -2138,6 +2417,12 @@ fn parse_const_null<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
 }
 
 fn parse_const_none<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
+    // First, try two parentheses
+    let (input, _) = whitespace(input)?;
+    if let Ok((input, _)) = delimited(tag("("), whitespace::<E>, tag(")"))(input) {
+        return Ok((input, ConstExpr::None));
+    }
+    
     let (input, _) = tag("None")(input)?;
 
     // Peek and make sure the next character is not a symbol character
@@ -2282,7 +2567,7 @@ pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
     //         path::PathBuf,
     //     };
     //     let parsed = parse(code)?;
-    //     println!("{parsed}");
+    //     trace!("{parsed}");
     //     let asm_code = parsed.compile();
     //     const CALL_STACK_SIZE: usize = 1024;
     //     if let Err(ref e) = asm_code {
@@ -2311,27 +2596,34 @@ pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
     // }
 
 
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(1)
-        .stack_size(512 * 1024 * 1024)
-        .build_global()
-        .unwrap();
+    // rayon::ThreadPoolBuilder::new()
+    //     .num_threads(1)
+    //     .stack_size(12 * 1024 * 1024)
+    //     .build_global()
+    //     .unwrap();
 
+    let _ = rayon::ThreadPoolBuilder::new()
+        .num_threads(16)
+        .stack_size(2048 * 1024 * 1024)
+        .build_global();
     use crate::side_effects::Output;
-    use no_comment::{languages, IntoWithoutComments};
     // Compiling most examples overflows the tiny stack for tests.
     // So, we spawn a new thread with a larger stack size.
     std::thread::scope(|s| {
         let child = std::thread::Builder::new()
-                .stack_size(2512 * 1024 * 1024)
+                .stack_size(512 * 1024 * 1024)
                 .spawn_scoped(s, move || {
-                    use crate::{lir::Compile, parse::*, vm::*};
-                    use ::std::{
-                        fs::{read_dir, read_to_string},
-                        path::PathBuf,
-                    };
-                    let parsed = parse(code)?;
-                    println!("PARSED: {parsed}");
+                    use crate::vm::*;
+                    use no_comment::{languages, IntoWithoutComments};
+                    // Strip comments
+                    let code = code
+                        .to_string()
+                        .chars()
+                        .without_comments(languages::rust())
+                        .collect::<String>();
+
+                    let parsed = parse(&code)?;
+                    trace!("PARSED: {parsed}");
 
                     let alloc = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
                         name: "alloc".to_string(),
@@ -2705,8 +2997,8 @@ mod tests {
     fn assert_parse_const(input: &str, expected: Option<ConstExpr>) {
         let result = parse_const::<nom::error::VerboseError<&str>>(input);
         match result.clone() {
-            Err(nom::Err::Error(e)) => println!("Error: {}", nom::error::convert_error(input, e)),
-            Err(nom::Err::Failure(e)) => println!("Error: {}", nom::error::convert_error(input, e)),
+            Err(nom::Err::Error(e)) => trace!("Error: {}", nom::error::convert_error(input, e)),
+            Err(nom::Err::Failure(e)) => trace!("Error: {}", nom::error::convert_error(input, e)),
             Err(nom::Err::Incomplete(e)) => unreachable!("Incomplete: {:?}", e),
             _ => {}
         }
@@ -2715,7 +3007,7 @@ mod tests {
             nom::Err::Failure(e) => nom::error::convert_error(input, e),
             nom::Err::Incomplete(_) => unreachable!("Incomplete: {:?}", e)
         }).unwrap();
-        println!("{:?}", result);
+        trace!("{:?}", result);
 
         if let Some(expected) = expected {
             assert_eq!(result.1, expected);
@@ -2725,8 +3017,8 @@ mod tests {
     fn assert_parse_type(input: &str, expected: Option<Type>) {
         let result = parse_type::<nom::error::VerboseError<&str>>(input);
         match result.clone() {
-            Err(nom::Err::Error(e)) => println!("Error: {}", nom::error::convert_error(input, e)),
-            Err(nom::Err::Failure(e)) => println!("Error: {}", nom::error::convert_error(input, e)),
+            Err(nom::Err::Error(e)) => trace!("Error: {}", nom::error::convert_error(input, e)),
+            Err(nom::Err::Failure(e)) => trace!("Error: {}", nom::error::convert_error(input, e)),
             Err(nom::Err::Incomplete(e)) => unreachable!("Incomplete: {:?}", e),
             _ => {}
         }
@@ -2735,7 +3027,7 @@ mod tests {
             nom::Err::Failure(e) => nom::error::convert_error(input, e),
             nom::Err::Incomplete(_) => unreachable!("Incomplete: {:?}", e)
         }).unwrap();
-        println!("{:?}", result);
+        trace!("{:?}", result);
 
         if let Some(expected) = expected {
             assert_eq!(result.1, expected);
@@ -2745,8 +3037,8 @@ mod tests {
     fn unassert_parse_const(input: &str) {
         let result = parse_const::<nom::error::VerboseError<&str>>(input);
         match result.clone() {
-            Err(nom::Err::Error(e)) => println!("Error: {}", nom::error::convert_error(input, e)),
-            Err(nom::Err::Failure(e)) => println!("Error: {}", nom::error::convert_error(input, e)),
+            Err(nom::Err::Error(e)) => trace!("Error: {}", nom::error::convert_error(input, e)),
+            Err(nom::Err::Failure(e)) => trace!("Error: {}", nom::error::convert_error(input, e)),
             Err(nom::Err::Incomplete(e)) => unreachable!("Incomplete: {:?}", e),
             _ => {}
         }
@@ -2755,15 +3047,15 @@ mod tests {
             nom::Err::Failure(e) => nom::error::convert_error(input, e),
             nom::Err::Incomplete(_) => unreachable!("Incomplete: {:?}", e)
         });
-        println!("{:?}", result);
+        trace!("{:?}", result);
         assert!(result.is_err());
     }
 
     fn assert_parse_expr(input: &str, expr: Option<Expr>) {
         let result = parse_expr::<nom::error::VerboseError<&str>>(input);
         match result.clone() {
-            Err(nom::Err::Error(e)) => println!("Error: {}", nom::error::convert_error(input, e)),
-            Err(nom::Err::Failure(e)) => println!("Error: {}", nom::error::convert_error(input, e)),
+            Err(nom::Err::Error(e)) => trace!("Error: {}", nom::error::convert_error(input, e)),
+            Err(nom::Err::Failure(e)) => trace!("Error: {}", nom::error::convert_error(input, e)),
             Err(nom::Err::Incomplete(e)) => unreachable!("Incomplete: {:?}", e),
             _ => {}
         }
@@ -2772,7 +3064,7 @@ mod tests {
             nom::Err::Failure(e) => nom::error::convert_error(input, e),
             nom::Err::Incomplete(_) => unreachable!("Incomplete: {:?}", e)
         }).unwrap();
-        println!("{:?}", result);
+        trace!("{:?}", result);
 
         if let Some(expr) = expr {
             assert_eq!(result.1, expr);
@@ -2782,8 +3074,8 @@ mod tests {
     fn unassert_parse_expr(input: &str) {
         let result = parse_expr::<nom::error::VerboseError<&str>>(input);
         match result.clone() {
-            Err(nom::Err::Error(e)) => println!("Error: {}", nom::error::convert_error(input, e)),
-            Err(nom::Err::Failure(e)) => println!("Error: {}", nom::error::convert_error(input, e)),
+            Err(nom::Err::Error(e)) => trace!("Error: {}", nom::error::convert_error(input, e)),
+            Err(nom::Err::Failure(e)) => trace!("Error: {}", nom::error::convert_error(input, e)),
             Err(nom::Err::Incomplete(e)) => unreachable!("Incomplete: {:?}", e),
             _ => {}
         }
@@ -2792,7 +3084,7 @@ mod tests {
             nom::Err::Failure(e) => nom::error::convert_error(input, e),
             nom::Err::Incomplete(_) => unreachable!("Incomplete: {:?}", e)
         });
-        println!("{:?}", result);
+        trace!("{:?}", result);
         assert!(result.is_err());
     }
 
@@ -2801,6 +3093,7 @@ mod tests {
         assert_parse_const("1", Some(ConstExpr::Int(1)));
 
         assert_parse_const("1.0", Some(ConstExpr::Float(1.0)));
+        assert_parse_const("'-'", Some(ConstExpr::Char('-')));
 
         assert_parse_const("\"hello\"", Some(ConstExpr::Array(vec![ConstExpr::Char('h'), ConstExpr::Char('e'), ConstExpr::Char('l'), ConstExpr::Char('l'), ConstExpr::Char('o'), ConstExpr::Char('\0')])));
         assert_parse_const("\"hello\\n\"", Some(ConstExpr::Array(vec![ConstExpr::Char('h'), ConstExpr::Char('e'), ConstExpr::Char('l'), ConstExpr::Char('l'), ConstExpr::Char('o'), ConstExpr::Char('\n'), ConstExpr::Char('\0')])));
@@ -2985,11 +3278,11 @@ from std import Point;
 p<Int>(5);
         "#, "hello!") {
             Ok(expr) => {
-                // println!("{:#?}", expr)
+                // trace!("{:#?}", expr)
                 // Compile and run
-                println!("{}", expr)
+                trace!("{}", expr)
             },
-            Err(e) => println!("Error: {}", e),
+            Err(e) => trace!("Error: {}", e),
         }
     }
 
@@ -3114,11 +3407,11 @@ p<Int>(5);
             x.print();
             "#, "hello!") {
             Ok(expr) => {
-                // println!("{:#?}", expr)
+                // trace!("{:#?}", expr)
                 // Compile and run
-                println!("{}", expr)
+                trace!("{}", expr)
             },
-            Err(e) => println!("Error: {}", e),
+            Err(e) => trace!("Error: {}", e),
         }
         assert_parse_expr("1", Some(Expr::ConstExpr(ConstExpr::Int(1))));
         assert_parse_expr("1.0", Some(Expr::ConstExpr(ConstExpr::Float(1.0))));
@@ -3159,8 +3452,8 @@ p<Int>(5);
         assert_parse_expr("&*a", Some(Expr::var("a").deref().refer(Mutability::Immutable)));
         assert_parse_expr("&mut *a", Some(Expr::var("a").deref().refer(Mutability::Mutable)));
 
-        println!("Parsing block");
-//         println!("{:#?}", parse_suite::<nom::error::VerboseError<&str>>(0, r#"
+        trace!("Parsing block");
+//         trace!("{:#?}", parse_suite::<nom::error::VerboseError<&str>>(0, r#"
 // enum Result<T, E>:
 //     Ok(T)
 //     Err(E)

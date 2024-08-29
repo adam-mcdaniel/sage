@@ -239,6 +239,9 @@ impl ConstExpr {
                                     return constant.eval_checked(env, i);
                                     // return Ok(constant.clone());
                                 }
+                                error!(
+                                    "Struct member access not implemented for: {container_ty} . {member}"
+                                );
                                 return Err(Error::MemberNotFound((*container).into(), *member));
                             }
                             fields[&name].clone().eval_checked(env, i)?
@@ -256,7 +259,7 @@ impl ConstExpr {
                                     // return Ok(constant.clone());
                                 }
                                 error!(
-                                    "Member access not implemented for: {container_ty} . {member}"
+                                    "Type member access not implemented for: {container_ty} . {member}"
                                 );
                                 return Err(Error::SymbolNotDefined(name));
                             }
@@ -267,7 +270,7 @@ impl ConstExpr {
                             {
                                 constant.eval_checked(env, i)?
                             } else {
-                                error!(
+                                warn!(
                                     "Member access not implemented for: {container_ty} . {member}"
                                 );
                                 return Err(Error::MemberNotFound((*container).into(), *member));
@@ -282,7 +285,7 @@ impl ConstExpr {
                                 return constant.eval_checked(env, i);
                                 // return Ok(constant.clone());
                             }
-                            error!("Member access not implemented for: {container_ty} . {member}");
+                            warn!("Member access not implemented for: {container_ty} . {member}");
                             return Err(Error::MemberNotFound((*container).into(), *member));
                         }
                     })
@@ -612,7 +615,6 @@ impl GetType for ConstExpr {
                         } else {
                             // If the field is not in the union, return an error.
                             // return Err(Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into()));
-
                             return ConstExpr::Member(
                                 ConstExpr::Type(val_type).into(),
                                 field.clone(),
@@ -627,10 +629,11 @@ impl GetType for ConstExpr {
                     // If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
                     _ => {
-                        return ConstExpr::Member(ConstExpr::Type(val_type).into(), field.clone())
+                        return ConstExpr::Member(ConstExpr::Type(val_type.clone()).into(), field.clone())
                             .get_type(env)
-                            .map_err(|_e| {
-                                Error::MemberNotFound((*val.clone()).into(), *field.clone())
+                            .or_else(|e| {
+                                warn!("Could not type check member access of constant, falling back on runtime access: {val} . {field} -- {e}");
+                                Expr::Member(Expr::ConstExpr(*val.clone()).into(), *field.clone()).get_type(env)
                             });
                     }
                 }

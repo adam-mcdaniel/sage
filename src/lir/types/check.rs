@@ -938,14 +938,19 @@ impl TypeCheck for ConstExpr {
                 // Typecheck the member we want to access.
                 match e_type.type_check_member(field, &Expr::ConstExpr(*e.clone()), env) {
                     Ok(_) => Ok(()),
-                    Err(e) => {
+                    Err(_err) => {
                         match field
                             .clone()
                             .as_symbol(env)
                             .map(|name| env.get_associated_const(&e_type, &name))
                         {
                             Ok(_) => Ok(()),
-                            Err(_) => Err(e),
+                            // Err(_) => Err(e),
+                            Err(_) => {
+                                // Try to perform the member op as a regular member op.
+                                Expr::Member(Box::new(Expr::ConstExpr(*e.clone())), *field.clone())
+                                    .type_check(env)
+                            }
                         }
                     }
                 }

@@ -738,6 +738,10 @@ impl Env {
                             self.add_compile_time_declaration(decl)?;
                             exports.push(name.clone());
                         }
+                        Declaration::Module(name, submodule) => {
+                            self.add_compile_time_declaration(decl)?;
+                            exports.push(name.clone());
+                        }
                         Declaration::Const(name, _) => {
                             exports.push(name.clone());
                         }
@@ -770,8 +774,8 @@ impl Env {
                         .collect(),
                 );
 
-                println!("Exports: {exports}");
-                println!("Decls: {decls:?}");
+                trace!("Module {module_name} Exports: {exports}");
+                trace!("Module {module_name} Decls: {decls:?}");
                 let result = exports.with(decls.clone()).eval(self)?;
                 self.define_const(module_name, result)
             }

@@ -87,6 +87,7 @@ impl Declaration {
             Self::Proc(..) => true,
             Self::PolyProc(..) => true,
             Self::ExternProc(..) => true,
+            Self::Module(..) => true,
             Self::Impl(..) => true,
             Self::Many(decls) => decls
                 .par_iter()

@@ -385,7 +385,6 @@ impl GetType for Expr {
                         // error!("BING BONG");
                         // Try to get the member of the underlying type.
                         if let Ok((t, _)) = val_type.get_member_offset(field, val, env) {
-                            info!("BING BONG");
                             return Ok(t);
                         }
 

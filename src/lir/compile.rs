@@ -1005,7 +1005,8 @@ impl Compile for ConstExpr {
                         }
                     }
                     _ => {
-                        return Err(Error::MemberNotFound((*container).into(), *member));
+                        // return Err(Error::MemberNotFound((*container).into(), *member));
+                        Expr::Member(Box::new(Expr::ConstExpr(*container.clone())), *member.clone()).compile_expr(env, output)?;
                     }
                 }
             }
