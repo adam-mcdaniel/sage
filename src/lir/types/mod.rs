@@ -1911,6 +1911,7 @@ impl Type {
         expr: &Expr,
         env: &Env,
     ) -> Result<(), Error> {
+        trace!("Typechecking member \"{member}\" of {expr} in {env}");
         match self {
             Type::Type(ty) => {
                 let name = member.clone().as_symbol(env)?;

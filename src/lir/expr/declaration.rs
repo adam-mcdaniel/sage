@@ -42,6 +42,11 @@ pub enum Declaration {
     Many(Vec<Declaration>),
     /// Declare a module
     Module(String, Vec<Declaration>),
+    /// Import an element from a module.
+    FromImport {
+        module: ConstExpr,
+        names: Vec<(String, Option<String>)>,
+    }
 }
 
 impl Declaration {
@@ -368,6 +373,12 @@ impl Declaration {
                     decl.substitute(substitution_name, substitution_ty);
                 });
             }
+            Self::FromImport { module, names} => {
+                module.substitute(substitution_name, substitution_ty);
+                for (name, _alias) in names {
+                    // name.substitute(substitution_name, substitution_ty);
+                }
+            }
         }
     }
 }
@@ -658,6 +669,22 @@ impl TypeCheck for Declaration {
                         .try_for_each(|decl| decl.type_check(&new_env))?;
                 }
             }
+
+            Self::FromImport { module, names } => {
+                // module.type_check(env)?;
+                let mut new_env = env.clone();
+                for (name, _) in names {
+                    let access = module.clone().field(ConstExpr::var(name));
+                    access.type_check(env)?;
+                }
+
+                // // decls.push(Declaration::Const(alias.clone(), ConstExpr::var(module_name).field(ConstExpr::var(name))));
+                // new_env.add_declaration(&Declaration::Const(alias.clone().unwrap_or_else(|| name.clone()), access.clone()))?;
+
+                // if let Ok(Type::Type(t)) = access.get_type(env) {
+                //     new_env.define_type(name, *t)
+                // }
+            }
         }
         Ok(())
     }
@@ -717,6 +744,15 @@ impl Display for Declaration {
                     writeln!(f, "{}", decl)?;
                 }
                 write!(f, "}}")?;
+            }
+            Self::FromImport { module, names } => {
+                write!(f, "from {} import", module)?;
+                for (name, alias) in names {
+                    write!(f, " {}", name)?;
+                    if let Some(alias) = alias {
+                        write!(f, " as {}", alias)?;
+                    }
+                }
             }
         }
         Ok(())
@@ -941,6 +977,11 @@ impl Hash for Declaration {
                 state.write_u8(10);
                 name.hash(state);
                 decls.hash(state);
+            }
+            Self::FromImport { module, names } => {
+                state.write_u8(11);
+                module.hash(state);
+                names.hash(state);
             }
         }
     }

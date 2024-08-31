@@ -682,12 +682,12 @@ impl GetType for ConstExpr {
             }
 
             Self::Declare(bindings, expr) => {
-                let mut new_env = env.clone();
-                new_env.add_compile_time_declaration(&bindings)?;
-                expr.get_type_checked(&new_env, i)?
-
-                // expr.get_type_checked(&new_env, i)?
-                //     .simplify_until_type_checks(&env)?
+                expr.get_type_checked(env, i)
+                    .or_else(|_| {
+                        let mut new_env = env.clone();
+                        new_env.add_compile_time_declaration(&bindings)?;
+                        expr.get_type_checked(&new_env, i)
+                    })?
             }
 
             Self::Monomorphize(expr, ty_args) => {

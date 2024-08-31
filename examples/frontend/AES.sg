@@ -258,7 +258,7 @@ fun print_key(self: &Key) {
         &of Key128(key) => print("Key128: "),
         &of Key192(key) => print("Key192: "),
         &of Key256(key) => print("Key256: "),
-        _ => print("Unknown key type: "),
+        _ => print("Unknown key type: ")
     }
     let size = get_key_size(self);
     let data = get_key_data(self);

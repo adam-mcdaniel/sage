@@ -844,6 +844,7 @@ impl TypeCheck for Expr {
 
             // Typecheck a member access.
             Self::Member(e, field) => {
+                trace!("Typechecking regular member access {e}.{field}");
                 // Typecheck the expression we want to access a member of.
                 e.type_check(env)?;
                 // Get the type of the expression.
@@ -854,13 +855,17 @@ impl TypeCheck for Expr {
                 match e_type.type_check_member(field, e, env) {
                     Ok(_) => Ok(()),
                     Err(e) => {
+                        warn!("Type {e_type} doesn't have member {field} in environment {env}");
                         match field
                             .clone()
                             .as_symbol(env)
                             .map(|name| env.get_associated_const(&e_type, &name))
                         {
                             Ok(_) => Ok(()),
-                            Err(_) => Err(e),
+                            Err(_) => {
+                                error!("Could not find member {field} in type {e_type} in environment {env}");
+                                Err(e)
+                            },
                         }
                     }
                 }
@@ -939,15 +944,21 @@ impl TypeCheck for ConstExpr {
                 match e_type.type_check_member(field, &Expr::ConstExpr(*e.clone()), env) {
                     Ok(_) => Ok(()),
                     Err(_err) => {
+                        warn!("Member {field} not found in type {e_type} in environment {env}");
                         match field
                             .clone()
                             .as_symbol(env)
                             .map(|name| env.get_associated_const(&e_type, &name))
                         {
-                            Ok(_) => Ok(()),
+                            Ok(_) => {
+                                warn!("Associated constant {field} found in type {e_type} in environment {env}");
+                                Ok(())
+                            },
                             // Err(_) => Err(e),
                             Err(_) => {
                                 // Try to perform the member op as a regular member op.
+                                warn!("Associated constant {field} not found in type {e_type} in environment {env}");
+                                warn!("Falling back on regular member access");
                                 Expr::Member(Box::new(Expr::ConstExpr(*e.clone())), *field.clone())
                                     .type_check(env)
                             }

@@ -820,6 +820,56 @@ impl Compile for Expr {
                         return Err(Error::SymbolNotDefined(name.clone()));
                     }
                 }
+                Expr::ConstExpr(ConstExpr::Member(val, name)) => {
+                    // Get the type of the value we want to get a field from.
+                    let val_type = val.get_type(env)?;
+                    // val_type.add_monomorphized_associated_consts(env)?;
+
+                    // Push the address of the struct, tuple, or union onto the stack.
+                    match val_type.simplify_until_has_members(env)? {
+                        // If the value is a struct, tuple, or union:
+                        Type::Struct(_) | Type::Tuple(_) | Type::Union(_) => {
+                            // Compile a reference to the inner value with the expected mutability.
+                            Self::Refer(expected_mutability, Expr::from(*val.clone()).into())
+                                .compile_expr(env, output)?;
+                        }
+                        // If the value is a pointer:
+                        Type::Pointer(found_mutability, _) => {
+                            // Confirm that the pointer can decay to the expected mutability.
+                            if !found_mutability.can_decay_to(&expected_mutability) {
+                                // If the pointer cannot decay to the expected mutability,
+                                // then return an error.
+                                return Err(Error::MismatchedMutability {
+                                    found: found_mutability,
+                                    expected: expected_mutability,
+                                    expr: Expr::Member(Expr::from(*val.clone()).into(), *name),
+                                });
+                            }
+                            // Compile the pointer to get the address of the value.
+                            val.clone().compile_expr(env, output)?;
+                        }
+                        other => {
+                            error!("Tried to get a member {name} of a non-struct, non-tuple, non-union, non-pointer type: {other} of value {val} in environment {env}");
+                            return Err(Error::InvalidRefer(Expr::Member(Expr::from(*val.clone()).into(), *name)));
+                        }
+                    }
+
+                    // Calculate the offset of the field from the address of the value.
+                    let (_, offset) = val_type.get_member_offset(&name, &Expr::from(*val.clone()).into(), env)?;
+
+                    output.op(CoreOp::Pop(Some(A), 1));
+                    output.op(CoreOp::Set(B, offset as i64));
+                    // Index the address of the struct, tuple, or union with the offset of the field.
+                    // This is the address of the field.
+                    output.op(CoreOp::Index {
+                        src: A,
+                        offset: B,
+                        dst: C,
+                    });
+                    // Push this address to the stack.
+                    output.op(CoreOp::Push(C, 1));
+                }
+
                 Expr::ConstExpr(cexpr) => {
                     // Create a new static variable for the constant.
 

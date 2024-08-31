@@ -625,22 +625,32 @@ fn parse_import_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
         let (input, path) = cut(parse_symbol)(input)?;
         // Optionally parse an alias
         let (input, alias) = opt(preceded(whitespace, preceded(tag("as"), cut(parse_symbol))))(input)?;
-        let alias = alias.map(|x| x.to_owned());
+        // let alias = alias.map(|x| x.to_owned());
         // If there's a comma, continue parsing
         let (input, _) = whitespace(input)?;
 
-        imports.push((path.to_owned(), alias.unwrap_or(path.to_owned())));
+        imports.push((path.to_owned(), alias));
         if let Ok((input, _)) = tag::<&str, &str, E>(",")(input) {
             status = input;
             continue;
         }
-        
-        let mut decls = vec![];
-        for (name, alias) in &imports {
-            decls.push(Declaration::Const(alias.clone(), ConstExpr::var(module_name).field(ConstExpr::var(name))));
-        }
 
-        return Ok((input, Statement::Declaration(Declaration::Many(decls))));
+        let imports: Vec<(String, Option<String>)> = imports.into_iter().map(|(x, y)| (x.to_owned(), y.map(|z| z.to_owned()))).collect();
+        
+        // let mut decls = vec![];
+        // for (name, alias) in &imports {
+        //     // decls.push(Declaration::Const(alias.clone(), ConstExpr::var(module_name).field(ConstExpr::var(name))));
+        //     decls.push(Declaration::FromImport {
+        //         module: ,
+        //         name: name.clone(),
+        //         alias: alias.map(|x| x.to_owned()),
+        //     });
+        // }
+
+        return Ok((input, Statement::Declaration(Declaration::FromImport {
+            module: ConstExpr::var(module_name),
+            names: imports
+        })));
     }
     
 }
@@ -1210,6 +1220,9 @@ fn parse_assign_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
                 Expr::Member(e, field) => {
                     Statement::Expr(e.field(field).refer(Mutability::Mutable).deref_mut(val))
                 }
+                Expr::ConstExpr(ConstExpr::Member(e, field)) => {
+                    Statement::Expr(Expr::from(e.field(*field)).refer(Mutability::Mutable).deref_mut(val))
+                }   
                 _ => unreachable!(),
             };
 

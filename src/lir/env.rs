@@ -12,7 +12,7 @@ use crate::asm::{AssemblyProgram, Globals, Location};
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     sync::{Arc, RwLock},
 };
 
@@ -756,7 +756,16 @@ impl Env {
                         Declaration::ExternProc(name, _) => {
                             exports.push(name.clone());
                         }
+                        Declaration::FromImport { names, .. } => {
+                            for (name, alias) in names {
+                                match alias {
+                                    Some(alias) => exports.push(alias.clone()),
+                                    None => exports.push(name.clone()),
+                                }
+                            }
+                        }
                         Declaration::Impl(ty, attrs) => {
+                            self.add_compile_time_declaration(&decl)?;
                             // let mut new_attrs = vec![];
                             // for (name, attr) in attrs {
                             //     let new_attr = attr.clone().with(decls.clone());
@@ -764,10 +773,10 @@ impl Env {
                             //     new_attrs.push((name.clone(), new_attr));
                             //     // exports.push(name.clone());
                             // }
-                            // self.add_compile_time_declaration(&decl)?;
                             // self.add_compile_time_declaration(&Declaration::Impl(ty, new_attrs))?;
                             // use crate::lir::Simplify;
                             // let ty = ty.clone().simplify(self)?;
+                            // self.add_compile_time_declaration(&Declaration::Impl(ty.clone(), attrs.clone()))?;
 
                             // let decl = Declaration::Impl(ty, attrs.clone());
                             // decl.distribute_decls(&Declaration::Many(decls.clone()));
@@ -775,7 +784,6 @@ impl Env {
 
                             // new_env.add_compile_time_declaration(&decl)?;
 
-                            self.add_compile_time_declaration(&Declaration::Impl(ty.clone(), attrs.clone()))?;
                         }
                         Declaration::Many(decls) => {
                             for decl in decls {
@@ -804,6 +812,27 @@ impl Env {
             }
             Declaration::Const(name, e) => {
                 self.define_const(name, e.clone());
+                // if let Ok(Type::Type(ty)) = e.get_type(self) {
+                //     self.define_type(name, *ty);
+                // }
+            }
+            Declaration::FromImport { module, names } => {
+                // let access = module.clone().field(ConstExpr::var(name));
+                // let name = alias.clone().unwrap_or(name.clone());
+                // let module = module.clone().eval(self)?;
+                // let module_ty = module.get_type(self)?;
+
+                for (name, alias) in names {
+                    let access = module.clone().field(ConstExpr::Symbol(name.clone()));
+                    let name = alias.clone().unwrap_or(name.clone());
+
+                    // if !self.types.contains_key(&name) {
+                    if let Ok(Type::Type(ty)) = access.get_type(self) {
+                        self.define_type(&name, *ty);
+                    }
+                    // }
+                    self.define_const(name, access);
+                }
             }
             Declaration::Proc(name, proc) => {
                 self.define_proc(name, proc.clone());
@@ -935,6 +964,9 @@ impl Env {
             Declaration::Module(_, _) => {
                 // Modules are not defined at runtime.
             }
+            Declaration::FromImport { .. } => {
+                // From imports are not defined at runtime.
+            }
             Declaration::Var(name, mutability, ty, expr) => {
                 let ty = match ty {
                     Some(ty) => ty.clone(),
@@ -1056,21 +1088,17 @@ impl Env {
     /// Define a constant with a given name under this environment.
     pub(super) fn define_const(&mut self, name: impl ToString, e: ConstExpr) {
         let name = name.to_string();
-        if self.consts.contains_key(&name) {
-            warn!("Redefining constant {name} in {self}");
-            return;
-        }
 
         trace!("Defining constant {name} as {e}");
-        match e.get_type(self) {
-            Ok(Type::Type(t)) => {
-                trace!("{name} is a type declaration for {t}");
-                self.define_type(name.clone(), *t);
-            }
-            _ => {
-                trace!("{name} is a constant declaration for {e}");
-            }
-        }
+        // match e.get_type(self) {
+        //     Ok(Type::Type(t)) => {
+        //         trace!("{name} is a type declaration for {t}");
+        //         self.define_type(name.clone(), *t);
+        //     }
+        //     _ => {
+        //         trace!("{name} is a constant declaration for {e}");
+        //     }
+        // }
 
         Arc::make_mut(&mut self.consts).insert(name, e);
     }
