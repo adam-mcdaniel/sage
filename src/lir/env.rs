@@ -725,21 +725,23 @@ impl Env {
         trace!("Adding compile-time declaration {declaration}");
         match declaration {
             Declaration::Module(module_name, decls) => {
-                let mut new_env = self.clone();
-                for decl in decls {
-                    new_env.add_compile_time_declaration(decl)?;
+                if self.consts.contains_key(module_name) {
+                    return Ok(());
                 }
+
+                // let mut new_env = self.clone();
+                // for decl in decls {
+                //     new_env.add_compile_time_declaration(decl)?;
+                // }
 
                 // Get all the declaration names
                 let mut exports = vec![];
                 for decl in decls {
                     match decl {
                         Declaration::Type(name, _) => {
-                            self.add_compile_time_declaration(decl)?;
                             exports.push(name.clone());
                         }
-                        Declaration::Module(name, submodule) => {
-                            self.add_compile_time_declaration(decl)?;
+                        Declaration::Module(name, _submodule) => {
                             exports.push(name.clone());
                         }
                         Declaration::Const(name, _) => {
@@ -762,18 +764,24 @@ impl Env {
                             //     new_attrs.push((name.clone(), new_attr));
                             //     // exports.push(name.clone());
                             // }
-                            // self.add_compile_time_declaration(decl)?;
+                            // self.add_compile_time_declaration(&decl)?;
                             // self.add_compile_time_declaration(&Declaration::Impl(ty, new_attrs))?;
-                            use crate::lir::Simplify;
-                            let ty = ty.clone().simplify(self)?;
+                            // use crate::lir::Simplify;
+                            // let ty = ty.clone().simplify(self)?;
 
-                            let mut decl = Declaration::Impl(ty, attrs.clone());
-                            decl.distribute_decls(&Declaration::Many(decls.clone()));
-                            self.add_compile_time_declaration(&decl)?;
+                            // let decl = Declaration::Impl(ty, attrs.clone());
+                            // decl.distribute_decls(&Declaration::Many(decls.clone()));
+
+
+                            // new_env.add_compile_time_declaration(&decl)?;
+
+                            self.add_compile_time_declaration(&Declaration::Impl(ty.clone(), attrs.clone()))?;
                         }
                         Declaration::Many(decls) => {
                             for decl in decls {
-                                self.add_compile_time_declaration(decl)?;
+                                // new_env.add_compile_time_declaration(&decl)?;
+
+                                self.add_compile_time_declaration(&decl)?;
                             }
                         }
                         _ => {}
@@ -788,8 +796,6 @@ impl Env {
                         .collect(),
                 );
 
-                trace!("Module {module_name} Exports: {exports}");
-                trace!("Module {module_name} Decls: {decls:?}");
                 let result = exports.with(decls.clone()).eval(self)?;
                 self.define_const(module_name, result)
             }
@@ -981,6 +987,11 @@ impl Env {
     /// Define a type with a given name under this environment.
     pub(super) fn define_type(&mut self, name: impl ToString, ty: Type) {
         let name = name.to_string();
+        if self.types.contains_key(&name) {
+            warn!("Redefining type {name} in {self}");
+            return;
+        }
+
         match &ty {
             Type::Symbol(sym) if sym == &name => {
                 trace!("Defining type {ty} to itself as {name}");
@@ -1013,9 +1024,13 @@ impl Env {
                     trace!("Defining type {ty} to itself as {name}");
                 }
                 _ => {
-                    trace!("Defining type {name} as {ty}");
-                    Arc::make_mut(&mut self.consts).insert(name.clone(), ConstExpr::Type(ty.clone()));
-                    Arc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
+                    if self.types.contains_key(name) {
+                        warn!("Redefining type {name} in {self}");
+                    } else {
+                        trace!("Defining type {name} as {ty}");
+                        Arc::make_mut(&mut self.consts).insert(name.clone(), ConstExpr::Type(ty.clone()));
+                        Arc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
+                    }
                 }
             }
         }
@@ -1041,6 +1056,11 @@ impl Env {
     /// Define a constant with a given name under this environment.
     pub(super) fn define_const(&mut self, name: impl ToString, e: ConstExpr) {
         let name = name.to_string();
+        if self.consts.contains_key(&name) {
+            warn!("Redefining constant {name} in {self}");
+            return;
+        }
+
         trace!("Defining constant {name} as {e}");
         match e.get_type(self) {
             Ok(Type::Type(t)) => {
@@ -1064,6 +1084,10 @@ impl Env {
     pub(super) fn define_proc(&mut self, name: impl ToString, proc: Procedure) {
         let name = name.to_string();
         trace!("Defining procedure {name} as {proc}");
+        if self.procs.contains_key(&name) {
+            warn!("Redefining procedure {name} in {self}");
+            return;
+        }
         Arc::make_mut(&mut self.procs).insert(name.clone(), proc.clone());
         Arc::make_mut(&mut self.consts).insert(name, ConstExpr::Proc(proc));
     }

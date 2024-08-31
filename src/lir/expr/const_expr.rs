@@ -173,7 +173,10 @@ impl ConstExpr {
     /// Evaluate this constant expression at compile time,
     /// and get the result.
     pub fn eval(self, env: &Env) -> Result<Self, Error> {
-        self.eval_checked(env, 0)
+        let output = format!("{}", self);
+        let result = self.eval_checked(env, 0)?;
+        trace!("Evaluated constexpr: {output} -> {result}");
+        Ok(result)
     }
 
     /// Cast an expression as another type.
@@ -233,8 +236,12 @@ impl ConstExpr {
                         (Self::Tuple(tuple), Self::Int(n)) => {
                             // If the index is out of bounds, return an error.
                             if n >= tuple.len() as i64 || n < 0 {
+                                error!(
+                                    "Tuple index out of bounds: {container_ty} . {member}"
+                                );
                                 return Err(Error::MemberNotFound((*container).into(), *member));
                             }
+                            trace!("Found tuple field: {container_ty} . {member}");
                             tuple[n as usize].clone().eval_checked(env, i)?
                         }
                         (Self::Struct(fields), Self::Symbol(name)) => {
@@ -251,6 +258,7 @@ impl ConstExpr {
                                 );
                                 return Err(Error::MemberNotFound((*container).into(), *member));
                             }
+                            trace!("Found struct field: {container_ty} . {member}");
                             fields[&name].clone().eval_checked(env, i)?
                         }
                         (Self::Type(ty), Self::Symbol(name)) => {
@@ -289,6 +297,7 @@ impl ConstExpr {
                                 .as_symbol(env)
                                 .map(|name| env.get_associated_const(&container_ty, &name))
                             {
+                                warn!("Getting associated const: {container_ty} . {member}");
                                 return constant.eval_checked(env, i);
                                 // return Ok(constant.clone());
                             }
@@ -551,6 +560,7 @@ impl GetType for ConstExpr {
                 let as_int = field.clone().as_int(env);
 
                 let val_type = val.get_type_checked(env, i)?;
+                trace!("Got type of container access {val} . {field}\nContainer: {val_type}");
                 // val_type.add_monomorphized_associated_consts(env)?;
                 // Get the type of the value to get the member of.
                 match &val_type.simplify_until_concrete(env)? {
@@ -641,6 +651,9 @@ impl GetType for ConstExpr {
                     // If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
                     _ => {
+                        error!(
+                            "Member access not implemented for type: {val_type} . {field}"
+                        );
                         return ConstExpr::Member(ConstExpr::Type(val_type.clone()).into(), field.clone())
                             .get_type(env)
                             .or_else(|e| {
@@ -672,7 +685,9 @@ impl GetType for ConstExpr {
                 let mut new_env = env.clone();
                 new_env.add_compile_time_declaration(&bindings)?;
                 expr.get_type_checked(&new_env, i)?
-                    .simplify_until_type_checks(&env)?
+
+                // expr.get_type_checked(&new_env, i)?
+                //     .simplify_until_type_checks(&env)?
             }
 
             Self::Monomorphize(expr, ty_args) => {

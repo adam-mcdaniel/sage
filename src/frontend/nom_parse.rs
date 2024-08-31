@@ -657,18 +657,12 @@ fn parse_module_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
 
     let (input, _) = whitespace(input)?;
 
-    let (input, mut decls) = many0(context("statement", parse_decl))(input)?;
-    let mut import = Declaration::Many(decls.clone());
-    import.filter(&|decl| decl.is_compile_time_declaration() && !matches!(decl, Declaration::Impl(..)));
-
-    for decl in &mut decls {
-        decl.distribute_decls(&import.clone());
-    }
+    let (input, decls) = many0(context("statement", parse_decl))(input)?;
 
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("}")(input)?;
 
-    Ok((input, Statement::Declaration(Declaration::Module(name.to_owned(), decls.into_iter().map(|x| x.to_owned()).collect()))))
+    Ok((input, Statement::Declaration(Declaration::module(name, decls))))
 }
 
 fn parse_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Declaration, E> {
@@ -2574,7 +2568,7 @@ fn parse_const_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input:
 
 pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
     let _ = rayon::ThreadPoolBuilder::new()
-        .num_threads(1)
+        .num_threads(16)
         .stack_size(2048 * 1024 * 1024)
         .build_global();
     use crate::side_effects::Output;

@@ -1,7 +1,8 @@
 use sage::frontend::nom_parse::*;
 
 fn main() {
-    env_logger::builder().filter_level(log::LevelFilter::Trace).init();
+    // env_logger::builder().filter_level(log::LevelFilter::Trace).init();
+    // env_logger::builder().filter_level(log::LevelFilter::Debug).init();
     match compile_and_run(r#"
     
 module std {
@@ -48,9 +49,33 @@ module std {
         fun test() {
             println<Char>(Char.get());
         }
+
+        struct Point {
+            x: Float,
+            y: Float,
+        }
+
+        impl Point {
+            fun new(x: Float, y: Float): Point {
+                return {x=x, y=y};
+            }
+
+            fun move(&mut self, dx: Float, dy: Float) {
+                self.x += dx;
+                self.y += dy;
+            }
+        }
     }
 }
 
+from std import io;
+from io import Point;
+// from io import test;
+
+let mut p = Point.new(5.0, 6.0);
+p.move(1.0, 2.0);
+
+// test();
 
 std.io.println<Char>(Char.get());
 
@@ -58,7 +83,7 @@ for let mut i=0; i<5; i+=1; {
     std.io.test();
 }
 
-            "#, "hello!") {
+            "#, "hello!!!!") {
         Ok(expr) => {
             // println!("{:#?}", expr)
             // Compile and run

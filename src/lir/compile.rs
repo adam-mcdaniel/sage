@@ -312,6 +312,7 @@ impl Compile for Expr {
                     }
 
                     Expr::ConstExpr(ConstExpr::Member(val, name)) => {
+                        warn!("Compiling member function call {name} on {val} in environment {env}");
                         // Try to get the member of the underlying type.
                         if self_clone.is_method_call(env)? {
                             self_clone
@@ -1009,7 +1010,7 @@ impl Compile for ConstExpr {
             }
             Self::Member(container, member) => {
                 warn!("Compiling member access {member} on {container} in environment {env}");
-                match (container.clone().eval(env)?, member.clone().eval(env)?) {
+                match (container.clone().eval(env)?, *member.clone()) {
                     (Self::Tuple(tuple), Self::Int(n)) => {
                         // If the index is out of bounds, return an error.
                         if n >= tuple.len() as i64 || n < 0 {

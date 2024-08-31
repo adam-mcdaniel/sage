@@ -6,6 +6,7 @@ use crate::{
         Type, TypeCheck,
     },
 };
+use std::sync::Arc;
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     ops::{Add, AddAssign},
@@ -53,7 +54,19 @@ impl Declaration {
         Self::StaticVar(name.into(), mutability, ty, expr)
     }
 
-    pub(crate) fn filter(&mut self, f: &impl Fn(&Declaration) -> bool) {
+    pub fn module(name: impl ToString, decls: impl Into<Vec<Self>>) -> Self {
+        let mut decls = decls.into();
+        let mut import = Self::Many(decls.clone());
+        import.filter(&|decl| decl.is_compile_time_declaration() && !matches!(decl, Declaration::Impl(..)));
+
+        for decl in &mut decls {
+            decl.distribute_decls(&import.clone());
+        }
+
+        Self::Module(name.to_string(), decls)
+    }
+    
+    fn filter(&mut self, f: &impl Fn(&Declaration) -> bool) {
         match self {
             Self::Many(decls) => {
                 decls.retain(|decl| f(decl));
@@ -67,11 +80,11 @@ impl Declaration {
         }
     }
 
-    pub(crate) fn filter_for_compile_time_only(&mut self) {
+    fn filter_for_compile_time_only(&mut self) {
         self.filter(&|decl| decl.is_compile_time_declaration());
     }
 
-    pub(crate) fn distribute_decls(&mut self, distributed: &Self) {
+    fn distribute_decls(&mut self, distributed: &Self) {
         // eprintln!("Distributing declarations");
         match self {
             Self::Many(decls) => {
@@ -228,30 +241,6 @@ impl Declaration {
                 ));
                 // Log the instructions for the declaration.
                 output.log_instructions_after(&name, &log_message, current_instruction);
-            }
-
-            Declaration::Module(name, decls) => {
-                // let mut new_env = env.clone();
-                // // Add all the compile-time declarations to the environment.
-                // new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
-                // env.add_compile_time_declaration(self)?;
-                // env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
-
-                // let mut new_env = env.clone();
-                // Add all the compile-time declarations to the environment.
-                // new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
-                // env.add_compile_time_declaration(&self)?;
-                let mut decls = decls.clone();
-                let mut import = Declaration::Many(decls.clone());
-                import.filter(&|decl| decl.is_compile_time_declaration() && !matches!(decl, Declaration::Impl(..)));
-
-                for decl in &mut decls {
-                    decl.distribute_decls(&import.clone());
-                }
-
-                // env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
-                env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
-                trace!("Typechecking module {}", name);
             }
             Declaration::Many(decls) => {
                 for decl in decls {
