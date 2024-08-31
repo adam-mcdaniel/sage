@@ -53,6 +53,49 @@ impl Declaration {
         Self::StaticVar(name.into(), mutability, ty, expr)
     }
 
+    pub(crate) fn filter(&mut self, f: &impl Fn(&Declaration) -> bool) {
+        match self {
+            Self::Many(decls) => {
+                decls.retain(|decl| f(decl));
+                decls.iter_mut().for_each(|decl| decl.filter(f));
+            }
+            Self::Module(_name, decls) => {
+                decls.retain(|decl| f(decl));
+                decls.iter_mut().for_each(|decl| decl.filter(f));
+            }
+            _ => {}
+        }
+    }
+
+    pub(crate) fn filter_for_compile_time_only(&mut self) {
+        self.filter(&|decl| decl.is_compile_time_declaration());
+    }
+
+    pub(crate) fn distribute_decls(&mut self, distributed: &Self) {
+        // eprintln!("Distributing declarations");
+        match self {
+            Self::Many(decls) => {
+                for decl in decls {
+                    decl.distribute_decls(distributed);
+                }
+            }
+            Self::Module(name, decls) => {
+                for decl in decls {
+                    decl.distribute_decls(distributed);
+                }
+            }
+            Self::Impl(ty, impls) => {
+                let mut distributed = distributed.clone();
+                distributed.filter_for_compile_time_only();
+                for (_name, expr) in impls {
+                    // expr.distribute_decls(distributed);
+                    *expr = expr.with(distributed.clone());
+                }
+            }
+            _ => {}
+        }
+    } 
+
     /// Flatten a multi-declaration into a single-dimensional vector of declarations.
     pub(crate) fn flatten(self) -> Vec<Self> {
         match self {
@@ -188,12 +231,27 @@ impl Declaration {
             }
 
             Declaration::Module(name, decls) => {
-
                 // let mut new_env = env.clone();
                 // // Add all the compile-time declarations to the environment.
                 // new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
+                // env.add_compile_time_declaration(self)?;
+                // env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
 
+                // let mut new_env = env.clone();
+                // Add all the compile-time declarations to the environment.
+                // new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
+                // env.add_compile_time_declaration(&self)?;
+                let mut decls = decls.clone();
+                let mut import = Declaration::Many(decls.clone());
+                import.filter(&|decl| decl.is_compile_time_declaration() && !matches!(decl, Declaration::Impl(..)));
+
+                for decl in &mut decls {
+                    decl.distribute_decls(&import.clone());
+                }
+
+                // env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
                 env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
+                trace!("Typechecking module {}", name);
             }
             Declaration::Many(decls) => {
                 for decl in decls {
@@ -594,11 +652,13 @@ impl TypeCheck for Declaration {
 
             Self::Module(name, decls) => {
                 let mut new_env = env.clone();
+                
                 // Add all the compile-time declarations to the environment.
+                // new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
                 new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
                 trace!("Typechecking module {}", name);
                 // Get all the compile time declarations so we can type check them in parallel.
-                let (comp_time_decls, run_time_decls): (Vec<_>, Vec<_>) = decls
+                let (comp_time_decls,_run_time_decls): (Vec<_>, Vec<_>) = decls
                     .iter()
                     .partition(|decl| decl.is_compile_time_declaration());
                 trace!("Compile time declarations: {:?}", comp_time_decls);

@@ -68,7 +68,9 @@ pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
 /// Compile an LIR expression into several core assembly instructions.
 impl Compile for Expr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        trace!("Compiling expression {self} in environment {env}");
+        let is_const = matches!(self, Self::ConstExpr(_));
+        trace!("Compiling expression {self} (is_const={is_const}) {self:?} in environment {env}");
+
         let mut debug_str = format!("{self:50}");
         debug_str.truncate(50);
 
@@ -309,6 +311,30 @@ impl Compile for Expr {
                         }
                     }
 
+                    Expr::ConstExpr(ConstExpr::Member(val, name)) => {
+                        // Try to get the member of the underlying type.
+                        if self_clone.is_method_call(env)? {
+                            self_clone
+                                .transform_method_call(env)?
+                                .compile_expr(env, output)?;
+                        } else {
+                            // Push the arguments to the procedure on the stack.
+                            warn!("Compiling member function call {name} on {val} in environment {env}");
+                            for arg in &args {
+                                // Compile the argument (push it on the stack)
+                                arg.clone().compile_expr(env, output)?;
+                            }
+
+                            // Compile it normally:
+                            // Push the procedure on the stack.
+                            val.field(*name).compile_expr(env, output)?;
+                            // Pop the "function pointer" from the stack.
+                            output.op(CoreOp::Pop(Some(A), 1));
+                            // Call the procedure on the arguments.
+                            output.op(CoreOp::Call(A));
+                            warn!("Success!");
+                        }
+                    }
                     Expr::Member(val, name) => {
                         // Try to get the member of the underlying type.
                         if self_clone.is_method_call(env)? {
@@ -659,9 +685,9 @@ impl Compile for Expr {
                         .map_err(|e| e.annotate(metadata.clone()));
                 }
 
-                if let Self::ConstExpr(val) = val.as_ref() {
+                if let Self::ConstExpr(container) = val.as_ref() {
                     // Write more elegantly
-                    if let Ok(val) = val.clone().field(member.clone()).eval(env) {
+                    if let Ok(val) = container.clone().field(member.clone()).eval(env) {
                         return val.compile_expr(env, output);
                     }
                 }
@@ -683,6 +709,7 @@ impl Compile for Expr {
                         {
                             return constant.clone().compile_expr(env, output);
                         } else {
+                            error!("Could not get associated constant {member_as_symbol} from {ty} in environment {env}");
                             return Err(Error::SymbolNotDefined(member_as_symbol));
                         }
                     }
@@ -981,6 +1008,7 @@ impl Compile for ConstExpr {
                 // Do nothing.
             }
             Self::Member(container, member) => {
+                warn!("Compiling member access {member} on {container} in environment {env}");
                 match (container.clone().eval(env)?, member.clone().eval(env)?) {
                     (Self::Tuple(tuple), Self::Int(n)) => {
                         // If the index is out of bounds, return an error.
@@ -1001,10 +1029,17 @@ impl Compile for ConstExpr {
                             debug!("Compiling associated constant {constant} in environment {env}");
                             return constant.clone().compile_expr(env, output);
                         } else {
+                            error!("Could not get associated constant {name} from {ty} in environment {env}");
                             return Err(Error::SymbolNotDefined(name));
                         }
                     }
-                    _ => {
+                    (Self::Declare(bindings, expr), field) => {
+                        let mut new_env = env.clone();
+                        new_env.add_declaration(&bindings)?;
+                        expr.field(field).compile_expr(&mut new_env, output)?;
+                    }
+                    (a, b) => {
+                        error!("Could not identify member access {b} on {a} in environment {env}");
                         // return Err(Error::MemberNotFound((*container).into(), *member));
                         Expr::Member(Box::new(Expr::ConstExpr(*container.clone())), *member.clone()).compile_expr(env, output)?;
                     }
@@ -1015,7 +1050,11 @@ impl Compile for ConstExpr {
                     .map_err(|err| err.annotate(metadata))?;
             }
             Self::Declare(bindings, body) => {
-                bindings.compile(Expr::ConstExpr(*body), env, output)?;
+                warn!("Compiling declaration {bindings} with body {body} in environment {env}");
+                // bindings.compile(Expr::ConstExpr(*body), env, output)?;
+                let mut new_env = env.clone();
+                new_env.add_declaration(&bindings)?;
+                body.compile_expr(&mut new_env, output)?;
             }
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
                 Self::PolyProc(poly_proc) => {
@@ -1058,8 +1097,14 @@ impl Compile for ConstExpr {
 
                     result.compile_expr(env, output)?;
                 }
-
+                Self::Declare(bindings, expr) => {
+                    let mut new_env = env.clone();
+                    new_env.add_declaration(&bindings)?;
+                    expr.monomorphize(ty_args).compile_expr(&mut new_env, output)?;
+                }
+                
                 val => {
+                    error!("Could not identify template value {val} in environment {env}");
                     return Err(Error::InvalidMonomorphize(val));
                 }
             },

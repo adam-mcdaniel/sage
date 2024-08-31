@@ -1,7 +1,7 @@
-use sage::frontend::nom_parse::compile_and_run;
+use sage::frontend::nom_parse::*;
 
 fn main() {
-    // env_logger::builder().filter_level(log::LevelFilter::Info).init();
+    env_logger::builder().filter_level(log::LevelFilter::Trace).init();
     match compile_and_run(r#"
     
 module std {
@@ -20,6 +20,11 @@ module std {
     }
 
     module io {
+        fun println<T>(x: T) {
+            print(x);
+            print('\n');
+        }
+    
         fun putchar(c: Char) {
             print(c);
         }
@@ -29,12 +34,30 @@ module std {
             input(&mut ch);
             return ch;
         }
+
+        impl Char {
+            fun put(&self) {
+                putchar(*self);
+            }
+
+            fun get(): Char {
+                return getchar();
+            }
+        }
+
+        fun test() {
+            println<Char>(Char.get());
+        }
     }
 }
 
-println(std.math);
-let c = std.io.getchar();
-std.io.putchar(c);
+
+std.io.println<Char>(Char.get());
+
+for let mut i=0; i<5; i+=1; {
+    std.io.test();
+}
+
             "#, "hello!") {
         Ok(expr) => {
             // println!("{:#?}", expr)

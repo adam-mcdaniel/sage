@@ -754,8 +754,22 @@ impl Env {
                         Declaration::ExternProc(name, _) => {
                             exports.push(name.clone());
                         }
-                        Declaration::Impl(_ty, _attrs) => {
-                            self.add_compile_time_declaration(decl)?;
+                        Declaration::Impl(ty, attrs) => {
+                            // let mut new_attrs = vec![];
+                            // for (name, attr) in attrs {
+                            //     let new_attr = attr.clone().with(decls.clone());
+                            //     warn!("Adding method to type {ty} with attribute {new_attr}");
+                            //     new_attrs.push((name.clone(), new_attr));
+                            //     // exports.push(name.clone());
+                            // }
+                            // self.add_compile_time_declaration(decl)?;
+                            // self.add_compile_time_declaration(&Declaration::Impl(ty, new_attrs))?;
+                            use crate::lir::Simplify;
+                            let ty = ty.clone().simplify(self)?;
+
+                            let mut decl = Declaration::Impl(ty, attrs.clone());
+                            decl.distribute_decls(&Declaration::Many(decls.clone()));
+                            self.add_compile_time_declaration(&decl)?;
                         }
                         Declaration::Many(decls) => {
                             for decl in decls {
@@ -865,7 +879,7 @@ impl Env {
             }
             Declaration::Many(decls) => {
                 for decl in decls {
-                    self.add_compile_time_declaration(decl)?;
+                    self.add_compile_time_declaration(&decl)?;
                 }
 
                 for decl in decls {
@@ -1070,7 +1084,19 @@ impl Env {
 
     /// Get a procedure definition from this environment.
     pub(super) fn get_proc(&self, name: &str) -> Option<&Procedure> {
-        self.procs.get(name)
+        self.procs.get(name).or_else(|| {
+            warn!("Procedure {name} not found in {self}");
+            let result = self.consts
+                .get(name)
+                .and_then(|x| match x {
+                    ConstExpr::Proc(proc) => Some(proc),
+                    _ => None,
+                });
+            if result.is_none() {
+                error!("Procedure {name} not found in {self}");
+            }
+            result
+        })
     }
 
     /// Does this environment have a procedure with the given name?
@@ -1226,36 +1252,37 @@ impl Env {
 }
 
 impl Display for Env {
-    fn fmt(&self, _f: &mut Formatter) -> FmtResult {
-        // writeln!(f, "Env")?;
-        // writeln!(f, "   Types:")?;
-        // for (name, ty) in self.types.iter() {
-        //     writeln!(f, "      {}: {}", name, ty)?;
-        //     let constants = self.get_all_associated_consts(ty);
-        //     if constants.is_empty() {
-        //         continue;
-        //     }
-        //     writeln!(f, "         Associated constants:")?;
-        //     for (name, cexpr) in constants {
-        //         writeln!(f, "            {}: {}", name, cexpr)?;
-        //     }
-        // }
-        // writeln!(f, "   Constants:")?;
-        // for (name, e) in self.consts.iter() {
-        //     writeln!(f, "      {}: {}", name, e)?;
-        // }
-        // writeln!(f, "   Procedures:")?;
-        // for (name, proc) in self.procs.iter() {
-        //     writeln!(f, "      {}: {}", name, proc)?;
-        // }
-        // writeln!(f, "   Globals:")?;
-        // for (name, (mutability, ty, location)) in self.static_vars.iter() {
-        //     writeln!(f, "      {mutability} {name}: {ty} (location {location})")?;
-        // }
-        // writeln!(f, "   Variables:")?;
-        // for (name, (mutability, ty, offset)) in self.vars.iter() {
-        //     writeln!(f, "      {mutability} {name}: {ty} (frame-offset {offset})")?;
-        // }
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        return Ok(());
+        writeln!(f, "Env")?;
+        writeln!(f, "   Types:")?;
+        for (name, ty) in self.types.iter() {
+            writeln!(f, "      {}: {}", name, ty)?;
+            let constants = self.get_all_associated_consts(ty);
+            if constants.is_empty() {
+                continue;
+            }
+            writeln!(f, "         Associated constants:")?;
+            for (name, cexpr) in constants {
+                writeln!(f, "            {}: {}", name, cexpr)?;
+            }
+        }
+        writeln!(f, "   Constants:")?;
+        for (i, (name, e)) in self.consts.iter().enumerate() {
+            writeln!(f, "      {i}. {}: {}", name, e)?;
+        }
+        writeln!(f, "   Procedures:")?;
+        for (name, proc) in self.procs.iter() {
+            writeln!(f, "      {}: {}", name, proc)?;
+        }
+        writeln!(f, "   Globals:")?;
+        for (name, (mutability, ty, location)) in self.static_vars.iter() {
+            writeln!(f, "      {mutability} {name}: {ty} (location {location})")?;
+        }
+        writeln!(f, "   Variables:")?;
+        for (name, (mutability, ty, offset)) in self.vars.iter() {
+            writeln!(f, "      {mutability} {name}: {ty} (frame-offset {offset})")?;
+        }
         Ok(())
     }
 }

@@ -13,6 +13,7 @@ use core::fmt;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 
+use clap::error;
 use log::*;
 use rayon::vec;
 use serde_derive::{Deserialize, Serialize};
@@ -239,7 +240,10 @@ impl Expr {
                                 trace!(target: "member", "WHOOP WHOOP");
                                 let (mut associated_function, mut associated_function_type) = env
                                     .get_associated_const(&val_type, &name)
-                                    .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
+                                    .ok_or_else(|| {
+                                        error!(target: "member", "Symbol not defined: {name} while getting member");
+                                        Error::SymbolNotDefined(name.clone())
+                                })?;
                                 // .monomorphize(ty_args.clone());
                                 associated_function =
                                     associated_function.monomorphize(ty_args.clone());
@@ -314,7 +318,10 @@ impl Expr {
 
                             let (associated_function, associated_function_type) = env
                                 .get_associated_const(&val_type, &name)
-                                .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
+                                .ok_or_else(|| {
+                                    error!(target: "member", "Symbol not defined: {name} while getting member");
+                                    Error::SymbolNotDefined(name.clone())
+                                })?;
 
                             // let associated_function = env
                             //     .get_associated_const(&val_type, &name)
@@ -382,7 +389,10 @@ impl Expr {
                             trace!(target: "member", "WHOOP WHOOP");
                             let (associated_function, associated_function_type) = env
                                 .get_associated_const(&val_type, &name)
-                                .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
+                                .ok_or_else(|| {
+                                    error!(target: "member", "Symbol not defined: {name} while getting member");
+                                    Error::SymbolNotDefined(name.clone())
+                                })?;
                             trace!(target: "member", "function value: {associated_function} in {env}");
 
                             // Get the type of the function
@@ -645,7 +655,13 @@ impl Expr {
     /// For tuples, use an `Int` constant expression to access the nth field (zero indexed).
     /// For unions or structures, use a `Symbol` constant expression to access the field.
     pub fn field(self, field: ConstExpr) -> Self {
-        Expr::Member(Box::new(self), field)
+        match self {
+            Self::ConstExpr(cexpr) => {
+                Self::ConstExpr(cexpr.field(field).into())
+            }
+            _ => Self::Member(Box::new(self), field),
+        }
+        // Self::Member(Box::new(self), field)
     }
 
     /// Index an array or pointer with an expression that evaluates to an `Int` at runtime.
