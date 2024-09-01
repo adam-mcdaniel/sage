@@ -248,7 +248,7 @@ fn stmts_to_expr(stmts: Vec<Statement>) -> Expr {
     if decls.is_empty() {
         body
     } else {
-        body.with(Declaration::Many(decls.into()))
+        body.with(Declaration::many(decls))
     }
 }
 
@@ -604,14 +604,20 @@ fn parse_long_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
 }
 
 fn parse_import_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+    let (input, _) = whitespace(input)?;
+    let (input, stmt) = parse_import_decl(input)?;
+    Ok((input, Statement::Declaration(stmt)))
+}
+fn parse_import_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Declaration, E> {
     // "import" <path: String> => Statement::Import(path),
     let (input, _) = tag("from")(input)?;
     let (input, _) = whitespace(input)?;
     // let (input, module_name) = cut(parse_symbol)(input)?;
     // Get the module path, possibly with multiple dots
-    let (input, mut module_path) = many0(terminated(parse_symbol, tag(".")))(input)?;
-    let (input, module_name) = parse_symbol(input)?;
-    module_path.push(module_name);
+    // let (input, mut module_path) = many0(terminated(parse_symbol, tag(".")))(input)?;
+    // let (input, module_name) = parse_symbol(input)?;
+    // module_path.push(module_name);
+    let (input, module) = parse_const(input)?;
     
 
     let (input, _) = whitespace(input)?;
@@ -647,10 +653,14 @@ fn parse_import_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
         //     });
         // }
 
-        return Ok((input, Statement::Declaration(Declaration::FromImport {
-            module: ConstExpr::var(module_name),
+        let (input, _) = whitespace(input)?;
+        let (input, _) = tag(";")(input)?;
+
+
+        return Ok((input, Declaration::FromImport {
+            module,
             names: imports
-        })));
+        }));
     }
     
 }
@@ -683,7 +693,9 @@ fn parse_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str
         context("enum", parse_enum_stmt),
         context("struct", parse_struct_stmt),
         context("extern", parse_extern_stmt),
+        context("const", terminated(parse_const_stmt, tag(";"))),
         context("impl", parse_impl_stmt),
+        context("import", parse_import_stmt),
         context("module", parse_module_stmt),
     ))(input)?;
 
@@ -791,7 +803,7 @@ fn parse_for_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a
     let (input, body) = cut(parse_block)(input)?;
     // Ok((input, Statement::Expr(Expr::For(init.map(Box::new), condition.map(Box::new), step.map(Box::new), Box::new(body)))))
     let mut init_expr = Expr::NONE;
-    let mut init_decl = Declaration::Many(vec![]);
+    let mut init_decl = Declaration::many(vec![]);
     match init {
         Statement::Declaration(decl) => init_decl = decl,
         Statement::Expr(e) => init_expr = e,

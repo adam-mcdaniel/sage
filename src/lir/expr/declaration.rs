@@ -39,9 +39,9 @@ pub enum Declaration {
     /// Declare associated constants and procedures for a type.
     Impl(Type, Vec<(String, ConstExpr)>),
     /// Many declarations.
-    Many(Vec<Declaration>),
+    Many(Arc<Vec<Declaration>>),
     /// Declare a module
-    Module(String, Vec<Declaration>),
+    Module(String, Arc<Vec<Declaration>>),
     /// Import an element from a module.
     FromImport {
         module: ConstExpr,
@@ -59,25 +59,36 @@ impl Declaration {
         Self::StaticVar(name.into(), mutability, ty, expr)
     }
 
+    pub fn many(decls: impl Into<Vec<Self>>) -> Self {
+        Self::Many(Arc::new(decls.into()))
+    }
+
     pub fn module(name: impl ToString, decls: impl Into<Vec<Self>>) -> Self {
         let mut decls = decls.into();
-        let mut import = Self::Many(decls.clone());
-        import.filter(&|decl| decl.is_compile_time_declaration() && !matches!(decl, Declaration::Impl(..)));
+        let mut import = Self::many(decls.clone());
+        import.filter(&|decl| decl.is_compile_time_declaration()
+            && !matches!(decl, Declaration::Impl(..))
+            );//&& !matches!(decl, Declaration::Module(..)));
 
         for decl in &mut decls {
             decl.distribute_decls(&import.clone());
+            // if !matches!(decl, Declaration::Module(..)) {
+            //     decl.distribute_decls(&import.clone());
+            // }
         }
 
-        Self::Module(name.to_string(), decls)
+        Self::Module(name.to_string(), Arc::new(decls))
     }
     
     fn filter(&mut self, f: &impl Fn(&Declaration) -> bool) {
         match self {
             Self::Many(decls) => {
+                let decls = Arc::make_mut(decls);
                 decls.retain(|decl| f(decl));
                 decls.iter_mut().for_each(|decl| decl.filter(f));
             }
             Self::Module(_name, decls) => {
+                let decls = Arc::make_mut(decls);
                 decls.retain(|decl| f(decl));
                 decls.iter_mut().for_each(|decl| decl.filter(f));
             }
@@ -93,12 +104,14 @@ impl Declaration {
         // eprintln!("Distributing declarations");
         match self {
             Self::Many(decls) => {
-                for decl in decls {
+                let decls = Arc::make_mut(decls);
+                for decl in decls.iter_mut() {
                     decl.distribute_decls(distributed);
                 }
             }
             Self::Module(name, decls) => {
-                for decl in decls {
+                let decls = Arc::make_mut(decls);
+                for decl in decls.iter_mut() {
                     decl.distribute_decls(distributed);
                 }
             }
@@ -110,17 +123,23 @@ impl Declaration {
                     *expr = expr.with(distributed.clone());
                 }
             }
+            Self::Proc(name, proc) => {
+                *proc = proc.with(distributed.clone());
+            }
+            Self::PolyProc(name, proc) => {
+                *proc = proc.with(distributed.clone());
+            }
             _ => {}
         }
-    } 
+    }
 
     /// Flatten a multi-declaration into a single-dimensional vector of declarations.
     pub(crate) fn flatten(self) -> Vec<Self> {
         match self {
             Self::Many(decls) => {
                 let mut flattened = Vec::new();
-                for decl in decls {
-                    flattened.append(&mut decl.flatten());
+                for decl in decls.iter() {
+                    flattened.append(&mut decl.clone().flatten());
                 }
                 flattened
             }
@@ -150,6 +169,7 @@ impl Declaration {
             Self::ExternProc(..) => true,
             Self::Module(..) => true,
             Self::Impl(..) => true,
+            Self::FromImport { .. } => true,
             Self::Many(decls) => decls
                 .par_iter()
                 .all(|decl| decl.is_compile_time_declaration()),
@@ -248,7 +268,7 @@ impl Declaration {
                 output.log_instructions_after(&name, &log_message, current_instruction);
             }
             Declaration::Many(decls) => {
-                for decl in decls {
+                for decl in decls.iter() {
                     // Compile all the sub-declarations,
                     // and leave their variables on the stack.
                     // Add their variable sizes to the total variable size.
@@ -307,17 +327,17 @@ impl Declaration {
     pub(crate) fn append(&mut self, other: impl Into<Self>) {
         match (self, other.into()) {
             (Self::Many(decls), Self::Many(mut other_decls)) => {
-                decls.append(&mut other_decls);
+                Arc::make_mut(decls).append(Arc::make_mut(&mut other_decls));
             }
             (Self::Many(decls), other) => {
-                decls.append(&mut other.flatten());
+                Arc::make_mut(decls).append(&mut other.flatten());
             }
             (self_, Self::Many(mut other_decls)) => {
                 let mut result = self_.clone().flatten();
-                result.append(&mut other_decls);
-                *self_ = Self::Many(result)
+                result.append(Arc::make_mut(&mut other_decls));
+                *self_ = Self::many(result)
             }
-            (self_, other) => *self_ = Self::Many(vec![self_.clone(), other]),
+            (self_, other) => *self_ = Self::many(vec![self_.clone(), other]),
         }
     }
 
@@ -364,12 +384,12 @@ impl Declaration {
                 // for decl in decls {
                 //     decl.substitute(substitution_name, substitution_ty);
                 // }
-                decls.par_iter_mut().for_each(|decl| {
+                Arc::make_mut(decls).par_iter_mut().for_each(|decl| {
                     decl.substitute(substitution_name, substitution_ty);
                 });
             }
             Self::Module(_name, decls) => {
-                decls.par_iter_mut().for_each(|decl| {
+                Arc::make_mut(decls).par_iter_mut().for_each(|decl| {
                     decl.substitute(substitution_name, substitution_ty);
                 });
             }
@@ -596,6 +616,14 @@ impl TypeCheck for Declaration {
                         .try_for_each(|decl| decl.type_check(&new_env))?;
                 }
 
+                run_time_decls
+                    .iter()
+                    // .map(|decl| decl.type_check(&new_env))
+                    .try_for_each(|decl| {
+                        decl.type_check(&new_env)?;
+                        new_env.add_declaration(decl)
+                    })?;
+
                 /*
                 lazy_static! {
                     // Use this to limit recursive parallelism.
@@ -634,14 +662,6 @@ impl TypeCheck for Declaration {
                 }
                  */
 
-                run_time_decls
-                    .iter()
-                    // .map(|decl| decl.type_check(&new_env))
-                    .try_for_each(|decl| {
-                        decl.type_check(&new_env)?;
-                        new_env.add_declaration(decl)
-                    })?;
-
                 // for decl in decls {
                 //     // Typecheck any variable declarations in the old scope
                 //     decl.type_check(&new_env)?;
@@ -672,7 +692,7 @@ impl TypeCheck for Declaration {
 
             Self::FromImport { module, names } => {
                 // module.type_check(env)?;
-                let mut new_env = env.clone();
+                // let mut new_env = env.clone();
                 for (name, _) in names {
                     let access = module.clone().field(ConstExpr::var(name));
                     access.type_check(env)?;
@@ -733,14 +753,14 @@ impl Display for Declaration {
                 write!(f, "}}")?;
             }
             Self::Many(decls) => {
-                for decl in decls {
+                for decl in decls.iter() {
                     writeln!(f, "{}", decl)?;
                 }
             }
             Self::Module(name, decls) => {
                 write!(f, "module {}", name)?;
                 write!(f, " {{")?;
-                for decl in decls {
+                for decl in decls.iter() {
                     writeln!(f, "{}", decl)?;
                 }
                 write!(f, "}}")?;
@@ -878,7 +898,7 @@ where
     (K, V): Into<Declaration>,
 {
     fn from(bt: BTreeMap<K, V>) -> Self {
-        Self::Many(bt.into_iter().map(|(k, v)| (k, v).into()).collect())
+        Self::Many(bt.into_iter().map(|(k, v)| (k, v).into()).collect::<Vec<_>>().into())
     }
 }
 
@@ -893,7 +913,7 @@ where
     T: Into<Declaration>,
 {
     fn from(decls: Vec<T>) -> Self {
-        Self::Many(decls.into_iter().map(|decl| decl.into()).collect())
+        Self::Many(decls.into_iter().map(|decl| decl.into()).collect::<Vec<_>>().into())
     }
 }
 

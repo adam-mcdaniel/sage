@@ -227,10 +227,16 @@ impl ConstExpr {
                     // container_ty.add_monomorphized_associated_consts(env)?;
                     Ok(match (container.clone().eval(env)?, *member.clone()) {
                         (Self::Declare(decls, item), field) => {
+                            let access = item.field(field);
+                            if let Ok(expr) = access.clone().eval_checked(env, i) {
+                                if !matches!(expr, Self::Member(_, _)) {
+                                    return expr.eval_checked(env, i);
+                                }
+                            }
                             let mut new_env = env.clone();
                             new_env.add_compile_time_declaration(&decls)?;
                             
-                            item.field(field).eval_checked(&new_env, i)?.with(decls)
+                            access.eval_checked(&new_env, i)?.with(decls)
                         }
 
                         (Self::Tuple(tuple), Self::Int(n)) => {
@@ -555,6 +561,7 @@ impl GetType for ConstExpr {
 
             Self::Member(val, field) => {
                 // Get the field to access (as a symbol)
+                trace!("Getting type of container access");
                 let as_symbol = field.clone().as_symbol(env);
                 // Get the field to access (as an integer)
                 let as_int = field.clone().as_int(env);
@@ -682,6 +689,9 @@ impl GetType for ConstExpr {
             }
 
             Self::Declare(bindings, expr) => {
+                // let mut new_env = env.clone();
+                // new_env.add_compile_time_declaration(&bindings)?;
+                // expr.get_type_checked(&new_env, i)?
                 expr.get_type_checked(env, i)
                     .or_else(|_| {
                         let mut new_env = env.clone();

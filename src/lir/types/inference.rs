@@ -48,6 +48,12 @@ impl GetType for Expr {
             }
 
             Self::Declare(declaration, body) => {
+                if let Ok(ty) = body.get_type_checked(env, i) {
+                    // If the body returns a value, then the declaration
+                    // returns the type of the body.
+                    return Ok(ty)
+                }
+
                 // Create a new environment with the declarations.
                 let mut new_env = env.clone();
                 // Add the declarations to the environment.

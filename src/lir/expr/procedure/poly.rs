@@ -3,7 +3,7 @@
 //! A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 //! This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 //! A procedure is compiled down to a label in the assembly code.
-use crate::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
+use crate::lir::{ConstExpr, Declaration, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
 use std::{
     fmt,
     collections::HashMap,
@@ -67,6 +67,16 @@ impl PolyProcedure {
             has_type_checked: Arc::new(RwLock::new(false)),
         }
     }
+
+    pub fn with(&self, decls: impl Into<Declaration>) -> Self {
+        Self {
+            body: Box::new(self.body.with(decls)),
+            monomorphs: Arc::new(RwLock::new(HashMap::new())),
+            has_type_checked: Arc::new(RwLock::new(false)),
+            ..self.clone()
+        }
+    }
+
 
     pub fn from_mono(mono: Procedure, ty_params: Vec<String>) -> Self {
         debug!(target: "mono", "Creating polymorphic procedure from monomorph {}", mono);

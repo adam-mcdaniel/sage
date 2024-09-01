@@ -3,25 +3,11 @@ use sage::frontend::nom_parse::*;
 fn main() {
     // env_logger::builder().filter_level(log::LevelFilter::Trace).init();
     // env_logger::builder().filter_level(log::LevelFilter::Debug).init();
+    env_logger::builder().filter_level(log::LevelFilter::Info).init();
     match compile_and_run(r#"
-    
 module std {
-    module math {
-        fun cos(x: Float): Float {
-            return 1.0 - x * x / 2.0 + x * x * x * x / 24.0;
-        }
-
-        fun sin(x: Float): Float {
-            return x - x * x * x / 6.0 + x * x * x * x * x / 120.0;
-        }
-
-        fun tan(x: Float): Float {
-            return x + x * x * x / 3.0 + 2.0 * x * x * x * x * x / 15.0;
-        }
-    }
-
     module io {
-        fun println<T>(x: T) {
+        fun putln<T>(x: T) {
             print(x);
             print('\n');
         }
@@ -45,6 +31,12 @@ module std {
                 return getchar();
             }
         }
+    }
+
+    module testing {
+        from io import putln;
+
+        const TESTING = 5;
 
         struct Point {
             x: Float,
@@ -57,31 +49,54 @@ module std {
             }
         
             fun move(&mut self, dx: Float, dy: Float) {
-                println("Moving point: ", *self, " by ", dx, ", ", dy);
                 self.x += dx;
                 self.y += dy;
-                println("Moved point:  ", *self);
             }
         }
         
         fun test() {
-            println<Char>(Char.get());
+            println(TESTING);
         }
     }
+
+    module math {
+        from testing import TESTING, test;
+
+        fun cos(x: Float): Float {
+            println(TESTING, " from math");
+            test();
+            return 1.0 - x * x / 2.0 + x * x * x * x / 24.0;
+        }
+
+        fun sin(x: Float): Float {
+            return x - x * x * x / 6.0 + x * x * x * x * x / 120.0;
+        }
+
+        fun tan(x: Float): Float {
+            return x + x * x * x / 3.0 + 2.0 * x * x * x * x * x / 15.0;
+        }
+    }
+
 }
 
-from std import io;
-from io import println as p, Point, test;
+from std.io import putln as p;
+from std.testing import Point, test;
 
-let mut x = Point.new(5.0, 6.0);
-p<Point>(x);
-x.move(1.0, 2.0);
-
-p<Point>(x);
-
-for let mut i=0; i<5; i+=1; {
-    std.io.test();
+fun main() {
+    let _ = std.math.cos(0.0);
+    test();
+    
+    p<Char>('!');
+    let mut x = Point.new(5.0, 6.0);
+    p<Point>(x);
+    x.move(1.0, 2.0);
+    
+    p<Point>(x);
+    
+    test();
 }
+
+main();
 "#, "hello!!!!") {
         Ok(expr) => {
             // println!("{:#?}", expr)

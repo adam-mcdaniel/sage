@@ -736,7 +736,7 @@ impl Env {
 
                 // Get all the declaration names
                 let mut exports = vec![];
-                for decl in decls {
+                for decl in decls.iter() {
                     match decl {
                         Declaration::Type(name, _) => {
                             exports.push(name.clone());
@@ -780,15 +780,10 @@ impl Env {
 
                             // let decl = Declaration::Impl(ty, attrs.clone());
                             // decl.distribute_decls(&Declaration::Many(decls.clone()));
-
-
                             // new_env.add_compile_time_declaration(&decl)?;
-
                         }
                         Declaration::Many(decls) => {
-                            for decl in decls {
-                                // new_env.add_compile_time_declaration(&decl)?;
-
+                            for decl in decls.iter() {
                                 self.add_compile_time_declaration(&decl)?;
                             }
                         }
@@ -804,7 +799,7 @@ impl Env {
                         .collect(),
                 );
 
-                let result = exports.with(decls.clone()).eval(self)?;
+                let result = exports.with(Declaration::Many(decls.clone())).eval(self)?;
                 self.define_const(module_name, result)
             }
             Declaration::Type(name, ty) => {
@@ -819,19 +814,22 @@ impl Env {
             Declaration::FromImport { module, names } => {
                 // let access = module.clone().field(ConstExpr::var(name));
                 // let name = alias.clone().unwrap_or(name.clone());
-                // let module = module.clone().eval(self)?;
                 // let module_ty = module.get_type(self)?;
-
+                
+                let module = module.clone().eval(self)?;
                 for (name, alias) in names {
+                    
                     let access = module.clone().field(ConstExpr::Symbol(name.clone()));
                     let name = alias.clone().unwrap_or(name.clone());
+                    if self.consts.contains_key(&name) {
+                        continue;
+                    }
 
                     // if !self.types.contains_key(&name) {
+                    self.define_const(&name, access.clone());
                     if let Ok(Type::Type(ty)) = access.get_type(self) {
-                        self.define_type(&name, *ty);
+                        self.define_type(name, *ty);
                     }
-                    // }
-                    self.define_const(name, access);
                 }
             }
             Declaration::Proc(name, proc) => {
@@ -847,6 +845,14 @@ impl Env {
                 self.define_static_var(name, *mutability, ty.clone())?;
             }
             Declaration::Impl(ty, impls) => {
+                // Hash the impls
+                let hash = {
+                    use std::hash::{Hash, Hasher};
+                    let mut hasher = std::hash::DefaultHasher::new();
+                    impls.hash(&mut hasher);
+                    hasher.finish()
+                };
+
                 if let Type::Apply(template, supplied_params) = ty {
                     // If this is an implementation for a template type, we need to
                     // get the template parameters and add them to each associated constant.
@@ -877,15 +883,25 @@ impl Env {
                         })
                         .collect::<Result<Vec<_>, _>>()?;
 
+                    let mut is_first = true;
                     for (name, associated_const) in impls {
+                        if is_first && self.has_associated_const(ty, name) {
+                            break;
+                        }
+                        is_first = false;
                         let templated_const =
                             associated_const.template(supplied_param_symbols.clone());
                         self.add_associated_const(*template.clone(), name, templated_const)?;
                     }
                 } else {
                     // ty.add_monomorphized_associated_consts(self)?;
-
+                    let mut is_first = true;
                     for (name, associated_const) in impls {
+                        if is_first && self.has_associated_const(ty, name) {
+                            break;
+                        }
+                        is_first = false;
+
                         self.add_associated_const(ty.clone(), name, associated_const.clone())?;
                     }
 
@@ -913,11 +929,11 @@ impl Env {
                 // }
             }
             Declaration::Many(decls) => {
-                for decl in decls {
+                for decl in decls.iter() {
                     self.add_compile_time_declaration(&decl)?;
                 }
 
-                for decl in decls {
+                for decl in decls.iter() {
                     if let Declaration::Type(name, ty) = decl {
                         if let Ok(size) = ty.get_size(self) {
                             self.set_precalculated_size(ty.clone(), size);
@@ -981,7 +997,7 @@ impl Env {
                 pat.declare_let_bind(expr, &ty, self)?;
             }
             Declaration::Many(decls) => {
-                for decl in decls {
+                for decl in decls.iter() {
                     self.add_local_variable_declaration(decl)?;
                 }
             }

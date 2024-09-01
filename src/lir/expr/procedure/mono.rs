@@ -10,7 +10,7 @@
 //! Procedures are created by the `proc` keyword.
 use crate::asm::{AssemblyProgram, CoreOp, A, FP, SP};
 use crate::lir::{
-    Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck,
+    Compile, ConstExpr, Declaration, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck
 };
 use core::fmt;
 use std::hash::Hash;
@@ -73,6 +73,19 @@ impl Procedure {
             args,
             ret,
             body: Box::new(body.into()),
+            has_type_checked: Arc::new(RwLock::new(false)),
+        }
+    }
+
+    pub fn with(&self, decls: impl Into<Declaration>) -> Self {
+        let mut lambda_count = LAMBDA_COUNT.lock().unwrap();
+        *lambda_count += 1;
+        Self {
+            common_name: self.common_name.clone(),
+            mangled_name: format!("__LAMBDA_{lambda_count}"),
+            args: self.args.clone(),
+            ret: self.ret.clone(),
+            body: Box::new(self.body.with(decls)),
             has_type_checked: Arc::new(RwLock::new(false)),
         }
     }
