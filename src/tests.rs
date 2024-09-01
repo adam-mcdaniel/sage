@@ -221,10 +221,9 @@ mod std {
 }
 
 from std.math import gcd;
+from std.fallible import Option, Result;
 
 println("GCD of 12 and 15 = ", gcd(12, 15));
-
-from std.fallible import Option, Result;
 
 enum Error {
     DivideByZero { numerator: Int },
@@ -241,8 +240,9 @@ fun divide(n: Int, d: Int): Option<Int> {
 fun main(): Result<(), Error> {
     println(divide(5, 2));
     println(divide(5, 0));
+    divide(5);
 
-    return Result<(), Error> of Ok(());
+    return Result<(), Error> of Err(Error of Custom(&"Oh no!"));
 }
 
 println(main());

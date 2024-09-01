@@ -1,5 +1,6 @@
 use super::{PolyProcedure, Procedure};
 use crate::{
+    lir::Annotation,
     asm::{AssemblyProgram, CoreOp, Location, SP},
     lir::{
         Compile, ConstExpr, Env, Error, Expr, FFIProcedure, GetSize, GetType, Mutability, Pattern,
@@ -46,7 +47,7 @@ pub enum Declaration {
     FromImport {
         module: ConstExpr,
         names: Vec<(String, Option<String>)>,
-    }
+    },
 }
 
 impl Declaration {

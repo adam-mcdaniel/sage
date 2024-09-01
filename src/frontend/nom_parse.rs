@@ -6,7 +6,6 @@ use nom::{
     branch::alt, bytes::complete::{escaped_transform, is_not, tag, take_while, take_while1, take_while_m_n}, character::complete::{char, crlf, digit1, hex_digit1, multispace0, multispace1, oct_digit1, one_of}, combinator::{all_consuming, cut, map, map_opt, map_res, not, opt, recognize, verify}, error::{context, ContextError, ParseError}, multi::{fold_many0, fold_many1, many0, many0_count, many1}, sequence::{delimited, pair, preceded, terminated}, IResult, Parser
 };
 
-
 use nom::{
     bytes::complete::{escaped, }, character::complete::{alpha1, alphanumeric0, alphanumeric1, anychar, none_of}, combinator::{value}, error::{convert_error, ErrorKind, VerboseError, FromExternalError}
 };
@@ -46,6 +45,73 @@ use lazy_static::lazy_static;
 enum Associativity {
     Left,
     Right,
+}
+
+fn precompute_line_starts(s: &str) -> Vec<usize> {
+    let mut line_starts = vec![0]; // The first line always starts at index 0
+    for (i, c) in s.char_indices() {
+        if c == '\n' {
+            line_starts.push(i + 1); // Start of the next line
+        }
+    }
+    line_starts
+}
+fn line_and_column(line_starts: &[usize], index: usize) -> (usize, usize) {
+    match line_starts.binary_search(&index) {
+        Ok(line) => (line, 0), // The index is exactly at the start of a line
+        Err(line) => {
+            let line = line - 1; // The index is within this line
+            let column = index - line_starts[line];
+            (line, column)
+        }
+    }
+}
+
+
+lazy_static! {
+    static ref LINE_NUMBERS: RwLock<Vec<usize>> = RwLock::new(vec![]);
+    static ref FILE_NAME: RwLock<Option<String>> = RwLock::new(None);
+    static ref PROGRAM: RwLock<String> = RwLock::new(String::new());
+}
+
+fn setup_source_code_locations(program: &str, filename: Option<String>) {
+    *LINE_NUMBERS.write().unwrap() = precompute_line_starts(program);
+    *FILE_NAME.write().unwrap() = filename.to_owned();
+    *PROGRAM.write().unwrap() = program.to_string();
+}
+
+fn get_source_code_location(char_idx: usize, length: Option<usize>) -> SourceCodeLocation {
+    let (line, column) = line_and_column(&LINE_NUMBERS.read().unwrap(), char_idx);
+    let offset = char_idx;
+    let filename = FILE_NAME.read().unwrap().clone();
+
+    SourceCodeLocation {
+        line,
+        column,
+        offset,
+        length,
+        filename
+    }
+}
+
+lazy_static! {
+    static ref OFFSETS: RwLock<Vec<usize>> = RwLock::new(vec![]);
+}
+
+fn get_current_offset_in_program(remaining_input: &str) -> usize {
+    PROGRAM.read().unwrap().len() - remaining_input.len()
+}
+
+fn start_source_code_tracking(remaining_input: &str) {
+    let offset = get_current_offset_in_program(remaining_input);
+    OFFSETS.write().unwrap().push(offset);
+}
+
+fn end_source_code_tracking(remaining_input: &str) -> SourceCodeLocation {
+    let new_offset = get_current_offset_in_program(remaining_input);
+    let old_offset = OFFSETS.write().unwrap().pop().unwrap();
+    let length = new_offset - old_offset;
+    get_source_code_location(old_offset, Some(length))
 }
 
 lazy_static! {
@@ -202,7 +268,7 @@ fn parse_whitespace_sensitive_block<'a, E: ParseError<&'a str> + ContextError<&'
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-    Declaration(crate::lir::Declaration),
+    Declaration(crate::lir::Declaration, Option<SourceCodeLocation>),
     Expr(crate::lir::Expr),
 }
 
@@ -218,7 +284,7 @@ fn stmts_to_expr(stmts: Vec<Statement>, end_of_program: bool) -> Expr {
             Statement::Expr(e) => {
                 result.push_front(e);
             },
-            Statement::Declaration(decl) => {
+            Statement::Declaration(decl, source_code_loc) => {
                 if decl.is_compile_time_declaration() {
                     decls.push_front(decl);
                 } else {
@@ -233,7 +299,11 @@ fn stmts_to_expr(stmts: Vec<Statement>, end_of_program: bool) -> Expr {
                         }
                         result = VecDeque::new();
                     }
+
                     body = body.with(decl);
+                    if let Some(loc) = source_code_loc {
+                        body = body.annotate(loc);
+                    }
                 }
             },
         }
@@ -257,7 +327,9 @@ fn stmts_to_expr(stmts: Vec<Statement>, end_of_program: bool) -> Expr {
     }
 }
 
-pub fn parse(input: &str) -> Result<Expr, String> {
+pub fn parse(input: &str, filename: Option<String>) -> Result<Expr, String> {
+    setup_source_code_locations(input, filename);
+
     fn parse_helper<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
         let (input, _) = whitespace(input)?;
         let (input, stmts) = many0(context("statement", parse_stmt))(input)?;
@@ -291,6 +363,7 @@ fn parse_impl_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     //     Statement::Declaration(Declaration::Impl(name, args, body))
     // },
     trace!("Parsing impl");
+
     let (input, _) = tag("impl")(input)?;
 
     let (input, ty) = cut(parse_type)(input)?;
@@ -310,7 +383,7 @@ fn parse_impl_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     let (input, _) = cut(tag("}"))(input)?;
 
 
-    Ok((input, Statement::Declaration(Declaration::Impl(ty, impl_items))))
+    Ok((input, Statement::Declaration(Declaration::Impl(ty, impl_items), None)))
 }
 
 fn parse_impl_item<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str, ty: &Type) -> IResult<&'a str, (String, ConstExpr), E> {
@@ -559,6 +632,8 @@ fn parse_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a st
     let (input, _) = whitespace(input)?;
     // let (input, expr) = parse_whitespace_sensitive_block(4, input)?;
 
+    start_source_code_tracking(input);
+
     let (input, mut stmts) = many0(context("statement", parse_stmt))(input)?;
     
     // Check if there's a trailing expression
@@ -570,23 +645,35 @@ fn parse_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a st
 
     let (input, _) = cut(tag("}"))(input)?;
 
+    let source_code_loc = end_source_code_tracking(input);
+
     Ok((input, stmts_to_expr(stmts, false)))
 }
 
 fn parse_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
     let (input, _) = whitespace(input)?;
+    start_source_code_tracking(input);
     let (input, stmt) = alt((
         context("long statement", parse_long_stmt),
         context("short statement", parse_short_stmt),
         // map(parse_expr, Statement::Expr),
         // map(parse_decl, Statement::Declaration),
     ))(input)?;
+    let source_code_loc = end_source_code_tracking(input);
 
+    let stmt = match stmt {
+        Statement::Declaration(decl, _) => Statement::Declaration(decl, Some(source_code_loc.clone())),
+        Statement::Expr(expr) => {
+            Statement::Expr(expr.annotate(source_code_loc.clone()))
+        }
+    };
+    trace!("Annotating {stmt:?} with loc {source_code_loc:?}");
     Ok((input, stmt))
 }
 
 fn parse_long_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
     let (input, _) = whitespace(input)?;
+
     let (input, stmt) = alt((
         context("if let", parse_if_let_stmt),
         context("if", parse_if_stmt),
@@ -612,7 +699,7 @@ fn parse_long_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
 fn parse_import_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
     let (input, _) = whitespace(input)?;
     let (input, stmt) = parse_import_decl(input)?;
-    Ok((input, Statement::Declaration(stmt)))
+    Ok((input, Statement::Declaration(stmt, None)))
 }
 fn parse_import_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Declaration, E> {
     // "import" <path: String> => Statement::Import(path),
@@ -688,7 +775,7 @@ fn parse_module_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("}")(input)?;
 
-    Ok((input, Statement::Declaration(Declaration::module(name, decls))))
+    Ok((input, Statement::Declaration(Declaration::module(name, decls), None)))
 }
 
 fn parse_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Declaration, E> {
@@ -706,7 +793,7 @@ fn parse_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str
     ))(input)?;
 
     match decl {
-        Statement::Declaration(decl) => Ok((input, decl)),
+        Statement::Declaration(decl, _) => Ok((input, decl)),
         _ => unreachable!(),
     }
 }
@@ -811,7 +898,7 @@ fn parse_for_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a
     let mut init_expr = Expr::NONE;
     let mut init_decl = Declaration::many(vec![]);
     match init {
-        Statement::Declaration(decl) => init_decl = decl,
+        Statement::Declaration(decl, _) => init_decl = decl,
         Statement::Expr(e) => init_expr = e,
     };
 
@@ -849,9 +936,9 @@ fn parse_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a
     trace!("Parsed function body: {body}");
     // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)))))
     if let Some(args) = template_args {
-        Ok((input, Statement::Declaration(Declaration::PolyProc(name.to_owned(), PolyProcedure::new(name.to_owned(), args.into_iter().map(|x| x.to_owned()).collect(), params, ret, body)))))
+        Ok((input, Statement::Declaration(Declaration::PolyProc(name.to_owned(), PolyProcedure::new(name.to_owned(), args.into_iter().map(|x| x.to_owned()).collect(), params, ret, body)), None)))
     } else {
-        Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)))))
+        Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)), None)))
     }
 }
 
@@ -881,9 +968,9 @@ fn parse_quick_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(inpu
     trace!("Parsed function body: {body}");
     // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)))))
     if let Some(args) = template_args {
-        Ok((input, Statement::Declaration(Declaration::PolyProc(name.to_owned(), PolyProcedure::new(name.to_owned(), args.into_iter().map(|x| x.to_owned()).collect(), params, ret, body)))))
+        Ok((input, Statement::Declaration(Declaration::PolyProc(name.to_owned(), PolyProcedure::new(name.to_owned(), args.into_iter().map(|x| x.to_owned()).collect(), params, ret, body)), None)))
     } else {
-        Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)))))
+        Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)), None)))
     }
 }
 
@@ -1000,7 +1087,7 @@ fn parse_extern_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     let (input, _) = cut(tag(";"))(input)?;
     
     let args: Vec<_> = params.into_iter().map(|(_name, _mutability, ty)| ty).collect();
-    Ok((input, Statement::Declaration(Declaration::ExternProc(name.to_owned(), FFIProcedure::new(name.to_owned(), args, ret)))))
+    Ok((input, Statement::Declaration(Declaration::ExternProc(name.to_owned(), FFIProcedure::new(name.to_owned(), args, ret)), None)))
 }
 
 fn parse_const_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
@@ -1012,7 +1099,7 @@ fn parse_const_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     let (input, _) = cut(tag("="))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, value) = cut(parse_const)(input)?;
-    Ok((input, Statement::Declaration(Declaration::Const(name.to_owned(), value))))
+    Ok((input, Statement::Declaration(Declaration::Const(name.to_owned(), value), None)))
 }
 
 fn parse_pattern_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
@@ -1028,7 +1115,7 @@ fn parse_pattern_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(in
     let (input, _) = whitespace(input)?;
     let (input, value) = parse_expr(input)?;
 
-    Ok((input, Statement::Declaration(Declaration::VarPat(pattern, value))))
+    Ok((input, Statement::Declaration(Declaration::VarPat(pattern, value), None)))
 }
 
 fn parse_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
@@ -1059,7 +1146,7 @@ fn parse_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a
     let (input, _) = whitespace(input)?;
     let (input, value) = parse_expr(input)?;
 
-    Ok((input, Statement::Declaration(Declaration::Var(name.to_owned(), mutability, ty, value))))
+    Ok((input, Statement::Declaration(Declaration::Var(name.to_owned(), mutability, ty, value), None)))
 }
 
 fn parse_static_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
@@ -1092,7 +1179,7 @@ fn parse_static_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(inp
     let (input, value) = parse_const(input)?;
 
     let ty = ty.unwrap_or(Type::None);
-    Ok((input, Statement::Declaration(Declaration::StaticVar(name.to_owned(), mutability, ty, value))))
+    Ok((input, Statement::Declaration(Declaration::StaticVar(name.to_owned(), mutability, ty, value), None)))
 }
 
 fn parse_type_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
@@ -1104,7 +1191,7 @@ fn parse_type_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     let (input, _) = tag("=")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, ty) = parse_type(input)?;
-    Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), ty))))
+    Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), ty), None)))
 }
 
 fn parse_struct_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
@@ -1154,9 +1241,9 @@ fn parse_struct_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
 
     // Check if there are any template params
     if let Some(params) = template_params {
-        Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), Type::Poly(params.into_iter().map(|x| x.to_owned()).collect(), Type::Struct(fields).into())))))
+        Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), Type::Poly(params.into_iter().map(|x| x.to_owned()).collect(), Type::Struct(fields).into())), None)))
     } else {
-        Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), Type::Struct(fields)))))
+        Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), Type::Struct(fields)), None)))
     }
 }
 
@@ -1200,9 +1287,9 @@ fn parse_enum_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     let (input, _) = tag("}")(input)?;
 
     if let Some(params) = template_params {
-        Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), Type::Poly(params.into_iter().map(|x| x.to_owned()).collect(), Type::EnumUnion(fields).into())))))
+        Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), Type::Poly(params.into_iter().map(|x| x.to_owned()).collect(), Type::EnumUnion(fields).into())), None)))
     } else {
-        Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), Type::EnumUnion(fields)))))
+        Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), Type::EnumUnion(fields)), None)))
     }
 }
 
@@ -1295,6 +1382,8 @@ fn parse_short_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     if let Ok((input, _)) = tag::<&str, &str, E>(";")(input) {
         return Ok((input, Statement::Expr(Expr::NONE)));
     }
+
+    start_source_code_tracking(input);
 
     let (input, stmt) = alt((
         context("extern", parse_extern_stmt),
@@ -1703,9 +1792,11 @@ fn parse_suite<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: 
 fn parse_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
     // let (input, c) = parse_expr_atom(input)?;
     let (input, _) = whitespace(input)?;
+    start_source_code_tracking(input);
     let (input, expr) = parse_expr_prec(input, 0)?;
+    let source_code_loc = end_source_code_tracking(input);
     // Ok((input, Expr::ConstExpr(c)))
-    Ok((input, expr))
+    Ok((input, expr.annotate(source_code_loc)))
 }
 
 fn parse_expr_prec<'a, E: ParseError<&'a str> + ContextError<&'a str>>(mut input: &'a str, prec: u8) -> IResult<&'a str, Expr, E> {
@@ -2617,8 +2708,7 @@ pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
                         .chars()
                         .without_comments(languages::rust())
                         .collect::<String>();
-
-                    let parsed = parse(&code)?;
+                    let parsed = parse(&code, Some("input".to_string()))?;
                     // eprintln!("PARSED: {parsed}");
                     // eprintln!("END PARSED");
 
@@ -2957,6 +3047,58 @@ pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
                     // let asm_code = parsed.compile();
                     const CALL_STACK_SIZE: usize = 1024;
                     if let Err(ref e) = asm_code {
+                        if let crate::lir::Error::Annotated(ref err, ref metadata) = e {
+                            if let Some(loc) = metadata.location().cloned() {
+                                // use codespan_reporting::files::SimpleFiles;
+                                use codespan_reporting::diagnostic::{Diagnostic, Label};
+                                use codespan_reporting::files::SimpleFiles;
+                                use codespan_reporting::term::{
+                                    emit,
+                                    termcolor::{ColorChoice, StandardStream},
+                                };
+                                use no_comment::{languages, IntoWithoutComments};
+    
+                                let SourceCodeLocation {
+                                    line,
+                                    column,
+                                    filename,
+                                    offset,
+                                    length,
+                                } = loc;
+    
+                                let mut files = SimpleFiles::new();
+    
+                                // let source_code = source_code
+                                //     .to_string()
+                                //     .chars()
+                                //     .without_comments(languages::rust())
+                                //     .collect::<String>();
+    
+                                let filename = filename.clone().unwrap_or("unknown".to_string());
+    
+                                let file_id = files.add(filename.clone(), &code);
+    
+                                let loc = format!("{}:{}:{}:{}", filename, line, column, offset);
+    
+                                // let code = format!("{}\n{}^", code, " ".repeat(*column - 1));
+                                // write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)?
+    
+                                let diagnostic = Diagnostic::error()
+                                    .with_message(format!("Error at {}", loc))
+                                    .with_labels(vec![Label::primary(
+                                        file_id,
+                                        offset..(offset + length.unwrap_or(0)),
+                                    )
+                                    .with_message(format!("{err}"))]);
+    
+                                let writer = StandardStream::stderr(ColorChoice::Always);
+                                let config = codespan_reporting::term::Config::default();
+    
+                                emit(&mut writer.lock(), &config, &files, &diagnostic).unwrap();
+    
+                                return Err(format!("{e}"));
+                            }
+                        }
                         return Err(format!("{e}"));
                     }
                     let asm_code = asm_code.unwrap();
