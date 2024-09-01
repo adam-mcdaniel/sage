@@ -730,6 +730,7 @@ impl GetType for ConstExpr {
                             .simplify_until_type_checks(env)?
                     }
                     _ => {
+                        warn!("Monomorphizing non-template: {expr}");
                         Type::Apply(Box::new(template_ty.clone()), ty_args.clone())
                     }
                 };

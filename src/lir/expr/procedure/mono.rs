@@ -16,7 +16,7 @@ use core::fmt;
 use std::hash::Hash;
 use std::sync::{Arc, Mutex, RwLock};
 
-use log::trace;
+use log::{trace, debug};
 use serde_derive::{Deserialize, Serialize};
 
 // TODO: Do this without lazy_static. This is used to create unique mangled IDs for each compiled function.
@@ -134,7 +134,7 @@ impl Procedure {
 
 impl TypeCheck for Procedure {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
-        trace!("type checking procedure: {}", self);
+        debug!("Typechecking procedure: {}", self);
 
         if *self.has_type_checked.read().unwrap() {
             return Ok(());
@@ -144,11 +144,13 @@ impl TypeCheck for Procedure {
         *self.has_type_checked.write().unwrap() = true;
 
         // Typecheck the types of the arguments and return value
+        debug!("Typechecking arguments of procedure {} ({:?})", self.mangled_name, self.common_name);
         for (_, _, t) in &self.args {
             // t.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
             t.type_check(env)?;
         }
         // self.ret.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
+        debug!("Typechecking return type of procedure {} ({:?})", self.mangled_name, self.common_name);
         self.ret.type_check(env)?;
 
         // Create a new scope for the procedure's body, and define the arguments for the scope.
@@ -166,6 +168,7 @@ impl TypeCheck for Procedure {
             })
         } else {
             // Typecheck the procedure's body.
+            debug!("Typechecking body of procedure {} ({:?})", self.mangled_name, self.common_name);
             self.body.type_check(&new_env)
         }
     }

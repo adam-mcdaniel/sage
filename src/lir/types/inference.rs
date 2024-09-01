@@ -38,7 +38,7 @@ pub trait GetType {
 /// Infer the type associated with an expression under a given environment.
 impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        trace!("Getting type of expression {}", self);
+        trace!("Getting type of expression {self} in env {env}");
         let i = i + 1;
         Ok(match self {
             Self::Annotated(expr, annotation) => {

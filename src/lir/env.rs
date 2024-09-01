@@ -821,9 +821,9 @@ impl Env {
                     
                     let access = module.clone().field(ConstExpr::Symbol(name.clone()));
                     let name = alias.clone().unwrap_or(name.clone());
-                    if self.consts.contains_key(&name) {
-                        continue;
-                    }
+                    // if self.consts.contains_key(&name) {
+                    //     continue;
+                    // }
 
                     // if !self.types.contains_key(&name) {
                     self.define_const(&name, access.clone());
@@ -846,24 +846,28 @@ impl Env {
             }
             Declaration::Impl(ty, impls) => {
                 // Hash the impls
-                let hash = {
-                    use std::hash::{Hash, Hasher};
-                    let mut hasher = std::hash::DefaultHasher::new();
-                    impls.hash(&mut hasher);
-                    hasher.finish()
-                };
-
                 if let Type::Apply(template, supplied_params) = ty {
                     // If this is an implementation for a template type, we need to
                     // get the template parameters and add them to each associated constant.
                     let template_params = template.get_template_params(self);
 
-                    if template_params.len() != supplied_params.len() {
+                    if template_params.len() != supplied_params.len() && template_params.len() != 0 {
+                        // The number of template parameters must match the number of supplied parameters.
                         return Err(Error::MismatchedTypes {
                             expected: *template.clone(),
                             found: Type::Apply(template.clone(), supplied_params.clone()),
                             expr: Expr::NONE.with(declaration.clone()),
                         });
+                    } else if supplied_params.len() == 0 {
+                        // Not sure why this case happens,
+                        // when I don't add it then imported types from other modules
+                        // have type errors whenever they are used.
+                        // I think this is how the types in modules are distributed
+                        // amongst the impl-methods. If the type is redefined this way
+                        // by redistributing the type declarations, then maybe it could
+                        // interfere with the coherence between the actual types in methods
+                        // vs. the type they're defined for.
+                        return Ok(());
                     }
 
                     let supplied_param_symbols = supplied_params
@@ -1035,10 +1039,10 @@ impl Env {
     /// Define a type with a given name under this environment.
     pub(super) fn define_type(&mut self, name: impl ToString, ty: Type) {
         let name = name.to_string();
-        if self.types.contains_key(&name) {
-            warn!("Redefining type {name} in {self}");
-            return;
-        }
+        // if self.types.contains_key(&name) {
+        //     warn!("Redefining type {name} in {self}");
+        //     return;
+        // }
 
         match &ty {
             Type::Symbol(sym) if sym == &name => {
@@ -1321,7 +1325,7 @@ impl Env {
 
 impl Display for Env {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        return Ok(());
+        // return Ok(());
         writeln!(f, "Env")?;
         writeln!(f, "   Types:")?;
         for (name, ty) in self.types.iter() {

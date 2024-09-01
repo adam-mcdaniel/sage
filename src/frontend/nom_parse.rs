@@ -207,7 +207,7 @@ pub enum Statement {
 }
 
 
-fn stmts_to_expr(stmts: Vec<Statement>) -> Expr {
+fn stmts_to_expr(stmts: Vec<Statement>, end_of_program: bool) -> Expr {
     use std::collections::VecDeque;
     let rev_stmts = stmts.into_iter().rev().collect::<Vec<_>>();
     let mut body = Expr::NONE;
@@ -238,6 +238,11 @@ fn stmts_to_expr(stmts: Vec<Statement>) -> Expr {
             },
         }
     }
+
+    if end_of_program {
+        result.push_back(Expr::NONE);
+    }
+
     if !result.is_empty() {
         if body != Expr::NONE {
             result.push_back(body);
@@ -258,7 +263,7 @@ pub fn parse(input: &str) -> Result<Expr, String> {
         let (input, stmts) = many0(context("statement", parse_stmt))(input)?;
         // let (input, stmts) = many0(terminated(cut(context("statement", parse_stmt)), whitespace))(input)?;
         let (input, _) = whitespace(input)?;
-        Ok((input, stmts_to_expr(stmts)))
+        Ok((input, stmts_to_expr(stmts, true)))
     }
 
     match all_consuming(parse_helper::<VerboseError<&str>>)(input) {
@@ -476,6 +481,7 @@ fn parse_pattern_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input:
         context("symbol", map(parse_symbol, |name| Pattern::Symbol(Mutability::Immutable, name.to_owned()))),
         context("tuple", parse_tuple_pattern),
         context("group", delimited(tag("("), cut(parse_pattern), tag(")"))),
+        context("const", map(parse_const, |c| Pattern::ConstExpr(c))),
         // context("tuple", map(ma
     ))(input)?;
     Ok((input, pattern))
@@ -564,7 +570,7 @@ fn parse_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a st
 
     let (input, _) = cut(tag("}"))(input)?;
 
-    Ok((input, stmts_to_expr(stmts)))
+    Ok((input, stmts_to_expr(stmts, false)))
 }
 
 fn parse_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
@@ -668,7 +674,7 @@ fn parse_import_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
 fn parse_module_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
     let (input, _) = whitespace(input)?;
 
-    let (input, _) = tag("module")(input)?;
+    let (input, _) = tag("mod")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, name) = cut(parse_symbol)(input)?;
     let (input, _) = whitespace(input)?;
@@ -2613,7 +2619,8 @@ pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
                         .collect::<String>();
 
                     let parsed = parse(&code)?;
-                    trace!("PARSED: {parsed}");
+                    // eprintln!("PARSED: {parsed}");
+                    // eprintln!("END PARSED");
 
                     let alloc = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
                         name: "alloc".to_string(),
