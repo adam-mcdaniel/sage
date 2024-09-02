@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["parse"],"mod":["nom_parse"]};
+window.SIDEBAR_ITEMS = {"fn":["parse"]};

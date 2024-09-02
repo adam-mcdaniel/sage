@@ -158,14 +158,21 @@ pub fn parse_frontend(input: impl ToString, filename: Option<&str>) -> Result<Ex
         .without_comments(languages::rust())
         .collect::<String>();
 
-    let result = frontend::nom_parse::parse(&input, filename.map(|x| x.to_owned()))?;
+    let result = frontend::parse(&input, filename.map(|x| x.to_owned()))?;
     trace!(target: "parse", "Parsed frontend code: {result}");
     // info!(target: "parse", "Parsed frontend code in {time}ms", time = start.elapsed().as_millis());
     Ok(result)
 }
 
 pub fn parse_frontend_minimal(input: impl ToString, filename: Option<&str>) -> Result<Expr, String> {
-    let result = frontend::parse(input, filename, false)?;
+    use no_comment::{IntoWithoutComments, languages};
+    let input = input
+        .to_string()
+        .chars()
+        .without_comments(languages::rust())
+        .collect::<String>();
+
+    let result = frontend::parse(&input, filename.map(|x| x.to_owned()))?;
     Ok(result)
 }
 

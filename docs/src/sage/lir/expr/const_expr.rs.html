@@ -1186,6 +1186,12 @@
 <a href="#1185" id="1185">1185</a>
 <a href="#1186" id="1186">1186</a>
 <a href="#1187" id="1187">1187</a>
+<a href="#1188" id="1188">1188</a>
+<a href="#1189" id="1189">1189</a>
+<a href="#1190" id="1190">1190</a>
+<a href="#1191" id="1191">1191</a>
+<a href="#1192" id="1192">1192</a>
+<a href="#1193" id="1193">1193</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Constant Expressions
 //!
 //! Constant expressions are expressions that can be evaluated at compile time.
@@ -1413,7 +1419,17 @@
                     <span class="kw">let </span>container_ty = container.get_type_checked(env, i)<span class="question-mark">?</span>;
                     <span class="macro">trace!</span>(<span class="string">"Member access on type: {container_ty}: {container} . {member}"</span>);
                     <span class="comment">// container_ty.add_monomorphized_associated_consts(env)?;
-                    </span><span class="prelude-val">Ok</span>(<span class="kw">match </span>(container.clone().eval(env)<span class="question-mark">?</span>, <span class="kw-2">*</span>member.clone()) {
+                    </span><span class="prelude-val">Ok</span>(<span class="kw">match </span>(<span class="kw-2">*</span>container.clone(), <span class="kw-2">*</span>member.clone()) {
+                        (<span class="self">Self</span>::Annotated(inner, metadata), member) =&gt; {
+                            <span class="self">Self</span>::Member(inner, member.into()).eval_checked(env, i)
+                                .map_err(|e| e.annotate(metadata.clone()))<span class="question-mark">?
+                        </span>}
+
+                        (<span class="self">Self</span>::Symbol(..), member)
+                        | (<span class="self">Self</span>::Member(..), member) =&gt; {
+                            container.eval_checked(env, i)<span class="question-mark">?</span>.field(member).eval_checked(env, i)<span class="question-mark">?
+                        </span>}
+
                         (<span class="self">Self</span>::Declare(decls, item), field) =&gt; {
                             <span class="kw">let </span>access = item.field(field);
                             <span class="kw">if let </span><span class="prelude-val">Ok</span>(expr) = access.clone().eval_checked(env, i) {
@@ -1423,7 +1439,6 @@
                             }
                             <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                             new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span>decls)<span class="question-mark">?</span>;
-                            
                             access.eval_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?</span>.with(decls)
                         }
 
@@ -1447,7 +1462,7 @@
                                     <span class="kw">return </span>constant.eval_checked(env, i);
                                     <span class="comment">// return Ok(constant.clone());
                                 </span>}
-                                <span class="macro">error!</span>(
+                                <span class="macro">warn!</span>(
                                     <span class="string">"Struct member access not implemented for: {container_ty} . {member}"
                                 </span>);
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), <span class="kw-2">*</span>member));
@@ -1467,7 +1482,7 @@
                                     <span class="kw">return </span>constant.clone().eval_checked(env, i);
                                     <span class="comment">// return Ok(constant.clone());
                                 </span>}
-                                <span class="macro">error!</span>(
+                                <span class="macro">warn!</span>(
                                     <span class="string">"Type member access not implemented for: {container_ty} . {member}"
                                 </span>);
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::SymbolNotDefined(name));
@@ -1480,7 +1495,7 @@
                                 constant.eval_checked(env, i)<span class="question-mark">?
                             </span>} <span class="kw">else </span>{
                                 <span class="macro">warn!</span>(
-                                    <span class="string">"(Unknown container {container:?}) member access not implemented for: {container_ty} . {member}"
+                                    <span class="string">"(Unknown container {container:?}) member access of {member} not implemented for: {container_ty} . {member}"
                                 </span>);
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound(container.into(), <span class="kw-2">*</span>member));
                             }
@@ -1846,7 +1861,7 @@
                     <span class="comment">// If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
                     </span><span class="kw">_ </span>=&gt; {
-                        <span class="macro">error!</span>(
+                        <span class="macro">warn!</span>(
                             <span class="string">"Member access not implemented for type: {val_type} . {field}"
                         </span>);
                         <span class="kw">return </span>ConstExpr::Member(ConstExpr::Type(val_type.clone()).into(), field.clone())
@@ -2020,10 +2035,7 @@
                                 </span>proc.get_type_checked(env, i)<span class="question-mark">?
                             </span>} <span class="kw">else </span>{
                                 <span class="comment">// If the procedure isn't defined, then this symbol isn't defined.
-                                </span><span class="macro">error!</span>(
-                                    <span class="string">"Could not find procedure {name} when getting type of {self} in {env}"
-                                </span>);
-                                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::SymbolNotDefined(name));
+                                </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::SymbolNotDefined(name));
                             }
                         }
                         <span class="comment">// Get the type of the constant.
