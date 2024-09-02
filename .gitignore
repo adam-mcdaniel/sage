@@ -11,3 +11,4 @@ massif.out.*
 /*.sg
 /benches/temp
 /benches/temp.c
+.DS_Store
