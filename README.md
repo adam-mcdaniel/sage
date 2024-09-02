@@ -190,7 +190,7 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
   - [ ] GUI Module
   - [ ] WebAssembly Module
   - [ ] Foreign Function Interface Module (create backend with `.toml` file)
-  - [ ] Memory Management Module
+  - [x] Memory Management Module
 - [x] Better frontend parser (switch to [Nom](https://crates.io/crates/nom)?)
 - [ ] A package manager
 - [x] AST Macros
