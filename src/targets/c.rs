@@ -321,7 +321,7 @@ typedef union cell {
     union cell *p;
 } cell;
 
-cell tape[200000], *refs[1024], *ptr = tape, **ref = refs, scalar_reg, vector_reg[1024], tmp_reg, ffi_channel[256], *ffi_ptr = ffi_channel;
+cell tape[67108864], *refs[1024], *ptr = tape, **ref = refs, scalar_reg, vector_reg[1024], tmp_reg, ffi_channel[256], *ffi_ptr = ffi_channel;
 
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);

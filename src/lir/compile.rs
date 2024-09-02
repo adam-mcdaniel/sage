@@ -312,14 +312,20 @@ impl Compile for Expr {
                     }
 
                     Expr::ConstExpr(ConstExpr::Member(val, name)) => {
-                        warn!("Compiling member function call {name} on {val} in environment {env}");
+                        warn!("Compiling (const) member function call {name} on {val} in environment {env}");
+                        // let access = Expr::Member(Box::new((*val).into()), *name);
+                        // access.compile_expr(env, output)?;
+
                         // Try to get the member of the underlying type.
                         if self_clone.is_method_call(env)? {
-                            self_clone
-                                .transform_method_call(env)?
-                                .compile_expr(env, output)?;
+                            warn!("Is method call!");
+                            let transformed = self_clone
+                                .transform_method_call(env)?;
+                            warn!("Transformed: {transformed}");
+                            transformed.compile_expr(env, output)?;
                         } else {
                             // Push the arguments to the procedure on the stack.
+                            warn!("Is not method call!");
                             warn!("Compiling member function call {name} on {val} in environment {env}");
                             for arg in &args {
                                 // Compile the argument (push it on the stack)
@@ -1059,8 +1065,10 @@ impl Compile for ConstExpr {
                 // Do nothing.
             }
             Self::Member(container, member) => {
-                warn!("Compiling member access {member} on {container} in environment {env}");
-                match (container.clone().eval(env)?, *member.clone()) {
+                // let new_container = container.clone().eval(env)?;
+                let new_container = *container.clone();
+                warn!("Compiling (const) member access {member} on {new_container} in environment {env}");
+                match (new_container, *member.clone()) {
                     (Self::Tuple(tuple), Self::Int(n)) => {
                         // If the index is out of bounds, return an error.
                         if n >= tuple.len() as i64 || n < 0 {

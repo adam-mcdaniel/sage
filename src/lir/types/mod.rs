@@ -472,20 +472,26 @@ impl Type {
                     ret.get_monomorph_template_args(other, matched_symbols, param_symbols, env)?;
                 }
             }
-
-            (Self::Symbol(name), template) => {
-                if let Some(t) = env.get_type(name) {
-                    t.get_monomorph_template_args(template, matched_symbols, param_symbols, env)?;
-                }
-            }
-
             (other, Self::Symbol(name)) => {
                 if param_symbols.contains(name) {
                     debug!("Found match {}: {}", name, other);
                     matched_symbols.insert(name.clone(), other.clone());
                 } else if let Some(t) = env.get_type(name) {
                     debug!("Symbol {name} is {t}");
+                    // let mut new_matched_symbols = HashMap::new();
                     other.get_monomorph_template_args(t, matched_symbols, param_symbols, env)?;
+                    // // other.get_monomorph_template_args(t, matched_symbols, param_symbols, env)?;
+                    // for (symbol, t) in new_matched_symbols {
+                    //     if !matched_symbols.contains_key(&symbol) {
+                    //         matched_symbols.insert(symbol, t);
+                    //     }
+                    // }
+                }
+            }
+
+            (Self::Symbol(name), template) => {
+                if let Some(t) = env.get_type(name) {
+                    t.get_monomorph_template_args(template, matched_symbols, param_symbols, env)?;
                 }
             }
 

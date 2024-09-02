@@ -182,7 +182,7 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 - [x] Modules
 - [x] A standard library
   - [ ] Type Reflection Module
-  - [ ] Collections Module
+  - [x] Collections Module
   - [ ] Networking Module
   - [ ] Filesystem Module
   - [ ] Graphics Module

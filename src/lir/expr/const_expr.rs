@@ -104,10 +104,21 @@ impl ConstExpr {
     }
 
     pub fn template(&self, params: Vec<String>) -> Self {
-        if let Self::Proc(proc) = self {
-            Self::PolyProc(PolyProcedure::from_mono(proc.clone(), params))
-        } else {
-            Self::Template(params, Box::new(self.clone()))
+        // if let Self::Proc(proc) = self {
+        //     Self::PolyProc(PolyProcedure::from_mono(proc.clone(), params))
+        // } else {
+        //     Self::Template(params, Box::new(self.clone()))
+        // }
+        match self {
+            Self::Proc(proc) => Self::PolyProc(PolyProcedure::from_mono(proc.clone(), params)),
+            Self::Declare(decls, inner) => {
+                inner.template(params).with(decls.clone())
+            }
+            Self::Annotated(inner, metadata) => {
+                inner.template(params).annotate(metadata.clone())
+            }
+            _ => Self::Template(params, Box::new(self.clone()))
+
         }
         // Self::Template(params, Box::new(self.clone()))
     }
@@ -145,6 +156,9 @@ impl ConstExpr {
                 // Return the merged declaration.
                 Self::Declare(Box::new(result), expr.clone())
             }
+
+            Self::Proc(proc) => Self::Proc(proc.with(older_decls)),
+            Self::PolyProc(proc) => Self::PolyProc(proc.with(older_decls)),
 
             // Return the expression with the declaration in scope.
             _ => Self::Declare(Box::new(older_decls.into()), Box::new(self.clone())),
@@ -196,8 +210,8 @@ impl ConstExpr {
     ///
     /// The `i` is a counter for the number of recursions caused by an `eval` call.
     fn eval_checked(self, env: &Env, i: usize) -> Result<Self, Error> {
-        let i = i + 1;
-        if i > 10 {
+        let i: usize = i + 1;
+        if i > 100 {
             error!("Recursion depth exceeded while evaluating: {self}");
             Err(Error::RecursionDepthConst(self))
         } else {
@@ -209,6 +223,9 @@ impl ConstExpr {
                         Ok(Self::Proc(proc)) => {
                             info!("Creating polyproc from mono proc: {proc}");
                             Ok(Self::PolyProc(PolyProcedure::from_mono(proc, params)))
+                        }
+                        Ok(Self::Declare(decls, inner)) => {
+                            Ok(Self::Template(params, inner).with(decls).eval_checked(env, i)?)
                         }
                         _ => {
                             info!("Creating template from expr: {expr}");
@@ -231,11 +248,6 @@ impl ConstExpr {
                                 .map_err(|e| e.annotate(metadata.clone()))?
                         }
 
-                        (Self::Symbol(..), member)
-                        | (Self::Member(..), member) => {
-                            container.eval_checked(env, i)?.field(member).eval_checked(env, i)?
-                        }
-
                         (Self::Declare(decls, item), field) => {
                             let access = item.field(field);
                             if let Ok(expr) = access.clone().eval_checked(env, i) {
@@ -246,6 +258,29 @@ impl ConstExpr {
                             let mut new_env = env.clone();
                             new_env.add_compile_time_declaration(&decls)?;
                             access.eval_checked(&new_env, i)?.with(decls)
+                        }
+
+                        // (Self::Symbol(..), member)
+                        // | (Self::Member(..), member) => {
+                        //     // container.eval_checked(env, i)?.field(member).eval_checked(env, i)?
+                        // }
+
+                        (Self::Symbol(name), member) => {
+                            if env.get_const(&name).is_some() {
+                                container.eval_checked(env, i)?.field(member).eval_checked(env, i)?
+                            } else {
+                                if let Ok(Some((constant, _))) = member
+                                    .clone()
+                                    .as_symbol(env)
+                                    .map(|name| env.get_associated_const(&container_ty, &name))
+                                {
+                                    warn!("Getting associated const: {container_ty} . {member}");
+                                    // return constant.eval_checked(env, i);
+                                    return Ok(constant.clone());
+                                }
+                                warn!("Member access not implemented for: {container_ty} . {member}");
+                                return Err(Error::MemberNotFound((*container).into(), member));
+                            }
                         }
 
                         (Self::Tuple(tuple), Self::Int(n)) => {
@@ -269,7 +304,7 @@ impl ConstExpr {
                                     // return Ok(constant.clone());
                                 }
                                 warn!(
-                                    "Struct member access not implemented for: {container_ty} . {member}"
+                                    "Struct member access of {member} not implemented for: {container_ty}"
                                 );
                                 return Err(Error::MemberNotFound((*container).into(), *member));
                             }
@@ -294,19 +329,8 @@ impl ConstExpr {
                                 return Err(Error::SymbolNotDefined(name));
                             }
                         }
-                        (container, Self::Symbol(name)) => {
-                            if let Some((constant, _)) =
-                                env.get_associated_const(&container_ty, &name)
-                            {
-                                constant.eval_checked(env, i)?
-                            } else {
-                                warn!(
-                                    "(Unknown container {container:?}) member access of {member} not implemented for: {container_ty} . {member}"
-                                );
-                                return Err(Error::MemberNotFound(container.into(), *member));
-                            }
-                        }
-                        _ => {
+
+                        (Self::Member(..), member) => {
                             if let Ok(Some((constant, _))) = member
                                 .clone()
                                 .as_symbol(env)
@@ -315,6 +339,32 @@ impl ConstExpr {
                                 warn!("Getting associated const: {container_ty} . {member}");
                                 return constant.eval_checked(env, i);
                                 // return Ok(constant.clone());
+                            }
+                            warn!("Member access not implemented for: {container_ty} . {member}");
+                            // container.eval_checked(env, i)?.field(member).eval_checked(env, i)?
+                            return Err(Error::MemberNotFound((*container).into(), member));
+                        }
+                        // (container, Self::Symbol(name)) => {
+                        //     if let Some((constant, _)) =
+                        //         env.get_associated_const(&container_ty, &name)
+                        //     {
+                        //         constant.eval_checked(env, i)?
+                        //     } else {
+                        //         warn!(
+                        //             "(Unknown container {container:?}) member access of {member} not implemented for: {container_ty} . {member}"
+                        //         );
+                        //         return Err(Error::MemberNotFound(container.into(), *member));
+                        //     }
+                        // }
+                        _ => {
+                            if let Ok(Some((constant, _))) = member
+                                .clone()
+                                .as_symbol(env)
+                                .map(|name| env.get_associated_const(&container_ty, &name))
+                            {
+                                warn!("Getting associated const: {container_ty} . {member}");
+                                // return constant.eval_checked(env, i);
+                                return Ok(constant.clone());
                             }
                             warn!("Member access not implemented for: {container_ty} . {member}");
                             return Err(Error::MemberNotFound((*container).into(), *member));
@@ -335,7 +385,7 @@ impl ConstExpr {
                 | Self::Proc(_)
                 | Self::PolyProc(_)
                 | Self::Type(_) => Ok(self),
-
+                // Self::Type(ty) => Ok(Self::Type(ty.clone().simplify_until_atomic(env).unwrap_or(ty))), 
                 Self::Declare(bindings, expr) => {
                     debug!("Declaring compile time bindings: {bindings}");
                     let mut new_env = env.clone();
@@ -381,10 +431,16 @@ impl ConstExpr {
                             new_env.add_compile_time_declaration(&bindings)?;
                             expr.monomorphize(ty_args.clone()).eval_checked(&new_env, i)?.with(bindings)
                         }
-                        _ => Self::Monomorphize(
-                            Box::new(expr.eval_checked(env, i)?),
-                            ty_args.clone(),
-                        ),
+                        Self::Annotated(inner, metadata) => {
+                            expr.monomorphize(ty_args.clone()).eval_checked(env, i)
+                                .map_err(|x| x.annotate(metadata))?
+                        }
+                        other => {
+                            Self::Monomorphize(
+                                Box::new(expr.eval_checked(env, i)?),
+                                ty_args.clone(),
+                            )
+                        },
                     };
 
                     // if env.has_any_associated_const(&template_ty) {
@@ -700,7 +756,7 @@ impl GetType for ConstExpr {
             Self::Declare(bindings, expr) => {
                 // let mut new_env = env.clone();
                 // new_env.add_compile_time_declaration(&bindings)?;
-                // expr.get_type_checked(&new_env, i)?
+                // expr.get_type_checked(&new_env, i)?.simplify_until_simple(&new_env)?
                 expr.get_type_checked(env, i)
                     .or_else(|_| {
                         let mut new_env = env.clone();
@@ -991,7 +1047,8 @@ impl fmt::Display for ConstExpr {
                 write!(f, "{proc}")
             }
             Self::Declare(bindings, expr) => {
-                write!(f, "let {bindings} in {expr}")
+                // write!(f, "let {bindings} in {expr}")
+                write!(f, "{expr} with")
             }
             Self::Monomorphize(expr, ty_args) => {
                 write!(f, "{expr}<")?;

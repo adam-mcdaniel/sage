@@ -1,0 +1,518 @@
+mod std {
+    mod math {
+        // Calculate the greatest common divisor of two numbers using Euclid's algorithm
+        fun gcd(a: Int, b: Int): Int {
+            if b == 0 {
+                return a;
+            }
+            return gcd(b, a % b);
+        }
+    }
+
+    mod mem {
+        // A function for allocating memory
+        fun malloc<T>(n: Int): &mut T {
+            return alloc(n * sizeof<T>());
+        }
+    }
+
+    mod env {
+        // A function for halting the program
+        fun exit(n: Int): ! {
+            // `!` is the type of a value that never returns
+            println("Exit: ", n);
+            debug();
+            while True {}
+        }
+    }
+
+    mod io {
+        // Import from math just to test
+        from math import gcd;
+
+        // Print a character to the screen
+        fun putln<T>(x: T) {
+            print(x);
+            print('\n');
+        }
+
+        // Get a character from input
+        fun getchar(): Char {
+            let mut ch = ' ';
+            input(&mut ch);
+            return ch;
+        }
+
+        // Add these put/get functions as methods to the Char type
+        impl Char {
+            fun put(&self) { putln<Char>(*self); }
+
+            fun get(): Char { return getchar(); }
+        }
+    }
+
+    mod fallible {
+        fun panic(msg: &Char): ! {
+            print("Error: ", msg);
+        }
+
+        enum Result<T, E> {
+            Ok(T),
+            Err(E)
+        }
+
+        impl Result<T, E> {
+            fun ok(x: T): Result<T, E> {
+                return Result<T, E> of Ok(x);
+            }
+
+            fun err(x: E): Result<T, E> {
+                return Result<T, E> of Err(x);
+            }
+
+            fun is_ok(&self): Bool {
+                match self {
+                    &of Ok(_) => True,
+                            _ => False
+                }
+            }
+
+            fun is_err(&self): Bool {
+                !self.is_ok()
+            }
+
+            fun unwrap(self): T {
+                match self {
+                    of Ok(x) => x,
+                    _ => panic(&"Oh no, tried to unwrap an error!")
+                }
+            }
+        }
+
+        enum Option<T> {
+            Some(T),
+            Nothing
+        }
+
+        // Add some associated functions to the Option enum
+        impl Option<T> {
+            fun nullify(self: &mut Option<T>) {
+                *self = Option<T> of Nothing;
+            }
+
+            fun as_ref(self: &Option<T>): Option<&T> {
+                let inner = self as &T;
+                if let &of Nothing = self {
+                    return Option<&T> of Nothing;
+                }
+                return Option<&T> of Some(inner);
+            }
+
+            fun as_ref_mut(self: &mut Option<T>): Option<&mut T> {
+                let inner = self as &mut T;
+                if let &of Nothing = self {
+                    return Option<&mut T> of Nothing;
+                }
+                return Option<&mut T> of Some(inner);
+            }
+
+            fun print(self: &Option<T>) {
+                match self {
+                    &of Some(x) => print("Some(", x, ")"),
+                    _ => print("Nothing")
+                }
+            }
+
+            fun println(self: &Option<T>) {
+                self.print();
+                print("\n");
+            }
+
+            fun map<U>(self: &Option<T>, f: fun(T) -> U): Option<U> {
+                match *self {
+                    of Some(x) => Option<U> of Some(f(x)),
+                    _ => Option<U> of Nothing
+                }
+            }
+
+            fun is_some(self: &Option<T>): Bool {
+                match self {
+                    &of Some(_) => True,
+                    _ => False
+                }
+            }
+
+            fun is_none(self: &Option<T>): Bool {
+                match self {
+                    &of Some(_) => False,
+                    _ => True
+                }
+            }
+
+            fun unwrap(self: Option<T>): T {
+                match self {
+                    of Some(x) => x,
+                    _ => panic(&"called `Option.unwrap()` on a `Nothing` value")
+                }
+            }
+
+            fun unwrap_or(self: Option<T>, default: T): T {
+                match self {
+                    of Some(x) => x,
+                    _ => default
+                }
+            }
+        }
+
+    }
+    
+    mod int {
+        const MAX_INT = 2147483647;
+        const MIN_INT = -2147483648;
+    }
+
+    mod collections {
+        from fallible import panic, Option;
+        from mem import malloc;
+        
+        enum List<T> {
+            Cons(T, &List<T>),
+            Nil
+        }
+        
+        impl List<T> {
+            fun new(x: T): List<T> {
+                List<T> of Cons(x, new List<T> of Nil);
+            }
+            
+            fun cons(self, value: T): List<T> {
+                return List<T> of Cons(value, new self);
+            }
+            
+            fun head(&self): T {
+                match self {
+                    &of Cons(x, _) => x,
+					_ => panic(&"Got head of empty list!")
+                }
+            }
+            
+            fun print(&self) {
+                match self {
+                    &of Cons(head, tail) => {
+                        print(head);
+                        print(" ");
+                        tail.print();
+                    },
+                    _ => {}
+                }
+            }
+            
+            fun println(&self) {
+             	self.print();
+                println();
+            }
+
+            fun map<U>(self, f: fun(T) -> U): List<U> {
+                match self {
+                    of Cons(head, tail) => tail.map<U>(f).cons(f(head)),
+                    _ => List<U> of Nil
+                }
+            }
+        }
+
+
+        struct Vec<T> {
+            data: &mut T,
+            length: Int,
+            cap: Int
+        }
+
+        fun memcpy<T>(dest: &mut T, src: &T, size: Int) {
+            for let mut i=0; i<size; i+=1; {
+                dest[i] = src[i];
+            }
+        }
+
+        impl Vec<T> {
+            fun make(): Vec<T> {
+                let cap = 128;
+                let mut data = alloc(cap * sizeof<T>()) as &mut T;
+                return {
+                    data=data,
+                    length=0,
+                    cap=cap
+                };
+            }
+
+            fun reserve(self: &mut Vec<T>, cap: Int) {
+                if cap > self.cap {
+                    let mut new_data = malloc<T>(cap);
+                    memcpy<T>(new_data, self.data, self.length);
+                    free(self.data);
+                    self.data = new_data;
+                    self.cap = cap;
+                }
+            }
+
+            fun push(self: &mut Vec<T>, x: T) {
+                if self.length == self.cap {
+                    self.reserve(self.cap * 2);
+                }
+                self.data[self.length] = x;
+                self.length += 1;
+            }
+
+            fun pop(self: &mut Vec<T>): Option<T> {
+                if self.length == 0 {
+                    return Option<T> of Nothing;
+                }
+                self.length -= 1;
+                return Option<T> of Some(self.data[self.length]);
+            }
+
+            fun clear(self: &mut Vec<T>) {
+                self.length = 0;
+            }
+
+            fun print(self: &Vec<T>) {
+                print("[");
+                for let mut i=0; i < self.length; i += 1; {
+                    print(self.data[i]);
+                    if i < self.length - 1 {
+                        print(", ");
+                    }
+                }
+                print("]");
+            }
+
+            fun println(self: &Vec<T>) {
+                self.print();
+                print("\n");
+            }
+
+            fun get(self: &Vec<T>, i: Int): &T {
+                return &(self.data[i]);
+            }
+
+            fun get_mut(self: &mut Vec<T>, i: Int): &mut T {
+                return &mut (self.data[i]);
+            }
+
+            fun set(self: &mut Vec<T>, i: Int, x: T) {
+                self.data[i] = x;
+            }
+
+            fun nth(self: &Vec<T>, i: Int): Option<&T> {
+                if i < 0 || i >= self.length {
+                    return Option<&T> of Nothing;
+                }
+                return Option<&T> of Some(self.get(i));
+            }
+
+            fun len(self: &Vec<T>): Int {
+                return self.length;
+            }
+
+            fun map<U>(self: &Vec<T>, f: fun(T) -> U): Vec<U> {
+                let mut new_vec = Vec.make<U>();
+                for let mut i=0; i < self.length; i += 1; {
+                    new_vec.push(f(self.data[i]));
+                }
+                return new_vec;
+            }
+        }
+
+        // Hash a value
+        fun hash<T>(t: T): Int {
+            let size = sizeof(t);
+            let ptr = (&t) as &Int;
+            
+            let mut hashValue = 5381;
+            fun left_shift(mut a: Int, mut b: Int): Int {
+                while b {
+                    a *= 2;
+                    b -= 1;
+                }
+                return a;
+            }
+
+            for let mut i = 0; i < size; i += 1; {
+                let mut value = ptr[i];
+                while (value != 0) {
+                    let digit = value % 10;
+                    hashValue = (left_shift(hashValue, 5) + hashValue) + digit;
+                    value /= 10;
+                }
+            }
+
+            if hashValue < 0 {
+                hashValue = -hashValue;
+            }
+            
+            return hashValue;
+        }
+        // Compare two values for equality
+        fun eq<K>(a: K, b: K): Bool {
+            let size = sizeof(a);
+            let a_ptr = (&a) as &Int;
+            let b_ptr = (&b) as &Int;
+            
+            for let mut i=0; i<size; i+=1; {
+                if a_ptr[i] != b_ptr[i] {
+                    return False;
+                }
+            }
+            return True;
+        }
+
+        struct Entry<K, V> {
+            key: K,
+            value: V
+        }
+
+        struct HashMap<K, V> {
+            data: Vec<Option<Entry<K, V>>>,
+            occupied: Int,
+        }
+
+        impl HashMap<K, V> {
+            fun make(): HashMap<K, V> {
+                let mut data = Vec.make<Option<Entry<K, V>>>();
+                for let mut i=0; i < 128; i += 1; {
+                    data.push(Option<Entry<K, V>> of Nothing);
+                }
+                return {
+                    data=data,
+                    occupied=0
+                };
+            }
+
+            fun len(self: &HashMap<K, V>): Int {
+                return self.occupied;
+            }
+
+            fun contains_key(self: &HashMap<K, V>, key: K): Bool {
+                let mut index = hash<K>(key) % self.data.len();
+                while self.data.get(index).is_some() {
+                    if eq<K>(self.data.get(index).unwrap().key, key) {
+                        return True;
+                    }
+                    index = (index + 1) % self.data.len();
+                }
+                return False;
+            }
+            
+            fun insert(self: &mut HashMap<K, V>, key: K, value: V) {
+                if self.occupied * 2 > self.data.len() {
+                    for let mut i=0; i < self.occupied * 2; i += 1; {
+                        self.data.push(Option<Entry<K, V>> of Nothing);
+                    }
+                }
+                let mut index = (hash<K>(key)) % (self.data.len());
+                while self.data.get(index).is_some() {
+                    if eq<K>(self.data.get(index).unwrap().key, key) {
+                        self.data.set(index, Option<Entry<K, V>> of Some({key=key, value=value}));
+                        return ();
+                    }
+                    index = (index + 1) % self.data.len();
+                }
+                self.data.set(index, Option<Entry<K, V>> of Some({key=key, value=value}));
+                self.occupied += 1;
+            }
+
+            fun remove(self: &mut HashMap<K, V>, key: K) {
+                let mut index = hash<K>(key) % self.data.len();
+                while self.data.get(index).is_some() {
+                    if eq<K>(self.data.get(index).unwrap().key, key) {
+                        self.data.set(index, Option<Entry<K, V>> of Nothing);
+                        self.occupied -= 1;
+                        return ();
+                    }
+                    index = (index + 1) % self.data.len();
+                }
+            }
+            
+            fun get_and_unwrap(self: &HashMap<K, V>, key: K): V {
+                let mut index = hash<K>(key) % self.data.len();
+                while self.data.get(index).is_some() {
+                    if eq<K>(self.data.get(index).unwrap().key, key) {
+                        match self.data.get(index).as_ref() {
+                            of Some(inner) => {
+                                return inner.value;
+                            },
+                            _ => ()
+                        }
+                    }
+                    index = (index + 1) % self.data.len();
+                }
+                panic(&"called `HashMap.get_and_unwrap()` on a `Nothing` value");
+            }
+
+            fun get(self: &HashMap<K, V>, key: K): Option<&V> {
+                let mut index = hash<K>(key) % self.data.len();
+                while self.data.get(index).is_some() {
+                    if eq<K>(self.data.get(index).unwrap().key, key) {
+                        match self.data.get(index).as_ref() {
+                            of Some(inner) => {
+                                return Option<&V> of Some(&(inner.value));
+                            },
+                            _ => ()
+                        }
+                    }
+                    index = (index + 1) % self.data.len();
+                }
+                return Option<&V> of Nothing;
+            }
+
+            fun get_mut(self: &mut HashMap<K, V>, key: K): Option<&mut V> {
+                let mut index = hash<K>(key) % self.data.len();
+                while self.data.get(index).is_some() {
+                    if eq<K>(self.data.get(index).unwrap().key, key) {
+                        match self.data.get_mut(index).as_ref_mut() {
+                            of Some(inner) => {
+                                return Option<&mut V> of Some(&mut (inner.value));
+                            },
+                            _ => ()
+                        }
+                    }
+                    index = (index + 1) % self.data.len();
+                }
+                return Option<&mut V> of Nothing;
+            }
+
+            fun print(self: &HashMap<K, V>) {
+                print("{");
+                let mut first = True;
+                for let mut i=0; i < self.data.len(); i += 1; {
+                    if self.data.get(i).is_some() {
+                        if !first {
+                            print(", ");
+                        }
+                        print(self.data.get(i).unwrap().key);
+                        print(": ");
+                        print(self.data.get(i).unwrap().value);
+                        first = False;
+                    }
+                }
+                print("}");
+            }
+
+            fun println(self: &HashMap<K, V>) {
+                self.print();
+                print("\n");
+            }
+        }
+    }
+
+    // A mod just to test imports some more
+    mod testing {
+        // Import from a mod which imports from another mod
+        from io import getchar;
+
+        fun test() {
+            let ch = getchar();
+            // Use a method defined in another mod
+            ch.put();
+        }
+    }
+}

@@ -237,7 +237,7 @@ impl Env {
 
     /// Get the type of an associated constant of a type.
     pub fn get_type_of_associated_const(&self, ty: &Type, name: &str) -> Option<Type> {
-        trace!("Getting type of associated const {name} of type {ty} in {self}");
+        trace!("Getting type of associated const {name} of type {ty} in {self} with types {:?}", self.types);
         let associated_constants = self.associated_constants.read().unwrap();
 
         if let Some((_, expr_ty)) = associated_constants
@@ -256,6 +256,7 @@ impl Env {
                 let ty_params = template.get_template_params(self);
                 let ty_param_set = ty_params.clone().into_iter().collect::<HashSet<_>>();
                 let monomorph = ty.clone();
+                debug!("Monomorph of {template} is {monomorph}");
                 let mut symbols = HashMap::new();
                 if monomorph
                     .get_monomorph_template_args(
@@ -266,7 +267,7 @@ impl Env {
                     )
                     .is_err()
                 {
-                    debug!("Failed to get monomorph template args for {monomorph} of {template}");
+                    warn!("Failed to get monomorph template args for {monomorph} of {template}");
                     continue;
                 }
                 for (symbol, ty) in &symbols {
@@ -288,9 +289,12 @@ impl Env {
                     continue;
                 }
 
+                debug!("Associated constants for {monomorph} are {:?}", template_associated_consts.keys().to_owned());
+
                 if let Some((_, const_ty)) = template_associated_consts.get(name) {
-                    debug!("Found associated const (type) {name} of type {ty}");
+                    debug!("Found cached associated const (type) {name} of type {const_ty}");
                     // let result = const_ty.apply(ty_args.clone()).simplify_until_simple(self).ok()?;
+                    // let result = const_ty.apply(ty_args.clone());
                     let result = const_ty.apply(ty_args.clone());
                     match result.simplify_until_simple(self) {
                         Ok(result) => {
@@ -350,7 +354,7 @@ impl Env {
     }
 
     pub fn get_associated_const(&self, ty: &Type, name: &str) -> Option<(ConstExpr, Type)> {
-        trace!("Getting associated const {name} of type {ty} in {self}");
+        trace!("Getting associated const {name} of type {ty} in {self} with types {:?}", self.types);
         let associated_constants = self.associated_constants.read().unwrap();
 
         if let Some((constant, const_ty)) = associated_constants
@@ -402,14 +406,15 @@ impl Env {
                 }
 
                 if let Some((const_expr, const_ty)) = template_associated_consts.get(name) {
+                    debug!("Found cached associated const pair: {const_expr} with type {const_ty}");
                     let mut result_ty = const_ty.apply(ty_args.clone());
                     result_ty = match result_ty.simplify_until_simple(self) {
                         Ok(result) => {
-                            debug!("Found associated const (type) {name} of type {ty} = {result}");
+                            debug!("Found associated const {name} of type {ty} = {result}");
                             result
                         }
                         Err(_err) => {
-                            debug!("Found associated const (type) {name} of type {ty} = {result_ty} (failed to simplify)");
+                            debug!("Found associated const {name} of type {ty} = {result_ty} (failed to simplify)");
                             result_ty
                             // debug!("Failed to simplify associated const (type) {name} of type {ty} = {result}");
                             // debug!("Error: {err}");
@@ -730,7 +735,7 @@ impl Env {
                 }
 
                 // let mut new_env = self.clone();
-                // for decl in decls {
+                // for decl in decls.iter() {
                 //     new_env.add_compile_time_declaration(decl)?;
                 // }
 
@@ -739,6 +744,7 @@ impl Env {
                 for decl in Declaration::Many(decls.clone()).flatten().iter() {
                     match decl {
                         Declaration::Type(name, _) => {
+                            // new_env.add_compile_time_declaration(decl)?;
                             exports.push(name.clone());
                         }
                         Declaration::Module(name, _submodule) => {
@@ -762,6 +768,16 @@ impl Env {
                                     Some(alias) => exports.push(alias.clone()),
                                     None => exports.push(name.clone()),
                                 }
+                            }
+                        }
+                        Declaration::FromImportAll(module) => {
+                            let module_ty = module.get_type(self)?;
+                            if let Type::Struct(fields) = module_ty {
+                                for name in fields.keys() {
+                                    exports.push(name.clone());
+                                }
+                            } else {
+                                error!("Could not find type of module {module_ty}");
                             }
                         }
                         Declaration::Impl(ty, attrs) => {
@@ -830,6 +846,27 @@ impl Env {
                     if let Ok(Type::Type(ty)) = access.get_type(self) {
                         self.define_type(name, *ty);
                     }
+                }
+            }
+            Declaration::FromImportAll(module) => {
+                // let access = module.clone().field(ConstExpr::var(name));
+                // let name = alias.clone().unwrap_or(name.clone());
+                // let module_ty = module.get_type(self)?;
+                
+                let module = module.clone().eval(self)?;
+                let module_ty = module.get_type(self)?;
+                if let Type::Struct(fields) = module_ty {
+                    for name in fields.keys() {
+                        let access = module.clone().field(ConstExpr::Symbol(name.clone()));
+        
+                        // if !self.types.contains_key(&name) {
+                        self.define_const(name, access.clone());
+                        if let Ok(Type::Type(ty)) = access.get_type(self) {
+                            self.define_type(name, *ty);
+                        }
+                    }
+                } else {
+                    error!("Invalid module type: {module_ty}");
                 }
             }
             Declaration::Proc(name, proc) => {
@@ -985,6 +1022,9 @@ impl Env {
                 // Modules are not defined at runtime.
             }
             Declaration::FromImport { .. } => {
+                // From imports are not defined at runtime.
+            }
+            Declaration::FromImportAll(..) => {
                 // From imports are not defined at runtime.
             }
             Declaration::Var(name, mutability, ty, expr) => {

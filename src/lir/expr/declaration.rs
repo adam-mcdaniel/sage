@@ -48,6 +48,7 @@ pub enum Declaration {
         module: ConstExpr,
         names: Vec<(String, Option<String>)>,
     },
+    FromImportAll(ConstExpr),
 }
 
 impl Declaration {
@@ -171,6 +172,7 @@ impl Declaration {
             Self::Module(..) => true,
             Self::Impl(..) => true,
             Self::FromImport { .. } => true,
+            Self::FromImportAll(..) => true,
             Self::Many(decls) => decls
                 .par_iter()
                 .all(|decl| decl.is_compile_time_declaration()),
@@ -399,6 +401,9 @@ impl Declaration {
                 for (name, _alias) in names {
                     // name.substitute(substitution_name, substitution_ty);
                 }
+            }
+            Self::FromImportAll(module) => {
+                module.substitute(substitution_name, substitution_ty)
             }
         }
     }
@@ -692,20 +697,12 @@ impl TypeCheck for Declaration {
             }
 
             Self::FromImport { module, names } => {
-                // module.type_check(env)?;
-                // let mut new_env = env.clone();
                 for (name, _) in names {
                     let access = module.clone().field(ConstExpr::var(name));
                     access.type_check(env)?;
                 }
-
-                // // decls.push(Declaration::Const(alias.clone(), ConstExpr::var(module_name).field(ConstExpr::var(name))));
-                // new_env.add_declaration(&Declaration::Const(alias.clone().unwrap_or_else(|| name.clone()), access.clone()))?;
-
-                // if let Ok(Type::Type(t)) = access.get_type(env) {
-                //     new_env.define_type(name, *t)
-                // }
             }
+            Self::FromImportAll(module) => {}
         }
         Ok(())
     }
@@ -775,6 +772,7 @@ impl Display for Declaration {
                     }
                 }
             }
+            Self::FromImportAll(module) => write!(f, "from {module} import *")?,
         }
         Ok(())
     }
@@ -1003,6 +1001,10 @@ impl Hash for Declaration {
                 state.write_u8(11);
                 module.hash(state);
                 names.hash(state);
+            }
+            Self::FromImportAll(module) => {
+                state.write_u8(12);
+                module.hash(state);
             }
         }
     }
