@@ -1,0 +1,26 @@
+mod a;
+from a import A;
+
+struct B {
+    a: A
+}
+
+impl B {
+    fun default(): B {
+        return {a=A.default()};
+    }
+
+    fun test(self) {
+        println(self);
+    }
+
+    fun modify(&mut self) {
+        self.a.modify();
+    }
+}
+
+fun testing() {
+    let mut b = B.default();
+    b.modify();
+    b.test();
+}

@@ -1,0 +1,12 @@
+mod b;
+from b import A, B;
+
+let mut x = B.default();
+
+x.test();
+x.modify();
+x.test();
+
+from b import testing;
+
+testing();

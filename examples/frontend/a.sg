@@ -1,0 +1,15 @@
+struct A {
+    x: Int,
+    y: Int
+}
+
+impl A {
+    fun default(): A {
+        return {x=0, y=0};
+    }
+
+    fun modify(&mut self) {
+        self.x = 1;
+        self.y = 1;
+    }
+}
