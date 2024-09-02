@@ -179,8 +179,8 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 - [ ] VSCode extension (syntax highlighting, code completion, etc.)
 - [ ] Typeclasses
 - [ ] `no-std` implementation of compiler
-- [ ] Modules
-- [ ] A standard library
+- [x] Modules
+- [x] A standard library
   - [ ] Type Reflection Module
   - [ ] Collections Module
   - [ ] Networking Module
@@ -191,9 +191,9 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
   - [ ] WebAssembly Module
   - [ ] Foreign Function Interface Module (create backend with `.toml` file)
   - [ ] Memory Management Module
-- [ ] Better frontend parser (switch to [Nom](https://crates.io/crates/nom)?)
+- [x] Better frontend parser (switch to [Nom](https://crates.io/crates/nom)?)
 - [ ] A package manager
-- [ ] AST Macros
+- [x] AST Macros
 - [ ] C frontend (compile C to Sage VM)
 - [ ] Self-hosting implementation
 
