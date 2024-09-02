@@ -9,7 +9,7 @@ use nom::{
 use nom::{
     bytes::complete::{escaped, }, character::complete::{alpha1, alphanumeric0, alphanumeric1, anychar, none_of}, combinator::{value}, error::{convert_error, ErrorKind, VerboseError, FromExternalError}
 };
-use crate::{lir::{self, *}, parse::SourceCodeLocation};
+use crate::{frontend::parse, lir::{self, *}, parse::SourceCodeLocation};
 const KEYWORDS: &[&str] = &[
     "def",
     "fun",
@@ -913,7 +913,7 @@ fn make_env() -> sage_lisp::Env {
             a => return Expr::error(format!("Invalid expr rev {}", a))
         }
     });
-
+    use crate::targets::CompiledTarget;
     // env.bind_builtin("rand", |env, expr| {
     //     use rand::Rng;
     //     let low = env.eval(expr[0].clone());
@@ -939,84 +939,84 @@ fn make_env() -> sage_lisp::Env {
     //     }
     // });
     
-    // env.bind_builtin("parse", |env, expr| {
-    //     let a = env.eval(expr[0].clone());
-    //     match a {
-    //         Expr::String(frontend_src) => {
-    //             match parse_frontend_minimal(&frontend_src, Some("stdin")) {
-    //                 Ok(frontend_code) => {
-    //                     Expr::serialize(frontend_code)
-    //                 },
-    //                 Err(e) => Expr::error(e)
-    //             }
-    //         },
-    //         a => return Expr::error(format!("Invalid expr parse {}", a))
-    //     }
-    // });
-    // env.bind_builtin("parse-big", |env, expr| {
-    //     let a = env.eval(expr[0].clone());
-    //     match a {
-    //         Expr::String(frontend_src) => {
-    //             match parse_frontend(&frontend_src, Some("stdin")) {
-    //                 Ok(frontend_code) => {
-    //                     Expr::serialize(frontend_code)
-    //                 },
-    //                 Err(e) => Expr::error(e)
-    //             }
-    //         },
-    //         a => return Expr::error(format!("Invalid expr parse {}", a))
-    //     }
-    // });
+    env.bind_builtin("parse", |env, expr| {
+        let a = env.eval(expr[0].clone());
+        match a {
+            Expr::String(frontend_src) => {
+                match crate::parse::parse_frontend_minimal(&frontend_src, Some("stdin")) {
+                    Ok(frontend_code) => {
+                        Expr::serialize(frontend_code)
+                    },
+                    Err(e) => Expr::error(e)
+                }
+            },
+            a => return Expr::error(format!("Invalid expr parse {}", a))
+        }
+    });
+    env.bind_builtin("parse-big", |env, expr| {
+        let a = env.eval(expr[0].clone());
+        match a {
+            Expr::String(frontend_src) => {
+                match crate::parse::parse_frontend(&frontend_src, Some("stdin")) {
+                    Ok(frontend_code) => {
+                        Expr::serialize(frontend_code)
+                    },
+                    Err(e) => Expr::error(e)
+                }
+            },
+            a => return Expr::error(format!("Invalid expr parse {}", a))
+        }
+    });
 
-    // env.bind_builtin("compile", |env, expr| {
-    //     let frontend_code = Expr::deserialize::<sage::lir::Expr>(&env.eval(expr[0].clone())).map_err(|e| Expr::error(format!("Invalid AST: {e}")));
+    env.bind_builtin("compile", |env, expr| {
+        let frontend_code = Expr::deserialize::<crate::lir::Expr>(&env.eval(expr[0].clone())).map_err(|e| Expr::error(format!("Invalid AST: {e}")));
 
-    //     match frontend_code {
-    //         Err(e) => e,
-    //         Ok(frontend_code) => {
-    //             let asm_code = frontend_code.compile().map_err(|e| Expr::error(format!("Invalid AST: {e}")));
-    //             if let Err(e) = asm_code {
-    //                 return e;
-    //             }
-    //             let asm_code = asm_code.unwrap();
+        match frontend_code {
+            Err(e) => e,
+            Ok(frontend_code) => {
+                let asm_code = frontend_code.compile().map_err(|e| Expr::error(format!("Invalid AST: {e}")));
+                if let Err(e) = asm_code {
+                    return e;
+                }
+                let asm_code = asm_code.unwrap();
         
-    //             let vm_code = match asm_code {
-    //                 Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
-    //                 Err(std_asm_code) => std_asm_code.assemble(CALL_STACK_SIZE).map(Err),
-    //             }.unwrap();
+                let vm_code = match asm_code {
+                    Ok(core_asm_code) => core_asm_code.assemble(100000).map(Ok),
+                    Err(std_asm_code) => std_asm_code.assemble(100000).map(Err),
+                }.unwrap();
         
-    //             let c_code = match vm_code {
-    //                 Ok(vm_code) => {
-    //                     sage::targets::C.build_core(&vm_code.flatten()).unwrap()
-    //                 }
-    //                 Err(vm_code) => {
-    //                     sage::targets::C.build_std(&vm_code.flatten()).unwrap()
-    //                 }
-    //             };
+                let c_code = match vm_code {
+                    Ok(vm_code) => {
+                        crate::targets::C.build_core(&vm_code.flatten()).unwrap()
+                    }
+                    Err(vm_code) => {
+                        crate::targets::C.build_std(&vm_code.flatten()).unwrap()
+                    }
+                };
         
-    //             Expr::String(c_code)
-    //         }
-    //     }
-    // });
+                Expr::String(c_code)
+            }
+        }
+    });
 
-    // env.bind_builtin("asm", |env, expr| {
-    //     let frontend_code = Expr::deserialize::<sage::lir::Expr>(&env.eval(expr[0].clone())).map_err(|e| Expr::error(format!("Invalid AST: {e}")));
+    env.bind_builtin("asm", |env, expr| {
+        let frontend_code = Expr::deserialize::<crate::lir::Expr>(&env.eval(expr[0].clone())).map_err(|e| Expr::error(format!("Invalid AST: {e}")));
 
-    //     match frontend_code {
-    //         Err(e) => e,
-    //         Ok(frontend_code) => {
-    //             let asm_code = frontend_code.compile().map_err(|e| Expr::error(format!("Invalid AST: {e}")));
-    //             if let Err(e) = asm_code {
-    //                 return e;
-    //             }
-    //             let asm_code = asm_code.unwrap();
-    //             match asm_code {
-    //                 Ok(core_asm_code) => Expr::serialize(core_asm_code.code),
-    //                 Err(std_asm_code) => Expr::serialize(std_asm_code.code),
-    //             }
-    //         }
-    //     }
-    // });
+        match frontend_code {
+            Err(e) => e,
+            Ok(frontend_code) => {
+                let asm_code = frontend_code.compile().map_err(|e| Expr::error(format!("Invalid AST: {e}")));
+                if let Err(e) = asm_code {
+                    return e;
+                }
+                let asm_code = asm_code.unwrap();
+                match asm_code {
+                    Ok(core_asm_code) => Expr::serialize(core_asm_code.code),
+                    Err(std_asm_code) => Expr::serialize(std_asm_code.code),
+                }
+            }
+        }
+    });
 
     env.bind_builtin("read", |env, expr| {
         // Read a file
@@ -2199,7 +2199,6 @@ fn parse_extern_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     // let (input, _) = tag(":")(input)?;
     // let (input, ret) = parse_type(input)?;
     let (input, (params, ret)) = cut(parse_fun_params)(input)?;
-    let (input, _) = cut(tag(";"))(input)?;
     
     let args: Vec<_> = params.into_iter().map(|(_name, _mutability, ty)| ty).collect();
     Ok((input, Statement::Declaration(Declaration::ExternProc(name.to_owned(), FFIProcedure::new(name.to_owned(), args, ret)), None)))

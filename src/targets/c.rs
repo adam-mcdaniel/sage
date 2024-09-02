@@ -278,8 +278,8 @@ impl Architecture for C {
         let ch = src.channel.0;
         match src.mode {
             InputMode::StdinChar => Ok("tmp = getchar(); scalar_reg.i = tmp == EOF? 0 : tmp;".to_string()),
-            InputMode::StdinInt => Ok("scanf(\"%ld\", &tmp_scalar_reg.i); reg = tmp_reg;".to_string()),
-            InputMode::StdinFloat => Ok("scanf(\"%lf\", &tmp_scalar_reg.f); reg = tmp_reg;".to_string()),
+            InputMode::StdinInt => Ok("scanf(\"%ld\", &tmp_scalar_reg.i); scalar_reg = tmp_scalar_reg;".to_string()),
+            InputMode::StdinFloat => Ok("scanf(\"%lf\", &tmp_scalar_reg.f); scalar_reg = tmp_scalar_reg;".to_string()),
             InputMode::Thermometer => Ok("scalar_reg.f = 293.15;".to_string()),
             InputMode::Clock => Ok("scalar_reg.i = time(NULL);".to_string()),
             InputMode::Random => Ok("scalar_reg.i = rand();".to_string()),
@@ -304,10 +304,10 @@ impl Architecture for C {
         }
     }
     fn peek(&mut self) -> Result<String, String> {
-        Ok("reg = *(ffi_ptr--);".to_string())
+        Ok("scalar_reg = *(ffi_ptr--); vector_reg[0] = scalar_reg;".to_string())
     }
     fn poke(&mut self) -> Result<String, String> {
-        Ok("*(++ffi_ptr) = reg;".to_string())
+        Ok("*(++ffi_ptr) = scalar_reg;".to_string())
     }
     fn prelude(&self, is_core: bool) -> Option<String> {
         let mut result = r#"#include <stdint.h>
@@ -325,6 +325,10 @@ cell tape[67108864], *refs[1024], *ptr = tape, **ref = refs, scalar_reg, vector_
 
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);
+
+#if __has_include("ffi.h")
+#include "ffi.h"
+#endif
 
 int tmp;
 "#

@@ -1098,7 +1098,7 @@ impl Compile for ConstExpr {
                         expr.field(field).compile_expr(&mut new_env, output)?;
                     }
                     (a, b) => {
-                        error!("Could not identify member access {b} on {a} in environment {env}");
+                        warn!("Could not identify member access {b} on {a} in environment {env}");
                         // return Err(Error::MemberNotFound((*container).into(), *member));
                         Expr::Member(Box::new(Expr::ConstExpr(*container.clone())), *member.clone()).compile_expr(env, output)?;
                     }
