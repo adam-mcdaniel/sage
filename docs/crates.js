@@ -1,1 +1,1 @@
-window.ALL_CRATES = ["sage"];
+window.ALL_CRATES = ["sage","tests"];

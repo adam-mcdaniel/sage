@@ -2359,6 +2359,7 @@
 <a href="#2358" id="2358">2358</a>
 <a href="#2359" id="2359">2359</a>
 <a href="#2360" id="2360">2360</a>
+<a href="#2361" id="2361">2361</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Types Module
 //!
 //! This module contains a collection of types and traits
@@ -4272,6 +4273,7 @@
         expr: <span class="kw-2">&amp;</span>Expr,
         env: <span class="kw-2">&amp;</span>Env,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="macro">trace!</span>(<span class="string">"Typechecking member \"{member}\" of {expr} in {env}"</span>);
         <span class="kw">match </span><span class="self">self </span>{
             Type::Type(ty) =&gt; {
                 <span class="kw">let </span>name = member.clone().as_symbol(env)<span class="question-mark">?</span>;

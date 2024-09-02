@@ -283,8 +283,8 @@ impl Env {
                 }
 
                 if ty_args.len() != ty_params.len() {
-                    error!("Mismatched number of template arguments for {monomorph} of {template}");
-                    error!("Expected {ty_params:?}, found {ty_args:?}");
+                    warn!("Mismatched number of template arguments for {monomorph} of {template}");
+                    warn!("Expected {ty_params:?}, found {ty_args:?}");
                     continue;
                 }
 
@@ -396,8 +396,8 @@ impl Env {
                 }
 
                 if ty_args.len() != ty_params.len() {
-                    error!("Mismatched number of template arguments for {monomorph} of {template}");
-                    error!("Expected {ty_params:?}, found {ty_args:?}");
+                    warn!("Mismatched number of template arguments for {monomorph} of {template}");
+                    warn!("Expected {ty_params:?}, found {ty_args:?}");
                     continue;
                 }
 
@@ -736,7 +736,7 @@ impl Env {
 
                 // Get all the declaration names
                 let mut exports = vec![];
-                for decl in decls.iter() {
+                for decl in Declaration::Many(decls.clone()).flatten().iter() {
                     match decl {
                         Declaration::Type(name, _) => {
                             exports.push(name.clone());
@@ -1109,7 +1109,7 @@ impl Env {
     pub(super) fn define_const(&mut self, name: impl ToString, e: ConstExpr) {
         let name = name.to_string();
 
-        trace!("Defining constant {name} as {e}");
+        // trace!("Defining constant {name} as {e}");
         // match e.get_type(self) {
         //     Ok(Type::Type(t)) => {
         //         trace!("{name} is a type declaration for {t}");
@@ -1157,7 +1157,6 @@ impl Env {
     /// Get a procedure definition from this environment.
     pub(super) fn get_proc(&self, name: &str) -> Option<&Procedure> {
         self.procs.get(name).or_else(|| {
-            warn!("Procedure {name} not found in {self}");
             let result = self.consts
                 .get(name)
                 .and_then(|x| match x {
@@ -1165,7 +1164,7 @@ impl Env {
                     _ => None,
                 });
             if result.is_none() {
-                error!("Procedure {name} not found in {self}");
+                warn!("Procedure {name} not found in {self}");
             }
             result
         })
@@ -1325,7 +1324,7 @@ impl Env {
 
 impl Display for Env {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        // return Ok(());
+        return Ok(());
         writeln!(f, "Env")?;
         writeln!(f, "   Types:")?;
         for (name, ty) in self.types.iter() {

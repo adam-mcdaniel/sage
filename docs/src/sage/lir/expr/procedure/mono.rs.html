@@ -263,6 +263,22 @@
 <a href="#262" id="262">262</a>
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Mono-Procedure
 //!
 //! A procedure of LIR code which can be applied to a list of arguments.
@@ -275,13 +291,13 @@
 //! Procedures are created by the `proc` keyword.
 </span><span class="kw">use </span><span class="kw">crate</span>::asm::{AssemblyProgram, CoreOp, A, FP, SP};
 <span class="kw">use </span><span class="kw">crate</span>::lir::{
-    Compile, ConstExpr, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck,
+    Compile, ConstExpr, Declaration, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck
 };
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::hash::Hash;
 <span class="kw">use </span>std::sync::{Arc, Mutex, RwLock};
 
-<span class="kw">use </span>log::trace;
+<span class="kw">use </span>log::{trace, debug};
 <span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 
 <span class="comment">// TODO: Do this without lazy_static. This is used to create unique mangled IDs for each compiled function.
@@ -342,6 +358,19 @@
         }
     }
 
+    <span class="kw">pub fn </span>with(<span class="kw-2">&amp;</span><span class="self">self</span>, decls: <span class="kw">impl </span>Into&lt;Declaration&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>lambda_count = LAMBDA_COUNT.lock().unwrap();
+        <span class="kw-2">*</span>lambda_count += <span class="number">1</span>;
+        <span class="self">Self </span>{
+            common_name: <span class="self">self</span>.common_name.clone(),
+            mangled_name: <span class="macro">format!</span>(<span class="string">"__LAMBDA_{lambda_count}"</span>),
+            args: <span class="self">self</span>.args.clone(),
+            ret: <span class="self">self</span>.ret.clone(),
+            body: Box::new(<span class="self">self</span>.body.with(decls)),
+            has_type_checked: Arc::new(RwLock::new(<span class="bool-val">false</span>)),
+        }
+    }
+
     <span class="doccomment">/// Get the arguments of the procedure.
     </span><span class="kw">pub fn </span>get_args(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[(String, Mutability, Type)] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.args
@@ -386,7 +415,7 @@
 
 <span class="kw">impl </span>TypeCheck <span class="kw">for </span>Procedure {
     <span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="macro">trace!</span>(<span class="string">"type checking procedure: {}"</span>, <span class="self">self</span>);
+        <span class="macro">debug!</span>(<span class="string">"Typechecking procedure: {}"</span>, <span class="self">self</span>);
 
         <span class="kw">if </span><span class="kw-2">*</span><span class="self">self</span>.has_type_checked.read().unwrap() {
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
@@ -396,12 +425,14 @@
         </span><span class="kw-2">*</span><span class="self">self</span>.has_type_checked.write().unwrap() = <span class="bool-val">true</span>;
 
         <span class="comment">// Typecheck the types of the arguments and return value
-        </span><span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, t) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.args {
+        </span><span class="macro">debug!</span>(<span class="string">"Typechecking arguments of procedure {} ({:?})"</span>, <span class="self">self</span>.mangled_name, <span class="self">self</span>.common_name);
+        <span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, t) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.args {
             <span class="comment">// t.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
             </span>t.type_check(env)<span class="question-mark">?</span>;
         }
         <span class="comment">// self.ret.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
-        </span><span class="self">self</span>.ret.type_check(env)<span class="question-mark">?</span>;
+        </span><span class="macro">debug!</span>(<span class="string">"Typechecking return type of procedure {} ({:?})"</span>, <span class="self">self</span>.mangled_name, <span class="self">self</span>.common_name);
+        <span class="self">self</span>.ret.type_check(env)<span class="question-mark">?</span>;
 
         <span class="comment">// Create a new scope for the procedure's body, and define the arguments for the scope.
         </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.new_scope();
@@ -418,7 +449,8 @@
             })
         } <span class="kw">else </span>{
             <span class="comment">// Typecheck the procedure's body.
-            </span><span class="self">self</span>.body.type_check(<span class="kw-2">&amp;</span>new_env)
+            </span><span class="macro">debug!</span>(<span class="string">"Typechecking body of procedure {} ({:?})"</span>, <span class="self">self</span>.mangled_name, <span class="self">self</span>.common_name);
+            <span class="self">self</span>.body.type_check(<span class="kw-2">&amp;</span>new_env)
         }
     }
 }

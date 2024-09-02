@@ -1281,6 +1281,22 @@
 <a href="#1280" id="1280">1280</a>
 <a href="#1281" id="1281">1281</a>
 <a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Checking
 //!
 //! This module contains the type checking logic for the Lower Intermediate Representation.
@@ -2127,6 +2143,7 @@
 
             <span class="comment">// Typecheck a member access.
             </span><span class="self">Self</span>::Member(e, field) =&gt; {
+                <span class="macro">trace!</span>(<span class="string">"Typechecking regular member access {e}.{field}"</span>);
                 <span class="comment">// Typecheck the expression we want to access a member of.
                 </span>e.type_check(env)<span class="question-mark">?</span>;
                 <span class="comment">// Get the type of the expression.
@@ -2137,13 +2154,17 @@
                 </span><span class="kw">match </span>e_type.type_check_member(field, e, env) {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
                     <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">warn!</span>(<span class="string">"Type {e_type} doesn't have member {field} in environment {env}"</span>);
                         <span class="kw">match </span>field
                             .clone()
                             .as_symbol(env)
                             .map(|name| env.get_associated_const(<span class="kw-2">&amp;</span>e_type, <span class="kw-2">&amp;</span>name))
                         {
                             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
-                            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(e),
+                            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                                <span class="macro">error!</span>(<span class="string">"Could not find member {field} in type {e_type} in environment {env}"</span>);
+                                <span class="prelude-val">Err</span>(e)
+                            },
                         }
                     }
                 }
@@ -2221,14 +2242,25 @@
                 // Typecheck the member we want to access.
                 </span><span class="kw">match </span>e_type.type_check_member(field, <span class="kw-2">&amp;</span>Expr::ConstExpr(<span class="kw-2">*</span>e.clone()), env) {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
-                    <span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="prelude-val">Err</span>(_err) =&gt; {
+                        <span class="macro">warn!</span>(<span class="string">"Member {field} not found in type {e_type} in environment {env}"</span>);
                         <span class="kw">match </span>field
                             .clone()
                             .as_symbol(env)
                             .map(|name| env.get_associated_const(<span class="kw-2">&amp;</span>e_type, <span class="kw-2">&amp;</span>name))
                         {
-                            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
-                            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(e),
+                            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                                <span class="macro">warn!</span>(<span class="string">"Associated constant {field} found in type {e_type} in environment {env}"</span>);
+                                <span class="prelude-val">Ok</span>(())
+                            },
+                            <span class="comment">// Err(_) =&gt; Err(e),
+                            </span><span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                                <span class="comment">// Try to perform the member op as a regular member op.
+                                </span><span class="macro">warn!</span>(<span class="string">"Associated constant {field} not found in type {e_type} in environment {env}"</span>);
+                                <span class="macro">warn!</span>(<span class="string">"Falling back on regular member access"</span>);
+                                Expr::Member(Box::new(Expr::ConstExpr(<span class="kw-2">*</span>e.clone())), <span class="kw-2">*</span>field.clone())
+                                    .type_check(env)
+                            }
                         }
                     }
                 }

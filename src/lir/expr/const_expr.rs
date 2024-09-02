@@ -225,7 +225,17 @@ impl ConstExpr {
                     let container_ty = container.get_type_checked(env, i)?;
                     trace!("Member access on type: {container_ty}: {container} . {member}");
                     // container_ty.add_monomorphized_associated_consts(env)?;
-                    Ok(match (container.clone().eval(env)?, *member.clone()) {
+                    Ok(match (*container.clone(), *member.clone()) {
+                        (Self::Annotated(inner, metadata), member) => {
+                            Self::Member(inner, member.into()).eval_checked(env, i)
+                                .map_err(|e| e.annotate(metadata.clone()))?
+                        }
+
+                        (Self::Symbol(..), member)
+                        | (Self::Member(..), member) => {
+                            container.eval_checked(env, i)?.field(member).eval_checked(env, i)?
+                        }
+
                         (Self::Declare(decls, item), field) => {
                             let access = item.field(field);
                             if let Ok(expr) = access.clone().eval_checked(env, i) {
@@ -235,7 +245,6 @@ impl ConstExpr {
                             }
                             let mut new_env = env.clone();
                             new_env.add_compile_time_declaration(&decls)?;
-                            
                             access.eval_checked(&new_env, i)?.with(decls)
                         }
 
@@ -259,7 +268,7 @@ impl ConstExpr {
                                     return constant.eval_checked(env, i);
                                     // return Ok(constant.clone());
                                 }
-                                error!(
+                                warn!(
                                     "Struct member access not implemented for: {container_ty} . {member}"
                                 );
                                 return Err(Error::MemberNotFound((*container).into(), *member));
@@ -279,7 +288,7 @@ impl ConstExpr {
                                     return constant.clone().eval_checked(env, i);
                                     // return Ok(constant.clone());
                                 }
-                                error!(
+                                warn!(
                                     "Type member access not implemented for: {container_ty} . {member}"
                                 );
                                 return Err(Error::SymbolNotDefined(name));
@@ -292,7 +301,7 @@ impl ConstExpr {
                                 constant.eval_checked(env, i)?
                             } else {
                                 warn!(
-                                    "(Unknown container {container:?}) member access not implemented for: {container_ty} . {member}"
+                                    "(Unknown container {container:?}) member access of {member} not implemented for: {container_ty} . {member}"
                                 );
                                 return Err(Error::MemberNotFound(container.into(), *member));
                             }
@@ -658,7 +667,7 @@ impl GetType for ConstExpr {
                     // If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
                     _ => {
-                        error!(
+                        warn!(
                             "Member access not implemented for type: {val_type} . {field}"
                         );
                         return ConstExpr::Member(ConstExpr::Type(val_type.clone()).into(), field.clone())
@@ -832,9 +841,6 @@ impl GetType for ConstExpr {
                                 proc.get_type_checked(env, i)?
                             } else {
                                 // If the procedure isn't defined, then this symbol isn't defined.
-                                error!(
-                                    "Could not find procedure {name} when getting type of {self} in {env}"
-                                );
                                 return Err(Error::SymbolNotDefined(name));
                             }
                         }

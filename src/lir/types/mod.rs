@@ -635,7 +635,7 @@ impl Type {
             result => {
                 match result {
                     Ok(result) => warn!("get_template_params: Couldn't find template params for {result}"),
-                    Err(e) => error!("get_template_params: Couldn't simplify {self} to a polymorphic type due to {e}")
+                    Err(e) => warn!("get_template_params: Couldn't simplify {self} to a polymorphic type due to {e}")
                 }
                 vec![]
             }

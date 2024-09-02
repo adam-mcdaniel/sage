@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap}, hash::Hash, result, sync::RwLock
+    collections::{BTreeMap, HashMap}, hash::Hash, result, sync::{Arc, RwLock}
 };
 use log::{trace, info, warn, error, debug};
 use nom::{
@@ -67,17 +67,1058 @@ fn line_and_column(line_starts: &[usize], index: usize) -> (usize, usize) {
     }
 }
 
+fn make_env() -> sage_lisp::Env {
+    use sage_lisp::{Env, Expr, Symbol};
+    use std::io::BufRead;
+
+    let mut env = Env::new();
+    env.bind_builtin("env", |env, args| {
+        // Get the env as a map
+        if args.is_empty() {
+            return Expr::Map(env.get_bindings());
+        }
+        let a = env.eval(args[0].clone());
+        env.get(&a).cloned().unwrap_or(Expr::None)
+    });
+
+    env.bind_builtin("+", |env, exprs| {
+        let mut sum = Expr::default();
+        for e in exprs {
+            let e = env.eval(e.clone());
+            // sum += env.eval(e);
+            match (sum, e) {
+                (Expr::None, b) => sum = b,
+                (Expr::Int(a), Expr::Int(b)) => sum = Expr::Int(a + b),
+                (Expr::Float(a), Expr::Float(b)) => sum = Expr::Float(a + b),
+                (Expr::Int(a), Expr::Float(b)) => sum = Expr::Float(a as f64 + b),
+                (Expr::Float(a), Expr::Int(b)) => sum = Expr::Float(a + b as f64),
+                (Expr::String(a), Expr::String(b)) => sum = Expr::String(format!("{}{}", a, b)),
+                (Expr::List(a), Expr::List(b)) => {
+                    let mut list = a.clone();
+                    list.extend(b);
+                    sum = Expr::List(list);
+                },
+                (Expr::List(a), b) => {
+                    let mut list = a.clone();
+                    list.push(b);
+                    sum = Expr::List(list);
+                },
+                (a, b) => return Expr::error(format!("Invalid expr {} + {}", a, b))
+            }
+        }
+        sum
+    });
+    env.alias("+", "add");
+
+    env.bind_builtin("-", 
+        |env, exprs| {
+            let mut diff = Expr::default();
+            for e in exprs {
+                let e = env.eval(e.clone());
+                match (diff, e) {
+                    (Expr::None, b) => diff = b,
+                    (Expr::Int(a), Expr::Int(b)) => diff = Expr::Int(a - b),
+                    (Expr::Float(a), Expr::Float(b)) => diff = Expr::Float(a - b),
+                    (Expr::Int(a), Expr::Float(b)) => diff = Expr::Float(a as f64 - b),
+                    (Expr::Float(a), Expr::Int(b)) => diff = Expr::Float(a - b as f64),
+                    (a, b) => return Expr::error(format!("Invalid expr {} - {}", a, b))
+                }
+            }
+            diff
+        }
+    );
+    env.alias("-", "sub");
+
+    env.bind_builtin("*", |env, exprs| {
+        let mut product = Expr::default();
+        for e in exprs {
+            let e = env.eval(e.clone());
+            match (product, e) {
+                (Expr::None, b) => product = b,
+                (Expr::Int(a), Expr::Int(b)) => product = Expr::Int(a * b),
+                (Expr::Float(a), Expr::Float(b)) => product = Expr::Float(a * b),
+                (Expr::Int(a), Expr::Float(b)) => product = Expr::Float(a as f64 * b),
+                (Expr::Float(a), Expr::Int(b)) => product = Expr::Float(a * b as f64),
+                (Expr::List(a), Expr::Int(b)) => {
+                    let mut list = a.clone();
+                    for _ in 0..b {
+                        list.extend(a.clone());
+                    }
+                    product = Expr::List(list);
+                },
+                (a, b) => return Expr::error(format!("Invalid expr {} * {}", a, b))
+            }
+        }
+        product
+    });
+    env.alias("*", "mul");
+
+    env.bind_builtin("/", |env, exprs| {
+        let mut quotient = Expr::default();
+        for e in exprs {
+            let e = env.eval(e.clone());
+            match (quotient, e) {
+                (Expr::None, b) => quotient = b,
+                (Expr::Int(a), Expr::Int(b)) => quotient = Expr::Int(a / b),
+                (Expr::Float(a), Expr::Float(b)) => quotient = Expr::Float(a / b),
+                (Expr::Int(a), Expr::Float(b)) => quotient = Expr::Float(a as f64 / b),
+                (Expr::Float(a), Expr::Int(b)) => quotient = Expr::Float(a / b as f64),
+                (a, b) => return Expr::error(format!("Invalid expr {} / {}", a, b))
+            }
+        }
+        quotient
+    });
+    env.alias("/", "div");
+
+    env.bind_builtin("%", |env, exprs| {
+        let mut quotient = Expr::default();
+        for e in exprs {
+            let e = env.eval(e.clone());
+            match (quotient, e) {
+                (Expr::None, b) => quotient = b,
+                (Expr::Int(a), Expr::Int(b)) => quotient = Expr::Int(a % b),
+                (Expr::Float(a), Expr::Float(b)) => quotient = Expr::Float(a % b),
+                (Expr::Int(a), Expr::Float(b)) => quotient = Expr::Float(a as f64 % b),
+                (Expr::Float(a), Expr::Int(b)) => quotient = Expr::Float(a % b as f64),
+                (a, b) => return Expr::error(format!("Invalid expr {} % {}", a, b))
+            }
+        }
+        quotient
+    });
+    env.alias("%", "rem");
+    
+    env.bind_builtin("=", |env, exprs| {
+        let a = env.eval(exprs[0].clone());
+        let b = env.eval(exprs[1].clone());
+        
+        Expr::Bool(a == b)
+    });
+    env.alias("=", "==");
+
+    env.bind_builtin("!=", |env, exprs| {
+        let a = env.eval(exprs[0].clone());
+        let b = env.eval(exprs[1].clone());
+        
+        Expr::Bool(a != b)
+    });
+
+    env.bind_builtin("<=", |env, exprs| {
+        let a = env.eval(exprs[0].clone());
+        let b = env.eval(exprs[1].clone());
+        
+        Expr::Bool(a <= b)
+    });
+
+    env.bind_builtin(">=", |env, exprs| {
+        let a = env.eval(exprs[0].clone());
+        let b = env.eval(exprs[1].clone());
+        
+        Expr::Bool(a >= b)
+    });
+
+    env.bind_builtin("<", |env, exprs| {
+        let a = env.eval(exprs[0].clone());
+        let b = env.eval(exprs[1].clone());
+        
+        Expr::Bool(a < b)
+    });
+
+    env.bind_builtin(">", |env, exprs| {
+        let a = env.eval(exprs[0].clone());
+        let b = env.eval(exprs[1].clone());
+        
+        Expr::Bool(a > b)
+    });
+
+    env.bind_lazy_builtin("if", |env, exprs| {
+        let cond = env.eval(exprs[0].clone());
+        let then = exprs[1].clone();
+        if exprs.len() < 3 {
+            if cond == Expr::Bool(true) {
+                then
+            } else {
+                Expr::None
+            }
+        } else {
+            let else_ = exprs[2].clone();
+            if cond == Expr::Bool(true) {
+                then
+            } else {
+                else_
+            }
+        }
+    });
+
+    env.bind_builtin("define", 
+        |env, exprs| {
+            let name = exprs[0].clone();
+            let value = env.eval(exprs[1].clone());
+            env
+                .bind(name, value);
+            Expr::None
+        }
+    );
+
+    env.bind_builtin("undefine", 
+        |env, exprs| {
+            let name = exprs[0].clone();
+            env
+                .unbind(&name);
+            Expr::None
+        }
+    );
+
+    env.bind_builtin("defun", |env, args| {
+        let name = args[0].clone();
+        let params = args[1].clone();
+        let body = args[2].clone();
+        if let Expr::List(params) = params {
+            let f = env.eval(Expr::Function(None, params, Box::new(body)));
+            env.bind(name, f);
+            Expr::None
+        } else {
+            return Expr::error(format!("Invalid params {:?}", params));
+        }
+    });
+
+    env.bind_builtin("println", |env, exprs| {
+        for e in exprs {
+            let e = env.eval(e.clone());
+
+            match e {
+                Expr::String(s) => print!("{}", s),
+                Expr::Symbol(s) => print!("{}", s.name()),
+                _ => print!("{}", e)
+            }
+        }
+        println!();
+        Expr::None
+    });
+
+    // env.bind_builtin("do", |env, exprs| {
+    //     let mut result = Expr::default();
+    //     for e in exprs {
+    //         result = env.eval(e.clone());
+    //     }
+    //     result
+    // });
+
+    env.bind_lazy_builtin("do", |_env, exprs| {
+        Expr::Many(Vec::from(exprs))
+    });
+
+    env.bind_builtin("sqrt", |env, expr| {
+        let e = env.eval(expr[0].clone());
+        match e {
+            Expr::Int(i) => Expr::Float((i as f64).sqrt()),
+            Expr::Float(f) => Expr::Float(f.sqrt()),
+            e => Expr::error(format!("Invalid expr sqrt {}", e))
+        }
+    });
+
+    env.bind_builtin("^", |env, expr| {
+        let a = env.eval(expr[0].clone());
+        let b = env.eval(expr[1].clone());
+        match (a, b) {
+            (Expr::Int(a), Expr::Int(b)) => Expr::Float((a as f64).powf(b as f64)),
+            (Expr::Float(a), Expr::Float(b)) => Expr::Float(a.powf(b)),
+            (Expr::Int(a), Expr::Float(b)) => Expr::Float((a as f64).powf(b)),
+            (Expr::Float(a), Expr::Int(b)) => Expr::Float(a.powf(b as f64)),
+            (a, b) => Expr::error(format!("Invalid expr {} ^ {}", a, b))
+        }
+    });
+
+    env.alias("^", "pow");
+
+    let lambda = |env: &mut Env, expr: &[Expr]| {
+        let params = expr[0].clone();
+        let body = expr[1].clone();
+        if let Expr::List(params) = params {
+            Expr::Function(Some(Box::new(env.clone())), params, Box::new(body))
+        } else {
+            return Expr::error(format!("Invalid params {:?}", params));
+        }
+    };
+    env.bind_builtin("lambda", lambda);
+    env.bind_builtin("\\", lambda);
+
+    env.bind_builtin("apply", |env, expr| {
+        let f = env.eval(expr[0].clone());
+        let args = env.eval(expr[1].clone());
+        if let Expr::List(args) = args {
+            match f {
+                Expr::Function(Some(mut env), params, body) => {
+                    let mut new_env = env.clone();
+                    for (param, arg) in params.iter().zip(args.iter()) {
+                        new_env.bind(param.clone(), env.eval(arg.clone()));
+                    }
+                    new_env.eval(*body.clone())
+                },
+                Expr::Function(None, params, body) => {
+                    let mut new_env = env.clone();
+                    for (param, arg) in params.iter().zip(args.iter()) {
+                        new_env.bind(param.clone(), env.eval(arg.clone()));
+                    }
+                    new_env.eval(*body.clone())
+                }
+                Expr::Builtin(f) => {
+                    f.apply(&mut env.clone(), &args)
+                },
+                f => Expr::error(format!("Invalid function {f} apply {}", Expr::from(args)))
+            }
+        } else {
+            Expr::error(format!("Invalid function {f} apply {}", Expr::from(args)))
+        }
+    });
+
+    env.bind_builtin("cons", |env, expr| {
+        let a = env.eval(expr[0].clone());
+        let b = env.eval(expr[1].clone());
+        // Create a new list with a as the head and b as the tail.
+        if let Expr::List(b) = b {
+            let mut list = vec![a];
+            list.extend(b);
+            Expr::List(list)
+        } else if b == Expr::None {
+            Expr::List(vec![a])
+        } else {
+            Expr::List(vec![a, b])
+        }
+    });
+    let head = |env: &mut Env, expr: &[Expr]| {
+        let a = env.eval(expr[0].clone());
+        if let Expr::List(a) = a {
+            a[0].clone()
+        } else {
+            Expr::error(format!("Invalid head {a}"))
+        }
+    };
+    let tail = |env: &mut Env, expr: &[Expr]| {
+        let a = env.eval(expr[0].clone());
+        if let Expr::List(a) = a {
+            Expr::List(a[1..].to_vec())
+        } else {
+            Expr::error(format!("Invalid tail {a}"))
+        }
+    };
+
+    env.bind_builtin("car", head);
+    env.bind_builtin("head", head);
+    env.bind_builtin("cdr", tail);
+    env.bind_builtin("tail", tail);
+
+    let format = |env: &mut Env, expr: &[Expr]| {
+        let format = env.eval(expr[0].clone());
+        // Collect the args
+        let args = expr[1..].to_vec();
+        
+        let mut format = match format {
+            Expr::String(s) => s,
+            e => return Expr::error(format!("Invalid format {e}"))
+        };
+        
+        // Find all of the format specifiers.
+        let mut specifiers = vec![];
+        for (i, c) in format.chars().enumerate() {
+            if c == '{' {
+                let mut j = i + 1;
+                while j < format.len() {
+                    if format.chars().nth(j).unwrap() == '}' {
+                        break;
+                    }
+                    j += 1;
+                }
+                specifiers.push(format[i+1..j].to_owned());
+            }
+        }
+
+        // Replace the named specifiers with variables in the scope.
+        for name in &specifiers {
+            if name.is_empty() {
+                continue;
+            }
+            let name = Expr::Symbol(Symbol::new(name));
+            
+            let value = env.eval(name.clone());
+            let specifier = format!("{{{name}}}");
+            match value {
+                Expr::String(s) => {
+                    format = format.replacen(&specifier, &s, 1);
+                },
+                other => {
+                    format = format.replacen(&specifier, &other.to_string(), 1);
+                }
+            }
+        }
+
+        // Replace the empty specifiers with the args.
+        let mut i = 0;        
+        for name in &specifiers {
+            if !name.is_empty() {
+                continue;
+            }
+            if i >= args.len() {
+                return Expr::error("Too few arguments");
+            }
+            let specifier = format!("{{}}");
+            let value = env.eval(args[i].clone());
+            match value {
+                Expr::String(s) => {
+                    format = format.replacen(&specifier, &s, 1);
+                },
+                other => {
+                    format = format.replacen(&specifier, &other.to_string(), 1);
+                }
+            }
+            // format = format.replacen("{}", &args[i].to_string(), 1);
+            i += 1;
+        }
+
+        if i < args.len() {
+            return Expr::error("Too many arguments");
+        }
+        
+        Expr::String(format)
+    };
+
+    env.bind_builtin("format", format);
+
+    env.bind_builtin("list", |env, expr| {
+        let mut list = vec![];
+        for e in expr {
+            list.push(env.eval(e.clone()));
+        }
+        Expr::List(list)
+    });
+
+    env.bind_builtin("append", |env, expr| {
+        let mut list = vec![];
+        for e in expr {
+            let e = env.eval(e.clone());
+            if let Expr::List(l) = e {
+                list.extend(l);
+            } else {
+                return Expr::error(format!("Invalid append {e}"));
+            }
+        }
+        Expr::List(list)
+    });
+
+    env.bind_builtin("eval", |env, expr| {
+        let e = env.eval(expr[0].clone());
+        env.eval(e)
+    });
+
+    env.bind_builtin("exit", |env, expr| {
+        match env.eval(expr[0].clone()) {
+            Expr::Int(i) => std::process::exit(i as i32),
+            Expr::String(s) => {
+                eprintln!("{s}");
+                std::process::exit(1);
+            }
+            e => {
+                eprintln!("{e}");
+                std::process::exit(1);
+            }
+        }
+    });
+
+    env.bind_builtin("quote", |_env, expr| {
+        expr[0].clone()
+    });
+
+    env.bind_builtin("or", |env, expr| {
+        for e in expr {
+            let e = env.eval(e.clone());
+            if e == Expr::Bool(true) {
+                return Expr::Bool(true);
+            }
+        }
+        Expr::Bool(false)
+    });
+
+    env.bind_builtin("and", |env, expr| {
+        for e in expr {
+            let e = env.eval(e.clone());
+            if e == Expr::Bool(false) {
+                return Expr::Bool(false);
+            }
+        }
+        Expr::Bool(true)
+    });
+
+    env.bind_builtin("not", |env, expr| {
+        let e = env.eval(expr[0].clone());
+        match e {
+            Expr::Bool(b) => Expr::Bool(!b),
+            e => return Expr::error(format!("Invalid not {e}"))
+
+        }
+    });
+
+    env.bind_builtin("len", |env, expr| {
+        let e = env.eval(expr[0].clone());
+        match e {
+            Expr::String(s) => Expr::Int(s.len() as i64),
+            Expr::List(l) => Expr::Int(l.len() as i64),
+            Expr::Map(m) => Expr::Int(m.len() as i64),
+            Expr::Tree(t) => Expr::Int(t.len() as i64),
+            e => Expr::error(format!("Invalid len {e}"))
+        }
+    });
+
+    env.bind_builtin("let", |env, expr| {
+        let mut new_env = env.clone();
+        let bindings = expr[0].clone();
+        let body = expr[1].clone();
+        match bindings {
+            Expr::List(bindings) => {
+                for binding in bindings {
+                    if let Expr::List(binding) = binding {
+                        let name = binding[0].clone();
+                        let value = env.eval(binding[1].clone());
+                        new_env.bind(name, value);
+                    } else {
+                        return Expr::error(format!("Invalid binding {binding}"));
+                    }
+                }
+            }
+            Expr::Map(bindings) => {
+                for (name, value) in bindings {
+                    new_env.bind(name, env.eval(value));
+                }
+            }
+            Expr::Tree(bindings) => {
+                for (name, value) in bindings {
+                    new_env.bind(name, env.eval(value));
+                }
+            }
+            bindings => return Expr::error(format!("Invalid bindings {bindings}"))
+        }
+        new_env.eval(body)
+    });
+
+    env.bind_builtin("get", |env, expr| {
+        let a = env.eval(expr[0].clone());
+        let b = env.eval(expr[1].clone());
+
+        match (a, b) {
+            (Expr::String(a), Expr::Int(b)) => Expr::String(a.chars().nth(b as usize).unwrap_or('\0').to_string()),
+            (Expr::List(a), Expr::Int(b)) => a.get(b as usize).cloned().unwrap_or(Expr::None),
+            (Expr::Map(a), Expr::Symbol(b)) => {
+                // a.get(&b).cloned().unwrap_or(Expr::None)
+                a.get(&Expr::Symbol(b.clone())).cloned()
+                    .unwrap_or_else(|| a.get(&Expr::String(b.name().to_owned()))
+                    .cloned().unwrap_or(Expr::None))
+            },
+            (Expr::Map(a), b) => a.get(&b).cloned().unwrap_or(Expr::None),
+            (Expr::Tree(a), b) => a.get(&b).cloned().unwrap_or(Expr::None),
+            (a, b) => return Expr::error(format!("Invalid expr get {} {}", a, b))
+        }
+    });
+    env.alias("get", "@");
+
+    env.bind_builtin("set", |env, expr| {
+        let a = env.eval(expr[0].clone());
+        let b = env.eval(expr[1].clone());
+        let c = env.eval(expr[2].clone());
+
+        match (a, b) {
+            (Expr::String(mut a), Expr::Int(b)) => {
+                if b == a.len() as i64 {
+                    a.push_str(&c.to_string());
+                } else {
+                    a = a.chars().enumerate().map(|(i, c)| if i == b as usize { c } else { '\0' }).collect();
+                }
+                Expr::String(a)
+            },
+            (Expr::List(mut a), Expr::Int(b)) => {
+                if b as usize >= a.len() {
+                    a.resize(b as usize + 1, Expr::None);
+                }
+                a[b as usize] = c;
+                Expr::List(a)
+            },
+            (Expr::Map(mut a), b) => {
+                a.insert(b, c);
+                Expr::Map(a)
+            },
+            (Expr::Tree(mut a), b) => {
+                a.insert(b, c);
+                Expr::Tree(a)
+            },
+            (a, b) => return Expr::error(format!("Invalid expr set {} {} {}", a, b, c))
+        }
+    });
+
+    env.bind_builtin("zip", |env, expr| {
+        let a = env.eval(expr[0].clone());
+        let b = env.eval(expr[1].clone());
+
+        match (a, b) {
+            (Expr::List(a), Expr::List(b)) => {
+                let mut list = vec![];
+                for (a, b) in a.into_iter().zip(b.into_iter()) {
+                    list.push(Expr::List(vec![a, b]));
+                }
+                Expr::List(list)
+            },
+            (a, b) => return Expr::error(format!("Invalid expr zip {} {}", a, b))
+        }
+    });
+
+    // Convert a list of pairs into a map.
+    env.bind_builtin("to-map", |env, expr| {
+        let a = env.eval(expr[0].clone());
+        match a {
+            Expr::List(a) => {
+                let mut map = std::collections::HashMap::new();
+                for e in a {
+                    if let Expr::List(e) = e {
+                        if e.len() == 2 {
+                            map.insert(e[0].clone(), e[1].clone());
+                        } else {
+                            return Expr::error(format!("Invalid pair {}", Expr::from(e)));
+                        }
+                    } else {
+                        return Expr::error(format!("Invalid pair {}", Expr::from(e)));
+                    }
+                }
+                Expr::Map(map)
+            },
+            Expr::Map(a) => return Expr::Map(a),
+            Expr::Tree(a) => return Expr::Map(a.into_iter().collect()),
+            a => return Expr::error(format!("Invalid expr to-map {}", Expr::from(a)))
+        }
+    });
+
+    // Convert a list of pairs into a tree.
+    env.bind_builtin("to-tree", |env, expr| {
+        let a = env.eval(expr[0].clone());
+        match a {
+            Expr::List(a) => {
+                let mut tree = std::collections::BTreeMap::new();
+                for e in a {
+                    if let Expr::List(e) = e {
+                        if e.len() == 2 {
+                            tree.insert(e[0].clone(), e[1].clone());
+                        } else {
+                            return Expr::error(format!("Invalid pair {}", Expr::from(e)));
+                        }
+                    } else {
+                        return Expr::error(format!("Invalid pair {}", Expr::from(e)));
+                    }
+                }
+                Expr::Tree(tree)
+            },
+            Expr::Map(a) => return Expr::Tree(a.into_iter().collect()),
+            Expr::Tree(a) => return Expr::Tree(a),
+            a => return Expr::error(format!("Invalid expr to-tree {}", Expr::from(a)))
+        }
+    });
+
+    env.bind_builtin("to-list", |env, expr| {
+        let a = env.eval(expr[0].clone());
+        match a {
+            Expr::Map(a) => {
+                let mut list = vec![];
+                for (k, v) in a {
+                    list.push(Expr::List(vec![k, v]));
+                }
+                Expr::List(list)
+            },
+            Expr::Tree(a) => {
+                let mut list = vec![];
+                for (k, v) in a {
+                    list.push(Expr::List(vec![k, v]));
+                }
+                Expr::List(list)
+            },
+            Expr::List(a) => return Expr::List(a),
+            a => return Expr::error(format!("Invalid expr to-list {}", a))
+        }
+    });
+
+    env.bind_builtin("map", |env, expr| {
+        let f = env.eval(expr[0].clone());
+        let a = env.eval(expr[1].clone());
+        match a {
+            Expr::List(a) => {
+                let mut list = vec![];
+                for e in a {
+                    list.push(env.eval(Expr::List(vec![f.clone(), e])));
+                }
+                Expr::List(list)
+            },
+            Expr::Map(a) => {
+                let mut map = std::collections::HashMap::new();
+                for (k, v) in a {
+                    // map.insert(k.clone(), env.eval(Expr::List(vec![f.clone(), k, v])));
+                    let pair = env.eval(Expr::List(vec![f.clone(), k.quote(), v.quote()]));
+                    if let Expr::List(pair) = pair {
+                        map.insert(pair[0].clone(), pair[1].clone());
+                    } else {
+                        return Expr::error(format!("Invalid pair {}", pair));
+                    }
+                }
+                Expr::Map(map)
+            },
+            Expr::Tree(a) => {
+                let mut tree = std::collections::BTreeMap::new();
+                for (k, v) in a {
+                    // tree.insert(k.clone(), env.eval(Expr::List(vec![f.clone(), k, v])));
+                    let pair = env.eval(Expr::List(vec![f.clone(), k.quote(), v.quote()]));
+                    if let Expr::List(pair) = pair {
+                        tree.insert(pair[0].clone(), pair[1].clone());
+                    } else {
+                        return Expr::error(format!("Invalid pair {}", pair));
+                    }
+                }
+                Expr::Tree(tree)
+            },
+            a => return Expr::error(format!("Invalid expr map {}", a))
+        }
+    });
+
+    env.bind_builtin("filter", |env, expr| {
+        let f = env.eval(expr[0].clone());
+        let a = env.eval(expr[1].clone());
+
+        match a {
+            Expr::List(a) => {
+                let mut list = vec![];
+                for e in a {
+                    if env.eval(Expr::List(vec![f.clone(), e.clone()])) == Expr::Bool(true) {
+                        list.push(e);
+                    }
+                }
+                Expr::List(list)
+            },
+            Expr::Map(a) => {
+                let mut map = std::collections::HashMap::new();
+                for (k, v) in a {
+                    let x = env.eval(Expr::List(vec![f.clone(), k.quote(), v.quote()]));
+                    if x == Expr::Bool(true) {
+                        map.insert(k, v);
+                    }
+                }
+                Expr::Map(map)
+            },
+            Expr::Tree(a) => {
+                let mut tree = std::collections::BTreeMap::new();
+                for (k, v) in a {
+                    let x = env.eval(Expr::List(vec![f.clone(), k.quote(), v.quote()]));
+                    if x == Expr::Bool(true) {
+                        tree.insert(k, v);
+                    }
+                }
+                Expr::Tree(tree)
+            },
+            a => return Expr::error(format!("Invalid expr filter {}", a))
+        }
+    });
+
+    env.bind_builtin("reduce", |env, expr| {
+        let f = env.eval(expr[0].clone());
+        let a = env.eval(expr[1].clone());
+        let b = env.eval(expr[2].clone());
+
+        match a {
+            Expr::List(a) => {
+                let mut acc = b;
+                for e in a {
+                    acc = env.eval(Expr::List(vec![f.clone(), acc, e]));
+                }
+                acc
+            },
+            Expr::Map(a) => {
+                let mut acc = b;
+                for (k, v) in a {
+                    acc = env.eval(Expr::List(vec![f.clone(), acc, k, v]));
+                }
+                acc
+            },
+            Expr::Tree(a) => {
+                let mut acc = b;
+                for (k, v) in a {
+                    acc = env.eval(Expr::List(vec![f.clone(), acc, k, v]));
+                }
+                acc
+            },
+            a => return Expr::error(format!("Invalid expr reduce {}", a))
+        }
+    });
+
+    env.bind_builtin("range", |env, expr| {
+        let a = env.eval(expr[0].clone());
+        let b = env.eval(expr[1].clone());
+        match (a, b) {
+            (Expr::Int(a), Expr::Int(b)) => {
+                let mut list = vec![];
+                for i in a..=b {
+                    list.push(Expr::Int(i));
+                }
+                Expr::List(list)
+            },
+            (Expr::Int(a), Expr::Float(b)) => {
+                let mut list = vec![];
+                for i in a..=(b as i64) {
+                    list.push(Expr::Int(i));
+                }
+                Expr::List(list)
+            },
+            (Expr::Float(a), Expr::Int(b)) => {
+                let mut list = vec![];
+                for i in (a as i64)..=b {
+                    list.push(Expr::Int(i));
+                }
+                Expr::List(list)
+            },
+            (Expr::Float(a), Expr::Float(b)) => {
+                let mut list = vec![];
+                for i in (a as i64)..=(b as i64) {
+                    list.push(Expr::Int(i));
+                }
+                Expr::List(list)
+            },
+            (Expr::Symbol(a), Expr::Symbol(b)) if a.name().len() == 1 && b.name().len() == 1 => {
+                let mut list = vec![];
+                let first = a.name().chars().next().unwrap();
+                let last = b.name().chars().next().unwrap();
+                for i in first..=last {
+                    list.push(Expr::Symbol(Symbol::new(&i.to_string())));
+                }
+                Expr::List(list)
+            },
+            (Expr::String(a), Expr::String(b)) if a.len() == 1 && b.len() == 1 => {
+                let mut list = vec![];
+                let first = a.chars().next().unwrap();
+                let last = b.chars().next().unwrap();
+                for i in first..=last {
+                    list.push(Expr::String(i.to_string()));
+                }
+                Expr::List(list)
+            },
+            (a, b) => return Expr::error(format!("Invalid expr range {} {}", a, b))
+        }
+    });
+
+    env.bind_builtin("rev", |env, expr| {
+        let a = env.eval(expr[0].clone());
+        match a {
+            Expr::List(mut a) => {
+                a.reverse();
+                Expr::List(a)
+            },
+            a => return Expr::error(format!("Invalid expr rev {}", a))
+        }
+    });
+
+    // env.bind_builtin("rand", |env, expr| {
+    //     use rand::Rng;
+    //     let low = env.eval(expr[0].clone());
+    //     let high = env.eval(expr[1].clone());
+    //     match (low, high) {
+    //         (Expr::Int(low), Expr::Int(high)) => {
+    //             let mut rng = rand::thread_rng();
+    //             Expr::Int(rng.gen_range(low..=high))
+    //         },
+    //         (Expr::Float(low), Expr::Float(high)) => {
+    //             let mut rng = rand::thread_rng();
+    //             Expr::Float(rng.gen_range(low..=high))
+    //         },
+    //         (Expr::Int(low), Expr::Float(high)) => {
+    //             let mut rng = rand::thread_rng();
+    //             Expr::Float(rng.gen_range(low as f64..=high))
+    //         },
+    //         (Expr::Float(low), Expr::Int(high)) => {
+    //             let mut rng = rand::thread_rng();
+    //             Expr::Float(rng.gen_range(low..=high as f64))
+    //         },
+    //         (a, b) => return Expr::error(format!("Invalid expr rand {} {}", a, b))
+    //     }
+    // });
+    
+    // env.bind_builtin("parse", |env, expr| {
+    //     let a = env.eval(expr[0].clone());
+    //     match a {
+    //         Expr::String(frontend_src) => {
+    //             match parse_frontend_minimal(&frontend_src, Some("stdin")) {
+    //                 Ok(frontend_code) => {
+    //                     Expr::serialize(frontend_code)
+    //                 },
+    //                 Err(e) => Expr::error(e)
+    //             }
+    //         },
+    //         a => return Expr::error(format!("Invalid expr parse {}", a))
+    //     }
+    // });
+    // env.bind_builtin("parse-big", |env, expr| {
+    //     let a = env.eval(expr[0].clone());
+    //     match a {
+    //         Expr::String(frontend_src) => {
+    //             match parse_frontend(&frontend_src, Some("stdin")) {
+    //                 Ok(frontend_code) => {
+    //                     Expr::serialize(frontend_code)
+    //                 },
+    //                 Err(e) => Expr::error(e)
+    //             }
+    //         },
+    //         a => return Expr::error(format!("Invalid expr parse {}", a))
+    //     }
+    // });
+
+    // env.bind_builtin("compile", |env, expr| {
+    //     let frontend_code = Expr::deserialize::<sage::lir::Expr>(&env.eval(expr[0].clone())).map_err(|e| Expr::error(format!("Invalid AST: {e}")));
+
+    //     match frontend_code {
+    //         Err(e) => e,
+    //         Ok(frontend_code) => {
+    //             let asm_code = frontend_code.compile().map_err(|e| Expr::error(format!("Invalid AST: {e}")));
+    //             if let Err(e) = asm_code {
+    //                 return e;
+    //             }
+    //             let asm_code = asm_code.unwrap();
+        
+    //             let vm_code = match asm_code {
+    //                 Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
+    //                 Err(std_asm_code) => std_asm_code.assemble(CALL_STACK_SIZE).map(Err),
+    //             }.unwrap();
+        
+    //             let c_code = match vm_code {
+    //                 Ok(vm_code) => {
+    //                     sage::targets::C.build_core(&vm_code.flatten()).unwrap()
+    //                 }
+    //                 Err(vm_code) => {
+    //                     sage::targets::C.build_std(&vm_code.flatten()).unwrap()
+    //                 }
+    //             };
+        
+    //             Expr::String(c_code)
+    //         }
+    //     }
+    // });
+
+    // env.bind_builtin("asm", |env, expr| {
+    //     let frontend_code = Expr::deserialize::<sage::lir::Expr>(&env.eval(expr[0].clone())).map_err(|e| Expr::error(format!("Invalid AST: {e}")));
+
+    //     match frontend_code {
+    //         Err(e) => e,
+    //         Ok(frontend_code) => {
+    //             let asm_code = frontend_code.compile().map_err(|e| Expr::error(format!("Invalid AST: {e}")));
+    //             if let Err(e) = asm_code {
+    //                 return e;
+    //             }
+    //             let asm_code = asm_code.unwrap();
+    //             match asm_code {
+    //                 Ok(core_asm_code) => Expr::serialize(core_asm_code.code),
+    //                 Err(std_asm_code) => Expr::serialize(std_asm_code.code),
+    //             }
+    //         }
+    //     }
+    // });
+
+    env.bind_builtin("read", |env, expr| {
+        // Read a file
+        let path = env.eval(expr[0].clone());
+
+        match path {
+            Expr::String(path) => {
+                let path = std::path::Path::new(&path);
+                let file = std::fs::File::open(path).unwrap();
+                let reader = std::io::BufReader::new(file);
+                let mut code = String::new();
+                for line in reader.lines() {
+                    code.push_str(&line.unwrap());
+                    code.push_str("\n");
+                }
+                Expr::String(code)
+            },
+            a => return Expr::error(format!("Invalid expr read {}", a))
+        }
+    });
+
+    env.bind_builtin("write", |env, expr| {
+        // Write a file
+        use std::io::Write;
+        let path = env.eval(expr[0].clone());
+
+        let content = env.eval(expr[1].clone());
+
+        match (path, content) {
+            (Expr::String(path), Expr::String(content)) => {
+                let path = std::path::Path::new(&path);
+                let mut file = std::fs::File::create(path).unwrap();
+                file.write_all(content.as_bytes()).unwrap();
+                Expr::None
+            },
+            (a, b) => return Expr::error(format!("Invalid expr write {} {}", a, b))
+        }
+    });
+
+    env.bind_builtin("shell", |env, expr| {
+        // Run a shell command
+        let cmd = env.eval(expr[0].clone());
+
+        match cmd {
+            Expr::String(cmd) => {
+                let output = std::process::Command::new("sh")
+                    .arg("-c")
+                    .arg(&cmd)
+                    .output()
+                    .expect("failed to execute process");
+                let stdout = String::from_utf8(output.stdout).unwrap();
+                let stderr = String::from_utf8(output.stderr).unwrap();
+                Expr::List(vec![Expr::String(stdout), Expr::String(stderr)])
+            },
+            a => return Expr::error(format!("Invalid expr shell {}", a))
+        }
+    });
+
+    env
+}
 
 lazy_static! {
     static ref LINE_NUMBERS: RwLock<Vec<usize>> = RwLock::new(vec![]);
     static ref FILE_NAME: RwLock<Option<String>> = RwLock::new(None);
-    static ref PROGRAM: RwLock<String> = RwLock::new(String::new());
+    static ref PROGRAM: RwLock<Arc<String>> = RwLock::new(Arc::new(String::new()));
+    static ref LISP_ENV: RwLock<sage_lisp::Env> = RwLock::new(make_env());
+
+    static ref FILE_SAVES: RwLock<Vec<(Vec<usize>, Arc<String>, Option<String>)>> = RwLock::new(vec![]);
+}
+
+fn save_source_code_setup() {
+    let mut saves = FILE_SAVES.write().unwrap();
+
+    let line_numbers = LINE_NUMBERS.read().unwrap();
+    let file_name = FILE_NAME.read().unwrap();
+    let program = PROGRAM.read().unwrap();
+
+    saves.push((
+        line_numbers.clone(),
+        program.clone(),
+        file_name.clone(),
+    ));
+}
+
+fn restore_source_code_setup() {
+    let mut saves = FILE_SAVES.write().unwrap();
+
+    let mut line_numbers = LINE_NUMBERS.write().unwrap();
+    let mut file_name = FILE_NAME.write().unwrap();
+    let mut program = PROGRAM.write().unwrap();
+
+    if let Some((l, p, f)) = saves.pop() {
+        *line_numbers = l;
+        *program = p;
+        *file_name = f;
+    }
 }
 
 fn setup_source_code_locations(program: &str, filename: Option<String>) {
     *LINE_NUMBERS.write().unwrap() = precompute_line_starts(program);
     *FILE_NAME.write().unwrap() = filename.to_owned();
-    *PROGRAM.write().unwrap() = program.to_string();
+    *PROGRAM.write().unwrap() = Arc::new(program.to_string());
 }
 
 fn get_source_code_location(char_idx: usize, length: Option<usize>) -> SourceCodeLocation {
@@ -110,8 +1151,13 @@ fn start_source_code_tracking(remaining_input: &str) {
 fn end_source_code_tracking(remaining_input: &str) -> SourceCodeLocation {
     let new_offset = get_current_offset_in_program(remaining_input);
     let old_offset = OFFSETS.write().unwrap().pop().unwrap();
-    let length = new_offset - old_offset;
-    get_source_code_location(old_offset, Some(length))
+    trace!("Old offset: {old_offset}, new offset: {new_offset}");
+    if new_offset > old_offset {
+        let length = new_offset - old_offset;
+        get_source_code_location(old_offset, Some(length))
+    } else {
+        get_source_code_location(new_offset, None)
+    }
 }
 
 lazy_static! {
@@ -339,7 +1385,6 @@ pub fn parse(input: &str, filename: Option<String>) -> Result<Expr, String> {
     }
 
     match all_consuming(parse_helper::<VerboseError<&str>>)(input) {
-        Ok((_, expr)) => Ok(expr),
         Err(nom::Err::Error(e)) => {
             trace!("Error: {e}");
             Err(format!("{}", convert_error(input, e)))
@@ -351,10 +1396,377 @@ pub fn parse(input: &str, filename: Option<String>) -> Result<Expr, String> {
         Err(nom::Err::Incomplete(e)) => {
             unreachable!()
         },
+        Ok((_, expr)) => {
+            use crate::side_effects::Output;
+            trace!("Parsed: {expr}");
+
+            let alloc = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
+                name: "alloc".to_string(),
+                args: vec![("size".to_string(), crate::lir::Type::Int)],
+                ret: crate::lir::Type::Pointer(
+                    crate::lir::Mutability::Mutable,
+                    Box::new(crate::lir::Type::Any),
+                ),
+                body: vec![crate::asm::StandardOp::Alloc(crate::asm::SP.deref())],
+            });
+            let free = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
+                name: "free".to_string(),
+                args: vec![(
+                    "ptr".to_string(),
+                    crate::lir::Type::Pointer(
+                        crate::lir::Mutability::Any,
+                        Box::new(crate::lir::Type::Any),
+                    ),
+                )],
+                ret: crate::lir::Type::None,
+                body: vec![
+                    crate::asm::StandardOp::Free(crate::asm::SP.deref()),
+                    crate::asm::StandardOp::CoreOp(crate::asm::CoreOp::Pop(None, 1)),
+                ],
+            });
+            use crate::asm::CoreOp::*;
+
+            use crate::asm::*;
+            // let realloc_fp_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
+            //     name: "realloc_fp_stack".to_string(),
+            //     args: vec![("size".to_string(), crate::lir::Type::Int)],
+            //     ret: crate::lir::Type::None,
+            //     body: vec![
+            //         // Allocate the new frame pointer stack with the given size
+            //         Alloc(SP.deref()),
+            //         CoreOp(Many(vec![
+            //             Pop(Some(C), 1),
+            //             Move {
+            //                 src: C,
+            //                 dst: D
+            //             },
+            //             // Copy all the data from the old frame pointer stack to the new one
+            //             // Copy the start of the old frame pointer stack to the new one
+            //             GetAddress {
+            //                 addr: START_OF_FP_STACK,
+            //                 dst: A,
+            //             },
+            //             // Subtract from the current FP_STACK
+            //             crate::asm::CoreOp::IsLess {
+            //                 a: A,
+            //                 b: FP_STACK,
+            //                 dst: B,
+            //             },
+            //             While(B),
+            //             Move {
+            //                 src: A.deref(),
+            //                 dst: C.deref(),
+            //             },
+            //             Next(A, None),
+            //             Next(C, None),
+            //             crate::asm::CoreOp::IsLess {
+            //                 a: A,
+            //                 b: FP_STACK,
+            //                 dst: B,
+            //             },
+            //             End,
+            //             Move {
+            //                 src: C,
+            //                 dst: FP_STACK,
+            //             }
+            //         ]))
+            //     ],
+            // });
+
+            // let realloc_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
+            //     name: "realloc_stack".to_string(),
+            //     args: vec![("size".to_string(), crate::lir::Type::Int)],
+            //     ret: crate::lir::Type::None,
+            //     body: vec![
+            //         // Allocate the new frame pointer stack with the given size
+            //         Alloc(SP.deref()),
+            //         CoreOp(Many(vec![
+            //             Pop(Some(C), 1),
+            //             Move {
+            //                 src: C,
+            //                 dst: D
+            //             },
+            //             // Copy all the data from the old frame pointer stack to the new one
+            //             // Copy the start of the old frame pointer stack to the new one
+            //             Move {
+            //                 src: STACK_START,
+            //                 dst: A,
+            //             },
+            //             // Subtract from the current FP_STACK
+            //             crate::asm::CoreOp::IsLess {
+            //                 a: A,
+            //                 b: SP,
+            //                 dst: B,
+            //             },
+            //             crate::asm::CoreOp::Set(E, 0),
+            //             While(B),
+            //             Move {
+            //                 src: A.deref(),
+            //                 dst: C.deref(),
+            //             },
+            //             Next(A, None),
+            //             Next(C, None),
+            //             Inc(E),
+            //             crate::asm::CoreOp::IsLess {
+            //                 a: A,
+            //                 b: SP,
+            //                 dst: B,
+            //             },
+            //             End,
+            //             // Index the FP by E
+            //             Index {
+            //                 src: FP,
+            //                 offset: E,
+            //                 dst: F,
+            //             },
+            //             Move {
+            //                 src: F,
+            //                 dst: FP,
+            //             },
+
+            //             Move {
+            //                 src: C,
+            //                 dst: SP,
+            //             },
+            //             Move {
+            //                 src: D,
+            //                 dst: STACK_START,
+            //             }
+            //         ]))
+            //     ],
+            // });
+
+            let get_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "get_sp".to_string(),
+                args: vec![],
+                ret: crate::lir::Type::Pointer(
+                    crate::lir::Mutability::Any,
+                    Box::new(crate::lir::Type::Cell),
+                ),
+                body: vec![crate::asm::CoreOp::Push(crate::asm::SP, 1)],
+            });
+
+            let set_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "set_sp".to_string(),
+                args: vec![(
+                    "new_sp".to_string(),
+                    crate::lir::Type::Pointer(
+                        crate::lir::Mutability::Any,
+                        Box::new(crate::lir::Type::Cell),
+                    ),
+                )],
+                ret: crate::lir::Type::None,
+                body: vec![Pop(Some(A), 1), Move { src: A, dst: SP }],
+            });
+
+            let set_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "set_fp".to_string(),
+                args: vec![(
+                    "new_fp".to_string(),
+                    crate::lir::Type::Pointer(
+                        crate::lir::Mutability::Any,
+                        Box::new(crate::lir::Type::Cell),
+                    ),
+                )],
+                ret: crate::lir::Type::None,
+                body: vec![Pop(Some(FP), 1)],
+            });
+
+            let set_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "set_stack_start".to_string(),
+                args: vec![(
+                    "new_stack_start".to_string(),
+                    crate::lir::Type::Pointer(
+                        crate::lir::Mutability::Any,
+                        Box::new(crate::lir::Type::Cell),
+                    ),
+                )],
+                ret: crate::lir::Type::None,
+                body: vec![Pop(Some(STACK_START), 1)],
+            });
+
+            let get_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "get_fp".to_string(),
+                args: vec![],
+                ret: crate::lir::Type::Pointer(
+                    crate::lir::Mutability::Any,
+                    Box::new(crate::lir::Type::Cell),
+                ),
+                body: vec![crate::asm::CoreOp::Push(crate::asm::FP, 1)],
+            });
+
+            let get_gp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "get_gp".to_string(),
+                args: vec![],
+                ret: crate::lir::Type::Pointer(
+                    crate::lir::Mutability::Any,
+                    Box::new(crate::lir::Type::Cell),
+                ),
+                body: vec![crate::asm::CoreOp::Push(crate::asm::GP, 1)],
+            });
+            let set_gp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "set_gp".to_string(),
+                args: vec![(
+                    "new_gp".to_string(),
+                    crate::lir::Type::Pointer(
+                        crate::lir::Mutability::Any,
+                        Box::new(crate::lir::Type::Cell),
+                    ),
+                )],
+                ret: crate::lir::Type::None,
+                body: vec![Pop(Some(GP), 1)],
+            });
+
+            let get_fp_stack = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "get_fp_stack".to_string(),
+                args: vec![],
+                ret: crate::lir::Type::Pointer(
+                    crate::lir::Mutability::Any,
+                    Box::new(crate::lir::Type::Cell),
+                ),
+                body: vec![crate::asm::CoreOp::Push(crate::asm::FP_STACK, 1)],
+            });
+
+            let get_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "get_stack_start".to_string(),
+                args: vec![],
+                ret: crate::lir::Type::Pointer(
+                    crate::lir::Mutability::Any,
+                    Box::new(crate::lir::Type::Cell),
+                ),
+                body: vec![crate::asm::CoreOp::Push(crate::asm::STACK_START, 1)],
+            });
+
+            let mut debug_body = vec![];
+            for ch in "Debug\n".to_string().chars() {
+                debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, ch as i64));
+                debug_body.push(crate::asm::CoreOp::Put(
+                    crate::asm::TMP,
+                    Output::stdout_char(),
+                ));
+            }
+            for reg in crate::asm::REGISTERS {
+                for ch in format!("   {reg} = ").chars() {
+                    debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, ch as i64));
+                    debug_body.push(crate::asm::CoreOp::Put(
+                        crate::asm::TMP,
+                        Output::stdout_char(),
+                    ));
+                }
+                debug_body.push(crate::asm::CoreOp::Put(reg, Output::stdout_int()));
+                debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, '\n' as i64));
+                debug_body.push(crate::asm::CoreOp::Put(
+                    crate::asm::TMP,
+                    Output::stdout_char(),
+                ));
+            }
+            // Debug function
+            // Prints out stack pointer, frame pointer, and the value at the top of the stack.
+            let debug = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
+                name: "debug".to_string(),
+                args: vec![],
+                ret: crate::lir::Type::None,
+                body: debug_body,
+            });
+
+            // body: vec![
+            //     crate::asm::StandardOp::CoreOp(
+            //         crate::asm::CoreOp::Many(vec![
+            //             crate::asm::CoreOp::Set(crate::asm::A, 'S' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+            //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+            //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+            //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+            //             crate::asm::CoreOp::Put(crate::asm::SP, Output::stdout_int()),
+            //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+
+            //             crate::asm::CoreOp::Set(crate::asm::A, 'F' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+            //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+            //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+            //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+            //             crate::asm::CoreOp::Put(crate::asm::FP, Output::stdout_int()),
+            //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+
+            //             crate::asm::CoreOp::Set(crate::asm::A, 'T' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+            //             crate::asm::CoreOp::Set(crate::asm::A, 'O' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+            //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+            //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+            //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+            //             crate::asm::CoreOp::Put(crate::asm::SP.deref(), Output::stdout_int()),
+            //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
+            //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
+            //         ])
+            //     )
+            // ],
+
+            Ok(crate::lir::Expr::let_consts(
+                vec![
+                    ("free", free),
+                    ("alloc", alloc),
+                    // ("realloc_fp_stack", realloc_fp_stack),
+                    // ("realloc_stack", realloc_stack),
+                    ("debug", debug),
+                    ("get_sp", get_sp),
+                    ("get_fp", get_fp),
+                    ("set_sp", set_sp),
+                    ("set_fp", set_fp),
+                    ("set_gp", set_gp),
+                    ("get_fp_stack", get_fp_stack),
+                    ("get_stack_start", get_stack_start),
+                    ("set_stack_start", set_stack_start),
+                    ("get_gp", get_gp),
+                ],
+                expr,
+            ))
+        },
     }
     // let (input, _) = whitespace(input)?;
     // let (input, stmts) = many0(terminated(parse_stmt, whitespace))(input)?;
     // Ok((input, stmts_to_expr(stmts)))
+}
+
+fn parse_decorator<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, sage_lisp::Expr, E> {
+    let (input, _) = whitespace(input)?;
+    let (input, _) = tag("#")(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, _) = tag("[")(input)?;
+    let (input, expr) = sage_lisp::parse_expr(input)?;
+    
+
+    let (input, _) = whitespace(input)?;
+    let (input, _) = tag("]")(input)?;
+
+    Ok((input, expr))
+}
+
+fn parse_attribute<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, sage_lisp::Expr, E> {
+    let (input, _) = whitespace(input)?;
+    let (input, _) = tag("#")(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, _) = tag("!")(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, _) = tag("[")(input)?;
+    let (input, expr) = sage_lisp::parse_expr(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, _) = tag("]")(input)?;
+
+    let mut env = LISP_ENV.write().unwrap();
+
+    Ok((input, env.eval(expr)))
 }
 
 fn parse_impl_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
@@ -654,6 +2066,7 @@ fn parse_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str
     let (input, _) = whitespace(input)?;
     start_source_code_tracking(input);
     let (input, stmt) = alt((
+        context("attribute", value(Statement::Expr(Expr::NONE), parse_attribute)),
         context("long statement", parse_long_stmt),
         context("short statement", parse_short_stmt),
         // map(parse_expr, Statement::Expr),
@@ -687,6 +2100,7 @@ fn parse_long_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
         context("enum", parse_enum_stmt),
         context("struct", parse_struct_stmt),
         context("module", parse_module_stmt),
+        context("module", parse_module_file_stmt),
         context("import", parse_import_stmt),
         map(context("block", parse_block), Statement::Expr),
     ))(input)?;
@@ -778,6 +2192,32 @@ fn parse_module_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     Ok((input, Statement::Declaration(Declaration::module(name, decls), None)))
 }
 
+fn parse_module_file_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+    let (input, _) = whitespace(input)?;
+
+    let (input, _) = tag("mod")(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, name) = cut(parse_symbol)(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, _) = tag(";")(input)?;
+    trace!("Parsed module file stmt for {name}");
+    // Open the file
+    if let Ok(contents) = std::fs::read_to_string(&format!("{}.sg", name)) {
+        save_source_code_setup();
+        setup_source_code_locations(&contents.clone(), Some(name.to_string()));
+        if let Ok((_, decls)) = all_consuming(terminated(many0(context("statement", parse_decl::<VerboseError<&str>>)), whitespace))(&contents) {
+            restore_source_code_setup();
+            return Ok((input, Statement::Declaration(Declaration::module(name, decls), None)))
+        } else  {
+            restore_source_code_setup();
+            return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Verify)));
+        }
+    }
+
+    restore_source_code_setup();
+    return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Verify)));
+}
+
 fn parse_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Declaration, E> {
     let (input, _) = whitespace(input)?;
     let (input, decl) = alt((
@@ -790,6 +2230,7 @@ fn parse_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str
         context("impl", parse_impl_stmt),
         context("import", parse_import_stmt),
         context("module", parse_module_stmt),
+        context("module", parse_module_file_stmt),
     ))(input)?;
 
     match decl {
@@ -1210,7 +2651,7 @@ fn parse_struct_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
 
     let (input, _) = tag("{")(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, mut fields) = many1(terminated(
+    let (input, mut fields) = many0(terminated(
         pair(
             parse_symbol,
             preceded(
@@ -1327,8 +2768,27 @@ fn parse_assign_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
                 }
                 Expr::ConstExpr(ConstExpr::Member(e, field)) => {
                     Statement::Expr(Expr::from(e.field(*field)).refer(Mutability::Mutable).deref_mut(val))
-                }   
-                _ => unreachable!(),
+                }
+                Expr::Annotated(inner, _) => {
+                    match *inner {
+                        Expr::Deref(e) => Statement::Expr(e.deref_mut(val)),
+                        Expr::Index(e, idx) => Statement::Expr(e.idx(*idx).refer(Mutability::Mutable).deref_mut(val)),
+                        Expr::ConstExpr(ConstExpr::Symbol(name)) => {
+                            Statement::Expr(
+                                Expr::var(name).refer(Mutability::Mutable)
+                                    .deref_mut(val)
+                            )
+                        },
+                        Expr::Member(e, field) => {
+                            Statement::Expr(e.field(field).refer(Mutability::Mutable).deref_mut(val))
+                        }
+                        Expr::ConstExpr(ConstExpr::Member(e, field)) => {
+                            Statement::Expr(Expr::from(e.field(*field)).refer(Mutability::Mutable).deref_mut(val))
+                        }
+                        unexpected => panic!("Unexpected assignment to {unexpected}"),
+                    }
+                }
+                unexpected => panic!("Unexpected assignment to {unexpected}"),
             };
 
             Ok((input, result))
@@ -1791,11 +3251,29 @@ fn parse_suite<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: 
 
 fn parse_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
     // let (input, c) = parse_expr_atom(input)?;
+
+    // Optionally parse a decorator
+    let (input, _) = whitespace(input)?;
+    let (input, decorator) = opt(parse_decorator)(input)?;
+
     let (input, _) = whitespace(input)?;
     start_source_code_tracking(input);
     let (input, expr) = parse_expr_prec(input, 0)?;
     let source_code_loc = end_source_code_tracking(input);
     // Ok((input, Expr::ConstExpr(c)))
+    let mut env = LISP_ENV.write().unwrap();
+    let expr = match decorator {
+        // Some(decorator) => sage_lisp::Expr::deserialize::<Expr>(&env.eval(decorator.apply(&[sage_lisp::Expr::serialize(expr)]))).unwrap(),
+        Some(decorator) => {
+            let input = sage_lisp::Expr::serialize(expr);
+            trace!("Input: {input}");
+            let result = env.eval(decorator.apply(&[input.quote()]));
+            trace!("Result: {result}");
+            sage_lisp::Expr::deserialize::<Expr>(&result).unwrap()
+        },
+        None => expr,
+    };
+
     Ok((input, expr.annotate(source_code_loc)))
 }
 
@@ -1957,7 +3435,7 @@ fn parse_expr_index<'a, E: ParseError<&'a str> + ContextError<&'a str>>(expr: &E
     let (input, _) = whitespace(input)?;
     let (input, index) = parse_expr(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, _) = tag("]")(input)?;
+    let (input, _) = cut(tag("]"))(input)?;
 
     Ok((input, expr.clone().idx(index)))
 }
@@ -1980,7 +3458,7 @@ fn parse_expr_call<'a, E: ParseError<&'a str> + ContextError<&'a str>>(expr: &Ex
     let (input, _) = whitespace(input)?;
     let (input, last_arg) = opt(parse_expr)(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, _) = tag(")")(input)?;
+    let (input, _) = cut(tag(")"))(input)?;
 
     if let Some(last_arg) = last_arg {
         args.push(last_arg);
@@ -2070,7 +3548,7 @@ fn parse_expr_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     let (input, mut exprs) = many1(terminated(parse_expr, tag(",")))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, last_expr) = opt(parse_expr)(input)?;
-    let (input, _) = tag(")")(input)?;
+    let (input, _) = cut(tag(")"))(input)?;
 
     if let Some(last_expr) = last_expr {
         exprs.push(last_expr);
@@ -2085,7 +3563,7 @@ fn parse_expr_array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     let (input, mut exprs) = many0(terminated(parse_expr, tag(",")))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, last_expr) = opt(parse_expr)(input)?;
-    let (input, _) = tag("]")(input)?;
+    let (input, _) = cut(tag("]"))(input)?;
 
     if let Some(last_expr) = last_expr {
         exprs.push(last_expr);
@@ -2693,7 +4171,6 @@ pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
         .num_threads(16)
         .stack_size(2048 * 1024 * 1024)
         .build_global();
-    use crate::side_effects::Output;
     // Compiling most examples overflows the tiny stack for tests.
     // So, we spawn a new thread with a larger stack size.
     std::thread::scope(|s| {
@@ -2709,341 +4186,7 @@ pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
                         .without_comments(languages::rust())
                         .collect::<String>();
                     let parsed = parse(&code, Some("input".to_string()))?;
-                    // eprintln!("PARSED: {parsed}");
-                    // eprintln!("END PARSED");
-
-                    let alloc = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
-                        name: "alloc".to_string(),
-                        args: vec![("size".to_string(), crate::lir::Type::Int)],
-                        ret: crate::lir::Type::Pointer(
-                            crate::lir::Mutability::Mutable,
-                            Box::new(crate::lir::Type::Any),
-                        ),
-                        body: vec![crate::asm::StandardOp::Alloc(crate::asm::SP.deref())],
-                    });
-                    let free = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
-                        name: "free".to_string(),
-                        args: vec![(
-                            "ptr".to_string(),
-                            crate::lir::Type::Pointer(
-                                crate::lir::Mutability::Any,
-                                Box::new(crate::lir::Type::Any),
-                            ),
-                        )],
-                        ret: crate::lir::Type::None,
-                        body: vec![
-                            crate::asm::StandardOp::Free(crate::asm::SP.deref()),
-                            crate::asm::StandardOp::CoreOp(crate::asm::CoreOp::Pop(None, 1)),
-                        ],
-                    });
-                    use crate::asm::CoreOp::*;
-
-                    use crate::asm::*;
-                    // let realloc_fp_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
-                    //     name: "realloc_fp_stack".to_string(),
-                    //     args: vec![("size".to_string(), crate::lir::Type::Int)],
-                    //     ret: crate::lir::Type::None,
-                    //     body: vec![
-                    //         // Allocate the new frame pointer stack with the given size
-                    //         Alloc(SP.deref()),
-                    //         CoreOp(Many(vec![
-                    //             Pop(Some(C), 1),
-                    //             Move {
-                    //                 src: C,
-                    //                 dst: D
-                    //             },
-                    //             // Copy all the data from the old frame pointer stack to the new one
-                    //             // Copy the start of the old frame pointer stack to the new one
-                    //             GetAddress {
-                    //                 addr: START_OF_FP_STACK,
-                    //                 dst: A,
-                    //             },
-                    //             // Subtract from the current FP_STACK
-                    //             crate::asm::CoreOp::IsLess {
-                    //                 a: A,
-                    //                 b: FP_STACK,
-                    //                 dst: B,
-                    //             },
-                    //             While(B),
-                    //             Move {
-                    //                 src: A.deref(),
-                    //                 dst: C.deref(),
-                    //             },
-                    //             Next(A, None),
-                    //             Next(C, None),
-                    //             crate::asm::CoreOp::IsLess {
-                    //                 a: A,
-                    //                 b: FP_STACK,
-                    //                 dst: B,
-                    //             },
-                    //             End,
-                    //             Move {
-                    //                 src: C,
-                    //                 dst: FP_STACK,
-                    //             }
-                    //         ]))
-                    //     ],
-                    // });
-
-                    // let realloc_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
-                    //     name: "realloc_stack".to_string(),
-                    //     args: vec![("size".to_string(), crate::lir::Type::Int)],
-                    //     ret: crate::lir::Type::None,
-                    //     body: vec![
-                    //         // Allocate the new frame pointer stack with the given size
-                    //         Alloc(SP.deref()),
-                    //         CoreOp(Many(vec![
-                    //             Pop(Some(C), 1),
-                    //             Move {
-                    //                 src: C,
-                    //                 dst: D
-                    //             },
-                    //             // Copy all the data from the old frame pointer stack to the new one
-                    //             // Copy the start of the old frame pointer stack to the new one
-                    //             Move {
-                    //                 src: STACK_START,
-                    //                 dst: A,
-                    //             },
-                    //             // Subtract from the current FP_STACK
-                    //             crate::asm::CoreOp::IsLess {
-                    //                 a: A,
-                    //                 b: SP,
-                    //                 dst: B,
-                    //             },
-                    //             crate::asm::CoreOp::Set(E, 0),
-                    //             While(B),
-                    //             Move {
-                    //                 src: A.deref(),
-                    //                 dst: C.deref(),
-                    //             },
-                    //             Next(A, None),
-                    //             Next(C, None),
-                    //             Inc(E),
-                    //             crate::asm::CoreOp::IsLess {
-                    //                 a: A,
-                    //                 b: SP,
-                    //                 dst: B,
-                    //             },
-                    //             End,
-                    //             // Index the FP by E
-                    //             Index {
-                    //                 src: FP,
-                    //                 offset: E,
-                    //                 dst: F,
-                    //             },
-                    //             Move {
-                    //                 src: F,
-                    //                 dst: FP,
-                    //             },
-
-                    //             Move {
-                    //                 src: C,
-                    //                 dst: SP,
-                    //             },
-                    //             Move {
-                    //                 src: D,
-                    //                 dst: STACK_START,
-                    //             }
-                    //         ]))
-                    //     ],
-                    // });
-
-                    let get_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "get_sp".to_string(),
-                        args: vec![],
-                        ret: crate::lir::Type::Pointer(
-                            crate::lir::Mutability::Any,
-                            Box::new(crate::lir::Type::Cell),
-                        ),
-                        body: vec![crate::asm::CoreOp::Push(crate::asm::SP, 1)],
-                    });
-
-                    let set_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "set_sp".to_string(),
-                        args: vec![(
-                            "new_sp".to_string(),
-                            crate::lir::Type::Pointer(
-                                crate::lir::Mutability::Any,
-                                Box::new(crate::lir::Type::Cell),
-                            ),
-                        )],
-                        ret: crate::lir::Type::None,
-                        body: vec![Pop(Some(A), 1), Move { src: A, dst: SP }],
-                    });
-
-                    let set_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "set_fp".to_string(),
-                        args: vec![(
-                            "new_fp".to_string(),
-                            crate::lir::Type::Pointer(
-                                crate::lir::Mutability::Any,
-                                Box::new(crate::lir::Type::Cell),
-                            ),
-                        )],
-                        ret: crate::lir::Type::None,
-                        body: vec![Pop(Some(FP), 1)],
-                    });
-
-                    let set_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "set_stack_start".to_string(),
-                        args: vec![(
-                            "new_stack_start".to_string(),
-                            crate::lir::Type::Pointer(
-                                crate::lir::Mutability::Any,
-                                Box::new(crate::lir::Type::Cell),
-                            ),
-                        )],
-                        ret: crate::lir::Type::None,
-                        body: vec![Pop(Some(STACK_START), 1)],
-                    });
-
-                    let get_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "get_fp".to_string(),
-                        args: vec![],
-                        ret: crate::lir::Type::Pointer(
-                            crate::lir::Mutability::Any,
-                            Box::new(crate::lir::Type::Cell),
-                        ),
-                        body: vec![crate::asm::CoreOp::Push(crate::asm::FP, 1)],
-                    });
-
-                    let get_gp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "get_gp".to_string(),
-                        args: vec![],
-                        ret: crate::lir::Type::Pointer(
-                            crate::lir::Mutability::Any,
-                            Box::new(crate::lir::Type::Cell),
-                        ),
-                        body: vec![crate::asm::CoreOp::Push(crate::asm::GP, 1)],
-                    });
-                    let set_gp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "set_gp".to_string(),
-                        args: vec![(
-                            "new_gp".to_string(),
-                            crate::lir::Type::Pointer(
-                                crate::lir::Mutability::Any,
-                                Box::new(crate::lir::Type::Cell),
-                            ),
-                        )],
-                        ret: crate::lir::Type::None,
-                        body: vec![Pop(Some(GP), 1)],
-                    });
-
-                    let get_fp_stack = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "get_fp_stack".to_string(),
-                        args: vec![],
-                        ret: crate::lir::Type::Pointer(
-                            crate::lir::Mutability::Any,
-                            Box::new(crate::lir::Type::Cell),
-                        ),
-                        body: vec![crate::asm::CoreOp::Push(crate::asm::FP_STACK, 1)],
-                    });
-
-                    let get_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "get_stack_start".to_string(),
-                        args: vec![],
-                        ret: crate::lir::Type::Pointer(
-                            crate::lir::Mutability::Any,
-                            Box::new(crate::lir::Type::Cell),
-                        ),
-                        body: vec![crate::asm::CoreOp::Push(crate::asm::STACK_START, 1)],
-                    });
-
-                    let mut debug_body = vec![];
-                    for ch in "Debug\n".to_string().chars() {
-                        debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, ch as i64));
-                        debug_body.push(crate::asm::CoreOp::Put(
-                            crate::asm::TMP,
-                            Output::stdout_char(),
-                        ));
-                    }
-                    for reg in crate::asm::REGISTERS {
-                        for ch in format!("   {reg} = ").chars() {
-                            debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, ch as i64));
-                            debug_body.push(crate::asm::CoreOp::Put(
-                                crate::asm::TMP,
-                                Output::stdout_char(),
-                            ));
-                        }
-                        debug_body.push(crate::asm::CoreOp::Put(reg, Output::stdout_int()));
-                        debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, '\n' as i64));
-                        debug_body.push(crate::asm::CoreOp::Put(
-                            crate::asm::TMP,
-                            Output::stdout_char(),
-                        ));
-                    }
-                    // Debug function
-                    // Prints out stack pointer, frame pointer, and the value at the top of the stack.
-                    let debug = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "debug".to_string(),
-                        args: vec![],
-                        ret: crate::lir::Type::None,
-                        body: debug_body,
-                    });
-
-                    // body: vec![
-                    //     crate::asm::StandardOp::CoreOp(
-                    //         crate::asm::CoreOp::Many(vec![
-                    //             crate::asm::CoreOp::Set(crate::asm::A, 'S' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Put(crate::asm::SP, Output::stdout_int()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-
-                    //             crate::asm::CoreOp::Set(crate::asm::A, 'F' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Put(crate::asm::FP, Output::stdout_int()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-
-                    //             crate::asm::CoreOp::Set(crate::asm::A, 'T' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, 'O' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Put(crate::asm::SP.deref(), Output::stdout_int()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //         ])
-                    //     )
-                    // ],
-
-                    let asm_code = crate::lir::Expr::let_consts(
-                        vec![
-                            ("free", free),
-                            ("alloc", alloc),
-                            // ("realloc_fp_stack", realloc_fp_stack),
-                            // ("realloc_stack", realloc_stack),
-                            ("debug", debug),
-                            ("get_sp", get_sp),
-                            ("get_fp", get_fp),
-                            ("set_sp", set_sp),
-                            ("set_fp", set_fp),
-                            ("set_gp", set_gp),
-                            ("get_fp_stack", get_fp_stack),
-                            ("get_stack_start", get_stack_start),
-                            ("set_stack_start", set_stack_start),
-                            ("get_gp", get_gp),
-                        ],
-                        parsed,
-                    ).compile();
+                    let asm_code = parsed.compile();
                     // let asm_code = parsed.compile();
                     const CALL_STACK_SIZE: usize = 1024;
                     if let Err(ref e) = asm_code {
@@ -3068,20 +4211,11 @@ pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
     
                                 let mut files = SimpleFiles::new();
     
-                                // let source_code = source_code
-                                //     .to_string()
-                                //     .chars()
-                                //     .without_comments(languages::rust())
-                                //     .collect::<String>();
-    
                                 let filename = filename.clone().unwrap_or("unknown".to_string());
     
                                 let file_id = files.add(filename.clone(), &code);
     
                                 let loc = format!("{}:{}:{}:{}", filename, line, column, offset);
-    
-                                // let code = format!("{}\n{}^", code, " ".repeat(*column - 1));
-                                // write!(f, "Error at {}:\n{}\n{:?}", loc, code, err)?
     
                                 let diagnostic = Diagnostic::error()
                                     .with_message(format!("Error at {}", loc))
