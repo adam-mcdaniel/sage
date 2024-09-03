@@ -11,11 +11,10 @@ const CALL_STACK_SIZE: usize = 8192;
 
 #[test]
 fn test_frontend_examples() {
-    rayon::ThreadPoolBuilder::new()
+    let _ = rayon::ThreadPoolBuilder::new()
         .num_threads(1)
         .stack_size(512 * 1024 * 1024)
-        .build_global()
-        .unwrap();
+        .build_global();
     // Compiling most examples overflows the tiny stack for tests.
     // So, we spawn a new thread with a larger stack size.
     let child = std::thread::Builder::new()
@@ -159,11 +158,10 @@ fn test_lir_examples() {
     // builder.init();
 
 
-    rayon::ThreadPoolBuilder::new()
+    let _ = rayon::ThreadPoolBuilder::new()
         .num_threads(1)
         .stack_size(512 * 1024 * 1024)
-        .build_global()
-        .unwrap();
+        .build_global();;
 
     // Compiling most examples overflows the tiny stack for tests.
     // So, we spawn a new thread with a larger stack size.
