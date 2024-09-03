@@ -124,6 +124,9 @@ pub enum Error {
 
     /// Cannot monomorphize a constant expression.
     InvalidMonomorphize(ConstExpr),
+
+    /// Duplicate implementations of a member for a type
+    DuplicateMember(Type, String)
 }
 
 impl Error {
@@ -157,6 +160,10 @@ impl Display for Error {
             }
             Self::UnimplementedOperator(op) => {
                 write!(f, "unimplemented operator {}", op)
+            }
+            
+            Self::DuplicateMember(ty, member) => {
+                write!(f, "duplicate member {member} of type {ty}")
             }
 
             Self::MismatchedTypes {

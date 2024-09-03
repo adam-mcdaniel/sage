@@ -60,6 +60,9 @@ fn line_and_column(line_starts: &[usize], index: usize) -> (usize, usize) {
     match line_starts.binary_search(&index) {
         Ok(line) => (line, 0), // The index is exactly at the start of a line
         Err(line) => {
+            if line == 0 {
+                return (0, 0);
+            }
             let line = line - 1; // The index is within this line
             let column = index - line_starts[line];
             (line, column)
@@ -1115,6 +1118,18 @@ fn restore_source_code_setup() {
     }
 }
 
+fn obliterate_save() {
+    let mut line_numbers = LINE_NUMBERS.write().unwrap();
+    let mut file_name = FILE_NAME.write().unwrap();
+    let mut program = PROGRAM.write().unwrap();
+
+    *line_numbers = vec![];
+    *file_name = None;
+    *program = Arc::new(String::new());
+    FILE_SAVES.write().unwrap().clear();
+    *LISP_ENV.write().unwrap() = make_env();
+}
+
 fn setup_source_code_locations(program: &str, filename: Option<String>) {
     *LINE_NUMBERS.write().unwrap() = precompute_line_starts(program);
     *FILE_NAME.write().unwrap() = filename.to_owned();
@@ -1140,7 +1155,13 @@ lazy_static! {
 }
 
 fn get_current_offset_in_program(remaining_input: &str) -> usize {
-    PROGRAM.read().unwrap().len() - remaining_input.len()
+    let length = PROGRAM.read().unwrap().len();
+    let remaining_length = remaining_input.len();
+    if length > remaining_length {
+        return length - remaining_length;
+    } else {
+        return 0;
+    }
 }
 
 fn start_source_code_tracking(remaining_input: &str) {
@@ -1151,8 +1172,10 @@ fn start_source_code_tracking(remaining_input: &str) {
 fn end_source_code_tracking(remaining_input: &str) -> SourceCodeLocation {
     let new_offset = get_current_offset_in_program(remaining_input);
     let old_offset = OFFSETS.write().unwrap().pop().unwrap();
+    let program = PROGRAM.read().unwrap();
     trace!("Old offset: {old_offset}, new offset: {new_offset}");
     if new_offset > old_offset {
+        trace!("Code: {}", &program[old_offset..new_offset]);
         let length = new_offset - old_offset;
         get_source_code_location(old_offset, Some(length))
     } else {
@@ -1345,8 +1368,11 @@ fn stmts_to_expr(stmts: Vec<Statement>, end_of_program: bool) -> Expr {
                         }
                         result = VecDeque::new();
                     }
-
-                    body = body.with(decl);
+                    if let Declaration::Module(..) = decl {
+                        body = body.hard_with(decl);
+                    } else {
+                        body = body.with(decl);
+                    }
                     if let Some(loc) = source_code_loc {
                         body = body.annotate(loc);
                     }
@@ -1374,12 +1400,13 @@ fn stmts_to_expr(stmts: Vec<Statement>, end_of_program: bool) -> Expr {
 }
 
 pub fn parse_source(input: &str, filename: Option<String>) -> Result<Expr, String> {
+    obliterate_save();
+
     setup_source_code_locations(input, filename);
 
     fn parse_helper<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
         let (input, _) = whitespace(input)?;
         let (input, stmts) = many0(context("statement", parse_stmt))(input)?;
-        // let (input, stmts) = many0(terminated(cut(context("statement", parse_stmt)), whitespace))(input)?;
         let (input, _) = whitespace(input)?;
         Ok((input, stmts_to_expr(stmts, true)))
     }
@@ -1398,9 +1425,29 @@ pub fn parse_source(input: &str, filename: Option<String>) -> Result<Expr, Strin
         },
         Ok((_, expr)) => Ok(expr),
     }
-    // let (input, _) = whitespace(input)?;
-    // let (input, stmts) = many0(terminated(parse_stmt, whitespace))(input)?;
-    // Ok((input, stmts_to_expr(stmts)))
+}
+
+pub(crate) fn parse_module(name: &str, input: &str) -> Result<Declaration, String> {
+    setup_source_code_locations(input, Some(name.to_owned()));
+
+    match parse_module_contents::<VerboseError<&str>>(name, input) {
+        Err(nom::Err::Error(e)) => {
+            trace!("Error: {e}");
+            Err(format!("{}", convert_error(input, e)))
+        },
+        Err(nom::Err::Failure(e)) => {
+            trace!("Failure: {e}");
+            Err(format!("{}", convert_error(input, e)))
+        },
+        Err(nom::Err::Incomplete(e)) => {
+            unreachable!()
+        },
+        Ok((new_input, expr)) if new_input.len() == 0 => Ok(expr),
+        Ok((new_input, expr)) => {
+            let e = VerboseError::<&str>::from_error_kind(new_input, ErrorKind::Verify);
+            Err(format!("{}", convert_error(input, e)))
+        }
+    }
 }
 
 fn parse_decorator<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, sage_lisp::Expr, E> {
@@ -1438,8 +1485,6 @@ fn parse_impl_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     //     let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
     //     Statement::Declaration(Declaration::Impl(name, args, body))
     // },
-    trace!("Parsing impl");
-
     let (input, _) = tag("impl")(input)?;
 
     let (input, ty) = cut(parse_type)(input)?;
@@ -1487,13 +1532,13 @@ fn parse_impl_fun<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a
     let (input, _) = whitespace(input)?;
     let (input, body) = cut(parse_block)(input)?;
     // Ok((input, (name.to_owned(), ConstExpr::Proc(Procedure::new(name, params, ret, body))))
-    lazy_static! {
-        static ref IMPL_FUN_COUNTER: RwLock<usize> = RwLock::new(0);
-    }
 
-    let mut count = *IMPL_FUN_COUNTER.read().unwrap();
-    count += 1;
-    *IMPL_FUN_COUNTER.write().unwrap() = count;
+    // lazy_static! {
+    //     static ref IMPL_FUN_COUNTER: RwLock<usize> = RwLock::new(0);
+    // }
+    // let mut count = *IMPL_FUN_COUNTER.read().unwrap();
+    // count += 1;
+    // *IMPL_FUN_COUNTER.write().unwrap() = count;
 
     if let Some(args) = template_args {
         Ok((input, (name.to_owned(), ConstExpr::PolyProc(PolyProcedure::new(name.to_owned(), args.into_iter().map(|x| x.to_owned()).collect(), params, ret, body)))))
@@ -1712,6 +1757,7 @@ fn parse_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a st
 
     let (input, mut stmts) = many0(context("statement", parse_stmt))(input)?;
     
+    let (input, _) = whitespace(input)?;
     // Check if there's a trailing expression
     let (input, expr) = opt(parse_expr)(input)?;
     if let Some(e) = expr {
@@ -1720,6 +1766,7 @@ fn parse_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a st
     let (input, _) = whitespace(input)?;
 
     let (input, _) = cut(tag("}"))(input)?;
+    let (input, _) = whitespace(input)?;
 
     let source_code_loc = end_source_code_tracking(input);
 
@@ -1733,8 +1780,6 @@ fn parse_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str
         context("attribute", value(Statement::Expr(Expr::NONE), parse_attribute)),
         context("long statement", parse_long_stmt),
         context("short statement", parse_short_stmt),
-        // map(parse_expr, Statement::Expr),
-        // map(parse_decl, Statement::Declaration),
     ))(input)?;
     let source_code_loc = end_source_code_tracking(input);
 
@@ -1846,6 +1891,15 @@ fn parse_import_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     
 }
 
+fn parse_module_contents<'a, E: ParseError<&'a str> + ContextError<&'a str>>(name: &str, input: &'a str) -> IResult<&'a str, Declaration, E> {
+    let (input, _) = whitespace(input)?;
+
+    let (input, decls) = many0(context("statement", parse_decl))(input)?;
+
+    let (input, _) = whitespace(input)?;
+    Ok((input, Declaration::module(name, decls)))
+}
+
 fn parse_module_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
     let (input, _) = whitespace(input)?;
 
@@ -1856,14 +1910,13 @@ fn parse_module_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
 
     let (input, _) = tag("{")(input)?;
 
+    let (input, module) = parse_module_contents(name, input)?;
+    
+    let (input, _) = cut(tag("}"))(input)?;
     let (input, _) = whitespace(input)?;
 
-    let (input, decls) = many0(context("statement", parse_decl))(input)?;
 
-    let (input, _) = whitespace(input)?;
-    let (input, _) = tag("}")(input)?;
-
-    Ok((input, Statement::Declaration(Declaration::module(name, decls), None)))
+    Ok((input, Statement::Declaration(module, None)))
 }
 
 fn parse_module_file_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
@@ -1874,14 +1927,18 @@ fn parse_module_file_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(in
     let (input, name) = cut(parse_symbol)(input)?;
     let (input, _) = whitespace(input)?;
     let (input, _) = tag(";")(input)?;
+    let (input, _) = whitespace(input)?;
     trace!("Parsed module file stmt for {name}");
     // Open the file
     if let Ok(contents) = std::fs::read_to_string(&format!("{}.sg", name)) {
         save_source_code_setup();
         setup_source_code_locations(&contents.clone(), Some(name.to_string()));
-        if let Ok((_, decls)) = all_consuming(terminated(many0(context("statement", parse_decl::<VerboseError<&str>>)), whitespace))(&contents) {
+        if let Ok((new_input, module)) = parse_module_contents::<VerboseError<&str>>(name, &contents) {
+            if new_input.len() != 0 {
+                return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Verify)));
+            }
             restore_source_code_setup();
-            return Ok((input, Statement::Declaration(Declaration::module(name, decls), None)))
+            return Ok((input, Statement::Declaration(module, None)))
         } else  {
             restore_source_code_setup();
             return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Verify)));
@@ -2199,6 +2256,7 @@ fn parse_extern_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     // let (input, _) = tag(":")(input)?;
     // let (input, ret) = parse_type(input)?;
     let (input, (params, ret)) = cut(parse_fun_params)(input)?;
+    // let (input, _) = cut(tag(";"))(input)?;
     
     let args: Vec<_> = params.into_iter().map(|(_name, _mutability, ty)| ty).collect();
     Ok((input, Statement::Declaration(Declaration::ExternProc(name.to_owned(), FFIProcedure::new(name.to_owned(), args, ret)), None)))
@@ -2290,10 +2348,10 @@ fn parse_static_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(inp
 
     let (input, _) = tag("=")(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, value) = parse_const(input)?;
+    let (input, value) = parse_expr(input)?;
 
     let ty = ty.unwrap_or(Type::None);
-    Ok((input, Statement::Declaration(Declaration::StaticVar(name.to_owned(), mutability, ty, value), None)))
+    Ok((input, Statement::Declaration(Declaration::static_var(name.to_owned(), mutability, ty, value), None)))
 }
 
 fn parse_type_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
@@ -2571,6 +2629,7 @@ fn parse_type_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     let (input, mut tys) = many1(terminated(parse_type, tag(",")))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, last_ty) = opt(parse_type)(input)?;
+    let (input, _) = whitespace(input)?;
     let (input, _) = tag(")")(input)?;
 
     if let Some(last_ty) = last_ty {
@@ -2932,6 +2991,7 @@ fn parse_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str
     let (input, _) = whitespace(input)?;
     start_source_code_tracking(input);
     let (input, expr) = parse_expr_prec(input, 0)?;
+    // println!("Got expr: {expr}");
     let source_code_loc = end_source_code_tracking(input);
     // Ok((input, Expr::ConstExpr(c)))
     let mut env = LISP_ENV.write().unwrap();
@@ -3131,7 +3191,7 @@ fn parse_expr_call<'a, E: ParseError<&'a str> + ContextError<&'a str>>(expr: &Ex
     let (input, _) = whitespace(input)?;
     let (input, last_arg) = opt(parse_expr)(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, _) = cut(tag(")"))(input)?;
+    let (input, _) = tag(")")(input)?;
 
     if let Some(last_arg) = last_arg {
         args.push(last_arg);
@@ -3191,11 +3251,11 @@ fn parse_expr_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     let (input, _) = whitespace(input)?;
     let (input, expr) = alt((
         map(parse_const_atom, Expr::ConstExpr),
-        parse_expr_group,
         parse_expr_tuple,
+        parse_expr_group,
         parse_expr_array,
         parse_expr_struct,
-        parse_expr_block,
+        parse_block,
         parse_if_let_expr,
         parse_if_expr,
         parse_match_expr,
@@ -3221,7 +3281,8 @@ fn parse_expr_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     let (input, mut exprs) = many1(terminated(parse_expr, tag(",")))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, last_expr) = opt(parse_expr)(input)?;
-    let (input, _) = cut(tag(")"))(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, _) = tag(")")(input)?;
 
     if let Some(last_expr) = last_expr {
         exprs.push(last_expr);
@@ -3233,10 +3294,11 @@ fn parse_expr_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
 fn parse_expr_array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
     let (input, _) = tag("[")(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, mut exprs) = many0(terminated(parse_expr, tag(",")))(input)?;
+    let (input, mut exprs) = many0(terminated(parse_expr, preceded(whitespace, tag(","))))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, last_expr) = opt(parse_expr)(input)?;
-    let (input, _) = cut(tag("]"))(input)?;
+    let (input, _) = whitespace(input)?;
+    let (input, _) = tag("]")(input)?;
 
     if let Some(last_expr) = last_expr {
         exprs.push(last_expr);
@@ -3288,22 +3350,23 @@ fn parse_expr_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     Ok((input, Expr::Struct(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())))
 }
 
-fn parse_expr_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
-    let (input, _) = whitespace(input)?;
-    let (input, _) = tag("{")(input)?;
-    trace!("Parsing block");
-    let (input, _) = whitespace(input)?;
-    let (input, mut exprs) = cut(many0(terminated(parse_expr, tag(";"))))(input)?;
-    let (input, _) = whitespace(input)?;
-    let (input, last) = opt(parse_expr)(input)?;
-    if let Some(last) = last {
-        exprs.push(last);
-    }
+// fn parse_expr_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+//     let (input, _) = whitespace(input)?;
+//     let (input, _) = tag("{")(input)?;
+//     trace!("Parsing block");
+//     let (input, _) = whitespace(input)?;
+//     let (input, mut exprs) = many0(terminated(parse_expr, tag(";")))(input)?;
+//     let (input, _) = whitespace(input)?;
+//     let (input, last) = opt(parse_expr)(input)?;
+//     if let Some(last) = last {
+//         exprs.push(last);
+//     }
 
-    let (input, _) = cut(tag("}"))(input)?;
+//     let (input, _) = whitespace(input)?;
+//     let (input, _) = tag("}")(input)?;
 
-    Ok((input, Expr::Many(exprs)))
-}
+//     Ok((input, Expr::Many(exprs)))
+// }
 
 fn parse_const<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
     alt((
@@ -3344,8 +3407,8 @@ fn parse_const_variant<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input
     let (input, _) = whitespace(input)?;
     let (input, name) = parse_symbol(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, expr) = parse_const_atom(input)?;
-    Ok((input, ConstExpr::EnumUnion(ty, name.to_string(), Box::new(expr))))
+    let (input, expr) = opt(parse_const_atom)(input)?;
+    Ok((input, ConstExpr::EnumUnion(ty, name.to_string(), Box::new(expr.unwrap_or(ConstExpr::None)))))
 }
 
 fn parse_const_member<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
@@ -3506,6 +3569,7 @@ where
       value('\\', char('\\')),
       value('/', char('/')),
       value('"', char('"')),
+      value('\'', char('\'')),
     )),
   )
   .parse(input)
@@ -3645,7 +3709,7 @@ fn parse_char_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input:
     // loop won't accidentally match your closing delimiter!
     let (input, result) = delimited(char('\''), cut(build_string), cut(char('\''))).parse(input)?;
     if result.len() != 1 {
-        trace!("Invalid char literal: {result}");
+        error!("Invalid char literal: {result}");
         return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Digit)));
     }
     Ok((input, result.chars().next().unwrap()))
@@ -3746,9 +3810,10 @@ fn parse_const_sizeof_type<'a, E: ParseError<&'a str> + ContextError<&'a str>>(i
 fn parse_const_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
     let (input, _) = tag("(")(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, mut exprs) = many1(terminated(parse_const, tag(",")))(input)?;
+    let (input, mut exprs) = many1(terminated(parse_const, preceded(whitespace, tag(","))))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, last_expr) = opt(parse_const)(input)?;
+    let (input, _) = whitespace(input)?;
     let (input, _) = tag(")")(input)?;
 
     if let Some(last_expr) = last_expr {
@@ -3761,9 +3826,10 @@ fn parse_const_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
 fn parse_const_array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
     let (input, _) = tag("[")(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, mut exprs) = many0(terminated(parse_const, tag(",")))(input)?;
+    let (input, mut exprs) = many0(terminated(parse_const, preceded(whitespace, tag(","))))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, last_expr) = opt(parse_const)(input)?;
+    let (input, _) = whitespace(input)?;
     let (input, _) = tag("]")(input)?;
 
     if let Some(last_expr) = last_expr {
@@ -3858,7 +3924,7 @@ pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
                         .chars()
                         .without_comments(languages::rust())
                         .collect::<String>();
-                    let parsed = parse_source(&code, Some("input".to_string()))?;
+                    let parsed = parse(&code, Some("input"), true, true)?;
                     let asm_code = parsed.compile();
                     // let asm_code = parsed.compile();
                     const CALL_STACK_SIZE: usize = 1024;
@@ -4593,6 +4659,8 @@ mod tests {
         // Nested parentheses
         assert_parse_expr("a + (b * (c + d))", Some(Expr::var("a").add(Expr::var("b").mul(Expr::var("c").add(Expr::var("d"))))));
         assert_parse_expr("((a + b) * c) - d", Some(Expr::var("a").add(Expr::var("b")).mul(Expr::var("c")).sub(Expr::var("d"))));
+        assert_parse_expr("((a + b) * c) - d < 0", Some(Expr::var("a").add(Expr::var("b")).mul(Expr::var("c")).sub(Expr::var("d")).lt(ConstExpr::Int(0))));
+        assert_parse_expr("((a + b) * c) - d < 0 && 1 != 0", Some(Expr::var("a").add(Expr::var("b")).mul(Expr::var("c")).sub(Expr::var("d")).lt(ConstExpr::Int(0)).and(Expr::from(ConstExpr::Int(1)).neq(ConstExpr::Int(0)))));
     }
 
     #[test]

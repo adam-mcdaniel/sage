@@ -1,7 +1,7 @@
-extern def __unsafe_memcpy(dst: &mut Cell, src: &Cell, size: Int);
+extern fun unsafe_memcpy(dst: &mut Cell, src: &Cell, size: Int);
 
-def memcpy<T>(dst: &mut T, src: &T, count: Int) {
-    __unsafe_memcpy(dst as &mut Cell, src as &Cell, count * sizeof<T>());
+fun memcpy<T>(dst: &mut T, src: &T, count: Int) {
+    unsafe_memcpy(dst as &mut Cell, src as &Cell, count * sizeof<T>());
 }
 
 let src = [1, 2, 3, 4, 5];

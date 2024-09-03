@@ -157,7 +157,7 @@
         <span class="kw">let </span>size = ty.get_size(env)<span class="question-mark">?</span>;
 
         <span class="comment">// output.op(CoreOp::Next(SP, None));
-        </span>output.op(CoreOp::Set(A, size <span class="kw">as </span>i64));
+        </span>output.op(CoreOp::Set(A, size <span class="kw">as </span>i64 + <span class="number">32</span>));
         output.std_op(StandardOp::Alloc(A)).map_err(|<span class="kw">_</span>| {
             Error::UnsupportedOperation(Expr::UnaryOp(
                 <span class="self">self</span>.name(),

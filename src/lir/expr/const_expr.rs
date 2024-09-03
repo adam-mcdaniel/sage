@@ -221,14 +221,14 @@ impl ConstExpr {
                     // If the inner expr is a procedure, return a `polyproc`.
                     match expr.clone().eval_checked(env, i) {
                         Ok(Self::Proc(proc)) => {
-                            info!("Creating polyproc from mono proc: {proc}");
+                            debug!("Creating polyproc from mono proc: {proc}");
                             Ok(Self::PolyProc(PolyProcedure::from_mono(proc, params)))
                         }
                         Ok(Self::Declare(decls, inner)) => {
                             Ok(Self::Template(params, inner).with(decls).eval_checked(env, i)?)
                         }
                         _ => {
-                            info!("Creating template from expr: {expr}");
+                            debug!("Creating template from expr: {expr}");
                             Ok(Self::Template(params, expr))
                         }
                     }
@@ -266,6 +266,10 @@ impl ConstExpr {
                         // }
 
                         (Self::Symbol(name), member) => {
+                            // if env.get_var(&name).is_some() {
+                            //     return Ok(Self::var(name).field(member));
+                            // }
+
                             if env.get_const(&name).is_some() {
                                 container.eval_checked(env, i)?.field(member).eval_checked(env, i)?
                             } else {
@@ -274,11 +278,11 @@ impl ConstExpr {
                                     .as_symbol(env)
                                     .map(|name| env.get_associated_const(&container_ty, &name))
                                 {
-                                    warn!("Getting associated const: {container_ty} . {member}");
+                                    debug!("Getting associated const: {container_ty} . {member}");
                                     // return constant.eval_checked(env, i);
                                     return Ok(constant.clone());
                                 }
-                                warn!("Member access not implemented for: {container_ty} . {member}");
+                                debug!("Member access not implemented for: {container_ty} . {member}");
                                 return Err(Error::MemberNotFound((*container).into(), member));
                             }
                         }
@@ -303,7 +307,7 @@ impl ConstExpr {
                                     return constant.eval_checked(env, i);
                                     // return Ok(constant.clone());
                                 }
-                                warn!(
+                                debug!(
                                     "Struct member access of {member} not implemented for: {container_ty}"
                                 );
                                 return Err(Error::MemberNotFound((*container).into(), *member));
@@ -323,8 +327,8 @@ impl ConstExpr {
                                     return constant.clone().eval_checked(env, i);
                                     // return Ok(constant.clone());
                                 }
-                                warn!(
-                                    "Type member access not implemented for: {container_ty} . {member}"
+                                error!(
+                                    "Type member access not implemented for: {container_ty} . {member}, symbol {name} not defined"
                                 );
                                 return Err(Error::SymbolNotDefined(name));
                             }
@@ -336,11 +340,11 @@ impl ConstExpr {
                                 .as_symbol(env)
                                 .map(|name| env.get_associated_const(&container_ty, &name))
                             {
-                                warn!("Getting associated const: {container_ty} . {member}");
+                                debug!("Getting associated const: {container_ty} . {member}");
                                 return constant.eval_checked(env, i);
                                 // return Ok(constant.clone());
                             }
-                            warn!("Member access not implemented for: {container_ty} . {member}");
+                            debug!("Member access not implemented for: {container_ty} . {member}");
                             // container.eval_checked(env, i)?.field(member).eval_checked(env, i)?
                             return Err(Error::MemberNotFound((*container).into(), member));
                         }
@@ -362,11 +366,11 @@ impl ConstExpr {
                                 .as_symbol(env)
                                 .map(|name| env.get_associated_const(&container_ty, &name))
                             {
-                                warn!("Getting associated const: {container_ty} . {member}");
+                                debug!("Getting associated const: {container_ty} . {member}");
                                 // return constant.eval_checked(env, i);
                                 return Ok(constant.clone());
                             }
-                            warn!("Member access not implemented for: {container_ty} . {member}");
+                            debug!("Member access not implemented for: {container_ty} . {member}");
                             return Err(Error::MemberNotFound((*container).into(), *member));
                         }
                     })
@@ -587,7 +591,7 @@ impl ConstExpr {
 
     /// Try to get this constant expression as a symbol (like in LISP).
     pub fn as_symbol(self, env: &Env) -> Result<String, Error> {
-        trace!("Getting symbol from constexpr: {self} ---- {self:?}");
+        trace!("Getting symbol from constexpr: {self} ---- {self}");
         match self {
             // Check to see if the constexpr is already a symbol.
             Self::Symbol(name) => Ok(name),
@@ -608,7 +612,7 @@ impl Simplify for ConstExpr {
 
 impl GetType for ConstExpr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        trace!("Getting type from constexpr: {self} -- {self:?}");
+        trace!("Getting type from constexpr: {self}");
         Ok(match self.clone() {
             Self::Template(params, expr) => {
                 let mut new_env = env.clone();
@@ -632,7 +636,7 @@ impl GetType for ConstExpr {
                 let as_int = field.clone().as_int(env);
 
                 let val_type = val.get_type_checked(env, i)?;
-                trace!("Got type of container access {val} . {field}\nContainer: {val_type}");
+                debug!("Got type of container access {val} . {field}\nContainer: {val_type}");
                 // val_type.add_monomorphized_associated_consts(env)?;
                 // Get the type of the value to get the member of.
                 match &val_type.simplify_until_concrete(env)? {
@@ -640,6 +644,22 @@ impl GetType for ConstExpr {
                         // Get the type of the field.
                         env.get_type_of_associated_const(inner_ty, &as_symbol?)
                             .ok_or(Error::MemberNotFound((*val.clone()).into(), *field.clone()))?
+                    }
+
+                    Type::Pointer(_found_mutability, t) => {
+                        let val = &Expr::ConstExpr(*val);
+                        let t = t.clone().simplify_until_concrete(env)?;
+                        match t.get_member_offset(&field, val, env) {
+                            Ok((t, _)) => t,
+                            Err(_) => {
+                                return ConstExpr::Member(ConstExpr::Type(val_type.clone()).into(), field.clone())
+                                    .get_type(env)
+                                    .or_else(|e| {
+                                        debug!("Could not type check member access of constant, falling back on runtime access: {val} . {field} -- {e}");
+                                        Expr::Member(val.clone().into(), *field.clone()).get_type(env)
+                                    });
+                            }
+                        }
                     }
 
                     Type::Type(ty) => {
@@ -723,13 +743,13 @@ impl GetType for ConstExpr {
                     // If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
                     _ => {
-                        warn!(
+                        debug!(
                             "Member access not implemented for type: {val_type} . {field}"
                         );
                         return ConstExpr::Member(ConstExpr::Type(val_type.clone()).into(), field.clone())
                             .get_type(env)
                             .or_else(|e| {
-                                warn!("Could not type check member access of constant, falling back on runtime access: {val} . {field} -- {e}");
+                                debug!("Could not type check member access of constant, falling back on runtime access: {val} . {field} -- {e}");
                                 Expr::Member(Expr::ConstExpr(*val.clone()).into(), *field.clone()).get_type(env)
                             });
                     }
@@ -795,7 +815,7 @@ impl GetType for ConstExpr {
                             .simplify_until_type_checks(env)?
                     }
                     _ => {
-                        warn!("Monomorphizing non-template: {expr}");
+                        // warn!("Monomorphizing non-template: {expr}");
                         Type::Apply(Box::new(template_ty.clone()), ty_args.clone())
                     }
                 };
@@ -877,6 +897,7 @@ impl GetType for ConstExpr {
             Self::FFIProcedure(ffi_proc) => ffi_proc.get_type_checked(env, i)?,
 
             Self::Symbol(name) => {
+                debug!("Getting type of {name} in {env}");
                 if let Some((_, ty, _)) = env.get_var(&name) {
                     // If the symbol is a variable, get the variables type.
                     ty.clone()
@@ -888,6 +909,7 @@ impl GetType for ConstExpr {
                     Type::Type(t.clone().into())
                 } else {
                     // Otherwise, evaluate the symbol as a constant.
+                    debug!("{name} is not a var, static var, or type in {env}");
                     match Self::Symbol(name).eval(env)? {
                         Self::Symbol(name) => {
                             // If the symbol isn't a constant, try to get the procedure
@@ -896,6 +918,7 @@ impl GetType for ConstExpr {
                                 // Then, return the type of the procedure.
                                 proc.get_type_checked(env, i)?
                             } else {
+                                debug!("Could not find symbol {name} in environment {env}");
                                 // If the procedure isn't defined, then this symbol isn't defined.
                                 return Err(Error::SymbolNotDefined(name));
                             }

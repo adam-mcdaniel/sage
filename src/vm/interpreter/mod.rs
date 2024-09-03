@@ -20,6 +20,9 @@ use ::std::{
     io::{stdin, stdout, Read, Write},
 };
 
+/// The amount by which the tape is extended whenever the pointer moves past the end
+pub(super) const TAPE_EXTENSION_SIZE: usize = 100000;
+
 /// Create an input / output device for the virtual machine interpreter
 /// to operate on. The method `get` retrieves the device's input, and the
 /// function `put` writes to the devices output.

@@ -2,11 +2,11 @@
 enum Foo {
     A,
     B,
-    C,
+    C
 }
 
-match Foo of A {
+match (Foo of A) {
     of A => 1,
-    of B => 2,
+    of B => 2
     // Leaving off the last case should be an error.
 }

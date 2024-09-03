@@ -13,28 +13,33 @@ enum Result<T, E> {
     Err(E)
 }
 
-def panic(): ! {
+fun panic(): ! {
     println("Panic!\n");
     debug();
     while True {}
 }
 
+fun error(msg: &Char): ! {
+    println(msg);
+    panic();
+}
+
 impl Result<T, E> {
-    def is_ok(self: Result<T, E>): Bool {
+    fun is_ok(self: Result<T, E>): Bool {
         match self {
             of Ok(_) => True,
             _ => False
         }
     }
 
-    def is_err(self: Result<T, E>): Bool {
+    fun is_err(self: Result<T, E>): Bool {
         match self {
             of Err(_) => True,
             _ => False
         }
     }
 
-    def unwrap(self: Result<T, E>): T {
+    fun unwrap(self: Result<T, E>): T {
         match self {
             of Ok(x) => x,
             _ => {
@@ -44,7 +49,7 @@ impl Result<T, E> {
         }
     }
 
-    def unwrap_err(self: Result<T, E>): E {
+    fun unwrap_err(self: Result<T, E>): E {
         match self {
             of Err(x) => x,
             _ => {
@@ -54,7 +59,7 @@ impl Result<T, E> {
         }
     }
 
-    def expect(self: Result<T, E>, msg: &Char): T {
+    fun expect(self: Result<T, E>, msg: &Char): T {
         match self {
             of Ok(x) => x,
             _ => {
@@ -65,28 +70,28 @@ impl Result<T, E> {
         }
     }
 
-    def ok(self: Result<T, E>): Option<T> {
+    fun ok(self: Result<T, E>): Option<T> {
         match self {
             of Ok(x) => Option<T> of Some(x),
             _ => Option<T> of Nothing
         }
     }
 
-    def err(self: Result<T, E>): Option<E> {
+    fun err(self: Result<T, E>): Option<E> {
         match self {
             of Err(x) => Option<E> of Some(x),
             _ => Option<E> of Nothing
         }
     }
 
-    def unwrap_or(self: Result<T, E>, default: T): T {
+    fun unwrap_or(self: Result<T, E>, default: T): T {
         match self {
             of Ok(x) => x,
             _ => default
         }
     }
 
-    def map<U>(self: Result<T, E>, f: T -> U): Result<U, E> {
+    fun map<U>(self: Result<T, E>, f: fun(T) -> U): Result<U, E> {
         match self {
             of Ok(x) => Result<U, E> of Ok(f(x)),
             of Err(x) => Result<U, E> of Err(x),
@@ -1543,19 +1548,14 @@ impl Bitmap {
         Bitmap.PUNC_TILDE
     ];
 
-    def from_char(c: Char): Bitmap {
-        // let sparse = 2 as Char;
-        // let static SPARSE_BLOCK_CHAR: Char = sparse;
-        // let solid = 1 as Char;
-        // let static SOLID_BLOCK_CHAR: Char = solid;
-        if c == 2 as Char {
+    fun from_char(c: Char): Bitmap {
+        if c == (2 as Char) {
             return Bitmap.SPARSE_BLOCK;
         }
-        if c == 1 as Char {
+        if c == (1 as Char) {
             return Bitmap.SOLID_BLOCK;
         }
         match c {
-
             'A' => Bitmap.UPPER_A,
             'B' => Bitmap.UPPER_B,
             'C' => Bitmap.UPPER_C,
@@ -1655,21 +1655,21 @@ impl Bitmap {
         }
     }
 
-    def empty(): Bitmap {
+    fun empty(): Bitmap {
         return { pixels = [[False] * BITMAP_WIDTH] * BITMAP_HEIGHT };
     }
 
-    def width(self: &Bitmap): Int {
+    fun width(self: &Bitmap): Int {
         return BITMAP_WIDTH;
     }
 
-    def height(self: &Bitmap): Int {
+    fun height(self: &Bitmap): Int {
         return BITMAP_HEIGHT;
     }
 
-    def print(self: &Bitmap) {
-        for let mut y=0; y < self.height(); y+=1 {
-            for let mut x=0; x < self.width(); x+=1 {
+    fun print(self: &Bitmap) {
+        for let mut y=0; y < self.height(); y+=1; {
+            for let mut x=0; x < self.width(); x+=1; {
                 if self.pixels[y][x] {
                     print("*");
                 } else {
@@ -1680,16 +1680,16 @@ impl Bitmap {
         }
     }
 
-    def print_bordered(self: &Bitmap) {
+    fun print_bordered(self: &Bitmap) {
         print("+");
-        for let mut x=0; x < self.width(); x+=1 {
+        for let mut x=0; x < self.width(); x+=1; {
             print("-");
         }
         println("+");
 
-        for let mut y=0; y < self.height(); y+=1 {
+        for let mut y=0; y < self.height(); y+=1; {
             print("|");
-            for let mut x=0; x < self.width(); x+=1 {
+            for let mut x=0; x < self.width(); x+=1; {
                 if self.pixels[y][x] {
                     print("*");
                 } else {
@@ -1700,7 +1700,7 @@ impl Bitmap {
         }
 
         print("+");
-        for let mut x=0; x < self.width(); x+=1 {
+        for let mut x=0; x < self.width(); x+=1; {
             print("-");
         }
         println("+");
@@ -1727,31 +1727,31 @@ impl Color {
     const MAGENTA = { r = 255, g = 0, b = 255, a = 255 };
     const TRANSPARENT = { r = 0, g = 0, b = 0, a = 0 };
 
-    def from_rgb(r: Int, g: Int, b: Int): Color {
+    fun from_rgb(r: Int, g: Int, b: Int): Color {
         return { r = r, g = g, b = b, a = 255 };
     }
 
-    def from_rgb_f(r: Float, g: Float, b: Float): Color {
+    fun from_rgb_f(r: Float, g: Float, b: Float): Color {
         // println("r = ", r);
         // println("g = ", g);
         // println("b = ", b);
         return { r = (r * 255) as Int, g = (g * 255) as Int, b = (b * 255) as Int, a = 255 };
     }
 
-    def to_pixel(self: Color): Pixel {
+    fun to_pixel(self: Color): Pixel {
         return (self.r, self.g, self.b, self.a);
     }
 
-    def from_pixel(pixel: Pixel): Color {
+    fun from_pixel(pixel: Pixel): Color {
         return { r = pixel.0, g = pixel.1, b = pixel.2, a = pixel.3 };
     }
 
-    def to_float(self: &Color): (Float, Float, Float) {
+    fun to_float(self: &Color): (Float, Float, Float) {
         return ((self.r as Float) / 255.0, (self.g as Float) / 255.0, (self.b as Float) / 255.0);
     }
 
     // Create a color from hue, saturation, and value.
-    def from_hsv(mut h: Float, s: Float, v: Float): Color {
+    fun from_hsv(mut h: Float, s: Float, v: Float): Color {
         if s > 0.0 {
             if h > 0.99999 {
                 h = 0.0;
@@ -1765,13 +1765,13 @@ impl Color {
 
             if i == 0 {
                 return { r = v, g = t, b = w, a = 255 };
-            } elif i == 1 {
+            } else if i == 1 {
                 return { r = q, g = v, b = w, a = 255 };
-            } elif i == 2 {
+            } else if i == 2 {
                 return { r = w, g = v, b = t, a = 255 };
-            } elif i == 3 {
+            } else if i == 3 {
                 return { r = w, g = q, b = v, a = 255 };
-            } elif i == 4 {
+            } else if i == 4 {
                 return { r = t, g = w, b = v, a = 255 };
             } else {
                 return { r = v, g = w, b = q, a = 255 };
@@ -1805,17 +1805,17 @@ struct Rectangle {
 }
 
 impl Rectangle {
-    def make(x: Int, y: Int, width: Int, height: Int): Rectangle {
+    fun make(x: Int, y: Int, width: Int, height: Int): Rectangle {
         return { x = x, y = y, width = width, height = height };
     }
 
     // Calculate the area of a rectangle.
-    def area(self: &Rectangle): Int {
+    fun area(self: &Rectangle): Int {
         return self.width * self.height;
     }
 
     // Calculate the perimeter of a rectangle.
-    def perimeter(self: &Rectangle): Int {
+    fun perimeter(self: &Rectangle): Int {
         return 2 * (self.width + self.height);
     }
 }
@@ -1827,7 +1827,7 @@ struct Size {
 }
 
 impl Size {
-    def make(width: Int, height: Int): Size {
+    fun make(width: Int, height: Int): Size {
         return { width = width, height = height };
     }
 }
@@ -1839,7 +1839,7 @@ struct Position {
 }
 
 impl Position {
-    def make(x: Int, y: Int): Position {
+    fun make(x: Int, y: Int): Position {
         return { x = x, y = y };
     }
 }
@@ -1854,27 +1854,27 @@ struct Mouse {
 }
 
 impl Mouse {
-    def make(x: Int, y: Int, left: Bool, right: Bool): Mouse {
+    fun make(x: Int, y: Int, left: Bool, right: Bool): Mouse {
         return { x = x, y = y, left = left, right = right };
     }
 
-    def get_x(self: &Mouse): Int {
+    fun get_x(self: &Mouse): Int {
         return self.x;
     }
 
-    def get_y(self: &Mouse): Int {
+    fun get_y(self: &Mouse): Int {
         return self.y;
     }
 
-    def get_left(self: &Mouse): Bool {
+    fun get_left(self: &Mouse): Bool {
         return self.left;
     }
 
-    def get_right(self: &Mouse): Bool {
+    fun get_right(self: &Mouse): Bool {
         return self.right;
     }
 
-    def read(self: &mut Mouse, screen: &Screen) {
+    fun read(self: &mut Mouse, screen: &Screen) {
         when IS_RISCV {
             let (screen_width, screen_height) = (screen.width(), screen.height());
             match Event.read_tablet() {
@@ -1887,11 +1887,11 @@ impl Mouse {
                         let value = event.get_value();
                         if code == 0 {
                             self.x = value * screen_width / 0x7FFF;
-                        } elif code == 1 {
+                        } else if code == 1 {
                             self.y = value * screen_height / 0x7FFF;
-                        } elif code == 2 {
+                        } else if code == 2 {
                             self.left = value == 1;
-                        } elif code == 3 {
+                        } else if code == 3 {
                             self.right = value == 1;
                         }
                     }
@@ -1908,7 +1908,7 @@ impl Mouse {
 }
 
 
-def min(x: Int, y: Int): Int {
+fun min(x: Int, y: Int): Int {
     if x < y {
         return x;
     } else {
@@ -1916,7 +1916,7 @@ def min(x: Int, y: Int): Int {
     }
 }
 
-def max(x: Int, y: Int): Int {
+fun max(x: Int, y: Int): Int {
     if x > y {
         return x;
     } else {
@@ -1933,30 +1933,30 @@ struct Keyboard {
 }
 
 impl Keyboard {
-    def make(): Keyboard {
+    fun make(): Keyboard {
         return { buf = calloc<Char>(1024), cursor = 0, len = 0, capacity = 1024, changed_since_last_read = False };
     }
 
-    def has_changed(self: &mut Keyboard): Bool {
+    fun has_changed(self: &mut Keyboard): Bool {
         let result = self.changed_since_last_read;
         self.changed_since_last_read = False;
         return result;
     }
 
-    def backspace(self: &mut Keyboard) {
+    fun backspace(self: &mut Keyboard) {
         // Delete the character before the cursor.
         if self.cursor > 0 {
             self.changed_since_last_read = True;
             self.cursor -= 1;
             self.len -= 1;
-            for let mut i = self.cursor; i < self.len; i += 1 {
+            for let mut i = self.cursor; i < self.len; i += 1; {
                 self.buf[i] = self.buf[i + 1];
             }
             self.buf[self.len] = '\0';
         }
     }
 
-    def push(self: &mut Keyboard, c: Char) {
+    fun push(self: &mut Keyboard, c: Char) {
         // Push a character onto the end of the buffer.
         if self.len < self.capacity {
             self.changed_since_last_read = True;
@@ -1966,7 +1966,7 @@ impl Keyboard {
         }
     }
 
-    def read(self: &mut Keyboard) {
+    fun read(self: &mut Keyboard) {
         when IS_RISCV {
             match Event.read_keyboard() {
                 of Some(event) => {
@@ -1980,14 +1980,14 @@ impl Keyboard {
                     if key == '\b' {
                         // println("Backspace");
                         self.backspace();
-                    } elif key == '\0' {
+                    } else if key == '\0' {
                         // Try to get the arrow keys.
                         let code = event.get_code();
                         if code == 106 {
                             // println("Right arrow");
                             // Right arrow.
                             self.cursor += 1;
-                        } elif code == 105 {
+                        } else if code == 105 {
                             // println("Left arrow");
                             // Left arrow.
                             self.cursor -= 1;
@@ -2018,16 +2018,16 @@ impl Keyboard {
         self.cursor = max(self.cursor, 0);
     }
 
-    def clear(self: &mut Keyboard) {
+    fun clear(self: &mut Keyboard) {
         self.changed_since_last_read = True;
-        for let mut i=0; i<self.capacity; i+=1 {
+        for let mut i=0; i<self.capacity; i+=1; {
             self.buf[i] = '\0';
         }
         self.cursor = 0;
         self.len = 0;
     }
 
-    def read_line(self: &mut Keyboard): Option<&Char> {
+    fun read_line(self: &mut Keyboard): Option<&Char> {
         self.read();
         if self.len <= 0 {
             // println("Buf: ", self.buf);
@@ -2045,48 +2045,48 @@ impl Keyboard {
         }
     }
 
-    def drop(self: &mut Keyboard) {
+    fun drop(self: &mut Keyboard) {
         free(self.buf);
     }
 }
 
 
-def memcopy<T>(dst: &mut T, src: &T, elems: Int) {
+fun memcopy<T>(dst: &mut T, src: &T, elems: Int) {
     let size = elems * sizeof<T>();
     let dst_ptr = dst as &mut Cell;
     let src_ptr = src as &Cell;
     when IS_RISCV {
         // Do a memcopy using the RISC-V assembly instruction.
-        extern def memcpy(dst: &mut Cell, src: &Cell, size: Int);
+        extern fun memcpy(dst: &mut Cell, src: &Cell, size: Int);
         memcpy(dst_ptr, src_ptr, size);
     } else {
-        for let mut i=0; i<size; i+=1 {
+        for let mut i=0; i<size; i+=1; {
             dst_ptr[i] = src_ptr[i];
         }
     }
 }
 
-def calloc<T>(elems: Int): &mut T {
+fun calloc<T>(elems: Int): &mut T {
     println("Allocating ", elems, " elements of size ", sizeof<T>(), " cells.");
-    extern def used_memory(): Int;
-    extern def remaining_memory(): Int;
+    extern fun used_memory(): Int;
+    extern fun remaining_memory(): Int;
     // println("Used memory: ", used_memory());
     // println("Remaining memory: ", remaining_memory());
 
     let size = elems * sizeof<T>();
     let result = alloc(size) as &mut T;
     let cell_ptr = result as &mut Cell;
-    for let mut i=0; i<size; i+=1 {
+    for let mut i=0; i<size; i+=1; {
         cell_ptr[i] = 0;
     }
     return result;
 }
 
-def realloc<T>(ptr: &mut T, elems: Int): &mut T {
+fun realloc<T>(ptr: &mut T, elems: Int): &mut T {
     // Reallocate the given pointer to the given number of elements.
     println("Reallocating ", elems, " elements of size ", sizeof<T>(), " cells.");
-    extern def used_memory(): Int;
-    extern def remaining_memory(): Int;
+    extern fun used_memory(): Int;
+    extern fun remaining_memory(): Int;
 
     let result = calloc<T>(elems);
     memcopy<T>(result, ptr, elems);
@@ -2106,38 +2106,38 @@ struct Screen {
 }
 
 impl Screen {
-    def make(mut rectangle: Rectangle, x_scale: Int, y_scale: Int): Screen {
+    fun make(mut rectangle: Rectangle, x_scale: Int, y_scale: Int): Screen {
         rectangle.width /= x_scale;
         rectangle.height /= y_scale;
         let pixels = calloc<Pixel>(rectangle.area());
         return { rectangle = rectangle, pixels = pixels, x_scale = x_scale, y_scale = y_scale, mouse = Mouse.make(0, 0, False, False), keyboard = Keyboard.make(), has_changed = True, has_flushed = False };
     }
 
-    def make_fullscreen(x_scale: Int, y_scale: Int): Screen {
-        extern def screen_get_dims(): (Int, Int);
+    fun make_fullscreen(x_scale: Int, y_scale: Int): Screen {
+        extern fun screen_get_dims(): (Int, Int);
         let (width, height) = screen_get_dims();
         let rectangle = Rectangle.make(0, 0, width, height);
         return Screen.make(rectangle, x_scale, y_scale);
     }
     
-    def get_mouse(self: &Screen): Mouse {
+    fun get_mouse(self: &Screen): Mouse {
         return self.mouse;
     }
 
-    def read_inputs(self: &mut Screen) {
+    fun read_inputs(self: &mut Screen) {
         self.mouse.read(self);
         self.keyboard.read();
     }
 
-    def get_mouse_pos(self: &Screen): (Int, Int) {
+    fun get_mouse_pos(self: &Screen): (Int, Int) {
         return (min(max(self.mouse.x / self.x_scale, 0), self.width()),
                 min(max(self.mouse.y / self.y_scale, 0), self.height()));
     }
 
-    def read_line(self: &mut Screen, dst: &mut Char): Bool {
+    fun read_line(self: &mut Screen, dst: &mut Char): Bool {
         match self.keyboard.read_line() {
             of Some(line) => {
-                for let mut i=0; line[i] != '\0' && i < self.keyboard.len; i+=1 {
+                for let mut i=0; line[i] != '\0' && i < self.keyboard.len; i+=1; {
                     dst[i] = line[i];
                 }
                 dst[self.keyboard.len] = '\0';
@@ -2150,17 +2150,17 @@ impl Screen {
         }
     }
 
-    def write_str(self: &mut Screen, text: &Char, color: Color, bg: Color, base_x: Int, base_y: Int): (Int, Int) {
+    fun write_str(self: &mut Screen, text: &Char, color: Color, bg: Color, base_x: Int, base_y: Int): (Int, Int) {
         let mut x = base_x;
         let mut y = base_y;
         let mut c = '\0';
-        for let mut i=0; text[i] != '\0' && y <= self.height(); i+=1 {
+        for let mut i=0; text[i] != '\0' && y <= self.height(); i+=1; {
             c = text[i];
 
             if c == '\n' {
                 y += Bitmap.HEIGHT;
                 x = base_x;
-            } elif c == '\r' {
+            } else if c == '\r' {
                 x = base_x;
             } else {
                 let bitmap = Bitmap.from_char(c);
@@ -2176,21 +2176,21 @@ impl Screen {
         return (x, y);
     }
 
-    def width(self: &Screen): Int {
+    fun width(self: &Screen): Int {
         return self.rectangle.width;
     }
 
-    def height(self: &Screen): Int {
+    fun height(self: &Screen): Int {
         return self.rectangle.height;
     }
 
-    def area(self: &Screen): Int {
+    fun area(self: &Screen): Int {
         return self.rectangle.area();
     }
 
-    def set(self: &mut Screen, x: Int, y: Int, color: Color) {
-        if x * y > self.area() {
-            println("Error: set() called with out of bounds coordinates.");
+    fun set(self: &mut Screen, x: Int, y: Int, color: Color) {
+        if (x * y) > self.area() {
+            println("Error: set() called with out of bounds coordinates: ", x, ", ", y, " color=", color);
             return ();
         }
         
@@ -2203,8 +2203,8 @@ impl Screen {
         }
     }
 
-    def get(self: &Screen, x: Int, y: Int): Pixel {
-        if x * y > self.area() {
+    fun get(self: &Screen, x: Int, y: Int): Pixel {
+        if (x * y) > self.area() {
             println("Error: get() called with out of bounds coordinates.");
             return Color.from_rgb(0, 0, 0).to_pixel();
         }
@@ -2212,16 +2212,17 @@ impl Screen {
         return self.pixels[i];
     }
 
-    def draw(self: &mut Screen) {
+    fun draw(self: &mut Screen) {
+        // println(*self);
         // println("Drawing...");
         self.draw_some(self.rectangle);
     }
 
-    def draw_some(self: &mut Screen, rect: Rectangle) {
-        // println("Drawing...");
+    fun draw_some(self: &mut Screen, rect: Rectangle) {
+        println("Drawing...");
         when IS_RISCV {
             if self.has_changed {
-                extern def screen_draw_rect(pixels: &mut Pixel, rect: &(Int, Int, Int, Int), x_scale: Int, y_scale: Int): Int;
+                extern fun screen_draw_rect(pixels: &mut Pixel, rect: &(Int, Int, Int, Int), x_scale: Int, y_scale: Int): Int;
                 let tup = (rect.x * self.x_scale, rect.y * self.y_scale, rect.width, rect.height);
                 println("Drawing rect: ", tup);
                 let result = screen_draw_rect(self.pixels, &tup, self.x_scale, self.y_scale);
@@ -2235,15 +2236,15 @@ impl Screen {
         }
     }
 
-    def flush(self: &mut Screen) {
+    fun flush(self: &mut Screen) {
         self.flush_some(self.rectangle);
     }
 
-    def flush_some(self: &mut Screen, rect: Rectangle) {
-        // println("Flushing...");
+    fun flush_some(self: &mut Screen, rect: Rectangle) {
+        println("Flushing...");
         when IS_RISCV {
             if !(self.has_flushed) || self.has_changed {
-                extern def screen_flush(rect: &(Int, Int, Int, Int));
+                extern fun screen_flush(rect: &(Int, Int, Int, Int));
                 let tup = (rect.x * self.x_scale, rect.y  * self.y_scale, rect.width * self.x_scale, rect.height * self.y_scale);
                 println("Flushing rect: ", tup);
                 screen_flush(&tup);
@@ -2255,9 +2256,9 @@ impl Screen {
         }
     }
 
-    def set_bitmap(self: &mut Screen, bitmap: &Bitmap, x: Int, y: Int, color: Color, background: Color) {
-        for let mut row = 0; row < bitmap.height(); row += 1 {
-            for let mut col = 0; col < bitmap.width(); col += 1 {
+    fun set_bitmap(self: &mut Screen, bitmap: &Bitmap, x: Int, y: Int, color: Color, background: Color) {
+        for let mut row = 0; row < bitmap.height(); row += 1; {
+            for let mut col = 0; col < bitmap.width(); col += 1; {
                 if bitmap.pixels[row][col] {
                     self.set(x + col, y + row, color);
                 } else {
@@ -2267,13 +2268,14 @@ impl Screen {
         }
     }
 
-    def print(self: &Screen) {
+    fun print(self: &Screen) {
+        println("Printing screen...");
         if self.has_changed {
             let ESC = 0x1b as Char;
 
-            for let mut row = 0; row < self.height(); row += 1 {
-                for let mut col = 0; col < self.width(); col += 1 {
-
+            for let mut row = 0; row < self.height(); row += 1; {
+                for let mut col = 0; col < self.width(); col += 1; {
+                    // println(row, col);
                     // Move the cursor to the correct position.
                     print(ESC, "[", row, ";", col, "H");
 
@@ -2294,22 +2296,22 @@ impl Screen {
         }
     }
 
-    def drop(self: &mut Screen) {
+    fun drop(self: &mut Screen) {
         self.keyboard.drop();
         free(self.pixels);
     }
 
-    def clear(self: &mut Screen, color: Color) {
-        for let mut row = 0; row < self.height(); row += 1 {
-            for let mut col = 0; col < self.width(); col += 1 {
+    fun clear(self: &mut Screen, color: Color) {
+        for let mut row = 0; row < self.height(); row += 1; {
+            for let mut col = 0; col < self.width(); col += 1; {
                 self.set(col, row, color);
             }
         }
     }
 
-    def clear_some(self: &mut Screen, rect: Rectangle, color: Color) {
-        for let mut row = rect.y; row < rect.y + rect.height; row += 1 {
-            for let mut col = rect.x; col < rect.x + rect.width; col += 1 {
+    fun clear_some(self: &mut Screen, rect: Rectangle, color: Color) {
+        for let mut row = rect.y; row < rect.y + rect.height; row += 1; {
+            for let mut col = rect.x; col < rect.x + rect.width; col += 1; {
                 self.set(col, row, color);
             }
         }
@@ -2320,8 +2322,8 @@ type Event = (Int, Int, Int);
 let static mut KEYBOARD_SHIFT: Bool = False;
 
 impl Event {
-    def read_keyboard(): Option<Event> {
-        extern def get_keyboard_event(): Event;
+    fun read_keyboard(): Option<Event> {
+        extern fun get_keyboard_event(): Event;
         let event = get_keyboard_event();
 
         if event.get_type() == 1 {
@@ -2332,12 +2334,12 @@ impl Event {
         }
     }
 
-    def read_tablet(): Option<Event> {
-        extern def get_table_event(): Event;
+    fun read_tablet(): Option<Event> {
+        extern fun get_table_event(): Event;
         let event = get_table_event();
         if event.get_type() == 1 && (event.get_code() == 272 || event.get_code() == 273) {
             return Option<Event> of Some(event);
-        } elif event.get_type() == 3 {
+        } else if event.get_type() == 3 {
             return Option<Event> of Some(event);
         } else {
             // println("Error: read_tablet() called but no tablet event was available (event=", event, ").");
@@ -2345,15 +2347,15 @@ impl Event {
         }
     }
 
-    def get_type(self: &Event): Int {
+    fun get_type(self: &Event): Int {
         return self.0;
     }
 
-    def get_code(self: &Event): Int {
+    fun get_code(self: &Event): Int {
         return self.1;
     }
 
-    def get_value(self: &Event): Int {
+    fun get_value(self: &Event): Int {
         return self.2;
     }
 
@@ -2415,12 +2417,12 @@ impl Event {
         '('
     ];
 
-    def num_keys(): Int {
+    fun num_keys(): Int {
         return sizeof(Event.KEYS) / sizeof(Event.KEYS.A);
     }
 
-    def get_key(self: &Event): Char {
-        def code_to_key(code: Int): Char {
+    fun get_key(self: &Event): Char {
+        fun code_to_key(code: Int): Char {
             let mut ret = '\0';
             
             ret = match code {
@@ -2481,7 +2483,7 @@ impl Event {
                     println("Converting to uppercase.");
                     ret = (ret as Int - 32) as Char;
                     println("ret = ", ret);
-                } elif ret as Int >= '0' as Int && ret as Int <= '9' as Int {
+                } else if ret as Int >= '0' as Int && ret as Int <= '9' as Int {
                     let num_shift_keys = Event.NUM_SHIFT_KEYS;
                     println("Converting to shifted number.");
                     ret = num_shift_keys[ret as Int - '0' as Int];
@@ -2494,7 +2496,7 @@ impl Event {
         return code_to_key(self.get_code());
     }
 
-    def print(self: &Event) {
+    fun print(self: &Event) {
         let ty = self.get_type();
         let code = self.get_code();
         let value = self.get_value();
@@ -2502,9 +2504,9 @@ impl Event {
     }
 }
 
-def count_lines(s: &Char): Int {
+fun count_lines(s: &Char): Int {
     let mut count = 0;
-    for let mut i=0; s[i] != '\0'; i+=1 {
+    for let mut i=0; s[i] != '\0'; i+=1; {
         if s[i] == '\n' {
             count += 1;
         }
@@ -2512,25 +2514,25 @@ def count_lines(s: &Char): Int {
     return count;
 }
 
-def strlen(s: &Char): Int {
+fun strlen(s: &Char): Int {
     when IS_RISCV {
-        extern def strlen(s: &Char): Int;
+        extern fun strlen(s: &Char): Int;
         return strlen(s);
     } else {
         let mut i = 0;
-        for (); s[i] != '\0'; i += 1 {}
+        for (); s[i] != '\0'; i += 1; {}
         return i;
     }
 }
 
-def strcomp(s1: &Char, s2: &Char): Int {
+fun strcomp(s1: &Char, s2: &Char): Int {
     when IS_RISCV {
-        extern def strcmp(s1: &Char, s2: &Char, len: Int): Int;
+        extern fun strcmp(s1: &Char, s2: &Char, len: Int): Int;
         let len = max(strlen(s1), strlen(s2));
         return strcmp(s1, s2, len);
     } else {
         let mut i = 0;
-        for (); s1[i] != '\0' && s2[i] != '\0' && s1[i] == s2[i]; i += 1 {}
+        for (); s1[i] != '\0' && s2[i] != '\0' && s1[i] == s2[i]; i += 1; {}
         return s1[i] as Int - s2[i] as Int;
     }
 }
@@ -2538,23 +2540,23 @@ def strcomp(s1: &Char, s2: &Char): Int {
 type Symbol = [Char * 64];
 
 impl Symbol {
-    def make(): Symbol {
+    fun make(): Symbol {
         return ['\0'] * sizeof<Symbol>();
     }
 
-    def is_empty(self: &Symbol): Bool {
+    fun is_empty(self: &Symbol): Bool {
         return self.len() == 0;
     }
 
-    def eq(self: &Symbol, other: &Symbol): Bool {
+    fun eq(self: &Symbol, other: &Symbol): Bool {
         return strcomp(self.str(), other.str()) == 0;
     }
 
-    def from_str(s: &Char): Symbol {
+    fun from_str(s: &Char): Symbol {
         let mut result = Symbol.make();
         let (mut i, mut j) = (0, 0);
         let mut last_was_slash = False;
-        for (); i < sizeof<Symbol>() - 1 && s[i] != '\0'; i += 1 {
+        for (); i < sizeof<Symbol>() - 1 && s[i] != '\0'; i += 1; {
             if s[i] == ' ' || s[i] == '\n' || s[i] == '\r' || s[i] == '\t' {
                 // Skip whitespace.
             } else {
@@ -2571,9 +2573,9 @@ impl Symbol {
         return result;
     }
 
-    def begins_with(self: &Symbol, other: &Char): Bool {
+    fun begins_with(self: &Symbol, other: &Char): Bool {
         let str = self.str();
-        for let mut i = 0; str[i] != '\0' && other[i] != '\0'; i += 1 {
+        for let mut i = 0; str[i] != '\0' && other[i] != '\0'; i += 1; {
             if str[i] != other[i] {
                 return False;
             }
@@ -2581,108 +2583,112 @@ impl Symbol {
         return True;
     }
 
-    def remove_front(self: &mut Symbol, n: Int) {
+    fun remove_front(self: &mut Symbol, n: Int) {
         let mut i = 0;
         let str = self.str_mut();
-        for (); i < sizeof<Symbol>() - 1 && str[i] != '\0'; i += 1 {
+        for (); i < sizeof<Symbol>() - 1 && str[i] != '\0'; i += 1; {
             str[i] = str[i + n];
         }
         str[i] = '\0';
     }
 
-    def str(self: &Symbol): &Char {
-        return self as &Char;
+    fun str(self: &Symbol): &Char {
+        return self;
     }
     
-    def str_mut(self: &mut Symbol): &mut Char {
+    fun str_mut(self: &mut Symbol): &mut Char {
         return self as &mut Char;
     }
 
-    def len(self: &Symbol): Int {
+    fun len(self: &Symbol): Int {
         return strlen(self.str());
     }
 
-    def print(self: &Symbol) {
+    fun print(self: &Symbol) {
         print(self.str());
     }
 
-    def println(self: &Symbol) {
+    fun println(self: &Symbol) {
         println(self.str());
     }
 }
 
 type Path = [Char * 128];
 
-let mut root = ['\0'] * sizeof<Path>();
-root[0] = '/';
-let static ROOT: Path = root;
+let static ROOT: Path = {
+    let mut root = ['0'] * sizeof<Path>();
+    root[0] = '/';
+    root
+};
 
-let mut home = ['\0'] * sizeof<Path>();
-home[0] = '/';
-home[1] = 'h';
-home[2] = 'o';
-home[3] = 'm';
-home[4] = 'e';
-home[5] = '/';
-home[6] = 'c';
-home[7] = 'o';
-home[8] = 's';
-home[9] = 'c';
-home[10] = '5';
-home[11] = '6';
-home[12] = '2';
-home[13] = '\0';
-let static HOME: Path = home;
+let static HOME: Path = {
+    let mut home = ['\0'] * sizeof<Path>();
+    home[0] = '/';
+    home[1] = 'h';
+    home[2] = 'o';
+    home[3] = 'm';
+    home[4] = 'e';
+    home[5] = '/';
+    home[6] = 'c';
+    home[7] = 'o';
+    home[8] = 's';
+    home[9] = 'c';
+    home[10] = '5';
+    home[11] = '6';
+    home[12] = '2';
+    home[13] = '\0';
+    home
+};
 
 
 
 impl Path {
-    def make(): Path {
+    fun make(): Path {
         return ['\0'] * sizeof<Path>();
     }
 
-    def root(): &Path {
+    fun root(): &Path {
         return &ROOT;
     }
 
-    def home(): &Path {
+    fun home(): &Path {
         return &HOME;
     }
 
-    def str(self: &Path): &Char {
-        return self as &Char;
+    fun str(self: &Path): &Char {
+        return self;
     }
 
-    def str_mut(self: &mut Path): &mut Char {
+    fun str_mut(self: &mut Path): &mut Char {
         return self as &mut Char;
     }
 
-    def is_root(self: &Path): Bool {
+    fun is_root(self: &Path): Bool {
         return self.str()[0] == '/' && self.str()[1] == '\0';
     }
 
-    def is_home(self: &Path): Bool {
-        return strcomp(self.str(), &"/home/cosc562" as &Char) == 0;
+    fun is_home(self: &Path): Bool {
+        return strcomp(self.str(), &"/home/cosc562") == 0;
     }
 
-    def is_empty(self: &Path): Bool {
+    fun is_empty(self: &Path): Bool {
         return self.str()[0] == '\0';
     }
 
-    def copy_from(self: &mut Path, other: &Path) {
+    fun copy_from(self: &mut Path, other: &Path) {
         let str = self.str_mut();
         let mut i = 0;
-        for (); i < sizeof<Path>() - 1 && other.str()[i] != '\0'; i += 1 {
+        for (); i < sizeof<Path>() - 1 && other.str()[i] != '\0'; i += 1; {
             str[i] = other.str()[i];
         }
         str[i] = '\0';
     }
 
-    def from_str(s: &Char): Path {
+    fun from_str(s: &Char): Path {
         let mut path = Path.make();
         path[0] = '/';
         let (mut i, mut j) = (1, 1);
-        for (); i < sizeof<Path>() - 1 && s[i] != '\0'; i += 1 {
+        for (); i < sizeof<Path>() - 1 && s[i] != '\0'; i += 1; {
             // Skip duplicate slashes, whitespace, and trailing slashes.
             match s[i] {
                 '/' => {
@@ -2709,14 +2715,14 @@ impl Path {
         return path;
     }
 
-    def get_name(self: &Path): &Char {
+    fun get_name(self: &Path): &Char {
         if self.is_root() {
             return &"/";
         }
 
         let str = self.str();
         let mut i = 0;
-        for let mut j = 0; str[j] != '\0'; j += 1 {
+        for let mut j = 0; str[j] != '\0'; j += 1; {
             if str[j] == '/' {
                 i = j + 1;
             }
@@ -2724,10 +2730,10 @@ impl Path {
         return &(str[i]);
     }
 
-    def depth(self: &Path): Int {
+    fun depth(self: &Path): Int {
         let mut depth = 0;
         let str = self.str();
-        for let mut i = 0; str[i] != '\0'; i += 1 {
+        for let mut i = 0; str[i] != '\0'; i += 1; {
             if str[i] == '/' {
                 depth += 1;
             }
@@ -2735,41 +2741,41 @@ impl Path {
         return depth;
     }
 
-    def len(self: &Path): Int {
+    fun len(self: &Path): Int {
         return strlen(self.str());
     }
 
-    def push(self: &mut Path, s: &mut Symbol) {
+    fun push(self: &mut Path, s: &mut Symbol) {
         println("Pushing ", s.str(), " onto ", self.str());
         if s.is_empty() {
             return ();
         }
 
-        if strcomp(s.str(), &"." as &Char) == 0 {
+        if strcomp(s.str(), &".") == 0 {
             return ();
-        } elif s.begins_with(&"./" as &Char) {
+        } else if s.begins_with(&"./") {
             s.remove_front(2);
             self.push(s);
             // self.push(Symbol.from_str(&(s.str()[2])));
             return ();
-        } elif strcomp(s.str(), &".." as &Char) == 0 {
+        } else if strcomp(s.str(), &"..") == 0 {
             // *self = self.get_parent();
             let _ = self.pop();
             return ();
-        } elif s.begins_with(&"../" as &Char) {
+        } else if s.begins_with(&"../") {
             // *self = self.get_parent();
             let _ = self.pop();
             s.remove_front(3);
             self.push(s);
             // self.push(Symbol.from_str(&(s.str()[3])));
             return ();
-        } elif strcomp(s.str(), &"/" as &Char) == 0 {
+        } else if strcomp(s.str(), &"/") == 0 {
             // *self = Path.root();
             let str = self.str_mut();
             str[0] = '/';
             str[1] = '\0';
             return ();
-        } elif s.begins_with(&"/" as &Char) {
+        } else if s.begins_with(&"/") {
             // *self = self.get_parent();
             // *self = Path.root();
             let str = self.str_mut();
@@ -2779,7 +2785,7 @@ impl Path {
             self.push(s);
             // self.push(Symbol.from_str(&(s.str()[3])));
             return ();
-        } elif strcomp(s.str(), &"~" as &Char) == 0 {
+        } else if strcomp(s.str(), &"~") == 0 {
             let str = self.str_mut();
             str[0] = '/';
             str[1] = 'h';
@@ -2796,7 +2802,7 @@ impl Path {
             str[12] = '2';
             str[13] = '\0';
             return ();
-        } elif s.begins_with(&"~/" as &Char) {
+        } else if s.begins_with(&"~/") {
             let str = self.str_mut();
             str[0] = '/';
             str[1] = 'h';
@@ -2822,15 +2828,15 @@ impl Path {
         let mut i = 0;
         let str = self.str_mut();
         // Add a slash if necessary.
-        for i=0; str[i] != '\0'; i += 1 {}
-        if i > 0 && str[i - 1] != '/' {
+        for i=0; str[i] != '\0'; i += 1; {}
+        if i > 0 && (str[i - 1] != '/') {
             str[i] = '/';
             i += 1;
         }
         println("i=", i);
         let src_str = s.str();
         let mut is_done = False;
-        for let mut j = 0; j < sizeof<Symbol>() - 1 && src_str[j] != '\0' && !is_done; j += 1 {
+        for let mut j = 0; j < sizeof<Symbol>() - 1 && src_str[j] != '\0' && !is_done; j += 1; {
             println("j=", j, ", s[j]=", src_str[j]);
             if src_str[j] == '/' {
                 // Recursively push the rest of the path.
@@ -2846,38 +2852,37 @@ impl Path {
         if !is_done {
             str[i] = '\0';
         }
-        // str[i + sizeof<Symbol>() - 1] = '\0';
     }
 
-    def pop(self: &mut Path): Symbol {
+    fun pop(self: &mut Path): Symbol {
         if self.is_root() || self.is_empty() {
             return Symbol.make();
         }
 
         let mut i = 0;
         let str = self.str_mut();
-        for let mut j = 0; str[j] != '\0'; j += 1 {
+        for let mut j = 0; str[j] != '\0'; j += 1; {
             if str[j] == '/' {
                 i = j + 1;
             }
         }
         let mut result = Symbol.make();
-        for let mut j = 0; j < sizeof<Symbol>() - 1; j += 1 {
+        for let mut j = 0; j < sizeof<Symbol>() - 1; j += 1; {
             result[j] = str[i + j];
         }
         result[sizeof<Symbol>() - 1] = '\0';
-        for let mut j = i; j < sizeof<Path>() - 1; j += 1 {
+        for let mut j = i; j < sizeof<Path>() - 1; j += 1; {
             str[j] = '\0';
         }
         
         return result;
     }
 
-    def print(self: &Path) {
+    fun print(self: &Path) {
         print(self.str());
     }
 
-    def println(self: &Path) {
+    fun println(self: &Path) {
         println(self.str());
     }
 }
@@ -2885,11 +2890,11 @@ impl Path {
 type SmolString = [Char * 256];
 
 impl SmolString {
-    def make(): SmolString {
+    fun make(): SmolString {
         return ['\0'] * sizeof<SmolString>();
     }
     
-    def from_int(n: Int): SmolString {
+    fun from_int(n: Int): SmolString {
         let mut result = SmolString.make();
         let mut i = 0;
         let mut j = 0;
@@ -2909,7 +2914,7 @@ impl SmolString {
             digits[i] = 0;
             i += 1;
         }
-        for (); i > 0; i -= 1 {
+        for (); i > 0; i -= 1; {
             result[j] = (digits[i - 1] as Int + '0' as Int) as Char;
             j += 1;
         }
@@ -2917,44 +2922,44 @@ impl SmolString {
         return result;
     }
     
-    def count_lines(self: &SmolString): Int {
+    fun count_lines(self: &SmolString): Int {
         return count_lines(self.str());
     }
 
-    def append(self: &mut SmolString, other: &SmolString) {
+    fun append(self: &mut SmolString, other: &SmolString) {
         self.push_str(other.str());
     }
 
-    def push_str(self: &mut SmolString, s: &Char) {
+    fun push_str(self: &mut SmolString, s: &Char) {
         let len = self.len();
         let str = self.str_mut();
         let mut i = 0;
-        for (); i + len < sizeof<SmolString>() - 1 && s[i] != '\0'; i += 1 {
+        for (); i + len < sizeof<SmolString>() - 1 && s[i] != '\0'; i += 1; {
             str[len + i] = s[i];
         }
         // Add a null terminator.
         str[len + i] = '\0';
     }
 
-    def push_int(self: &mut SmolString, n: Int) {
+    fun push_int(self: &mut SmolString, n: Int) {
         let s = SmolString.from_int(n);
         self.push_str(s.str());
     }
 
-    def from_str(s: &Char): SmolString {
+    fun from_str(s: &Char): SmolString {
         let mut result = SmolString.make();
-        for let mut i = 0; i < sizeof<SmolString>() - 1 && s[i] != '\0'; i += 1 {
+        for let mut i = 0; i < sizeof<SmolString>() - 1 && s[i] != '\0'; i += 1; {
             result[i] = s[i];
         }
         return result;
     }
 
-    def nth_symbol(self: &SmolString, mut n: Int): Option<Symbol> {
+    fun nth_symbol(self: &SmolString, mut n: Int): Option<Symbol> {
         let mut i = 0;
         let mut j = 0;
         let mut result = Symbol.make();
         let str = self.str();
-        for (); str[i] != '\0'; i += 1 {
+        for (); str[i] != '\0'; i += 1; {
             if str[i] == ' ' || str[i] == '\n' || str[i] == '\r' || str[i] == '\t' {
                 // Skip whitespace.
                 if j > 0 {
@@ -2981,13 +2986,13 @@ impl SmolString {
         return Option<Symbol> of Nothing;
     }
 
-    def trim_start(self: &mut SmolString, pattern: &Char) {
+    fun trim_start(self: &mut SmolString, pattern: &Char) {
         let mut i = 0;
         let mut j = 0;
         let mut result = SmolString.make();
         let str = self.str();
-        for (); str[i] != '\0' && str[i] == pattern[i]; i += 1 {}
-        for (); str[i] != '\0'; i += 1 {
+        for (); str[i] != '\0' && str[i] == pattern[i]; i += 1; {}
+        for (); str[i] != '\0'; i += 1; {
             result[j] = str[i];
             j += 1;
         }
@@ -2996,13 +3001,13 @@ impl SmolString {
         memcopy<SmolString>(self, &result, sizeof<SmolString>());
     }
 
-    def trim_whitespace(self: &mut SmolString) {
+    fun trim_whitespace(self: &mut SmolString) {
         let mut i = 0;
         let str = self.str();
-        for (); str[i] != '\0' && (str[i] == ' ' || str[i] == '\n' || str[i] == '\r' || str[i] == '\t'); i += 1 {}
+        for (); str[i] != '\0' && (str[i] == ' ' || str[i] == '\n' || str[i] == '\r' || str[i] == '\t'); i += 1; {}
         let mut j = 0;
         let mut result = SmolString.make();
-        for (); str[i] != '\0'; i += 1 {
+        for (); str[i] != '\0'; i += 1; {
             result[j] = str[i];
             j += 1;
         }
@@ -3010,23 +3015,23 @@ impl SmolString {
         memcopy<SmolString>(self, &result, sizeof<SmolString>());
     }
 
-    def str(self: &SmolString): &Char {
-        return self as &Char;
+    fun str(self: &SmolString): &Char {
+        return self;
     }
 
-    def str_mut(self: &mut SmolString): &mut Char {
+    fun str_mut(self: &mut SmolString): &mut Char {
         return self as &mut Char;
     }
 
-    def len(self: &SmolString): Int {
+    fun len(self: &SmolString): Int {
         return strlen(self.str());
     }
 
-    def print(self: &SmolString) {
+    fun print(self: &SmolString) {
         print(self.str());
     }
 
-    def println(self: &SmolString) {
+    fun println(self: &SmolString) {
         println(self.str());
     }
 }
@@ -3038,32 +3043,32 @@ enum FileMode {
 }
 
 struct OS {
-    list_dir: (&mut Env, &Path) -> Result<(), Error>,
-    spawn: (&mut Env, &Path) -> Result<Int, Error>,
-    open: (&mut Env, &Path, FileMode) -> Result<&mut File, Error>,
-    create_dir: (&mut Env, &Path) -> Result<(), Error>,
-    is_dir: (&mut Env, &Path) -> Result<Bool, Error>,
-    is_file: (&mut Env, &Path) -> Result<Bool, Error>,
-    list_pid: (&mut Env) -> Result<(), Error>,
-    list_mem: (&mut Env) -> Result<(), Error>,
-    print_env: (&mut Env) -> Result<(), Error>,
-    print_dir: (&mut Env) -> Result<(), Error>,
-    change_dir: (&mut Env, &Path) -> Result<(), Error>,
-    read: (&mut Env, &Path) -> Result<SmolString, Error>,
-    write: (&mut Env, &Path) -> Result<(), Error>,
-    append: (&mut Env, &Path) -> Result<(), Error>,
-    close: (&mut Env, &mut File) -> Result<(), Error>,
-    copy: (&mut Env, &Path, &Path) -> Result<(), Error>,
-    remove: (&mut Env, &Path) -> Result<(), Error>,
-    make_dir: (&mut Env, &Path) -> Result<(), Error>,
-    help: (&mut Env, &Symbol) -> Result<(), Error>,
-    exit: (&mut Env) -> Result<(), Error>
+    list_dir: fun(&mut Env, &Path) -> Result<(), Error>,
+    spawn: fun(&mut Env, &Path) -> Result<Int, Error>,
+    open: fun(&mut Env, &Path, FileMode) -> Result<&mut File, Error>,
+    create_dir: fun(&mut Env, &Path) -> Result<(), Error>,
+    is_dir: fun(&mut Env, &Path) -> Result<Bool, Error>,
+    is_file: fun(&mut Env, &Path) -> Result<Bool, Error>,
+    list_pid: fun(&mut Env) -> Result<(), Error>,
+    list_mem: fun(&mut Env) -> Result<(), Error>,
+    print_env: fun(&mut Env) -> Result<(), Error>,
+    print_dir: fun(&mut Env) -> Result<(), Error>,
+    change_dir: fun(&mut Env, &Path) -> Result<(), Error>,
+    read: fun(&mut Env, &Path) -> Result<SmolString, Error>,
+    write: fun(&mut Env, &Path) -> Result<(), Error>,
+    append: fun(&mut Env, &Path) -> Result<(), Error>,
+    close: fun(&mut Env, &mut File) -> Result<(), Error>,
+    copy: fun(&mut Env, &Path, &Path) -> Result<(), Error>,
+    remove: fun(&mut Env, &Path) -> Result<(), Error>,
+    make_dir: fun(&mut Env, &Path) -> Result<(), Error>,
+    help: fun(&mut Env, &Symbol) -> Result<(), Error>,
+    exit: fun(&mut Env) -> Result<(), Error>
 }
 
 impl OS {
-    def make(): OS {
+    fun make(): OS {
         when IS_RISCV {
-            def open(env: &mut Env, path: &Path, mode: FileMode): Result<&mut File, Error> {
+            fun open(env: &mut Env, path: &Path, mode: FileMode): Result<&mut File, Error> {
                 // println("Opening file ", path, "...");
                 env.echo_colored(&"Opening ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3071,19 +3076,19 @@ impl OS {
                 return Result<&mut File, Error> of Ok(new File.make(*path, FileMode of Read));
             }
 
-            def spawn(env: &mut Env, path: &Path): Result<Int, Error> {
+            fun spawn(env: &mut Env, path: &Path): Result<Int, Error> {
                 // println("Changing directory to ", path, "...");
                 env.echo_colored(&"Spawning ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
                 env.echo_coloredln(&"...", Color.GREEN);
                 
-                extern def path_exists(path: &Char): Bool;
+                extern fun path_exists(path: &Char): Bool;
                 if !(path_exists(path.str())) {
                     env.echo_coloredln(&"Path does not exist!", Color.RED);
                     return Result<Int, Error> of Err(Error of PathNotFound path);
                 }
 
-                extern def spawn_process(path: &Char): Int;
+                extern fun spawn_process(path: &Char): Int;
                 let pid = spawn_process(path.str());
                 if pid < 0 {
                     env.echo_coloredln(&"Failed to spawn process!", Color.RED);
@@ -3093,7 +3098,7 @@ impl OS {
                 return Result<Int, Error> of Ok(pid);
             }
 
-            def create_dir(env: &mut Env, path: &Path): Result<(), Error> {
+            fun create_dir(env: &mut Env, path: &Path): Result<(), Error> {
                 // println("Creating directory ", path, "...");
                 env.echo_colored(&"Creating ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3101,37 +3106,37 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def is_dir(env: &mut Env, path: &Path): Result<Bool, Error> {
+            fun is_dir(env: &mut Env, path: &Path): Result<Bool, Error> {
                 // println("Checking if ", path, " is a directory...");
                 env.echo_colored(&"Checking if", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
                 env.echo_coloredln(&" is dir...", Color.GREEN);
 
-                extern def path_is_dir(path: &Char): Bool;
+                extern fun path_is_dir(path: &Char): Bool;
                 return Result<Bool, Error> of Ok(path_is_dir(path.str()));
             }
 
-            def is_file(env: &mut Env, path: &Path): Result<Bool, Error> {
+            fun is_file(env: &mut Env, path: &Path): Result<Bool, Error> {
                 // println("Checking if ", path, " is a file...");
                 env.echo_colored(&"Checking if ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
                 env.echo_coloredln(&" is file...", Color.GREEN);
 
-                extern def path_is_file(path: &Char): Bool;
+                extern fun path_is_file(path: &Char): Bool;
                 return Result<Bool, Error> of Ok(path_is_file(path.str()));
             }
             
-            def list_dir(env: &mut Env, path: &Path): Result<(), Error> {
+            fun list_dir(env: &mut Env, path: &Path): Result<(), Error> {
                 env.disable_flush();
                 env.echo_colored(&"Listing ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
                 env.echo_coloredln(&"...", Color.GREEN);
                 
-                extern def path_list_dir(path: &Char, buf: &mut Char, buf_len: Int, use_full_path: Bool): Int;
+                extern fun path_list_dir(path: &Char, buf: &mut Char, buf_len: Int, use_full_path: Bool): Int;
                 let mut buf = ['\0'] * 1024;
 
                 let use_full_path = False;
-                let ret = path_list_dir(path.str(), &mut buf as &mut Char, sizeof(buf), use_full_path);
+                let ret = path_list_dir(path.str(), (&mut buf) as &mut Char, sizeof(buf), use_full_path);
                 if (ret < 0) {
                     return Result<(), Error> of Err(Error of PathNotFound path);
                 }
@@ -3142,37 +3147,37 @@ impl OS {
             }
 
 
-            def list_pid(env: &mut Env): Result<(), Error> {
+            fun list_pid(env: &mut Env): Result<(), Error> {
                 // println("Listing PID...");
                 env.echo_coloredln(&"Listing PID...", Color.GREEN);
                 return Result<(), Error> of Ok(());
             }
 
-            def list_mem(env: &mut Env): Result<(), Error> {
+            fun list_mem(env: &mut Env): Result<(), Error> {
                 // println("Listing memory...");
                 env.echo_coloredln(&"Listing memory...", Color.GREEN);
                 return Result<(), Error> of Ok(());
             }
 
-            def print_env(env: &mut Env): Result<(), Error> {
+            fun print_env(env: &mut Env): Result<(), Error> {
                 println("Printing environment...");
                 env.echo_coloredln(&"Printing environment...", Color.GREEN);
                 return Result<(), Error> of Ok(());
             }
 
-            def print_dir(env: &mut Env): Result<(), Error> {
+            fun print_dir(env: &mut Env): Result<(), Error> {
                 println("Printing directory...");
                 env.echo_coloredln(&"Printing directory...", Color.GREEN);
                 return Result<(), Error> of Ok(());
             }
 
-            def change_dir(env: &mut Env, path: &Path): Result<(), Error> {
+            fun change_dir(env: &mut Env, path: &Path): Result<(), Error> {
                 // println("Changing directory to ", path, "...");
                 env.echo_colored(&"Changing directory to ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
                 env.echo_coloredln(&"...", Color.GREEN);
 
-                extern def path_exists(path: &Char): Bool;
+                extern fun path_exists(path: &Char): Bool;
                 if !(path_exists(path.str())) {
                     env.echo_coloredln(&"Path does not exist!", Color.RED);
                     return Result<(), Error> of Err(Error of PathNotFound path);
@@ -3181,7 +3186,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def read(env: &mut Env, path: &Path): Result<SmolString, Error> {
+            fun read(env: &mut Env, path: &Path): Result<SmolString, Error> {
                 // println("Reading file ", path, "...");
                 env.echo_colored(&"Reading file ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3190,7 +3195,7 @@ impl OS {
                 return Result<SmolString, Error> of Ok(SmolString.make());
             }
 
-            def write(env: &mut Env, path: &Path): Result<(), Error> {
+            fun write(env: &mut Env, path: &Path): Result<(), Error> {
                 // println("Writing to file ", path, "...");
                 env.echo_colored(&"Writing to file ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3198,7 +3203,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def append(env: &mut Env, path: &Path): Result<(), Error> {
+            fun append(env: &mut Env, path: &Path): Result<(), Error> {
                 // println("Appending to file ", path, "...");
                 env.echo_colored(&"Appending to file ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3206,7 +3211,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def close(env: &mut Env, file: &mut File): Result<(), Error> {
+            fun close(env: &mut Env, file: &mut File): Result<(), Error> {
                 // println("Closing file ", path, "...");
                 env.echo_colored(&"Closing file ", Color.GREEN);
                 env.echo_colored(file.get_path().str(), Color.BLUE);
@@ -3215,7 +3220,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def copy(env: &mut Env, src: &Path, dst: &Path): Result<(), Error> {
+            fun copy(env: &mut Env, src: &Path, dst: &Path): Result<(), Error> {
                 // println("Copying file ", src, " to ", dst, "...");
                 env.echo_colored(&"Copying file ", Color.GREEN);
                 env.echo_colored(src.str(), Color.BLUE);
@@ -3226,7 +3231,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def remove(env: &mut Env, path: &Path): Result<(), Error> {
+            fun remove(env: &mut Env, path: &Path): Result<(), Error> {
                 // println("Removing file ", path, "...");
                 env.echo_colored(&"Removing file ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3235,7 +3240,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def make_dir(env: &mut Env, path: &Path): Result<(), Error> {
+            fun make_dir(env: &mut Env, path: &Path): Result<(), Error> {
                 // println("Making directory ", path, "...");
                 env.echo_colored(&"Making directory ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3244,14 +3249,14 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def help(env: &mut Env, path: &Symbol): Result<(), Error> {
+            fun help(env: &mut Env, path: &Symbol): Result<(), Error> {
                 // println("Helping...");
                 env.echo_coloredln(&"Helping...", Color.GREEN);
 
                 return Result<(), Error> of Ok(());
             }
 
-            def exit(env: &mut Env): Result<(), Error> {
+            fun exit(env: &mut Env): Result<(), Error> {
                 // println("Exiting...");
                 env.echo_coloredln(&"Exiting...", Color.GREEN);
 
@@ -3281,7 +3286,7 @@ impl OS {
                 exit = exit
             };
         } else {
-            def list_dir(env: &mut Env, path: &Path): Result<(), Error> {
+            fun list_dir(env: &mut Env, path: &Path): Result<(), Error> {
                 // println("Listing directory ", path, "...");
                 env.echo_colored(&"Listing ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3289,14 +3294,14 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def spawn(env: &mut Env, path: &Path): Result<Int, Error> {
+            fun spawn(env: &mut Env, path: &Path): Result<Int, Error> {
                 env.echo_colored(&"Spawning ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
                 env.echo_coloredln(&"...", Color.GREEN);
                 return Result<Int, Error> of Ok(0);
             }
 
-            def open(env: &mut Env, path: &Path, mode: FileMode): Result<&mut File, Error> {
+            fun open(env: &mut Env, path: &Path, mode: FileMode): Result<&mut File, Error> {
                 // println("Opening file ", path, "...");
                 env.echo_colored(&"Opening ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3304,7 +3309,7 @@ impl OS {
                 return Result<&mut File, Error> of Ok(new File.make(*path, FileMode of Read));
             }
 
-            def create_dir(env: &mut Env, path: &Path): Result<(), Error> {
+            fun create_dir(env: &mut Env, path: &Path): Result<(), Error> {
                 // println("Creating directory ", path, "...");
                 env.echo_colored(&"Creating ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3312,7 +3317,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def is_dir(env: &mut Env, path: &Path): Result<Bool, Error> {
+            fun is_dir(env: &mut Env, path: &Path): Result<Bool, Error> {
                 // println("Checking if ", path, " is a directory...");
                 env.echo_colored(&"Checking if", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3321,7 +3326,7 @@ impl OS {
                 return Result<Bool, Error> of Ok(False);
             }
 
-            def is_file(env: &mut Env, path: &Path): Result<Bool, Error> {
+            fun is_file(env: &mut Env, path: &Path): Result<Bool, Error> {
                 // println("Checking if ", path, " is a file...");
                 env.echo_colored(&"Checking if ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3330,33 +3335,33 @@ impl OS {
                 return Result<Bool, Error> of Ok(True);
             }
 
-            def list_pid(env: &mut Env): Result<(), Error> {
+            fun list_pid(env: &mut Env): Result<(), Error> {
                 // println("Listing PID...");
                 env.echo_coloredln(&"Listing PID...", Color.GREEN);
                 return Result<(), Error> of Ok(());
             }
 
-            def list_mem(env: &mut Env): Result<(), Error> {
+            fun list_mem(env: &mut Env): Result<(), Error> {
                 // println("Listing memory...");
                 env.echo_coloredln(&"Listing memory...", Color.GREEN);
                 return Result<(), Error> of Ok(());
             }
 
-            def print_env(env: &mut Env): Result<(), Error> {
+            fun print_env(env: &mut Env): Result<(), Error> {
                 println("Printing environment...");
                 env.echo_colored(&"Printing environment...", Color.GREEN);
                 env.echo_newline();
                 return Result<(), Error> of Ok(());
             }
 
-            def print_dir(env: &mut Env): Result<(), Error> {
+            fun print_dir(env: &mut Env): Result<(), Error> {
                 println("Printing directory...");
                 env.echo_colored(&"Printing directory...", Color.GREEN);
                 env.echo_newline();
                 return Result<(), Error> of Ok(());
             }
 
-            def change_dir(env: &mut Env, path: &Path): Result<(), Error> {
+            fun change_dir(env: &mut Env, path: &Path): Result<(), Error> {
                 // println("Changing directory to ", path, "...");
                 env.echo_colored(&"Changing directory to ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3365,7 +3370,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def read(env: &mut Env, path: &Path): Result<SmolString, Error> {
+            fun read(env: &mut Env, path: &Path): Result<SmolString, Error> {
                 // println("Reading file ", path, "...");
                 env.echo_colored(&"Reading file ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3374,7 +3379,7 @@ impl OS {
                 return Result<SmolString, Error> of Ok(SmolString.make());
             }
 
-            def write(env: &mut Env, path: &Path): Result<(), Error> {
+            fun write(env: &mut Env, path: &Path): Result<(), Error> {
                 // println("Writing to file ", path, "...");
                 env.echo_colored(&"Writing to file ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3382,7 +3387,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def append(env: &mut Env, path: &Path): Result<(), Error> {
+            fun append(env: &mut Env, path: &Path): Result<(), Error> {
                 // println("Appending to file ", path, "...");
                 env.echo_colored(&"Appending to file ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3390,7 +3395,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def close(env: &mut Env, path: &mut File): Result<(), Error> {
+            fun close(env: &mut Env, path: &mut File): Result<(), Error> {
                 // println("Closing file ", path, "...");
                 env.echo_colored(&"Closing file ", Color.GREEN);
                 env.echo_colored(path.get_path().str(), Color.BLUE);
@@ -3399,7 +3404,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def copy(env: &mut Env, src: &Path, dst: &Path): Result<(), Error> {
+            fun copy(env: &mut Env, src: &Path, dst: &Path): Result<(), Error> {
                 // println("Copying file ", src, " to ", dst, "...");
                 env.echo_colored(&"Copying file ", Color.GREEN);
                 env.echo_colored(src.str(), Color.BLUE);
@@ -3410,7 +3415,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def remove(env: &mut Env, path: &Path): Result<(), Error> {
+            fun remove(env: &mut Env, path: &Path): Result<(), Error> {
                 // println("Removing file ", path, "...");
                 env.echo_colored(&"Removing file ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3420,7 +3425,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def make_dir(env: &mut Env, path: &Path): Result<(), Error> {
+            fun make_dir(env: &mut Env, path: &Path): Result<(), Error> {
                 // println("Making directory ", path, "...");
                 env.echo_colored(&"Making directory ", Color.GREEN);
                 env.echo_colored(path.str(), Color.BLUE);
@@ -3430,7 +3435,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def help(env: &mut Env, path: &Symbol): Result<(), Error> {
+            fun help(env: &mut Env, path: &Symbol): Result<(), Error> {
                 // println("Helping...");
                 env.echo_colored(&"Helping...", Color.GREEN);
                 env.echo_newline();
@@ -3438,7 +3443,7 @@ impl OS {
                 return Result<(), Error> of Ok(());
             }
 
-            def exit(env: &mut Env): Result<(), Error> {
+            fun exit(env: &mut Env): Result<(), Error> {
                 // println("Exiting...");
                 env.echo_colored(&"Exiting...", Color.GREEN);
                 env.echo_newline();
@@ -3479,51 +3484,51 @@ struct File {
 
 
 impl File {
-    def make(path: Path, mode: FileMode): File {
+    fun make(path: Path, mode: FileMode): File {
         return { path = path, mode = mode };
     }
 
-    def open(path: &Path, mode: FileMode, env: &mut Env): Result<&mut File, Error> {
+    fun open(path: &Path, mode: FileMode, env: &mut Env): Result<&mut File, Error> {
         return env.get_os().open(env, path, mode);
     }
 
-    def create_dir(path: &Path, env: &mut Env): Result<(), Error> {
+    fun create_dir(path: &Path, env: &mut Env): Result<(), Error> {
         return env.get_os().create_dir(env, path);
     }
 
-    def list_dir(path: &Path, env: &mut Env): Result<(), Error> {
+    fun list_dir(path: &Path, env: &mut Env): Result<(), Error> {
         return env.get_os().list_dir(env, path);
     }
 
-    def is_dir(self: &File, env: &mut Env): Bool {
+    fun is_dir(self: &File, env: &mut Env): Bool {
         return env.get_os().is_dir(env, &(self.path)).unwrap_or(False);
     }
 
-    def is_file(self: &File, env: &mut Env): Bool {
+    fun is_file(self: &File, env: &mut Env): Bool {
         return env.get_os().is_file(env, &(self.path)).unwrap_or(False);
     }
 
-    def get_path(self: &File): &Path {
+    fun get_path(self: &File): &Path {
         return &(self.path);
     }
 
-    def get_name(self: &File): &Char {
+    fun get_name(self: &File): &Char {
         return self.path.get_name();
     }
 
-    // def get_parent(self: &File): Path {
+    // fun get_parent(self: &File): Path {
     //     return self.path.get_parent();
     // }
 
-    def write(self: &File, text: &Char, env: &mut Env): Result<(), Error> {
+    fun write(self: &File, text: &Char, env: &mut Env): Result<(), Error> {
         return env.get_os().write(env, &(self.path));
     }
 
-    def read(self: &File, env: &mut Env): Result<SmolString, Error> {
+    fun read(self: &File, env: &mut Env): Result<SmolString, Error> {
         return env.get_os().read(env, &(self.path));
     }
 
-    def close(self: &mut File, env: &mut Env): Result<(), Error> {
+    fun close(self: &mut File, env: &mut Env): Result<(), Error> {
         return env.get_os().close(env, self);
     }
 }
@@ -3554,11 +3559,11 @@ struct History {
 }
 
 impl History {
-    def make(): History {
+    fun make(): History {
         return { commands = calloc<Command>(8), length = 0, capacity = 8 };
     }
 
-    def push(self: &mut History, command: Command) {
+    fun push(self: &mut History, command: Command) {
         if self.length >= self.capacity {
             // Grow the array.
             self.capacity *= 2;
@@ -3573,34 +3578,34 @@ impl History {
         }
     }
 
-    def len(self: &History): Int {
+    fun len(self: &History): Int {
         return self.length;
     }
 
-    def get(self: &History, index: Int): Option<&Command> {
+    fun get(self: &History, index: Int): Option<&Command> {
         if index < 0 || index >= self.length {
             return Option<&Command> of Nothing;
         }
         return Option<&Command> of Some(&(self.commands[index]));
     }
 
-    def drop(self: &mut History) {
+    fun drop(self: &mut History) {
         free(self.commands);
     }
 
-    def print(self: &History) {
-        for let mut i = 0; i < self.length; i += 1 {
+    fun print(self: &History) {
+        for let mut i = 0; i < self.length; i += 1; {
             print(i, ": ");
             self.commands[i].println();
         }
     }
 
-    def echo(self: &History, env: &mut Env) {
-        for let mut i = 0; i < self.length; i += 1 {
+    fun echo(self: &History, env: &mut Env) {
+        for let mut i = 0; i < self.length; i += 1; {
             let s = SmolString.from_int(i);
             // print(i, ": ");
             env.echo(s.str());
-            env.echo(&": " as &Char);
+            env.echo(&": ");
             self.commands[i].echo(env);
         }
     }
@@ -3622,41 +3627,41 @@ struct Env {
 }
 
 impl Env {
-    def make(mut screen: Screen): Env {
+    fun make(mut screen: Screen): Env {
         screen.clear(Color.BLACK);
         screen.draw();
         screen.flush();
         return { cwd = *(Path.home()), history = History.make(), os = OS.make(), screen = screen, echo_row = 0, echo_col = 0, prompt_row = 0, prompt_col = 0, flush = True };
     }
 
-    def echo_space(self: &mut Env) {
-        self.echo(&" " as &Char);
+    fun echo_space(self: &mut Env) {
+        self.echo(&" ");
     }
 
-    def echo_newline(self: &mut Env) {
+    fun echo_newline(self: &mut Env) {
         self.echo_col = 0;
-        self.echo(&"\r\n" as &Char);
+        self.echo(&"\r\n");
     }
 
-    def echo_tab(self: &mut Env) {
-        self.echo(&"\t" as &Char);
+    fun echo_tab(self: &mut Env) {
+        self.echo(&"\t");
     }
 
-    def echo_solid_block(self: &mut Env, color: Color) {
-        // self.echo(&"█" as &Char);
+    fun echo_solid_block(self: &mut Env, color: Color) {
+        // self.echo(&"█");
         let str = [1 as Char, '\0'];
-        // self.echo(&str as &Char);
-        self.echo_colored(&str as &Char, color);
+        // self.echo(&str);
+        self.echo_colored(&str, color);
     }
 
-    def echo_light_block(self: &mut Env, color: Color) {
-        // self.echo(&"▒" as &Char);
+    fun echo_light_block(self: &mut Env, color: Color) {
+        // self.echo(&"▒");
         let str = [2 as Char, '\0'];
-        // self.echo(&str as &Char);
-        self.echo_colored(&str as &Char, color);
+        // self.echo(&str);
+        self.echo_colored(&str, color);
     }
 
-    def read_line(self: &mut Env, dst: &mut Char): Bool {
+    fun read_line(self: &mut Env, dst: &mut Char): Bool {
         when IS_RISCV {
             self.screen.keyboard.read();
             
@@ -3665,7 +3670,7 @@ impl Env {
                 println("Keyboard has changed!");
                 let (row, col) = self.echo_colored_at(self.screen.keyboard.buf, Color.YELLOW, self.prompt_row, self.prompt_col);
                 // Write some spaces to clear the rest of the line.
-                let _ = self.echo_colored_at(&"     " as &Char, Color.YELLOW, row, col);
+                let _ = self.echo_colored_at(&"     ", Color.YELLOW, row, col);
             }
 
             if self.screen.keyboard.len <= 0 {
@@ -3680,14 +3685,14 @@ impl Env {
             if self.screen.keyboard.buf[self.screen.keyboard.len - 1] == '\n' {
                 println("Read line: ", self.screen.keyboard.buf);
                 // Copy the line into the destination buffer.
-                for let mut i=0; i < self.screen.keyboard.len; i+=1 {
+                for let mut i=0; i < self.screen.keyboard.len; i+=1; {
                     dst[i] = self.screen.keyboard.buf[i];
                 }
                 dst[self.screen.keyboard.len] = '\0';
                 // Clear the keyboard buffer.
                 self.screen.keyboard.clear();
                 self.echo_newline();
-                // extern def strncpy(dst: &mut Char, src: &Char, n: Int);
+                // extern fun strncpy(dst: &mut Char, src: &Char, n: Int);
                 // strncpy(dst, self.screen.keyboard.buf,);
                 
                 // return Option<&Char> of Some(self.buf);
@@ -3703,13 +3708,13 @@ impl Env {
         }
     }
 
-    def get_cwd(self: &Env): &Path {
+    fun get_cwd(self: &Env): &Path {
         return &(self.cwd);
     }
 
-    def prompt(self: &mut Env) {
+    fun prompt(self: &mut Env) {
         let mut prompt = SmolString.from_str(self.cwd.str());
-        prompt.push_str(&"$ " as &Char);
+        prompt.push_str(&"$ ");
         // // self.screen.write_str(prompt.str(), Color.WHITE, 0, self.echo_row * Bitmap.HEIGHT);
         // self.echo_col += prompt.len();
         if (self.echo_col != 0) {
@@ -3721,12 +3726,12 @@ impl Env {
         self.enable_flush();
     }
 
-    def echo_coloredln(self: &mut Env, text: &Char, color: Color) {
+    fun echo_coloredln(self: &mut Env, text: &Char, color: Color) {
         self.echo_colored(text, color);
         self.echo_newline();
     }
 
-    def echo_colored_at(self: &mut Env, text: &Char, color: Color, mut row: Int, mut col: Int): (Int, Int) {
+    fun echo_colored_at(self: &mut Env, text: &Char, color: Color, mut row: Int, mut col: Int): (Int, Int) {
         if row >= self.screen.height() / Bitmap.HEIGHT {
             row = 0;
             col = 0;
@@ -3752,7 +3757,7 @@ impl Env {
         return (row, col);
     }
 
-    def clear_screen(self: &mut Env) {
+    fun clear_screen(self: &mut Env) {
         self.screen.clear(Color.BLACK);
         self.screen.draw();
         self.screen.flush();
@@ -3762,7 +3767,7 @@ impl Env {
         self.prompt_col = 0;
     }
     
-    def enable_flush(self: &mut Env) {
+    fun enable_flush(self: &mut Env) {
         self.flush = True;
         if self.screen.has_changed {
             self.screen.draw();
@@ -3770,83 +3775,68 @@ impl Env {
         }
     }
 
-    def disable_flush(self: &mut Env) {
+    fun disable_flush(self: &mut Env) {
         self.flush = False;
     }
 
-    def echo_colored(self: &mut Env, text: &Char, color: Color) {
+    fun echo_colored(self: &mut Env, text: &Char, color: Color) {
         let (new_row, new_col) = self.echo_colored_at(text, color, self.echo_row, self.echo_col);
         self.echo_row = new_row;
         self.echo_col = new_col;
     }
 
-    def echo(self: &mut Env, text: &Char) {
+    fun echo(self: &mut Env, text: &Char) {
         self.echo_colored(text, Color.WHITE);
     }
 
-    def echoln(self: &mut Env, text: &Char) {
+    fun echoln(self: &mut Env, text: &Char) {
         self.echo(text);
         self.echo_newline();
     }
 
-    def get_cwd_mut(self: &mut Env): &mut Path {
+    fun get_cwd_mut(self: &mut Env): &mut Path {
         return &mut (self.cwd);
     }
 
-    def get_os(self: &Env): &OS {
+    fun get_os(self: &Env): &OS {
         return &(self.os);
     }
 
-    def get_history(self: &Env): &History {
+    fun get_history(self: &Env): &History {
         return &(self.history);
     }
 
-    def get_history_mut(self: &mut Env): &mut History {
+    fun get_history_mut(self: &mut Env): &mut History {
         return &mut (self.history);
     }
 
-    def print(self: &mut Env) {
+    fun print(self: &mut Env) {
         // println("Env: os=", self.os);
         // println("Env: cwd=", self.cwd);
         self.os.print_env(self).unwrap();
         self.history.echo(self);
     }
 
-    def drop(self: &mut Env) {
+    fun drop(self: &mut Env) {
         self.history.drop();
     }
 }
 
-let read = Symbol.from_str(&"cat" as &Char);
-let static READ_SYMBOL: Symbol = read;
-let write = Symbol.from_str(&"write" as &Char);
-let static WRITE_SYMBOL: Symbol = write;
-let append = Symbol.from_str(&"append" as &Char);
-let static APPEND_SYMBOL: Symbol = append;
-let copy = Symbol.from_str(&"cp" as &Char);
-let static COPY_SYMBOL: Symbol = copy;
-let remove = Symbol.from_str(&"rm" as &Char);
-let static REMOVE_SYMBOL: Symbol = remove;
-let make_dir = Symbol.from_str(&"mkdir" as &Char);
-let static MAKE_DIR_SYMBOL: Symbol = make_dir;
-let change_dir = Symbol.from_str(&"cd" as &Char);
-let static CHANGE_DIR_SYMBOL: Symbol = change_dir;
-let print_dir = Symbol.from_str(&"pwd" as &Char);
-let static PRINT_DIR_SYMBOL: Symbol = print_dir;
-let list_dir = Symbol.from_str(&"ls" as &Char);
-let static LIST_DIR_SYMBOL: Symbol = list_dir;
-let list_pid = Symbol.from_str(&"ps" as &Char);
-let static LIST_PID_SYMBOL: Symbol = list_pid;
-let list_mem = Symbol.from_str(&"mem" as &Char);
-let static LIST_MEM_SYMBOL: Symbol = list_mem;
-let help = Symbol.from_str(&"help" as &Char);
-let static HELP_SYMBOL: Symbol = help;
-let print_env = Symbol.from_str(&"env" as &Char);
-let static PRINT_ENV_SYMBOL: Symbol = print_env;
-let spawn = Symbol.from_str(&"run" as &Char);
-let static SPAWN_SYMBOL: Symbol = spawn;
-let clear = Symbol.from_str(&"clear" as &Char);
-let static CLEAR_SYMBOL: Symbol = clear;
+let static READ_SYMBOL: Symbol = Symbol.from_str(&"cat");
+let static WRITE_SYMBOL: Symbol = Symbol.from_str(&"write");
+let static APPEND_SYMBOL: Symbol = Symbol.from_str(&"append");
+let static COPY_SYMBOL: Symbol = Symbol.from_str(&"cp");
+let static REMOVE_SYMBOL: Symbol = Symbol.from_str(&"rm");
+let static MAKE_DIR_SYMBOL: Symbol = Symbol.from_str(&"mkdir");
+let static CHANGE_DIR_SYMBOL: Symbol = Symbol.from_str(&"cd");
+let static PRINT_DIR_SYMBOL: Symbol = Symbol.from_str(&"pwd");
+let static LIST_DIR_SYMBOL: Symbol = Symbol.from_str(&"ls");
+let static LIST_PID_SYMBOL: Symbol = Symbol.from_str(&"ps");
+let static LIST_MEM_SYMBOL: Symbol = Symbol.from_str(&"mem");
+let static HELP_SYMBOL: Symbol = Symbol.from_str(&"help");
+let static PRINT_ENV_SYMBOL: Symbol = Symbol.from_str(&"env");
+let static SPAWN_SYMBOL: Symbol = Symbol.from_str(&"run");
+let static CLEAR_SYMBOL: Symbol = Symbol.from_str(&"clear");
 
 enum Error {
     PathNotFound(&Path),
@@ -3854,7 +3844,7 @@ enum Error {
 }
 
 impl Error {
-    def print(self: &Error) {
+    fun print(self: &Error) {
         print("[Error] ");
         match self {
             &of PathNotFound(path) => {
@@ -3870,7 +3860,7 @@ impl Error {
 
 
 impl Command {
-    def eval(self: &Command, env: &mut Env): Result<(), Error> {
+    fun eval(self: &Command, env: &mut Env): Result<(), Error> {
         env.disable_flush();
         print("Evaluating command: ");
         self.print();
@@ -3881,35 +3871,35 @@ impl Command {
                 env.clear_screen();    
             },
             &of Read(path) => {
-                let file = File.open(env.get_cwd(), FileMode of Read, env).expect(&"Could not open file." as &Char);
-                let text = file.read(env).expect(&"Could not read from file." as &Char);
+                let file = File.open(env.get_cwd(), FileMode of Read, env).expect(&"Could not open file.");
+                let text = file.read(env).expect(&"Could not read from file.");
                 // text.println();
                 env.echo_coloredln(text.str(), Color.GREEN);
-                file.close(env).expect(&"Could not close file." as &Char);
+                file.close(env).expect(&"Could not close file.");
             },
             &of Write(path, text) => {
-                let file = File.open(env.get_cwd(), FileMode of Write, env).expect(&"Could not open file." as &Char);
-                file.write(text.str(), env).expect(&"Could not write to file." as &Char);
-                file.close(env).expect(&"Could not close file." as &Char);
+                let file = File.open(env.get_cwd(), FileMode of Write, env).expect(&"Could not open file.");
+                file.write(text.str(), env).expect(&"Could not write to file.");
+                file.close(env).expect(&"Could not close file.");
             },
             &of Append(path, text) => {
-                let file = File.open(env.get_cwd(), FileMode of Append, env).expect(&"Could not open file." as &Char);
-                file.write(text.str(), env).expect(&"Could not append to file." as &Char);
-                file.close(env).expect(&"Could not close file." as &Char);
+                let file = File.open(env.get_cwd(), FileMode of Append, env).expect(&"Could not open file.");
+                file.write(text.str(), env).expect(&"Could not append to file.");
+                file.close(env).expect(&"Could not close file.");
             },            
             &of Copy(src, dst) => {
                 let src_path = Path.from_str(src.str());
                 let dst_path = Path.from_str(dst.str());
-                let src_file = File.open(&src_path, FileMode of Read, env).expect(&"Could not open source file." as &Char);
-                let dst_file = File.open(&dst_path, FileMode of Write, env).expect(&"Could not open destination file." as &Char);
-                let text = src_file.read(env).expect(&"Could not read from source file." as &Char);
-                dst_file.write(text.str(), env).expect(&"Could not write to destination file." as &Char);
-                src_file.close(env).expect(&"Could not close source file." as &Char);
-                dst_file.close(env).expect(&"Could not close destination file." as &Char);
+                let src_file = File.open(&src_path, FileMode of Read, env).expect(&"Could not open source file.");
+                let dst_file = File.open(&dst_path, FileMode of Write, env).expect(&"Could not open destination file.");
+                let text = src_file.read(env).expect(&"Could not read from source file.");
+                dst_file.write(text.str(), env).expect(&"Could not write to destination file.");
+                src_file.close(env).expect(&"Could not close source file.");
+                dst_file.close(env).expect(&"Could not close destination file.");
             },
             &of MakeDir(path) => {
                 let path = Path.from_str(path.str());
-                File.create_dir(&path, env).expect(&"Could not create directory." as &Char);
+                File.create_dir(&path, env).expect(&"Could not create directory.");
             },
             &of ChangeDir(mut name) => {
                 // env.get_cwd_mut().push(path);
@@ -3918,7 +3908,7 @@ impl Command {
                 if os.change_dir(env, &path).is_ok() {
                     env.get_cwd_mut().copy_from(&path);
                 } else {
-                    env.echo_coloredln(&"Could not change directory." as &Char, Color.RED);
+                    env.echo_coloredln(&"Could not change directory.", Color.RED);
                 }
             },
             &of Spawn(mut name) => {
@@ -3927,19 +3917,19 @@ impl Command {
                 path.push(&mut name);
                 match os.spawn(env, &path) {
                     of Ok(pid) => {
-                        // let mut str_buf = SmolString.from_str(&"Spawned process at " as &Char);
+                        // let mut str_buf = SmolString.from_str(&"Spawned process at ");
                         // str_buf.push_str(path.str());
                         // // Add space
-                        // str_buf.push_str(&" " as &Char);
-                        env.echo_colored(&"Spawned process at " as &Char, Color.GREEN);
+                        // str_buf.push_str(&" ");
+                        env.echo_colored(&"Spawned process at ", Color.GREEN);
                         env.echo_coloredln(path.str(), Color.BLUE);
-                        env.echo_colored(&"PID = " as &Char, Color.GREEN);
+                        env.echo_colored(&"PID = ", Color.GREEN);
                         let pid_str = SmolString.from_int(pid);
                         env.echo_colored(pid_str.str(), Color.MAGENTA);
-                        env.echo_coloredln(&"!" as &Char, Color.GREEN);
+                        env.echo_coloredln(&"!", Color.GREEN);
                     },
                     of Err(e) => {
-                        env.echo_coloredln(&"Could not spawn process!" as &Char, Color.RED);
+                        env.echo_coloredln(&"Could not spawn process!", Color.RED);
                     }
                 }
             },
@@ -3949,57 +3939,57 @@ impl Command {
             },
             &of ListDir => {
                 // os.list_dir(env.get_cwd());
-                File.list_dir(env.get_cwd(), env).expect(&"Could not list directory." as &Char);
+                File.list_dir(env.get_cwd(), env).expect(&"Could not list directory.");
                 // dir.close(os);
             },
             &of ListPID => {
-                os.list_pid(env).expect(&"Could not list PIDs." as &Char);
+                os.list_pid(env).expect(&"Could not list PIDs.");
             },
 
             &of ListMem => {
-                os.list_mem(env).expect(&"Could not list memory." as &Char);
+                os.list_mem(env).expect(&"Could not list memory.");
             },
             &of PrintEnv => {
                 env.print();
-                // env.echo(&"Printing environment..." as &Char);
+                // env.echo(&"Printing environment...");
             },
             &of Help(symbol) => {
                 if symbol.eq(&READ_SYMBOL) {
-                    env.echoln(&"read <path>" as &Char);
-                } elif symbol.eq(&WRITE_SYMBOL) {
-                    env.echoln(&"write <path> <text>" as &Char);
-                } elif symbol.eq(&APPEND_SYMBOL) {
-                    env.echoln(&"append <path> <text>" as &Char);
-                } elif symbol.eq(&COPY_SYMBOL) {
-                    env.echoln(&"cp <src> <dst>" as &Char);
-                } elif symbol.eq(&MAKE_DIR_SYMBOL) {
-                    env.echoln(&"mkdir <path>" as &Char);
-                } elif symbol.eq(&CHANGE_DIR_SYMBOL) {
-                    env.echoln(&"cd <path>" as &Char);
-                } elif symbol.eq(&PRINT_DIR_SYMBOL) {
-                    env.echoln(&"pwd" as &Char);
-                } elif symbol.eq(&LIST_DIR_SYMBOL) {
-                    env.echoln(&"ls" as &Char);
-                } elif symbol.eq(&LIST_PID_SYMBOL) {
-                    env.echoln(&"ps" as &Char);
-                } elif symbol.eq(&LIST_MEM_SYMBOL) {
-                    env.echoln(&"mem" as &Char);
-                } elif symbol.eq(&PRINT_ENV_SYMBOL) {
-                    env.echoln(&"env" as &Char);
-                } elif symbol.eq(&HELP_SYMBOL) {
-                    env.echoln(&"help <command>" as &Char);
+                    env.echoln(&"read <path>");
+                } else if symbol.eq(&WRITE_SYMBOL) {
+                    env.echoln(&"write <path> <text>");
+                } else if symbol.eq(&APPEND_SYMBOL) {
+                    env.echoln(&"append <path> <text>");
+                } else if symbol.eq(&COPY_SYMBOL) {
+                    env.echoln(&"cp <src> <dst>");
+                } else if symbol.eq(&MAKE_DIR_SYMBOL) {
+                    env.echoln(&"mkdir <path>");
+                } else if symbol.eq(&CHANGE_DIR_SYMBOL) {
+                    env.echoln(&"cd <path>");
+                } else if symbol.eq(&PRINT_DIR_SYMBOL) {
+                    env.echoln(&"pwd");
+                } else if symbol.eq(&LIST_DIR_SYMBOL) {
+                    env.echoln(&"ls");
+                } else if symbol.eq(&LIST_PID_SYMBOL) {
+                    env.echoln(&"ps");
+                } else if symbol.eq(&LIST_MEM_SYMBOL) {
+                    env.echoln(&"mem");
+                } else if symbol.eq(&PRINT_ENV_SYMBOL) {
+                    env.echoln(&"env");
+                } else if symbol.eq(&HELP_SYMBOL) {
+                    env.echoln(&"help <command>");
                 } else {
-                    env.echo_colored(&"Unknown help entry: " as &Char, Color.RED);
+                    env.echo_colored(&"Unknown help entry: ", Color.RED);
                     env.echoln(symbol.str());
                 }
             },
 
             &of Invalid(s) => {
-                env.echo_colored(&"Invalid command: " as &Char, Color.RED);
+                env.echo_colored(&"Invalid command: ", Color.RED);
                 env.echoln(s.str());
             },
             _ => {
-                env.echo_coloredln(&"Error: Command.eval() called with invalid command." as &Char, Color.RED);
+                env.echo_coloredln(&"Error: Command.eval() called with invalid command.", Color.RED);
                 // println("Error: Command.eval() called with invalid command.");
             }
         }
@@ -4007,21 +3997,21 @@ impl Command {
         return Result<(), Error> of Ok(());
     }
 
-    def parse(s: &SmolString): Command {
+    fun parse(s: &SmolString): Command {
         match s.nth_symbol(0) {
             of Some(program_str) => {
                 println("Found program: ", program_str.str());
                 if program_str.eq(&PRINT_DIR_SYMBOL) {
                     Command of PrintDir;
-                } elif program_str.eq(&CLEAR_SYMBOL) {
+                } else if program_str.eq(&CLEAR_SYMBOL) {
                     Command of Clear;
-                } elif program_str.eq(&LIST_DIR_SYMBOL) {
+                } else if program_str.eq(&LIST_DIR_SYMBOL) {
                     Command of ListDir;
-                } elif program_str.eq(&LIST_PID_SYMBOL) {
+                } else if program_str.eq(&LIST_PID_SYMBOL) {
                     Command of ListPID;
-                } elif program_str.eq(&LIST_MEM_SYMBOL) {
+                } else if program_str.eq(&LIST_MEM_SYMBOL) {
                     Command of ListMem;
-                } elif program_str.eq(&PRINT_ENV_SYMBOL) {
+                } else if program_str.eq(&PRINT_ENV_SYMBOL) {
                     Command of PrintEnv;
                 } else {
                     match s.nth_symbol(1) {
@@ -4033,29 +4023,29 @@ impl Command {
                                 } else {
                                     Command of Invalid(*s);
                                 }
-                            } elif program_str.eq(&WRITE_SYMBOL) {
+                            } else if program_str.eq(&WRITE_SYMBOL) {
                                 let mut s = *s;
                                 s.trim_start(program_str.str());
                                 s.trim_whitespace();
                                 s.trim_start(arg_str.str());
                                 s.trim_whitespace();
                                 Command of Write(arg_str, s);
-                            } elif program_str.eq(&APPEND_SYMBOL) {
+                            } else if program_str.eq(&APPEND_SYMBOL) {
                                 let mut s = *s;
                                 s.trim_start(program_str.str());
                                 s.trim_whitespace();
                                 s.trim_start(arg_str.str());
                                 s.trim_whitespace();
                                 Command of Append(arg_str, s);
-                            } elif program_str.eq(&READ_SYMBOL) {
+                            } else if program_str.eq(&READ_SYMBOL) {
                                 Command of Read(arg_str);
-                            } elif program_str.eq(&MAKE_DIR_SYMBOL) {
+                            } else if program_str.eq(&MAKE_DIR_SYMBOL) {
                                 Command of MakeDir(arg_str);
-                            } elif program_str.eq(&SPAWN_SYMBOL) {
+                            } else if program_str.eq(&SPAWN_SYMBOL) {
                                 Command of Spawn(arg_str);
-                            } elif program_str.eq(&CHANGE_DIR_SYMBOL) {
+                            } else if program_str.eq(&CHANGE_DIR_SYMBOL) {
                                 Command of ChangeDir(arg_str);
-                            } elif program_str.eq(&HELP_SYMBOL) {
+                            } else if program_str.eq(&HELP_SYMBOL) {
                                 Command of Help(arg_str);
                             } else {
                                 Command of Invalid(*s);
@@ -4071,7 +4061,7 @@ impl Command {
         }
     }
 
-    def print(self: &Command) {
+    fun print(self: &Command) {
         match self {
             &of Read(path) => {
                 READ_SYMBOL.print();
@@ -4142,7 +4132,7 @@ impl Command {
         }
     }
 
-    def echo(self: &Command, env: &mut Env) {
+    fun echo(self: &Command, env: &mut Env) {
         match self {
             &of Read(path) => {
                 env.echo(READ_SYMBOL.str());
@@ -4204,7 +4194,7 @@ impl Command {
                 env.echoln(symbol.str());
             },
             &of Invalid(s) => {
-                env.echo(&"Invalid command: " as &Char);
+                env.echo(&"Invalid command: ");
                 env.echoln(s.str());
             },
             _ => {
@@ -4213,7 +4203,7 @@ impl Command {
         }
     }
 
-    def println(self: &Command) {
+    fun println(self: &Command) {
         self.print();
         println();
     }
@@ -4228,7 +4218,7 @@ else {
 }
 screen.clear(Color.BLACK);
 
-def draw_logo(env: &mut Env) {
+fun draw_logo(env: &mut Env) {
     // Draw the "Sage Shell" logo on the screen.
 
     // A 2d array of the logo, with each number representing a certain shape.
@@ -4262,68 +4252,69 @@ def draw_logo(env: &mut Env) {
     //     'o': 13, # lowercase 'o'
     //     '=': 14, # equals sign
     // }
-    for let mut row = 0; row < sizeof(logo) / sizeof(logo[0]); row += 1 {
-        for let mut col = 0; col < sizeof(logo[0]) / sizeof(logo[0][0]); col += 1 {
+    for let mut row = 0; row < sizeof(logo) / sizeof(logo[0]); row += 1; {
+        for let mut col = 0; col < sizeof(logo[0]) / sizeof(logo[0][0]); col += 1; {
             match logo[row][col] {
                 0 => {
-                    env.echo_colored(&" " as &Char, Color.BLACK);
+                    env.echo_colored(&" ", Color.BLACK);
                 },
                 1 => {
-                    // env.echo_colored(&"█" as &Char, Color.GREEN);
+                    // env.echo_colored(&"█", Color.GREEN);
                     env.echo_solid_block(Color.GREEN);
                 },
                 2 => {
-                    // env.echo_colored(&"░" as &Char, Color.GREEN);
+                    // env.echo_colored(&"░", Color.GREEN);
                     env.echo_light_block(Color.GREEN);
                 },
                 3 => {
-                    env.echo_colored(&"." as &Char, Color.GREEN);
+                    env.echo_colored(&".", Color.GREEN);
                 },
                 4 => {
-                    env.echo_colored(&"-" as &Char, Color.GREEN);
+                    env.echo_colored(&"-", Color.GREEN);
                 },
                 5 => {
-                    env.echo_colored(&"'" as &Char, Color.GREEN);
+                    env.echo_colored(&"'", Color.GREEN);
                 },
                 6 => {
-                    env.echo_colored(&"`" as &Char, Color.GREEN);
+                    env.echo_colored(&"`", Color.GREEN);
                 },
                 7 => {
-                    env.echo_colored(&"," as &Char, Color.GREEN);
+                    env.echo_colored(&",", Color.GREEN);
                 },
                 8 => {
-                    env.echo_colored(&"\\" as &Char, Color.GREEN);
+                    env.echo_colored(&"\\", Color.GREEN);
                 },
                 9 => {
-                    env.echo_colored(&"/" as &Char, Color.GREEN);
+                    env.echo_colored(&"/", Color.GREEN);
                 },
                 10 => {
-                    env.echo_colored(&"|" as &Char, Color.GREEN);
+                    env.echo_colored(&"|", Color.GREEN);
                 },
                 11 => {
-                    env.echo_colored(&":" as &Char, Color.GREEN);
+                    env.echo_colored(&":", Color.GREEN);
                 },
                 12 => {
-                    env.echo_colored(&"_" as &Char, Color.GREEN);
+                    env.echo_colored(&"_", Color.GREEN);
                 },
                 13 => {
-                    env.echo_colored(&"o" as &Char, Color.GREEN);
+                    env.echo_colored(&"o", Color.GREEN);
                 },
                 14 => {
-                    env.echo_colored(&"=" as &Char, Color.GREEN);
+                    env.echo_colored(&"=", Color.GREEN);
                 },
                 other => {
                     println("Error: Invalid logo character = ", other);
-                    env.echo_colored(&"?" as &Char, Color.RED);
+                    env.echo_colored(&"?", Color.RED);
                 }
             }
         }
         // env.echo_newline();
-        // env.echo_colored(&"\r\n" as &Char, Color.GREEN);
+        // env.echo_colored(&"\r\n", Color.GREEN);
 
         env.echo_col = 0;
-        env.echo_colored(&"\r\n" as &Char, Color.GREEN);
+        env.echo_colored(&"\r\n", Color.GREEN);
     }
+    env.enable_flush();
     env.echo_newline();
 }
 
@@ -4332,16 +4323,15 @@ let mut is_done = False;
 
 let mut env = Env.make(screen);
 // let logo = Bitmap.SAGE_LOGO;
-// env.echo_coloredln(&logo as &Char, Color.GREEN);
+// env.echo_coloredln(&logo, Color.GREEN);
 env.disable_flush();
-env.echo_coloredln(&"Welcome to the Sage Shell!" as &Char, Color.MAGENTA);
-env.echo_colored(&"Go to " as &Char, Color.MAGENTA);
+env.echo_coloredln(&"Welcome to the Sage Shell!", Color.MAGENTA);
+env.echo_colored(&"Go to ", Color.MAGENTA);
 env.echo_colored(&"adam-mcdaniel.net/sage", Color.BLUE);
-env.echo_coloredln(&"!" as &Char, Color.MAGENTA);
+env.echo_coloredln(&"!", Color.MAGENTA);
 env.echo_newline();
 
 draw_logo(&mut env);
-
 env.prompt();
 
 while !is_done {
@@ -4352,7 +4342,7 @@ while !is_done {
         println("About to parse: ", s.str());
         let command = Command.parse(&s);
 
-        command.eval(&mut env).expect(&"Error evaluating command." as &Char);
+        command.eval(&mut env).expect(&"Error evaluating command.");
         
         env.prompt();
     }

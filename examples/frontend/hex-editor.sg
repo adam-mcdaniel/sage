@@ -57,7 +57,7 @@ Commands:
     
 All numbers are hexadecimal.";
 
-def main() {
+fun main() {
     let mut m = Memory_default();
 
     let mut is_done = False;
@@ -69,7 +69,7 @@ def main() {
                 start,
                 end=of Some(end)
             } => {
-                for let mut i=start; i<end; i+=1 {
+                for let mut i=start; i<end; i+=1; {
                     print_byte(Memory_get(&mut m, i));
                     print(" ");
                 }
@@ -89,7 +89,7 @@ def main() {
                 end=of Some(end),
                 value
             } => {
-                for let mut i=start; i<end; i+=1 {
+                for let mut i=start; i<end; i+=1; {
                     Memory_set(&mut m, i, value);
                 }
             },
@@ -103,13 +103,13 @@ def main() {
             },
     
             of Clear(of Some(val)) => {
-                for let mut i=0; i<m.length; i+=1 {
+                for let mut i=0; i<m.length; i+=1; {
                     m.data[i] = val;
                 }
             },
     
             of Clear(of Nothing) => {
-                for let mut i=0; i<m.length; i+=1 {
+                for let mut i=0; i<m.length; i+=1; {
                     m.data[i] = 0;
                 }
             },
@@ -151,27 +151,27 @@ def main() {
     Memory_free(&m);
 }
 
-def is_char_between(ch: Char, start: Char, end: Char): Bool {
+fun is_char_between(ch: Char, start: Char, end: Char): Bool {
     return ch as Int >= start as Int && ch as Int <= end as Int;
 }
 
-def digit_to_int(ch: Char): Int {
+fun digit_to_int(ch: Char): Int {
     if (is_char_between(ch, '0', '9')) {
         return ch as Int - '0' as Int;
-    } elif (is_char_between(ch, 'A', 'F')) {
+    } else if (is_char_between(ch, 'A', 'F')) {
         return ch as Int - 'A' as Int + 10;
-    } elif (is_char_between(ch, 'a', 'f')) {
+    } else if (is_char_between(ch, 'a', 'f')) {
         return ch as Int - 'a' as Int + 10;
     } else {
         return 0;
     }
 }
 
-def is_digit(ch: Char): Bool {
+fun is_digit(ch: Char): Bool {
     return is_char_between(ch, '0', '9') || is_char_between(ch, 'A', 'F') || is_char_between(ch, 'a', 'f');
 }
 
-def read_int(): Int {
+fun read_int(): Int {
     let mut ch = ' ';
     input(&mut ch);
     while ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' {
@@ -189,7 +189,7 @@ def read_int(): Int {
     return start;
 }
 
-def Command_read(): Command {
+fun Command_read(): Command {
     let mut ch = ' ';
     while ch {
         input(&mut ch);
@@ -233,7 +233,7 @@ def Command_read(): Command {
                             start=start,
                             end=Option<Int> of Some(end)
                         };
-                    } elif ch == '=' {
+                    } else if ch == '=' {
                         let value = read_int();
                         return Command of Write {
                             start=start,
@@ -247,7 +247,7 @@ def Command_read(): Command {
                         };
                     }
                 }
-            } elif ch == '=' {
+            } else if ch == '=' {
                 let value = read_int();
                 return Command of Write {
                     start=start,
@@ -308,24 +308,24 @@ def Command_read(): Command {
     return Command of Unknown;
 }
 
-def copy<T>(dst: &mut T, src: &T, count: Int) {
-    for let mut i=0; i<count; i+=1 {
+fun copy<T>(dst: &mut T, src: &T, count: Int) {
+    for let mut i=0; i<count; i+=1; {
         dst[i] = src[i];
     }
 }
 
-def allocate<T>(count: Int): &mut T {
+fun allocate<T>(count: Int): &mut T {
     return alloc(sizeof<T>() * count) as &mut T;
 }
 
-def reallocate<T>(src: &T, old_size: Int, new_size: Int): &T {
+fun reallocate<T>(src: &T, old_size: Int, new_size: Int): &T {
     let dst = allocate<T>(new_size);
     copy<T>(dst, src, old_size);
-    del src;
+    free(src);
     return dst;
 }
 
-def Memory_push(m: &mut Memory, value: Int) {
+fun Memory_push(m: &mut Memory, value: Int) {
     while (m.length >= m.capacity) {
         m.capacity *= 2;
     }
@@ -334,7 +334,7 @@ def Memory_push(m: &mut Memory, value: Int) {
     m.length += 1;
 }
 
-def Memory_extend(m: &mut Memory, count: Int) {
+fun Memory_extend(m: &mut Memory, count: Int) {
     while (m.length + count >= m.capacity) {
         m.capacity *= 2;
     }
@@ -342,7 +342,7 @@ def Memory_extend(m: &mut Memory, count: Int) {
     m.length += count;
 }
 
-def Memory_pop(m: &mut Memory): Int {
+fun Memory_pop(m: &mut Memory): Int {
     if (m.length == 0) {
         return 0;
     }
@@ -350,7 +350,7 @@ def Memory_pop(m: &mut Memory): Int {
     return m.data[m.length];
 }
 
-def Memory_shrink(m: &mut Memory, count: Int) {
+fun Memory_shrink(m: &mut Memory, count: Int) {
     if (m.length < count) {
         m.length = 0;
     } else {
@@ -358,22 +358,22 @@ def Memory_shrink(m: &mut Memory, count: Int) {
     }
 }
 
-def Memory_index(m: &mut Memory, index: Int): &mut Int {
+fun Memory_index(m: &mut Memory, index: Int): &mut Int {
     if (index >= m.length) {
         Memory_extend(m, index - m.length + 1);
     }
     return &mut (m.data[index]);
 }
 
-def Memory_get(m: &mut Memory, index: Int): Int {
+fun Memory_get(m: &mut Memory, index: Int): Int {
     return *(Memory_index(m, index));
 }
 
-def Memory_set(m: &mut Memory, index: Int, value: Int) {
+fun Memory_set(m: &mut Memory, index: Int, value: Int) {
     *(Memory_index(m, index)) = value;
 }
 
-def Memory_new(n: Int): Memory {
+fun Memory_new(n: Int): Memory {
     return {
         data=allocate<Int>(n),
         length=0,
@@ -381,22 +381,22 @@ def Memory_new(n: Int): Memory {
     };
 }
 
-def Memory_default(): Memory {
+fun Memory_default(): Memory {
     return Memory_new(10000);
 }
 
-def Memory_free(m: &Memory) {
-    del m.data;
+fun Memory_free(m: &Memory) {
+    free(m.data);
 }
 
-def print_byte(mut c: Int) {
+fun print_byte(mut c: Int) {
     c = c & 0xFF;
     let hex = "0123456789ABCDEF";
     print(hex[(c / 16) & 0xF]);
     print(hex[c & 0xF]);
 }
 
-def print_addr(mut c: Int) {
+fun print_addr(mut c: Int) {
     c = c & 0xFFFFFFFF;
     let hex = "0123456789ABCDEF";
     print(hex[(c / 0x10000000) & 0xF]);
@@ -409,12 +409,12 @@ def print_addr(mut c: Int) {
     print(hex[c & 0xF]);
 }
 
-def Memory_print(m: &Memory) {
+fun Memory_print(m: &Memory) {
     print("Memory: ", m.length, "/", m.capacity, "\n");
     if (m.length == 0) {
         print("Empty\n");
     }
-    for let mut i=0; i<m.length; i+=1 {
+    for let mut i=0; i<m.length; i+=1; {
         // Print address
         if (i % 16 == 0) {
             print_addr(i);
@@ -426,7 +426,7 @@ def Memory_print(m: &Memory) {
         if i % 16 == 15 {
             // print ASCII
             print(" | ");
-            for let mut j=i-15; j<=i; j+=1 {
+            for let mut j=i-15; j<=i; j+=1; {
                 let c = m.data[j];
                 if (c >= 32 && c <= 126) {
                     print(c as Char);
@@ -442,11 +442,11 @@ def Memory_print(m: &Memory) {
     if (m.length % 16 != 0) {
         let i = m.length;
         let j = i - (i % 16);
-        for let mut k=i; k<j+16; k+=1 {
+        for let mut k=i; k<j+16; k+=1; {
             print("   ");
         }
         print(" | ");
-        for let mut k=j; k<i; k+=1 {
+        for let mut k=j; k<i; k+=1; {
             let c = m.data[k];
             if (c >= 32 && c <= 126) {
                 print(c as Char);

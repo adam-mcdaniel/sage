@@ -275,23 +275,6 @@
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Parsing Module
 //!
 //! This module contains all the related functions for parsing
@@ -443,30 +426,13 @@
 
 <span class="doccomment">/// Parse frontend sage code into an LIR expression.
 </span><span class="kw">pub fn </span>parse_frontend(input: <span class="kw">impl </span>ToString, filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, String&gt; {
-    <span class="comment">// let start = std::time::Instant::now();
-    // let result = frontend::parse(input, filename, true)?;
-    </span><span class="kw">use </span>no_comment::{IntoWithoutComments, languages};
-    <span class="kw">let </span>input = input
-        .to_string()
-        .chars()
-        .without_comments(languages::rust())
-        .collect::&lt;String&gt;();
-
-    <span class="kw">let </span>result = frontend::parse(<span class="kw-2">&amp;</span>input, filename.map(|x| x.to_owned()))<span class="question-mark">?</span>;
+    <span class="kw">let </span>result = frontend::parse(input, filename, <span class="bool-val">true</span>, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
     <span class="macro">trace!</span>(target: <span class="string">"parse"</span>, <span class="string">"Parsed frontend code: {result}"</span>);
-    <span class="comment">// info!(target: "parse", "Parsed frontend code in {time}ms", time = start.elapsed().as_millis());
-    </span><span class="prelude-val">Ok</span>(result)
+    <span class="prelude-val">Ok</span>(result)
 }
 
 <span class="kw">pub fn </span>parse_frontend_minimal(input: <span class="kw">impl </span>ToString, filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, String&gt; {
-    <span class="kw">use </span>no_comment::{IntoWithoutComments, languages};
-    <span class="kw">let </span>input = input
-        .to_string()
-        .chars()
-        .without_comments(languages::rust())
-        .collect::&lt;String&gt;();
-
-    <span class="kw">let </span>result = frontend::parse(<span class="kw-2">&amp;</span>input, filename.map(|x| x.to_owned()))<span class="question-mark">?</span>;
+    <span class="kw">let </span>result = frontend::parse(input, filename, <span class="bool-val">false</span>, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(result)
 }
 

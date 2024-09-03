@@ -1,4 +1,4 @@
-def memcpy<T>(dest: &mut T, src: &T, mut n: Int) {
+fun memcpy<T>(dest: &mut T, src: &T, mut n: Int) {
     while n > 0 {
         n -= 1;
         dest[n] = src[n];
@@ -17,7 +17,7 @@ struct String {
 }
 
 impl String {
-    def make(): String {
+    fun make(): String {
         let capacity = 128;
         let data = alloc(capacity * sizeof<Char>());
         return {
@@ -27,7 +27,7 @@ impl String {
         };
     }
 
-    def reserve(self: &mut String, new_capacity: Int) {
+    fun reserve(self: &mut String, new_capacity: Int) {
         if new_capacity >= self.capacity {
             let size = new_capacity * sizeof<Char>() + 1024;
             let new_data = alloc(size);
@@ -38,7 +38,7 @@ impl String {
         }
     }
 
-    def push(self: &mut String, value: Char) {
+    fun push(self: &mut String, value: Char) {
         if self.length > self.capacity / 2 {
             self.reserve(self.capacity * 2);
         }
@@ -46,15 +46,15 @@ impl String {
         self.length += 1;
     }
 
-    def from_str(s: &Char): String {
+    fun from_str(s: &Char): String {
         let mut string = String.make();
-        for let mut i=0; s[i] != '\0'; i+=1 {
+        for let mut i=0; s[i] != '\0'; i+=1; {
             string.push(s[i]);
         }
         return string;
     }
 
-    def from_int(mut i: Int): String {
+    fun from_int(mut i: Int): String {
         let mut string = String.make();
         if i < 0 {
             string.push('-');
@@ -70,7 +70,7 @@ impl String {
         return string;
     }
 
-    def pop(self: &mut String): Option<Char> {
+    fun pop(self: &mut String): Option<Char> {
         if self.length == 0 {
             return Option<Char> of Nothing;
         }
@@ -78,13 +78,13 @@ impl String {
         return Option<Char> of Some(self.data[self.length]);
     }
 
-    def print(self: &String) {
-        for let mut i=0; i<self.length; i+=1 {
+    fun print(self: &String) {
+        for let mut i=0; i<self.length; i+=1; {
             print(self.data[i]);
         }
     }
 
-    def println(self: &String) {
+    fun println(self: &String) {
         self.print();
         println();
     }
@@ -109,5 +109,5 @@ match s.pop() {
 }
 s.println();
 
-let mut s2 = String.from_str(&"hello world!" as &Char);
+let mut s2 = String.from_str(&"hello world!");
 s2.println();

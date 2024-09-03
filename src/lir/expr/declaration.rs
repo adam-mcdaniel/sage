@@ -22,7 +22,7 @@ use serde_derive::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Declaration {
     /// A static variable declaration.
-    StaticVar(String, Mutability, Type, ConstExpr),
+    StaticVar(String, Mutability, Type, Expr),
     /// A variable declaration.
     Var(String, Mutability, Option<Type>, Expr),
     /// A procedure declaration.
@@ -56,9 +56,9 @@ impl Declaration {
         name: impl Into<String>,
         mutability: Mutability,
         ty: Type,
-        expr: ConstExpr,
+        expr: impl Into<Expr>,
     ) -> Self {
-        Self::StaticVar(name.into(), mutability, ty, expr)
+        Self::StaticVar(name.into(), mutability, ty, expr.into())
     }
 
     pub fn many(decls: impl Into<Vec<Self>>) -> Self {
@@ -69,7 +69,7 @@ impl Declaration {
         let mut decls = decls.into();
         let mut import = Self::many(decls.clone());
         import.filter(&|decl| decl.is_compile_time_declaration()
-            && !matches!(decl, Declaration::Impl(..))
+            && !matches!(decl, Declaration::Impl(..)) || matches!(decl, Self::StaticVar(..))
             );//&& !matches!(decl, Declaration::Module(..)));
 
         for decl in &mut decls {
@@ -173,6 +173,7 @@ impl Declaration {
             Self::Impl(..) => true,
             Self::FromImport { .. } => true,
             Self::FromImportAll(..) => true,
+            Self::StaticVar(..) => true,
             Self::Many(decls) => decls
                 .par_iter()
                 .all(|decl| decl.is_compile_time_declaration()),
@@ -477,6 +478,7 @@ impl TypeCheck for Declaration {
                 // Make sure the type of the expression matches the type of the variable.
                 if !found_ty.can_decay_to(expected_ty, &new_env)? {
                     // If it does not, then we throw an error.
+                    error!("Static variable {name} has type {found_ty} and cannot coerce to {expected_ty}");
                     return Err(Error::MismatchedTypes {
                         expected: expected_ty.clone(),
                         found: found_ty.clone(),
@@ -539,6 +541,7 @@ impl TypeCheck for Declaration {
                     let template_params = template.get_template_params(&new_env);
 
                     if template_params.len() != supplied_params.len() {
+                        error!("Invalid impl for {template}");
                         return Err(Error::MismatchedTypes {
                             expected: *template.clone(),
                             found: Type::Apply(template.clone(), supplied_params.clone()),
@@ -608,7 +611,7 @@ impl TypeCheck for Declaration {
             Self::Many(decls) => {
                 let mut new_env = env.clone();
                 // Add all the compile-time declarations to the environment.
-                new_env.add_compile_time_declaration(&self.clone())?;
+                new_env.add_declaration(&self.clone())?;
 
                 // Get all the compile time declarations so we can type check them in parallel.
                 let (comp_time_decls, run_time_decls): (Vec<_>, Vec<_>) = decls
@@ -619,7 +622,34 @@ impl TypeCheck for Declaration {
                     // Type check all the compile time declarations in parallel.
                     comp_time_decls
                         .par_iter()
-                        .try_for_each(|decl| decl.type_check(&new_env))?;
+                        .try_for_each(|decl| {
+                            debug!("Typechecking decl: {decl}");
+                            decl.type_check(&new_env)
+                        })?;
+                            // if !matches!(decl, Declaration::Proc(..)) {
+                            // } else {
+                            //     eprintln!("PROC ENV: {new_env} for {self}");
+                            //     Ok(())
+                            // }
+                            // match decl {
+                            //     Declaration::Proc(name, proc) => {
+                            //         warn!("PROC {name} ENV: {new_env} for {self}");
+                            //         // Ok(())
+                            //         decl.type_check(&new_env)
+                            //     }
+                            //     _ => decl.type_check(&new_env)
+                            // }
+                        // Type check all the compile time declarations in parallel.
+                        // comp_time_decls
+                        //     .par_iter()
+                        //     .try_for_each(|decl| {
+                        //         info!("Typechecking decl: {decl}");
+                        //         if matches!(decl, Declaration::PolyProc(..)) {
+                        //             decl.type_check(&new_env)
+                        //         } else {
+                        //             Ok(())
+                        //         }
+                        //     })?;
                 }
 
                 run_time_decls
@@ -653,7 +683,7 @@ impl TypeCheck for Declaration {
                     //         decl.type_check(&new_env)
                     //     })?;
                     // }
-                    info!("Typechecking {} declarations in parallel", comp_time_decls.len());
+                    debug!("Typechecking {} declarations in parallel", comp_time_decls.len());
                     comp_time_decls.par_iter().try_for_each(|decl| {
                         decl.type_check(&new_env)
                     })?;
@@ -681,13 +711,14 @@ impl TypeCheck for Declaration {
                 
                 // Add all the compile-time declarations to the environment.
                 // new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
-                new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
+                new_env.add_declaration(&Self::Many(decls.clone()))?;
                 trace!("Typechecking module {}", name);
                 // Get all the compile time declarations so we can type check them in parallel.
                 let (comp_time_decls,_run_time_decls): (Vec<_>, Vec<_>) = decls
                     .iter()
                     .partition(|decl| decl.is_compile_time_declaration());
-                trace!("Compile time declarations: {:?}", comp_time_decls);
+
+                // trace!("Compile time declarations: {:?}", comp_time_decls);
                 if !comp_time_decls.is_empty() {
                     // Type check all the compile time declarations in parallel.
                     comp_time_decls
@@ -757,10 +788,10 @@ impl Display for Declaration {
             }
             Self::Module(name, decls) => {
                 write!(f, "module {}", name)?;
-                write!(f, " {{")?;
-                for decl in decls.iter() {
-                    writeln!(f, "{}", decl)?;
-                }
+                write!(f, " {{..")?;
+                // for decl in decls.iter() {
+                //     writeln!(f, "{}", decl)?;
+                // }
                 write!(f, "}}")?;
             }
             Self::FromImport { module, names } => {

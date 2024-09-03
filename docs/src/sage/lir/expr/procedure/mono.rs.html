@@ -279,6 +279,7 @@
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Mono-Procedure
 //!
 //! A procedure of LIR code which can be applied to a list of arguments.
@@ -297,7 +298,7 @@
 <span class="kw">use </span>std::hash::Hash;
 <span class="kw">use </span>std::sync::{Arc, Mutex, RwLock};
 
-<span class="kw">use </span>log::{trace, debug};
+<span class="kw">use </span>log::{trace, debug, error};
 <span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 
 <span class="comment">// TODO: Do this without lazy_static. This is used to create unique mangled IDs for each compiled function.
@@ -442,6 +443,7 @@
         <span class="comment">// Get the type of the procedure's body, and confirm that it matches the return type.
         </span><span class="kw">let </span>body_type = <span class="self">self</span>.body.get_type(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
         <span class="kw">if </span>!body_type.can_decay_to(<span class="kw-2">&amp;</span><span class="self">self</span>.ret, env)<span class="question-mark">? </span>{
+            <span class="macro">error!</span>(<span class="string">"Mismatched return type for procedure {}"</span>, <span class="self">self</span>.common_name.as_ref().unwrap_or(<span class="kw-2">&amp;</span><span class="self">self</span>.mangled_name));
             <span class="prelude-val">Err</span>(Error::MismatchedTypes {
                 expected: <span class="self">self</span>.ret.clone(),
                 found: body_type,

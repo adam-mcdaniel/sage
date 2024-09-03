@@ -317,6 +317,7 @@ impl TypeCheck for Expr {
                         // Check that the branch type matches the result type.
                         if !branch_ty.can_decay_to(result_ty, &new_env)? {
                             // If it doesn't, return an error.
+                            error!("Branch of match has unexpected return type");
                             return Err(Error::MismatchedTypes {
                                 found: branch_ty,
                                 expected: result_ty.clone(),
@@ -358,6 +359,7 @@ impl TypeCheck for Expr {
                 let then_type = pat.get_branch_result_type(expr, then, env)?;
                 let otherwise_type = otherwise.get_type(env)?;
                 if !otherwise_type.can_decay_to(&then_type, env)? {
+                    error!("The else branch of the if statement has an unexpected type");
                     return Err(Error::MismatchedTypes {
                         expected: then_type,
                         found: otherwise_type,
@@ -580,6 +582,7 @@ impl TypeCheck for Expr {
                             })
                         }
                     } else {
+                        error!("Could not assign to pointer of different type");
                         // If it isn't, return an error.
                         Err(Error::MismatchedTypes {
                             expected: val_type,
@@ -589,6 +592,7 @@ impl TypeCheck for Expr {
                     }
                 } else {
                     // If the destination to store isn't a pointer, return an error.
+                    error!("Could not assign to non-pointer");
                     Err(Error::MismatchedTypes {
                         expected: Type::Pointer(Mutability::Mutable, Box::new(Type::Any)),
                         found: ptr_type,
@@ -623,6 +627,7 @@ impl TypeCheck for Expr {
                             Type::Proc(expected_arg_tys, ret_ty) => {
                                 // If the number of arguments is incorrect, then return an error.
                                 if expected_arg_tys.len() != found_arg_tys.len() {
+                                    error!("Unexpected number of arguments");
                                     return Err(Error::MismatchedTypes {
                                         expected: Type::Proc(expected_arg_tys, ret_ty.clone()),
                                         found: Type::Proc(found_arg_tys, ret_ty),
@@ -636,6 +641,7 @@ impl TypeCheck for Expr {
                                 {
                                     // If the types don't match, return an error.
                                     if !found.can_decay_to(&expected, env)? {
+                                        error!("Procedure argument type mismatch");
                                         return Err(Error::MismatchedTypes {
                                             expected,
                                             found,
@@ -647,6 +653,7 @@ impl TypeCheck for Expr {
                             }
                             // If the function is not a procedure, return an error.
                             _ => {
+                                error!("Called non-procedure");
                                 return Err(Error::MismatchedTypes {
                                     expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
                                     found: f_type,
@@ -688,6 +695,7 @@ impl TypeCheck for Expr {
                         {
                             // If the types don't match, return an error.
                             if !found.can_decay_to(&expected, env)? {
+                                error!("Procedure argument type mismatch");
                                 return Err(Error::MismatchedTypes {
                                     expected,
                                     found,
@@ -698,11 +706,14 @@ impl TypeCheck for Expr {
                         Ok(())
                     }
                     // If the function is not a procedure, return an error.
-                    _ => Err(Error::MismatchedTypes {
-                        expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
-                        found: f_type,
-                        expr: self.clone(),
-                    }),
+                    _ => {
+                        error!("Called non-function {self}");
+                        Err(Error::MismatchedTypes {
+                            expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
+                            found: f_type,
+                            expr: self.clone(),
+                        })
+                    },
                 }
             }
 
@@ -715,6 +726,7 @@ impl TypeCheck for Expr {
                     .cloned()
                     .unwrap_or(Type::None);
                 if !found.can_decay_to(&expected, env)? {
+                    error!("The found return type does not match expected type");
                     return Err(Error::MismatchedTypes {
                         expected,
                         found,
@@ -807,6 +819,7 @@ impl TypeCheck for Expr {
                             val.type_check(env)?;
                             let found = val.get_type(env)?;
                             if !found.can_decay_to(expected_ty, env)? {
+                                error!("Could not verify variant of enum {self}");
                                 return Err(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
                                     found,
@@ -908,7 +921,7 @@ impl TypeCheck for ConstExpr {
             return Ok(());
         }
 
-        trace!("Typechecking constant expression: {}", self);
+        debug!("Typechecking constant expression: {}", self);
         match self {
             Self::Template(_ty_params, _template) => {
                 // Create a new environment with the type parameters defined.

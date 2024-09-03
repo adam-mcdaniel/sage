@@ -2,6 +2,7 @@
 //!
 //! This module implements comparison operators between two expressions.
 
+use log::error;
 use crate::{
     asm::{AssemblyProgram, CoreOp, StandardOp, SP},
     lir::*,
@@ -43,11 +44,13 @@ impl BinaryOp for Comparison {
             (Type::Unit(name1, a_type), _, Type::Unit(name2, b_type)) => {
                 // Make sure that the two units are the same.
                 if name1 != name2 {
+                    error!("Cannot apply {self} to {lhs} and {lhs}");
                     return Ok(false);
                 }
 
                 // Make sure that inner types are compatible.
                 if !a_type.equals(b_type, env)? {
+                    error!("Cannot apply {self} to {lhs} and {lhs}");
                     return Ok(false);
                 }
 
@@ -56,7 +59,11 @@ impl BinaryOp for Comparison {
             (a, Self::Equal, b) | (a, Self::NotEqual, b) => {
                 Ok(a.can_decay_to(b, env)? && a.get_size(env)? == 1)
             }
-            _ => Ok(false),
+            (a, _, b) => {
+                error!("Cannot apply {self} to {a} and {b}");
+                
+                Ok(false)
+            },
         }
     }
 
@@ -97,11 +104,14 @@ impl BinaryOp for Comparison {
                 Ok(ConstExpr::Bool((a as f64) > b))
             }
 
-            _ => Err(Error::InvalidBinaryOp(
-                self.clone_box(),
-                Expr::ConstExpr(lhs.clone()),
-                Expr::ConstExpr(rhs.clone()),
-            )),
+            (a, _, b) => {
+                error!("Invalid comparison between consts {a} and {b}");
+                Err(Error::InvalidBinaryOp(
+                    self.clone_box(),
+                    Expr::ConstExpr(lhs.clone()),
+                    Expr::ConstExpr(rhs.clone()),
+                ))
+            },
         }
     }
 
@@ -234,7 +244,8 @@ impl BinaryOp for Comparison {
             }
 
             // Cannot do arithmetic on other pairs of types.
-            _ => {
+            (a, _, b) => {
+                error!("Invalid comparison between types {a} and {b}");
                 return Err(Error::InvalidBinaryOpTypes(
                     Box::new(*self),
                     lhs.clone(),

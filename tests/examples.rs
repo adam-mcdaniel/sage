@@ -57,13 +57,21 @@ fn test_frontend_examples_helper() {
                 Ok(contents) => Some(contents.replace("\r\n", "\n")),
                 Err(_) => None,
             };
+
+            let old_dir = std::env::current_dir().unwrap();
+
             let correct_output_text = match read_to_string(&correct_output_path) {
                 Ok(contents) => contents.replace("\r\n", "\n"),
                 Err(_) if correct_error.is_none() => {
+
                     warn!("Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
                     // Just compile the program to confirm it doesn't error.
                     let frontend_src = read_to_string(&path)
                         .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
+
+                    std::env::set_current_dir(
+                        std::env::current_dir().unwrap().join(std::path::Path::new(&path).parent().unwrap())
+                    ).unwrap();
                     let frontend_code = parse_frontend(&frontend_src, path.to_str())
                         .unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
                     let asm_code = frontend_code.compile().unwrap();
@@ -84,8 +92,13 @@ fn test_frontend_examples_helper() {
 
             let frontend_src = read_to_string(&path)
                 .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
+
+            std::env::set_current_dir(
+                std::env::current_dir().unwrap().join(std::path::Path::new(&path).parent().unwrap())
+            ).unwrap();
             let frontend_code = parse_frontend(&frontend_src, path.to_str())
-                .unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
+                .unwrap_or_else(|e| panic!("Could not parse `{path:?}`: {e}"));
+            std::env::set_current_dir(old_dir).unwrap();
             drop(frontend_src);
             let asm_code = frontend_code.compile();
 

@@ -11,6 +11,19 @@ const CALL_STACK_SIZE: usize = 8192;
 
 #[test]
 fn test_c_target_frontend_examples() {
+    // let mut builder = env_logger::Builder::from_default_env();
+    // builder.format_timestamp(None);
+    // builder.filter(
+    //     None,
+    //     // LogLevel::Error if args.debug.is_none() => log::LevelFilter::Error,
+    //     // LogLevel::Warn if args.debug.is_none() => log::LevelFilter::Warn,
+    //     // LogLevel::Off if args.debug.is_none() => log::LevelFilter::Error,
+    //     // LogLevel::Info if args.debug.is_none() => log::LevelFilter::Info,
+    //     // LogLevel::Trace => log::LevelFilter::Trace,
+    //     log::LevelFilter::Info,
+    // );
+    // builder.init();
+
     rayon::ThreadPoolBuilder::new()
         .num_threads(1)
         .stack_size(512 * 1024 * 1024)

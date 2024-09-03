@@ -1,3 +1,8 @@
+#![(defun echo (x) {
+    (println x)
+    x
+})]
+
 from std.collections import *;
 
 struct Point {
@@ -28,7 +33,7 @@ fun main() {
     if let of Some(result) = hm.get(idx) {
         println("hm[", idx, "] = ", *result);
     } else {
-        println("Could not find hm[", idx, "]");
+        #[echo] println("Could not find hm[", idx, "]");
     }
 }
 

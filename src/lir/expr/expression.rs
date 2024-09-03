@@ -213,7 +213,7 @@ impl Expr {
     }
 
     pub fn transform_method_call(&self, env: &Env) -> Result<Self, Error> {
-        debug!("transform_method_call: {self} -- {self:?}");
+        debug!("transform_method_call: {self}");
 
         let result = match self {
             Self::Annotated(inner, metadata) => inner
@@ -502,15 +502,26 @@ impl Expr {
             Self::Declare(younger_decls, expr) => {
                 // Start with the older declarations.
                 let mut result = older_decls.into();
-                // Add the younder declarations to the older declarations.
-                result.append(*younger_decls.clone());
-                // Return the merged declaration.
-                Self::Declare(Box::new(result), expr.clone())
+
+                if let Declaration::Module(..) = result {
+                    self.hard_with(result)
+                } else {
+                    // Add the younder declarations to the older declarations.
+                    result.append(*younger_decls.clone());
+                    // Return the merged declaration.
+                    Self::Declare(Box::new(result), expr.clone())
+                }
             }
+
+            // Self::ConstExpr(expr) => Self::ConstExpr(expr.with(older_decls)),
 
             // Return the expression with the declaration in scope.
             _ => Self::Declare(Box::new(older_decls.into()), Box::new(self.clone())),
         }
+    }
+
+    pub fn hard_with(&self, older_decls: impl Into<Declaration>) -> Self {
+        Self::Declare(Box::new(older_decls.into()), self.clone().into())
     }
 
     /// Get the size of an expression.

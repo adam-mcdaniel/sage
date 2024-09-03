@@ -149,13 +149,13 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
 
 /// Parse frontend sage code into an LIR expression.
 pub fn parse_frontend(input: impl ToString, filename: Option<&str>) -> Result<Expr, String> {
-    let result = frontend::parse(input, filename)?;
+    let result = frontend::parse(input, filename, true, true)?;
     trace!(target: "parse", "Parsed frontend code: {result}");
     Ok(result)
 }
 
 pub fn parse_frontend_minimal(input: impl ToString, filename: Option<&str>) -> Result<Expr, String> {
-    let result = frontend::parse(input, filename)?;
+    let result = frontend::parse(input, filename, false, false)?;
     Ok(result)
 }
 

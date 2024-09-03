@@ -1166,6 +1166,17 @@
 <a href="#1165" id="1165">1165</a>
 <a href="#1166" id="1166">1166</a>
 <a href="#1167" id="1167">1167</a>
+<a href="#1168" id="1168">1168</a>
+<a href="#1169" id="1169">1169</a>
+<a href="#1170" id="1170">1170</a>
+<a href="#1171" id="1171">1171</a>
+<a href="#1172" id="1172">1172</a>
+<a href="#1173" id="1173">1173</a>
+<a href="#1174" id="1174">1174</a>
+<a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
+<a href="#1177" id="1177">1177</a>
+<a href="#1178" id="1178">1178</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Expression
 //!
 //! An expression is a runtime value.
@@ -1381,7 +1392,7 @@
     }
 
     <span class="kw">pub fn </span>transform_method_call(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt; {
-        <span class="macro">debug!</span>(<span class="string">"transform_method_call: {self} -- {self:?}"</span>);
+        <span class="macro">debug!</span>(<span class="string">"transform_method_call: {self}"</span>);
 
         <span class="kw">let </span>result = <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Annotated(inner, metadata) =&gt; inner
@@ -1670,15 +1681,26 @@
             </span><span class="self">Self</span>::Declare(younger_decls, expr) =&gt; {
                 <span class="comment">// Start with the older declarations.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>result = older_decls.into();
-                <span class="comment">// Add the younder declarations to the older declarations.
-                </span>result.append(<span class="kw-2">*</span>younger_decls.clone());
-                <span class="comment">// Return the merged declaration.
-                </span><span class="self">Self</span>::Declare(Box::new(result), expr.clone())
+
+                <span class="kw">if let </span>Declaration::Module(..) = result {
+                    <span class="self">self</span>.hard_with(result)
+                } <span class="kw">else </span>{
+                    <span class="comment">// Add the younder declarations to the older declarations.
+                    </span>result.append(<span class="kw-2">*</span>younger_decls.clone());
+                    <span class="comment">// Return the merged declaration.
+                    </span><span class="self">Self</span>::Declare(Box::new(result), expr.clone())
+                }
             }
 
-            <span class="comment">// Return the expression with the declaration in scope.
+            <span class="comment">// Self::ConstExpr(expr) =&gt; Self::ConstExpr(expr.with(older_decls)),
+
+            // Return the expression with the declaration in scope.
             </span><span class="kw">_ </span>=&gt; <span class="self">Self</span>::Declare(Box::new(older_decls.into()), Box::new(<span class="self">self</span>.clone())),
         }
+    }
+
+    <span class="kw">pub fn </span>hard_with(<span class="kw-2">&amp;</span><span class="self">self</span>, older_decls: <span class="kw">impl </span>Into&lt;Declaration&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::Declare(Box::new(older_decls.into()), <span class="self">self</span>.clone().into())
     }
 
     <span class="doccomment">/// Get the size of an expression.

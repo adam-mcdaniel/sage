@@ -16,7 +16,7 @@ use core::fmt;
 use std::hash::Hash;
 use std::sync::{Arc, Mutex, RwLock};
 
-use log::{trace, debug};
+use log::{trace, debug, error};
 use serde_derive::{Deserialize, Serialize};
 
 // TODO: Do this without lazy_static. This is used to create unique mangled IDs for each compiled function.
@@ -161,6 +161,7 @@ impl TypeCheck for Procedure {
         // Get the type of the procedure's body, and confirm that it matches the return type.
         let body_type = self.body.get_type(&new_env)?;
         if !body_type.can_decay_to(&self.ret, env)? {
+            error!("Mismatched return type for procedure {}", self.common_name.as_ref().unwrap_or(&self.mangled_name));
             Err(Error::MismatchedTypes {
                 expected: self.ret.clone(),
                 found: body_type,

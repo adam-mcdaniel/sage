@@ -692,12 +692,12 @@ impl Compile for Expr {
                         .map_err(|e| e.annotate(metadata.clone()));
                 }
 
-                if let Self::ConstExpr(container) = val.as_ref() {
-                    // Write more elegantly
-                    if let Ok(val) = container.clone().field(member.clone()).eval(env) {
-                        return val.compile_expr(env, output);
-                    }
-                }
+                // if let Self::ConstExpr(container) = val.as_ref() {
+                //     // Write more elegantly
+                //     if let Ok(val) = container.clone().field(member.clone()).eval(env) {
+                //         return val.compile_expr(env, output);
+                //     }
+                // }
 
                 // If the value we're getting a field from is a pointer,
                 // then dereference it and get the field from the value.

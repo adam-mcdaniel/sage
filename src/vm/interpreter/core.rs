@@ -3,6 +3,7 @@
 //! This module implements an interpreter for the Core virtual machine
 //! variant.
 use crate::vm::{CoreOp, CoreProgram, Device, StandardDevice};
+use super::TAPE_EXTENSION_SIZE;
 
 impl Default for CoreInterpreter<StandardDevice> {
     fn default() -> Self {
@@ -235,7 +236,7 @@ where
     /// Get the current cell pointed to on the turing tape.
     fn get_cell(&mut self) -> &mut i64 {
         while self.pointer >= self.cells.len() {
-            self.cells.extend(vec![0; 1000]);
+            self.cells.extend(vec![0; TAPE_EXTENSION_SIZE]);
         }
 
         &mut self.cells[self.pointer]
@@ -285,7 +286,7 @@ where
 
                 CoreOp::Load(n) => {
                     while self.pointer + n >= self.cells.len() {
-                        self.cells.extend(vec![0; 1000]);
+                        self.cells.extend(vec![0; TAPE_EXTENSION_SIZE]);
                     }
 
                     self.reg_mut_vector().clear();
@@ -298,7 +299,7 @@ where
 
                 CoreOp::Store(n) => {
                     while self.pointer + n >= self.cells.len() {
-                        self.cells.extend(vec![0; 1000]);
+                        self.cells.extend(vec![0; TAPE_EXTENSION_SIZE]);
                     }
                     for i in 0..*n {
                         let val = self.reg_vector()[i];

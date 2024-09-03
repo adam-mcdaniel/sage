@@ -1501,6 +1501,14 @@
 <a href="#1500" id="1500">1500</a>
 <a href="#1501" id="1501">1501</a>
 <a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
+<a href="#1505" id="1505">1505</a>
+<a href="#1506" id="1506">1506</a>
+<a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compile
 //!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
@@ -1815,15 +1823,21 @@
                     }
 
                     Expr::ConstExpr(ConstExpr::Member(val, name)) =&gt; {
-                        <span class="macro">warn!</span>(<span class="string">"Compiling member function call {name} on {val} in environment {env}"</span>);
-                        <span class="comment">// Try to get the member of the underlying type.
+                        <span class="macro">warn!</span>(<span class="string">"Compiling (const) member function call {name} on {val} in environment {env}"</span>);
+                        <span class="comment">// let access = Expr::Member(Box::new((*val).into()), *name);
+                        // access.compile_expr(env, output)?;
+
+                        // Try to get the member of the underlying type.
                         </span><span class="kw">if </span>self_clone.is_method_call(env)<span class="question-mark">? </span>{
-                            self_clone
-                                .transform_method_call(env)<span class="question-mark">?
-                                </span>.compile_expr(env, output)<span class="question-mark">?</span>;
+                            <span class="macro">warn!</span>(<span class="string">"Is method call!"</span>);
+                            <span class="kw">let </span>transformed = self_clone
+                                .transform_method_call(env)<span class="question-mark">?</span>;
+                            <span class="macro">warn!</span>(<span class="string">"Transformed: {transformed}"</span>);
+                            transformed.compile_expr(env, output)<span class="question-mark">?</span>;
                         } <span class="kw">else </span>{
                             <span class="comment">// Push the arguments to the procedure on the stack.
-                            </span><span class="macro">warn!</span>(<span class="string">"Compiling member function call {name} on {val} in environment {env}"</span>);
+                            </span><span class="macro">warn!</span>(<span class="string">"Is not method call!"</span>);
+                            <span class="macro">warn!</span>(<span class="string">"Compiling member function call {name} on {val} in environment {env}"</span>);
                             <span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span>args {
                                 <span class="comment">// Compile the argument (push it on the stack)
                                 </span>arg.clone().compile_expr(env, output)<span class="question-mark">?</span>;
@@ -2189,14 +2203,14 @@
                         .map_err(|e| e.annotate(metadata.clone()));
                 }
 
-                <span class="kw">if let </span><span class="self">Self</span>::ConstExpr(container) = val.as_ref() {
-                    <span class="comment">// Write more elegantly
-                    </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(val) = container.clone().field(member.clone()).eval(env) {
-                        <span class="kw">return </span>val.compile_expr(env, output);
-                    }
-                }
+                <span class="comment">// if let Self::ConstExpr(container) = val.as_ref() {
+                //     // Write more elegantly
+                //     if let Ok(val) = container.clone().field(member.clone()).eval(env) {
+                //         return val.compile_expr(env, output);
+                //     }
+                // }
 
-                <span class="comment">// If the value we're getting a field from is a pointer,
+                // If the value we're getting a field from is a pointer,
                 // then dereference it and get the field from the value.
                 </span><span class="kw">match </span>val.get_type(env)<span class="question-mark">? </span>{
                     Type::Pointer(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
@@ -2562,8 +2576,10 @@
                 <span class="comment">// Do nothing.
             </span>}
             <span class="self">Self</span>::Member(container, member) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">"Compiling member access {member} on {container} in environment {env}"</span>);
-                <span class="kw">match </span>(container.clone().eval(env)<span class="question-mark">?</span>, <span class="kw-2">*</span>member.clone()) {
+                <span class="comment">// let new_container = container.clone().eval(env)?;
+                </span><span class="kw">let </span>new_container = <span class="kw-2">*</span>container.clone();
+                <span class="macro">warn!</span>(<span class="string">"Compiling (const) member access {member} on {new_container} in environment {env}"</span>);
+                <span class="kw">match </span>(new_container, <span class="kw-2">*</span>member.clone()) {
                     (<span class="self">Self</span>::Tuple(tuple), <span class="self">Self</span>::Int(n)) =&gt; {
                         <span class="comment">// If the index is out of bounds, return an error.
                         </span><span class="kw">if </span>n &gt;= tuple.len() <span class="kw">as </span>i64 || n &lt; <span class="number">0 </span>{
@@ -2593,7 +2609,7 @@
                         expr.field(field).compile_expr(<span class="kw-2">&amp;mut </span>new_env, output)<span class="question-mark">?</span>;
                     }
                     (a, b) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">"Could not identify member access {b} on {a} in environment {env}"</span>);
+                        <span class="macro">warn!</span>(<span class="string">"Could not identify member access {b} on {a} in environment {env}"</span>);
                         <span class="comment">// return Err(Error::MemberNotFound((*container).into(), *member));
                         </span>Expr::Member(Box::new(Expr::ConstExpr(<span class="kw-2">*</span>container.clone())), <span class="kw-2">*</span>member.clone()).compile_expr(env, output)<span class="question-mark">?</span>;
                     }

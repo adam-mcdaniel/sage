@@ -267,7 +267,7 @@ impl Env {
                     )
                     .is_err()
                 {
-                    warn!("Failed to get monomorph template args for {monomorph} of {template}");
+                    debug!("Failed to get monomorph template args for {monomorph} of {template}");
                     continue;
                 }
                 for (symbol, ty) in &symbols {
@@ -284,8 +284,8 @@ impl Env {
                 }
 
                 if ty_args.len() != ty_params.len() {
-                    warn!("Mismatched number of template arguments for {monomorph} of {template}");
-                    warn!("Expected {ty_params:?}, found {ty_args:?}");
+                    debug!("Mismatched number of template arguments for {monomorph} of {template}");
+                    debug!("Expected {ty_params:?}, found {ty_args:?}");
                     continue;
                 }
 
@@ -313,7 +313,7 @@ impl Env {
                     // return Some(result);
                 }
 
-                warn!("Could not find associated const {name} of type {ty} in {template}");
+                debug!("Could not find associated const {name} of type {ty} in {template}");
                 for template_const_name in template_associated_consts.keys() {
                     debug!("   {template_const_name} != {name}");
                 }
@@ -400,8 +400,8 @@ impl Env {
                 }
 
                 if ty_args.len() != ty_params.len() {
-                    warn!("Mismatched number of template arguments for {monomorph} of {template}");
-                    warn!("Expected {ty_params:?}, found {ty_args:?}");
+                    debug!("Mismatched number of template arguments for {monomorph} of {template}");
+                    debug!("Expected {ty_params:?}, found {ty_args:?}");
                     continue;
                 }
 
@@ -425,7 +425,7 @@ impl Env {
                     return Some((const_expr.clone().monomorphize(ty_args.clone()), result_ty));
                 }
 
-                warn!("Could not find associated const {name} of type {ty} in {template}");
+                debug!("Could not find associated const {name} of type {ty} in {template}");
                 // return self.get_associated_const(&monomorph, name);
             } else {
                 // info!("Type {ty} is not monomorph of {other_ty}");
@@ -579,7 +579,7 @@ impl Env {
         // } else {
         //     // If we can't acquire the lock, just return.
         //     // This is because we don't want to block the thread if we can't acquire the lock.
-        //     warn!("Failed to acquire lock on processed monomorphizations");
+        //     debug!("Failed to acquire lock on processed monomorphizations");
         //     return Ok(());
         // }
 
@@ -744,7 +744,6 @@ impl Env {
                 for decl in Declaration::Many(decls.clone()).flatten().iter() {
                     match decl {
                         Declaration::Type(name, _) => {
-                            // new_env.add_compile_time_declaration(decl)?;
                             exports.push(name.clone());
                         }
                         Declaration::Module(name, _submodule) => {
@@ -785,7 +784,7 @@ impl Env {
                             // let mut new_attrs = vec![];
                             // for (name, attr) in attrs {
                             //     let new_attr = attr.clone().with(decls.clone());
-                            //     warn!("Adding method to type {ty} with attribute {new_attr}");
+                            //     debug!("Adding method to type {ty} with attribute {new_attr}");
                             //     new_attrs.push((name.clone(), new_attr));
                             //     // exports.push(name.clone());
                             // }
@@ -799,9 +798,7 @@ impl Env {
                             // new_env.add_compile_time_declaration(&decl)?;
                         }
                         Declaration::Many(decls) => {
-                            for decl in decls.iter() {
-                                self.add_compile_time_declaration(&decl)?;
-                            }
+                            unreachable!()
                         }
                         _ => {}
                     }
@@ -890,6 +887,7 @@ impl Env {
 
                     if template_params.len() != supplied_params.len() && template_params.len() != 0 {
                         // The number of template parameters must match the number of supplied parameters.
+                        error!("Mismatched types in template {template}");
                         return Err(Error::MismatchedTypes {
                             expected: *template.clone(),
                             found: Type::Apply(template.clone(), supplied_params.clone()),
@@ -924,25 +922,14 @@ impl Env {
                         })
                         .collect::<Result<Vec<_>, _>>()?;
 
-                    let mut is_first = true;
                     for (name, associated_const) in impls {
-                        if is_first && self.has_associated_const(ty, name) {
-                            break;
-                        }
-                        is_first = false;
                         let templated_const =
                             associated_const.template(supplied_param_symbols.clone());
                         self.add_associated_const(*template.clone(), name, templated_const)?;
                     }
                 } else {
                     // ty.add_monomorphized_associated_consts(self)?;
-                    let mut is_first = true;
                     for (name, associated_const) in impls {
-                        if is_first && self.has_associated_const(ty, name) {
-                            break;
-                        }
-                        is_first = false;
-
                         self.add_associated_const(ty.clone(), name, associated_const.clone())?;
                     }
 
@@ -1012,8 +999,8 @@ impl Env {
             Declaration::ExternProc(_, _) => {
                 // FFI procedures are not defined at runtime.
             }
-            Declaration::StaticVar(_, _, _, _) => {
-                // Static variables are not defined at runtime.
+            Declaration::StaticVar(name, mutability, ty, _expr) => {
+                self.define_static_var(name, *mutability, ty.clone())?;
             }
             Declaration::Impl(_, _) => {
                 // Implementations are not defined at runtime.
@@ -1080,7 +1067,7 @@ impl Env {
     pub(super) fn define_type(&mut self, name: impl ToString, ty: Type) {
         let name = name.to_string();
         // if self.types.contains_key(&name) {
-        //     warn!("Redefining type {name} in {self}");
+        //     debug!("Redefining type {name} in {self}");
         //     return;
         // }
 
@@ -1117,7 +1104,7 @@ impl Env {
                 }
                 _ => {
                     if self.types.contains_key(name) {
-                        warn!("Redefining type {name} in {self}");
+                        debug!("Redefining type {name} in {self}");
                     } else {
                         trace!("Defining type {name} as {ty}");
                         Arc::make_mut(&mut self.consts).insert(name.clone(), ConstExpr::Type(ty.clone()));
@@ -1172,10 +1159,10 @@ impl Env {
     pub(super) fn define_proc(&mut self, name: impl ToString, proc: Procedure) {
         let name = name.to_string();
         trace!("Defining procedure {name} as {proc}");
-        if self.procs.contains_key(&name) {
-            warn!("Redefining procedure {name} in {self}");
-            return;
-        }
+        // if self.procs.contains_key(&name) {
+        //     debug!("Redefining procedure {name} in {self}");
+        //     return;
+        // }
         Arc::make_mut(&mut self.procs).insert(name.clone(), proc.clone());
         Arc::make_mut(&mut self.consts).insert(name, ConstExpr::Proc(proc));
     }
@@ -1204,7 +1191,7 @@ impl Env {
                     _ => None,
                 });
             if result.is_none() {
-                warn!("Procedure {name} not found in {self}");
+                debug!("Procedure {name} not found in {self}");
             }
             result
         })
@@ -1355,7 +1342,7 @@ impl Env {
                 debug!(target: "size", "Type size {ty} was already memoized with size {size}");
                 return;
             } else {
-                warn!(target: "size", "Type size {ty} was already memoized with size {old_size}, but we memoized it with size {size}");
+                debug!(target: "size", "Type size {ty} was already memoized with size {old_size}, but we memoized it with size {size}");
             }
         }
         Arc::make_mut(&mut self.type_sizes).insert(ty, size);
@@ -1364,7 +1351,7 @@ impl Env {
 
 impl Display for Env {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        return Ok(());
+        // return Ok(());
         writeln!(f, "Env")?;
         writeln!(f, "   Types:")?;
         for (name, ty) in self.types.iter() {
@@ -1373,19 +1360,19 @@ impl Display for Env {
             if constants.is_empty() {
                 continue;
             }
-            writeln!(f, "         Associated constants:")?;
-            for (name, cexpr) in constants {
-                writeln!(f, "            {}: {}", name, cexpr)?;
-            }
+            // writeln!(f, "         Associated constants:")?;
+            // for (name, cexpr) in constants {
+            //     writeln!(f, "            {}: {}", name, cexpr)?;
+            // }
         }
-        writeln!(f, "   Constants:")?;
-        for (i, (name, e)) in self.consts.iter().enumerate() {
-            writeln!(f, "      {i}. {}: {}", name, e)?;
-        }
-        writeln!(f, "   Procedures:")?;
-        for (name, proc) in self.procs.iter() {
-            writeln!(f, "      {}: {}", name, proc)?;
-        }
+        // writeln!(f, "   Constants:")?;
+        // for (i, (name, e)) in self.consts.iter().enumerate() {
+        //     writeln!(f, "      {i}. {}: {}", name, e)?;
+        // }
+        // writeln!(f, "   Procedures:")?;
+        // for (name, proc) in self.procs.iter() {
+        //     writeln!(f, "      {}: {}", name, proc)?;
+        // }
         writeln!(f, "   Globals:")?;
         for (name, (mutability, ty, location)) in self.static_vars.iter() {
             writeln!(f, "      {mutability} {name}: {ty} (location {location})")?;

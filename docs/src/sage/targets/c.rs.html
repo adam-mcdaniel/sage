@@ -356,6 +356,10 @@
 <a href="#355" id="355">355</a>
 <a href="#356" id="356">356</a>
 <a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # C Target
 //!
 //! An implementation of the virtual machine for the C language.
@@ -636,8 +640,8 @@
         <span class="kw">let </span>ch = src.channel.<span class="number">0</span>;
         <span class="kw">match </span>src.mode {
             InputMode::StdinChar =&gt; <span class="prelude-val">Ok</span>(<span class="string">"tmp = getchar(); scalar_reg.i = tmp == EOF? 0 : tmp;"</span>.to_string()),
-            InputMode::StdinInt =&gt; <span class="prelude-val">Ok</span>(<span class="string">"scanf(\"%ld\", &amp;tmp_scalar_reg.i); reg = tmp_reg;"</span>.to_string()),
-            InputMode::StdinFloat =&gt; <span class="prelude-val">Ok</span>(<span class="string">"scanf(\"%lf\", &amp;tmp_scalar_reg.f); reg = tmp_reg;"</span>.to_string()),
+            InputMode::StdinInt =&gt; <span class="prelude-val">Ok</span>(<span class="string">"scanf(\"%ld\", &amp;tmp_scalar_reg.i); scalar_reg = tmp_scalar_reg;"</span>.to_string()),
+            InputMode::StdinFloat =&gt; <span class="prelude-val">Ok</span>(<span class="string">"scanf(\"%lf\", &amp;tmp_scalar_reg.f); scalar_reg = tmp_scalar_reg;"</span>.to_string()),
             InputMode::Thermometer =&gt; <span class="prelude-val">Ok</span>(<span class="string">"scalar_reg.f = 293.15;"</span>.to_string()),
             InputMode::Clock =&gt; <span class="prelude-val">Ok</span>(<span class="string">"scalar_reg.i = time(NULL);"</span>.to_string()),
             InputMode::Random =&gt; <span class="prelude-val">Ok</span>(<span class="string">"scalar_reg.i = rand();"</span>.to_string()),
@@ -662,10 +666,10 @@
         }
     }
     <span class="kw">fn </span>peek(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
-        <span class="prelude-val">Ok</span>(<span class="string">"reg = *(ffi_ptr--);"</span>.to_string())
+        <span class="prelude-val">Ok</span>(<span class="string">"scalar_reg = *(ffi_ptr--); vector_reg[0] = scalar_reg;"</span>.to_string())
     }
     <span class="kw">fn </span>poke(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
-        <span class="prelude-val">Ok</span>(<span class="string">"*(++ffi_ptr) = reg;"</span>.to_string())
+        <span class="prelude-val">Ok</span>(<span class="string">"*(++ffi_ptr) = scalar_reg;"</span>.to_string())
     }
     <span class="kw">fn </span>prelude(<span class="kw-2">&amp;</span><span class="self">self</span>, is_core: bool) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="string">r#"#include &lt;stdint.h&gt;
@@ -679,10 +683,14 @@ typedef union cell {
     union cell *p;
 } cell;
 
-cell tape[200000], *refs[1024], *ptr = tape, **ref = refs, scalar_reg, vector_reg[1024], tmp_reg, ffi_channel[256], *ffi_ptr = ffi_channel;
+cell tape[67108864], *refs[1024], *ptr = tape, **ref = refs, scalar_reg, vector_reg[1024], tmp_reg, ffi_channel[256], *ffi_ptr = ffi_channel;
 
 unsigned int ref_ptr = 0;
 void (*funs[10000])(void);
+
+#if __has_include("ffi.h")
+#include "ffi.h"
+#endif
 
 int tmp;
 "#

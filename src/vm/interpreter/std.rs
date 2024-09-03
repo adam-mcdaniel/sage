@@ -4,6 +4,7 @@
 //! variant.
 
 use crate::vm::{CoreOp, Device, StandardDevice, StandardOp, StandardProgram};
+use super::TAPE_EXTENSION_SIZE;
 
 /// A function to reinterpret the bits of an integer as a float.
 pub fn as_float(n: i64) -> f64 {
@@ -20,6 +21,7 @@ impl Default for StandardInterpreter<StandardDevice> {
         Self::new(StandardDevice::default())
     }
 }
+
 
 /// The interpreter which runs the standard variant of virtual machine programs.
 pub struct StandardInterpreter<T>
@@ -254,7 +256,7 @@ where
     /// Get the current cell pointed to on the turing tape.
     fn get_cell(&mut self) -> &mut i64 {
         while self.pointer >= self.cells.len() {
-            self.cells.extend(vec![0; 1000]);
+            self.cells.extend(vec![0; TAPE_EXTENSION_SIZE]);
         }
 
         &mut self.cells[self.pointer]
@@ -308,7 +310,7 @@ where
 
                     CoreOp::Load(n) => {
                         while self.pointer + n >= self.cells.len() {
-                            self.cells.extend(vec![0; 1000]);
+                            self.cells.extend(vec![0; TAPE_EXTENSION_SIZE]);
                         }
 
                         self.reg_mut_vector().clear();
@@ -321,7 +323,7 @@ where
 
                     CoreOp::Store(n) => {
                         while self.pointer + n >= self.cells.len() {
-                            self.cells.extend(vec![0; 1000]);
+                            self.cells.extend(vec![0; TAPE_EXTENSION_SIZE]);
                         }
 
                         for i in 0..*n {

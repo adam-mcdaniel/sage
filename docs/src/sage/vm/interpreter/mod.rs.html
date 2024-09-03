@@ -420,6 +420,9 @@
 <a href="#419" id="419">419</a>
 <a href="#420" id="420">420</a>
 <a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # The Interpreter Module
 //!
 //! This module implements two interpreters for the virtual machine: one for each variant.
@@ -441,6 +444,9 @@
     collections::{HashMap, VecDeque},
     io::{stdin, stdout, Read, Write},
 };
+
+<span class="doccomment">/// The amount by which the tape is extended whenever the pointer moves past the end
+</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">const </span>TAPE_EXTENSION_SIZE: usize = <span class="number">100000</span>;
 
 <span class="doccomment">/// Create an input / output device for the virtual machine interpreter
 /// to operate on. The method `get` retrieves the device's input, and the

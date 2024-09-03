@@ -2360,6 +2360,12 @@
 <a href="#2359" id="2359">2359</a>
 <a href="#2360" id="2360">2360</a>
 <a href="#2361" id="2361">2361</a>
+<a href="#2362" id="2362">2362</a>
+<a href="#2363" id="2363">2363</a>
+<a href="#2364" id="2364">2364</a>
+<a href="#2365" id="2365">2365</a>
+<a href="#2366" id="2366">2366</a>
+<a href="#2367" id="2367">2367</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Types Module
 //!
 //! This module contains a collection of types and traits
@@ -2834,20 +2840,26 @@
                     ret.get_monomorph_template_args(other, matched_symbols, param_symbols, env)<span class="question-mark">?</span>;
                 }
             }
-
-            (<span class="self">Self</span>::Symbol(name), template) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = env.get_type(name) {
-                    t.get_monomorph_template_args(template, matched_symbols, param_symbols, env)<span class="question-mark">?</span>;
-                }
-            }
-
             (other, <span class="self">Self</span>::Symbol(name)) =&gt; {
                 <span class="kw">if </span>param_symbols.contains(name) {
                     <span class="macro">debug!</span>(<span class="string">"Found match {}: {}"</span>, name, other);
                     matched_symbols.insert(name.clone(), other.clone());
                 } <span class="kw">else if let </span><span class="prelude-val">Some</span>(t) = env.get_type(name) {
                     <span class="macro">debug!</span>(<span class="string">"Symbol {name} is {t}"</span>);
-                    other.get_monomorph_template_args(t, matched_symbols, param_symbols, env)<span class="question-mark">?</span>;
+                    <span class="comment">// let mut new_matched_symbols = HashMap::new();
+                    </span>other.get_monomorph_template_args(t, matched_symbols, param_symbols, env)<span class="question-mark">?</span>;
+                    <span class="comment">// // other.get_monomorph_template_args(t, matched_symbols, param_symbols, env)?;
+                    // for (symbol, t) in new_matched_symbols {
+                    //     if !matched_symbols.contains_key(&amp;symbol) {
+                    //         matched_symbols.insert(symbol, t);
+                    //     }
+                    // }
+                </span>}
+            }
+
+            (<span class="self">Self</span>::Symbol(name), template) =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = env.get_type(name) {
+                    t.get_monomorph_template_args(template, matched_symbols, param_symbols, env)<span class="question-mark">?</span>;
                 }
             }
 

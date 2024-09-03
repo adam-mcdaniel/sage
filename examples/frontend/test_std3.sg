@@ -1,0 +1,23 @@
+from std.fallible import Option, Result;
+
+enum Error {
+    DivideByZero { numerator: Int },
+    Custom(&Char)
+}
+
+fun divide(n: Int, d: Int): Option<Int> {
+    match d {
+        0 => Option<Int> of Nothing,
+        _ => Option<Int> of Some(n / d)
+    }
+}
+
+
+fun main(): Result<(), Error> {
+    println(divide(5, 2));
+    println(divide(5, 0));
+
+    return Result<(), Error> of Ok(());
+}
+
+println(main());
