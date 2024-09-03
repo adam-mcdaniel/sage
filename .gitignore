@@ -12,3 +12,4 @@ massif.out.*
 /benches/temp
 /benches/temp.c
 .DS_Store
+ffi.h
