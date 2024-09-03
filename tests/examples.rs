@@ -11,8 +11,22 @@ const CALL_STACK_SIZE: usize = 8192;
 
 #[test]
 fn test_frontend_examples() {
+    // Enable logging
+    let mut builder = env_logger::Builder::from_default_env();
+    builder.format_timestamp(None);
+    builder.filter(
+        None,
+        // LogLevel::Error if args.debug.is_none() => log::LevelFilter::Error,
+        // LogLevel::Warn if args.debug.is_none() => log::LevelFilter::Warn,
+        // LogLevel::Off if args.debug.is_none() => log::LevelFilter::Error,
+        // LogLevel::Info if args.debug.is_none() => log::LevelFilter::Info,
+        // LogLevel::Trace => log::LevelFilter::Trace,
+        log::LevelFilter::Info,
+    );
+    builder.init();
+
     let _ = rayon::ThreadPoolBuilder::new()
-        .num_threads(1)
+        .num_threads(16)
         .stack_size(512 * 1024 * 1024)
         .build_global();
     // Compiling most examples overflows the tiny stack for tests.
@@ -27,7 +41,6 @@ fn test_frontend_examples() {
 }
 
 fn test_frontend_examples_helper() {
-    let old_dir = std::env::current_dir().unwrap();
     for entry in read_dir("examples/frontend/").unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
@@ -68,13 +81,8 @@ fn test_frontend_examples_helper() {
                     let frontend_src = read_to_string(&path)
                         .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
 
-                    std::env::set_current_dir(
-                        std::env::current_dir().unwrap().join(std::path::Path::new(&path).parent().unwrap())
-                    ).unwrap();
                     let frontend_code = parse_frontend(&frontend_src, path.to_str())
                         .unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
-
-                    std::env::set_current_dir(&old_dir).unwrap();
                     let asm_code = frontend_code.compile().unwrap();
                     let _vm_code = match asm_code {
                         Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
@@ -94,12 +102,8 @@ fn test_frontend_examples_helper() {
             let frontend_src = read_to_string(&path)
                 .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
 
-            std::env::set_current_dir(
-                std::env::current_dir().unwrap().join(std::path::Path::new(&path).parent().unwrap())
-            ).unwrap();
             let frontend_code = parse_frontend(&frontend_src, path.to_str())
                 .unwrap_or_else(|e| panic!("Could not parse `{path:?}`: {e}"));
-            std::env::set_current_dir(&old_dir).unwrap();
             drop(frontend_src);
             let asm_code = frontend_code.compile();
 
@@ -146,24 +150,26 @@ fn test_frontend_examples_helper() {
 
 #[test]
 fn test_lir_examples() {
-    // let mut builder = env_logger::Builder::from_default_env();
-    // builder.format_timestamp(None);
-    // builder.filter(
-    //     None,
-    //     // LogLevel::Error if args.debug.is_none() => log::LevelFilter::Error,
-    //     // LogLevel::Warn if args.debug.is_none() => log::LevelFilter::Warn,
-    //     // LogLevel::Off if args.debug.is_none() => log::LevelFilter::Error,
-    //     // LogLevel::Info if args.debug.is_none() => log::LevelFilter::Info,
-    //     // LogLevel::Trace => log::LevelFilter::Trace,
-    //     log::LevelFilter::Info,
-    // );
-    // builder.init();
-
+    /*
+    // Enable logging
+    let mut builder = env_logger::Builder::from_default_env();
+    builder.format_timestamp(None);
+    builder.filter(
+        None,
+        // LogLevel::Error if args.debug.is_none() => log::LevelFilter::Error,
+        // LogLevel::Warn if args.debug.is_none() => log::LevelFilter::Warn,
+        // LogLevel::Off if args.debug.is_none() => log::LevelFilter::Error,
+        // LogLevel::Info if args.debug.is_none() => log::LevelFilter::Info,
+        // LogLevel::Trace => log::LevelFilter::Trace,
+        log::LevelFilter::Info,
+    );
+    builder.init();
+     */
 
     let _ = rayon::ThreadPoolBuilder::new()
-        .num_threads(1)
+        .num_threads(16)
         .stack_size(512 * 1024 * 1024)
-        .build_global();;
+        .build_global();
 
     // Compiling most examples overflows the tiny stack for tests.
     // So, we spawn a new thread with a larger stack size.

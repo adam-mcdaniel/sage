@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap}, hash::Hash, result, sync::{Arc, RwLock}
+    collections::{BTreeMap, HashMap}, hash::Hash, path::Path, result, sync::{Arc, RwLock}
 };
 use log::{trace, info, warn, error, debug};
 use nom::{
@@ -1401,8 +1401,12 @@ fn stmts_to_expr(stmts: Vec<Statement>, end_of_program: bool) -> Expr {
 
 pub fn parse_source(input: &str, filename: Option<String>) -> Result<Expr, String> {
     obliterate_save();
+    let old_dir = match &filename {
+        Some(_) => std::env::current_dir().unwrap(),
+        None => std::path::PathBuf::new()
+    };
 
-    setup_source_code_locations(input, filename);
+    setup_source_code_locations(input, filename.clone());
 
     fn parse_helper<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
         let (input, _) = whitespace(input)?;
@@ -1411,7 +1415,14 @@ pub fn parse_source(input: &str, filename: Option<String>) -> Result<Expr, Strin
         Ok((input, stmts_to_expr(stmts, true)))
     }
 
-    match all_consuming(parse_helper::<VerboseError<&str>>)(input) {
+    if let Some(path) = &filename {
+        let _ = std::env::set_current_dir(
+            std::env::current_dir().unwrap().join(std::path::Path::new(&path).parent().unwrap())
+        );
+    }
+    let result = all_consuming(parse_helper::<VerboseError<&str>>)(input);
+    let _ = std::env::set_current_dir(&old_dir);
+    match result {
         Err(nom::Err::Error(e)) => {
             trace!("Error: {e}");
             Err(format!("{}", convert_error(input, e)))

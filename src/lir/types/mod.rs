@@ -634,14 +634,14 @@ impl Type {
                     );
                     result
                 } else {
-                    warn!("get_template_params: Couldn't find type {}", name);
+                    debug!("get_template_params: Couldn't find type {}", name);
                     vec![]
                 }
             }
             result => {
                 match result {
-                    Ok(result) => warn!("get_template_params: Couldn't find template params for {result}"),
-                    Err(e) => warn!("get_template_params: Couldn't simplify {self} to a polymorphic type due to {e}")
+                    Ok(result) => debug!("get_template_params: Couldn't find template params for {result}"),
+                    Err(e) => debug!("get_template_params: Couldn't simplify {self} to a polymorphic type due to {e}")
                 }
                 vec![]
             }

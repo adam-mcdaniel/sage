@@ -312,21 +312,21 @@ impl Compile for Expr {
                     }
 
                     Expr::ConstExpr(ConstExpr::Member(val, name)) => {
-                        warn!("Compiling (const) member function call {name} on {val} in environment {env}");
+                        debug!("Compiling (const) member function call {name} on {val} in environment {env}");
                         // let access = Expr::Member(Box::new((*val).into()), *name);
                         // access.compile_expr(env, output)?;
 
                         // Try to get the member of the underlying type.
                         if self_clone.is_method_call(env)? {
-                            warn!("Is method call!");
+                            debug!("Is method call!");
                             let transformed = self_clone
                                 .transform_method_call(env)?;
-                            warn!("Transformed: {transformed}");
+                            debug!("Transformed: {transformed}");
                             transformed.compile_expr(env, output)?;
                         } else {
                             // Push the arguments to the procedure on the stack.
-                            warn!("Is not method call!");
-                            warn!("Compiling member function call {name} on {val} in environment {env}");
+                            debug!("Is not method call!");
+                            debug!("Compiling member function call {name} on {val} in environment {env}");
                             for arg in &args {
                                 // Compile the argument (push it on the stack)
                                 arg.clone().compile_expr(env, output)?;
@@ -339,7 +339,7 @@ impl Compile for Expr {
                             output.op(CoreOp::Pop(Some(A), 1));
                             // Call the procedure on the arguments.
                             output.op(CoreOp::Call(A));
-                            warn!("Success!");
+                            debug!("Success!");
                         }
                     }
                     Expr::Member(val, name) => {
@@ -1067,7 +1067,7 @@ impl Compile for ConstExpr {
             Self::Member(container, member) => {
                 // let new_container = container.clone().eval(env)?;
                 let new_container = *container.clone();
-                warn!("Compiling (const) member access {member} on {new_container} in environment {env}");
+                debug!("Compiling (const) member access {member} on {new_container} in environment {env}");
                 match (new_container, *member.clone()) {
                     (Self::Tuple(tuple), Self::Int(n)) => {
                         // If the index is out of bounds, return an error.
@@ -1098,7 +1098,7 @@ impl Compile for ConstExpr {
                         expr.field(field).compile_expr(&mut new_env, output)?;
                     }
                     (a, b) => {
-                        warn!("Could not identify member access {b} on {a} in environment {env}");
+                        debug!("Could not identify member access {b} on {a} in environment {env}");
                         // return Err(Error::MemberNotFound((*container).into(), *member));
                         Expr::Member(Box::new(Expr::ConstExpr(*container.clone())), *member.clone()).compile_expr(env, output)?;
                     }
@@ -1109,7 +1109,7 @@ impl Compile for ConstExpr {
                     .map_err(|err| err.annotate(metadata))?;
             }
             Self::Declare(bindings, body) => {
-                warn!("Compiling declaration {bindings} with body {body} in environment {env}");
+                debug!("Compiling declaration {bindings} with body {body} in environment {env}");
                 // bindings.compile(Expr::ConstExpr(*body), env, output)?;
                 let mut new_env = env.clone();
                 new_env.add_declaration(&bindings)?;

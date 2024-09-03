@@ -469,10 +469,6 @@ fn cli() {
     // Set the directory of the current executable to be that of the file
     match read_file(&args.input) {
         Ok(file_contents) => {
-            std::env::set_current_dir(
-                std::env::current_dir().unwrap().join(std::path::Path::new(&args.input).parent().unwrap())
-            ).unwrap();
-        
             match compile(
                 Some(&args.input),
                 file_contents,
