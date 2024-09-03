@@ -1,0 +1,7 @@
+Printing tuple members: 5 6
+Printing struct members: 20 30
+Printing nested struct and tuple members: 1 2 3 4 hello world!
+Printing struct members: 1 2 3
+Printing tuple members: 1 2 3 4
+Printing struct members: 1 2 3 4
+Printing tuple members: 6 7

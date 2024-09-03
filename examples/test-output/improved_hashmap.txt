@@ -1,0 +1,15 @@
+{1: one, 2: two, 3: three, 7: seven}
+m.contains_key(0) = false
+m.contains_key(1) = true
+Value: one
+m.contains_key(2) = true
+Value: two
+m.contains_key(3) = true
+Value: three
+m.contains_key(4) = false
+m.contains_key(5) = false
+m.contains_key(6) = false
+m.contains_key(7) = true
+Value: seven
+m.contains_key(8) = false
+m.contains_key(9) = false

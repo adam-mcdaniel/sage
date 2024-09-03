@@ -1,0 +1,73 @@
+
+
+enum Option<T> {
+    Some(T),
+    Nothing
+}
+
+
+enum List<T> {
+    Cons(T, &List<T>),
+    Nil
+}
+
+impl List<T> {
+    fun println(&self) {
+        match self {
+            Null => println("Null"),
+            &of Cons(data, list) => {
+                println(data, ", ");
+                list.println();
+            },
+            &of Nil => {
+                println(" (nil) ");
+            },
+            _ => println("unreachable")
+        }
+    }
+}
+
+enum Tree<T> {
+    Node(T, &List<Tree<T>>),
+    Leaf(T)
+}
+
+impl Tree<T> {
+    fun print(&self) {
+        match self {
+            Null => println("Null"),
+            &of Node(data, list) => {
+                println(data);
+                list.println();
+            },
+            &of Leaf(data) => {
+                println(data);
+            },
+            _ => println("unreachable")
+        }
+    }
+}
+
+let x = Tree<Int> of Node(
+    1,
+    new List<Tree<Int>> of Cons(
+        Tree<Int> of Leaf(2),
+        new List<Tree<Int>> of Cons(
+            Tree<Int> of Leaf(3),
+            new List<Tree<Int>> of Nil,
+        )
+    )
+);
+
+x.print();
+let y = Tree<Char> of Node(
+    'a',
+    new List<Tree<Char>> of Cons(
+        Tree<Char> of Leaf('b'),
+        new List<Tree<Char>> of Cons(
+            Tree<Char> of Leaf('c'),
+            new List<Tree<Char>> of Nil
+        )
+    )
+);
+y.print();

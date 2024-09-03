@@ -1,4 +1,3 @@
-
 let static mut x: Int = 5;
 let static mut y: Int = 6;
 
