@@ -27,6 +27,7 @@ fn test_frontend_examples() {
 }
 
 fn test_frontend_examples_helper() {
+    let old_dir = std::env::current_dir().unwrap();
     for entry in read_dir("examples/frontend/").unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
@@ -57,7 +58,6 @@ fn test_frontend_examples_helper() {
                 Err(_) => None,
             };
 
-            let old_dir = std::env::current_dir().unwrap();
 
             let correct_output_text = match read_to_string(&correct_output_path) {
                 Ok(contents) => contents.replace("\r\n", "\n"),
@@ -73,6 +73,8 @@ fn test_frontend_examples_helper() {
                     ).unwrap();
                     let frontend_code = parse_frontend(&frontend_src, path.to_str())
                         .unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
+
+                    std::env::set_current_dir(&old_dir).unwrap();
                     let asm_code = frontend_code.compile().unwrap();
                     let _vm_code = match asm_code {
                         Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
@@ -97,7 +99,7 @@ fn test_frontend_examples_helper() {
             ).unwrap();
             let frontend_code = parse_frontend(&frontend_src, path.to_str())
                 .unwrap_or_else(|e| panic!("Could not parse `{path:?}`: {e}"));
-            std::env::set_current_dir(old_dir).unwrap();
+            std::env::set_current_dir(&old_dir).unwrap();
             drop(frontend_src);
             let asm_code = frontend_code.compile();
 

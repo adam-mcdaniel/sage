@@ -1,6 +1,3 @@
-Hello world! 5
-Hello again!
-This time I'm within a block!
 GCD of 12 and 15 = 3
 2
 enum {Nothing None, Some Int} of Nothing None

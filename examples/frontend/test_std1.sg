@@ -19,7 +19,7 @@ fun main() {
     println("GCD of 12 and 15 is ", gcd(12, 15));
 
     print("List of integers:  ");
-    let vals = range(0, 100);
+    let vals = range(0, 10);
     vals.println();
     
     // Create a new list of all the squares of the values in the first list
