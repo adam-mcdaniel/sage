@@ -396,7 +396,6 @@ impl GetType for Expr {
                     // If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
                     val_type => {
-                        // error!("BING BONG");
                         // Try to get the member of the underlying type.
                         if let Ok((t, _)) = val_type.get_member_offset(field, val, env) {
                             return Ok(t);
@@ -406,12 +405,7 @@ impl GetType for Expr {
                         return env
                             .get_type_of_associated_const(&val_type, &as_symbol?)
                             .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
-                    } // Err(e) => {
-                      //     // Try to get the member of the underlying type.
-                      //     // return Err(e);
-                      //     return env.get_type_of_associated_const(&val_type, &as_symbol?)
-                      //         .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
-                      // }
+                    }
                 }
             }
 
