@@ -1775,6 +1775,34 @@ println("x: ", x);
 println("y: ", y);
 println("z: ", z);`)
                     break;
+                case "sum-types":
+                    source.setValue(`enum Option<T> {
+    Some(T),
+    Nothing,
+}
+
+fun panic(): Never {
+    println("Panicking!");
+    while True {}
+}
+
+impl Option<T> {
+    fun unwrap(self): T {
+        println("Unwrapping option!");
+        match self {
+            of Some(x) => x,
+            of Nothing => panic()
+        }
+    }
+}
+
+fun main() {
+    let x = Option<Int> of Some(5);
+    println(Option.unwrap<Int>(x));
+}
+
+main();`)
+                    break;
                 default:
                     console.log("Unknown example: " + example);
                     break;
@@ -1830,17 +1858,18 @@ println("z: ", z);`)
 
         <select id="example" style="height: 3em; float: left;">
             <option value="hello world">Click to select example program (Default Hello World)</option>
-            <option value="graphics">Graphical FFI Demo (JavaScript FFI)</option>
-            <option value="hashmap">Standard Lib Hashmap</option>
-            <option value="vector">Standard Lib Vector</option>
+            <option value="structural-types">Structural Typing Demo</option>
             <option value="list">Standard Lib Linked List</option>
             <option value="result">Standard Lib Error Handling</option>
-            <option value="factorial">Factorial</option>
+            <option value="hashmap">Standard Lib Hashmap</option>
+            <option value="vector">Standard Lib Vector</option>
+            <option value="graphics">Graphical Javascript Interop Demo</option>
+            <option value="ffi">Alert Javascript Demo</option>
+            <option value="sum-types">Sum Types</option>
             <option value="match">Pattern Matching</option>
-            <option value="ffi">Simple FFI Example (JavaScript FFI)</option>
-            <option value="let-bindings">Let-Bindings</option>
             <option value="tuple">Pair (Generics)</option>
-            <option value="structural-types">Structural Typing Demo</option>
+            <option value="factorial">Factorial</option>
+            <option value="let-bindings">Let-Bindings</option>
             <option value="calculator">Calculator (Parser)</option>
             <option value="hex-editor">Hex Editor</option>
             <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
