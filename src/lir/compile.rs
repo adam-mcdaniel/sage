@@ -103,7 +103,10 @@ impl Compile for Expr {
             }
 
             Self::UnaryOp(unop, expr) => {
-                let unop = env.get_unop(&unop).ok_or(Error::UnimplementedOperator(unop))?.clone();
+                let unop = env
+                    .get_unop(&unop)
+                    .ok_or(Error::UnimplementedOperator(unop))?
+                    .clone();
                 if let Expr::Annotated(expr, metadata) = *expr {
                     return unop
                         .compile(&expr, env, output)
@@ -114,7 +117,10 @@ impl Compile for Expr {
                 unop.compile(&expr, env, output)?;
             }
             Self::BinaryOp(binop, lhs, rhs) => {
-                let binop = env.get_binop(&binop).ok_or(Error::UnimplementedOperator(binop))?.clone();
+                let binop = env
+                    .get_binop(&binop)
+                    .ok_or(Error::UnimplementedOperator(binop))?
+                    .clone();
                 if let Expr::Annotated(lhs, metadata) = &*lhs {
                     return binop
                         .compile(lhs, &rhs, env, output)
@@ -130,7 +136,10 @@ impl Compile for Expr {
                 binop.compile(&lhs, &rhs, env, output)?;
             }
             Self::TernaryOp(ternop, a, b, c) => {
-                let ternop = env.get_ternop(&ternop).ok_or(Error::UnimplementedOperator(ternop))?.clone();
+                let ternop = env
+                    .get_ternop(&ternop)
+                    .ok_or(Error::UnimplementedOperator(ternop))?
+                    .clone();
                 if let Expr::Annotated(a, metadata) = &*a {
                     return ternop
                         .compile(a, &b, &c, env, output)
@@ -151,7 +160,10 @@ impl Compile for Expr {
                 ternop.compile(&a, &b, &c, env, output)?;
             }
             Self::AssignOp(op, dst, src) => {
-                let op = env.get_assignop(&op).ok_or(Error::UnimplementedOperator(op))?.clone();
+                let op = env
+                    .get_assignop(&op)
+                    .ok_or(Error::UnimplementedOperator(op))?
+                    .clone();
                 if let Expr::Annotated(dst, metadata) = &*dst {
                     return op
                         .compile(dst, &src, env, output)
@@ -319,8 +331,7 @@ impl Compile for Expr {
                         // Try to get the member of the underlying type.
                         if self_clone.is_method_call(env)? {
                             debug!("Is method call!");
-                            let transformed = self_clone
-                                .transform_method_call(env)?;
+                            let transformed = self_clone.transform_method_call(env)?;
                             debug!("Transformed: {transformed}");
                             transformed.compile_expr(env, output)?;
                         } else {
@@ -692,12 +703,12 @@ impl Compile for Expr {
                         .map_err(|e| e.annotate(metadata.clone()));
                 }
 
-                // if let Self::ConstExpr(container) = val.as_ref() {
-                //     // Write more elegantly
-                //     if let Ok(val) = container.clone().field(member.clone()).eval(env) {
-                //         return val.compile_expr(env, output);
-                //     }
-                // }
+                if let Self::ConstExpr(container) = val.as_ref() {
+                    // Write more elegantly
+                    if let Ok(val) = container.clone().field(member.clone()).eval(env) {
+                        return val.compile_expr(env, output);
+                    }
+                }
 
                 // If the value we're getting a field from is a pointer,
                 // then dereference it and get the field from the value.
@@ -856,12 +867,16 @@ impl Compile for Expr {
                         }
                         other => {
                             error!("Tried to get a member {name} of a non-struct, non-tuple, non-union, non-pointer type: {other} of value {val} in environment {env}");
-                            return Err(Error::InvalidRefer(Expr::Member(Expr::from(*val.clone()).into(), *name)));
+                            return Err(Error::InvalidRefer(Expr::Member(
+                                Expr::from(*val.clone()).into(),
+                                *name,
+                            )));
                         }
                     }
 
                     // Calculate the offset of the field from the address of the value.
-                    let (_, offset) = val_type.get_member_offset(&name, &Expr::from(*val.clone()).into(), env)?;
+                    let (_, offset) =
+                        val_type.get_member_offset(&name, &Expr::from(*val.clone()), env)?;
 
                     output.op(CoreOp::Pop(Some(A), 1));
                     output.op(CoreOp::Set(B, offset as i64));
@@ -1065,7 +1080,6 @@ impl Compile for ConstExpr {
                 // Do nothing.
             }
             Self::Member(container, member) => {
-                // let new_container = container.clone().eval(env)?;
                 let new_container = *container.clone();
                 debug!("Compiling (const) member access {member} on {new_container} in environment {env}");
                 match (new_container, *member.clone()) {
@@ -1099,8 +1113,11 @@ impl Compile for ConstExpr {
                     }
                     (a, b) => {
                         debug!("Could not identify member access {b} on {a} in environment {env}");
-                        // return Err(Error::MemberNotFound((*container).into(), *member));
-                        Expr::Member(Box::new(Expr::ConstExpr(*container.clone())), *member.clone()).compile_expr(env, output)?;
+                        Expr::Member(
+                            Box::new(Expr::ConstExpr(*container.clone())),
+                            *member.clone(),
+                        )
+                        .compile_expr(env, output)?;
                     }
                 }
             }
@@ -1110,7 +1127,6 @@ impl Compile for ConstExpr {
             }
             Self::Declare(bindings, body) => {
                 debug!("Compiling declaration {bindings} with body {body} in environment {env}");
-                // bindings.compile(Expr::ConstExpr(*body), env, output)?;
                 let mut new_env = env.clone();
                 new_env.add_declaration(&bindings)?;
                 body.compile_expr(&mut new_env, output)?;
@@ -1159,9 +1175,10 @@ impl Compile for ConstExpr {
                 Self::Declare(bindings, expr) => {
                     let mut new_env = env.clone();
                     new_env.add_declaration(&bindings)?;
-                    expr.monomorphize(ty_args).compile_expr(&mut new_env, output)?;
+                    expr.monomorphize(ty_args)
+                        .compile_expr(&mut new_env, output)?;
                 }
-                
+
                 val => {
                     error!("Could not identify template value {val} in environment {env}");
                     return Err(Error::InvalidMonomorphize(val));

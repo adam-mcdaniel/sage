@@ -18,7 +18,6 @@ pub use comparison::*;
 pub use io::*;
 pub use logic::*;
 pub use memory::*;
-use serde::{Deserialize, de::DeserializeOwned, Serialize};
 pub use tagged_union::*;
 
 use crate::{asm::AssemblyProgram, lir::*};
@@ -327,7 +326,7 @@ pub trait TernaryOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
     fn name(&self) -> String {
         format!("{}", self)
     }
-    
+
     /// Typechecks the operation on the given expressions.
     fn type_check(&self, a: &Expr, b: &Expr, c: &Expr, env: &Env) -> Result<(), Error> {
         if let Expr::Annotated(a, metadata) = a {
@@ -514,49 +513,25 @@ impl PartialEq for dyn TernaryOp {
 
 impl PartialOrd for dyn AssignOp {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.display(
-            &Expr::ConstExpr(ConstExpr::Int(0)),
-            &Expr::ConstExpr(ConstExpr::Int(0)),
-        )
-        .partial_cmp(&other.display(
-            &Expr::ConstExpr(ConstExpr::Int(0)),
-            &Expr::ConstExpr(ConstExpr::Int(0)),
-        ))
+        Some(self.cmp(other))
     }
 }
 
 impl PartialOrd for dyn UnaryOp {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.display(&Expr::ConstExpr(ConstExpr::Int(0)))
-            .partial_cmp(&other.display(&Expr::ConstExpr(ConstExpr::Int(0))))
+        Some(self.cmp(other))
     }
 }
 
 impl PartialOrd for dyn BinaryOp {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.display(
-            &Expr::ConstExpr(ConstExpr::Int(0)),
-            &Expr::ConstExpr(ConstExpr::Int(0)),
-        )
-        .partial_cmp(&other.display(
-            &Expr::ConstExpr(ConstExpr::Int(0)),
-            &Expr::ConstExpr(ConstExpr::Int(0)),
-        ))
+        Some(self.cmp(other))
     }
 }
 
 impl PartialOrd for dyn TernaryOp {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.display(
-            &Expr::ConstExpr(ConstExpr::Int(0)),
-            &Expr::ConstExpr(ConstExpr::Int(0)),
-            &Expr::ConstExpr(ConstExpr::Int(0)),
-        )
-        .partial_cmp(&other.display(
-            &Expr::ConstExpr(ConstExpr::Int(0)),
-            &Expr::ConstExpr(ConstExpr::Int(0)),
-            &Expr::ConstExpr(ConstExpr::Int(0)),
-        ))
+        Some(self.cmp(other))
     }
 }
 

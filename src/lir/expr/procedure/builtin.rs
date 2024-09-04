@@ -7,9 +7,9 @@
 use crate::asm::{AssemblyProgram, CoreOp, StandardOp};
 use crate::lir::{Compile, Env, Error, GetType, Type, TypeCheck};
 use core::fmt;
-use std::hash::{Hash, Hasher};
-use serde_derive::{Deserialize, Serialize};
 use log::trace;
+use serde_derive::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
 
 /// A builtin pseudo-procedure implemented in the core assembly variant.
 ///

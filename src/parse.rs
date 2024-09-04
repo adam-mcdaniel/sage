@@ -32,9 +32,9 @@ use super::vm;
 
 use log::trace;
 
-use serde_derive::{Deserialize, Serialize};
 use lalrpop_util::lalrpop_mod;
 use no_comment::{languages, IntoWithoutComments};
+use serde_derive::{Deserialize, Serialize};
 
 /// A struct representing a location in the source code.
 /// This is used to format errors properly.
@@ -154,7 +154,10 @@ pub fn parse_frontend(input: impl ToString, filename: Option<&str>) -> Result<Ex
     Ok(result)
 }
 
-pub fn parse_frontend_minimal(input: impl ToString, filename: Option<&str>) -> Result<Expr, String> {
+pub fn parse_frontend_minimal(
+    input: impl ToString,
+    filename: Option<&str>,
+) -> Result<Expr, String> {
     let result = frontend::parse(input, filename, false, false)?;
     Ok(result)
 }

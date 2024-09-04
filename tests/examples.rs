@@ -71,11 +71,9 @@ fn test_frontend_examples_helper() {
                 Err(_) => None,
             };
 
-
             let correct_output_text = match read_to_string(&correct_output_path) {
                 Ok(contents) => contents.replace("\r\n", "\n"),
                 Err(_) if correct_error.is_none() => {
-
                     warn!("Could not read output text file `{correct_output_path:?}` to compare against. Skipping this test.");
                     // Just compile the program to confirm it doesn't error.
                     let frontend_src = read_to_string(&path)

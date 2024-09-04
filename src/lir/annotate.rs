@@ -1,8 +1,7 @@
 use crate::parse::SourceCodeLocation;
 use core::ops::{BitOr, BitOrAssign};
-use std::collections::BTreeSet;
 use serde_derive::{Deserialize, Serialize};
-
+use std::collections::BTreeSet;
 
 /// An annotation for metadata about an LIR expression.
 /// This is used for error reporting, debugging, optimization,

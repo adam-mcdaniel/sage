@@ -5,10 +5,10 @@
 //! typesystem.
 use super::{ConstExpr, Env, Error, Expr, Simplify};
 use core::fmt;
+use serde_derive::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::sync::Mutex;
-use serde_derive::{Deserialize, Serialize};
 
 mod check;
 mod inference;

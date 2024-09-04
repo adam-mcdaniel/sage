@@ -1,10 +1,10 @@
+use log::warn;
 use sage::{lir::Compile, parse::*, targets::*};
 use std::{
     fs::{read_dir, read_to_string},
+    io::Write,
     path::PathBuf,
-    io::Write
 };
-use log::warn;
 
 const INPUT: &str = "2 4 8 16 32 64 128 256 512 1024 2048 4096";
 const CALL_STACK_SIZE: usize = 8192;
@@ -116,12 +116,8 @@ fn test_c_target_frontend_examples_helper() {
             .unwrap();
 
             let c_code = match vm_code {
-                Ok(vm_code) => {
-                    C.build_core(&vm_code.flatten()).unwrap()
-                }
-                Err(vm_code) => {
-                    C.build_std(&vm_code.flatten()).unwrap()
-                }
+                Ok(vm_code) => C.build_core(&vm_code.flatten()).unwrap(),
+                Err(vm_code) => C.build_std(&vm_code.flatten()).unwrap(),
             };
 
             // Write the C code to a file.
@@ -139,9 +135,7 @@ fn test_c_target_frontend_examples_helper() {
                 .unwrap();
 
             if !c_compile_output.status.success() {
-                panic!(
-                    "Could not compile C code for `{path:?}`: {c_compile_output:?}"
-                );
+                panic!("Could not compile C code for `{path:?}`: {c_compile_output:?}");
             }
 
             // Run the C code with the input, and confirm that the output matches the expected output.
@@ -150,19 +144,29 @@ fn test_c_target_frontend_examples_helper() {
             let mut c_exe = match std::process::Command::new(&format!("./{c_exe_path}"))
                 .stdin(stdin)
                 .stdout(stdout)
-                .spawn() {
+                .spawn()
+            {
                 Ok(v) => v,
-                Err(e) => panic!("Could not run C code for `{path:?}`: {e}")
+                Err(e) => panic!("Could not run C code for `{path:?}`: {e}"),
             };
-                
-            if c_exe.stdin.as_mut().unwrap().write_all(INPUT.as_bytes()).is_err() {
+
+            if c_exe
+                .stdin
+                .as_mut()
+                .unwrap()
+                .write_all(INPUT.as_bytes())
+                .is_err()
+            {
                 panic!("Could not write to stdin of program `{path:?}`");
             }
 
             // Get stdout from the C program.
             let c_output = c_exe.wait_with_output().unwrap().stdout;
             // Convert both to strings
-            let correct_output = correct_output.iter().map(|byte| *byte as u8).collect::<Vec<_>>();
+            let correct_output = correct_output
+                .iter()
+                .map(|byte| *byte as u8)
+                .collect::<Vec<_>>();
 
             let c_output = String::from_utf8(c_output).unwrap();
             let correct_output = String::from_utf8(correct_output).unwrap();

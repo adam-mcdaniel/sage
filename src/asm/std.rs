@@ -15,7 +15,7 @@ use crate::vm::{self, VirtualMachineProgram};
 use std::{collections::BTreeSet, fmt};
 
 use log::info;
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 /// A program composed of standard instructions, which can be assembled
 /// into the standard virtual machine instructions.

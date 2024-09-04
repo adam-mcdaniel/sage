@@ -93,7 +93,10 @@ pub enum Error {
     InvalidMatchExpr(Expr),
 
     /// Invalid pattern for a match expression.
-    NonExhaustivePatterns { patterns: Vec<Pattern>, expr: Expr },
+    NonExhaustivePatterns {
+        patterns: Vec<Pattern>,
+        expr: Expr,
+    },
 
     /// Invalid type casting expression.
     InvalidAs(Expr, Type, Type),
@@ -126,7 +129,7 @@ pub enum Error {
     InvalidMonomorphize(ConstExpr),
 
     /// Duplicate implementations of a member for a type
-    DuplicateMember(Type, String)
+    DuplicateMember(Type, String),
 }
 
 impl Error {
@@ -161,7 +164,7 @@ impl Display for Error {
             Self::UnimplementedOperator(op) => {
                 write!(f, "unimplemented operator {}", op)
             }
-            
+
             Self::DuplicateMember(ty, member) => {
                 write!(f, "duplicate member {member} of type {ty}")
             }

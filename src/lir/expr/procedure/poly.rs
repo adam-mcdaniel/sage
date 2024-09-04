@@ -3,17 +3,17 @@
 //! A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 //! This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 //! A procedure is compiled down to a label in the assembly code.
+use super::Procedure;
 use crate::lir::{ConstExpr, Declaration, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
 use std::{
-    fmt,
     collections::HashMap,
+    fmt,
     sync::{Arc, RwLock},
 };
 use std::{hash::Hash, hash::Hasher};
-use super::Procedure;
 
-use serde_derive::{Serialize, Deserialize};
 use log::{debug, error, trace};
+use serde_derive::{Deserialize, Serialize};
 
 /// A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 /// This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
@@ -76,7 +76,6 @@ impl PolyProcedure {
             ..self.clone()
         }
     }
-
 
     pub fn from_mono(mono: Procedure, ty_params: Vec<String>) -> Self {
         debug!(target: "mono", "Creating polymorphic procedure from monomorph {}", mono);

@@ -5,7 +5,7 @@
 
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 /// This is an FFI binding, which is used to call a foreign function in the virtual machine code.
 ///

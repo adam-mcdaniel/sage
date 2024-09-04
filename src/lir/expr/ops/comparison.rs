@@ -2,12 +2,12 @@
 //!
 //! This module implements comparison operators between two expressions.
 
-use log::error;
 use crate::{
     asm::{AssemblyProgram, CoreOp, StandardOp, SP},
     lir::*,
 };
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use log::error;
 
 /// A comparison operation between two values.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -61,9 +61,9 @@ impl BinaryOp for Comparison {
             }
             (a, _, b) => {
                 error!("Cannot apply {self} to {a} and {b}");
-                
+
                 Ok(false)
-            },
+            }
         }
     }
 
@@ -111,7 +111,7 @@ impl BinaryOp for Comparison {
                     Expr::ConstExpr(lhs.clone()),
                     Expr::ConstExpr(rhs.clone()),
                 ))
-            },
+            }
         }
     }
 
@@ -250,7 +250,7 @@ impl BinaryOp for Comparison {
                     Box::new(*self),
                     lhs.clone(),
                     rhs.clone(),
-                ))
+                ));
             }
         }
         // Pop `b` off of the stack: we only needed it to evaluate

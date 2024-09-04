@@ -8,7 +8,7 @@
 
 use core::fmt::{Display, Formatter, Result as FmtResult};
 
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 /// The different axes an input or output might use.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]

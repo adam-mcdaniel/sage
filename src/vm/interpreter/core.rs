@@ -2,8 +2,8 @@
 //!
 //! This module implements an interpreter for the Core virtual machine
 //! variant.
-use crate::vm::{CoreOp, CoreProgram, Device, StandardDevice};
 use super::TAPE_EXTENSION_SIZE;
+use crate::vm::{CoreOp, CoreProgram, Device, StandardDevice};
 
 impl Default for CoreInterpreter<StandardDevice> {
     fn default() -> Self {
@@ -402,7 +402,8 @@ where
                     for i in 0..*n {
                         let val = self.cells[self.pointer + i];
                         if val != 0 {
-                            self.reg_mut_vector()[i] = self.reg_mut_vector()[i].overflowing_div(val).0
+                            self.reg_mut_vector()[i] =
+                                self.reg_mut_vector()[i].overflowing_div(val).0
                         }
                     }
                 }
@@ -410,7 +411,8 @@ where
                     for i in 0..*n {
                         let val = self.cells[self.pointer + i];
                         if val != 0 {
-                            self.reg_mut_vector()[i] = self.reg_mut_vector()[i].overflowing_rem(val).0
+                            self.reg_mut_vector()[i] =
+                                self.reg_mut_vector()[i].overflowing_rem(val).0
                         }
                     }
                 }

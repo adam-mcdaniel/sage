@@ -5,14 +5,14 @@
 //! with respect to the frame pointer.
 
 use super::{
-    Compile, ConstExpr, Declaration, Error, Expr, FFIProcedure, GetSize, GetType, Mutability,
-    PolyProcedure, Procedure, Type, UnaryOp, BinaryOp, TernaryOp, AssignOp
+    AssignOp, BinaryOp, Compile, ConstExpr, Declaration, Error, Expr, FFIProcedure, GetSize,
+    GetType, Mutability, PolyProcedure, Procedure, TernaryOp, Type, UnaryOp,
 };
 use crate::asm::{AssemblyProgram, Globals, Location};
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     sync::{Arc, RwLock},
 };
 
@@ -68,7 +68,7 @@ impl Default for Env {
     fn default() -> Self {
         Self {
             unops: Arc::new({
-                let mut map: HashMap<String, Box<dyn UnaryOp>>  = HashMap::new();
+                let mut map: HashMap<String, Box<dyn UnaryOp>> = HashMap::new();
                 map.insert("!".to_owned(), Box::new(crate::lir::Not));
                 map.insert("-".to_owned(), Box::new(crate::lir::Negate));
                 map.insert("~".to_owned(), Box::new(crate::lir::BitwiseNot));
@@ -92,51 +92,66 @@ impl Default for Env {
                 map.insert("==".to_owned(), Box::new(crate::lir::Comparison::Equal));
                 map.insert("!=".to_owned(), Box::new(crate::lir::Comparison::NotEqual));
                 map.insert("<".to_owned(), Box::new(crate::lir::Comparison::LessThan));
-                map.insert("<=".to_owned(), Box::new(crate::lir::Comparison::LessThanOrEqual));
-                map.insert(">".to_owned(), Box::new(crate::lir::Comparison::GreaterThan));
-                map.insert(">=".to_owned(), Box::new(crate::lir::Comparison::GreaterThanOrEqual));
-                
+                map.insert(
+                    "<=".to_owned(),
+                    Box::new(crate::lir::Comparison::LessThanOrEqual),
+                );
+                map.insert(
+                    ">".to_owned(),
+                    Box::new(crate::lir::Comparison::GreaterThan),
+                );
+                map.insert(
+                    ">=".to_owned(),
+                    Box::new(crate::lir::Comparison::GreaterThanOrEqual),
+                );
+
                 map.insert("&&".to_owned(), Box::new(crate::lir::And));
                 map.insert("||".to_owned(), Box::new(crate::lir::Or));
                 map.insert("&".to_owned(), Box::new(crate::lir::BitwiseAnd));
                 map.insert("|".to_owned(), Box::new(crate::lir::BitwiseOr));
                 map.insert("^".to_owned(), Box::new(crate::lir::BitwiseXor));
-                // map.insert("<<".to_owned(), Box::new(crate::lir::ShiftLeft));
-                // map.insert(">>".to_owned(), Box::new(crate::lir::ShiftRight));
-                // map.insert(">>>".to_owned(), Box::new(crate::lir::UnsignedShiftRight));
-                // map.insert("=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::Assign))));
-                // map.insert("+=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::Add))));
-                // map.insert("-=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::Subtract))));
-                // map.insert("*=".to_owned(), Box::new(crate:: lir::Assign(Assign::new(crate::lir::AssignOp::Multiply))));
-                // map.insert("/=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::Divide))));
-                // map.insert("%=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::Modulo))));
-                // map.insert("&=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::BitwiseAnd))));
-                // map.insert("|=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::BitwiseOr))));
-                // map.insert("^=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::BitwiseXor))));
-                // map.insert("<<=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::ShiftLeft))));
-                // map.insert(">>=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::ShiftRight))));
-                // map.insert(">>>=".to_owned(), Box::new(crate::lir::Assign(Assign::new(crate::lir::AssignOp::UnsignedShiftRight))));
                 map
             }),
 
-            ternops: Arc::new({
-                let mut map: HashMap<String, Box<dyn TernaryOp>> = HashMap::new();
-                map
-            }),
+            ternops: Arc::new(HashMap::new()),
 
             assignops: Arc::new({
                 let mut map: HashMap<String, Box<dyn AssignOp>> = HashMap::new();
-                map.insert("+=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Add)));
-                map.insert("-=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Subtract)));
-                map.insert("*=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Multiply)));
-                map.insert("/=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Divide)));
-                map.insert("%=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Remainder)));
-                map.insert("&=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::BitwiseAnd)));
-                map.insert("|=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::BitwiseOr)));
-                map.insert("^=".to_owned(), Box::new(crate::lir::Assign::new(crate::lir::BitwiseXor)));
+                map.insert(
+                    "+=".to_owned(),
+                    Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Add)),
+                );
+                map.insert(
+                    "-=".to_owned(),
+                    Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Subtract)),
+                );
+                map.insert(
+                    "*=".to_owned(),
+                    Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Multiply)),
+                );
+                map.insert(
+                    "/=".to_owned(),
+                    Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Divide)),
+                );
+                map.insert(
+                    "%=".to_owned(),
+                    Box::new(crate::lir::Assign::new(crate::lir::Arithmetic::Remainder)),
+                );
+                map.insert(
+                    "&=".to_owned(),
+                    Box::new(crate::lir::Assign::new(crate::lir::BitwiseAnd)),
+                );
+                map.insert(
+                    "|=".to_owned(),
+                    Box::new(crate::lir::Assign::new(crate::lir::BitwiseOr)),
+                );
+                map.insert(
+                    "^=".to_owned(),
+                    Box::new(crate::lir::Assign::new(crate::lir::BitwiseXor)),
+                );
                 map
             }),
-            
+
             // It is important that we use reference counting for the tables because the environment
             // will be copied many times during the compilation process to create new scopes.
             types: Arc::new(HashMap::new()),
@@ -160,19 +175,19 @@ impl Default for Env {
 
 impl Env {
     pub(super) fn get_unop(&self, op: &str) -> Option<&Box<dyn UnaryOp>> {
-        self.unops.get(op).map(|op| op)
+        self.unops.get(op)
     }
 
     pub(super) fn get_binop(&self, op: &str) -> Option<&Box<dyn BinaryOp>> {
-        self.binops.get(op).map(|op| op)
+        self.binops.get(op)
     }
 
     pub(super) fn get_ternop(&self, op: &str) -> Option<&Box<dyn TernaryOp>> {
-        self.ternops.get(op).map(|op| op)
+        self.ternops.get(op)
     }
 
     pub(super) fn get_assignop(&self, op: &str) -> Option<&Box<dyn AssignOp>> {
-        self.assignops.get(op).map(|op| op)
+        self.assignops.get(op)
     }
 
     /// Create a copy of the current environment but without any variables or arguments defined.
@@ -237,7 +252,10 @@ impl Env {
 
     /// Get the type of an associated constant of a type.
     pub fn get_type_of_associated_const(&self, ty: &Type, name: &str) -> Option<Type> {
-        trace!("Getting type of associated const {name} of type {ty} in {self} with types {:?}", self.types);
+        trace!(
+            "Getting type of associated const {name} of type {ty} in {self} with types {:?}",
+            self.types
+        );
         let associated_constants = self.associated_constants.read().unwrap();
 
         if let Some((_, expr_ty)) = associated_constants
@@ -289,7 +307,10 @@ impl Env {
                     continue;
                 }
 
-                debug!("Associated constants for {monomorph} are {:?}", template_associated_consts.keys().to_owned());
+                debug!(
+                    "Associated constants for {monomorph} are {:?}",
+                    template_associated_consts.keys().to_owned()
+                );
 
                 if let Some((_, const_ty)) = template_associated_consts.get(name) {
                     debug!("Found cached associated const (type) {name} of type {const_ty}");
@@ -354,7 +375,10 @@ impl Env {
     }
 
     pub fn get_associated_const(&self, ty: &Type, name: &str) -> Option<(ConstExpr, Type)> {
-        trace!("Getting associated const {name} of type {ty} in {self} with types {:?}", self.types);
+        trace!(
+            "Getting associated const {name} of type {ty} in {self} with types {:?}",
+            self.types
+        );
         let associated_constants = self.associated_constants.read().unwrap();
 
         if let Some((constant, const_ty)) = associated_constants
@@ -598,12 +622,6 @@ impl Env {
             debug!("Type {monomorph} is atomic");
         }
 
-        // if self.processed_monomorphizations.try_read().is_ok() {
-        //     debug!("Acquired read lock on processed monomorphizations");
-        // } else {
-        //     debug!("Failed to acquire read lock on processed monomorphizations");
-        //     return Ok(());
-        // }
         let is_processed = {
             self.processed_monomorphizations
                 .read()
@@ -617,12 +635,6 @@ impl Env {
             return Ok(());
         }
 
-        // if self.processed_monomorphizations.try_write().is_ok() {
-        //     debug!("Acquired write lock on processed monomorphizations");
-        // } else {
-        //     debug!("Failed to acquire write lock on processed monomorphizations");
-        //     return Ok(());
-        // }
         {
             self.processed_monomorphizations
                 .write()
@@ -658,9 +670,6 @@ impl Env {
                 debug!("Monomorphized type {monomorph} already has associated constant {name}");
                 continue;
             }
-            // Get the associated constant.
-            // let const_expr = self.get_associated_const(&template, &name).unwrap();
-
             // Monomorphize the associated constant.
             // Strip off the template parameters from the type arguments.
             let mono_const = if let ConstExpr::Template(ty_params, cexpr) = const_expr {
@@ -680,14 +689,6 @@ impl Env {
             self.add_associated_const(monomorph.clone(), name, mono_const)?;
         }
         debug!("Done adding monomorphized associated constants of type {template} with type arguments {ty_args:?}");
-
-        // for (name, const_expr) in template_associated_consts {
-        //     // Monomorphize the associated constant.
-        //     let mono_const = const_expr.monomorphize(ty_args.clone(), self)?;
-        //     debug!("Adding monomorphized associated constant {name} = {mono_const} to type {monomorph}");
-        //     // Add the monomorphized associated constant to the environment.
-        //     self.add_associated_const(monomorph.clone(), name, mono_const)?;
-        // }
         Ok(())
     }
 
@@ -700,10 +701,6 @@ impl Env {
         let associated_const_name = associated_const_name.to_string();
         trace!("Defining associated const {associated_const_name} as {expr} to type {ty}");
         let expr_ty = expr.get_type(self)?;
-        // // Arc::make_mut(&mut self.associated_constants)
-        //     .entry(ty)
-        //     .or_default()
-        //     .insert(associated_const_name, (expr, expr_ty));
         let mut associated_constants = self.associated_constants.write().unwrap();
         associated_constants
             .entry(ty)
@@ -779,25 +776,10 @@ impl Env {
                                 error!("Could not find type of module {module_ty}");
                             }
                         }
-                        Declaration::Impl(ty, attrs) => {
-                            self.add_compile_time_declaration(&decl)?;
-                            // let mut new_attrs = vec![];
-                            // for (name, attr) in attrs {
-                            //     let new_attr = attr.clone().with(decls.clone());
-                            //     debug!("Adding method to type {ty} with attribute {new_attr}");
-                            //     new_attrs.push((name.clone(), new_attr));
-                            //     // exports.push(name.clone());
-                            // }
-                            // self.add_compile_time_declaration(&Declaration::Impl(ty, new_attrs))?;
-                            // use crate::lir::Simplify;
-                            // let ty = ty.clone().simplify(self)?;
-                            // self.add_compile_time_declaration(&Declaration::Impl(ty.clone(), attrs.clone()))?;
-
-                            // let decl = Declaration::Impl(ty, attrs.clone());
-                            // decl.distribute_decls(&Declaration::Many(decls.clone()));
-                            // new_env.add_compile_time_declaration(&decl)?;
+                        Declaration::Impl(_ty, _attrs) => {
+                            self.add_compile_time_declaration(decl)?;
                         }
-                        Declaration::Many(decls) => {
+                        Declaration::Many(_decls) => {
                             unreachable!()
                         }
                         _ => {}
@@ -828,10 +810,9 @@ impl Env {
                 // let access = module.clone().field(ConstExpr::var(name));
                 // let name = alias.clone().unwrap_or(name.clone());
                 // let module_ty = module.get_type(self)?;
-                
+
                 let module = module.clone().eval(self)?;
                 for (name, alias) in names {
-                    
                     let access = module.clone().field(ConstExpr::Symbol(name.clone()));
                     let name = alias.clone().unwrap_or(name.clone());
                     // if self.consts.contains_key(&name) {
@@ -849,13 +830,13 @@ impl Env {
                 // let access = module.clone().field(ConstExpr::var(name));
                 // let name = alias.clone().unwrap_or(name.clone());
                 // let module_ty = module.get_type(self)?;
-                
+
                 let module = module.clone().eval(self)?;
                 let module_ty = module.get_type(self)?;
                 if let Type::Struct(fields) = module_ty {
                     for name in fields.keys() {
                         let access = module.clone().field(ConstExpr::Symbol(name.clone()));
-        
+
                         // if !self.types.contains_key(&name) {
                         self.define_const(name, access.clone());
                         if let Ok(Type::Type(ty)) = access.get_type(self) {
@@ -885,7 +866,8 @@ impl Env {
                     // get the template parameters and add them to each associated constant.
                     let template_params = template.get_template_params(self);
 
-                    if template_params.len() != supplied_params.len() && template_params.len() != 0 {
+                    if template_params.len() != supplied_params.len() && !template_params.is_empty()
+                    {
                         // The number of template parameters must match the number of supplied parameters.
                         error!("Mismatched types in template {template}");
                         return Err(Error::MismatchedTypes {
@@ -893,7 +875,7 @@ impl Env {
                             found: Type::Apply(template.clone(), supplied_params.clone()),
                             expr: Expr::NONE.with(declaration.clone()),
                         });
-                    } else if supplied_params.len() == 0 {
+                    } else if supplied_params.is_empty() {
                         // Not sure why this case happens,
                         // when I don't add it then imported types from other modules
                         // have type errors whenever they are used.
@@ -958,7 +940,7 @@ impl Env {
             }
             Declaration::Many(decls) => {
                 for decl in decls.iter() {
-                    self.add_compile_time_declaration(&decl)?;
+                    self.add_compile_time_declaration(decl)?;
                 }
 
                 for decl in decls.iter() {
@@ -1107,7 +1089,8 @@ impl Env {
                         debug!("Redefining type {name} in {self}");
                     } else {
                         trace!("Defining type {name} as {ty}");
-                        Arc::make_mut(&mut self.consts).insert(name.clone(), ConstExpr::Type(ty.clone()));
+                        Arc::make_mut(&mut self.consts)
+                            .insert(name.clone(), ConstExpr::Type(ty.clone()));
                         Arc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
                     }
                 }
@@ -1184,12 +1167,10 @@ impl Env {
     /// Get a procedure definition from this environment.
     pub(super) fn get_proc(&self, name: &str) -> Option<&Procedure> {
         self.procs.get(name).or_else(|| {
-            let result = self.consts
-                .get(name)
-                .and_then(|x| match x {
-                    ConstExpr::Proc(proc) => Some(proc),
-                    _ => None,
-                });
+            let result = self.consts.get(name).and_then(|x| match x {
+                ConstExpr::Proc(proc) => Some(proc),
+                _ => None,
+            });
             if result.is_none() {
                 debug!("Procedure {name} not found in {self}");
             }

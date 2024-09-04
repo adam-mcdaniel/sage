@@ -221,7 +221,9 @@ impl TypeCheck for Expr {
             }
 
             Self::UnaryOp(unop, expr) => {
-                let unop = env.get_unop(unop).ok_or(Error::UnimplementedOperator(unop.clone()))?;
+                let unop = env
+                    .get_unop(unop)
+                    .ok_or(Error::UnimplementedOperator(unop.clone()))?;
                 if let Self::Annotated(expr, metadata) = &**expr {
                     return unop
                         .type_check(expr, env)
@@ -230,7 +232,9 @@ impl TypeCheck for Expr {
                 unop.type_check(expr, env)
             }
             Self::BinaryOp(binop, lhs, rhs) => {
-                let binop = env.get_binop(binop).ok_or(Error::UnimplementedOperator(binop.clone()))?;
+                let binop = env
+                    .get_binop(binop)
+                    .ok_or(Error::UnimplementedOperator(binop.clone()))?;
                 if let Self::Annotated(lhs, metadata) = &**lhs {
                     return binop
                         .type_check(lhs, rhs, env)
@@ -245,7 +249,9 @@ impl TypeCheck for Expr {
                 binop.type_check(lhs, rhs, env)
             }
             Self::TernaryOp(ternop, a, b, c) => {
-                let ternop = env.get_ternop(ternop).ok_or(Error::UnimplementedOperator(ternop.clone()))?;
+                let ternop = env
+                    .get_ternop(ternop)
+                    .ok_or(Error::UnimplementedOperator(ternop.clone()))?;
                 if let Self::Annotated(a, metadata) = &**a {
                     return ternop
                         .type_check(a, b, c, env)
@@ -264,7 +270,9 @@ impl TypeCheck for Expr {
                 ternop.type_check(a, b, c, env)
             }
             Self::AssignOp(op, dst, src) => {
-                let op = env.get_assignop(op).ok_or(Error::UnimplementedOperator(op.clone()))?;
+                let op = env
+                    .get_assignop(op)
+                    .ok_or(Error::UnimplementedOperator(op.clone()))?;
                 if let Self::Annotated(src, metadata) = &**src {
                     return op
                         .type_check(dst, src, env)
@@ -658,7 +666,7 @@ impl TypeCheck for Expr {
                                     expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
                                     found: f_type,
                                     expr: self.clone(),
-                                })
+                                });
                             }
                         }
                     }
@@ -713,7 +721,7 @@ impl TypeCheck for Expr {
                             found: f_type,
                             expr: self.clone(),
                         })
-                    },
+                    }
                 }
             }
 
@@ -878,7 +886,7 @@ impl TypeCheck for Expr {
                             Err(_) => {
                                 error!("Could not find member {field} in type {e_type} in environment {env}");
                                 Err(e)
-                            },
+                            }
                         }
                     }
                 }
@@ -966,7 +974,7 @@ impl TypeCheck for ConstExpr {
                             Ok(_) => {
                                 warn!("Associated constant {field} found in type {e_type} in environment {env}");
                                 Ok(())
-                            },
+                            }
                             // Err(_) => Err(e),
                             Err(_) => {
                                 // Try to perform the member op as a regular member op.

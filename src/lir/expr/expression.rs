@@ -10,18 +10,18 @@ use crate::lir::{
     Annotation, ConstExpr, Declaration, Env, Error, GetType, Mutability, Pattern, Procedure, Type,
 };
 use core::fmt;
-use std::collections::BTreeMap;
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::BTreeMap,
+    hash::{Hash, Hasher},
+};
 
-use clap::error;
 use log::*;
-use rayon::vec;
 use serde_derive::{Deserialize, Serialize};
 
 /// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
 ///       This way, we don't overflow the stack with several clones of the environment.
 /// A runtime expression.
-#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Expr {
     /// An expression along with data about its source code location.
     /// This is used for error reporting.
@@ -667,9 +667,7 @@ impl Expr {
     /// For unions or structures, use a `Symbol` constant expression to access the field.
     pub fn field(self, field: ConstExpr) -> Self {
         match self {
-            Self::ConstExpr(cexpr) => {
-                Self::ConstExpr(cexpr.field(field).into())
-            }
+            Self::ConstExpr(cexpr) => Self::ConstExpr(cexpr.field(field)),
             _ => Self::Member(Box::new(self), field),
         }
         // Self::Member(Box::new(self), field)
@@ -1010,169 +1008,172 @@ impl PartialEq for Expr {
 
             // Index an array or pointer with an expression that evaluates to an `Int` at runtime.
             (Index(val1, idx1), Index(val2, idx2)) => val1 == val2 && idx1 == idx2,
+
+            (Declare(decl1, expr1), Declare(decl2, expr2)) => expr1 == expr2 && decl1 == decl2,
+
             _ => false,
         }
     }
 }
 
-// impl Hash for Expr {
-//     fn hash<H: Hasher>(&self, state: &mut H) {
-//         use Expr::*;
-//         match self {
-//             ConstExpr(expr) => {
-//                 state.write_u8(0);
-//                 expr.hash(state)
-//             }
-//             Many(exprs) => {
-//                 state.write_u8(1);
-//                 exprs.hash(state)
-//             }
-//             Match(expr, branches) => {
-//                 state.write_u8(2);
-//                 expr.hash(state);
-//                 branches.hash(state);
-//             }
-//             IfLet(pat, expr, t, e) => {
-//                 state.write_u8(3);
-//                 pat.hash(state);
-//                 expr.hash(state);
-//                 t.hash(state);
-//                 e.hash(state);
-//             }
+impl Hash for Expr {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        use Expr::*;
+        match self {
+            ConstExpr(expr) => {
+                state.write_u8(0);
+                expr.hash(state)
+            }
+            Many(exprs) => {
+                state.write_u8(1);
+                exprs.hash(state)
+            }
+            Match(expr, branches) => {
+                state.write_u8(2);
+                expr.hash(state);
+                branches.hash(state);
+            }
+            IfLet(pat, expr, t, e) => {
+                state.write_u8(3);
+                pat.hash(state);
+                expr.hash(state);
+                t.hash(state);
+                e.hash(state);
+            }
 
-//             While(cond, body) => {
-//                 state.write_u8(2);
-//                 cond.hash(state);
-//                 body.hash(state);
-//             }
+            While(cond, body) => {
+                state.write_u8(2);
+                cond.hash(state);
+                body.hash(state);
+            }
 
-//             If(cond, then, else_) => {
-//                 state.write_u8(3);
-//                 cond.hash(state);
-//                 then.hash(state);
-//                 else_.hash(state);
-//             }
+            If(cond, then, else_) => {
+                state.write_u8(3);
+                cond.hash(state);
+                then.hash(state);
+                else_.hash(state);
+            }
 
-//             When(cond, then, else_) => {
-//                 state.write_u8(4);
-//                 cond.hash(state);
-//                 then.hash(state);
-//                 else_.hash(state);
-//             }
+            When(cond, then, else_) => {
+                state.write_u8(4);
+                cond.hash(state);
+                then.hash(state);
+                else_.hash(state);
+            }
 
-//             UnaryOp(op, val) => {
-//                 state.write_u8(5);
-//                 // op.display(val).hash(state);
-//                 op.hash(state);
-//                 val.hash(state);
-//             }
+            UnaryOp(op, val) => {
+                state.write_u8(5);
+                // op.display(val).hash(state);
+                op.hash(state);
+                val.hash(state);
+            }
 
-//             BinaryOp(op, lhs, rhs) => {
-//                 state.write_u8(6);
-//                 op.display(lhs, rhs).hash(state);
-//                 lhs.hash(state);
-//                 rhs.hash(state);
-//             }
+            BinaryOp(op, lhs, rhs) => {
+                state.write_u8(6);
+                op.hash(state);
+                lhs.hash(state);
+                rhs.hash(state);
+            }
 
-//             TernaryOp(op, a, b, c) => {
-//                 state.write_u8(7);
-//                 op.display(a, b, c).hash(state);
-//                 a.hash(state);
-//                 b.hash(state);
-//                 c.hash(state);
-//             }
+            TernaryOp(op, a, b, c) => {
+                state.write_u8(7);
+                op.hash(state);
+                a.hash(state);
+                b.hash(state);
+                c.hash(state);
+            }
 
-//             AssignOp(op, lhs, rhs) => {
-//                 state.write_u8(8);
-//                 op.display(lhs, rhs).hash(state);
-//                 lhs.hash(state);
-//                 rhs.hash(state);
-//             }
+            AssignOp(op, lhs, rhs) => {
+                state.write_u8(8);
+                op.hash(state);
+                lhs.hash(state);
+                rhs.hash(state);
+            }
 
-//             Refer(m, val) => {
-//                 state.write_u8(9);
-//                 m.hash(state);
-//                 val.hash(state);
-//             }
+            Refer(m, val) => {
+                state.write_u8(9);
+                m.hash(state);
+                val.hash(state);
+            }
 
-//             Deref(val) => {
-//                 state.write_u8(10);
-//                 val.hash(state);
-//             }
+            Deref(val) => {
+                state.write_u8(10);
+                val.hash(state);
+            }
 
-//             DerefMut(dst, src) => {
-//                 state.write_u8(11);
-//                 dst.hash(state);
-//                 src.hash(state);
-//             }
+            DerefMut(dst, src) => {
+                state.write_u8(11);
+                dst.hash(state);
+                src.hash(state);
+            }
 
-//             Apply(func, args) => {
-//                 state.write_u8(12);
-//                 func.hash(state);
-//                 args.hash(state);
-//             }
+            Apply(func, args) => {
+                state.write_u8(12);
+                func.hash(state);
+                args.hash(state);
+            }
 
-//             Return(val) => {
-//                 state.write_u8(13);
-//                 val.hash(state);
-//             }
+            Return(val) => {
+                state.write_u8(13);
+                val.hash(state);
+            }
 
-//             Array(vals) => {
-//                 state.write_u8(14);
-//                 vals.hash(state);
-//             }
+            Array(vals) => {
+                state.write_u8(14);
+                vals.hash(state);
+            }
 
-//             Tuple(vals) => {
-//                 state.write_u8(15);
-//                 vals.hash(state);
-//             }
+            Tuple(vals) => {
+                state.write_u8(15);
+                vals.hash(state);
+            }
 
-//             Union(ty, field, val) => {
-//                 state.write_u8(16);
-//                 ty.hash(state);
-//                 field.hash(state);
-//                 val.hash(state);
-//             }
+            Union(ty, field, val) => {
+                state.write_u8(16);
+                ty.hash(state);
+                field.hash(state);
+                val.hash(state);
+            }
 
-//             EnumUnion(ty, field, val) => {
-//                 state.write_u8(17);
-//                 ty.hash(state);
-//                 field.hash(state);
-//                 val.hash(state);
-//             }
+            EnumUnion(ty, field, val) => {
+                state.write_u8(17);
+                ty.hash(state);
+                field.hash(state);
+                val.hash(state);
+            }
 
-//             Struct(fields) => {
-//                 state.write_u8(18);
-//                 fields.hash(state);
-//             }
+            Struct(fields) => {
+                state.write_u8(18);
+                fields.hash(state);
+            }
 
-//             As(val, ty) => {
-//                 state.write_u8(19);
-//                 val.hash(state);
-//                 ty.hash(state);
-//             }
+            As(val, ty) => {
+                state.write_u8(19);
+                val.hash(state);
+                ty.hash(state);
+            }
 
-//             Member(val, field) => {
-//                 state.write_u8(20);
-//                 val.hash(state);
-//                 field.hash(state);
-//             }
+            Member(val, field) => {
+                state.write_u8(20);
+                val.hash(state);
+                field.hash(state);
+            }
 
-//             Index(val, idx) => {
-//                 state.write_u8(21);
-//                 val.hash(state);
-//                 idx.hash(state);
-//             }
+            Index(val, idx) => {
+                state.write_u8(21);
+                val.hash(state);
+                idx.hash(state);
+            }
 
-//             Annotated(expr, _) => {
-//                 expr.hash(state);
-//             }
+            Annotated(expr, _) => {
+                expr.hash(state);
+            }
 
-//             Declare(decl, expr) => {
-//                 state.write_u8(22);
-//                 decl.hash(state);
-//                 expr.hash(state);
-//             }
-//         }
-//     }
-// }
+            Declare(decl, expr) => {
+                state.write_u8(22);
+                decl.hash(state);
+                expr.hash(state);
+            }
+        }
+    }
+}

@@ -61,7 +61,7 @@
 //!   ```rs
 //!   Indirect(Address(6)) // go the address pointed to by the value in the 6th cell of the tape
 //!   ```
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 use crate::{
     side_effects::{Input, Output},

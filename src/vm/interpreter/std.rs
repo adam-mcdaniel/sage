@@ -3,8 +3,8 @@
 //! This module implements an interpreter for the Standard virtual machine
 //! variant.
 
-use crate::vm::{CoreOp, Device, StandardDevice, StandardOp, StandardProgram};
 use super::TAPE_EXTENSION_SIZE;
+use crate::vm::{CoreOp, Device, StandardDevice, StandardOp, StandardProgram};
 
 /// A function to reinterpret the bits of an integer as a float.
 pub fn as_float(n: i64) -> f64 {
@@ -21,7 +21,6 @@ impl Default for StandardInterpreter<StandardDevice> {
         Self::new(StandardDevice::default())
     }
 }
-
 
 /// The interpreter which runs the standard variant of virtual machine programs.
 pub struct StandardInterpreter<T>
@@ -412,26 +411,30 @@ where
                     CoreOp::Add(n) => {
                         for i in 0..*n {
                             let val = self.cells[self.pointer + i];
-                            self.reg_mut_vector()[i] = self.reg_mut_vector()[i].overflowing_add(val).0;
+                            self.reg_mut_vector()[i] =
+                                self.reg_mut_vector()[i].overflowing_add(val).0;
                         }
                     }
                     CoreOp::Sub(n) => {
                         for i in 0..*n {
                             let val = self.cells[self.pointer + i];
-                            self.reg_mut_vector()[i] = self.reg_mut_vector()[i].overflowing_sub(val).0;
+                            self.reg_mut_vector()[i] =
+                                self.reg_mut_vector()[i].overflowing_sub(val).0;
                         }
                     }
                     CoreOp::Mul(n) => {
                         for i in 0..*n {
                             let val = self.cells[self.pointer + i];
-                            self.reg_mut_vector()[i] = self.reg_mut_vector()[i].overflowing_mul(val).0;
+                            self.reg_mut_vector()[i] =
+                                self.reg_mut_vector()[i].overflowing_mul(val).0;
                         }
                     }
                     CoreOp::Div(n) => {
                         for i in 0..*n {
                             let val = self.cells[self.pointer + i];
                             if val != 0 {
-                                self.reg_mut_vector()[i] = self.reg_mut_vector()[i].overflowing_div(val).0
+                                self.reg_mut_vector()[i] =
+                                    self.reg_mut_vector()[i].overflowing_div(val).0
                             }
                         }
                     }
@@ -439,7 +442,8 @@ where
                         for i in 0..*n {
                             let val = self.cells[self.pointer + i];
                             if val != 0 {
-                                self.reg_mut_vector()[i] = self.reg_mut_vector()[i].overflowing_rem(val).0
+                                self.reg_mut_vector()[i] =
+                                    self.reg_mut_vector()[i].overflowing_rem(val).0
                             }
                         }
                     }

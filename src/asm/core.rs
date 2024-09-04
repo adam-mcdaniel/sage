@@ -30,11 +30,11 @@ use super::{
     location::{FP_STACK, TMP},
     AssemblyProgram, Env, Error, Location, StandardOp, FP, GP, SP, STACK_START, START_OF_FP_STACK,
 };
-use serde_derive::{Serialize, Deserialize};
 use crate::{
     side_effects::{Input, InputMode, Output, OutputMode},
     vm::{self, VirtualMachineProgram},
 };
+use serde_derive::{Deserialize, Serialize};
 use std::{collections::BTreeSet, fmt};
 
 use log::{info, trace};

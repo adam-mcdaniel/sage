@@ -1,51 +1,38 @@
-use std::{
-    collections::{BTreeMap, HashMap}, hash::Hash, path::Path, result, sync::{Arc, RwLock}
-};
-use log::{trace, info, warn, error, debug};
+use log::{error, trace};
 use nom::{
-    branch::alt, bytes::complete::{escaped_transform, is_not, tag, take_while, take_while1, take_while_m_n}, character::complete::{char, crlf, digit1, hex_digit1, multispace0, multispace1, oct_digit1, one_of}, combinator::{all_consuming, cut, map, map_opt, map_res, not, opt, recognize, verify}, error::{context, ContextError, ParseError}, multi::{fold_many0, fold_many1, many0, many0_count, many1}, sequence::{delimited, pair, preceded, terminated}, IResult, Parser
+    branch::alt,
+    bytes::complete::{is_not, tag, take_while, take_while1, take_while_m_n},
+    character::complete::{char, digit1, hex_digit1, multispace1, oct_digit1},
+    combinator::{all_consuming, cut, map, map_opt, opt, recognize, verify},
+    error::{context, ContextError, ParseError},
+    multi::{fold_many0, many0, many0_count, many1},
+    sequence::{delimited, pair, preceded, terminated},
+    IResult, Parser,
+};
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, RwLock},
 };
 
+use crate::{lir::*, parse::SourceCodeLocation};
 use nom::{
-    bytes::complete::{escaped, }, character::complete::{alpha1, alphanumeric0, alphanumeric1, anychar, none_of}, combinator::{value}, error::{convert_error, ErrorKind, VerboseError, FromExternalError}
+    character::complete::{alpha1, alphanumeric1},
+    combinator::value,
+    error::{convert_error, ErrorKind, FromExternalError, VerboseError},
 };
-use crate::{frontend::parse, lir::{self, *}, parse::SourceCodeLocation};
 const KEYWORDS: &[&str] = &[
-    "def",
-    "fun",
-    "struct",
-    "enum",
-    "mut",
-    "let",
-    "if",
-    "else",
-    "while",
-    "for",
-    "return",
-    "match",
-    "True",
-    "False",
-    "Null",
-    "None",
-    "sizeof",
-    "Int",
-    "Float",
-    "Char",
-    "Bool",
-    "Cell",
-    "Never",
+    "def", "fun", "struct", "enum", "mut", "let", "if", "else", "while", "for", "return", "match",
+    "True", "False", "Null", "None", "sizeof", "Int", "Float", "Char", "Bool", "Cell", "Never",
     "!",
 ];
 
-fn bin_digit1<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
+fn bin_digit1<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     take_while1(|c: char| c == '0' || c == '1')(input)
 }
 
 use lazy_static::lazy_static;
-enum Associativity {
-    Left,
-    Right,
-}
 
 fn precompute_line_starts(s: &str) -> Vec<usize> {
     let mut line_starts = vec![0]; // The first line always starts at index 0
@@ -100,36 +87,34 @@ fn make_env() -> sage_lisp::Env {
                     let mut list = a.clone();
                     list.extend(b);
                     sum = Expr::List(list);
-                },
+                }
                 (Expr::List(a), b) => {
                     let mut list = a.clone();
                     list.push(b);
                     sum = Expr::List(list);
-                },
-                (a, b) => return Expr::error(format!("Invalid expr {} + {}", a, b))
+                }
+                (a, b) => return Expr::error(format!("Invalid expr {} + {}", a, b)),
             }
         }
         sum
     });
     env.alias("+", "add");
 
-    env.bind_builtin("-", 
-        |env, exprs| {
-            let mut diff = Expr::default();
-            for e in exprs {
-                let e = env.eval(e.clone());
-                match (diff, e) {
-                    (Expr::None, b) => diff = b,
-                    (Expr::Int(a), Expr::Int(b)) => diff = Expr::Int(a - b),
-                    (Expr::Float(a), Expr::Float(b)) => diff = Expr::Float(a - b),
-                    (Expr::Int(a), Expr::Float(b)) => diff = Expr::Float(a as f64 - b),
-                    (Expr::Float(a), Expr::Int(b)) => diff = Expr::Float(a - b as f64),
-                    (a, b) => return Expr::error(format!("Invalid expr {} - {}", a, b))
-                }
+    env.bind_builtin("-", |env, exprs| {
+        let mut diff = Expr::default();
+        for e in exprs {
+            let e = env.eval(e.clone());
+            match (diff, e) {
+                (Expr::None, b) => diff = b,
+                (Expr::Int(a), Expr::Int(b)) => diff = Expr::Int(a - b),
+                (Expr::Float(a), Expr::Float(b)) => diff = Expr::Float(a - b),
+                (Expr::Int(a), Expr::Float(b)) => diff = Expr::Float(a as f64 - b),
+                (Expr::Float(a), Expr::Int(b)) => diff = Expr::Float(a - b as f64),
+                (a, b) => return Expr::error(format!("Invalid expr {} - {}", a, b)),
             }
-            diff
         }
-    );
+        diff
+    });
     env.alias("-", "sub");
 
     env.bind_builtin("*", |env, exprs| {
@@ -148,8 +133,8 @@ fn make_env() -> sage_lisp::Env {
                         list.extend(a.clone());
                     }
                     product = Expr::List(list);
-                },
-                (a, b) => return Expr::error(format!("Invalid expr {} * {}", a, b))
+                }
+                (a, b) => return Expr::error(format!("Invalid expr {} * {}", a, b)),
             }
         }
         product
@@ -166,7 +151,7 @@ fn make_env() -> sage_lisp::Env {
                 (Expr::Float(a), Expr::Float(b)) => quotient = Expr::Float(a / b),
                 (Expr::Int(a), Expr::Float(b)) => quotient = Expr::Float(a as f64 / b),
                 (Expr::Float(a), Expr::Int(b)) => quotient = Expr::Float(a / b as f64),
-                (a, b) => return Expr::error(format!("Invalid expr {} / {}", a, b))
+                (a, b) => return Expr::error(format!("Invalid expr {} / {}", a, b)),
             }
         }
         quotient
@@ -183,17 +168,17 @@ fn make_env() -> sage_lisp::Env {
                 (Expr::Float(a), Expr::Float(b)) => quotient = Expr::Float(a % b),
                 (Expr::Int(a), Expr::Float(b)) => quotient = Expr::Float(a as f64 % b),
                 (Expr::Float(a), Expr::Int(b)) => quotient = Expr::Float(a % b as f64),
-                (a, b) => return Expr::error(format!("Invalid expr {} % {}", a, b))
+                (a, b) => return Expr::error(format!("Invalid expr {} % {}", a, b)),
             }
         }
         quotient
     });
     env.alias("%", "rem");
-    
+
     env.bind_builtin("=", |env, exprs| {
         let a = env.eval(exprs[0].clone());
         let b = env.eval(exprs[1].clone());
-        
+
         Expr::Bool(a == b)
     });
     env.alias("=", "==");
@@ -201,35 +186,35 @@ fn make_env() -> sage_lisp::Env {
     env.bind_builtin("!=", |env, exprs| {
         let a = env.eval(exprs[0].clone());
         let b = env.eval(exprs[1].clone());
-        
+
         Expr::Bool(a != b)
     });
 
     env.bind_builtin("<=", |env, exprs| {
         let a = env.eval(exprs[0].clone());
         let b = env.eval(exprs[1].clone());
-        
+
         Expr::Bool(a <= b)
     });
 
     env.bind_builtin(">=", |env, exprs| {
         let a = env.eval(exprs[0].clone());
         let b = env.eval(exprs[1].clone());
-        
+
         Expr::Bool(a >= b)
     });
 
     env.bind_builtin("<", |env, exprs| {
         let a = env.eval(exprs[0].clone());
         let b = env.eval(exprs[1].clone());
-        
+
         Expr::Bool(a < b)
     });
 
     env.bind_builtin(">", |env, exprs| {
         let a = env.eval(exprs[0].clone());
         let b = env.eval(exprs[1].clone());
-        
+
         Expr::Bool(a > b)
     });
 
@@ -252,24 +237,18 @@ fn make_env() -> sage_lisp::Env {
         }
     });
 
-    env.bind_builtin("define", 
-        |env, exprs| {
-            let name = exprs[0].clone();
-            let value = env.eval(exprs[1].clone());
-            env
-                .bind(name, value);
-            Expr::None
-        }
-    );
+    env.bind_builtin("define", |env, exprs| {
+        let name = exprs[0].clone();
+        let value = env.eval(exprs[1].clone());
+        env.bind(name, value);
+        Expr::None
+    });
 
-    env.bind_builtin("undefine", 
-        |env, exprs| {
-            let name = exprs[0].clone();
-            env
-                .unbind(&name);
-            Expr::None
-        }
-    );
+    env.bind_builtin("undefine", |env, exprs| {
+        let name = exprs[0].clone();
+        env.unbind(&name);
+        Expr::None
+    });
 
     env.bind_builtin("defun", |env, args| {
         let name = args[0].clone();
@@ -280,7 +259,7 @@ fn make_env() -> sage_lisp::Env {
             env.bind(name, f);
             Expr::None
         } else {
-            return Expr::error(format!("Invalid params {:?}", params));
+            Expr::error(format!("Invalid params {:?}", params))
         }
     });
 
@@ -291,7 +270,7 @@ fn make_env() -> sage_lisp::Env {
             match e {
                 Expr::String(s) => print!("{}", s),
                 Expr::Symbol(s) => print!("{}", s.name()),
-                _ => print!("{}", e)
+                _ => print!("{}", e),
             }
         }
         println!();
@@ -306,16 +285,14 @@ fn make_env() -> sage_lisp::Env {
     //     result
     // });
 
-    env.bind_lazy_builtin("do", |_env, exprs| {
-        Expr::Many(Vec::from(exprs))
-    });
+    env.bind_lazy_builtin("do", |_env, exprs| Expr::Many(Vec::from(exprs)));
 
     env.bind_builtin("sqrt", |env, expr| {
         let e = env.eval(expr[0].clone());
         match e {
             Expr::Int(i) => Expr::Float((i as f64).sqrt()),
             Expr::Float(f) => Expr::Float(f.sqrt()),
-            e => Expr::error(format!("Invalid expr sqrt {}", e))
+            e => Expr::error(format!("Invalid expr sqrt {}", e)),
         }
     });
 
@@ -327,7 +304,7 @@ fn make_env() -> sage_lisp::Env {
             (Expr::Float(a), Expr::Float(b)) => Expr::Float(a.powf(b)),
             (Expr::Int(a), Expr::Float(b)) => Expr::Float((a as f64).powf(b)),
             (Expr::Float(a), Expr::Int(b)) => Expr::Float(a.powf(b as f64)),
-            (a, b) => Expr::error(format!("Invalid expr {} ^ {}", a, b))
+            (a, b) => Expr::error(format!("Invalid expr {} ^ {}", a, b)),
         }
     });
 
@@ -339,7 +316,7 @@ fn make_env() -> sage_lisp::Env {
         if let Expr::List(params) = params {
             Expr::Function(Some(Box::new(env.clone())), params, Box::new(body))
         } else {
-            return Expr::error(format!("Invalid params {:?}", params));
+            Expr::error(format!("Invalid params {:?}", params))
         }
     };
     env.bind_builtin("lambda", lambda);
@@ -356,7 +333,7 @@ fn make_env() -> sage_lisp::Env {
                         new_env.bind(param.clone(), env.eval(arg.clone()));
                     }
                     new_env.eval(*body.clone())
-                },
+                }
                 Expr::Function(None, params, body) => {
                     let mut new_env = env.clone();
                     for (param, arg) in params.iter().zip(args.iter()) {
@@ -364,13 +341,11 @@ fn make_env() -> sage_lisp::Env {
                     }
                     new_env.eval(*body.clone())
                 }
-                Expr::Builtin(f) => {
-                    f.apply(&mut env.clone(), &args)
-                },
-                f => Expr::error(format!("Invalid function {f} apply {}", Expr::from(args)))
+                Expr::Builtin(f) => f.apply(&mut env.clone(), &args),
+                f => Expr::error(format!("Invalid function {f} apply {}", Expr::from(args))),
             }
         } else {
-            Expr::error(format!("Invalid function {f} apply {}", Expr::from(args)))
+            Expr::error(format!("Invalid function {f} apply {}", args))
         }
     });
 
@@ -414,12 +389,12 @@ fn make_env() -> sage_lisp::Env {
         let format = env.eval(expr[0].clone());
         // Collect the args
         let args = expr[1..].to_vec();
-        
+
         let mut format = match format {
             Expr::String(s) => s,
-            e => return Expr::error(format!("Invalid format {e}"))
+            e => return Expr::error(format!("Invalid format {e}")),
         };
-        
+
         // Find all of the format specifiers.
         let mut specifiers = vec![];
         for (i, c) in format.chars().enumerate() {
@@ -431,7 +406,7 @@ fn make_env() -> sage_lisp::Env {
                     }
                     j += 1;
                 }
-                specifiers.push(format[i+1..j].to_owned());
+                specifiers.push(format[i + 1..j].to_owned());
             }
         }
 
@@ -441,13 +416,13 @@ fn make_env() -> sage_lisp::Env {
                 continue;
             }
             let name = Expr::Symbol(Symbol::new(name));
-            
+
             let value = env.eval(name.clone());
             let specifier = format!("{{{name}}}");
             match value {
                 Expr::String(s) => {
                     format = format.replacen(&specifier, &s, 1);
-                },
+                }
                 other => {
                     format = format.replacen(&specifier, &other.to_string(), 1);
                 }
@@ -455,7 +430,7 @@ fn make_env() -> sage_lisp::Env {
         }
 
         // Replace the empty specifiers with the args.
-        let mut i = 0;        
+        let mut i = 0;
         for name in &specifiers {
             if !name.is_empty() {
                 continue;
@@ -463,12 +438,12 @@ fn make_env() -> sage_lisp::Env {
             if i >= args.len() {
                 return Expr::error("Too few arguments");
             }
-            let specifier = format!("{{}}");
+            let specifier = "{}".to_string();
             let value = env.eval(args[i].clone());
             match value {
                 Expr::String(s) => {
                     format = format.replacen(&specifier, &s, 1);
-                },
+                }
                 other => {
                     format = format.replacen(&specifier, &other.to_string(), 1);
                 }
@@ -480,7 +455,7 @@ fn make_env() -> sage_lisp::Env {
         if i < args.len() {
             return Expr::error("Too many arguments");
         }
-        
+
         Expr::String(format)
     };
 
@@ -512,23 +487,19 @@ fn make_env() -> sage_lisp::Env {
         env.eval(e)
     });
 
-    env.bind_builtin("exit", |env, expr| {
-        match env.eval(expr[0].clone()) {
-            Expr::Int(i) => std::process::exit(i as i32),
-            Expr::String(s) => {
-                eprintln!("{s}");
-                std::process::exit(1);
-            }
-            e => {
-                eprintln!("{e}");
-                std::process::exit(1);
-            }
+    env.bind_builtin("exit", |env, expr| match env.eval(expr[0].clone()) {
+        Expr::Int(i) => std::process::exit(i as i32),
+        Expr::String(s) => {
+            eprintln!("{s}");
+            std::process::exit(1);
+        }
+        e => {
+            eprintln!("{e}");
+            std::process::exit(1);
         }
     });
 
-    env.bind_builtin("quote", |_env, expr| {
-        expr[0].clone()
-    });
+    env.bind_builtin("quote", |_env, expr| expr[0].clone());
 
     env.bind_builtin("or", |env, expr| {
         for e in expr {
@@ -554,8 +525,7 @@ fn make_env() -> sage_lisp::Env {
         let e = env.eval(expr[0].clone());
         match e {
             Expr::Bool(b) => Expr::Bool(!b),
-            e => return Expr::error(format!("Invalid not {e}"))
-
+            e => Expr::error(format!("Invalid not {e}")),
         }
     });
 
@@ -566,7 +536,7 @@ fn make_env() -> sage_lisp::Env {
             Expr::List(l) => Expr::Int(l.len() as i64),
             Expr::Map(m) => Expr::Int(m.len() as i64),
             Expr::Tree(t) => Expr::Int(t.len() as i64),
-            e => Expr::error(format!("Invalid len {e}"))
+            e => Expr::error(format!("Invalid len {e}")),
         }
     });
 
@@ -596,7 +566,7 @@ fn make_env() -> sage_lisp::Env {
                     new_env.bind(name, env.eval(value));
                 }
             }
-            bindings => return Expr::error(format!("Invalid bindings {bindings}"))
+            bindings => return Expr::error(format!("Invalid bindings {bindings}")),
         }
         new_env.eval(body)
     });
@@ -606,17 +576,21 @@ fn make_env() -> sage_lisp::Env {
         let b = env.eval(expr[1].clone());
 
         match (a, b) {
-            (Expr::String(a), Expr::Int(b)) => Expr::String(a.chars().nth(b as usize).unwrap_or('\0').to_string()),
+            (Expr::String(a), Expr::Int(b)) => {
+                Expr::String(a.chars().nth(b as usize).unwrap_or('\0').to_string())
+            }
             (Expr::List(a), Expr::Int(b)) => a.get(b as usize).cloned().unwrap_or(Expr::None),
             (Expr::Map(a), Expr::Symbol(b)) => {
                 // a.get(&b).cloned().unwrap_or(Expr::None)
-                a.get(&Expr::Symbol(b.clone())).cloned()
-                    .unwrap_or_else(|| a.get(&Expr::String(b.name().to_owned()))
-                    .cloned().unwrap_or(Expr::None))
-            },
+                a.get(&Expr::Symbol(b.clone())).cloned().unwrap_or_else(|| {
+                    a.get(&Expr::String(b.name().to_owned()))
+                        .cloned()
+                        .unwrap_or(Expr::None)
+                })
+            }
             (Expr::Map(a), b) => a.get(&b).cloned().unwrap_or(Expr::None),
             (Expr::Tree(a), b) => a.get(&b).cloned().unwrap_or(Expr::None),
-            (a, b) => return Expr::error(format!("Invalid expr get {} {}", a, b))
+            (a, b) => Expr::error(format!("Invalid expr get {} {}", a, b)),
         }
     });
     env.alias("get", "@");
@@ -631,26 +605,30 @@ fn make_env() -> sage_lisp::Env {
                 if b == a.len() as i64 {
                     a.push_str(&c.to_string());
                 } else {
-                    a = a.chars().enumerate().map(|(i, c)| if i == b as usize { c } else { '\0' }).collect();
+                    a = a
+                        .chars()
+                        .enumerate()
+                        .map(|(i, c)| if i == b as usize { c } else { '\0' })
+                        .collect();
                 }
                 Expr::String(a)
-            },
+            }
             (Expr::List(mut a), Expr::Int(b)) => {
                 if b as usize >= a.len() {
                     a.resize(b as usize + 1, Expr::None);
                 }
                 a[b as usize] = c;
                 Expr::List(a)
-            },
+            }
             (Expr::Map(mut a), b) => {
                 a.insert(b, c);
                 Expr::Map(a)
-            },
+            }
             (Expr::Tree(mut a), b) => {
                 a.insert(b, c);
                 Expr::Tree(a)
-            },
-            (a, b) => return Expr::error(format!("Invalid expr set {} {} {}", a, b, c))
+            }
+            (a, b) => Expr::error(format!("Invalid expr set {} {} {}", a, b, c)),
         }
     });
 
@@ -665,8 +643,8 @@ fn make_env() -> sage_lisp::Env {
                     list.push(Expr::List(vec![a, b]));
                 }
                 Expr::List(list)
-            },
-            (a, b) => return Expr::error(format!("Invalid expr zip {} {}", a, b))
+            }
+            (a, b) => Expr::error(format!("Invalid expr zip {} {}", a, b)),
         }
     });
 
@@ -684,14 +662,14 @@ fn make_env() -> sage_lisp::Env {
                             return Expr::error(format!("Invalid pair {}", Expr::from(e)));
                         }
                     } else {
-                        return Expr::error(format!("Invalid pair {}", Expr::from(e)));
+                        return Expr::error(format!("Invalid pair {}", e));
                     }
                 }
                 Expr::Map(map)
-            },
-            Expr::Map(a) => return Expr::Map(a),
-            Expr::Tree(a) => return Expr::Map(a.into_iter().collect()),
-            a => return Expr::error(format!("Invalid expr to-map {}", Expr::from(a)))
+            }
+            Expr::Map(a) => Expr::Map(a),
+            Expr::Tree(a) => Expr::Map(a.into_iter().collect()),
+            a => Expr::error(format!("Invalid expr to-map {}", a)),
         }
     });
 
@@ -709,14 +687,14 @@ fn make_env() -> sage_lisp::Env {
                             return Expr::error(format!("Invalid pair {}", Expr::from(e)));
                         }
                     } else {
-                        return Expr::error(format!("Invalid pair {}", Expr::from(e)));
+                        return Expr::error(format!("Invalid pair {}", e));
                     }
                 }
                 Expr::Tree(tree)
-            },
-            Expr::Map(a) => return Expr::Tree(a.into_iter().collect()),
-            Expr::Tree(a) => return Expr::Tree(a),
-            a => return Expr::error(format!("Invalid expr to-tree {}", Expr::from(a)))
+            }
+            Expr::Map(a) => Expr::Tree(a.into_iter().collect()),
+            Expr::Tree(a) => Expr::Tree(a),
+            a => Expr::error(format!("Invalid expr to-tree {}", a)),
         }
     });
 
@@ -729,16 +707,16 @@ fn make_env() -> sage_lisp::Env {
                     list.push(Expr::List(vec![k, v]));
                 }
                 Expr::List(list)
-            },
+            }
             Expr::Tree(a) => {
                 let mut list = vec![];
                 for (k, v) in a {
                     list.push(Expr::List(vec![k, v]));
                 }
                 Expr::List(list)
-            },
-            Expr::List(a) => return Expr::List(a),
-            a => return Expr::error(format!("Invalid expr to-list {}", a))
+            }
+            Expr::List(a) => Expr::List(a),
+            a => Expr::error(format!("Invalid expr to-list {}", a)),
         }
     });
 
@@ -752,11 +730,10 @@ fn make_env() -> sage_lisp::Env {
                     list.push(env.eval(Expr::List(vec![f.clone(), e])));
                 }
                 Expr::List(list)
-            },
+            }
             Expr::Map(a) => {
                 let mut map = std::collections::HashMap::new();
                 for (k, v) in a {
-                    // map.insert(k.clone(), env.eval(Expr::List(vec![f.clone(), k, v])));
                     let pair = env.eval(Expr::List(vec![f.clone(), k.quote(), v.quote()]));
                     if let Expr::List(pair) = pair {
                         map.insert(pair[0].clone(), pair[1].clone());
@@ -765,7 +742,7 @@ fn make_env() -> sage_lisp::Env {
                     }
                 }
                 Expr::Map(map)
-            },
+            }
             Expr::Tree(a) => {
                 let mut tree = std::collections::BTreeMap::new();
                 for (k, v) in a {
@@ -778,8 +755,8 @@ fn make_env() -> sage_lisp::Env {
                     }
                 }
                 Expr::Tree(tree)
-            },
-            a => return Expr::error(format!("Invalid expr map {}", a))
+            }
+            a => Expr::error(format!("Invalid expr map {}", a)),
         }
     });
 
@@ -796,7 +773,7 @@ fn make_env() -> sage_lisp::Env {
                     }
                 }
                 Expr::List(list)
-            },
+            }
             Expr::Map(a) => {
                 let mut map = std::collections::HashMap::new();
                 for (k, v) in a {
@@ -806,7 +783,7 @@ fn make_env() -> sage_lisp::Env {
                     }
                 }
                 Expr::Map(map)
-            },
+            }
             Expr::Tree(a) => {
                 let mut tree = std::collections::BTreeMap::new();
                 for (k, v) in a {
@@ -816,8 +793,8 @@ fn make_env() -> sage_lisp::Env {
                     }
                 }
                 Expr::Tree(tree)
-            },
-            a => return Expr::error(format!("Invalid expr filter {}", a))
+            }
+            a => Expr::error(format!("Invalid expr filter {}", a)),
         }
     });
 
@@ -833,22 +810,22 @@ fn make_env() -> sage_lisp::Env {
                     acc = env.eval(Expr::List(vec![f.clone(), acc, e]));
                 }
                 acc
-            },
+            }
             Expr::Map(a) => {
                 let mut acc = b;
                 for (k, v) in a {
                     acc = env.eval(Expr::List(vec![f.clone(), acc, k, v]));
                 }
                 acc
-            },
+            }
             Expr::Tree(a) => {
                 let mut acc = b;
                 for (k, v) in a {
                     acc = env.eval(Expr::List(vec![f.clone(), acc, k, v]));
                 }
                 acc
-            },
-            a => return Expr::error(format!("Invalid expr reduce {}", a))
+            }
+            a => Expr::error(format!("Invalid expr reduce {}", a)),
         }
     });
 
@@ -862,28 +839,28 @@ fn make_env() -> sage_lisp::Env {
                     list.push(Expr::Int(i));
                 }
                 Expr::List(list)
-            },
+            }
             (Expr::Int(a), Expr::Float(b)) => {
                 let mut list = vec![];
                 for i in a..=(b as i64) {
                     list.push(Expr::Int(i));
                 }
                 Expr::List(list)
-            },
+            }
             (Expr::Float(a), Expr::Int(b)) => {
                 let mut list = vec![];
                 for i in (a as i64)..=b {
                     list.push(Expr::Int(i));
                 }
                 Expr::List(list)
-            },
+            }
             (Expr::Float(a), Expr::Float(b)) => {
                 let mut list = vec![];
                 for i in (a as i64)..=(b as i64) {
                     list.push(Expr::Int(i));
                 }
                 Expr::List(list)
-            },
+            }
             (Expr::Symbol(a), Expr::Symbol(b)) if a.name().len() == 1 && b.name().len() == 1 => {
                 let mut list = vec![];
                 let first = a.name().chars().next().unwrap();
@@ -892,7 +869,7 @@ fn make_env() -> sage_lisp::Env {
                     list.push(Expr::Symbol(Symbol::new(&i.to_string())));
                 }
                 Expr::List(list)
-            },
+            }
             (Expr::String(a), Expr::String(b)) if a.len() == 1 && b.len() == 1 => {
                 let mut list = vec![];
                 let first = a.chars().next().unwrap();
@@ -901,8 +878,8 @@ fn make_env() -> sage_lisp::Env {
                     list.push(Expr::String(i.to_string()));
                 }
                 Expr::List(list)
-            },
-            (a, b) => return Expr::error(format!("Invalid expr range {} {}", a, b))
+            }
+            (a, b) => Expr::error(format!("Invalid expr range {} {}", a, b)),
         }
     });
 
@@ -912,103 +889,78 @@ fn make_env() -> sage_lisp::Env {
             Expr::List(mut a) => {
                 a.reverse();
                 Expr::List(a)
-            },
-            a => return Expr::error(format!("Invalid expr rev {}", a))
+            }
+            a => Expr::error(format!("Invalid expr rev {}", a)),
         }
     });
+
     use crate::targets::CompiledTarget;
-    // env.bind_builtin("rand", |env, expr| {
-    //     use rand::Rng;
-    //     let low = env.eval(expr[0].clone());
-    //     let high = env.eval(expr[1].clone());
-    //     match (low, high) {
-    //         (Expr::Int(low), Expr::Int(high)) => {
-    //             let mut rng = rand::thread_rng();
-    //             Expr::Int(rng.gen_range(low..=high))
-    //         },
-    //         (Expr::Float(low), Expr::Float(high)) => {
-    //             let mut rng = rand::thread_rng();
-    //             Expr::Float(rng.gen_range(low..=high))
-    //         },
-    //         (Expr::Int(low), Expr::Float(high)) => {
-    //             let mut rng = rand::thread_rng();
-    //             Expr::Float(rng.gen_range(low as f64..=high))
-    //         },
-    //         (Expr::Float(low), Expr::Int(high)) => {
-    //             let mut rng = rand::thread_rng();
-    //             Expr::Float(rng.gen_range(low..=high as f64))
-    //         },
-    //         (a, b) => return Expr::error(format!("Invalid expr rand {} {}", a, b))
-    //     }
-    // });
-    
     env.bind_builtin("parse", |env, expr| {
         let a = env.eval(expr[0].clone());
         match a {
             Expr::String(frontend_src) => {
-                match crate::parse::parse_frontend_minimal(&frontend_src, Some("stdin")) {
-                    Ok(frontend_code) => {
-                        Expr::serialize(frontend_code)
-                    },
-                    Err(e) => Expr::error(e)
+                match crate::parse::parse_frontend_minimal(frontend_src, Some("stdin")) {
+                    Ok(frontend_code) => Expr::serialize(frontend_code),
+                    Err(e) => Expr::error(e),
                 }
-            },
-            a => return Expr::error(format!("Invalid expr parse {}", a))
+            }
+            a => Expr::error(format!("Invalid expr parse {}", a)),
         }
     });
     env.bind_builtin("parse-big", |env, expr| {
         let a = env.eval(expr[0].clone());
         match a {
             Expr::String(frontend_src) => {
-                match crate::parse::parse_frontend(&frontend_src, Some("stdin")) {
-                    Ok(frontend_code) => {
-                        Expr::serialize(frontend_code)
-                    },
-                    Err(e) => Expr::error(e)
+                match crate::parse::parse_frontend(frontend_src, Some("stdin")) {
+                    Ok(frontend_code) => Expr::serialize(frontend_code),
+                    Err(e) => Expr::error(e),
                 }
-            },
-            a => return Expr::error(format!("Invalid expr parse {}", a))
+            }
+            a => Expr::error(format!("Invalid expr parse {}", a)),
         }
     });
 
     env.bind_builtin("compile", |env, expr| {
-        let frontend_code = Expr::deserialize::<crate::lir::Expr>(&env.eval(expr[0].clone())).map_err(|e| Expr::error(format!("Invalid AST: {e}")));
+        let frontend_code = Expr::deserialize::<crate::lir::Expr>(&env.eval(expr[0].clone()))
+            .map_err(|e| Expr::error(format!("Invalid AST: {e}")));
 
         match frontend_code {
             Err(e) => e,
             Ok(frontend_code) => {
-                let asm_code = frontend_code.compile().map_err(|e| Expr::error(format!("Invalid AST: {e}")));
+                let asm_code = frontend_code
+                    .compile()
+                    .map_err(|e| Expr::error(format!("Invalid AST: {e}")));
                 if let Err(e) = asm_code {
                     return e;
                 }
                 let asm_code = asm_code.unwrap();
-        
+
                 let vm_code = match asm_code {
                     Ok(core_asm_code) => core_asm_code.assemble(100000).map(Ok),
                     Err(std_asm_code) => std_asm_code.assemble(100000).map(Err),
-                }.unwrap();
-        
+                }
+                .unwrap();
+
                 let c_code = match vm_code {
-                    Ok(vm_code) => {
-                        crate::targets::C.build_core(&vm_code.flatten()).unwrap()
-                    }
-                    Err(vm_code) => {
-                        crate::targets::C.build_std(&vm_code.flatten()).unwrap()
-                    }
+                    Ok(vm_code) => crate::targets::C.build_core(&vm_code.flatten()).unwrap(),
+                    Err(vm_code) => crate::targets::C.build_std(&vm_code.flatten()).unwrap(),
                 };
-        
+
                 Expr::String(c_code)
             }
         }
     });
 
     env.bind_builtin("asm", |env, expr| {
-        let frontend_code = Expr::deserialize::<crate::lir::Expr>(&env.eval(expr[0].clone())).map_err(|e| Expr::error(format!("Invalid AST: {e}")));
+        let frontend_code = Expr::deserialize::<crate::lir::Expr>(&env.eval(expr[0].clone()))
+            .map_err(|e| Expr::error(format!("Invalid AST: {e}")));
 
         match frontend_code {
             Err(e) => e,
             Ok(frontend_code) => {
-                let asm_code = frontend_code.compile().map_err(|e| Expr::error(format!("Invalid AST: {e}")));
+                let asm_code = frontend_code
+                    .compile()
+                    .map_err(|e| Expr::error(format!("Invalid AST: {e}")));
                 if let Err(e) = asm_code {
                     return e;
                 }
@@ -1036,8 +988,8 @@ fn make_env() -> sage_lisp::Env {
                     code.push_str("\n");
                 }
                 Expr::String(code)
-            },
-            a => return Expr::error(format!("Invalid expr read {}", a))
+            }
+            a => Expr::error(format!("Invalid expr read {}", a)),
         }
     });
 
@@ -1054,8 +1006,8 @@ fn make_env() -> sage_lisp::Env {
                 let mut file = std::fs::File::create(path).unwrap();
                 file.write_all(content.as_bytes()).unwrap();
                 Expr::None
-            },
-            (a, b) => return Expr::error(format!("Invalid expr write {} {}", a, b))
+            }
+            (a, b) => Expr::error(format!("Invalid expr write {} {}", a, b)),
         }
     });
 
@@ -1073,8 +1025,8 @@ fn make_env() -> sage_lisp::Env {
                 let stdout = String::from_utf8(output.stdout).unwrap();
                 let stderr = String::from_utf8(output.stderr).unwrap();
                 Expr::List(vec![Expr::String(stdout), Expr::String(stderr)])
-            },
-            a => return Expr::error(format!("Invalid expr shell {}", a))
+            }
+            a => Expr::error(format!("Invalid expr shell {}", a)),
         }
     });
 
@@ -1086,8 +1038,8 @@ lazy_static! {
     static ref FILE_NAME: RwLock<Option<String>> = RwLock::new(None);
     static ref PROGRAM: RwLock<Arc<String>> = RwLock::new(Arc::new(String::new()));
     static ref LISP_ENV: RwLock<sage_lisp::Env> = RwLock::new(make_env());
-
-    static ref FILE_SAVES: RwLock<Vec<(Vec<usize>, Arc<String>, Option<String>)>> = RwLock::new(vec![]);
+    static ref FILE_SAVES: RwLock<Vec<(Vec<usize>, Arc<String>, Option<String>)>> =
+        RwLock::new(vec![]);
 }
 
 fn save_source_code_setup() {
@@ -1097,11 +1049,7 @@ fn save_source_code_setup() {
     let file_name = FILE_NAME.read().unwrap();
     let program = PROGRAM.read().unwrap();
 
-    saves.push((
-        line_numbers.clone(),
-        program.clone(),
-        file_name.clone(),
-    ));
+    saves.push((line_numbers.clone(), program.clone(), file_name.clone()));
 }
 
 fn restore_source_code_setup() {
@@ -1146,7 +1094,7 @@ fn get_source_code_location(char_idx: usize, length: Option<usize>) -> SourceCod
         column,
         offset,
         length,
-        filename
+        filename,
     }
 }
 
@@ -1158,9 +1106,9 @@ fn get_current_offset_in_program(remaining_input: &str) -> usize {
     let length = PROGRAM.read().unwrap().len();
     let remaining_length = remaining_input.len();
     if length > remaining_length {
-        return length - remaining_length;
+        length - remaining_length
     } else {
-        return 0;
+        0
     }
 }
 
@@ -1185,50 +1133,50 @@ fn end_source_code_tracking(remaining_input: &str) -> SourceCodeLocation {
 
 lazy_static! {
     // Declare a map of binary operators, their precedence, associativity, and their operator value
-    static ref BIN_OPS: RwLock<BTreeMap<String, (u8, Associativity, fn(Expr, Expr) -> Expr)>> = {
+    static ref BIN_OPS: RwLock<BTreeMap<String, (u8, fn(Expr, Expr) -> Expr)>> = {
 
-        let mut result: BTreeMap<String, (u8, Associativity, fn(Expr, Expr) -> Expr)> = BTreeMap::new();
-        result.insert("+".to_owned(), (10, Associativity::Left, |a, b| a.add(b)));
-        result.insert("-".to_owned(), (10, Associativity::Left, |a, b| a.sub(b)));
-        result.insert("*".to_owned(), (20, Associativity::Left, |a, b| a.mul(b)));
-        result.insert("/".to_owned(), (20, Associativity::Left, |a, b| a.div(b)));
-        result.insert("%".to_owned(), (20, Associativity::Left, |a, b| a.rem(b)));
-        result.insert("==".to_owned(), (5, Associativity::Left, |a, b| a.eq(b)));
-        result.insert("!=".to_owned(), (5, Associativity::Left, |a, b| a.neq(b)));
-        result.insert("<".to_owned(), (5, Associativity::Left, |a, b| a.lt(b)));
-        result.insert("<=".to_owned(), (5, Associativity::Left, |a, b| a.le(b)));
-        result.insert(">".to_owned(), (5, Associativity::Left, |a, b| a.gt(b)));
-        result.insert(">=".to_owned(), (5, Associativity::Left, |a, b| a.ge(b)));
-        result.insert("&&".to_owned(), (3, Associativity::Left, |a, b| a.and(b)));
-        result.insert("and".to_owned(), (3, Associativity::Left, |a, b| a.and(b)));
-        result.insert("||".to_owned(), (2, Associativity::Left, |a, b| a.or(b)));
-        result.insert("or".to_owned(), (2, Associativity::Left, |a, b| a.or(b)));
-        result.insert("&".to_owned(), (4, Associativity::Left, |a, b| a.bitand(b)));
-        result.insert("|".to_owned(), (2, Associativity::Left, |a, b| a.bitor(b)));
-        result.insert("^".to_owned(), (3, Associativity::Left, |a, b| a.bitxor(b)));
+        let mut result: BTreeMap<String, (u8, fn(Expr, Expr) -> Expr)> = BTreeMap::new();
+        result.insert("+".to_owned(), (10, |a, b| a.add(b)));
+        result.insert("-".to_owned(), (10, |a, b| a.sub(b)));
+        result.insert("*".to_owned(), (20, |a, b| a.mul(b)));
+        result.insert("/".to_owned(), (20, |a, b| a.div(b)));
+        result.insert("%".to_owned(), (20, |a, b| a.rem(b)));
+        result.insert("==".to_owned(), (5, |a, b| a.eq(b)));
+        result.insert("!=".to_owned(), (5, |a, b| a.neq(b)));
+        result.insert("<".to_owned(), (5, |a, b| a.lt(b)));
+        result.insert("<=".to_owned(), (5, |a, b| a.le(b)));
+        result.insert(">".to_owned(), (5, |a, b| a.gt(b)));
+        result.insert(">=".to_owned(), (5, |a, b| a.ge(b)));
+        result.insert("&&".to_owned(), (3, |a, b| a.and(b)));
+        result.insert("and".to_owned(), (3, |a, b| a.and(b)));
+        result.insert("||".to_owned(), (2, |a, b| a.or(b)));
+        result.insert("or".to_owned(), (2, |a, b| a.or(b)));
+        result.insert("&".to_owned(), (4, |a, b| a.bitand(b)));
+        result.insert("|".to_owned(), (2, |a, b| a.bitor(b)));
+        result.insert("^".to_owned(), (3, |a, b| a.bitxor(b)));
 
-        // result.insert("-".to_owned(), (10, Associativity::Left, Box::new(crate::lir::Arithmetic::Subtract)));
-        // result.insert("*".to_owned(), (20, Associativity::Left, Box::new(crate::lir::Arithmetic::Multiply)));
-        // result.insert("/".to_owned(), (20, Associativity::Left, Box::new(crate::lir::Arithmetic::Divide)));
-        // result.insert("%".to_owned(), (20, Associativity::Left, Box::new(crate::lir::Arithmetic::Remainder)));
-        // result.insert("==".to_owned(), (5, Associativity::Left, Box::new(crate::lir::Comparison::Equal)));
-        // result.insert("!=".to_owned(), (5, Associativity::Left, Box::new(crate::lir::Comparison::NotEqual)));
-        // result.insert("<".to_owned(), (5, Associativity::Left, Box::new(crate::lir::Comparison::LessThan)));
-        // result.insert("<=".to_owned(), (5, Associativity::Left, Box::new(crate::lir::Comparison::LessThanOrEqual)));
-        // result.insert(">".to_owned(), (5, Associativity::Left, Box::new(crate::lir::Comparison::GreaterThan)));
-        // result.insert(">=".to_owned(), (5, Associativity::Left, Box::new(crate::lir::Comparison::GreaterThanOrEqual)));
-        // result.insert("&&".to_owned(), (3, Associativity::Left, Box::new(crate::lir::And)));
-        // result.insert("||".to_owned(), (2, Associativity::Left, Box::new(crate::lir::Or)));
-        // result.insert("&".to_owned(), (4, Associativity::Left, Box::new(crate::lir::BitwiseAnd)));
-        // result.insert("|".to_owned(), (2, Associativity::Left, Box::new(crate::lir::BitwiseOr)));
-        // result.insert("^".to_owned(), (3, Associativity::Left, Box::new(crate::lir::BitwiseXor)));
+        // result.insert("-".to_owned(), (10, Box::new(crate::lir::Arithmetic::Subtract)));
+        // result.insert("*".to_owned(), (20, Box::new(crate::lir::Arithmetic::Multiply)));
+        // result.insert("/".to_owned(), (20, Box::new(crate::lir::Arithmetic::Divide)));
+        // result.insert("%".to_owned(), (20, Box::new(crate::lir::Arithmetic::Remainder)));
+        // result.insert("==".to_owned(), (5, Box::new(crate::lir::Comparison::Equal)));
+        // result.insert("!=".to_owned(), (5, Box::new(crate::lir::Comparison::NotEqual)));
+        // result.insert("<".to_owned(), (5, Box::new(crate::lir::Comparison::LessThan)));
+        // result.insert("<=".to_owned(), (5, Box::new(crate::lir::Comparison::LessThanOrEqual)));
+        // result.insert(">".to_owned(), (5, Box::new(crate::lir::Comparison::GreaterThan)));
+        // result.insert(">=".to_owned(), (5, Box::new(crate::lir::Comparison::GreaterThanOrEqual)));
+        // result.insert("&&".to_owned(), (3, Box::new(crate::lir::And)));
+        // result.insert("||".to_owned(), (2, Box::new(crate::lir::Or)));
+        // result.insert("&".to_owned(), (4, Box::new(crate::lir::BitwiseAnd)));
+        // result.insert("|".to_owned(), (2, Box::new(crate::lir::BitwiseOr)));
+        // result.insert("^".to_owned(), (3, Box::new(crate::lir::BitwiseXor)));
 
         RwLock::new(result)
     };
 
     static ref UN_OPS: RwLock<BTreeMap<String, (u8, fn(Expr) -> Expr)>> = {
         let mut result: BTreeMap<String, (u8, fn(Expr) -> Expr)> = BTreeMap::new();
-        
+
         result.insert("!".to_owned(), (11, |x| x.not()));
         result.insert("not".to_owned(), (11, |x| x.not()));
         result.insert("new".to_owned(), (1, |x| x.unop(New)));
@@ -1246,93 +1194,10 @@ fn get_max_precedence() -> u8 {
     BIN_OPS.read().unwrap().values().map(|x| x.0).max().unwrap()
 }
 
-fn whitespace<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
+fn whitespace<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     take_while(|c: char| c.is_whitespace())(input)
-}
-
-fn til_eol<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
-    take_while(|c: char| c != '\n')(input)
-}
-
-fn til_first_non_ws_line<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
-    // Consume whitespace until we find a non-whitespace character
-    let mut n = 0;
-    while input.chars().nth(n).unwrap_or('\0').is_whitespace() {
-        n += 1;
-    }
-
-    // Now retreat until we find a newline
-    while input.chars().nth(n).unwrap_or('\n') != '\n' && n > 0 {
-        n -= 1;
-    }
-
-    Ok((&input[n..], &input[..n]))
-}
-
-fn get_indentation(ws: &str) -> u8 {
-    let spaces = ws.chars().filter(|c| *c == ' ').count() as u8;
-    let tabs = ws.chars().filter(|c| *c == '\t').count() as u8;
-    trace!("Spaces: {spaces}, Tabs: {tabs}");
-    spaces + tabs * 4
-}
-
-fn parse_whitespace_sensitive_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: u8, mut input: &'a str) -> IResult<&'a str, Expr, E> {
-    trace!("Parsing block with indentation {indentation}");
-    let mut input_updater = input;
-    let mut is_first = true;
-
-    let mut result = vec![];
-    loop {
-        input = input_updater;
-        let (input, _) = til_first_non_ws_line(input)?;
-        let beginning_of_line = input;
-        trace!("Parsing line: {input}");
-        // Get new indentation level
-        let (input, new_indentation_ws) = whitespace(input)?;
-        if input.is_empty() {
-            trace!("Empty line, breaking out of block");
-            break;
-        }
-
-        trace!("Parsing line: {input}");
-        let new_indentation = get_indentation(new_indentation_ws);
-        trace!("New indentation: {new_indentation}, `{new_indentation_ws}`");
-        // Confirm that the new indentation is 4 spaces greater than the current indentation
-        if new_indentation != indentation && is_first {
-            // Throw an error
-            trace!("Indentation error: {new_indentation} != {indentation}");
-            return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Verify)));
-        } else if new_indentation != indentation {
-            trace!("Indentation error: {new_indentation} != {indentation}");
-            // If the remainder of the line is empty, skip it
-            if let Ok((input, _)) = crlf::<&str, E>(input) {
-                input_updater = input;
-                continue;
-            }
-            trace!("Non-indented line, breaking out of block");
-            break;
-        }
-
-        // Parse the expression
-        trace!("Parsing expression: {input}");
-        if let Ok((input, expr)) = parse_expr::<E>(input) {
-            trace!("Parsed expression: {expr}");
-            input_updater = input;
-            result.push(expr);
-        } else {
-            if beginning_of_line == input {
-                return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Verify)));
-            }
-
-            let (input, expr) = parse_suite(indentation, beginning_of_line)?;
-            trace!("Parsed expression: {expr}");
-            input_updater = input;
-            result.push(expr);
-        }
-        is_first = false;
-    }
-
-    Ok((input, Expr::Many(result)))
 }
 
 #[derive(Debug, Clone)]
@@ -1340,7 +1205,6 @@ pub enum Statement {
     Declaration(crate::lir::Declaration, Option<SourceCodeLocation>),
     Expr(crate::lir::Expr),
 }
-
 
 fn stmts_to_expr(stmts: Vec<Statement>, end_of_program: bool) -> Expr {
     use std::collections::VecDeque;
@@ -1352,7 +1216,7 @@ fn stmts_to_expr(stmts: Vec<Statement>, end_of_program: bool) -> Expr {
         match stmt {
             Statement::Expr(e) => {
                 result.push_front(e);
-            },
+            }
             Statement::Declaration(decl, source_code_loc) => {
                 if decl.is_compile_time_declaration() {
                     decls.push_front(decl);
@@ -1377,7 +1241,7 @@ fn stmts_to_expr(stmts: Vec<Statement>, end_of_program: bool) -> Expr {
                         body = body.annotate(loc);
                     }
                 }
-            },
+            }
         }
     }
 
@@ -1402,13 +1266,15 @@ fn stmts_to_expr(stmts: Vec<Statement>, end_of_program: bool) -> Expr {
 pub fn parse_source(input: &str, filename: Option<String>) -> Result<Expr, String> {
     obliterate_save();
     let old_dir = match &filename {
-        Some(_) => std::env::current_dir().unwrap_or(std::path::PathBuf::new()),
-        None => std::path::PathBuf::new()
+        Some(_) => std::env::current_dir().unwrap_or_default(),
+        None => std::path::PathBuf::new(),
     };
 
     setup_source_code_locations(input, filename.clone());
 
-    fn parse_helper<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+    fn parse_helper<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+        input: &'a str,
+    ) -> IResult<&'a str, Expr, E> {
         let (input, _) = whitespace(input)?;
         let (input, stmts) = many0(context("statement", parse_stmt))(input)?;
         let (input, _) = whitespace(input)?;
@@ -1418,24 +1284,24 @@ pub fn parse_source(input: &str, filename: Option<String>) -> Result<Expr, Strin
     if let Some(path) = &filename {
         if let Ok(current_dir) = std::env::current_dir() {
             let _ = std::env::set_current_dir(
-                current_dir.join(std::path::Path::new(&path).parent().unwrap())
+                current_dir.join(std::path::Path::new(&path).parent().unwrap()),
             );
         }
     }
     let result = all_consuming(parse_helper::<VerboseError<&str>>)(input);
-    let _ = std::env::set_current_dir(&old_dir);
+    let _ = std::env::set_current_dir(old_dir);
     match result {
         Err(nom::Err::Error(e)) => {
             trace!("Error: {e}");
-            Err(format!("{}", convert_error(input, e)))
-        },
+            Err(convert_error(input, e).to_string())
+        }
         Err(nom::Err::Failure(e)) => {
             trace!("Failure: {e}");
-            Err(format!("{}", convert_error(input, e)))
-        },
-        Err(nom::Err::Incomplete(e)) => {
+            Err(convert_error(input, e).to_string())
+        }
+        Err(nom::Err::Incomplete(_e)) => {
             unreachable!()
-        },
+        }
         Ok((_, expr)) => Ok(expr),
     }
 }
@@ -1446,30 +1312,31 @@ pub(crate) fn parse_module(name: &str, input: &str) -> Result<Declaration, Strin
     match parse_module_contents::<VerboseError<&str>>(name, input) {
         Err(nom::Err::Error(e)) => {
             trace!("Error: {e}");
-            Err(format!("{}", convert_error(input, e)))
-        },
+            Err(convert_error(input, e).to_string())
+        }
         Err(nom::Err::Failure(e)) => {
             trace!("Failure: {e}");
-            Err(format!("{}", convert_error(input, e)))
-        },
-        Err(nom::Err::Incomplete(e)) => {
+            Err(convert_error(input, e).to_string())
+        }
+        Err(nom::Err::Incomplete(_e)) => {
             unreachable!()
-        },
-        Ok((new_input, expr)) if new_input.len() == 0 => Ok(expr),
-        Ok((new_input, expr)) => {
+        }
+        Ok(("", expr)) => Ok(expr),
+        Ok((new_input, _expr)) => {
             let e = VerboseError::<&str>::from_error_kind(new_input, ErrorKind::Verify);
-            Err(format!("{}", convert_error(input, e)))
+            Err(convert_error(input, e).to_string())
         }
     }
 }
 
-fn parse_decorator<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, sage_lisp::Expr, E> {
+fn parse_decorator<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, sage_lisp::Expr, E> {
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("#")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("[")(input)?;
     let (input, expr) = sage_lisp::parse_expr(input)?;
-    
 
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("]")(input)?;
@@ -1477,7 +1344,9 @@ fn parse_decorator<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     Ok((input, expr))
 }
 
-fn parse_attribute<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, sage_lisp::Expr, E> {
+fn parse_attribute<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, sage_lisp::Expr, E> {
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("#")(input)?;
     let (input, _) = whitespace(input)?;
@@ -1493,7 +1362,9 @@ fn parse_attribute<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     Ok((input, env.eval(expr)))
 }
 
-fn parse_impl_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_impl_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     // "impl" <name: Symbol> <args: Tuple<(<(<Symbol> ":")?> <Type>)>> <body: Block> => {
     //     let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
     //     Statement::Declaration(Declaration::Impl(name, args, body))
@@ -1516,11 +1387,16 @@ fn parse_impl_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     let (input, _) = whitespace(input)?;
     let (input, _) = cut(tag("}"))(input)?;
 
-
-    Ok((input, Statement::Declaration(Declaration::Impl(ty, impl_items), None)))
+    Ok((
+        input,
+        Statement::Declaration(Declaration::Impl(ty, impl_items), None),
+    ))
 }
 
-fn parse_impl_item<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str, ty: &Type) -> IResult<&'a str, (String, ConstExpr), E> {
+fn parse_impl_item<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+    ty: &Type,
+) -> IResult<&'a str, (String, ConstExpr), E> {
     // let (input, _) = whitespace(input)?;
     if let Ok((input, method)) = parse_impl_method::<E>(input, ty) {
         return Ok((input, method));
@@ -1533,7 +1409,9 @@ fn parse_impl_item<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     Ok((input, item))
 }
 
-fn parse_impl_fun<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, (String, ConstExpr), E> {
+fn parse_impl_fun<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (String, ConstExpr), E> {
     let (input, _) = tag("fun")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, name) = cut(parse_symbol)(input)?;
@@ -1554,13 +1432,33 @@ fn parse_impl_fun<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a
     // *IMPL_FUN_COUNTER.write().unwrap() = count;
 
     if let Some(args) = template_args {
-        Ok((input, (name.to_owned(), ConstExpr::PolyProc(PolyProcedure::new(name.to_owned(), args.into_iter().map(|x| x.to_owned()).collect(), params, ret, body)))))
+        Ok((
+            input,
+            (
+                name.to_owned(),
+                ConstExpr::PolyProc(PolyProcedure::new(
+                    name.to_owned(),
+                    args.into_iter().map(|x| x.to_owned()).collect(),
+                    params,
+                    ret,
+                    body,
+                )),
+            ),
+        ))
     } else {
-        Ok((input, (name.to_owned(), ConstExpr::Proc(Procedure::new(None, params, ret, body)))))
+        Ok((
+            input,
+            (
+                name.to_owned(),
+                ConstExpr::Proc(Procedure::new(None, params, ret, body)),
+            ),
+        ))
     }
 }
 
-fn parse_impl_const<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, (String, ConstExpr), E> {
+fn parse_impl_const<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (String, ConstExpr), E> {
     let (input, _) = tag("const")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, name) = cut(parse_symbol)(input)?;
@@ -1575,7 +1473,10 @@ fn parse_impl_const<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     Ok((input, (name.to_owned(), value)))
 }
 
-fn parse_impl_method<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str, ty: &Type) -> IResult<&'a str, (String, ConstExpr), E> {
+fn parse_impl_method<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+    ty: &Type,
+) -> IResult<&'a str, (String, ConstExpr), E> {
     // "fun" <name: Symbol> <args: Tuple<(<(<Symbol> ":")?> <Type>)>> ":" <ret: Type> <body: Block> => {
     //     let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
     //     Statement::Declaration(Declaration::Proc(name.clone(), Procedure::new(name, args, ret, body)))
@@ -1598,13 +1499,33 @@ fn parse_impl_method<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     let (input, body) = cut(parse_block)(input)?;
     // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body))))
     if let Some(args) = template_args {
-        Ok((input, (name.to_owned(), ConstExpr::PolyProc(PolyProcedure::new(name.to_owned(), args.into_iter().map(|x| x.to_owned()).collect(), params, ret, body)))))
+        Ok((
+            input,
+            (
+                name.to_owned(),
+                ConstExpr::PolyProc(PolyProcedure::new(
+                    name.to_owned(),
+                    args.into_iter().map(|x| x.to_owned()).collect(),
+                    params,
+                    ret,
+                    body,
+                )),
+            ),
+        ))
     } else {
-        Ok((input, (name.to_owned(), ConstExpr::Proc(Procedure::new(Some(name.to_owned()), params, ret, body)))))
+        Ok((
+            input,
+            (
+                name.to_owned(),
+                ConstExpr::Proc(Procedure::new(Some(name.to_owned()), params, ret, body)),
+            ),
+        ))
     }
 }
 
-fn parse_match_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_match_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     // "match" <expr: Expr> "{" <branches: Tuple<(<pattern: Pattern> "=>" <body: Block>)>> "}" => Statement::Match(expr, branches.into_iter().map(|(pat, body)| (pat, body)).collect()),
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("match")(input)?;
@@ -1619,21 +1540,20 @@ fn parse_match_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
             parse_pattern,
             preceded(
                 delimited(whitespace, cut(tag("=>")), whitespace),
-                alt((parse_block, parse_expr))
-            )
+                alt((parse_block, parse_expr)),
+            ),
         ),
-        preceded(whitespace, tag(","))
+        preceded(whitespace, tag(",")),
     ))(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, branch) = opt(
-        pair(
-            parse_pattern,
-            preceded(
-                delimited(whitespace, cut(tag("=>")), whitespace),
-                alt((parse_block, parse_expr))
-            )
-        ))(input)?;
-        
+    let (input, branch) = opt(pair(
+        parse_pattern,
+        preceded(
+            delimited(whitespace, cut(tag("=>")), whitespace),
+            alt((parse_block, parse_expr)),
+        ),
+    ))(input)?;
+
     if let Some((pat, body)) = branch {
         branches.push((pat, body));
     }
@@ -1641,30 +1561,35 @@ fn parse_match_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     // trace!("Parsed branches: {input}");
     // trace!("Parsed branches: {branches:#?}");
 
-
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("}")(input)?;
-    Ok((input, Expr::Match(expr.into(), branches.into_iter().map(|(pat, body)| (pat, body)).collect())))
+    Ok((input, Expr::Match(expr.into(), branches)))
 }
 
-fn parse_match_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_match_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     let (input, expr) = parse_match_expr(input)?;
     Ok((input, Statement::Expr(expr)))
 }
 
-fn parse_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Pattern, E> {
+fn parse_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Pattern, E> {
     let (input, _) = whitespace(input)?;
-    let (input, pattern) = alt((
-        context("alt", parse_alt_pattern),
-        parse_pattern_atom,
-    ))(input)?;
+    let (input, pattern) = alt((context("alt", parse_alt_pattern), parse_pattern_atom))(input)?;
     trace!("Got pattern: {pattern:#?}");
     Ok((input, pattern))
 }
 
-fn parse_alt_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Pattern, E> {
+fn parse_alt_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Pattern, E> {
     let (input, _) = whitespace(input)?;
-    let (input, mut patterns) = many0(terminated(parse_pattern_atom, preceded(whitespace, preceded(whitespace, tag("|")))))(input)?;
+    let (input, mut patterns) = many0(terminated(
+        parse_pattern_atom,
+        preceded(whitespace, preceded(whitespace, tag("|"))),
+    ))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, pattern) = opt(parse_pattern_atom)(input)?;
     if let Some(p) = pattern {
@@ -1677,24 +1602,38 @@ fn parse_alt_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     Ok((input, Pattern::Alt(patterns)))
 }
 
-fn parse_pattern_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Pattern, E> {
+fn parse_pattern_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Pattern, E> {
     let (input, _) = whitespace(input)?;
     let (input, pattern) = alt((
         context("pointer", parse_pointer_pattern),
         context("struct", parse_struct_pattern),
         context("variant", parse_variant_pattern),
         context("wildcard", map(tag("_"), |_| Pattern::Wildcard)),
-        context("mutable symbol", map(preceded(tag("mut"), parse_symbol), |name| Pattern::Symbol(Mutability::Mutable, name.to_owned()))),
-        context("symbol", map(parse_symbol, |name| Pattern::Symbol(Mutability::Immutable, name.to_owned()))),
+        context(
+            "mutable symbol",
+            map(preceded(tag("mut"), parse_symbol), |name| {
+                Pattern::Symbol(Mutability::Mutable, name.to_owned())
+            }),
+        ),
+        context(
+            "symbol",
+            map(parse_symbol, |name| {
+                Pattern::Symbol(Mutability::Immutable, name.to_owned())
+            }),
+        ),
         context("tuple", parse_tuple_pattern),
         context("group", delimited(tag("("), cut(parse_pattern), tag(")"))),
-        context("const", map(parse_const, |c| Pattern::ConstExpr(c))),
+        context("const", map(parse_const, Pattern::ConstExpr)),
         // context("tuple", map(ma
     ))(input)?;
     Ok((input, pattern))
 }
 
-fn parse_tuple_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Pattern, E> {
+fn parse_tuple_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Pattern, E> {
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("(")(input)?;
     let (input, _) = whitespace(input)?;
@@ -1709,7 +1648,9 @@ fn parse_tuple_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input
     Ok((input, Pattern::Tuple(patterns)))
 }
 
-fn parse_pointer_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Pattern, E> {
+fn parse_pointer_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Pattern, E> {
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("&")(input)?;
     let (input, _) = whitespace(input)?;
@@ -1717,50 +1658,66 @@ fn parse_pointer_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(inp
     Ok((input, Pattern::Pointer(Box::new(pattern))))
 }
 
-fn parse_variant_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Pattern, E> {
+fn parse_variant_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Pattern, E> {
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("of")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, variant) = parse_symbol(input)?;
     let (input, _) = whitespace(input)?;
     let (input, pattern) = opt(parse_pattern_atom)(input)?;
-    Ok((input, Pattern::Variant(variant.to_owned(), pattern.map(Box::new))))
+    Ok((
+        input,
+        Pattern::Variant(variant.to_owned(), pattern.map(Box::new)),
+    ))
 }
 
-fn parse_struct_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Pattern, E> {
+fn parse_struct_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Pattern, E> {
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("{")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, mut fields) = many0(terminated(
         pair(
             parse_symbol,
-            opt(preceded(
-                pair(whitespace, tag("=")),
-                parse_pattern
-            ))
+            opt(preceded(pair(whitespace, tag("=")), parse_pattern)),
         ),
-        tag(",")
+        tag(","),
     ))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, pattern) = opt(terminated(
         pair(
             parse_symbol,
-            opt(preceded(
-                pair(whitespace, tag("=")),
-                parse_pattern
-            ))
+            opt(preceded(pair(whitespace, tag("=")), parse_pattern)),
         ),
-        whitespace
+        whitespace,
     ))(input)?;
     if let Some((name, pat)) = pattern {
         fields.push((name, pat));
     }
 
     let (input, _) = tag("}")(input)?;
-    Ok((input, Pattern::Struct(fields.into_iter().map(|(name, pat)| (name.to_owned(), pat.unwrap_or(Pattern::Symbol(Mutability::Immutable, name.to_string())))).collect())))
+    Ok((
+        input,
+        Pattern::Struct(
+            fields
+                .into_iter()
+                .map(|(name, pat)| {
+                    (
+                        name.to_owned(),
+                        pat.unwrap_or(Pattern::Symbol(Mutability::Immutable, name.to_string())),
+                    )
+                })
+                .collect(),
+        ),
+    ))
 }
 
-fn parse_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("{")(input)?;
     let (input, _) = whitespace(input)?;
@@ -1769,7 +1726,7 @@ fn parse_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a st
     start_source_code_tracking(input);
 
     let (input, mut stmts) = many0(context("statement", parse_stmt))(input)?;
-    
+
     let (input, _) = whitespace(input)?;
     // Check if there's a trailing expression
     let (input, expr) = opt(parse_expr)(input)?;
@@ -1786,27 +1743,34 @@ fn parse_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a st
     Ok((input, stmts_to_expr(stmts, false).annotate(source_code_loc)))
 }
 
-fn parse_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     let (input, _) = whitespace(input)?;
     start_source_code_tracking(input);
     let (input, stmt) = alt((
-        context("attribute", value(Statement::Expr(Expr::NONE), parse_attribute)),
+        context(
+            "attribute",
+            value(Statement::Expr(Expr::NONE), parse_attribute),
+        ),
         context("long statement", parse_long_stmt),
         context("short statement", parse_short_stmt),
     ))(input)?;
     let source_code_loc = end_source_code_tracking(input);
 
     let stmt = match stmt {
-        Statement::Declaration(decl, _) => Statement::Declaration(decl, Some(source_code_loc.clone())),
-        Statement::Expr(expr) => {
-            Statement::Expr(expr.annotate(source_code_loc.clone()))
+        Statement::Declaration(decl, _) => {
+            Statement::Declaration(decl, Some(source_code_loc.clone()))
         }
+        Statement::Expr(expr) => Statement::Expr(expr.annotate(source_code_loc.clone())),
     };
     trace!("Annotating {stmt:?} with loc {source_code_loc:?}");
     Ok((input, stmt))
 }
 
-fn parse_long_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_long_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     let (input, _) = whitespace(input)?;
 
     let (input, stmt) = alt((
@@ -1832,12 +1796,16 @@ fn parse_long_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     Ok((input, stmt))
 }
 
-fn parse_import_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_import_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     let (input, _) = whitespace(input)?;
     let (input, stmt) = parse_import_decl(input)?;
     Ok((input, Statement::Declaration(stmt, None)))
 }
-fn parse_import_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Declaration, E> {
+fn parse_import_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Declaration, E> {
     // "import" <path: String> => Statement::Import(path),
     let (input, _) = tag("from")(input)?;
     let (input, _) = whitespace(input)?;
@@ -1847,11 +1815,9 @@ fn parse_import_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     // let (input, module_name) = parse_symbol(input)?;
     // module_path.push(module_name);
     let (input, module) = parse_const(input)?;
-    
 
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("import")(input)?;
-
 
     let (mut input, _) = whitespace(input)?;
     // Try to parse a "*"
@@ -1860,7 +1826,6 @@ fn parse_import_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
         let (input, _) = tag(";")(input)?;
         return Ok((input, Declaration::FromImportAll(module)));
     }
-    
 
     let mut imports = vec![];
     let mut status = input;
@@ -1869,7 +1834,8 @@ fn parse_import_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
         let (input, _) = whitespace(input)?;
         let (input, path) = cut(parse_symbol)(input)?;
         // Optionally parse an alias
-        let (input, alias) = opt(preceded(whitespace, preceded(tag("as"), cut(parse_symbol))))(input)?;
+        let (input, alias) =
+            opt(preceded(whitespace, preceded(tag("as"), cut(parse_symbol))))(input)?;
         // let alias = alias.map(|x| x.to_owned());
         // If there's a comma, continue parsing
         let (input, _) = whitespace(input)?;
@@ -1880,8 +1846,11 @@ fn parse_import_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
             continue;
         }
 
-        let imports: Vec<(String, Option<String>)> = imports.into_iter().map(|(x, y)| (x.to_owned(), y.map(|z| z.to_owned()))).collect();
-        
+        let imports: Vec<(String, Option<String>)> = imports
+            .into_iter()
+            .map(|(x, y)| (x.to_owned(), y.map(|z| z.to_owned())))
+            .collect();
+
         // let mut decls = vec![];
         // for (name, alias) in &imports {
         //     // decls.push(Declaration::Const(alias.clone(), ConstExpr::var(module_name).field(ConstExpr::var(name))));
@@ -1895,16 +1864,20 @@ fn parse_import_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
         let (input, _) = whitespace(input)?;
         let (input, _) = tag(";")(input)?;
 
-
-        return Ok((input, Declaration::FromImport {
-            module,
-            names: imports
-        }));
+        return Ok((
+            input,
+            Declaration::FromImport {
+                module,
+                names: imports,
+            },
+        ));
     }
-    
 }
 
-fn parse_module_contents<'a, E: ParseError<&'a str> + ContextError<&'a str>>(name: &str, input: &'a str) -> IResult<&'a str, Declaration, E> {
+fn parse_module_contents<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    name: &str,
+    input: &'a str,
+) -> IResult<&'a str, Declaration, E> {
     let (input, _) = whitespace(input)?;
 
     let (input, decls) = many0(context("statement", parse_decl))(input)?;
@@ -1913,7 +1886,9 @@ fn parse_module_contents<'a, E: ParseError<&'a str> + ContextError<&'a str>>(nam
     Ok((input, Declaration::module(name, decls)))
 }
 
-fn parse_module_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_module_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     let (input, _) = whitespace(input)?;
 
     let (input, _) = tag("mod")(input)?;
@@ -1924,15 +1899,16 @@ fn parse_module_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     let (input, _) = tag("{")(input)?;
 
     let (input, module) = parse_module_contents(name, input)?;
-    
+
     let (input, _) = cut(tag("}"))(input)?;
     let (input, _) = whitespace(input)?;
-
 
     Ok((input, Statement::Declaration(module, None)))
 }
 
-fn parse_module_file_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_module_file_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     let (input, _) = whitespace(input)?;
 
     let (input, _) = tag("mod")(input)?;
@@ -1943,26 +1919,39 @@ fn parse_module_file_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(in
     let (input, _) = whitespace(input)?;
     trace!("Parsed module file stmt for {name}");
     // Open the file
-    if let Ok(contents) = std::fs::read_to_string(&format!("{}.sg", name)) {
+    if let Ok(contents) = std::fs::read_to_string(format!("{}.sg", name)) {
         save_source_code_setup();
         setup_source_code_locations(&contents.clone(), Some(name.to_string()));
-        if let Ok((new_input, module)) = parse_module_contents::<VerboseError<&str>>(name, &contents) {
-            if new_input.len() != 0 {
-                return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Verify)));
+        if let Ok((new_input, module)) =
+            parse_module_contents::<VerboseError<&str>>(name, &contents)
+        {
+            if !new_input.is_empty() {
+                return Err(nom::Err::Error(E::from_error_kind(
+                    input,
+                    ErrorKind::Verify,
+                )));
             }
             restore_source_code_setup();
-            return Ok((input, Statement::Declaration(module, None)))
-        } else  {
+            return Ok((input, Statement::Declaration(module, None)));
+        } else {
             restore_source_code_setup();
-            return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Verify)));
+            return Err(nom::Err::Error(E::from_error_kind(
+                input,
+                ErrorKind::Verify,
+            )));
         }
     }
 
     restore_source_code_setup();
-    return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Verify)));
+    Err(nom::Err::Error(E::from_error_kind(
+        input,
+        ErrorKind::Verify,
+    )))
 }
 
-fn parse_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Declaration, E> {
+fn parse_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Declaration, E> {
     let (input, _) = whitespace(input)?;
     let (input, decl) = alt((
         context("function", parse_fun_stmt),
@@ -1983,7 +1972,9 @@ fn parse_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str
     }
 }
 
-fn parse_if_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_if_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     // "if" <condition: Expr> <then: Block> <else: Option<Block>> => Expr::If(condition, Box::new(then), else.map(Box::new)),
     let (input, _) = tag("if")(input)?;
     let (input, _) = whitespace(input)?;
@@ -1993,7 +1984,11 @@ fn parse_if_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a 
 
     let mut else_branches = vec![];
     // Try to parse else ifs
-    while let Ok((x, _)) = preceded(whitespace::<E>, preceded(tag("else"), preceded(whitespace, tag("if"))))(input) {
+    while let Ok((x, _)) = preceded(
+        whitespace::<E>,
+        preceded(tag("else"), preceded(whitespace, tag("if"))),
+    )(input)
+    {
         let (x, _) = whitespace(x)?;
         let (x, condition) = cut(parse_expr)(x)?;
         let (x, _) = whitespace(x)?;
@@ -2002,7 +1997,9 @@ fn parse_if_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a 
         else_branches.push((condition, then));
     }
 
-    let (input, mut result) = if let Ok((input, _)) = preceded(whitespace::<E>, preceded(tag("else"), whitespace::<E>))(input) {
+    let (input, mut result) = if let Ok((input, _)) =
+        preceded(whitespace::<E>, preceded(tag("else"), whitespace::<E>))(input)
+    {
         // Parse the else block
         cut(parse_block)(input)?
     } else {
@@ -2013,15 +2010,22 @@ fn parse_if_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a 
         result = Expr::If(condition.into(), Box::new(then), Box::new(result));
     }
 
-    Ok((input, Expr::If(condition.into(), Box::new(then), Box::new(result))))
+    Ok((
+        input,
+        Expr::If(condition.into(), Box::new(then), Box::new(result)),
+    ))
 }
 
-fn parse_if_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_if_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     let (input, expr) = parse_if_expr(input)?;
     Ok((input, Statement::Expr(expr)))
 }
 
-fn parse_if_let_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_if_let_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     // "if" <condition: Expr> <then: Block> <else: Option<Block>> => Expr::If(condition, Box::new(then), else.map(Box::new)),
     let (input, _) = tag("if")(input)?;
     let (input, _) = whitespace(input)?;
@@ -2036,15 +2040,27 @@ fn parse_if_let_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     let (input, then) = cut(parse_block)(input)?;
     let (input, _) = whitespace(input)?;
     let (input, else_) = opt(preceded(tag("else"), cut(parse_block)))(input)?;
-    Ok((input, Expr::IfLet(pattern, value.into(), Box::new(then), else_.unwrap_or(Expr::NONE).into())))
+    Ok((
+        input,
+        Expr::IfLet(
+            pattern,
+            value.into(),
+            Box::new(then),
+            else_.unwrap_or(Expr::NONE).into(),
+        ),
+    ))
 }
 
-fn parse_if_let_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_if_let_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     let (input, expr) = parse_if_let_expr(input)?;
     Ok((input, Statement::Expr(expr)))
 }
 
-fn parse_when_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_when_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     // "when" <condition: Expr> <then: Block> <else: Option<Block>> => Statement::If(condition, Box::new(then), else.map(Box::new)),
     let (input, _) = tag("when")(input)?;
     let (input, _) = whitespace(input)?;
@@ -2053,20 +2069,34 @@ fn parse_when_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     let (input, then) = cut(parse_block)(input)?;
     let (input, _) = whitespace(input)?;
     let (input, else_) = opt(preceded(tag("else"), cut(parse_block)))(input)?;
-    Ok((input, Statement::Expr(Expr::When(condition.into(), Box::new(then), else_.unwrap_or(Expr::NONE).into()))))
+    Ok((
+        input,
+        Statement::Expr(Expr::When(
+            condition,
+            Box::new(then),
+            else_.unwrap_or(Expr::NONE).into(),
+        )),
+    ))
 }
 
-fn parse_while_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_while_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     // "while" <condition: Expr> <body: Block> => Statement::While(condition, Box::new(body)),
     let (input, _) = tag("while")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, condition) = cut(parse_expr)(input)?;
     let (input, _) = whitespace(input)?;
     let (input, body) = cut(parse_block)(input)?;
-    Ok((input, Statement::Expr(Expr::While(condition.into(), Box::new(body)))))
+    Ok((
+        input,
+        Statement::Expr(Expr::While(condition.into(), Box::new(body))),
+    ))
 }
 
-fn parse_for_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_for_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     // "for" <init: Option<Statement>> <condition: Option<Expr>> <step: Option<Statement>> <body: Block> => Statement::For(init.map(Box::new), condition.map(Box::new), step.map(Box::new), Box::new(body)),
     let (input, _) = tag("for")(input)?;
     let (input, _) = whitespace(input)?;
@@ -2092,14 +2122,21 @@ fn parse_for_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a
         step_expr = e;
     }
 
-    Ok((input, Statement::Expr(Expr::While(condition.into(), Expr::Many(vec![
-        init_expr,
-        body,
-        step_expr,
-    ]).into()).with(init_decl))))
+    Ok((
+        input,
+        Statement::Expr(
+            Expr::While(
+                condition.into(),
+                Expr::Many(vec![init_expr, body, step_expr]).into(),
+            )
+            .with(init_decl),
+        ),
+    ))
 }
 
-fn parse_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     // "fun" <name: Symbol> <args: Tuple<(<(<Symbol> ":")?> <Type>)>> ":" <ret: Type> <body: Block> => {
     //     let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
     //     Statement::Declaration(Declaration::Proc(name.clone(), Procedure::new(name, args, ret, body)))
@@ -2121,13 +2158,39 @@ fn parse_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a
     trace!("Parsed function body: {body}");
     // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)))))
     if let Some(args) = template_args {
-        Ok((input, Statement::Declaration(Declaration::PolyProc(name.to_owned(), PolyProcedure::new(name.to_owned(), args.into_iter().map(|x| x.to_owned()).collect(), params, ret, body)), None)))
+        Ok((
+            input,
+            Statement::Declaration(
+                Declaration::PolyProc(
+                    name.to_owned(),
+                    PolyProcedure::new(
+                        name.to_owned(),
+                        args.into_iter().map(|x| x.to_owned()).collect(),
+                        params,
+                        ret,
+                        body,
+                    ),
+                ),
+                None,
+            ),
+        ))
     } else {
-        Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)), None)))
+        Ok((
+            input,
+            Statement::Declaration(
+                Declaration::Proc(
+                    name.to_owned(),
+                    Procedure::new(Some(name.to_owned()), params, ret, body),
+                ),
+                None,
+            ),
+        ))
     }
 }
 
-fn parse_quick_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_quick_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     // "fun" <name: Symbol> <args: Tuple<(<(<Symbol> ":")?> <Type>)>> ":" <ret: Type> <body: Block> => {
     //     let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
     //     Statement::Declaration(Declaration::Proc(name.clone(), Procedure::new(name, args, ret, body)))
@@ -2153,39 +2216,72 @@ fn parse_quick_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(inpu
     trace!("Parsed function body: {body}");
     // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)))))
     if let Some(args) = template_args {
-        Ok((input, Statement::Declaration(Declaration::PolyProc(name.to_owned(), PolyProcedure::new(name.to_owned(), args.into_iter().map(|x| x.to_owned()).collect(), params, ret, body)), None)))
+        Ok((
+            input,
+            Statement::Declaration(
+                Declaration::PolyProc(
+                    name.to_owned(),
+                    PolyProcedure::new(
+                        name.to_owned(),
+                        args.into_iter().map(|x| x.to_owned()).collect(),
+                        params,
+                        ret,
+                        body,
+                    ),
+                ),
+                None,
+            ),
+        ))
     } else {
-        Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)), None)))
+        Ok((
+            input,
+            Statement::Declaration(
+                Declaration::Proc(
+                    name.to_owned(),
+                    Procedure::new(Some(name.to_owned()), params, ret, body),
+                ),
+                None,
+            ),
+        ))
     }
 }
 
-fn parse_fun_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, (Vec<(String, Mutability, Type)>, Type), E> {
+fn parse_fun_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Vec<(String, Mutability, Type)>, Type), E> {
     let (input, _) = tag("(")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, params) = many0(terminated(
         pair(
-            pair(map(opt(tag("mut")), |x| match x { Some(_) => Mutability::Mutable, None => Mutability::Immutable }), parse_symbol),
-            preceded(
-                pair(whitespace, tag(":")),
-                cut(parse_type)
-            )
+            pair(
+                map(opt(tag("mut")), |x| match x {
+                    Some(_) => Mutability::Mutable,
+                    None => Mutability::Immutable,
+                }),
+                parse_symbol,
+            ),
+            preceded(pair(whitespace, tag(":")), cut(parse_type)),
         ),
-        delimited(whitespace, tag(","), whitespace)
+        delimited(whitespace, tag(","), whitespace),
     ))(input)?;
 
     let (input, _) = whitespace(input)?;
-    let (input, last) = opt(
+    let (input, last) = opt(pair(
+        // parse_symbol,
         pair(
-            // parse_symbol,
-            pair(map(opt(tag("mut")), |x| match x { Some(_) => Mutability::Mutable, None => Mutability::Immutable }), parse_symbol),
-            preceded(
-                pair(whitespace, tag(":")),
-                cut(parse_type)
-            )
-        )
-    )(input)?;
+            map(opt(tag("mut")), |x| match x {
+                Some(_) => Mutability::Mutable,
+                None => Mutability::Immutable,
+            }),
+            parse_symbol,
+        ),
+        preceded(pair(whitespace, tag(":")), cut(parse_type)),
+    ))(input)?;
 
-    let mut params: Vec<_> = params.into_iter().map(|((mutability, name), ty)| (name.to_owned(), mutability, ty)).collect();
+    let mut params: Vec<_> = params
+        .into_iter()
+        .map(|((mutability, name), ty)| (name.to_owned(), mutability, ty))
+        .collect();
     if let Some(((mutability, name), ty)) = last {
         params.push((name.to_owned(), mutability, ty));
     }
@@ -2194,23 +2290,60 @@ fn parse_fun_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     let (input, _) = whitespace(input)?;
     let (input, _) = cut(tag(")"))(input)?;
     let (input, _) = whitespace(input)?;
-    
-    
+
     let (input, ret) = cut(opt(preceded(tag(":"), parse_type)))(input)?;
 
     Ok((input, (params, ret.unwrap_or(Type::None))))
 }
 
-fn parse_method_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str, ty: &Type) -> IResult<&'a str, (Vec<(String, Mutability, Type)>, Type), E> {
+fn parse_method_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+    ty: &Type,
+) -> IResult<&'a str, (Vec<(String, Mutability, Type)>, Type), E> {
     let (input, _) = tag("(")(input)?;
     let (input, _) = whitespace(input)?;
-    
+
     // Get the self parameter, either `self`, `mut self`, `&self`, or `&mut self`
     let (input, self_param) = alt((
-        context("self", map(tag("self"), |_| ("self".to_owned(), Mutability::Immutable, ty.clone()))),
-        context("mut self", map(delimited(tag("mut"), whitespace, tag("self")), |_| ("self".to_owned(), Mutability::Mutable, ty.clone()))),
-        context("&self", map(delimited(tag("&"), whitespace, tag("self")), |_| ("self".to_owned(), Mutability::Immutable, Type::Pointer(Mutability::Immutable, Box::new(ty.clone()))))),
-        context("&mut self", map(delimited(delimited(tag("&"), whitespace, tag("mut")), whitespace, tag("self")), |_| ("self".to_owned(), Mutability::Immutable, Type::Pointer(Mutability::Mutable, Box::new(ty.clone()))))),
+        context(
+            "self",
+            map(tag("self"), |_| {
+                ("self".to_owned(), Mutability::Immutable, ty.clone())
+            }),
+        ),
+        context(
+            "mut self",
+            map(delimited(tag("mut"), whitespace, tag("self")), |_| {
+                ("self".to_owned(), Mutability::Mutable, ty.clone())
+            }),
+        ),
+        context(
+            "&self",
+            map(delimited(tag("&"), whitespace, tag("self")), |_| {
+                (
+                    "self".to_owned(),
+                    Mutability::Immutable,
+                    Type::Pointer(Mutability::Immutable, Box::new(ty.clone())),
+                )
+            }),
+        ),
+        context(
+            "&mut self",
+            map(
+                delimited(
+                    delimited(tag("&"), whitespace, tag("mut")),
+                    whitespace,
+                    tag("self"),
+                ),
+                |_| {
+                    (
+                        "self".to_owned(),
+                        Mutability::Immutable,
+                        Type::Pointer(Mutability::Mutable, Box::new(ty.clone())),
+                    )
+                },
+            ),
+        ),
     ))(input)?;
     trace!("Parsed self parameter: {self_param:#?}");
     let (input, _) = whitespace(input)?;
@@ -2218,29 +2351,39 @@ fn parse_method_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input
 
     let (input, params) = many0(terminated(
         pair(
-            pair(map(opt(tag("mut")), |x| match x { Some(_) => Mutability::Mutable, None => Mutability::Immutable }), parse_symbol),
-            preceded(
-                pair(whitespace, tag(":")),
-                cut(parse_type)
-            )
+            pair(
+                map(opt(tag("mut")), |x| match x {
+                    Some(_) => Mutability::Mutable,
+                    None => Mutability::Immutable,
+                }),
+                parse_symbol,
+            ),
+            preceded(pair(whitespace, tag(":")), cut(parse_type)),
         ),
-        tag(",")
+        tag(","),
     ))(input)?;
     trace!("Parsed self parameter: {params:#?}");
-    let (input, last) = opt(
+    let (input, last) = opt(pair(
+        // parse_symbol,
         pair(
-            // parse_symbol,
-            pair(map(opt(tag("mut")), |x| match x { Some(_) => Mutability::Mutable, None => Mutability::Immutable }), parse_symbol),
-            preceded(
-                pair(whitespace, tag(":")),
-                cut(parse_type)
-            )
-        )
-    )(input)?;
+            map(opt(tag("mut")), |x| match x {
+                Some(_) => Mutability::Mutable,
+                None => Mutability::Immutable,
+            }),
+            parse_symbol,
+        ),
+        preceded(pair(whitespace, tag(":")), cut(parse_type)),
+    ))(input)?;
     trace!("Parsed method parameters: {params:#?}, {last:#?}");
     trace!("Parsed method parameters: {input}");
 
-    let mut params: Vec<_> = std::iter::once(self_param).chain(params.into_iter().map(|((mutability, name), ty)| (name.to_owned(), mutability, ty))).collect();
+    let mut params: Vec<_> = std::iter::once(self_param)
+        .chain(
+            params
+                .into_iter()
+                .map(|((mutability, name), ty)| (name.to_owned(), mutability, ty)),
+        )
+        .collect();
     if let Some(((mutability, name), ty)) = last {
         params.push((name.to_owned(), mutability, ty));
     }
@@ -2248,14 +2391,15 @@ fn parse_method_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input
     let (input, _) = whitespace(input)?;
     let (input, _) = cut(tag(")"))(input)?;
     let (input, _) = whitespace(input)?;
-    
-    
+
     let (input, ret) = cut(opt(preceded(tag(":"), parse_type)))(input)?;
 
     Ok((input, (params, ret.unwrap_or(Type::None))))
 }
 
-fn parse_extern_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_extern_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     // "extern" <name: Symbol> <args: Tuple<(<(<Symbol> ":")?> <Type>)>> ":" <ret: Type> => {
     //     let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
     //     Statement::Declaration(Declaration::ExternProc(name.clone(), FFIProcedure::new(name, args, ret)))
@@ -2264,18 +2408,32 @@ fn parse_extern_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     let (input, _) = whitespace(input)?;
     let (input, _) = cut(tag("fun"))(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, name) =cut(parse_symbol)(input)?;
+    let (input, name) = cut(parse_symbol)(input)?;
     let (input, _) = whitespace(input)?;
     // let (input, _) = tag(":")(input)?;
     // let (input, ret) = parse_type(input)?;
     let (input, (params, ret)) = cut(parse_fun_params)(input)?;
     // let (input, _) = cut(tag(";"))(input)?;
-    
-    let args: Vec<_> = params.into_iter().map(|(_name, _mutability, ty)| ty).collect();
-    Ok((input, Statement::Declaration(Declaration::ExternProc(name.to_owned(), FFIProcedure::new(name.to_owned(), args, ret)), None)))
+
+    let args: Vec<_> = params
+        .into_iter()
+        .map(|(_name, _mutability, ty)| ty)
+        .collect();
+    Ok((
+        input,
+        Statement::Declaration(
+            Declaration::ExternProc(
+                name.to_owned(),
+                FFIProcedure::new(name.to_owned(), args, ret),
+            ),
+            None,
+        ),
+    ))
 }
 
-fn parse_const_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_const_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     // "const" <name: Symbol> "=" <value: ConstExpr> => Statement::Declaration(Declaration::Const(name, value)),
     let (input, _) = tag("const")(input)?;
     let (input, _) = whitespace(input)?;
@@ -2284,10 +2442,15 @@ fn parse_const_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     let (input, _) = cut(tag("="))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, value) = cut(parse_const)(input)?;
-    Ok((input, Statement::Declaration(Declaration::Const(name.to_owned(), value), None)))
+    Ok((
+        input,
+        Statement::Declaration(Declaration::Const(name.to_owned(), value), None),
+    ))
 }
 
-fn parse_pattern_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_pattern_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     // "let" <name: Symbol> ":" <ty: Type> "=" <value: Expr> => Statement::Declaration(Declaration::Var(name, Mutability::Immutable, Some(ty), value)),
     // "let" <name: Symbol> "=" <value: Expr> => Statement::Declaration(Declaration::Var(name, Mutability::Immutable, None, value)),
     let (input, _) = tag("let")(input)?;
@@ -2300,10 +2463,15 @@ fn parse_pattern_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(in
     let (input, _) = whitespace(input)?;
     let (input, value) = parse_expr(input)?;
 
-    Ok((input, Statement::Declaration(Declaration::VarPat(pattern, value), None)))
+    Ok((
+        input,
+        Statement::Declaration(Declaration::VarPat(pattern, value), None),
+    ))
 }
 
-fn parse_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     // "let" <name: Symbol> ":" <ty: Type> "=" <value: Expr> => Statement::Declaration(Declaration::Var(name, Mutability::Immutable, Some(ty), value)),
     // "let" <name: Symbol> "=" <value: Expr> => Statement::Declaration(Declaration::Var(name, Mutability::Immutable, None, value)),
     let (input, _) = tag("let")(input)?;
@@ -2320,21 +2488,26 @@ fn parse_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a
 
     let (input, _) = whitespace(input)?;
     let (input, ty) = opt(terminated(
-        preceded(
-            pair(whitespace, tag(":")),
-            parse_type
-        ),
-        whitespace
+        preceded(pair(whitespace, tag(":")), parse_type),
+        whitespace,
     ))(input)?;
 
     let (input, _) = tag("=")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, value) = parse_expr(input)?;
 
-    Ok((input, Statement::Declaration(Declaration::Var(name.to_owned(), mutability, ty, value), None)))
+    Ok((
+        input,
+        Statement::Declaration(
+            Declaration::Var(name.to_owned(), mutability, ty, value),
+            None,
+        ),
+    ))
 }
 
-fn parse_static_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_static_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     // "let" "static" <name: Symbol> ":" <ty: Type> "=" <value: ConstExpr> => Statement::Declaration(Declaration::StaticVar(name, Mutability::Immutable, ty, value)),
     // "let" "static" "mut" <name: Symbol> ":" <ty: Type> "=" <value: ConstExpr> => Statement::Declaration(Declaration::StaticVar(name, Mutability::Mutable, ty, value)),
     let (input, _) = tag("let")(input)?;
@@ -2352,11 +2525,8 @@ fn parse_static_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(inp
 
     let (input, _) = whitespace(input)?;
     let (input, ty) = opt(terminated(
-        preceded(
-            pair(whitespace, tag(":")),
-            parse_type
-        ),
-        whitespace
+        preceded(pair(whitespace, tag(":")), parse_type),
+        whitespace,
     ))(input)?;
 
     let (input, _) = tag("=")(input)?;
@@ -2364,10 +2534,18 @@ fn parse_static_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(inp
     let (input, value) = parse_expr(input)?;
 
     let ty = ty.unwrap_or(Type::None);
-    Ok((input, Statement::Declaration(Declaration::static_var(name.to_owned(), mutability, ty, value), None)))
+    Ok((
+        input,
+        Statement::Declaration(
+            Declaration::static_var(name.to_owned(), mutability, ty, value),
+            None,
+        ),
+    ))
 }
 
-fn parse_type_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_type_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     // "type" <name: Symbol> "=" <ty: Type> => Statement::Declaration(Declaration::Type(name, ty)),
     let (input, _) = tag("type")(input)?;
     let (input, _) = whitespace(input)?;
@@ -2383,10 +2561,15 @@ fn parse_type_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
         ty = Type::Poly(template_params, ty.into());
     }
 
-    Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), ty), None)))
+    Ok((
+        input,
+        Statement::Declaration(Declaration::Type(name.to_owned(), ty), None),
+    ))
 }
 
-fn parse_struct_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_struct_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     // "struct" <name: Symbol> <fields: Tuple<(<Symbol> ":" <Type>)>> => {
     //     let fields: Vec<_> = fields.into_iter().map(|(name, ty)| (name, ty)).collect();
     //     Statement::Declaration(Declaration::Struct(name, fields))
@@ -2405,41 +2588,56 @@ fn parse_struct_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     let (input, mut fields) = many0(terminated(
         pair(
             parse_symbol,
-            preceded(
-                pair(whitespace, tag(":")),
-                parse_type
-            )
+            preceded(pair(whitespace, tag(":")), parse_type),
         ),
-        preceded(whitespace, tag(","))
+        preceded(whitespace, tag(",")),
     ))(input)?;
     let (input, _) = whitespace(input)?;
 
     // Check for the last field
-    let (input, last) = opt(
-        pair(
-            parse_symbol,
-            preceded(
-                pair(whitespace, tag(":")),
-                parse_type
-            )
-        )
-    )(input)?;
+    let (input, last) = opt(pair(
+        parse_symbol,
+        preceded(pair(whitespace, tag(":")), parse_type),
+    ))(input)?;
     if let Some((name, ty)) = last {
         fields.push((name, ty));
     }
     let (input, _) = whitespace(input)?;
     let (input, _) = cut(tag("}"))(input)?;
-    let fields = fields.into_iter().map(|(name, ty)| (name.to_owned(), ty)).collect();
+    let fields = fields
+        .into_iter()
+        .map(|(name, ty)| (name.to_owned(), ty))
+        .collect();
 
     // Check if there are any template params
     if let Some(params) = template_params {
-        Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), Type::Poly(params.into_iter().map(|x| x.to_owned()).collect(), Type::Struct(fields).into())), None)))
+        Ok((
+            input,
+            Statement::Declaration(
+                Declaration::Type(
+                    name.to_owned(),
+                    Type::Poly(
+                        params.into_iter().map(|x| x.to_owned()).collect(),
+                        Type::Struct(fields).into(),
+                    ),
+                ),
+                None,
+            ),
+        ))
     } else {
-        Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), Type::Struct(fields)), None)))
+        Ok((
+            input,
+            Statement::Declaration(
+                Declaration::Type(name.to_owned(), Type::Struct(fields)),
+                None,
+            ),
+        ))
     }
 }
 
-fn parse_enum_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_enum_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     let (input, _) = tag("enum")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, name) = parse_symbol(input)?;
@@ -2453,41 +2651,54 @@ fn parse_enum_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     let (input, _) = whitespace(input)?;
     // Parse a comma separated list of symbols, optionally followed by a type
     let (input, mut fields) = many0(terminated(
-        preceded(whitespace, pair(
-            parse_symbol,
-            opt(parse_type)
-        )),
-        terminated(tag(","), whitespace)
+        preceded(whitespace, pair(parse_symbol, opt(parse_type))),
+        terminated(tag(","), whitespace),
     ))(input)?;
 
-    let (input, last) = opt(
-        preceded(whitespace, pair(
-            parse_symbol,
-            opt(parse_type)
-        ))
-    )(input)?;
+    let (input, last) = opt(preceded(whitespace, pair(parse_symbol, opt(parse_type))))(input)?;
 
     if let Some((k, v)) = last {
         fields.push((k, v));
     }
 
     // For all the fields that don't have a type, assign them the "None" type
-    let fields = fields.into_iter().map(|(k, v)| (k.to_owned(), v.unwrap_or(Type::None))).collect();
+    let fields = fields
+        .into_iter()
+        .map(|(k, v)| (k.to_owned(), v.unwrap_or(Type::None)))
+        .collect();
     // trace!("Fields: {fields}");
     // trace!("Template params: {template_params}");
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("}")(input)?;
 
     if let Some(params) = template_params {
-        Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), Type::Poly(params.into_iter().map(|x| x.to_owned()).collect(), Type::EnumUnion(fields).into())), None)))
+        Ok((
+            input,
+            Statement::Declaration(
+                Declaration::Type(
+                    name.to_owned(),
+                    Type::Poly(
+                        params.into_iter().map(|x| x.to_owned()).collect(),
+                        Type::EnumUnion(fields).into(),
+                    ),
+                ),
+                None,
+            ),
+        ))
     } else {
-        Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), Type::EnumUnion(fields)), None)))
+        Ok((
+            input,
+            Statement::Declaration(
+                Declaration::Type(name.to_owned(), Type::EnumUnion(fields)),
+                None,
+            ),
+        ))
     }
 }
 
-
-
-fn parse_return_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_return_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     // "return" <value: Expr> => Statement::Expr(Expr::Return(value.into())),
     let (input, _) = tag("return")(input)?;
     let (input, _) = whitespace(input)?;
@@ -2495,7 +2706,9 @@ fn parse_return_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     Ok((input, Statement::Expr(Expr::Return(value.into()))))
 }
 
-fn parse_assign_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_assign_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     let (input, dst) = parse_expr(input)?;
     let (input, _) = whitespace(input)?;
     // First, try just the regular assignment
@@ -2507,43 +2720,43 @@ fn parse_assign_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
 
             let result = match dst {
                 Expr::Deref(e) => Statement::Expr(e.deref_mut(val)),
-                Expr::Index(e, idx) => Statement::Expr(e.idx(*idx).refer(Mutability::Mutable).deref_mut(val)),
+                Expr::Index(e, idx) => {
+                    Statement::Expr(e.idx(*idx).refer(Mutability::Mutable).deref_mut(val))
+                }
                 Expr::ConstExpr(ConstExpr::Symbol(name)) => {
-                    Statement::Expr(
-                        Expr::var(name).refer(Mutability::Mutable)
-                            .deref_mut(val)
-                    )
-                },
+                    Statement::Expr(Expr::var(name).refer(Mutability::Mutable).deref_mut(val))
+                }
                 Expr::Member(e, field) => {
                     Statement::Expr(e.field(field).refer(Mutability::Mutable).deref_mut(val))
                 }
-                Expr::ConstExpr(ConstExpr::Member(e, field)) => {
-                    Statement::Expr(Expr::from(e.field(*field)).refer(Mutability::Mutable).deref_mut(val))
-                }
-                Expr::Annotated(inner, _) => {
-                    match *inner {
-                        Expr::Deref(e) => Statement::Expr(e.deref_mut(val)),
-                        Expr::Index(e, idx) => Statement::Expr(e.idx(*idx).refer(Mutability::Mutable).deref_mut(val)),
-                        Expr::ConstExpr(ConstExpr::Symbol(name)) => {
-                            Statement::Expr(
-                                Expr::var(name).refer(Mutability::Mutable)
-                                    .deref_mut(val)
-                            )
-                        },
-                        Expr::Member(e, field) => {
-                            Statement::Expr(e.field(field).refer(Mutability::Mutable).deref_mut(val))
-                        }
-                        Expr::ConstExpr(ConstExpr::Member(e, field)) => {
-                            Statement::Expr(Expr::from(e.field(*field)).refer(Mutability::Mutable).deref_mut(val))
-                        }
-                        unexpected => panic!("Unexpected assignment to {unexpected}"),
+                Expr::ConstExpr(ConstExpr::Member(e, field)) => Statement::Expr(
+                    Expr::from(e.field(*field))
+                        .refer(Mutability::Mutable)
+                        .deref_mut(val),
+                ),
+                Expr::Annotated(inner, _) => match *inner {
+                    Expr::Deref(e) => Statement::Expr(e.deref_mut(val)),
+                    Expr::Index(e, idx) => {
+                        Statement::Expr(e.idx(*idx).refer(Mutability::Mutable).deref_mut(val))
                     }
-                }
+                    Expr::ConstExpr(ConstExpr::Symbol(name)) => {
+                        Statement::Expr(Expr::var(name).refer(Mutability::Mutable).deref_mut(val))
+                    }
+                    Expr::Member(e, field) => {
+                        Statement::Expr(e.field(field).refer(Mutability::Mutable).deref_mut(val))
+                    }
+                    Expr::ConstExpr(ConstExpr::Member(e, field)) => Statement::Expr(
+                        Expr::from(e.field(*field))
+                            .refer(Mutability::Mutable)
+                            .deref_mut(val),
+                    ),
+                    unexpected => panic!("Unexpected assignment to {unexpected}"),
+                },
                 unexpected => panic!("Unexpected assignment to {unexpected}"),
             };
 
             Ok((input, result))
-        },
+        }
         Err(_) => {
             // If that fails, try the compound assignment
             let (input, op) = alt((
@@ -2557,15 +2770,16 @@ fn parse_assign_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
                 value(Assign::new(BitwiseOr), tag("|=")),
                 // value(Assign::new(Shl), tag("<<=")),
                 // value(Assign::new(Shr), tag(">>=")),
-
             ))(input)?;
 
             let (input, _) = whitespace(input)?;
             let (input, val) = cut(parse_expr)(input)?;
-            Ok((input, Statement::Expr(dst.refer(Mutability::Mutable).assign_op(op, val))))
+            Ok((
+                input,
+                Statement::Expr(dst.refer(Mutability::Mutable).assign_op(op, val)),
+            ))
         }
     }
-
 
     // let (input, op) = alt((
     //     value(Assign::new(Arithmetic::Add), tag("+=")),
@@ -2586,7 +2800,9 @@ fn parse_assign_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     // Ok((input, dst.assign_op(op, val)))
 }
 
-fn parse_short_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
+fn parse_short_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
     let (input, _) = whitespace(input)?;
 
     // Check if there's just a semicolon
@@ -2614,7 +2830,9 @@ fn parse_short_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     Ok((input, stmt))
 }
 
-fn parse_type_pointer<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Type, E> {
+fn parse_type_pointer<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Type, E> {
     let (input, _) = tag("&")(input)?;
     let (input, _) = whitespace(input)?;
     // Check for "mut" keyword
@@ -2630,7 +2848,9 @@ fn parse_type_pointer<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input:
     Ok((input, Type::Pointer(mutability, Box::new(ty))))
 }
 
-fn parse_type_array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Type, E> {
+fn parse_type_array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Type, E> {
     let (input, _) = tag("[")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, ty) = parse_type(input)?;
@@ -2643,7 +2863,9 @@ fn parse_type_array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     Ok((input, Type::Array(Box::new(ty), Box::new(size))))
 }
 
-fn parse_type_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Type, E> {
+fn parse_type_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Type, E> {
     let (input, _) = tag("(")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, mut tys) = many1(terminated(parse_type, tag(",")))(input)?;
@@ -2659,7 +2881,9 @@ fn parse_type_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     Ok((input, Type::Tuple(tys)))
 }
 
-fn parse_type_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Type, E> {
+fn parse_type_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Type, E> {
     // Optionally check for "struct" keyword
     let (input, _) = opt(tag("struct"))(input)?;
     let (input, _) = whitespace(input)?;
@@ -2669,23 +2893,15 @@ fn parse_type_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     let (input, mut fields) = many0(terminated(
         pair(
             parse_symbol,
-            preceded(
-                pair(whitespace, tag(":")),
-                parse_type
-            )
+            preceded(pair(whitespace, tag(":")), parse_type),
         ),
-        tag(",")
+        tag(","),
     ))(input)?;
 
-    let (input, last) = opt(
-        pair(
-            parse_symbol,
-            preceded(
-                pair(whitespace, tag(":")),
-                parse_type
-            )
-        )
-    )(input)?;
+    let (input, last) = opt(pair(
+        parse_symbol,
+        preceded(pair(whitespace, tag(":")), parse_type),
+    ))(input)?;
 
     if let Some((k, v)) = last {
         fields.push((k, v));
@@ -2693,11 +2909,16 @@ fn parse_type_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
 
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("}")(input)?;
-    
-    Ok((input, Type::Struct(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())))
+
+    Ok((
+        input,
+        Type::Struct(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect()),
+    ))
 }
 
-fn parse_type_enum<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Type, E> {
+fn parse_type_enum<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Type, E> {
     // Optionally check for "enum" keyword
     let (input, _) = opt(tag("enum"))(input)?;
     let (input, _) = whitespace(input)?;
@@ -2705,27 +2926,20 @@ fn parse_type_enum<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
 
     let (input, _) = whitespace(input)?;
     // Parse a comma separated list of symbols, optionally followed by a type
-    let (input, mut fields) = many0(terminated(
-        pair(
-            parse_symbol,
-            opt(parse_type)
-        ),
-        tag(",")
-    ))(input)?;
+    let (input, mut fields) =
+        many0(terminated(pair(parse_symbol, opt(parse_type)), tag(",")))(input)?;
 
-    let (input, last) = opt(
-        pair(
-            parse_symbol,
-            opt(parse_type)
-        )
-    )(input)?;
+    let (input, last) = opt(pair(parse_symbol, opt(parse_type)))(input)?;
 
     if let Some((k, v)) = last {
         fields.push((k, v));
     }
 
     // For all the fields that don't have a type, assign them the "None" type
-    let fields = fields.into_iter().map(|(k, v)| (k.to_owned(), v.unwrap_or(Type::None))).collect();
+    let fields = fields
+        .into_iter()
+        .map(|(k, v)| (k.to_owned(), v.unwrap_or(Type::None)))
+        .collect();
 
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("}")(input)?;
@@ -2733,7 +2947,9 @@ fn parse_type_enum<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     Ok((input, Type::EnumUnion(fields)))
 }
 
-fn parse_type_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Vec<String>, E> {
+fn parse_type_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Vec<String>, E> {
     let (input, _) = tag("<")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, mut params) = many0(terminated(parse_symbol, tag(",")))(input)?;
@@ -2749,7 +2965,9 @@ fn parse_type_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     Ok((input, params.into_iter().map(|x| x.to_string()).collect()))
 }
 
-fn parse_type_function<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Type, E> {
+fn parse_type_function<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Type, E> {
     let (input, _) = tag("fun")(input)?;
     let (input, _) = whitespace(input)?;
     // Try to parse any polymorphic type parameters
@@ -2774,16 +2992,17 @@ fn parse_type_function<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input
     // Ok((input, Type::Proc(args, Box::new(ret))))
 
     match poly_params {
-        Some(poly_params) => {
-            Ok((input, Type::Poly(poly_params, Box::new(Type::Proc(args, Box::new(ret))))))
-        }
-        None => {
-            Ok((input, Type::Proc(args, Box::new(ret))))
-        }
+        Some(poly_params) => Ok((
+            input,
+            Type::Poly(poly_params, Box::new(Type::Proc(args, Box::new(ret)))),
+        )),
+        None => Ok((input, Type::Proc(args, Box::new(ret)))),
     }
 }
 
-fn parse_type_apply<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Type, E> {
+fn parse_type_apply<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Type, E> {
     let (input, ty) = parse_type_atom(input)?;
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("<")(input)?;
@@ -2801,7 +3020,9 @@ fn parse_type_apply<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     Ok((input, Type::Apply(Box::new(ty), args)))
 }
 
-fn parse_type_primitive<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Type, E> {
+fn parse_type_primitive<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Type, E> {
     let (input, ty) = alt((
         value(Type::Int, tag("Int")),
         value(Type::Float, tag("Float")),
@@ -2812,18 +3033,15 @@ fn parse_type_primitive<'a, E: ParseError<&'a str> + ContextError<&'a str>>(inpu
         value(Type::Never, tag("Never")),
         value(Type::Never, tag("!")),
         value(Type::None, tag("None")),
-        value(Type::None, pair(
-            tag("("),
-            preceded(whitespace, tag(")"))
-        )),
+        value(Type::None, pair(tag("("), preceded(whitespace, tag(")")))),
     ))(input)?;
 
     Ok((input, ty))
 }
 
-
-
-fn parse_type_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Type, E> {
+fn parse_type_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Type, E> {
     let (input, _) = whitespace(input)?;
     let (input, ty) = alt((
         parse_type_primitive,
@@ -2840,7 +3058,9 @@ fn parse_type_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     Ok((input, ty))
 }
 
-fn parse_type_group<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Type, E> {
+fn parse_type_group<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Type, E> {
     let (input, _) = tag("(")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, ty) = parse_type(input)?;
@@ -2850,158 +3070,17 @@ fn parse_type_group<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     Ok((input, ty))
 }
 
-fn parse_type<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Type, E> {
-    let (input, ty) = alt((
-        parse_type_apply,
-        parse_type_atom,
-    ))(input)?;
+fn parse_type<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Type, E> {
+    let (input, ty) = alt((parse_type_apply, parse_type_atom))(input)?;
 
     Ok((input, ty))
 }
 
-fn parse_indentation<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: u8, input: &'a str) -> IResult<&'a str, u8, E> {
-    trace!("Checking for indentation against {indentation}...");
-    let (input, ws) = whitespace(input)?;
-    let new_indentation = get_indentation(ws);
-    if new_indentation != indentation && !input.is_empty() {
-        trace!("Failed");
-        return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Verify)));
-    }
-    Ok((input, new_indentation))
-}
-
-fn parse_suite<'a, E: ParseError<&'a str> + ContextError<&'a str>>(indentation: u8, mut input: &'a str) -> IResult<&'a str, Expr, E> {
-    trace!("Parsing suite with indentation {indentation}");
-    let mut input_updater = input;
-    let mut result = vec![];
-    loop {
-        input = input_updater;
-        // Try to match an `if`
-        til_first_non_ws_line(input)?;
-        trace!("Checking for indentation against {indentation}...");
-        trace!("Input: {input}");
-        let Ok((input, _)) = parse_indentation::<E>(indentation, input) else {
-            break;
-        };
-        
-        match alt((
-            tag::<&str, &str, E>("if"),
-            tag::<&str, &str, E>("while"),
-            tag::<&str, &str, E>("struct"),
-            tag::<&str, &str, E>("enum")
-        ))(input) {
-            Ok((input, "if")) => {
-                trace!("Parsing if");
-                let (input, _) = whitespace(input)?;
-                let (input, cond) = parse_expr(input)?;
-                let (input, _) = whitespace(input)?;
-                let (input, _) = tag(":")(input)?;
-                let (input, body) = parse_whitespace_sensitive_block(indentation+4, input)?;
-                input_updater = input;
-                result.push(Expr::If(cond.into(), body.into(), Expr::NONE.into()))
-            },
-            Ok((input, "while")) => {
-                trace!("Parsing while");
-                let (input, _) = whitespace(input)?;
-                let (input, cond) = parse_expr(input)?;
-                let (input, _) = whitespace(input)?;
-                let (input, _) = tag(":")(input)?;
-                let (input, body) = parse_whitespace_sensitive_block(indentation+4, input)?;
-                input_updater = input;
-                result.push(Expr::While(cond.into(), body.into()))
-            },
-            Ok((input, "enum")) => {
-                let (input, _) = whitespace(input)?;
-                let (input, name) = parse_symbol(input)?;
-                
-                let (input, _) = whitespace(input)?;
-                let (input, template) = opt(parse_type_params)(input)?;
-                let (mut input, _) = tag(":")(input)?;
-                let mut variants = BTreeMap::new();
-                input_updater = input;
-                loop {
-                    trace!("Parsing enum variant");
-                    input = input_updater;
-                    let Ok((input, _)) = parse_indentation::<E>(indentation + 4, input) else {
-                        trace!("Indentation error");
-                        break;
-                    };
-                    if input.is_empty() {
-                        break;
-                    }
-                    let (input, name) = parse_symbol(input)?;
-                    let (input, ty) = opt(alt((
-                        parse_type_struct,
-                        parse_type_group
-                    )))(input)?;
-                    let ty = ty.unwrap_or(Type::None);
-                    variants.insert(name.to_string(), ty);
-                    input_updater = input;
-                }
-                trace!("Parsed enum: {name} {variants:?}");
-                let mut ty = Type::EnumUnion(variants);
-                if let Some(template) = template {
-                    ty = Type::Poly(template, Box::new(ty));
-                }
-                result = vec![Expr::Many(result).with(Declaration::Type(name.to_owned(), ty))];
-            },
-            Ok((input, "struct")) => {
-                let (input, _) = whitespace(input)?;
-                let (input, name) = parse_symbol(input)?;
-                
-                let (input, _) = whitespace(input)?;
-                let (input, template) = opt(parse_type_params)(input)?;
-                let (input, _) = whitespace(input)?;
-
-                let (mut input, _) = tag(":")(input)?;
-                let mut members = BTreeMap::new();
-                input_updater = input;
-                loop {
-                    trace!("Parsing struct variant");
-                    input = input_updater;
-                    let Ok((input, _)) = parse_indentation::<E>(indentation + 4, input) else {
-                        trace!("Indentation error");
-                        break;
-                    };
-                    if input.is_empty() {
-                        break;
-                    }
-                    let (input, name) = parse_symbol(input)?;
-                    let (input, _) = whitespace(input)?;
-                    let (input, _) = tag(":")(input)?;
-                    let (input, ty) = parse_type(input)?;
-                    members.insert(name.to_string(), ty);
-                    input_updater = input;
-                }
-                trace!("Parsed enum: {name} {members:?}");
-                let mut ty = Type::Struct(members);
-                if let Some(template) = template {
-                    ty = Type::Poly(template, Box::new(ty));
-                }
-                result = vec![Expr::Many(result).with(Declaration::Type(name.to_owned(), ty))];
-            },
-            _ => {
-                trace!("Parsing block");
-                if input.is_empty() || input.chars().all(|c| c.is_whitespace()) {
-                    break;
-                }
-
-                let (input, expr) = parse_whitespace_sensitive_block(indentation, input)?;
-                trace!("Parsed block: {expr}");
-                input_updater = input;
-                result.push(expr);
-                break;
-            }
-        };
-
-    }
-    input = input_updater;
-
-    Ok((input, Expr::Many(result)))
-}
-
-
-fn parse_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     // let (input, c) = parse_expr_atom(input)?;
 
     // Optionally parse a decorator
@@ -3023,14 +3102,17 @@ fn parse_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str
             let result = env.eval(decorator.apply(&[input.quote()]));
             trace!("Result: {result}");
             sage_lisp::Expr::deserialize::<Expr>(&result).unwrap()
-        },
+        }
         None => expr,
     };
 
     Ok((input, expr.annotate(source_code_loc)))
 }
 
-fn parse_expr_prec<'a, E: ParseError<&'a str> + ContextError<&'a str>>(mut input: &'a str, prec: u8) -> IResult<&'a str, Expr, E> {
+fn parse_expr_prec<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+    prec: u8,
+) -> IResult<&'a str, Expr, E> {
     // if prec <= 0 {
     //     return parse_expr_atom(input);
     // }
@@ -3051,17 +3133,22 @@ fn parse_expr_prec<'a, E: ParseError<&'a str> + ContextError<&'a str>>(mut input
             continue;
         }
         match tag::<&str, &str, E>(op.as_str())(input) {
-            Ok((i, _)) if is_symbol_char(i.chars().next().unwrap()) && is_symbol_char(op.chars().last().unwrap()) => continue,
+            Ok((i, _))
+                if is_symbol_char(i.chars().next().unwrap())
+                    && is_symbol_char(op.chars().last().unwrap()) =>
+            {
+                continue
+            }
             Ok((i, _)) => {
                 input = i;
                 has_found_op = true;
                 found_op = Some(*op_expr);
                 break;
-            },
+            }
             _ => continue,
         }
     }
-    
+
     let (mut input, mut lhs) = if has_found_op {
         let (input, lhs) = parse_expr_prec(input, prec)?;
         (input, found_op.unwrap()(lhs))
@@ -3079,7 +3166,7 @@ fn parse_expr_prec<'a, E: ParseError<&'a str> + ContextError<&'a str>>(mut input
         // Match any of the binary operators
         let mut has_found_op = false;
         let mut found_op = None;
-        for (op, (op_prec, _, _op_expr)) in BIN_OPS.read().unwrap().iter().rev() {
+        for (op, (op_prec, _op_expr)) in BIN_OPS.read().unwrap().iter().rev() {
             if *op_prec < prec {
                 continue;
             }
@@ -3090,7 +3177,7 @@ fn parse_expr_prec<'a, E: ParseError<&'a str> + ContextError<&'a str>>(mut input
                     has_found_op = true;
                     found_op = Some(op);
                     break;
-                },
+                }
                 _ => continue,
             }
         }
@@ -3114,15 +3201,16 @@ fn parse_expr_prec<'a, E: ParseError<&'a str> + ContextError<&'a str>>(mut input
         let (input, rhs) = parse_expr_prec(input, prec + 1)?;
         // trace!("Parsed rhs: {rhs}");
         // lhs = lhs.binop(BIN_OPS.read().unwrap().get(found_op).unwrap().2.clone(), rhs);
-        let f = BIN_OPS.read().unwrap().get(found_op).unwrap().2;
+        let f = BIN_OPS.read().unwrap().get(found_op).unwrap().1;
         lhs = f(lhs, rhs);
 
         input_updater = input;
     }
 }
 
-
-fn parse_expr_term<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_expr_term<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     let (input, _) = whitespace(input)?;
     let (mut input, mut expr) = parse_expr_factor(input)?;
 
@@ -3133,13 +3221,13 @@ fn parse_expr_term<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
             expr = member;
             found = true;
         }
-    
+
         if let Ok((i, index)) = parse_expr_index::<E>(&expr, input) {
             input = i;
             expr = index;
             found = true;
         }
-    
+
         if let Ok((i, cast)) = parse_expr_cast::<E>(&expr, input) {
             input = i;
             expr = cast;
@@ -3159,7 +3247,9 @@ fn parse_expr_term<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     Ok((input, expr))
 }
 
-fn parse_expr_factor<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_expr_factor<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     let (input, _) = whitespace(input)?;
     let (input, expr) = alt((
         parse_expr_variant,
@@ -3171,7 +3261,9 @@ fn parse_expr_factor<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     Ok((input, expr))
 }
 
-fn parse_expr_variant<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_expr_variant<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     let (input, ty) = parse_type(input)?;
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("of")(input)?;
@@ -3179,10 +3271,16 @@ fn parse_expr_variant<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input:
     let (input, name) = parse_symbol(input)?;
     let (input, _) = whitespace(input)?;
     let (input, expr) = opt(parse_expr_atom)(input)?;
-    Ok((input, Expr::EnumUnion(ty, name.to_string(), Box::new(expr.unwrap_or(Expr::NONE)))))
+    Ok((
+        input,
+        Expr::EnumUnion(ty, name.to_string(), Box::new(expr.unwrap_or(Expr::NONE))),
+    ))
 }
 
-fn parse_expr_index<'a, E: ParseError<&'a str> + ContextError<&'a str>>(expr: &Expr, input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_expr_index<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    expr: &Expr,
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("[")(input)?;
     let (input, _) = whitespace(input)?;
@@ -3193,7 +3291,10 @@ fn parse_expr_index<'a, E: ParseError<&'a str> + ContextError<&'a str>>(expr: &E
     Ok((input, expr.clone().idx(index)))
 }
 
-fn parse_expr_cast<'a, E: ParseError<&'a str> + ContextError<&'a str>>(expr: &Expr, input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_expr_cast<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    expr: &Expr,
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("as")(input)?;
     let (input, _) = whitespace(input)?;
@@ -3202,7 +3303,10 @@ fn parse_expr_cast<'a, E: ParseError<&'a str> + ContextError<&'a str>>(expr: &Ex
     Ok((input, expr.clone().as_type(ty)))
 }
 
-fn parse_expr_call<'a, E: ParseError<&'a str> + ContextError<&'a str>>(expr: &Expr, input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_expr_call<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    expr: &Expr,
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("(")(input)?;
     trace!("Parsing call!");
@@ -3217,43 +3321,53 @@ fn parse_expr_call<'a, E: ParseError<&'a str> + ContextError<&'a str>>(expr: &Ex
         args.push(last_arg);
     }
 
-    match expr {
-        Expr::ConstExpr(ConstExpr::Symbol(name)) => {
-            // Ok((input, Expr::var(name).app(args)))
-            match name.as_str() {
-                "input" => {
-                    // return Ok((input, args.print()))
-                    return Ok((input, Expr::Many(args.into_iter().map(|x: Expr| x.unop(Get)).collect())))
-                },
-                "print" => {
-                    // return Ok((input, args.print()))
-                    return Ok((input, Expr::Many(args.into_iter().map(|x| x.print()).collect())))
-                },
-                "println" => {
-                    // return Ok((input, args.println()))
-                    return Ok((input, Expr::Many(
-                        args.into_iter().chain(vec![Expr::ConstExpr(ConstExpr::Char('\n'))])
-                            .map(|x| x.print())
-                            .collect()
-                    )))
-                },
-                _ => {}
+    if let Expr::ConstExpr(ConstExpr::Symbol(name)) = expr {
+        // Ok((input, Expr::var(name).app(args)))
+        match name.as_str() {
+            "input" => {
+                // return Ok((input, args.print()))
+                return Ok((
+                    input,
+                    Expr::Many(args.into_iter().map(|x: Expr| x.unop(Get)).collect()),
+                ));
             }
-        },
-        _ => {}
+            "print" => {
+                // return Ok((input, args.print()))
+                return Ok((
+                    input,
+                    Expr::Many(args.into_iter().map(|x| x.print()).collect()),
+                ));
+            }
+            "println" => {
+                // return Ok((input, args.println()))
+                return Ok((
+                    input,
+                    Expr::Many(
+                        args.into_iter()
+                            .chain(vec![Expr::ConstExpr(ConstExpr::Char('\n'))])
+                            .map(|x| x.print())
+                            .collect(),
+                    ),
+                ));
+            }
+            _ => {}
+        }
     }
 
     Ok((input, expr.clone().app(args)))
 }
 
-fn parse_expr_member<'a, E: ParseError<&'a str> + ContextError<&'a str>>(expr: &Expr, input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_expr_member<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    expr: &Expr,
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     let (input, _) = whitespace(input)?;
     let parse_field = |input| {
         let (input, _) = tag(".")(input)?;
         let (input, _) = whitespace(input)?;
         let (input, field) = alt((
             map(parse_symbol, |x| ConstExpr::Symbol(x.to_string())),
-            map(parse_int_literal, |x| ConstExpr::Int(x)),
+            map(parse_int_literal, ConstExpr::Int),
         ))(input)?;
         Ok((input, field))
     };
@@ -3267,7 +3381,9 @@ fn parse_expr_member<'a, E: ParseError<&'a str> + ContextError<&'a str>>(expr: &
     Ok((input, expr))
 }
 
-fn parse_expr_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_expr_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     let (input, _) = whitespace(input)?;
     let (input, expr) = alt((
         map(parse_const_atom, Expr::ConstExpr),
@@ -3279,13 +3395,15 @@ fn parse_expr_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
         parse_if_let_expr,
         parse_if_expr,
         parse_match_expr,
-        map(parse_type_atom, |t| ConstExpr::Type(t).into())
+        map(parse_type_atom, |t| ConstExpr::Type(t).into()),
     ))(input)?;
 
     Ok((input, expr))
 }
 
-fn parse_expr_group<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_expr_group<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     let (input, _) = tag("(")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, expr) = parse_expr(input)?;
@@ -3295,7 +3413,9 @@ fn parse_expr_group<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     Ok((input, expr))
 }
 
-fn parse_expr_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_expr_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     let (input, _) = tag("(")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, mut exprs) = many1(terminated(parse_expr, tag(",")))(input)?;
@@ -3311,7 +3431,9 @@ fn parse_expr_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     Ok((input, Expr::Tuple(exprs)))
 }
 
-fn parse_expr_array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_expr_array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     let (input, _) = tag("[")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, mut exprs) = many0(terminated(parse_expr, preceded(whitespace, tag(","))))(input)?;
@@ -3327,7 +3449,9 @@ fn parse_expr_array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     Ok((input, Expr::Array(exprs)))
 }
 
-fn parse_expr_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+fn parse_expr_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Expr, E> {
     let (input, _) = whitespace(input)?;
     let (input, _) = opt(tag("struct"))(input)?;
     let (input, _) = whitespace(input)?;
@@ -3338,29 +3462,21 @@ fn parse_expr_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
         alt((
             pair(
                 parse_symbol,
-                preceded(
-                    pair(whitespace, tag("=")),
-                    parse_expr
-                )
+                preceded(pair(whitespace, tag("=")), parse_expr),
             ),
             map(parse_symbol, |x| (x, Expr::var(x.to_string()))),
         )),
-        preceded(whitespace, tag(","))
+        preceded(whitespace, tag(",")),
     ))(input)?;
 
     let (input, _) = whitespace(input)?;
-    let (input, last) = opt(
-        alt((
-            pair(
-                parse_symbol,
-                preceded(
-                    pair(whitespace, tag("=")),
-                    parse_expr
-                )
-            ),
-            map(parse_symbol, |x| (x, Expr::var(x.to_string()))),
-        ))
-    )(input)?;
+    let (input, last) = opt(alt((
+        pair(
+            parse_symbol,
+            preceded(pair(whitespace, tag("=")), parse_expr),
+        ),
+        map(parse_symbol, |x| (x, Expr::var(x.to_string()))),
+    )))(input)?;
 
     if let Some((k, v)) = last {
         fields.push((k, v));
@@ -3369,7 +3485,10 @@ fn parse_expr_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("}")(input)?;
 
-    Ok((input, Expr::Struct(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())))
+    Ok((
+        input,
+        Expr::Struct(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect()),
+    ))
 }
 
 // fn parse_expr_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
@@ -3390,21 +3509,21 @@ fn parse_expr_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
 //     Ok((input, Expr::Many(exprs)))
 // }
 
-fn parse_const<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
-    alt((
-        parse_const_monomorph,
-        parse_const_term,
-    ))(input)
+fn parse_const<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
+    alt((parse_const_monomorph, parse_const_term))(input)
 }
 
-fn parse_const_term<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
-    alt((
-        parse_const_variant,
-        parse_const_member,
-    ))(input)
+fn parse_const_term<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
+    alt((parse_const_variant, parse_const_member))(input)
 }
 
-fn parse_const_monomorph<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
+fn parse_const_monomorph<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
     let (input, expr) = parse_const_term(input)?;
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("<")(input)?;
@@ -3422,7 +3541,9 @@ fn parse_const_monomorph<'a, E: ParseError<&'a str> + ContextError<&'a str>>(inp
     Ok((input, expr.monomorphize(tys)))
 }
 
-fn parse_const_variant<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
+fn parse_const_variant<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
     let (input, ty) = parse_type(input)?;
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("of")(input)?;
@@ -3430,19 +3551,31 @@ fn parse_const_variant<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input
     let (input, name) = parse_symbol(input)?;
     let (input, _) = whitespace(input)?;
     let (input, expr) = opt(parse_const_atom)(input)?;
-    Ok((input, ConstExpr::EnumUnion(ty, name.to_string(), Box::new(expr.unwrap_or(ConstExpr::None)))))
+    Ok((
+        input,
+        ConstExpr::EnumUnion(
+            ty,
+            name.to_string(),
+            Box::new(expr.unwrap_or(ConstExpr::None)),
+        ),
+    ))
 }
 
-fn parse_const_member<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
+fn parse_const_member<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
     let (input, mut expr) = parse_const_atom(input)?;
     // Handle multiple dots
     let (input, _) = whitespace(input)?;
     let (input, fields) = many0(terminated(
         preceded(
             tag("."),
-            alt((map(parse_symbol, |x| ConstExpr::Symbol(x.to_string())), map(parse_int_literal, |x| ConstExpr::Int(x))))
+            alt((
+                map(parse_symbol, |x| ConstExpr::Symbol(x.to_string())),
+                map(parse_int_literal, ConstExpr::Int),
+            )),
         ),
-        whitespace
+        whitespace,
     ))(input)?;
 
     for field in fields {
@@ -3452,7 +3585,9 @@ fn parse_const_member<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input:
     Ok((input, expr))
 }
 
-fn parse_const_group<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
+fn parse_const_group<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
     let (input, _) = tag("(")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, expr) = parse_const(input)?;
@@ -3462,7 +3597,9 @@ fn parse_const_group<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     Ok((input, expr))
 }
 
-fn parse_const_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
+fn parse_const_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
     let (input, _) = whitespace(input)?;
     alt((
         parse_const_sizeof_expr,
@@ -3474,9 +3611,15 @@ fn parse_const_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
         map(parse_char_literal, ConstExpr::Char),
         map(parse_float_literal, ConstExpr::Float),
         map(parse_int_literal, ConstExpr::Int),
-        map(parse_string_literal, |s| ConstExpr::Array(s.to_string().chars().map(ConstExpr::Char)
-            .chain(std::iter::once(ConstExpr::Char('\0')))
-            .collect())),
+        map(parse_string_literal, |s| {
+            ConstExpr::Array(
+                s.to_string()
+                    .chars()
+                    .map(ConstExpr::Char)
+                    .chain(std::iter::once(ConstExpr::Char('\0')))
+                    .collect(),
+            )
+        }),
         parse_const_array,
         parse_const_struct,
         parse_const_group,
@@ -3484,7 +3627,9 @@ fn parse_const_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     ))(input)
 }
 
-fn parse_int_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, i64, E> {
+fn parse_int_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, i64, E> {
     // First try to parse hex
     // Check if its negative
     let (input, _) = whitespace(input)?;
@@ -3492,13 +3637,18 @@ fn parse_int_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     let is_negative = is_negative.is_some();
     let (input, _) = whitespace(input)?;
 
-
     let (input, result) = alt((
-        map(preceded(tag("0x"), hex_digit1), |s: &str| i64::from_str_radix(s, 16).unwrap()),
+        map(preceded(tag("0x"), hex_digit1), |s: &str| {
+            i64::from_str_radix(s, 16).unwrap()
+        }),
         // Try octal
-        map(preceded(tag("0o"), oct_digit1), |s: &str| i64::from_str_radix(s, 8).unwrap()),
+        map(preceded(tag("0o"), oct_digit1), |s: &str| {
+            i64::from_str_radix(s, 8).unwrap()
+        }),
         // Try binary
-        map(preceded(tag("0b"), bin_digit1), |s: &str| i64::from_str_radix(s, 2).unwrap()),
+        map(preceded(tag("0b"), bin_digit1), |s: &str| {
+            i64::from_str_radix(s, 2).unwrap()
+        }),
         map(digit1, |s: &str| s.parse().unwrap()),
     ))(input)?;
 
@@ -3509,16 +3659,14 @@ fn parse_int_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
         }
     }
 
-    let result = if is_negative {
-        -result
-    } else {
-        result
-    };
+    let result = if is_negative { -result } else { result };
 
     Ok((input, result))
 }
 
-fn parse_float_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, f64, E> {
+fn parse_float_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, f64, E> {
     let (input, result) = map(
         pair(digit1, preceded(char('.'), digit1)),
         |(a, b): (&str, &str)| format!("{}.{}", a, b).parse().unwrap(),
@@ -3539,96 +3687,102 @@ fn parse_float_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input
 /// to parse sequences like \u{00AC}.
 fn parse_unicode<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
 where
-  E: ParseError<&'a str>,
+    E: ParseError<&'a str>,
 {
-  // `take_while_m_n` parses between `m` and `n` bytes (inclusive) that match
-  // a predicate. `parse_hex` here parses between 1 and 6 hexadecimal numerals.
-  let parse_hex = take_while_m_n(1, 6, |c: char| c.is_ascii_hexdigit());
+    // `take_while_m_n` parses between `m` and `n` bytes (inclusive) that match
+    // a predicate. `parse_hex` here parses between 1 and 6 hexadecimal numerals.
+    let parse_hex = take_while_m_n(1, 6, |c: char| c.is_ascii_hexdigit());
 
-  // `preceded` takes a prefix parser, and if it succeeds, returns the result
-  // of the body parser. In this case, it parses u{XXXX}.
-  let parse_delimited_hex = preceded(
-    char('u'),
-    // `delimited` is like `preceded`, but it parses both a prefix and a suffix.
-    // It returns the result of the middle parser. In this case, it parses
-    // {XXXX}, where XXXX is 1 to 6 hex numerals, and returns XXXX
-    delimited(char('{'), parse_hex, char('}')),
-  );
+    // `preceded` takes a prefix parser, and if it succeeds, returns the result
+    // of the body parser. In this case, it parses u{XXXX}.
+    let parse_delimited_hex = preceded(
+        char('u'),
+        // `delimited` is like `preceded`, but it parses both a prefix and a suffix.
+        // It returns the result of the middle parser. In this case, it parses
+        // {XXXX}, where XXXX is 1 to 6 hex numerals, and returns XXXX
+        delimited(char('{'), parse_hex, char('}')),
+    );
 
-  // `map_res` takes the result of a parser and applies a function that returns
-  // a Result. In this case we take the hex bytes from parse_hex and attempt to
-  // convert them to a u32.
-  let parse_u32 = map(parse_delimited_hex, move |hex| u32::from_str_radix(hex, 16).unwrap());
+    // `map_res` takes the result of a parser and applies a function that returns
+    // a Result. In this case we take the hex bytes from parse_hex and attempt to
+    // convert them to a u32.
+    let parse_u32 = map(parse_delimited_hex, move |hex| {
+        u32::from_str_radix(hex, 16).unwrap()
+    });
 
-  // map_opt is like map_res, but it takes an Option instead of a Result. If
-  // the function returns None, map_opt returns an error. In this case, because
-  // not all u32 values are valid unicode code points, we have to fallibly
-  // convert to char with from_u32.
-  map_opt(parse_u32, std::char::from_u32).parse(input)
+    // map_opt is like map_res, but it takes an Option instead of a Result. If
+    // the function returns None, map_opt returns an error. In this case, because
+    // not all u32 values are valid unicode code points, we have to fallibly
+    // convert to char with from_u32.
+    map_opt(parse_u32, std::char::from_u32).parse(input)
 }
 
 /// Parse an escaped character: \n, \t, \r, \u{00AC}, etc.
 fn parse_escaped_char<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
 where
-  E: ParseError<&'a str>,
+    E: ParseError<&'a str>,
 {
-  preceded(
-    char('\\'),
-    // `alt` tries each parser in sequence, returning the result of
-    // the first successful match
-    alt((
-      parse_unicode,
-      // The `value` parser returns a fixed value (the first argument) if its
-      // parser (the second argument) succeeds. In these cases, it looks for
-      // the marker characters (n, r, t, etc) and returns the matching
-      // character (\n, \r, \t, etc).
-      value('\0', char('0')),
-      value('\n', char('n')),
-      value('\r', char('r')),
-      value('\t', char('t')),
-      value('\u{08}', char('b')),
-      value('\u{0C}', char('f')),
-      value('\\', char('\\')),
-      value('/', char('/')),
-      value('"', char('"')),
-      value('\'', char('\'')),
-    )),
-  )
-  .parse(input)
+    preceded(
+        char('\\'),
+        // `alt` tries each parser in sequence, returning the result of
+        // the first successful match
+        alt((
+            parse_unicode,
+            // The `value` parser returns a fixed value (the first argument) if its
+            // parser (the second argument) succeeds. In these cases, it looks for
+            // the marker characters (n, r, t, etc) and returns the matching
+            // character (\n, \r, \t, etc).
+            value('\0', char('0')),
+            value('\n', char('n')),
+            value('\r', char('r')),
+            value('\t', char('t')),
+            value('\u{08}', char('b')),
+            value('\u{0C}', char('f')),
+            value('\\', char('\\')),
+            value('/', char('/')),
+            value('"', char('"')),
+            value('\'', char('\'')),
+        )),
+    )
+    .parse(input)
 }
 
 /// Parse a backslash, followed by any amount of whitespace. This is used later
 /// to discard any escaped whitespace.
 fn parse_escaped_whitespace<'a, E: ParseError<&'a str>>(
-  input: &'a str,
+    input: &'a str,
 ) -> IResult<&'a str, &'a str, E> {
-  preceded(char('\\'), multispace1).parse(input)
+    preceded(char('\\'), multispace1).parse(input)
 }
 
 /// Parse a non-empty block of text that doesn't include \ or "
-fn parse_literal_intermediate<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
-  // `is_not` parses a string of 0 or more characters that aren't one of the
-  // given characters.
-  let not_quote_slash = is_not("\"\\");
+fn parse_literal_intermediate<'a, E: ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, &'a str, E> {
+    // `is_not` parses a string of 0 or more characters that aren't one of the
+    // given characters.
+    let not_quote_slash = is_not("\"\\");
 
-  // `verify` runs a parser, then runs a verification function on the output of
-  // the parser. The verification function accepts out output only if it
-  // returns true. In this case, we want to ensure that the output of is_not
-  // is non-empty.
-  verify(not_quote_slash, |s: &str| !s.is_empty()).parse(input)
+    // `verify` runs a parser, then runs a verification function on the output of
+    // the parser. The verification function accepts out output only if it
+    // returns true. In this case, we want to ensure that the output of is_not
+    // is non-empty.
+    verify(not_quote_slash, |s: &str| !s.is_empty()).parse(input)
 }
 
 /// Parse a non-empty block of text that doesn't include \ or "
-fn parse_literal_intermediate_char<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
-  // `is_not` parses a string of 0 or more characters that aren't one of the
-  // given characters.
-  let not_quote_slash = is_not("\'\\");
+fn parse_literal_intermediate_char<'a, E: ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, &'a str, E> {
+    // `is_not` parses a string of 0 or more characters that aren't one of the
+    // given characters.
+    let not_quote_slash = is_not("\'\\");
 
-  // `verify` runs a parser, then runs a verification function on the output of
-  // the parser. The verification function accepts out output only if it
-  // returns true. In this case, we want to ensure that the output of is_not
-  // is non-empty.
-  verify(not_quote_slash, |s: &str| !s.is_empty()).parse(input)
+    // `verify` runs a parser, then runs a verification function on the output of
+    // the parser. The verification function accepts out output only if it
+    // returns true. In this case, we want to ensure that the output of is_not
+    // is non-empty.
+    verify(not_quote_slash, |s: &str| !s.is_empty()).parse(input)
 }
 
 /// A string fragment contains a fragment of a string being parsed: either
@@ -3636,95 +3790,96 @@ fn parse_literal_intermediate_char<'a, E: ParseError<&'a str>>(input: &'a str) -
 /// parsed escaped character, or a block of escaped whitespace.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StringFragment<'a> {
-  Literal(&'a str),
-  EscapedChar(char),
-  EscapedWS,
+    Literal(&'a str),
+    EscapedChar(char),
+    EscapedWS,
 }
 
 /// Combine parse_literal, parse_escaped_whitespace, and parse_escaped_char
 /// into a StringFragment.
 fn parse_fragment_str<'a, E>(input: &'a str) -> IResult<&'a str, StringFragment<'a>, E>
 where
-  E: ParseError<&'a str>,
+    E: ParseError<&'a str>,
 {
-  alt((
-    // The `map` combinator runs a parser, then applies a function to the output
-    // of that parser.
-    map(parse_literal_intermediate, StringFragment::Literal),
-    map(parse_escaped_char, StringFragment::EscapedChar),
-    value(StringFragment::EscapedWS, parse_escaped_whitespace),
-  ))
-  .parse(input)
+    alt((
+        // The `map` combinator runs a parser, then applies a function to the output
+        // of that parser.
+        map(parse_literal_intermediate, StringFragment::Literal),
+        map(parse_escaped_char, StringFragment::EscapedChar),
+        value(StringFragment::EscapedWS, parse_escaped_whitespace),
+    ))
+    .parse(input)
 }
 
 fn parse_fragment_char<'a, E>(input: &'a str) -> IResult<&'a str, StringFragment, E>
 where
-  E: ParseError<&'a str>,
+    E: ParseError<&'a str>,
 {
-  alt((
-    // The `map` combinator runs a parser, then applies a function to the output
-    // of that parser.
-    map(parse_literal_intermediate_char, StringFragment::Literal),
-    map(parse_escaped_char, StringFragment::EscapedChar),
-    value(StringFragment::EscapedWS, parse_escaped_whitespace),
-  ))
-  .parse(input)
+    alt((
+        // The `map` combinator runs a parser, then applies a function to the output
+        // of that parser.
+        map(parse_literal_intermediate_char, StringFragment::Literal),
+        map(parse_escaped_char, StringFragment::EscapedChar),
+        value(StringFragment::EscapedWS, parse_escaped_whitespace),
+    ))
+    .parse(input)
 }
 
 /// Parse a string. Use a loop of parse_fragment and push all of the fragments
 /// into an output string.
 fn parse_string<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
 where
-  E: ParseError<&'a str> + FromExternalError<&'a str, std::num::ParseIntError>,
+    E: ParseError<&'a str> + FromExternalError<&'a str, std::num::ParseIntError>,
 {
-  // fold is the equivalent of iterator::fold. It runs a parser in a loop,
-  // and for each output value, calls a folding function on each output value.
-  let build_string = fold_many0(
-    // Our parser function – parses a single string fragment
-    parse_fragment_str,
-    // Our init value, an empty string
-    String::new,
-    // Our folding function. For each fragment, append the fragment to the
-    // string.
-    |mut string, fragment| {
-      match fragment {
-        StringFragment::Literal(s) => string.push_str(s),
-        StringFragment::EscapedChar(c) => string.push(c),
-        StringFragment::EscapedWS => {}
-      }
-      string
-    },
-  );
+    // fold is the equivalent of iterator::fold. It runs a parser in a loop,
+    // and for each output value, calls a folding function on each output value.
+    let build_string = fold_many0(
+        // Our parser function – parses a single string fragment
+        parse_fragment_str,
+        // Our init value, an empty string
+        String::new,
+        // Our folding function. For each fragment, append the fragment to the
+        // string.
+        |mut string, fragment| {
+            match fragment {
+                StringFragment::Literal(s) => string.push_str(s),
+                StringFragment::EscapedChar(c) => string.push(c),
+                StringFragment::EscapedWS => {}
+            }
+            string
+        },
+    );
 
-  // Finally, parse the string. Note that, if `build_string` could accept a raw
-  // " character, the closing delimiter " would never match. When using
-  // `delimited` with a looping parser (like fold), be sure that the
-  // loop won't accidentally match your closing delimiter!
-  delimited(char('"'), build_string, char('"')).parse(input)
+    // Finally, parse the string. Note that, if `build_string` could accept a raw
+    // " character, the closing delimiter " would never match. When using
+    // `delimited` with a looping parser (like fold), be sure that the
+    // loop won't accidentally match your closing delimiter!
+    delimited(char('"'), build_string, char('"')).parse(input)
 }
 
-
-fn parse_char_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, char, E> {
+fn parse_char_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, char, E> {
     let (input, _) = whitespace(input)?;
     // fold is the equivalent of iterator::fold. It runs a parser in a loop,
     // and for each output value, calls a folding function on each output value.
     let build_string = fold_many0(
-      // Our parser function – parses a single string fragment
-      parse_fragment_char,
-      // Our init value, an empty string
-      String::new,
-      // Our folding function. For each fragment, append the fragment to the
-      // string.
-      |mut string, fragment| {
-        match fragment {
-          StringFragment::Literal(s) => string.push_str(s),
-          StringFragment::EscapedChar(c) => string.push(c),
-          StringFragment::EscapedWS => {}
-        }
-        string
-      },
+        // Our parser function – parses a single string fragment
+        parse_fragment_char,
+        // Our init value, an empty string
+        String::new,
+        // Our folding function. For each fragment, append the fragment to the
+        // string.
+        |mut string, fragment| {
+            match fragment {
+                StringFragment::Literal(s) => string.push_str(s),
+                StringFragment::EscapedChar(c) => string.push(c),
+                StringFragment::EscapedWS => {}
+            }
+            string
+        },
     );
-  
+
     // Finally, parse the string. Note that, if `build_string` could accept a raw
     // " character, the closing delimiter " would never match. When using
     // `delimited` with a looping parser (like fold), be sure that the
@@ -3737,7 +3892,9 @@ fn parse_char_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input:
     Ok((input, result.chars().next().unwrap()))
 }
 
-fn parse_string_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, String, E> {
+fn parse_string_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, String, E> {
     // map(context(
     //   "string",
     //   alt((
@@ -3753,11 +3910,10 @@ fn parse_string_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(inpu
     }
 }
 
-fn parse_const_bool<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
-    let (input, result) = alt((
-        value(true, tag("True")),
-        value(false, tag("False")),
-    ))(input)?;
+fn parse_const_bool<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
+    let (input, result) = alt((value(true, tag("True")), value(false, tag("False"))))(input)?;
 
     // Peek and make sure the next character is not a symbol character
     if let Some(c) = input.chars().next() {
@@ -3769,7 +3925,9 @@ fn parse_const_bool<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     Ok((input, ConstExpr::Bool(result)))
 }
 
-fn parse_const_null<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
+fn parse_const_null<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
     let (input, _) = tag("Null")(input)?;
 
     // Peek and make sure the next character is not a symbol character
@@ -3782,13 +3940,15 @@ fn parse_const_null<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     Ok((input, ConstExpr::Null))
 }
 
-fn parse_const_none<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
+fn parse_const_none<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
     // First, try two parentheses
     let (input, _) = whitespace(input)?;
     if let Ok((input, _)) = delimited(tag("("), whitespace::<E>, tag(")"))(input) {
         return Ok((input, ConstExpr::None));
     }
-    
+
     let (input, _) = tag("None")(input)?;
 
     // Peek and make sure the next character is not a symbol character
@@ -3801,7 +3961,9 @@ fn parse_const_none<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
     Ok((input, ConstExpr::None))
 }
 
-fn parse_const_sizeof_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
+fn parse_const_sizeof_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
     let (input, _) = tag("sizeof")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("(")(input)?;
@@ -3813,7 +3975,9 @@ fn parse_const_sizeof_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(i
     Ok((input, ConstExpr::SizeOfExpr(Box::new(expr))))
 }
 
-fn parse_const_sizeof_type<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
+fn parse_const_sizeof_type<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
     let (input, _) = tag("sizeof")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("<")(input)?;
@@ -3829,7 +3993,9 @@ fn parse_const_sizeof_type<'a, E: ParseError<&'a str> + ContextError<&'a str>>(i
     Ok((input, ConstExpr::SizeOfType(ty)))
 }
 
-fn parse_const_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
+fn parse_const_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
     let (input, _) = tag("(")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, mut exprs) = many1(terminated(parse_const, preceded(whitespace, tag(","))))(input)?;
@@ -3845,7 +4011,9 @@ fn parse_const_tuple<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
     Ok((input, ConstExpr::Tuple(exprs)))
 }
 
-fn parse_const_array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
+fn parse_const_array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
     let (input, _) = tag("[")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, mut exprs) = many0(terminated(parse_const, preceded(whitespace, tag(","))))(input)?;
@@ -3865,25 +4033,27 @@ fn is_symbol_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
 
-fn parse_symbol<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
+fn parse_symbol<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     let (input, _) = whitespace(input)?;
     // recognize(all_consuming(pair(
     //     verify(anychar, |&c| c.is_lowercase() || c == '_'),
     //     many0_count(preceded(opt(char('_')), alphanumeric1)),
     // )))(input)
-    let (input, result) = recognize(
-        pair(
+    let (input, result) = recognize(pair(
         alt((alpha1, tag("_"))),
-        many0_count(alt((alphanumeric1, tag("_"))))
-        )
-    )(input)?;
+        many0_count(alt((alphanumeric1, tag("_")))),
+    ))(input)?;
     if KEYWORDS.contains(&result) {
         return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Tag)));
     }
     Ok((input, result))
 }
 
-fn parse_const_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, ConstExpr, E> {
+fn parse_const_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, ConstExpr, E> {
     let (input, _) = opt(tag("struct"))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("{")(input)?;
@@ -3892,29 +4062,21 @@ fn parse_const_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input:
     let (input, mut fields) = many0(terminated(
         alt((
             pair(
-            parse_symbol,
-                preceded(
-                    pair(whitespace, tag("=")),
-                    parse_const
-                )
+                parse_symbol,
+                preceded(pair(whitespace, tag("=")), parse_const),
             ),
             map(parse_symbol, |x| (x, ConstExpr::Symbol(x.to_string()))),
         )),
-        tag(",")
+        tag(","),
     ))(input)?;
 
-    let (input, last) = opt(
-        alt((
-            pair(
-                parse_symbol,
-                preceded(
-                    pair(whitespace, tag("=")),
-                    parse_const
-                )
-            ),
-            map(parse_symbol, |x| (x, ConstExpr::Symbol(x.to_string()))),
-        ))
-    )(input)?;
+    let (input, last) = opt(alt((
+        pair(
+            parse_symbol,
+            preceded(pair(whitespace, tag("=")), parse_const),
+        ),
+        map(parse_symbol, |x| (x, ConstExpr::Symbol(x.to_string()))),
+    )))(input)?;
     if let Some((k, v)) = last {
         fields.push((k, v));
     }
@@ -3922,20 +4084,23 @@ fn parse_const_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input:
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("}")(input)?;
 
-    Ok((input, ConstExpr::Struct(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())))
+    Ok((
+        input,
+        ConstExpr::Struct(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect()),
+    ))
 }
 
-
-
-pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
-    let _ = rayon::ThreadPoolBuilder::new()
-        .num_threads(16)
-        .stack_size(2048 * 1024 * 1024)
-        .build_global();
-    // Compiling most examples overflows the tiny stack for tests.
-    // So, we spawn a new thread with a larger stack size.
-    std::thread::scope(|s| {
-        let child = std::thread::Builder::new()
+#[cfg(test)]
+mod tests {
+    fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
+        let _ = rayon::ThreadPoolBuilder::new()
+            .num_threads(16)
+            .stack_size(2048 * 1024 * 1024)
+            .build_global();
+        // Compiling most examples overflows the tiny stack for tests.
+        // So, we spawn a new thread with a larger stack size.
+        std::thread::scope(|s| {
+            let child = std::thread::Builder::new()
                 .stack_size(512 * 1024 * 1024)
                 .spawn_scoped(s, move || {
                     use crate::vm::*;
@@ -3946,7 +4111,7 @@ pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
                         .chars()
                         .without_comments(languages::rust())
                         .collect::<String>();
-                    let parsed = parse(&code, Some("input"), true, true)?;
+                    let parsed = crate::frontend::parse(&code, Some("input"), true, true)?;
                     let asm_code = parsed.compile();
                     // let asm_code = parsed.compile();
                     const CALL_STACK_SIZE: usize = 1024;
@@ -3960,8 +4125,7 @@ pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
                                     emit,
                                     termcolor::{ColorChoice, StandardStream},
                                 };
-                                use no_comment::{languages, IntoWithoutComments};
-    
+
                                 let SourceCodeLocation {
                                     line,
                                     column,
@@ -3969,15 +4133,15 @@ pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
                                     offset,
                                     length,
                                 } = loc;
-    
+
                                 let mut files = SimpleFiles::new();
-    
+
                                 let filename = filename.clone().unwrap_or("unknown".to_string());
-    
+
                                 let file_id = files.add(filename.clone(), &code);
-    
+
                                 let loc = format!("{}:{}:{}:{}", filename, line, column, offset);
-    
+
                                 let diagnostic = Diagnostic::error()
                                     .with_message(format!("Error at {}", loc))
                                     .with_labels(vec![Label::primary(
@@ -3985,476 +4149,43 @@ pub fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
                                         offset..(offset + length.unwrap_or(0)),
                                     )
                                     .with_message(format!("{err}"))]);
-    
+
                                 let writer = StandardStream::stderr(ColorChoice::Always);
                                 let config = codespan_reporting::term::Config::default();
-    
+
                                 emit(&mut writer.lock(), &config, &files, &diagnostic).unwrap();
-    
+
                                 return Err(format!("{e}"));
                             }
                         }
                         return Err(format!("{e}"));
                     }
                     let asm_code = asm_code.unwrap();
-            
+
                     let vm_code = match asm_code {
                         Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
                         Err(std_asm_code) => std_asm_code.assemble(CALL_STACK_SIZE).map(Err),
                     }
                     .unwrap();
-            
+
                     let device = match vm_code {
-                        Ok(vm_code) => CoreInterpreter::new(TestingDevice::new(input))
-                            .run(&vm_code)?,
-                            // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
-                        Err(vm_code) => StandardInterpreter::new(TestingDevice::new(input))
-                            .run(&vm_code)?
-                            // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
-                    };
-            
-                    let output_text = device.output_str();
-            
-                    Ok(output_text)
-                })
-                .unwrap();
-        child.join().unwrap()
-    })
-}
-
-
-pub fn old_compile_and_run(code: &str, input: &str) -> Result<String, String> {
-    // fn helper(code: &str, input: &str) -> Result<String, String> {
-    //     use crate::{lir::Compile, parse::*, vm::*};
-    //     use std::{
-    //         fs::{read_dir, read_to_string},
-    //         path::PathBuf,
-    //     };
-    //     let parsed = parse(code)?;
-    //     trace!("{parsed}");
-    //     let asm_code = parsed.compile();
-    //     const CALL_STACK_SIZE: usize = 1024;
-    //     if let Err(ref e) = asm_code {
-    //         return Err(format!("{e}"));
-    //     }
-    //     let asm_code = asm_code.unwrap();
-
-    //     let vm_code = match asm_code {
-    //         Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
-    //         Err(std_asm_code) => std_asm_code.assemble(CALL_STACK_SIZE).map(Err),
-    //     }
-    //     .unwrap();
-
-    //     let device = match vm_code {
-    //         Ok(vm_code) => CoreInterpreter::new(TestingDevice::new(input))
-    //             .run(&vm_code)?,
-    //             // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
-    //         Err(vm_code) => StandardInterpreter::new(TestingDevice::new(input))
-    //             .run(&vm_code)?
-    //             // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
-    //     };
-
-    //     let output_text = device.output_str();
-
-    //     Ok(output_text)
-    // }
-
-
-    // rayon::ThreadPoolBuilder::new()
-    //     .num_threads(1)
-    //     .stack_size(12 * 1024 * 1024)
-    //     .build_global()
-    //     .unwrap();
-
-    let _ = rayon::ThreadPoolBuilder::new()
-        .num_threads(1)
-        .stack_size(2048 * 1024 * 1024)
-        .build_global();
-    use crate::side_effects::Output;
-    // Compiling most examples overflows the tiny stack for tests.
-    // So, we spawn a new thread with a larger stack size.
-    std::thread::scope(|s| {
-        let child = std::thread::Builder::new()
-                .stack_size(512 * 1024 * 1024)
-                .spawn_scoped(s, move || {
-                    use crate::vm::*;
-                    use no_comment::{languages, IntoWithoutComments};
-                    // Strip comments
-                    let code = code
-                        .to_string()
-                        .chars()
-                        .without_comments(languages::rust())
-                        .collect::<String>();
-
-                    let parsed = crate::parse::parse_frontend(&code, None)?;
-                    trace!("PARSED: {parsed}");
-
-                    let alloc = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
-                        name: "alloc".to_string(),
-                        args: vec![("size".to_string(), crate::lir::Type::Int)],
-                        ret: crate::lir::Type::Pointer(
-                            crate::lir::Mutability::Mutable,
-                            Box::new(crate::lir::Type::Any),
-                        ),
-                        body: vec![crate::asm::StandardOp::Alloc(crate::asm::SP.deref())],
-                    });
-                    let free = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
-                        name: "free".to_string(),
-                        args: vec![(
-                            "ptr".to_string(),
-                            crate::lir::Type::Pointer(
-                                crate::lir::Mutability::Any,
-                                Box::new(crate::lir::Type::Any),
-                            ),
-                        )],
-                        ret: crate::lir::Type::None,
-                        body: vec![
-                            crate::asm::StandardOp::Free(crate::asm::SP.deref()),
-                            crate::asm::StandardOp::CoreOp(crate::asm::CoreOp::Pop(None, 1)),
-                        ],
-                    });
-                    use crate::asm::CoreOp::*;
-
-                    use crate::asm::*;
-                    // let realloc_fp_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
-                    //     name: "realloc_fp_stack".to_string(),
-                    //     args: vec![("size".to_string(), crate::lir::Type::Int)],
-                    //     ret: crate::lir::Type::None,
-                    //     body: vec![
-                    //         // Allocate the new frame pointer stack with the given size
-                    //         Alloc(SP.deref()),
-                    //         CoreOp(Many(vec![
-                    //             Pop(Some(C), 1),
-                    //             Move {
-                    //                 src: C,
-                    //                 dst: D
-                    //             },
-                    //             // Copy all the data from the old frame pointer stack to the new one
-                    //             // Copy the start of the old frame pointer stack to the new one
-                    //             GetAddress {
-                    //                 addr: START_OF_FP_STACK,
-                    //                 dst: A,
-                    //             },
-                    //             // Subtract from the current FP_STACK
-                    //             crate::asm::CoreOp::IsLess {
-                    //                 a: A,
-                    //                 b: FP_STACK,
-                    //                 dst: B,
-                    //             },
-                    //             While(B),
-                    //             Move {
-                    //                 src: A.deref(),
-                    //                 dst: C.deref(),
-                    //             },
-                    //             Next(A, None),
-                    //             Next(C, None),
-                    //             crate::asm::CoreOp::IsLess {
-                    //                 a: A,
-                    //                 b: FP_STACK,
-                    //                 dst: B,
-                    //             },
-                    //             End,
-                    //             Move {
-                    //                 src: C,
-                    //                 dst: FP_STACK,
-                    //             }
-                    //         ]))
-                    //     ],
-                    // });
-
-                    // let realloc_stack = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
-                    //     name: "realloc_stack".to_string(),
-                    //     args: vec![("size".to_string(), crate::lir::Type::Int)],
-                    //     ret: crate::lir::Type::None,
-                    //     body: vec![
-                    //         // Allocate the new frame pointer stack with the given size
-                    //         Alloc(SP.deref()),
-                    //         CoreOp(Many(vec![
-                    //             Pop(Some(C), 1),
-                    //             Move {
-                    //                 src: C,
-                    //                 dst: D
-                    //             },
-                    //             // Copy all the data from the old frame pointer stack to the new one
-                    //             // Copy the start of the old frame pointer stack to the new one
-                    //             Move {
-                    //                 src: STACK_START,
-                    //                 dst: A,
-                    //             },
-                    //             // Subtract from the current FP_STACK
-                    //             crate::asm::CoreOp::IsLess {
-                    //                 a: A,
-                    //                 b: SP,
-                    //                 dst: B,
-                    //             },
-                    //             crate::asm::CoreOp::Set(E, 0),
-                    //             While(B),
-                    //             Move {
-                    //                 src: A.deref(),
-                    //                 dst: C.deref(),
-                    //             },
-                    //             Next(A, None),
-                    //             Next(C, None),
-                    //             Inc(E),
-                    //             crate::asm::CoreOp::IsLess {
-                    //                 a: A,
-                    //                 b: SP,
-                    //                 dst: B,
-                    //             },
-                    //             End,
-                    //             // Index the FP by E
-                    //             Index {
-                    //                 src: FP,
-                    //                 offset: E,
-                    //                 dst: F,
-                    //             },
-                    //             Move {
-                    //                 src: F,
-                    //                 dst: FP,
-                    //             },
-
-                    //             Move {
-                    //                 src: C,
-                    //                 dst: SP,
-                    //             },
-                    //             Move {
-                    //                 src: D,
-                    //                 dst: STACK_START,
-                    //             }
-                    //         ]))
-                    //     ],
-                    // });
-
-                    let get_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "get_sp".to_string(),
-                        args: vec![],
-                        ret: crate::lir::Type::Pointer(
-                            crate::lir::Mutability::Any,
-                            Box::new(crate::lir::Type::Cell),
-                        ),
-                        body: vec![crate::asm::CoreOp::Push(crate::asm::SP, 1)],
-                    });
-
-                    let set_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "set_sp".to_string(),
-                        args: vec![(
-                            "new_sp".to_string(),
-                            crate::lir::Type::Pointer(
-                                crate::lir::Mutability::Any,
-                                Box::new(crate::lir::Type::Cell),
-                            ),
-                        )],
-                        ret: crate::lir::Type::None,
-                        body: vec![Pop(Some(A), 1), Move { src: A, dst: SP }],
-                    });
-
-                    let set_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "set_fp".to_string(),
-                        args: vec![(
-                            "new_fp".to_string(),
-                            crate::lir::Type::Pointer(
-                                crate::lir::Mutability::Any,
-                                Box::new(crate::lir::Type::Cell),
-                            ),
-                        )],
-                        ret: crate::lir::Type::None,
-                        body: vec![Pop(Some(FP), 1)],
-                    });
-
-                    let set_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "set_stack_start".to_string(),
-                        args: vec![(
-                            "new_stack_start".to_string(),
-                            crate::lir::Type::Pointer(
-                                crate::lir::Mutability::Any,
-                                Box::new(crate::lir::Type::Cell),
-                            ),
-                        )],
-                        ret: crate::lir::Type::None,
-                        body: vec![Pop(Some(STACK_START), 1)],
-                    });
-
-                    let get_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "get_fp".to_string(),
-                        args: vec![],
-                        ret: crate::lir::Type::Pointer(
-                            crate::lir::Mutability::Any,
-                            Box::new(crate::lir::Type::Cell),
-                        ),
-                        body: vec![crate::asm::CoreOp::Push(crate::asm::FP, 1)],
-                    });
-
-                    let get_gp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "get_gp".to_string(),
-                        args: vec![],
-                        ret: crate::lir::Type::Pointer(
-                            crate::lir::Mutability::Any,
-                            Box::new(crate::lir::Type::Cell),
-                        ),
-                        body: vec![crate::asm::CoreOp::Push(crate::asm::GP, 1)],
-                    });
-                    let set_gp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "set_gp".to_string(),
-                        args: vec![(
-                            "new_gp".to_string(),
-                            crate::lir::Type::Pointer(
-                                crate::lir::Mutability::Any,
-                                Box::new(crate::lir::Type::Cell),
-                            ),
-                        )],
-                        ret: crate::lir::Type::None,
-                        body: vec![Pop(Some(GP), 1)],
-                    });
-
-                    let get_fp_stack = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "get_fp_stack".to_string(),
-                        args: vec![],
-                        ret: crate::lir::Type::Pointer(
-                            crate::lir::Mutability::Any,
-                            Box::new(crate::lir::Type::Cell),
-                        ),
-                        body: vec![crate::asm::CoreOp::Push(crate::asm::FP_STACK, 1)],
-                    });
-
-                    let get_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "get_stack_start".to_string(),
-                        args: vec![],
-                        ret: crate::lir::Type::Pointer(
-                            crate::lir::Mutability::Any,
-                            Box::new(crate::lir::Type::Cell),
-                        ),
-                        body: vec![crate::asm::CoreOp::Push(crate::asm::STACK_START, 1)],
-                    });
-
-                    let mut debug_body = vec![];
-                    for ch in "Debug\n".to_string().chars() {
-                        debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, ch as i64));
-                        debug_body.push(crate::asm::CoreOp::Put(
-                            crate::asm::TMP,
-                            Output::stdout_char(),
-                        ));
-                    }
-                    for reg in crate::asm::REGISTERS {
-                        for ch in format!("   {reg} = ").chars() {
-                            debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, ch as i64));
-                            debug_body.push(crate::asm::CoreOp::Put(
-                                crate::asm::TMP,
-                                Output::stdout_char(),
-                            ));
+                        Ok(vm_code) => {
+                            CoreInterpreter::new(TestingDevice::new(input)).run(&vm_code)?
                         }
-                        debug_body.push(crate::asm::CoreOp::Put(reg, Output::stdout_int()));
-                        debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, '\n' as i64));
-                        debug_body.push(crate::asm::CoreOp::Put(
-                            crate::asm::TMP,
-                            Output::stdout_char(),
-                        ));
-                    }
-                    // Debug function
-                    // Prints out stack pointer, frame pointer, and the value at the top of the stack.
-                    let debug = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
-                        name: "debug".to_string(),
-                        args: vec![],
-                        ret: crate::lir::Type::None,
-                        body: debug_body,
-                    });
-
-                    // body: vec![
-                    //     crate::asm::StandardOp::CoreOp(
-                    //         crate::asm::CoreOp::Many(vec![
-                    //             crate::asm::CoreOp::Set(crate::asm::A, 'S' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Put(crate::asm::SP, Output::stdout_int()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-
-                    //             crate::asm::CoreOp::Set(crate::asm::A, 'F' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Put(crate::asm::FP, Output::stdout_int()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-
-                    //             crate::asm::CoreOp::Set(crate::asm::A, 'T' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, 'O' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, 'P' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, ':' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, ' ' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //             crate::asm::CoreOp::Put(crate::asm::SP.deref(), Output::stdout_int()),
-                    //             crate::asm::CoreOp::Set(crate::asm::A, '\n' as i64),
-                    //             crate::asm::CoreOp::Put(crate::asm::A, Output::stdout_char()),
-                    //         ])
-                    //     )
-                    // ],
-
-                    let asm_code = crate::lir::Expr::let_consts(
-                        vec![
-                            ("free", free),
-                            ("alloc", alloc),
-                            // ("realloc_fp_stack", realloc_fp_stack),
-                            // ("realloc_stack", realloc_stack),
-                            ("debug", debug),
-                            ("get_sp", get_sp),
-                            ("get_fp", get_fp),
-                            ("set_sp", set_sp),
-                            ("set_fp", set_fp),
-                            ("set_gp", set_gp),
-                            ("get_fp_stack", get_fp_stack),
-                            ("get_stack_start", get_stack_start),
-                            ("set_stack_start", set_stack_start),
-                            ("get_gp", get_gp),
-                        ],
-                        parsed,
-                    ).compile();
-                    // let asm_code = parsed.compile();
-                    const CALL_STACK_SIZE: usize = 1024;
-                    if let Err(ref e) = asm_code {
-                        return Err(format!("{e}"));
-                    }
-                    let asm_code = asm_code.unwrap();
-            
-                    let vm_code = match asm_code {
-                        Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
-                        Err(std_asm_code) => std_asm_code.assemble(CALL_STACK_SIZE).map(Err),
-                    }
-                    .unwrap();
-            
-                    let device = match vm_code {
-                        Ok(vm_code) => CoreInterpreter::new(TestingDevice::new(input))
-                            .run(&vm_code)?,
-                            // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
-                        Err(vm_code) => StandardInterpreter::new(TestingDevice::new(input))
-                            .run(&vm_code)?
-                            // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
+                        // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
+                        Err(vm_code) => {
+                            StandardInterpreter::new(TestingDevice::new(input)).run(&vm_code)?
+                        } // .unwrap_or_else(|_| panic!("Could not interpret code in `{path:?}`")),
                     };
-            
+
                     let output_text = device.output_str();
-            
+
                     Ok(output_text)
                 })
                 .unwrap();
-        child.join().unwrap()
-    })
-}
-
-#[cfg(test)]
-mod tests {
-    use rayon::iter::Zip;
+            child.join().unwrap()
+        })
+    }
 
     use super::*;
 
@@ -4466,11 +4197,13 @@ mod tests {
             Err(nom::Err::Incomplete(e)) => unreachable!("Incomplete: {:?}", e),
             _ => {}
         }
-        let result = result.map_err(|e| match e {
-            nom::Err::Error(e) => nom::error::convert_error(input, e),
-            nom::Err::Failure(e) => nom::error::convert_error(input, e),
-            nom::Err::Incomplete(_) => unreachable!("Incomplete: {:?}", e)
-        }).unwrap();
+        let result = result
+            .map_err(|e| match e {
+                nom::Err::Error(e) => nom::error::convert_error(input, e),
+                nom::Err::Failure(e) => nom::error::convert_error(input, e),
+                nom::Err::Incomplete(_) => unreachable!("Incomplete: {:?}", e),
+            })
+            .unwrap();
         trace!("{:?}", result);
 
         if let Some(expected) = expected {
@@ -4486,11 +4219,13 @@ mod tests {
             Err(nom::Err::Incomplete(e)) => unreachable!("Incomplete: {:?}", e),
             _ => {}
         }
-        let result = result.map_err(|e| match e {
-            nom::Err::Error(e) => nom::error::convert_error(input, e),
-            nom::Err::Failure(e) => nom::error::convert_error(input, e),
-            nom::Err::Incomplete(_) => unreachable!("Incomplete: {:?}", e)
-        }).unwrap();
+        let result = result
+            .map_err(|e| match e {
+                nom::Err::Error(e) => nom::error::convert_error(input, e),
+                nom::Err::Failure(e) => nom::error::convert_error(input, e),
+                nom::Err::Incomplete(_) => unreachable!("Incomplete: {:?}", e),
+            })
+            .unwrap();
         trace!("{:?}", result);
 
         if let Some(expected) = expected {
@@ -4509,7 +4244,7 @@ mod tests {
         let result = result.map_err(|e| match e {
             nom::Err::Error(e) => nom::error::convert_error(input, e),
             nom::Err::Failure(e) => nom::error::convert_error(input, e),
-            nom::Err::Incomplete(_) => unreachable!("Incomplete: {:?}", e)
+            nom::Err::Incomplete(_) => unreachable!("Incomplete: {:?}", e),
         });
         trace!("{:?}", result);
         assert!(result.is_err());
@@ -4523,33 +4258,18 @@ mod tests {
             Err(nom::Err::Incomplete(e)) => unreachable!("Incomplete: {:?}", e),
             _ => {}
         }
-        let result = result.map_err(|e| match e {
-            nom::Err::Error(e) => nom::error::convert_error(input, e),
-            nom::Err::Failure(e) => nom::error::convert_error(input, e),
-            nom::Err::Incomplete(_) => unreachable!("Incomplete: {:?}", e)
-        }).unwrap();
+        let result = result
+            .map_err(|e| match e {
+                nom::Err::Error(e) => nom::error::convert_error(input, e),
+                nom::Err::Failure(e) => nom::error::convert_error(input, e),
+                nom::Err::Incomplete(_) => unreachable!("Incomplete: {:?}", e),
+            })
+            .unwrap();
         trace!("{:?}", result);
 
         if let Some(expr) = expr {
             assert_eq!(result.1, expr);
         }
-    }
-
-    fn unassert_parse_expr(input: &str) {
-        let result = parse_expr::<nom::error::VerboseError<&str>>(input);
-        match result.clone() {
-            Err(nom::Err::Error(e)) => trace!("Error: {}", nom::error::convert_error(input, e)),
-            Err(nom::Err::Failure(e)) => trace!("Error: {}", nom::error::convert_error(input, e)),
-            Err(nom::Err::Incomplete(e)) => unreachable!("Incomplete: {:?}", e),
-            _ => {}
-        }
-        let result = result.map_err(|e| match e {
-            nom::Err::Error(e) => nom::error::convert_error(input, e),
-            nom::Err::Failure(e) => nom::error::convert_error(input, e),
-            nom::Err::Incomplete(_) => unreachable!("Incomplete: {:?}", e)
-        });
-        trace!("{:?}", result);
-        assert!(result.is_err());
     }
 
     #[test]
@@ -4559,8 +4279,29 @@ mod tests {
         assert_parse_const("1.0", Some(ConstExpr::Float(1.0)));
         assert_parse_const("'-'", Some(ConstExpr::Char('-')));
 
-        assert_parse_const("\"hello\"", Some(ConstExpr::Array(vec![ConstExpr::Char('h'), ConstExpr::Char('e'), ConstExpr::Char('l'), ConstExpr::Char('l'), ConstExpr::Char('o'), ConstExpr::Char('\0')])));
-        assert_parse_const("\"hello\\n\"", Some(ConstExpr::Array(vec![ConstExpr::Char('h'), ConstExpr::Char('e'), ConstExpr::Char('l'), ConstExpr::Char('l'), ConstExpr::Char('o'), ConstExpr::Char('\n'), ConstExpr::Char('\0')])));
+        assert_parse_const(
+            "\"hello\"",
+            Some(ConstExpr::Array(vec![
+                ConstExpr::Char('h'),
+                ConstExpr::Char('e'),
+                ConstExpr::Char('l'),
+                ConstExpr::Char('l'),
+                ConstExpr::Char('o'),
+                ConstExpr::Char('\0'),
+            ])),
+        );
+        assert_parse_const(
+            "\"hello\\n\"",
+            Some(ConstExpr::Array(vec![
+                ConstExpr::Char('h'),
+                ConstExpr::Char('e'),
+                ConstExpr::Char('l'),
+                ConstExpr::Char('l'),
+                ConstExpr::Char('o'),
+                ConstExpr::Char('\n'),
+                ConstExpr::Char('\0'),
+            ])),
+        );
 
         assert_parse_const("a", Some(ConstExpr::Symbol("a".to_string())));
         assert_parse_const("_a", Some(ConstExpr::Symbol("_a".to_string())));
@@ -4583,24 +4324,44 @@ mod tests {
             let mut fields = std::collections::BTreeMap::new();
             fields.insert("a".to_string(), ConstExpr::Int(1));
             fields.insert("b".to_string(), ConstExpr::Int(2));
-            ConstExpr::Tuple(vec![ConstExpr::Struct(fields.clone()), ConstExpr::Struct(fields)])
+            ConstExpr::Tuple(vec![
+                ConstExpr::Struct(fields.clone()),
+                ConstExpr::Struct(fields),
+            ])
         };
         assert_parse_const("({a=1, b=2,}, {b=2, a=1})", Some(t.clone()));
         assert_parse_const("(1,)", Some(ConstExpr::Tuple(vec![ConstExpr::Int(1)])));
 
-        let a = ConstExpr::Array(vec![ConstExpr::Int(1), ConstExpr::Int(2), ConstExpr::Int(3)]);
+        let a = ConstExpr::Array(vec![
+            ConstExpr::Int(1),
+            ConstExpr::Int(2),
+            ConstExpr::Int(3),
+        ]);
         assert_parse_const("[1, 2, 3]", Some(a.clone()));
-        
-        assert_parse_const("std.Option<Int>", Some(ConstExpr::Symbol("std".to_string()).field(ConstExpr::Symbol("Option".to_string())).monomorphize(vec![Type::Int])));
-        assert_parse_const("sizeof([1, 2, 3])", Some(ConstExpr::SizeOfExpr(Expr::from(a.clone()).into())));
+
+        assert_parse_const(
+            "std.Option<Int>",
+            Some(
+                ConstExpr::Symbol("std".to_string())
+                    .field(ConstExpr::Symbol("Option".to_string()))
+                    .monomorphize(vec![Type::Int]),
+            ),
+        );
+        assert_parse_const(
+            "sizeof([1, 2, 3])",
+            Some(ConstExpr::SizeOfExpr(Expr::from(a.clone()).into())),
+        );
         assert_parse_const("sizeof<Int>()", Some(ConstExpr::SizeOfType(Type::Int)));
         unassert_parse_const("sizeof<Int>(5)");
-        assert_parse_const("Result<Int, String> of Ok(5)", Some(
-            ConstExpr::EnumUnion(Type::Symbol("Result".to_string()).apply(vec![
-                Type::Int,
-                Type::Symbol("String".to_string()),
-            ]), "Ok".to_string(), Box::new(ConstExpr::Int(5)))
-        ));
+        assert_parse_const(
+            "Result<Int, String> of Ok(5)",
+            Some(ConstExpr::EnumUnion(
+                Type::Symbol("Result".to_string())
+                    .apply(vec![Type::Int, Type::Symbol("String".to_string())]),
+                "Ok".to_string(),
+                Box::new(ConstExpr::Int(5)),
+            )),
+        );
     }
 
     #[test]
@@ -4613,76 +4374,223 @@ mod tests {
         assert_parse_type("()", Some(Type::None));
         assert_parse_type("( )", Some(Type::None));
 
-
-        assert_parse_type("&Int", Some(Type::Pointer(Mutability::Immutable, Box::new(Type::Int))));
-        assert_parse_type("&mut Int", Some(Type::Pointer(Mutability::Mutable, Box::new(Type::Int))));
-        assert_parse_type("& mut Int", Some(Type::Pointer(Mutability::Mutable, Box::new(Type::Int))));
-        assert_parse_type("&mut (Int, Char)", Some(Type::Pointer(Mutability::Mutable, Box::new(Type::Tuple(vec![
-            Type::Int,
-            Type::Char,
-        ])))));
-
-        assert_parse_type("[Int * 5]", Some(Type::Array(Box::new(Type::Int), Box::new(ConstExpr::Int(5)))));
-
-        assert_parse_type("enum {Ok Int, Err &Char}", Some(Type::EnumUnion(vec![
-            ("Ok".to_string(), Type::Int),
-            ("Err".to_string(), Type::Pointer(Mutability::Immutable, Box::new(Type::Char))),
-        ].into_iter().collect())));
-
-        assert_parse_type("struct {a: Int, b: Char}", Some(Type::Struct(vec![
-            ("a".to_string(), Type::Int),
-            ("b".to_string(), Type::Char),
-        ].into_iter().collect())));
-
-        assert_parse_type("enum {Ok {x: Int, y: Int}, Err &Char}", Some(Type::EnumUnion(vec![
-            ("Ok".to_string(), Type::Struct(
-                vec![
-                    ("x".to_string(), Type::Int),
-                    ("y".to_string(), Type::Int),
-                ].into_iter().collect()
+        assert_parse_type(
+            "&Int",
+            Some(Type::Pointer(Mutability::Immutable, Box::new(Type::Int))),
+        );
+        assert_parse_type(
+            "&mut Int",
+            Some(Type::Pointer(Mutability::Mutable, Box::new(Type::Int))),
+        );
+        assert_parse_type(
+            "& mut Int",
+            Some(Type::Pointer(Mutability::Mutable, Box::new(Type::Int))),
+        );
+        assert_parse_type(
+            "&mut (Int, Char)",
+            Some(Type::Pointer(
+                Mutability::Mutable,
+                Box::new(Type::Tuple(vec![Type::Int, Type::Char])),
             )),
-            ("Err".to_string(), Type::Pointer(Mutability::Immutable, Box::new(Type::Char))),
-        ].into_iter().collect())));
+        );
 
-        assert_parse_type("Option<Int>", Some(Type::Apply(Box::new(Type::Symbol("Option".to_string())), vec![Type::Int])));
-        assert_parse_type("fun(Option<Int>) -> Bool", Some(Type::Proc(vec![
-            Type::Apply(Box::new(Type::Symbol("Option".to_string())), vec![Type::Int])
-        ], Box::new(Type::Bool))));
-        assert_parse_type("fun<T>(Option<T>) -> Bool", Some(Type::Poly(vec!["T".to_string()], Type::Proc(vec![
-            Type::Apply(Box::new(Type::Symbol("Option".to_string())), vec![Type::Symbol("T".to_string())])
-        ], Box::new(Type::Bool)).into())));
+        assert_parse_type(
+            "[Int * 5]",
+            Some(Type::Array(
+                Box::new(Type::Int),
+                Box::new(ConstExpr::Int(5)),
+            )),
+        );
 
-        assert_parse_type("fun<T>(Option<T>, Int) -> Bool", Some(Type::Poly(vec!["T".to_string()], Type::Proc(vec![
-            Type::Apply(Box::new(Type::Symbol("Option".to_string())), vec![Type::Symbol("T".to_string())]),
-            Type::Int,
-        ], Box::new(Type::Bool)).into())));
+        assert_parse_type(
+            "enum {Ok Int, Err &Char}",
+            Some(Type::EnumUnion(
+                vec![
+                    ("Ok".to_string(), Type::Int),
+                    (
+                        "Err".to_string(),
+                        Type::Pointer(Mutability::Immutable, Box::new(Type::Char)),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            )),
+        );
+
+        assert_parse_type(
+            "struct {a: Int, b: Char}",
+            Some(Type::Struct(
+                vec![("a".to_string(), Type::Int), ("b".to_string(), Type::Char)]
+                    .into_iter()
+                    .collect(),
+            )),
+        );
+
+        assert_parse_type(
+            "enum {Ok {x: Int, y: Int}, Err &Char}",
+            Some(Type::EnumUnion(
+                vec![
+                    (
+                        "Ok".to_string(),
+                        Type::Struct(
+                            vec![("x".to_string(), Type::Int), ("y".to_string(), Type::Int)]
+                                .into_iter()
+                                .collect(),
+                        ),
+                    ),
+                    (
+                        "Err".to_string(),
+                        Type::Pointer(Mutability::Immutable, Box::new(Type::Char)),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            )),
+        );
+
+        assert_parse_type(
+            "Option<Int>",
+            Some(Type::Apply(
+                Box::new(Type::Symbol("Option".to_string())),
+                vec![Type::Int],
+            )),
+        );
+        assert_parse_type(
+            "fun(Option<Int>) -> Bool",
+            Some(Type::Proc(
+                vec![Type::Apply(
+                    Box::new(Type::Symbol("Option".to_string())),
+                    vec![Type::Int],
+                )],
+                Box::new(Type::Bool),
+            )),
+        );
+        assert_parse_type(
+            "fun<T>(Option<T>) -> Bool",
+            Some(Type::Poly(
+                vec!["T".to_string()],
+                Type::Proc(
+                    vec![Type::Apply(
+                        Box::new(Type::Symbol("Option".to_string())),
+                        vec![Type::Symbol("T".to_string())],
+                    )],
+                    Box::new(Type::Bool),
+                )
+                .into(),
+            )),
+        );
+
+        assert_parse_type(
+            "fun<T>(Option<T>, Int) -> Bool",
+            Some(Type::Poly(
+                vec!["T".to_string()],
+                Type::Proc(
+                    vec![
+                        Type::Apply(
+                            Box::new(Type::Symbol("Option".to_string())),
+                            vec![Type::Symbol("T".to_string())],
+                        ),
+                        Type::Int,
+                    ],
+                    Box::new(Type::Bool),
+                )
+                .into(),
+            )),
+        );
     }
 
     #[test]
     fn test_parse_operator_precedence() {
         // Basic addition and subtraction
         assert_parse_expr("a - b", Some(Expr::var("a").sub(Expr::var("b"))));
-        assert_parse_expr("a + b - c", Some(Expr::var("a").add(Expr::var("b")).sub(Expr::var("c"))));
+        assert_parse_expr(
+            "a + b - c",
+            Some(Expr::var("a").add(Expr::var("b")).sub(Expr::var("c"))),
+        );
 
         // Multiplication and division with addition and subtraction
-        assert_parse_expr("a * b - c", Some(Expr::var("a").mul(Expr::var("b")).sub(Expr::var("c"))));
-        assert_parse_expr("a / b + c", Some(Expr::var("a").div(Expr::var("b")).add(Expr::var("c"))));
-        assert_parse_expr("a * b / c", Some(Expr::var("a").mul(Expr::var("b")).div(Expr::var("c"))));
+        assert_parse_expr(
+            "a * b - c",
+            Some(Expr::var("a").mul(Expr::var("b")).sub(Expr::var("c"))),
+        );
+        assert_parse_expr(
+            "a / b + c",
+            Some(Expr::var("a").div(Expr::var("b")).add(Expr::var("c"))),
+        );
+        assert_parse_expr(
+            "a * b / c",
+            Some(Expr::var("a").mul(Expr::var("b")).div(Expr::var("c"))),
+        );
 
         // Mixed operations with parentheses
-        assert_parse_expr("a * (b + c)", Some(Expr::var("a").mul(Expr::var("b").add(Expr::var("c")))));
-        assert_parse_expr("(a + b) * c", Some(Expr::var("a").add(Expr::var("b")).mul(Expr::var("c"))));
-        assert_parse_expr("(a + b) * (c - d)", Some(Expr::var("a").add(Expr::var("b")).mul(Expr::var("c").sub(Expr::var("d")))));
+        assert_parse_expr(
+            "a * (b + c)",
+            Some(Expr::var("a").mul(Expr::var("b").add(Expr::var("c")))),
+        );
+        assert_parse_expr(
+            "(a + b) * c",
+            Some(Expr::var("a").add(Expr::var("b")).mul(Expr::var("c"))),
+        );
+        assert_parse_expr(
+            "(a + b) * (c - d)",
+            Some(
+                Expr::var("a")
+                    .add(Expr::var("b"))
+                    .mul(Expr::var("c").sub(Expr::var("d"))),
+            ),
+        );
 
         // Multiple operators with parentheses
-        assert_parse_expr("a + (b * c) / d", Some(Expr::var("a").add(Expr::var("b").mul(Expr::var("c")).div(Expr::var("d")))));
-        assert_parse_expr("a + b * (c - d) / e", Some(Expr::var("a").add(Expr::var("b").mul(Expr::var("c").sub(Expr::var("d"))).div(Expr::var("e")))));
+        assert_parse_expr(
+            "a + (b * c) / d",
+            Some(Expr::var("a").add(Expr::var("b").mul(Expr::var("c")).div(Expr::var("d")))),
+        );
+        assert_parse_expr(
+            "a + b * (c - d) / e",
+            Some(
+                Expr::var("a").add(
+                    Expr::var("b")
+                        .mul(Expr::var("c").sub(Expr::var("d")))
+                        .div(Expr::var("e")),
+                ),
+            ),
+        );
 
         // Nested parentheses
-        assert_parse_expr("a + (b * (c + d))", Some(Expr::var("a").add(Expr::var("b").mul(Expr::var("c").add(Expr::var("d"))))));
-        assert_parse_expr("((a + b) * c) - d", Some(Expr::var("a").add(Expr::var("b")).mul(Expr::var("c")).sub(Expr::var("d"))));
-        assert_parse_expr("((a + b) * c) - d < 0", Some(Expr::var("a").add(Expr::var("b")).mul(Expr::var("c")).sub(Expr::var("d")).lt(ConstExpr::Int(0))));
-        assert_parse_expr("((a + b) * c) - d < 0 && 1 != 0", Some(Expr::var("a").add(Expr::var("b")).mul(Expr::var("c")).sub(Expr::var("d")).lt(ConstExpr::Int(0)).and(Expr::from(ConstExpr::Int(1)).neq(ConstExpr::Int(0)))));
+        assert_parse_expr(
+            "a + (b * (c + d))",
+            Some(Expr::var("a").add(Expr::var("b").mul(Expr::var("c").add(Expr::var("d"))))),
+        );
+        assert_parse_expr(
+            "((a + b) * c) - d",
+            Some(
+                Expr::var("a")
+                    .add(Expr::var("b"))
+                    .mul(Expr::var("c"))
+                    .sub(Expr::var("d")),
+            ),
+        );
+        assert_parse_expr(
+            "((a + b) * c) - d < 0",
+            Some(
+                Expr::var("a")
+                    .add(Expr::var("b"))
+                    .mul(Expr::var("c"))
+                    .sub(Expr::var("d"))
+                    .lt(ConstExpr::Int(0)),
+            ),
+        );
+        assert_parse_expr(
+            "((a + b) * c) - d < 0 && 1 != 0",
+            Some(
+                Expr::var("a")
+                    .add(Expr::var("b"))
+                    .mul(Expr::var("c"))
+                    .sub(Expr::var("d"))
+                    .lt(ConstExpr::Int(0))
+                    .and(Expr::from(ConstExpr::Int(1)).neq(ConstExpr::Int(0))),
+            ),
+        );
     }
 
     #[test]
@@ -4690,7 +4598,8 @@ mod tests {
         // Set logging level to debug
         // env_logger::builder().filter_level(log::LevelFilter::println).init();
 
-        match compile_and_run(r#"
+        match compile_and_run(
+            r#"
 module std {
     module fs {
         fun open(path: &Char, mode: &Char): Int {
@@ -4742,19 +4651,22 @@ from std import println as p;
 from std import Point;
 
 p<Int>(5);
-        "#, "hello!") {
+        "#,
+            "hello!",
+        ) {
             Ok(expr) => {
                 // trace!("{:#?}", expr)
                 // Compile and run
                 trace!("{}", expr)
-            },
+            }
             Err(e) => trace!("Error: {}", e),
         }
     }
 
     #[test]
     fn test_parse_expr() {
-        match compile_and_run(r#"
+        match compile_and_run(
+            r#"
             fun memcpy<T>(dst: &mut T, src: &T, n: Int) {
                 for let mut i = 0; i < n; i += 1; {
                     dst[i] = src[i];
@@ -4871,82 +4783,121 @@ p<Int>(5);
             let mut x = X.new<Float>();
             x.push(3.14159);
             x.print();
-            "#, "hello!") {
+            "#,
+            "hello!",
+        ) {
             Ok(expr) => {
                 // trace!("{:#?}", expr)
                 // Compile and run
                 trace!("{}", expr)
-            },
+            }
             Err(e) => trace!("Error: {}", e),
         }
         assert_parse_expr("1", Some(Expr::ConstExpr(ConstExpr::Int(1))));
         assert_parse_expr("1.0", Some(Expr::ConstExpr(ConstExpr::Float(1.0))));
 
-        assert_parse_expr("(1.0, {x, y})", Some(Expr::ConstExpr(ConstExpr::Tuple(vec![
-            ConstExpr::Float(1.0),
-            ConstExpr::Struct({
-                let mut fields = std::collections::BTreeMap::new();
-                fields.insert("x".to_string(), ConstExpr::Symbol("x".to_string()));
-                fields.insert("y".to_string(), ConstExpr::Symbol("y".to_string()));
-                fields
-            })
-        ]))));
+        assert_parse_expr(
+            "(1.0, {x, y})",
+            Some(Expr::ConstExpr(ConstExpr::Tuple(vec![
+                ConstExpr::Float(1.0),
+                ConstExpr::Struct({
+                    let mut fields = std::collections::BTreeMap::new();
+                    fields.insert("x".to_string(), ConstExpr::Symbol("x".to_string()));
+                    fields.insert("y".to_string(), ConstExpr::Symbol("y".to_string()));
+                    fields
+                }),
+            ]))),
+        );
 
-        assert_parse_expr("{a;b}", Some(Expr::Many(vec![
-            Expr::ConstExpr(ConstExpr::Symbol("a".to_string())),
-            Expr::ConstExpr(ConstExpr::Symbol("b".to_string())),
-        ])));
-        assert_parse_expr("{a}", Some(Expr::ConstExpr(ConstExpr::Struct({
-            let mut fields = std::collections::BTreeMap::new();
-            fields.insert("a".to_string(), ConstExpr::var("a"));
-            fields
-        }))));
-        
+        assert_parse_expr(
+            "{a;b}",
+            Some(Expr::Many(vec![
+                Expr::ConstExpr(ConstExpr::Symbol("a".to_string())),
+                Expr::ConstExpr(ConstExpr::Symbol("b".to_string())),
+            ])),
+        );
+        assert_parse_expr(
+            "{a}",
+            Some(Expr::ConstExpr(ConstExpr::Struct({
+                let mut fields = std::collections::BTreeMap::new();
+                fields.insert("a".to_string(), ConstExpr::var("a"));
+                fields
+            }))),
+        );
+
         // Now try calls
         assert_parse_expr("a()", Some(Expr::var("a").app(vec![])));
         assert_parse_expr("a(b)", Some(Expr::var("a").app(vec![Expr::var("b")])));
-        assert_parse_expr("a.x(b)", Some(Expr::var("a").field(ConstExpr::var("x")).app(vec![Expr::var("b")])));
-        assert_parse_expr("std.println<Int>(5)", Some(ConstExpr::var("std").field(ConstExpr::var("println")).monomorphize(vec![Type::Int]).app(vec![ConstExpr::Int(5).into()])));
+        assert_parse_expr(
+            "a.x(b)",
+            Some(
+                Expr::var("a")
+                    .field(ConstExpr::var("x"))
+                    .app(vec![Expr::var("b")]),
+            ),
+        );
+        assert_parse_expr(
+            "std.println<Int>(5)",
+            Some(
+                ConstExpr::var("std")
+                    .field(ConstExpr::var("println"))
+                    .monomorphize(vec![Type::Int])
+                    .app(vec![ConstExpr::Int(5).into()]),
+            ),
+        );
         assert_parse_expr("True", Some(ConstExpr::Bool(true).into()));
-        assert_parse_expr("!True || 1 + 2 >= 3", Some(
-            Expr::from(ConstExpr::Bool(true)).not().or(
-                Expr::from(ConstExpr::Int(1)).add(Expr::from(ConstExpr::Int(2))).ge(Expr::from(ConstExpr::Int(3)))
-            )
-        ));
+        assert_parse_expr(
+            "!True || 1 + 2 >= 3",
+            Some(
+                Expr::from(ConstExpr::Bool(true))
+                    .not()
+                    .or(Expr::from(ConstExpr::Int(1))
+                        .add(Expr::from(ConstExpr::Int(2)))
+                        .ge(Expr::from(ConstExpr::Int(3)))),
+            ),
+        );
 
-        assert_parse_expr("*&a", Some(Expr::var("a").refer(Mutability::Immutable).deref()));
-        assert_parse_expr("&*a", Some(Expr::var("a").deref().refer(Mutability::Immutable)));
-        assert_parse_expr("&mut *a", Some(Expr::var("a").deref().refer(Mutability::Mutable)));
+        assert_parse_expr(
+            "*&a",
+            Some(Expr::var("a").refer(Mutability::Immutable).deref()),
+        );
+        assert_parse_expr(
+            "&*a",
+            Some(Expr::var("a").deref().refer(Mutability::Immutable)),
+        );
+        assert_parse_expr(
+            "&mut *a",
+            Some(Expr::var("a").deref().refer(Mutability::Mutable)),
+        );
 
         trace!("Parsing block");
-//         trace!("{:#?}", parse_suite::<nom::error::VerboseError<&str>>(0, r#"
-// enum Result<T, E>:
-//     Ok(T)
-//     Err(E)
+        //         trace!("{:#?}", parse_suite::<nom::error::VerboseError<&str>>(0, r#"
+        // enum Result<T, E>:
+        //     Ok(T)
+        //     Err(E)
 
-// struct Point:
-//     x: Int
-//     y: Int
+        // struct Point:
+        //     x: Int
+        //     y: Int
 
-// if True and 1 > 2 + 3:
-//     println(a + b)
-//     a - b
-//     while not a:
-//         println("Testing")
-//         std.println<Int>(5)
-//         increment(&mut a)
+        // if True and 1 > 2 + 3:
+        //     println(a + b)
+        //     a - b
+        //     while not a:
+        //         println("Testing")
+        //         std.println<Int>(5)
+        //         increment(&mut a)
 
-//         Result<Int, String> of Ok(5)
-        
-//         "#));
-        
+        //         Result<Int, String> of Ok(5)
+
+        //         "#));
+
         // impl Result<T, E>:
         //     def unwrap(self) -> T:
         //         match self:
         //             of Ok(x) => x
         //             of Err(e) => panic(e)
     }
-
 
     // #[test]
     // fn test_parse_const_tuple() {

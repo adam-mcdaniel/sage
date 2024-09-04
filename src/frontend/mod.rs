@@ -1,23 +1,26 @@
 mod parse;
-use parse::{parse_module, parse_source};
 use crate::lir::Expr;
+use parse::{parse_module, parse_source};
 
 fn without_comments(code: impl ToString) -> String {
-    use no_comment::{IntoWithoutComments, languages};
-    code
-        .to_string()
+    use no_comment::{languages, IntoWithoutComments};
+    code.to_string()
         .chars()
         .without_comments(languages::rust())
         .collect::<String>()
 }
 
-pub fn parse(input: impl ToString, filename: Option<&str>, include_builtins: bool, include_std: bool) -> Result<Expr, String> {
+pub fn parse(
+    input: impl ToString,
+    filename: Option<&str>,
+    include_builtins: bool,
+    include_std: bool,
+) -> Result<Expr, String> {
     let mut expr = parse_source(&without_comments(input), filename.map(|x| x.to_owned()))?;
     use crate::side_effects::Output;
     if include_std {
         let std_lib = parse_module("std", &without_comments(include_str!("std_lib.sg")))?;
         expr = expr.with(std_lib)
-        // expr = expr.hard_with(std_lib)
     }
     if include_builtins {
         let alloc = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {
@@ -45,9 +48,9 @@ pub fn parse(input: impl ToString, filename: Option<&str>, include_builtins: boo
             ],
         });
         use crate::asm::CoreOp::*;
-    
+
         use crate::asm::*;
-        
+
         let get_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
             name: "get_sp".to_string(),
             args: vec![],
@@ -57,7 +60,7 @@ pub fn parse(input: impl ToString, filename: Option<&str>, include_builtins: boo
             ),
             body: vec![crate::asm::CoreOp::Push(crate::asm::SP, 1)],
         });
-    
+
         let set_sp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
             name: "set_sp".to_string(),
             args: vec![(
@@ -70,7 +73,7 @@ pub fn parse(input: impl ToString, filename: Option<&str>, include_builtins: boo
             ret: crate::lir::Type::None,
             body: vec![Pop(Some(A), 1), Move { src: A, dst: SP }],
         });
-    
+
         let set_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
             name: "set_fp".to_string(),
             args: vec![(
@@ -83,7 +86,7 @@ pub fn parse(input: impl ToString, filename: Option<&str>, include_builtins: boo
             ret: crate::lir::Type::None,
             body: vec![Pop(Some(FP), 1)],
         });
-    
+
         let set_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
             name: "set_stack_start".to_string(),
             args: vec![(
@@ -96,7 +99,7 @@ pub fn parse(input: impl ToString, filename: Option<&str>, include_builtins: boo
             ret: crate::lir::Type::None,
             body: vec![Pop(Some(STACK_START), 1)],
         });
-    
+
         let get_fp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
             name: "get_fp".to_string(),
             args: vec![],
@@ -106,7 +109,7 @@ pub fn parse(input: impl ToString, filename: Option<&str>, include_builtins: boo
             ),
             body: vec![crate::asm::CoreOp::Push(crate::asm::FP, 1)],
         });
-    
+
         let get_gp = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
             name: "get_gp".to_string(),
             args: vec![],
@@ -128,7 +131,7 @@ pub fn parse(input: impl ToString, filename: Option<&str>, include_builtins: boo
             ret: crate::lir::Type::None,
             body: vec![Pop(Some(GP), 1)],
         });
-    
+
         let get_fp_stack = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
             name: "get_fp_stack".to_string(),
             args: vec![],
@@ -138,7 +141,7 @@ pub fn parse(input: impl ToString, filename: Option<&str>, include_builtins: boo
             ),
             body: vec![crate::asm::CoreOp::Push(crate::asm::FP_STACK, 1)],
         });
-    
+
         let get_stack_start = crate::lir::ConstExpr::CoreBuiltin(crate::lir::CoreBuiltin {
             name: "get_stack_start".to_string(),
             args: vec![],
@@ -148,7 +151,7 @@ pub fn parse(input: impl ToString, filename: Option<&str>, include_builtins: boo
             ),
             body: vec![crate::asm::CoreOp::Push(crate::asm::STACK_START, 1)],
         });
-    
+
         let mut debug_body = vec![];
         for ch in "Debug\n".to_string().chars() {
             debug_body.push(crate::asm::CoreOp::Set(crate::asm::TMP, ch as i64));
@@ -180,8 +183,7 @@ pub fn parse(input: impl ToString, filename: Option<&str>, include_builtins: boo
             ret: crate::lir::Type::None,
             body: debug_body,
         });
-    
-    
+
         expr = crate::lir::Expr::let_consts(
             vec![
                 ("free", free),

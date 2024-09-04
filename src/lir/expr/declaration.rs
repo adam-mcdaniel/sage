@@ -1,22 +1,21 @@
 use super::{PolyProcedure, Procedure};
 use crate::{
-    lir::Annotation,
     asm::{AssemblyProgram, CoreOp, Location, SP},
     lir::{
         Compile, ConstExpr, Env, Error, Expr, FFIProcedure, GetSize, GetType, Mutability, Pattern,
         Type, TypeCheck,
     },
 };
-use std::sync::Arc;
 use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     ops::{Add, AddAssign},
 };
 use log::*;
 use rayon::prelude::*;
+use serde_derive::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
-use serde_derive::{Deserialize, Serialize};
+use std::sync::Arc;
 
 /// A declaration of a variable, function, type, etc.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -68,9 +67,10 @@ impl Declaration {
     pub fn module(name: impl ToString, decls: impl Into<Vec<Self>>) -> Self {
         let mut decls = decls.into();
         let mut import = Self::many(decls.clone());
-        import.filter(&|decl| decl.is_compile_time_declaration()
-            && !matches!(decl, Declaration::Impl(..)) || matches!(decl, Self::StaticVar(..))
-            );//&& !matches!(decl, Declaration::Module(..)));
+        import.filter(&|decl| {
+            decl.is_compile_time_declaration() && !matches!(decl, Declaration::Impl(..))
+                || matches!(decl, Self::StaticVar(..))
+        }); //&& !matches!(decl, Declaration::Module(..)));
 
         for decl in &mut decls {
             decl.distribute_decls(&import.clone());
@@ -81,7 +81,7 @@ impl Declaration {
 
         Self::Module(name.to_string(), Arc::new(decls))
     }
-    
+
     fn filter(&mut self, f: &impl Fn(&Declaration) -> bool) {
         match self {
             Self::Many(decls) => {
@@ -111,24 +111,23 @@ impl Declaration {
                     decl.distribute_decls(distributed);
                 }
             }
-            Self::Module(name, decls) => {
+            Self::Module(_name, decls) => {
                 let decls = Arc::make_mut(decls);
                 for decl in decls.iter_mut() {
                     decl.distribute_decls(distributed);
                 }
             }
-            Self::Impl(ty, impls) => {
+            Self::Impl(_ty, impls) => {
                 let mut distributed = distributed.clone();
                 distributed.filter_for_compile_time_only();
                 for (_name, expr) in impls {
-                    // expr.distribute_decls(distributed);
                     *expr = expr.with(distributed.clone());
                 }
             }
-            Self::Proc(name, proc) => {
+            Self::Proc(_name, proc) => {
                 *proc = proc.with(distributed.clone());
             }
-            Self::PolyProc(name, proc) => {
+            Self::PolyProc(_name, proc) => {
                 *proc = proc.with(distributed.clone());
             }
             _ => {}
@@ -397,15 +396,10 @@ impl Declaration {
                     decl.substitute(substitution_name, substitution_ty);
                 });
             }
-            Self::FromImport { module, names} => {
+            Self::FromImport { module, .. } => {
                 module.substitute(substitution_name, substitution_ty);
-                for (name, _alias) in names {
-                    // name.substitute(substitution_name, substitution_ty);
-                }
             }
-            Self::FromImportAll(module) => {
-                module.substitute(substitution_name, substitution_ty)
-            }
+            Self::FromImportAll(module) => module.substitute(substitution_name, substitution_ty),
         }
     }
 }
@@ -620,36 +614,34 @@ impl TypeCheck for Declaration {
 
                 if !comp_time_decls.is_empty() {
                     // Type check all the compile time declarations in parallel.
-                    comp_time_decls
-                        .par_iter()
-                        .try_for_each(|decl| {
-                            debug!("Typechecking decl: {decl}");
-                            decl.type_check(&new_env)
-                        })?;
-                            // if !matches!(decl, Declaration::Proc(..)) {
-                            // } else {
-                            //     eprintln!("PROC ENV: {new_env} for {self}");
-                            //     Ok(())
-                            // }
-                            // match decl {
-                            //     Declaration::Proc(name, proc) => {
-                            //         warn!("PROC {name} ENV: {new_env} for {self}");
-                            //         // Ok(())
-                            //         decl.type_check(&new_env)
-                            //     }
-                            //     _ => decl.type_check(&new_env)
-                            // }
-                        // Type check all the compile time declarations in parallel.
-                        // comp_time_decls
-                        //     .par_iter()
-                        //     .try_for_each(|decl| {
-                        //         info!("Typechecking decl: {decl}");
-                        //         if matches!(decl, Declaration::PolyProc(..)) {
-                        //             decl.type_check(&new_env)
-                        //         } else {
-                        //             Ok(())
-                        //         }
-                        //     })?;
+                    comp_time_decls.par_iter().try_for_each(|decl| {
+                        debug!("Typechecking decl: {decl}");
+                        decl.type_check(&new_env)
+                    })?;
+                    // if !matches!(decl, Declaration::Proc(..)) {
+                    // } else {
+                    //     eprintln!("PROC ENV: {new_env} for {self}");
+                    //     Ok(())
+                    // }
+                    // match decl {
+                    //     Declaration::Proc(name, proc) => {
+                    //         warn!("PROC {name} ENV: {new_env} for {self}");
+                    //         // Ok(())
+                    //         decl.type_check(&new_env)
+                    //     }
+                    //     _ => decl.type_check(&new_env)
+                    // }
+                    // Type check all the compile time declarations in parallel.
+                    // comp_time_decls
+                    //     .par_iter()
+                    //     .try_for_each(|decl| {
+                    //         info!("Typechecking decl: {decl}");
+                    //         if matches!(decl, Declaration::PolyProc(..)) {
+                    //             decl.type_check(&new_env)
+                    //         } else {
+                    //             Ok(())
+                    //         }
+                    //     })?;
                 }
 
                 run_time_decls
@@ -708,13 +700,13 @@ impl TypeCheck for Declaration {
 
             Self::Module(name, decls) => {
                 let mut new_env = env.clone();
-                
+
                 // Add all the compile-time declarations to the environment.
                 // new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
                 new_env.add_declaration(&Self::Many(decls.clone()))?;
                 trace!("Typechecking module {}", name);
                 // Get all the compile time declarations so we can type check them in parallel.
-                let (comp_time_decls,_run_time_decls): (Vec<_>, Vec<_>) = decls
+                let (comp_time_decls, _run_time_decls): (Vec<_>, Vec<_>) = decls
                     .iter()
                     .partition(|decl| decl.is_compile_time_declaration());
 
@@ -728,12 +720,13 @@ impl TypeCheck for Declaration {
             }
 
             Self::FromImport { module, names } => {
+                module.type_check(env)?;
                 for (name, _) in names {
                     let access = module.clone().field(ConstExpr::var(name));
                     access.type_check(env)?;
                 }
             }
-            Self::FromImportAll(module) => {}
+            Self::FromImportAll(module) => module.type_check(env)?,
         }
         Ok(())
     }
@@ -786,13 +779,8 @@ impl Display for Declaration {
                     writeln!(f, "{}", decl)?;
                 }
             }
-            Self::Module(name, decls) => {
-                write!(f, "module {}", name)?;
-                write!(f, " {{..")?;
-                // for decl in decls.iter() {
-                //     writeln!(f, "{}", decl)?;
-                // }
-                write!(f, "}}")?;
+            Self::Module(name, _decls) => {
+                write!(f, "module {} {{..}}", name)?;
             }
             Self::FromImport { module, names } => {
                 write!(f, "from {} import", module)?;
@@ -928,7 +916,12 @@ where
     (K, V): Into<Declaration>,
 {
     fn from(bt: BTreeMap<K, V>) -> Self {
-        Self::Many(bt.into_iter().map(|(k, v)| (k, v).into()).collect::<Vec<_>>().into())
+        Self::Many(
+            bt.into_iter()
+                .map(|(k, v)| (k, v).into())
+                .collect::<Vec<_>>()
+                .into(),
+        )
     }
 }
 
@@ -943,7 +936,13 @@ where
     T: Into<Declaration>,
 {
     fn from(decls: Vec<T>) -> Self {
-        Self::Many(decls.into_iter().map(|decl| decl.into()).collect::<Vec<_>>().into())
+        Self::Many(
+            decls
+                .into_iter()
+                .map(|decl| decl.into())
+                .collect::<Vec<_>>()
+                .into(),
+        )
     }
 }
 

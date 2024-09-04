@@ -11,8 +11,8 @@
 use crate::asm::{CoreOp, Error, Location, GP};
 
 use core::fmt;
+use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
-use serde_derive::{Serialize, Deserialize};
 
 use log::*;
 

@@ -365,7 +365,7 @@ fn compile(
             // If the code is standard variant virtual machine code
             Err(vm_code) => {
                 StandardInterpreter::new(StandardDevice::default())
-                    .run(&vm_code) 
+                    .run(&vm_code)
                     .map_err(Error::InterpreterError)?;
             }
         },

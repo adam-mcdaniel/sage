@@ -8,7 +8,7 @@ use crate::asm::{AssemblyProgram, StandardOp};
 use crate::lir::{Compile, Env, Error, GetSize, GetType, Type, TypeCheck};
 use crate::side_effects::FFIBinding;
 use core::fmt::{Display, Formatter, Result as FmtResult};
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 use log::debug;
 
