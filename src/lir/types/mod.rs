@@ -480,12 +480,6 @@ impl Type {
                     debug!("Symbol {name} is {t}");
                     // let mut new_matched_symbols = HashMap::new();
                     other.get_monomorph_template_args(t, matched_symbols, param_symbols, env)?;
-                    // // other.get_monomorph_template_args(t, matched_symbols, param_symbols, env)?;
-                    // for (symbol, t) in new_matched_symbols {
-                    //     if !matched_symbols.contains_key(&symbol) {
-                    //         matched_symbols.insert(symbol, t);
-                    //     }
-                    // }
                 }
             }
 

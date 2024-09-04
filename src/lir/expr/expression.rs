@@ -107,6 +107,8 @@ pub enum Expr {
     /// Get a field or member from a structure, union, or tuple.
     /// For tuples, use an `Int` constant expression to access the nth field (zero indexed).
     /// For unions or structures, use a `Symbol` constant expression to access the field.
+    /// 
+    /// Do NOT instantiate this directly: use the `.field` method on the container expression.
     Member(Box<Self>, ConstExpr),
     /// Index an array or pointer with an expression that evaluates to an `Int` at runtime.
     Index(Box<Self>, Box<Self>),
@@ -513,8 +515,6 @@ impl Expr {
                 }
             }
 
-            // Self::ConstExpr(expr) => Self::ConstExpr(expr.with(older_decls)),
-
             // Return the expression with the declaration in scope.
             _ => Self::Declare(Box::new(older_decls.into()), Box::new(self.clone())),
         }
@@ -670,7 +670,6 @@ impl Expr {
             Self::ConstExpr(cexpr) => Self::ConstExpr(cexpr.field(field)),
             _ => Self::Member(Box::new(self), field),
         }
-        // Self::Member(Box::new(self), field)
     }
 
     /// Index an array or pointer with an expression that evaluates to an `Int` at runtime.

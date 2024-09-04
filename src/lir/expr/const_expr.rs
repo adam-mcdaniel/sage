@@ -230,7 +230,6 @@ impl ConstExpr {
                 Self::Member(container, member) => {
                     let container_ty = container.get_type_checked(env, i)?;
                     trace!("Member access on type: {container_ty}: {container} . {member}");
-                    // container_ty.add_monomorphized_associated_consts(env)?;
                     Ok(match (*container.clone(), *member.clone()) {
                         (Self::Annotated(inner, metadata), member) => {
                             Self::Member(inner, member.into())
@@ -263,8 +262,7 @@ impl ConstExpr {
                                     .map(|name| env.get_associated_const(&container_ty, &name))
                                 {
                                     debug!("Getting associated const: {container_ty} . {member}");
-                                    // return constant.eval_checked(env, i);
-                                    return Ok(constant.clone());
+                                    return constant.eval_checked(env, i);
                                 }
                                 debug!(
                                     "Member access not implemented for: {container_ty} . {member}"
@@ -289,7 +287,6 @@ impl ConstExpr {
                                     env.get_associated_const(&container_ty, &name)
                                 {
                                     return constant.eval_checked(env, i);
-                                    // return Ok(constant.clone());
                                 }
                                 debug!(
                                     "Struct member access of {member} not implemented for: {container_ty}"
@@ -309,7 +306,6 @@ impl ConstExpr {
                                     .map(|name| env.get_associated_const(&container_ty, &name))
                                 {
                                     return constant.clone().eval_checked(env, i);
-                                    // return Ok(constant.clone());
                                 }
                                 error!(
                                     "Type member access not implemented for: {container_ty} . {member}, symbol {name} not defined"
@@ -326,10 +322,8 @@ impl ConstExpr {
                             {
                                 debug!("Getting associated const: {container_ty} . {member}");
                                 return constant.eval_checked(env, i);
-                                // return Ok(constant.clone());
                             }
                             debug!("Member access not implemented for: {container_ty} . {member}");
-                            // container.eval_checked(env, i)?.field(member).eval_checked(env, i)?
                             return Err(Error::MemberNotFound((*container).into(), member));
                         }
                         _ => {
@@ -339,8 +333,7 @@ impl ConstExpr {
                                 .map(|name| env.get_associated_const(&container_ty, &name))
                             {
                                 debug!("Getting associated const: {container_ty} . {member}");
-                                // return constant.eval_checked(env, i);
-                                return Ok(constant.clone());
+                                return constant.eval_checked(env, i);
                             }
                             debug!("Member access not implemented for: {container_ty} . {member}");
                             return Err(Error::MemberNotFound((*container).into(), *member));
@@ -361,7 +354,7 @@ impl ConstExpr {
                 | Self::Proc(_)
                 | Self::PolyProc(_)
                 | Self::Type(_) => Ok(self),
-                // Self::Type(ty) => Ok(Self::Type(ty.clone().simplify_until_atomic(env).unwrap_or(ty))),
+
                 Self::Declare(bindings, expr) => {
                     debug!("Declaring compile time bindings: {bindings}");
                     let mut new_env = env.clone();

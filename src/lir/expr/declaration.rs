@@ -597,12 +597,6 @@ impl TypeCheck for Declaration {
                         new_env.add_associated_const(ty.clone(), name, associated_const.clone())?;
                     }
 
-                    // If we are at the limit of parallel recursion, then we should
-                    // type check the associated constants sequentially.
-                    // for (_name, associated_const) in impls {
-                    //     associated_const.type_check(&new_env)?;
-                    // }
-
                     impls.par_iter().try_for_each(|(_name, associated_const)| {
                         associated_const.type_check(&new_env)
                     })?;
@@ -625,30 +619,6 @@ impl TypeCheck for Declaration {
                         debug!("Typechecking decl: {decl}");
                         decl.type_check(&new_env)
                     })?;
-                    // if !matches!(decl, Declaration::Proc(..)) {
-                    // } else {
-                    //     eprintln!("PROC ENV: {new_env} for {self}");
-                    //     Ok(())
-                    // }
-                    // match decl {
-                    //     Declaration::Proc(name, proc) => {
-                    //         warn!("PROC {name} ENV: {new_env} for {self}");
-                    //         // Ok(())
-                    //         decl.type_check(&new_env)
-                    //     }
-                    //     _ => decl.type_check(&new_env)
-                    // }
-                    // Type check all the compile time declarations in parallel.
-                    // comp_time_decls
-                    //     .par_iter()
-                    //     .try_for_each(|decl| {
-                    //         info!("Typechecking decl: {decl}");
-                    //         if matches!(decl, Declaration::PolyProc(..)) {
-                    //             decl.type_check(&new_env)
-                    //         } else {
-                    //             Ok(())
-                    //         }
-                    //     })?;
                 }
 
                 run_time_decls
@@ -696,13 +666,6 @@ impl TypeCheck for Declaration {
                     }
                 }
                  */
-
-                // for decl in decls {
-                //     // Typecheck any variable declarations in the old scope
-                //     decl.type_check(&new_env)?;
-                //     // Add them to the new scope.
-                //     new_env.add_declaration(decl)?;
-                // }
             }
 
             Self::Module(name, decls) => {
