@@ -538,10 +538,10 @@ struct Rectangle {
 
 impl Rectangle {
     // Calculate the area of the rectangle
-    fun area(self: &Rectangle): Int { self.width * self.height }
+    fun area(&self): Int { self.width * self.height }
 
     // Calculate the perimeter of the rectangle
-    fun perimeter(self: &Rectangle): Int { 2 * (self.width + self.height) }
+    fun perimeter(&self): Int { 2 * (self.width + self.height) }
 }
 
 // A type for representing the dimensions of a 2D shape
@@ -1200,9 +1200,9 @@ type Pair<A, B> = (A, B);
 
 impl Pair<A, B> {
     // Get the first tuple element
-    fun first(self: &(A, B)): A { self.0 }
+    fun first(&self): A { self.0 }
     // Get the second tuple element
-    fun second(self: &(A, B)): B { self.1 }
+    fun second(&self): B { self.1 }
 }
 
 // Make a pair of elements
@@ -1339,22 +1339,22 @@ fun main() {
 }
 
 impl Float {
-    fun abs(self: Float): Float {
+    fun abs(self): Float {
         if self < 0.0 {
             return -self;
         }
         return self;
     }
 
-    fun square(self: Float): Float {
+    fun square(self): Float {
         return self * self;
     }
 
-    fun cube(self: Float): Float {
+    fun cube(self): Float {
         return self * self * self;
     }
 
-    fun sin(mut self: Float): Float {
+    fun sin(mut self): Float {
         // Taylor series approximation
         self %= 3.14159 * 2;
         let mut result = 0.0;
@@ -1368,7 +1368,7 @@ impl Float {
         return result;
     }
 
-    fun cos(mut self: Float): Float {
+    fun cos(mut self): Float {
         // Taylor series approximation
         self %= 3.14159 * 2;
         let mut result = 0.0;
@@ -1389,13 +1389,13 @@ struct Canvas {
 }
 
 impl Canvas {
-    fun clear(self: &mut Canvas, color: Color) {
+    fun clear(&mut self, color: Color) {
         // Draw the background
         let rect = Rectangle.make(0, 0, self.width, self.height);
         self.draw_rect(color, rect);
     }
 
-    fun rand_section(self: &Canvas, width: Int, height: Int): Rectangle {
+    fun rand_section(&self, width: Int, height: Int): Rectangle {
         return {
             x=rand(0, self.width - width),
             y=rand(0, self.height - height),
@@ -1448,7 +1448,7 @@ impl Canvas {
         };
     }
 
-    fun draw_rect(self: &mut Canvas, color: Color, rect: Rectangle) {
+    fun draw_rect(&mut self, color: Color, rect: Rectangle) {
         let mut command_str = ['\\0'] * 128;
         let color_str = color.to_str();
         let rect_str = rect.to_str();
@@ -1463,7 +1463,7 @@ impl Canvas {
         eval(&mut command_str, sizeof(command_str));
     }
 
-    fun draw_circle(self: &mut Canvas, color: Color, x: Int, y: Int, radius: Int) {
+    fun draw_circle(&mut self, color: Color, x: Int, y: Int, radius: Int) {
         let mut command_str = ['\\0'] * 128;
         let color_str = color.to_str();
         let x_str = x.to_str();
@@ -1498,7 +1498,7 @@ fun rand(low: Int, high: Int): Int {
 }
 
 impl Int {
-    fun to_str(self: &Int): [Char * 9] {
+    fun to_str(&self): [Char * 9] {
         let mut n = *self;
         let mut result = [' '] * 9;
         result[8] = '\\0';
@@ -1578,7 +1578,7 @@ impl Color {
         };
     }
 
-    fun to_str(self: &Color): [Char * 7] {
+    fun to_str(&self): [Char * 7] {
         let mut result = [' '] * 7;
         result[6] = '\\0' as Char;
         let mut hex = byte_to_hex(self.r);
@@ -1614,7 +1614,7 @@ impl Rectangle {
         };
     }
 
-    fun rand_section(self: &Rectangle, width: Int, height: Int): Rectangle {
+    fun rand_section(&self, width: Int, height: Int): Rectangle {
         let mut x = rand(self.x, self.x + self.width - width);
         let mut y = rand(self.y, self.y + self.height - height);
         return {
@@ -1626,7 +1626,7 @@ impl Rectangle {
     }
 
     // Remove margin
-    fun shrink(self: &Rectangle, margin: Int): Rectangle {
+    fun shrink(&self, margin: Int): Rectangle {
         return {
             x=self.x + margin,
             y=self.y + margin,
@@ -1635,7 +1635,7 @@ impl Rectangle {
         };
     }
 
-    fun move(self: &Rectangle, dx: Int, dy: Int): Rectangle {
+    fun move(&self, dx: Int, dy: Int): Rectangle {
         return {
             x=self.x + dx,
             y=self.y + dy,
@@ -1644,7 +1644,7 @@ impl Rectangle {
         };
     }
 
-    fun to_str(self: &Rectangle): [Char * 40] {
+    fun to_str(&self): [Char * 40] {
         let mut result = [' '] * 40;
         let x_str = self.x.to_str();
         // println("x_str: ", x_str);
