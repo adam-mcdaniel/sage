@@ -1,5 +1,5 @@
 mod b;
-from b import A, B;
+from b import *;
 
 let mut x = B.default();
 
