@@ -90,23 +90,21 @@
 
 fun main() {
     let mut hm = HashMap.make<Point, Int>();
-
+    // Add some data associated with the points into the map
     hm.insert(Point.new(4.0, 5.0), 5);
     hm.insert(Point.new(1.0, -1.0), -100);
-
+    // Print the map
     hm.println();
+    // Retrieve the data associated with a point
     let idx = Point.new(1.0, -1.0);
     if let of Some(result) = hm.get(idx) {
-        println("hm[", idx, "] = ", *result);
+        println(idx, " -> ", *result);
     } else {
         println("Could not find hm[", idx, "]");
     }
 }
 
-struct Point {
-    x: Float,
-    y: Float
-}
+struct Point { x: Float, y: Float }
 
 impl Point {
     fun new(x: Float, y: Float): Point {
@@ -566,8 +564,7 @@ impl Position {
     fun make(x: Int, y: Int): Position { { x=x, y=y } }
 }
 
-main();
-`);
+main();`);
                     break;
                 case "result":
                     source.setValue(`from std.fallible import Result;
@@ -663,9 +660,7 @@ fun main() {
     println("v.len() = ", v.len());
     
     // Add 100 elements
-    for let mut i=0; i<100; i+=1; {
-        v.push(i);
-    }
+    for let mut i=0; i<100; i+=1; { v.push(i); }
     // Print the new length
     println("v.len() = ", v.len());
 
@@ -1897,12 +1892,12 @@ main();`)
 
         <select id="example" style="height: 3em; float: left;">
             <option value="hello world">Click to select example program (Default Hello World)</option>
+            <option value="graphics">Screen-Drawing Javascript Interop</option>
             <option value="list">Standard Lib Linked List</option>
             <option value="result">Standard Lib Error Handling</option>
             <option value="hashmap">Standard Lib Hashmap</option>
             <option value="vector">Standard Lib Vector</option>
             <option value="structural-types">Structural Typing Demo</option>
-            <option value="graphics">Graphical Javascript Interop Demo</option>
             <option value="ffi">Alert Javascript Demo</option>
             <option value="modules">Module System</option>
             <option value="sum-types">Sum Types</option>
@@ -1911,7 +1906,6 @@ main();`)
             <option value="factorial">Factorial</option>
             <option value="let-bindings">Let-Bindings</option>
             <option value="calculator">Calculator (Parser)</option>
-            <option value="hex-editor">Hex Editor</option>
             <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
             <option value="cat">Cat</option>
         </select>
