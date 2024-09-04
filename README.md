@@ -40,9 +40,9 @@ Sage is a programming language that tries to be maximally portable, expressive, 
 
 <div align="center">
   <p float="left">
-    <img src="./assets/code2_redone.png" width="33.5%"/>
-    <img src="./assets/code1_redone.png" width="31%"/>
-    <img src="./assets/code3_redone.png" width="33.75%"/>
+    <img src="./assets/code2_redone.png" width="32.5%"/>
+    <img src="./assets/code1_redone.png" width="30.1%"/>
+    <img src="./assets/code3_redone.png" width="32.75%"/>
   </p>
 </div>
 
