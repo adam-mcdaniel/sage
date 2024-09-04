@@ -280,6 +280,19 @@
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Mono-Procedure
 //!
 //! A procedure of LIR code which can be applied to a list of arguments.
@@ -292,13 +305,14 @@
 //! Procedures are created by the `proc` keyword.
 </span><span class="kw">use </span><span class="kw">crate</span>::asm::{AssemblyProgram, CoreOp, A, FP, SP};
 <span class="kw">use </span><span class="kw">crate</span>::lir::{
-    Compile, ConstExpr, Declaration, Env, Error, Expr, GetSize, GetType, Mutability, Type, TypeCheck
+    Compile, ConstExpr, Declaration, Env, Error, Expr, GetSize, GetType, Mutability, Type,
+    TypeCheck,
 };
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::hash::Hash;
 <span class="kw">use </span>std::sync::{Arc, Mutex, RwLock};
 
-<span class="kw">use </span>log::{trace, debug, error};
+<span class="kw">use </span>log::{debug, error};
 <span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 
 <span class="comment">// TODO: Do this without lazy_static. This is used to create unique mangled IDs for each compiled function.
@@ -426,13 +440,19 @@
         </span><span class="kw-2">*</span><span class="self">self</span>.has_type_checked.write().unwrap() = <span class="bool-val">true</span>;
 
         <span class="comment">// Typecheck the types of the arguments and return value
-        </span><span class="macro">debug!</span>(<span class="string">"Typechecking arguments of procedure {} ({:?})"</span>, <span class="self">self</span>.mangled_name, <span class="self">self</span>.common_name);
+        </span><span class="macro">debug!</span>(
+            <span class="string">"Typechecking arguments of procedure {} ({:?})"</span>,
+            <span class="self">self</span>.mangled_name, <span class="self">self</span>.common_name
+        );
         <span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, t) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.args {
             <span class="comment">// t.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
             </span>t.type_check(env)<span class="question-mark">?</span>;
         }
         <span class="comment">// self.ret.simplify_until_simple(env)?.add_monomorphized_associated_consts(env)?;
-        </span><span class="macro">debug!</span>(<span class="string">"Typechecking return type of procedure {} ({:?})"</span>, <span class="self">self</span>.mangled_name, <span class="self">self</span>.common_name);
+        </span><span class="macro">debug!</span>(
+            <span class="string">"Typechecking return type of procedure {} ({:?})"</span>,
+            <span class="self">self</span>.mangled_name, <span class="self">self</span>.common_name
+        );
         <span class="self">self</span>.ret.type_check(env)<span class="question-mark">?</span>;
 
         <span class="comment">// Create a new scope for the procedure's body, and define the arguments for the scope.
@@ -443,7 +463,10 @@
         <span class="comment">// Get the type of the procedure's body, and confirm that it matches the return type.
         </span><span class="kw">let </span>body_type = <span class="self">self</span>.body.get_type(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
         <span class="kw">if </span>!body_type.can_decay_to(<span class="kw-2">&amp;</span><span class="self">self</span>.ret, env)<span class="question-mark">? </span>{
-            <span class="macro">error!</span>(<span class="string">"Mismatched return type for procedure {}"</span>, <span class="self">self</span>.common_name.as_ref().unwrap_or(<span class="kw-2">&amp;</span><span class="self">self</span>.mangled_name));
+            <span class="macro">error!</span>(
+                <span class="string">"Mismatched return type for procedure {}"</span>,
+                <span class="self">self</span>.common_name.as_ref().unwrap_or(<span class="kw-2">&amp;</span><span class="self">self</span>.mangled_name)
+            );
             <span class="prelude-val">Err</span>(Error::MismatchedTypes {
                 expected: <span class="self">self</span>.ret.clone(),
                 found: body_type,
@@ -451,7 +474,10 @@
             })
         } <span class="kw">else </span>{
             <span class="comment">// Typecheck the procedure's body.
-            </span><span class="macro">debug!</span>(<span class="string">"Typechecking body of procedure {} ({:?})"</span>, <span class="self">self</span>.mangled_name, <span class="self">self</span>.common_name);
+            </span><span class="macro">debug!</span>(
+                <span class="string">"Typechecking body of procedure {} ({:?})"</span>,
+                <span class="self">self</span>.mangled_name, <span class="self">self</span>.common_name
+            );
             <span class="self">self</span>.body.type_check(<span class="kw-2">&amp;</span>new_env)
         }
     }

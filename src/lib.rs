@@ -18,18 +18,19 @@
 //! # The Sage Programming Language
 //!
 //! <div align="center">
-//!   <h1>🌿🌱<b>Sage</b>🪴🍃</h1>
+//!   <h1>🌿🌱<b>The Sage Programming Language</b>🪴🍃</h1>
 //!   <p>
 //!     <strong>Sage advice for your coding conundrums!</strong>
 //!   </p>
 //!   <p float="left">
-//!     <img src="https://github.com/adam-mcdaniel/sage/blob/main/assets/code1.png?raw=true" width="29.5%"/>
-//!     <a href="https://github.com/adam-mcdaniel/sage"><img src="https://github.com/adam-mcdaniel/sage/blob/main/assets/sage.png?raw=true" width="68%"/></a>
+//!     <img src="https://github.com/adam-mcdaniel/sage/blob/main/assets/code1_redone.png?raw=true" width="26.5%"/>
+//!     <a href="https://adam-mcdaniel.net/sage"><img src="https://github.com/adam-mcdaniel/sage/blob/main/assets/sage.png?raw=true" width="69.5%"/></a>
 //!   </p>
 //!   <p>
-//!      🚧 🏗️ ⚠️ This language is under construction! ⚠️ 🏗️ 🚧
+//!     <a href="https://github.com/adam-mcdaniel/sage"><b><i>Checkout the source code!</i></b></a>
+//!     | <a href="https://discord.gg/rSGkM4bcdP"><b><i>Join the Discord server!</i></b></a>
+//!     | <a href="https://www.youtube.com/watch?v=QdnxjYj1pS0"><b><i>Check out a video covering Sage!</i></b></a>
 //!   </p>
-//!   <br>
 //! </div>
 //!
 //! <div id="output-content"></div>

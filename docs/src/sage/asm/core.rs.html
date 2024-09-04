@@ -1668,11 +1668,11 @@
     location::{FP_STACK, TMP},
     AssemblyProgram, Env, Error, Location, StandardOp, FP, GP, SP, STACK_START, START_OF_FP_STACK,
 };
-<span class="kw">use </span>serde_derive::{Serialize, Deserialize};
 <span class="kw">use crate</span>::{
     side_effects::{Input, InputMode, Output, OutputMode},
     vm::{<span class="self">self</span>, VirtualMachineProgram},
 };
+<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 <span class="kw">use </span>std::{collections::BTreeSet, fmt};
 
 <span class="kw">use </span>log::{info, trace};

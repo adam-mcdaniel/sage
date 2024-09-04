@@ -1310,6 +1310,14 @@
 <a href="#1309" id="1309">1309</a>
 <a href="#1310" id="1310">1310</a>
 <a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Checking
 //!
 //! This module contains the type checking logic for the Lower Intermediate Representation.
@@ -1533,7 +1541,9 @@
             }
 
             <span class="self">Self</span>::UnaryOp(unop, expr) =&gt; {
-                <span class="kw">let </span>unop = env.get_unop(unop).ok_or(Error::UnimplementedOperator(unop.clone()))<span class="question-mark">?</span>;
+                <span class="kw">let </span>unop = env
+                    .get_unop(unop)
+                    .ok_or(Error::UnimplementedOperator(unop.clone()))<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(expr, metadata) = <span class="kw-2">&amp;**</span>expr {
                     <span class="kw">return </span>unop
                         .type_check(expr, env)
@@ -1542,7 +1552,9 @@
                 unop.type_check(expr, env)
             }
             <span class="self">Self</span>::BinaryOp(binop, lhs, rhs) =&gt; {
-                <span class="kw">let </span>binop = env.get_binop(binop).ok_or(Error::UnimplementedOperator(binop.clone()))<span class="question-mark">?</span>;
+                <span class="kw">let </span>binop = env
+                    .get_binop(binop)
+                    .ok_or(Error::UnimplementedOperator(binop.clone()))<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(lhs, metadata) = <span class="kw-2">&amp;**</span>lhs {
                     <span class="kw">return </span>binop
                         .type_check(lhs, rhs, env)
@@ -1557,7 +1569,9 @@
                 binop.type_check(lhs, rhs, env)
             }
             <span class="self">Self</span>::TernaryOp(ternop, a, b, c) =&gt; {
-                <span class="kw">let </span>ternop = env.get_ternop(ternop).ok_or(Error::UnimplementedOperator(ternop.clone()))<span class="question-mark">?</span>;
+                <span class="kw">let </span>ternop = env
+                    .get_ternop(ternop)
+                    .ok_or(Error::UnimplementedOperator(ternop.clone()))<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(a, metadata) = <span class="kw-2">&amp;**</span>a {
                     <span class="kw">return </span>ternop
                         .type_check(a, b, c, env)
@@ -1576,7 +1590,9 @@
                 ternop.type_check(a, b, c, env)
             }
             <span class="self">Self</span>::AssignOp(op, dst, src) =&gt; {
-                <span class="kw">let </span>op = env.get_assignop(op).ok_or(Error::UnimplementedOperator(op.clone()))<span class="question-mark">?</span>;
+                <span class="kw">let </span>op = env
+                    .get_assignop(op)
+                    .ok_or(Error::UnimplementedOperator(op.clone()))<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(src, metadata) = <span class="kw-2">&amp;**</span>src {
                     <span class="kw">return </span>op
                         .type_check(dst, src, env)
@@ -1970,7 +1986,7 @@
                                     expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
                                     found: f_type,
                                     expr: <span class="self">self</span>.clone(),
-                                })
+                                });
                             }
                         }
                     }
@@ -2025,7 +2041,7 @@
                             found: f_type,
                             expr: <span class="self">self</span>.clone(),
                         })
-                    },
+                    }
                 }
             }
 
@@ -2190,7 +2206,7 @@
                             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                                 <span class="macro">error!</span>(<span class="string">"Could not find member {field} in type {e_type} in environment {env}"</span>);
                                 <span class="prelude-val">Err</span>(e)
-                            },
+                            }
                         }
                     }
                 }
@@ -2278,7 +2294,7 @@
                             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
                                 <span class="macro">warn!</span>(<span class="string">"Associated constant {field} found in type {e_type} in environment {env}"</span>);
                                 <span class="prelude-val">Ok</span>(())
-                            },
+                            }
                             <span class="comment">// Err(_) =&gt; Err(e),
                             </span><span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                                 <span class="comment">// Try to perform the member op as a regular member op.

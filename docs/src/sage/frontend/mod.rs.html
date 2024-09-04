@@ -206,27 +206,32 @@
 <a href="#205" id="205">205</a>
 <a href="#206" id="206">206</a>
 <a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
 </pre></div><pre class="rust"><code><span class="kw">mod </span>parse;
-<span class="kw">use </span>parse::{parse_module, parse_source};
 <span class="kw">use </span><span class="kw">crate</span>::lir::Expr;
+<span class="kw">use </span>parse::{parse_module, parse_source};
 
 <span class="kw">fn </span>without_comments(code: <span class="kw">impl </span>ToString) -&gt; String {
-    <span class="kw">use </span>no_comment::{IntoWithoutComments, languages};
-    code
-        .to_string()
+    <span class="kw">use </span>no_comment::{languages, IntoWithoutComments};
+    code.to_string()
         .chars()
         .without_comments(languages::rust())
         .collect::&lt;String&gt;()
 }
 
-<span class="kw">pub fn </span>parse(input: <span class="kw">impl </span>ToString, filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;, include_builtins: bool, include_std: bool) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, String&gt; {
+<span class="kw">pub fn </span>parse(
+    input: <span class="kw">impl </span>ToString,
+    filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
+    include_builtins: bool,
+    include_std: bool,
+) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, String&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>expr = parse_source(<span class="kw-2">&amp;</span>without_comments(input), filename.map(|x| x.to_owned()))<span class="question-mark">?</span>;
     <span class="kw">use </span><span class="kw">crate</span>::side_effects::Output;
     <span class="kw">if </span>include_std {
         <span class="kw">let </span>std_lib = parse_module(<span class="string">"std"</span>, <span class="kw-2">&amp;</span>without_comments(<span class="macro">include_str!</span>(<span class="string">"std_lib.sg"</span>)))<span class="question-mark">?</span>;
         expr = expr.with(std_lib)
-        <span class="comment">// expr = expr.hard_with(std_lib)
-    </span>}
+    }
     <span class="kw">if </span>include_builtins {
         <span class="kw">let </span>alloc = <span class="kw">crate</span>::lir::ConstExpr::StandardBuiltin(<span class="kw">crate</span>::lir::StandardBuiltin {
             name: <span class="string">"alloc"</span>.to_string(),
@@ -253,9 +258,9 @@
             ],
         });
         <span class="kw">use </span><span class="kw">crate</span>::asm::CoreOp::<span class="kw-2">*</span>;
-    
+
         <span class="kw">use </span><span class="kw">crate</span>::asm::<span class="kw-2">*</span>;
-        
+
         <span class="kw">let </span>get_sp = <span class="kw">crate</span>::lir::ConstExpr::CoreBuiltin(<span class="kw">crate</span>::lir::CoreBuiltin {
             name: <span class="string">"get_sp"</span>.to_string(),
             args: <span class="macro">vec!</span>[],
@@ -265,7 +270,7 @@
             ),
             body: <span class="macro">vec!</span>[<span class="kw">crate</span>::asm::CoreOp::Push(<span class="kw">crate</span>::asm::SP, <span class="number">1</span>)],
         });
-    
+
         <span class="kw">let </span>set_sp = <span class="kw">crate</span>::lir::ConstExpr::CoreBuiltin(<span class="kw">crate</span>::lir::CoreBuiltin {
             name: <span class="string">"set_sp"</span>.to_string(),
             args: <span class="macro">vec!</span>[(
@@ -278,7 +283,7 @@
             ret: <span class="kw">crate</span>::lir::Type::None,
             body: <span class="macro">vec!</span>[Pop(<span class="prelude-val">Some</span>(A), <span class="number">1</span>), Move { src: A, dst: SP }],
         });
-    
+
         <span class="kw">let </span>set_fp = <span class="kw">crate</span>::lir::ConstExpr::CoreBuiltin(<span class="kw">crate</span>::lir::CoreBuiltin {
             name: <span class="string">"set_fp"</span>.to_string(),
             args: <span class="macro">vec!</span>[(
@@ -291,7 +296,7 @@
             ret: <span class="kw">crate</span>::lir::Type::None,
             body: <span class="macro">vec!</span>[Pop(<span class="prelude-val">Some</span>(FP), <span class="number">1</span>)],
         });
-    
+
         <span class="kw">let </span>set_stack_start = <span class="kw">crate</span>::lir::ConstExpr::CoreBuiltin(<span class="kw">crate</span>::lir::CoreBuiltin {
             name: <span class="string">"set_stack_start"</span>.to_string(),
             args: <span class="macro">vec!</span>[(
@@ -304,7 +309,7 @@
             ret: <span class="kw">crate</span>::lir::Type::None,
             body: <span class="macro">vec!</span>[Pop(<span class="prelude-val">Some</span>(STACK_START), <span class="number">1</span>)],
         });
-    
+
         <span class="kw">let </span>get_fp = <span class="kw">crate</span>::lir::ConstExpr::CoreBuiltin(<span class="kw">crate</span>::lir::CoreBuiltin {
             name: <span class="string">"get_fp"</span>.to_string(),
             args: <span class="macro">vec!</span>[],
@@ -314,7 +319,7 @@
             ),
             body: <span class="macro">vec!</span>[<span class="kw">crate</span>::asm::CoreOp::Push(<span class="kw">crate</span>::asm::FP, <span class="number">1</span>)],
         });
-    
+
         <span class="kw">let </span>get_gp = <span class="kw">crate</span>::lir::ConstExpr::CoreBuiltin(<span class="kw">crate</span>::lir::CoreBuiltin {
             name: <span class="string">"get_gp"</span>.to_string(),
             args: <span class="macro">vec!</span>[],
@@ -336,7 +341,7 @@
             ret: <span class="kw">crate</span>::lir::Type::None,
             body: <span class="macro">vec!</span>[Pop(<span class="prelude-val">Some</span>(GP), <span class="number">1</span>)],
         });
-    
+
         <span class="kw">let </span>get_fp_stack = <span class="kw">crate</span>::lir::ConstExpr::CoreBuiltin(<span class="kw">crate</span>::lir::CoreBuiltin {
             name: <span class="string">"get_fp_stack"</span>.to_string(),
             args: <span class="macro">vec!</span>[],
@@ -346,7 +351,7 @@
             ),
             body: <span class="macro">vec!</span>[<span class="kw">crate</span>::asm::CoreOp::Push(<span class="kw">crate</span>::asm::FP_STACK, <span class="number">1</span>)],
         });
-    
+
         <span class="kw">let </span>get_stack_start = <span class="kw">crate</span>::lir::ConstExpr::CoreBuiltin(<span class="kw">crate</span>::lir::CoreBuiltin {
             name: <span class="string">"get_stack_start"</span>.to_string(),
             args: <span class="macro">vec!</span>[],
@@ -356,7 +361,7 @@
             ),
             body: <span class="macro">vec!</span>[<span class="kw">crate</span>::asm::CoreOp::Push(<span class="kw">crate</span>::asm::STACK_START, <span class="number">1</span>)],
         });
-    
+
         <span class="kw">let </span><span class="kw-2">mut </span>debug_body = <span class="macro">vec!</span>[];
         <span class="kw">for </span>ch <span class="kw">in </span><span class="string">"Debug\n"</span>.to_string().chars() {
             debug_body.push(<span class="kw">crate</span>::asm::CoreOp::Set(<span class="kw">crate</span>::asm::TMP, ch <span class="kw">as </span>i64));
@@ -388,8 +393,7 @@
             ret: <span class="kw">crate</span>::lir::Type::None,
             body: debug_body,
         });
-    
-    
+
         expr = <span class="kw">crate</span>::lir::Expr::let_consts(
             <span class="macro">vec!</span>[
                 (<span class="string">"free"</span>, free),
@@ -412,4 +416,5 @@
     }
 
     <span class="prelude-val">Ok</span>(expr)
-}</code></pre></div></section></main></body></html>
+}
+</code></pre></div></section></main></body></html>

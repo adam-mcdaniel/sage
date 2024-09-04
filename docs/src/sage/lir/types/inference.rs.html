@@ -557,6 +557,8 @@
 <a href="#556" id="556">556</a>
 <a href="#557" id="557">557</a>
 <a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Inference
 //!
 //! This module contains the type inference algorithm for the language.
@@ -610,7 +612,7 @@
                 <span class="kw">if let </span><span class="prelude-val">Ok</span>(ty) = body.get_type_checked(env, i) {
                     <span class="comment">// If the body returns a value, then the declaration
                     // returns the type of the body.
-                    </span><span class="kw">return </span><span class="prelude-val">Ok</span>(ty)
+                    </span><span class="kw">return </span><span class="prelude-val">Ok</span>(ty);
                 }
 
                 <span class="comment">// Create a new environment with the declarations.
@@ -647,7 +649,9 @@
             </span>}
 
             <span class="self">Self</span>::UnaryOp(unop, expr) =&gt; {
-                <span class="kw">let </span>unop = env.get_unop(unop).ok_or(Error::UnimplementedOperator(unop.clone()))<span class="question-mark">?</span>;
+                <span class="kw">let </span>unop = env
+                    .get_unop(unop)
+                    .ok_or(Error::UnimplementedOperator(unop.clone()))<span class="question-mark">?</span>;
 
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(expr, metadata) = <span class="kw-2">&amp;**</span>expr {
                     <span class="kw">return </span>unop
@@ -659,7 +663,9 @@
                 </span>unop.return_type(expr, env)<span class="question-mark">?
             </span>}
             <span class="self">Self</span>::BinaryOp(binop, lhs, rhs) =&gt; {
-                <span class="kw">let </span>binop = env.get_binop(binop).ok_or(Error::UnimplementedOperator(binop.clone()))<span class="question-mark">?</span>;
+                <span class="kw">let </span>binop = env
+                    .get_binop(binop)
+                    .ok_or(Error::UnimplementedOperator(binop.clone()))<span class="question-mark">?</span>;
                 <span class="comment">// Infer the type of the binary operation
                 // on the two expressions.
                 </span><span class="kw">if let </span><span class="self">Self</span>::Annotated(lhs, metadata) = <span class="kw-2">&amp;**</span>lhs {
@@ -676,7 +682,9 @@
                 binop.return_type(lhs, rhs, env)<span class="question-mark">?
             </span>}
             <span class="self">Self</span>::TernaryOp(ternop, a, b, c) =&gt; {
-                <span class="kw">let </span>ternop = env.get_ternop(ternop).ok_or(Error::UnimplementedOperator(ternop.clone()))<span class="question-mark">?</span>;
+                <span class="kw">let </span>ternop = env
+                    .get_ternop(ternop)
+                    .ok_or(Error::UnimplementedOperator(ternop.clone()))<span class="question-mark">?</span>;
 
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(a, metadata) = <span class="kw-2">&amp;**</span>a {
                     <span class="kw">return </span>ternop
@@ -698,7 +706,9 @@
                 </span>ternop.return_type(a, b, c, env)<span class="question-mark">?
             </span>}
             <span class="self">Self</span>::AssignOp(op, dst, src) =&gt; {
-                <span class="kw">let </span>op = env.get_assignop(op).ok_or(Error::UnimplementedOperator(op.clone()))<span class="question-mark">?</span>;
+                <span class="kw">let </span>op = env
+                    .get_assignop(op)
+                    .ok_or(Error::UnimplementedOperator(op.clone()))<span class="question-mark">?</span>;
 
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(dst, metadata) = <span class="kw-2">&amp;**</span>dst {
                     <span class="kw">return </span>op
@@ -947,8 +957,7 @@
                     <span class="comment">// If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
                     </span>val_type =&gt; {
-                        <span class="comment">// error!("BING BONG");
-                        // Try to get the member of the underlying type.
+                        <span class="comment">// Try to get the member of the underlying type.
                         </span><span class="kw">if let </span><span class="prelude-val">Ok</span>((t, <span class="kw">_</span>)) = val_type.get_member_offset(field, val, env) {
                             <span class="kw">return </span><span class="prelude-val">Ok</span>(t);
                         }
@@ -957,13 +966,8 @@
                         </span><span class="kw">return </span>env
                             .get_type_of_associated_const(<span class="kw-2">&amp;</span>val_type, <span class="kw-2">&amp;</span>as_symbol<span class="question-mark">?</span>)
                             .ok_or(Error::MemberNotFound(<span class="kw-2">*</span>val.clone(), field.clone()));
-                    } <span class="comment">// Err(e) =&gt; {
-                      //     // Try to get the member of the underlying type.
-                      //     // return Err(e);
-                      //     return env.get_type_of_associated_const(&amp;val_type, &amp;as_symbol?)
-                      //         .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
-                      // }
-                </span>}
+                    }
+                }
             }
 
             <span class="comment">// Get the type of an index access.

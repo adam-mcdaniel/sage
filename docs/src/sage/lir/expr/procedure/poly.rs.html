@@ -300,23 +300,22 @@
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
 <a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Poly-Procedure
 //!
 //! A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 //! This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 //! A procedure is compiled down to a label in the assembly code.
-</span><span class="kw">use </span><span class="kw">crate</span>::lir::{ConstExpr, Declaration, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
+</span><span class="kw">use </span><span class="kw">super</span>::Procedure;
+<span class="kw">use </span><span class="kw">crate</span>::lir::{ConstExpr, Declaration, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
 <span class="kw">use </span>std::{
-    fmt,
     collections::HashMap,
+    fmt,
     sync::{Arc, RwLock},
 };
 <span class="kw">use </span>std::{hash::Hash, hash::Hasher};
-<span class="kw">use </span><span class="kw">super</span>::Procedure;
 
-<span class="kw">use </span>serde_derive::{Serialize, Deserialize};
 <span class="kw">use </span>log::{debug, error, trace};
+<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 
 <span class="doccomment">/// A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 /// This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
@@ -379,7 +378,6 @@
             ..<span class="self">self</span>.clone()
         }
     }
-
 
     <span class="kw">pub fn </span>from_mono(mono: Procedure, ty_params: Vec&lt;String&gt;) -&gt; <span class="self">Self </span>{
         <span class="macro">debug!</span>(target: <span class="string">"mono"</span>, <span class="string">"Creating polymorphic procedure from monomorph {}"</span>, mono);

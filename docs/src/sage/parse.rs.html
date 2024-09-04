@@ -275,6 +275,9 @@
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Parsing Module
 //!
 //! This module contains all the related functions for parsing
@@ -309,9 +312,9 @@
 
 <span class="kw">use </span>log::trace;
 
-<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 <span class="kw">use </span>lalrpop_util::lalrpop_mod;
 <span class="kw">use </span>no_comment::{languages, IntoWithoutComments};
+<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 
 <span class="doccomment">/// A struct representing a location in the source code.
 /// This is used to format errors properly.
@@ -431,7 +434,10 @@
     <span class="prelude-val">Ok</span>(result)
 }
 
-<span class="kw">pub fn </span>parse_frontend_minimal(input: <span class="kw">impl </span>ToString, filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, String&gt; {
+<span class="kw">pub fn </span>parse_frontend_minimal(
+    input: <span class="kw">impl </span>ToString,
+    filename: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, String&gt; {
     <span class="kw">let </span>result = frontend::parse(input, filename, <span class="bool-val">false</span>, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(result)
 }

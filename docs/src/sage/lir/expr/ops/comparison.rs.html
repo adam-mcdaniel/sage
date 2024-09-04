@@ -294,12 +294,12 @@
 //!
 //! This module implements comparison operators between two expressions.
 
-</span><span class="kw">use </span>log::error;
-<span class="kw">use crate</span>::{
+</span><span class="kw">use crate</span>::{
     asm::{AssemblyProgram, CoreOp, StandardOp, SP},
     lir::<span class="kw-2">*</span>,
 };
 <span class="kw">use </span>::core::fmt::{Debug, Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
+<span class="kw">use </span>log::error;
 
 <span class="doccomment">/// A comparison operation between two values.
 </span><span class="attr">#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -353,9 +353,9 @@
             }
             (a, <span class="kw">_</span>, b) =&gt; {
                 <span class="macro">error!</span>(<span class="string">"Cannot apply {self} to {a} and {b}"</span>);
-                
+
                 <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
-            },
+            }
         }
     }
 
@@ -403,7 +403,7 @@
                     Expr::ConstExpr(lhs.clone()),
                     Expr::ConstExpr(rhs.clone()),
                 ))
-            },
+            }
         }
     }
 
@@ -542,7 +542,7 @@
                     Box::new(<span class="kw-2">*</span><span class="self">self</span>),
                     lhs.clone(),
                     rhs.clone(),
-                ))
+                ));
             }
         }
         <span class="comment">// Pop `b` off of the stack: we only needed it to evaluate

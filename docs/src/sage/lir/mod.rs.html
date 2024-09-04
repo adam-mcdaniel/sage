@@ -92,7 +92,6 @@
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # LIR (Low Intermediate Representation) Module
 //!
 //! This module contains a decently sized typechecked intermediate representation for the virtual machine.
@@ -174,7 +173,6 @@
 <span class="kw">pub use </span>expr::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>types::<span class="kw-2">*</span>;
 
-
 <span class="doccomment">/// Simplify an expression while maintaining structural equality.
 </span><span class="kw">pub trait </span>Simplify: Sized {
     <span class="doccomment">/// Simplify an expression while maintaining structural equality.
@@ -186,4 +184,5 @@
     /// the number of recursive calls to prevent stack overflow. `i` is a
     /// counter to prevent infinite recursion.
     </span><span class="kw">fn </span>simplify_checked(<span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env, i: usize) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&gt;;
-}</code></pre></div></section></main></body></html>
+}
+</code></pre></div></section></main></body></html>

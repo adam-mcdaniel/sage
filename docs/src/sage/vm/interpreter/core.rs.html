@@ -475,12 +475,14 @@
 <a href="#474" id="474">474</a>
 <a href="#475" id="475">475</a>
 <a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Core Interpreter Module
 //!
 //! This module implements an interpreter for the Core virtual machine
 //! variant.
-</span><span class="kw">use </span><span class="kw">crate</span>::vm::{CoreOp, CoreProgram, Device, StandardDevice};
-<span class="kw">use </span><span class="kw">super</span>::TAPE_EXTENSION_SIZE;
+</span><span class="kw">use </span><span class="kw">super</span>::TAPE_EXTENSION_SIZE;
+<span class="kw">use </span><span class="kw">crate</span>::vm::{CoreOp, CoreProgram, Device, StandardDevice};
 
 <span class="kw">impl </span>Default <span class="kw">for </span>CoreInterpreter&lt;StandardDevice&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
@@ -879,7 +881,8 @@
                     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="kw-2">*</span>n {
                         <span class="kw">let </span>val = <span class="self">self</span>.cells[<span class="self">self</span>.pointer + i];
                         <span class="kw">if </span>val != <span class="number">0 </span>{
-                            <span class="self">self</span>.reg_mut_vector()[i] = <span class="self">self</span>.reg_mut_vector()[i].overflowing_div(val).<span class="number">0
+                            <span class="self">self</span>.reg_mut_vector()[i] =
+                                <span class="self">self</span>.reg_mut_vector()[i].overflowing_div(val).<span class="number">0
                         </span>}
                     }
                 }
@@ -887,7 +890,8 @@
                     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="kw-2">*</span>n {
                         <span class="kw">let </span>val = <span class="self">self</span>.cells[<span class="self">self</span>.pointer + i];
                         <span class="kw">if </span>val != <span class="number">0 </span>{
-                            <span class="self">self</span>.reg_mut_vector()[i] = <span class="self">self</span>.reg_mut_vector()[i].overflowing_rem(val).<span class="number">0
+                            <span class="self">self</span>.reg_mut_vector()[i] =
+                                <span class="self">self</span>.reg_mut_vector()[i].overflowing_rem(val).<span class="number">0
                         </span>}
                     }
                 }

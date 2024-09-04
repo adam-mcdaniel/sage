@@ -1010,56 +1010,24 @@
 <a href="#1009" id="1009">1009</a>
 <a href="#1010" id="1010">1010</a>
 <a href="#1011" id="1011">1011</a>
-<a href="#1012" id="1012">1012</a>
-<a href="#1013" id="1013">1013</a>
-<a href="#1014" id="1014">1014</a>
-<a href="#1015" id="1015">1015</a>
-<a href="#1016" id="1016">1016</a>
-<a href="#1017" id="1017">1017</a>
-<a href="#1018" id="1018">1018</a>
-<a href="#1019" id="1019">1019</a>
-<a href="#1020" id="1020">1020</a>
-<a href="#1021" id="1021">1021</a>
-<a href="#1022" id="1022">1022</a>
-<a href="#1023" id="1023">1023</a>
-<a href="#1024" id="1024">1024</a>
-<a href="#1025" id="1025">1025</a>
-<a href="#1026" id="1026">1026</a>
-<a href="#1027" id="1027">1027</a>
-<a href="#1028" id="1028">1028</a>
-<a href="#1029" id="1029">1029</a>
-<a href="#1030" id="1030">1030</a>
-<a href="#1031" id="1031">1031</a>
-<a href="#1032" id="1032">1032</a>
-<a href="#1033" id="1033">1033</a>
-<a href="#1034" id="1034">1034</a>
-<a href="#1035" id="1035">1035</a>
-<a href="#1036" id="1036">1036</a>
-<a href="#1037" id="1037">1037</a>
-<a href="#1038" id="1038">1038</a>
-<a href="#1039" id="1039">1039</a>
-<a href="#1040" id="1040">1040</a>
-<a href="#1041" id="1041">1041</a>
-<a href="#1042" id="1042">1042</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{PolyProcedure, Procedure};
 <span class="kw">use crate</span>::{
-    lir::Annotation,
     asm::{AssemblyProgram, CoreOp, Location, SP},
     lir::{
         Compile, ConstExpr, Env, Error, Expr, FFIProcedure, GetSize, GetType, Mutability, Pattern,
         Type, TypeCheck,
     },
 };
-<span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>core::{
     fmt::{Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult},
     ops::{Add, AddAssign},
 };
 <span class="kw">use </span>log::<span class="kw-2">*</span>;
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::hash::{Hash, Hasher};
-<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
+<span class="kw">use </span>std::sync::Arc;
 
 <span class="doccomment">/// A declaration of a variable, function, type, etc.
 </span><span class="attr">#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1085,6 +1053,11 @@
     <span class="doccomment">/// Many declarations.
     </span>Many(Arc&lt;Vec&lt;Declaration&gt;&gt;),
     <span class="doccomment">/// Declare a module
+    ///
+    /// Do NOT instantiate this directly:
+    /// use the `Declaration::module` method.
+    /// This will redistribute the declarations to make sure
+    /// everything is in-order internally to be imported/exported.
     </span>Module(String, Arc&lt;Vec&lt;Declaration&gt;&gt;),
     <span class="doccomment">/// Import an element from a module.
     </span>FromImport {
@@ -1104,28 +1077,28 @@
         <span class="self">Self</span>::StaticVar(name.into(), mutability, ty, expr.into())
     }
 
-    <span class="kw">pub fn </span>many(decls: <span class="kw">impl </span>Into&lt;Vec&lt;<span class="self">Self</span>&gt;&gt;) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Create a collection of declarations
+    </span><span class="kw">pub fn </span>many(decls: <span class="kw">impl </span>Into&lt;Vec&lt;<span class="self">Self</span>&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Many(Arc::new(decls.into()))
     }
 
-    <span class="kw">pub fn </span>module(name: <span class="kw">impl </span>ToString, decls: <span class="kw">impl </span>Into&lt;Vec&lt;<span class="self">Self</span>&gt;&gt;) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Create a module with a given name and a list of declarations
+    </span><span class="kw">pub fn </span>module(name: <span class="kw">impl </span>ToString, decls: <span class="kw">impl </span>Into&lt;Vec&lt;<span class="self">Self</span>&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>decls = decls.into();
         <span class="kw">let </span><span class="kw-2">mut </span>import = <span class="self">Self</span>::many(decls.clone());
-        import.filter(<span class="kw-2">&amp;</span>|decl| decl.is_compile_time_declaration()
-            &amp;&amp; !<span class="macro">matches!</span>(decl, Declaration::Impl(..)) || <span class="macro">matches!</span>(decl, <span class="self">Self</span>::StaticVar(..))
-            );<span class="comment">//&amp;&amp; !matches!(decl, Declaration::Module(..)));
+        import.filter(<span class="kw-2">&amp;</span>|decl| {
+            decl.is_compile_time_declaration() &amp;&amp; !<span class="macro">matches!</span>(decl, Declaration::Impl(..))
+        });
 
-        </span><span class="kw">for </span>decl <span class="kw">in </span><span class="kw-2">&amp;mut </span>decls {
+        <span class="kw">for </span>decl <span class="kw">in </span><span class="kw-2">&amp;mut </span>decls {
             decl.distribute_decls(<span class="kw-2">&amp;</span>import.clone());
-            <span class="comment">// if !matches!(decl, Declaration::Module(..)) {
-            //     decl.distribute_decls(&amp;import.clone());
-            // }
-        </span>}
+        }
 
         <span class="self">Self</span>::Module(name.to_string(), Arc::new(decls))
     }
-    
-    <span class="kw">fn </span>filter(<span class="kw-2">&amp;mut </span><span class="self">self</span>, f: <span class="kw-2">&amp;</span><span class="kw">impl </span>Fn(<span class="kw-2">&amp;</span>Declaration) -&gt; bool) {
+
+    <span class="doccomment">/// Filter all the subdeclarations to satisfy some condition.
+    </span><span class="kw">fn </span>filter(<span class="kw-2">&amp;mut </span><span class="self">self</span>, f: <span class="kw-2">&amp;</span><span class="kw">impl </span>Fn(<span class="kw-2">&amp;</span>Declaration) -&gt; bool) {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Many(decls) =&gt; {
                 <span class="kw">let </span>decls = Arc::make_mut(decls);
@@ -1141,37 +1114,39 @@
         }
     }
 
-    <span class="kw">fn </span>filter_for_compile_time_only(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="doccomment">/// Make this declaration only have compile time subdeclarations
+    </span><span class="kw">fn </span>filter_for_compile_time_only(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.filter(<span class="kw-2">&amp;</span>|decl| decl.is_compile_time_declaration());
     }
 
-    <span class="kw">fn </span>distribute_decls(<span class="kw-2">&amp;mut </span><span class="self">self</span>, distributed: <span class="kw-2">&amp;</span><span class="self">Self</span>) {
-        <span class="comment">// eprintln!("Distributing declarations");
-        </span><span class="kw">match </span><span class="self">self </span>{
+    <span class="doccomment">/// Distribute a declaration amongst several other declarations.
+    /// This makes sure the declaration is in scope for all the subexpressions
+    /// in the other declarations.
+    </span><span class="kw">fn </span>distribute_decls(<span class="kw-2">&amp;mut </span><span class="self">self</span>, distributed: <span class="kw-2">&amp;</span><span class="self">Self</span>) {
+        <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Many(decls) =&gt; {
                 <span class="kw">let </span>decls = Arc::make_mut(decls);
                 <span class="kw">for </span>decl <span class="kw">in </span>decls.iter_mut() {
                     decl.distribute_decls(distributed);
                 }
             }
-            <span class="self">Self</span>::Module(name, decls) =&gt; {
+            <span class="self">Self</span>::Module(_name, decls) =&gt; {
                 <span class="kw">let </span>decls = Arc::make_mut(decls);
                 <span class="kw">for </span>decl <span class="kw">in </span>decls.iter_mut() {
                     decl.distribute_decls(distributed);
                 }
             }
-            <span class="self">Self</span>::Impl(ty, impls) =&gt; {
+            <span class="self">Self</span>::Impl(_ty, impls) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>distributed = distributed.clone();
                 distributed.filter_for_compile_time_only();
                 <span class="kw">for </span>(_name, expr) <span class="kw">in </span>impls {
-                    <span class="comment">// expr.distribute_decls(distributed);
-                    </span><span class="kw-2">*</span>expr = expr.with(distributed.clone());
+                    <span class="kw-2">*</span>expr = expr.with(distributed.clone());
                 }
             }
-            <span class="self">Self</span>::Proc(name, proc) =&gt; {
+            <span class="self">Self</span>::Proc(_name, proc) =&gt; {
                 <span class="kw-2">*</span>proc = proc.with(distributed.clone());
             }
-            <span class="self">Self</span>::PolyProc(name, proc) =&gt; {
+            <span class="self">Self</span>::PolyProc(_name, proc) =&gt; {
                 <span class="kw-2">*</span>proc = proc.with(distributed.clone());
             }
             <span class="kw">_ </span>=&gt; {}
@@ -1440,15 +1415,10 @@
                     decl.substitute(substitution_name, substitution_ty);
                 });
             }
-            <span class="self">Self</span>::FromImport { module, names} =&gt; {
+            <span class="self">Self</span>::FromImport { module, .. } =&gt; {
                 module.substitute(substitution_name, substitution_ty);
-                <span class="kw">for </span>(name, _alias) <span class="kw">in </span>names {
-                    <span class="comment">// name.substitute(substitution_name, substitution_ty);
-                </span>}
             }
-            <span class="self">Self</span>::FromImportAll(module) =&gt; {
-                module.substitute(substitution_name, substitution_ty)
-            }
+            <span class="self">Self</span>::FromImportAll(module) =&gt; module.substitute(substitution_name, substitution_ty),
         }
     }
 }
@@ -1639,13 +1609,7 @@
                         new_env.add_associated_const(ty.clone(), name, associated_const.clone())<span class="question-mark">?</span>;
                     }
 
-                    <span class="comment">// If we are at the limit of parallel recursion, then we should
-                    // type check the associated constants sequentially.
-                    // for (_name, associated_const) in impls {
-                    //     associated_const.type_check(&amp;new_env)?;
-                    // }
-
-                    </span>impls.par_iter().try_for_each(|(_name, associated_const)| {
+                    impls.par_iter().try_for_each(|(_name, associated_const)| {
                         associated_const.type_check(<span class="kw-2">&amp;</span>new_env)
                     })<span class="question-mark">?</span>;
                 }
@@ -1663,37 +1627,11 @@
 
                 <span class="kw">if </span>!comp_time_decls.is_empty() {
                     <span class="comment">// Type check all the compile time declarations in parallel.
-                    </span>comp_time_decls
-                        .par_iter()
-                        .try_for_each(|decl| {
-                            <span class="macro">debug!</span>(<span class="string">"Typechecking decl: {decl}"</span>);
-                            decl.type_check(<span class="kw-2">&amp;</span>new_env)
-                        })<span class="question-mark">?</span>;
-                            <span class="comment">// if !matches!(decl, Declaration::Proc(..)) {
-                            // } else {
-                            //     eprintln!("PROC ENV: {new_env} for {self}");
-                            //     Ok(())
-                            // }
-                            // match decl {
-                            //     Declaration::Proc(name, proc) =&gt; {
-                            //         warn!("PROC {name} ENV: {new_env} for {self}");
-                            //         // Ok(())
-                            //         decl.type_check(&amp;new_env)
-                            //     }
-                            //     _ =&gt; decl.type_check(&amp;new_env)
-                            // }
-                        // Type check all the compile time declarations in parallel.
-                        // comp_time_decls
-                        //     .par_iter()
-                        //     .try_for_each(|decl| {
-                        //         info!("Typechecking decl: {decl}");
-                        //         if matches!(decl, Declaration::PolyProc(..)) {
-                        //             decl.type_check(&amp;new_env)
-                        //         } else {
-                        //             Ok(())
-                        //         }
-                        //     })?;
-                </span>}
+                    </span>comp_time_decls.par_iter().try_for_each(|decl| {
+                        <span class="macro">debug!</span>(<span class="string">"Typechecking decl: {decl}"</span>);
+                        decl.type_check(<span class="kw-2">&amp;</span>new_env)
+                    })<span class="question-mark">?</span>;
+                }
 
                 run_time_decls
                     .iter()
@@ -1740,24 +1678,17 @@
                     }
                 }
                  */
-
-                // for decl in decls {
-                //     // Typecheck any variable declarations in the old scope
-                //     decl.type_check(&amp;new_env)?;
-                //     // Add them to the new scope.
-                //     new_env.add_declaration(decl)?;
-                // }
             </span>}
 
             <span class="self">Self</span>::Module(name, decls) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                
+
                 <span class="comment">// Add all the compile-time declarations to the environment.
                 // new_env.add_compile_time_declaration(&amp;Self::Many(decls.clone()))?;
                 </span>new_env.add_declaration(<span class="kw-2">&amp;</span><span class="self">Self</span>::Many(decls.clone()))<span class="question-mark">?</span>;
                 <span class="macro">trace!</span>(<span class="string">"Typechecking module {}"</span>, name);
                 <span class="comment">// Get all the compile time declarations so we can type check them in parallel.
-                </span><span class="kw">let </span>(comp_time_decls,_run_time_decls): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = decls
+                </span><span class="kw">let </span>(comp_time_decls, _run_time_decls): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = decls
                     .iter()
                     .partition(|decl| decl.is_compile_time_declaration());
 
@@ -1771,12 +1702,13 @@
             }
 
             <span class="self">Self</span>::FromImport { module, names } =&gt; {
+                module.type_check(env)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(name, <span class="kw">_</span>) <span class="kw">in </span>names {
                     <span class="kw">let </span>access = module.clone().field(ConstExpr::var(name));
                     access.type_check(env)<span class="question-mark">?</span>;
                 }
             }
-            <span class="self">Self</span>::FromImportAll(module) =&gt; {}
+            <span class="self">Self</span>::FromImportAll(module) =&gt; module.type_check(env)<span class="question-mark">?</span>,
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1829,13 +1761,8 @@
                     <span class="macro">writeln!</span>(f, <span class="string">"{}"</span>, decl)<span class="question-mark">?</span>;
                 }
             }
-            <span class="self">Self</span>::Module(name, decls) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">"module {}"</span>, name)<span class="question-mark">?</span>;
-                <span class="macro">write!</span>(f, <span class="string">" {{.."</span>)<span class="question-mark">?</span>;
-                <span class="comment">// for decl in decls.iter() {
-                //     writeln!(f, "{}", decl)?;
-                // }
-                </span><span class="macro">write!</span>(f, <span class="string">"}}"</span>)<span class="question-mark">?</span>;
+            <span class="self">Self</span>::Module(name, _decls) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">"module {} {{..}}"</span>, name)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::FromImport { module, names } =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">"from {} import"</span>, module)<span class="question-mark">?</span>;
@@ -1971,7 +1898,12 @@
     </span>(K, V): Into&lt;Declaration&gt;,
 {
     <span class="kw">fn </span>from(bt: BTreeMap&lt;K, V&gt;) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::Many(bt.into_iter().map(|(k, v)| (k, v).into()).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().into())
+        <span class="self">Self</span>::Many(
+            bt.into_iter()
+                .map(|(k, v)| (k, v).into())
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+                .into(),
+        )
     }
 }
 
@@ -1986,7 +1918,13 @@
     </span>T: Into&lt;Declaration&gt;,
 {
     <span class="kw">fn </span>from(decls: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::Many(decls.into_iter().map(|decl| decl.into()).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().into())
+        <span class="self">Self</span>::Many(
+            decls
+                .into_iter()
+                .map(|decl| decl.into())
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+                .into(),
+        )
     }
 }
 

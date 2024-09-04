@@ -342,6 +342,9 @@
 <a href="#341" id="341">341</a>
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     Annotation, AssignOp, BinaryOp, ConstExpr, Expr, Mutability, Pattern, PolyProcedure, TernaryOp,
     Type, UnaryOp,
@@ -437,7 +440,10 @@
     </span>InvalidMatchExpr(Expr),
 
     <span class="doccomment">/// Invalid pattern for a match expression.
-    </span>NonExhaustivePatterns { patterns: Vec&lt;Pattern&gt;, expr: Expr },
+    </span>NonExhaustivePatterns {
+        patterns: Vec&lt;Pattern&gt;,
+        expr: Expr,
+    },
 
     <span class="doccomment">/// Invalid type casting expression.
     </span>InvalidAs(Expr, Type, Type),
@@ -470,7 +476,7 @@
     </span>InvalidMonomorphize(ConstExpr),
 
     <span class="doccomment">/// Duplicate implementations of a member for a type
-    </span>DuplicateMember(Type, String)
+    </span>DuplicateMember(Type, String),
 }
 
 <span class="kw">impl </span>Error {
@@ -505,7 +511,7 @@
             <span class="self">Self</span>::UnimplementedOperator(op) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">"unimplemented operator {}"</span>, op)
             }
-            
+
             <span class="self">Self</span>::DuplicateMember(ty, member) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">"duplicate member {member} of type {ty}"</span>)
             }
