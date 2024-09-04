@@ -1402,7 +1402,7 @@ fn stmts_to_expr(stmts: Vec<Statement>, end_of_program: bool) -> Expr {
 pub fn parse_source(input: &str, filename: Option<String>) -> Result<Expr, String> {
     obliterate_save();
     let old_dir = match &filename {
-        Some(_) => std::env::current_dir().unwrap(),
+        Some(_) => std::env::current_dir().unwrap_or(std::path::PathBuf::new()),
         None => std::path::PathBuf::new()
     };
 
@@ -1416,9 +1416,11 @@ pub fn parse_source(input: &str, filename: Option<String>) -> Result<Expr, Strin
     }
 
     if let Some(path) = &filename {
-        let _ = std::env::set_current_dir(
-            std::env::current_dir().unwrap().join(std::path::Path::new(&path).parent().unwrap())
-        );
+        if let Ok(current_dir) = std::env::current_dir() {
+            let _ = std::env::set_current_dir(
+                current_dir.join(std::path::Path::new(&path).parent().unwrap())
+            );
+        }
     }
     let result = all_consuming(parse_helper::<VerboseError<&str>>)(input);
     let _ = std::env::set_current_dir(&old_dir);
@@ -1617,7 +1619,7 @@ fn parse_match_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
             parse_pattern,
             preceded(
                 delimited(whitespace, cut(tag("=>")), whitespace),
-                cut(alt((parse_block, parse_expr)))
+                alt((parse_block, parse_expr))
             )
         ),
         preceded(whitespace, tag(","))
@@ -1628,7 +1630,7 @@ fn parse_match_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
             parse_pattern,
             preceded(
                 delimited(whitespace, cut(tag("=>")), whitespace),
-                cut(alt((parse_block, parse_expr)))
+                alt((parse_block, parse_expr))
             )
         ))(input)?;
         
@@ -1641,7 +1643,7 @@ fn parse_match_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
 
 
     let (input, _) = whitespace(input)?;
-    let (input, _) = cut(tag("}"))(input)?;
+    let (input, _) = tag("}")(input)?;
     Ok((input, Expr::Match(expr.into(), branches.into_iter().map(|(pat, body)| (pat, body)).collect())))
 }
 
@@ -1776,12 +1778,12 @@ fn parse_block<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a st
     }
     let (input, _) = whitespace(input)?;
 
-    let (input, _) = cut(tag("}"))(input)?;
+    let (input, _) = tag("}")(input)?;
     let (input, _) = whitespace(input)?;
 
     let source_code_loc = end_source_code_tracking(input);
 
-    Ok((input, stmts_to_expr(stmts, false)))
+    Ok((input, stmts_to_expr(stmts, false).annotate(source_code_loc)))
 }
 
 fn parse_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Statement, E> {
@@ -2371,9 +2373,16 @@ fn parse_type_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'
     let (input, _) = whitespace(input)?;
     let (input, name) = parse_symbol(input)?;
     let (input, _) = whitespace(input)?;
+    let (input, opt_template_params) = opt(parse_type_params)(input)?;
+    let (input, _) = whitespace(input)?;
+
     let (input, _) = tag("=")(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, ty) = parse_type(input)?;
+    let (input, mut ty) = parse_type(input)?;
+    if let Some(template_params) = opt_template_params {
+        ty = Type::Poly(template_params, ty.into());
+    }
+
     Ok((input, Statement::Declaration(Declaration::Type(name.to_owned(), ty), None)))
 }
 
@@ -3319,6 +3328,7 @@ fn parse_expr_array<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &
 }
 
 fn parse_expr_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: &'a str) -> IResult<&'a str, Expr, E> {
+    let (input, _) = whitespace(input)?;
     let (input, _) = opt(tag("struct"))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("{")(input)?;
@@ -3335,9 +3345,10 @@ fn parse_expr_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(input: 
             ),
             map(parse_symbol, |x| (x, Expr::var(x.to_string()))),
         )),
-        tag(",")
+        preceded(whitespace, tag(","))
     ))(input)?;
 
+    let (input, _) = whitespace(input)?;
     let (input, last) = opt(
         alt((
             pair(

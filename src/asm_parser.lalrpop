@@ -1,7 +1,7 @@
 use ::std::str::FromStr;
 use crate::{
     side_effects::*,
-    asm::*
+    asm::{CoreOp, StandardOp, CoreProgram, StandardProgram, Location, FP, GP, SP, A, B, C, D, E, F}
 };
 
 grammar;

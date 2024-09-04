@@ -1,0 +1,39 @@
+from std.collections import *;
+
+fun main() {
+    let mut v = Vec.make<Int>();
+    for let mut i=0; i<100; i+=1; {
+        v.push(i);
+    }
+
+    v.println();
+    let z = v.map<Int>(sqrt);
+    z.println();
+
+    for let mut i=0; i<100; i+=1; {
+        println("Square root of ", *v.nth(i).unwrap(), " is ", *z.nth(i).unwrap());
+    }
+}
+
+fun sqrt(n: Int): Int {
+ 	let mut x = n;
+    let mut c = 0;
+    
+    let mut d = 0x4000000;
+    while d > n {
+        d /= 4;
+    }
+    
+    while d != 0 {
+        if x >= c + d {
+            x -= c + d;
+            c = c / 2 + d;
+        } else {
+            c /= 2;
+        }
+        d /= 4;
+    }
+    return c;
+}
+
+main();

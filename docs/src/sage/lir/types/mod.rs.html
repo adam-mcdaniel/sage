@@ -3002,14 +3002,14 @@
                     );
                     result
                 } <span class="kw">else </span>{
-                    <span class="macro">warn!</span>(<span class="string">"get_template_params: Couldn't find type {}"</span>, name);
+                    <span class="macro">debug!</span>(<span class="string">"get_template_params: Couldn't find type {}"</span>, name);
                     <span class="macro">vec!</span>[]
                 }
             }
             result =&gt; {
                 <span class="kw">match </span>result {
-                    <span class="prelude-val">Ok</span>(result) =&gt; <span class="macro">warn!</span>(<span class="string">"get_template_params: Couldn't find template params for {result}"</span>),
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">warn!</span>(<span class="string">"get_template_params: Couldn't simplify {self} to a polymorphic type due to {e}"</span>)
+                    <span class="prelude-val">Ok</span>(result) =&gt; <span class="macro">debug!</span>(<span class="string">"get_template_params: Couldn't find template params for {result}"</span>),
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">debug!</span>(<span class="string">"get_template_params: Couldn't simplify {self} to a polymorphic type due to {e}"</span>)
                 }
                 <span class="macro">vec!</span>[]
             }

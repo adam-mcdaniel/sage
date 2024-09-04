@@ -1823,21 +1823,21 @@
                     }
 
                     Expr::ConstExpr(ConstExpr::Member(val, name)) =&gt; {
-                        <span class="macro">warn!</span>(<span class="string">"Compiling (const) member function call {name} on {val} in environment {env}"</span>);
+                        <span class="macro">debug!</span>(<span class="string">"Compiling (const) member function call {name} on {val} in environment {env}"</span>);
                         <span class="comment">// let access = Expr::Member(Box::new((*val).into()), *name);
                         // access.compile_expr(env, output)?;
 
                         // Try to get the member of the underlying type.
                         </span><span class="kw">if </span>self_clone.is_method_call(env)<span class="question-mark">? </span>{
-                            <span class="macro">warn!</span>(<span class="string">"Is method call!"</span>);
+                            <span class="macro">debug!</span>(<span class="string">"Is method call!"</span>);
                             <span class="kw">let </span>transformed = self_clone
                                 .transform_method_call(env)<span class="question-mark">?</span>;
-                            <span class="macro">warn!</span>(<span class="string">"Transformed: {transformed}"</span>);
+                            <span class="macro">debug!</span>(<span class="string">"Transformed: {transformed}"</span>);
                             transformed.compile_expr(env, output)<span class="question-mark">?</span>;
                         } <span class="kw">else </span>{
                             <span class="comment">// Push the arguments to the procedure on the stack.
-                            </span><span class="macro">warn!</span>(<span class="string">"Is not method call!"</span>);
-                            <span class="macro">warn!</span>(<span class="string">"Compiling member function call {name} on {val} in environment {env}"</span>);
+                            </span><span class="macro">debug!</span>(<span class="string">"Is not method call!"</span>);
+                            <span class="macro">debug!</span>(<span class="string">"Compiling member function call {name} on {val} in environment {env}"</span>);
                             <span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span>args {
                                 <span class="comment">// Compile the argument (push it on the stack)
                                 </span>arg.clone().compile_expr(env, output)<span class="question-mark">?</span>;
@@ -1850,7 +1850,7 @@
                             </span>output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(A), <span class="number">1</span>));
                             <span class="comment">// Call the procedure on the arguments.
                             </span>output.op(CoreOp::Call(A));
-                            <span class="macro">warn!</span>(<span class="string">"Success!"</span>);
+                            <span class="macro">debug!</span>(<span class="string">"Success!"</span>);
                         }
                     }
                     Expr::Member(val, name) =&gt; {
@@ -2578,7 +2578,7 @@
             <span class="self">Self</span>::Member(container, member) =&gt; {
                 <span class="comment">// let new_container = container.clone().eval(env)?;
                 </span><span class="kw">let </span>new_container = <span class="kw-2">*</span>container.clone();
-                <span class="macro">warn!</span>(<span class="string">"Compiling (const) member access {member} on {new_container} in environment {env}"</span>);
+                <span class="macro">debug!</span>(<span class="string">"Compiling (const) member access {member} on {new_container} in environment {env}"</span>);
                 <span class="kw">match </span>(new_container, <span class="kw-2">*</span>member.clone()) {
                     (<span class="self">Self</span>::Tuple(tuple), <span class="self">Self</span>::Int(n)) =&gt; {
                         <span class="comment">// If the index is out of bounds, return an error.
@@ -2609,7 +2609,7 @@
                         expr.field(field).compile_expr(<span class="kw-2">&amp;mut </span>new_env, output)<span class="question-mark">?</span>;
                     }
                     (a, b) =&gt; {
-                        <span class="macro">warn!</span>(<span class="string">"Could not identify member access {b} on {a} in environment {env}"</span>);
+                        <span class="macro">debug!</span>(<span class="string">"Could not identify member access {b} on {a} in environment {env}"</span>);
                         <span class="comment">// return Err(Error::MemberNotFound((*container).into(), *member));
                         </span>Expr::Member(Box::new(Expr::ConstExpr(<span class="kw-2">*</span>container.clone())), <span class="kw-2">*</span>member.clone()).compile_expr(env, output)<span class="question-mark">?</span>;
                     }
@@ -2620,7 +2620,7 @@
                     .map_err(|err| err.annotate(metadata))<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::Declare(bindings, body) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">"Compiling declaration {bindings} with body {body} in environment {env}"</span>);
+                <span class="macro">debug!</span>(<span class="string">"Compiling declaration {bindings} with body {body} in environment {env}"</span>);
                 <span class="comment">// bindings.compile(Expr::ConstExpr(*body), env, output)?;
                 </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                 new_env.add_declaration(<span class="kw-2">&amp;</span>bindings)<span class="question-mark">?</span>;

@@ -86,1086 +86,60 @@
             console.log(document.getElementById("example").value);
             switch (document.getElementById("example").value) {
                 case "hashmap":
-                    source.setValue(`def main() {
-    // Create a hashmap from integers to const character pointers
-    let mut m = HashMap.make<Int, &Char>();
-    
-    // Insert some values
-    m.insert(1, &"one");
-    m.insert(2, &"two");
-    m.insert(3, &"three");
-    m.insert(7, &"seven");
+                    source.setValue(`from std.collections import *;
 
-    for let mut i=0; i < 10; i += 1 {
-        // Check if the map contains a key
-        let contains_key = m.contains_key(i);
-        println("m.contains_key(", i, ") = ", contains_key);
+fun main() {
+    let mut hm = HashMap.make<Point, Int>();
 
-        // If it does, print the value
-        if contains_key {
-            println("Value: ", m.get_and_unwrap(i));
-        }
-    }
-}
+    hm.insert(Point.new(4.0, 5.0), 5);
+    hm.insert(Point.new(1.0, -1.0), -100);
 
-// Used to represent a value that may or may not exist
-enum Option<T> {
-    // Some value
-    Some(T),
-    // No value
-    Nothing
-}
-
-// A function for halting the program
-def exit(n: Int): ! {
-    // \`!\` is the type of a value that never returns
-    println("Exit: ", n);
-    debug();
-    while True {}
-}
-
-// Throw an uncaught exception
-def panic(msg: &Char): ! {
-    for let mut i=0; msg[i] != '\\0'; i+=1 {
-        print(msg);
-    }
-    println();
-    debug();
-    exit(1);
-}
-
-
-// Add some associated functions to the Option enum
-impl Option<T> {
-    def nullify(self: &mut Option<T>) {
-        *self = Option<T> of Nothing;
-    }
-
-    def as_ref(self: &Option<T>): Option<&T> {
-        let inner = self as &T;
-        if let &of Nothing = self {
-            return Option<&T> of Nothing;
-        }
-        return Option<&T> of Some(inner);
-    }
-
-    def as_ref_mut(self: &mut Option<T>): Option<&mut T> {
-        let inner = self as &mut T;
-        if let &of Nothing = self {
-            return Option<&mut T> of Nothing;
-        }
-        return Option<&mut T> of Some(inner);
-    }
-
-    def print(self: &Option<T>) {
-        match self {
-            &of Some(x) => print("Some(", x, ")"),
-            _ => print("Nothing")
-        }
-    }
-
-    def println(self: &Option<T>) {
-        self.print();
-        print("\\n");
-    }
-
-    def map<U>(self: &Option<T>, f: T -> U): Option<U> {
-        match *self {
-            of Some(x) => Option<U> of Some(f(x)),
-            _ => Option<U> of Nothing
-        }
-    }
-
-    def is_some(self: &Option<T>): Bool {
-        match self {
-            &of Some(_) => True,
-            _ => False
-        }
-    }
-
-    def is_none(self: &Option<T>): Bool {
-        match self {
-            &of Some(_) => False,
-            _ => True
-        }
-    }
-
-    def unwrap(self: Option<T>): T {
-        match self {
-            of Some(x) => x,
-            _ => panic(&"called \`Option.unwrap()\` on a \`Nothing\` value" as &Char)
-        }
-    }
-
-    def unwrap_or(self: Option<T>, default: T): T {
-        match self {
-            of Some(x) => x,
-            _ => default
-        }
-    }
-}
-
-// A function for allocating memory
-def malloc<T>(n: Int): &mut T {
-    return alloc(n * sizeof<T>());
-}
-
-struct Vec<T> {
-    data: &mut T,
-    length: Int,
-    cap: Int
-}
-
-def memcpy<T>(dest: &mut T, src: &T, size: Int) {
-    for let mut i=0; i<size; i+=1 {
-        dest[i] = src[i];
-    }
-}
-
-impl Vec<T> {
-    def make(): Vec<T> {
-        let cap = 128;
-        let mut data = alloc(cap * sizeof<T>()) as &mut T;
-        return {
-            data=data,
-            length=0,
-            cap=cap
-        };
-    }
-
-    def reserve(self: &mut Vec<T>, cap: Int) {
-        if cap > self.cap {
-            let mut new_data = malloc<T>(cap);
-            memcpy<T>(new_data, self.data, self.length);
-            free(self.data);
-            self.data = new_data;
-            self.cap = cap;
-        }
-    }
-
-    def push(self: &mut Vec<T>, x: T) {
-        if self.length == self.cap {
-            self.reserve(self.cap * 2);
-        }
-        self.data[self.length] = x;
-        self.length += 1;
-    }
-
-    def pop(self: &mut Vec<T>): Option<T> {
-        if self.length == 0 {
-            return Option<T> of Nothing;
-        }
-        self.length -= 1;
-        return Option<T> of Some(self.data[self.length]);
-    }
-
-    def clear(self: &mut Vec<T>) {
-        self.length = 0;
-    }
-
-    def print(self: &Vec<T>) {
-        print("[");
-        for let mut i=0; i < self.length; i += 1 {
-            print(self.data[i]);
-            if i < self.length - 1 {
-                print(", ");
-            }
-        }
-        print("]");
-    }
-
-    def println(self: &Vec<T>) {
-        self.print();
-        print("\\n");
-    }
-
-    def get(self: &Vec<T>, i: Int): &T {
-        return &(self.data[i]);
-    }
-
-    def get_mut(self: &mut Vec<T>, i: Int): &mut T {
-        return &mut (self.data[i]);
-    }
-
-    def set(self: &mut Vec<T>, i: Int, x: T) {
-        self.data[i] = x;
-    }
-
-    def nth(self: &Vec<T>, i: Int): Option<&T> {
-        if i < 0 || i >= self.length {
-            return Option<&T> of Nothing;
-        }
-        return Option<&T> of Some(self.get(i));
-    }
-
-    def len(self: &Vec<T>): Int {
-        return self.length;
-    }
-
-    def map<U>(self: &Vec<T>, f: T -> U): Vec<U> {
-        let mut new_vec = Vec.make<U>();
-        for let mut i=0; i < self.length; i += 1 {
-            new_vec.push(f(self.data[i]));
-        }
-        return new_vec;
-    }
-}
-
-// Hash a value
-def hash<T>(t: T): Int {
-    let size = sizeof(t);
-    let ptr = &t as &Int;
-    
-    let mut hashValue = 5381;
-    def left_shift(mut a: Int, mut b: Int): Int = {
-        while b {
-            a *= 2;
-            b -= 1;
-        }
-        return a;
-    }
-
-    for let mut i = 0; i < size; i += 1 {
-        let mut value = ptr[i];
-        while (value != 0) {
-            let digit = value % 10;
-            hashValue = (left_shift(hashValue, 5) + hashValue) + digit;
-            value /= 10;
-        }
-    }
-
-    if hashValue < 0 {
-        hashValue = -hashValue;
-    }
-    
-    return hashValue;
-}
-// Compare two values for equality
-def eq<K>(a: K, b: K): Bool {
-    let size = sizeof(a);
-    let a_ptr = &a as &Int;
-    let b_ptr = &b as &Int;
-    
-    for let mut i=0; i<size; i+=1 {
-        if a_ptr[i] != b_ptr[i] {
-            return False;
-        }
-    }
-    return True;
-}
-
-struct Entry<K, V> {
-    key: K,
-    value: V
-}
-
-struct HashMap<K, V> {
-    data: Vec<Option<Entry<K, V>>>,
-    occupied: Int,
-}
-
-impl HashMap<K, V> {
-    def make(): HashMap<K, V> {
-        let mut data = Vec.make<Option<Entry<K, V>>>();
-        for let mut i=0; i < 128; i += 1 {
-            data.push(Option<Entry<K, V>> of Nothing);
-        }
-        return {
-            data=data,
-            occupied=0
-        };
-    }
-
-    def len(self: &HashMap<K, V>): Int {
-        return self.occupied;
-    }
-
-    def contains_key(self: &HashMap<K, V>, key: K): Bool {
-        let mut index = hash<K>(key) % self.data.len();
-        while self.data.get(index).is_some() {
-            if eq<K>(self.data.get(index).unwrap().key, key) {
-                return True;
-            }
-            index = (index + 1) % self.data.len();
-        }
-        return False;
-    }
-    
-    def insert(self: &mut HashMap<K, V>, key: K, value: V) {
-        if self.occupied * 2 > self.data.len() {
-            for let mut i=0; i < self.occupied * 2; i += 1 {
-                self.data.push(Option<Entry<K, V>> of Nothing);
-            }
-        }
-        let mut index = (hash<K>(key)) % (self.data.len());
-        while self.data.get(index).is_some() {
-            if eq<K>(self.data.get(index).unwrap().key, key) {
-                self.data.set(index, Option<Entry<K, V>> of Some({key=key, value=value}));
-                return ();
-            }
-            index = (index + 1) % self.data.len();
-        }
-        self.data.set(index, Option<Entry<K, V>> of Some({key=key, value=value}));
-        self.occupied += 1;
-    }
-
-    def remove(self: &mut HashMap<K, V>, key: K) {
-        let mut index = hash<K>(key) % self.data.len();
-        while self.data.get(index).is_some() {
-            if eq<K>(self.data.get(index).unwrap().key, key) {
-                self.data.set(index, Option<Entry<K, V>> of Nothing);
-                self.occupied -= 1;
-                return ();
-            }
-            index = (index + 1) % self.data.len();
-        }
-    }
-    
-    def get_and_unwrap(self: &HashMap<K, V>, key: K): V {
-        let mut index = hash<K>(key) % self.data.len();
-        while self.data.get(index).is_some() {
-            if eq<K>(self.data.get(index).unwrap().key, key) {
-                match self.data.get(index).as_ref() {
-                    of Some(inner) => {
-                        return inner.value;
-                    },
-                    _ => ()
-                }
-            }
-            index = (index + 1) % self.data.len();
-        }
-        panic(&"called \`HashMap.get_and_unwrap()\` on a \`Nothing\` value");
-    }
-
-    def get(self: &HashMap<K, V>, key: K): Option<&V> {
-        let mut index = hash<K>(key) % self.data.len();
-        while self.data.get(index).is_some() {
-            if eq<K>(self.data.get(index).unwrap().key, key) {
-                match self.data.get(index).as_ref() {
-                    of Some(inner) => {
-                        return Option<&V> of Some(&(inner.value));
-                    },
-                    _ => ()
-                }
-            }
-            index = (index + 1) % self.data.len();
-        }
-        return Option<&V> of Nothing;
-    }
-
-    def get_mut(self: &mut HashMap<K, V>, key: K): Option<&mut V> {
-        let mut index = hash<K>(key) % self.data.len();
-        while self.data.get(index).is_some() {
-            if eq<K>(self.data.get(index).unwrap().key, key) {
-                match self.data.get_mut(index).as_ref_mut() {
-                    of Some(inner) => {
-                        return Option<&mut V> of Some(&mut (inner.value));
-                    },
-                    _ => ()
-                }
-            }
-            index = (index + 1) % self.data.len();
-        }
-        return Option<&mut V> of Nothing;
-    }
-
-    def print(self: &HashMap<K, V>) {
-        print("{");
-        let mut first = True;
-        for let mut i=0; i < self.data.len(); i += 1 {
-            if self.data.get(i).is_some() {
-                if !first {
-                    print(", ");
-                }
-                print(self.data.get(i).unwrap().key);
-                print(": ");
-                print(self.data.get(i).unwrap().value);
-                first = False;
-            }
-        }
-        print("}");
-    }
-
-    def println(self: &HashMap<K, V>) {
-        self.print();
-        print("\\n");
-    }
-}
-
-main();`);
-                    break;
-                case "option":
-                    document.getElementById("input").value = ``;
-                    source.setValue(`def main() {
-    let x = Option<Int> of Some(5);
-    println(Option.unwrap<Int>(x));
-}
-
-enum Option<T> {
-    Some(T),
-    Nothing,
-}
-
-def panic(): Never {
-    println("Panicking!");
-    while True {}
-}
-
-impl Option {
-    def unwrap<T>(self: Option<T>): T {
-        match self {
-            of Some(x) => x,
-            of Nothing => panic(),
-        }
-    }
-}
-
-main();`);
-                    break;
-                case "string":
-                    document.getElementById("input").value = ``;
-                    source.setValue(`def main() {
-    // Create a string
-    let mut s = String.make();
-    // Push some chars on it
-    s.push('h');
-    s.push('i');
-    s.push('!');
-    // Print it
-    s.println();
-
-    // Pop off a character from the end
-    match s.pop() {
-        of Some(c) => {
-            // If there's some character, print it
-            println("popped: ", c);
-        },
-        of Nothing => {
-            // If there's no character, print an error
-            println("nothing to pop (This should not happen)");
-        }
-    }
-    s.println();
-
-    // Create a string from a string literal
-    let mut s2 = String.from_str(&"hello world!");
-    // Print it
-    s2.println();
-}
-
-def memcpy<T>(dest: &mut T, src: &T, mut n: Int) {
-    while n > 0 {
-        n -= 1;
-        dest[n] = src[n];
-    }
-}
-
-enum Option<T> {
-    Some(T),
-    Nothing
-}
-
-struct String {
-    data: &mut Char,
-    length: Int,
-    capacity: Int
-}
-
-impl String {
-    def make(): String {
-        let capacity = 128;
-        let data = alloc(capacity * sizeof<Char>());
-        return {
-            data = data,
-            length = 0,
-            capacity = capacity
-        };
-    }
-
-    def reserve(self: &mut String, new_capacity: Int) {
-        if new_capacity >= self.capacity {
-            let size = new_capacity * sizeof<Char>() + 1024;
-            let new_data = alloc(size);
-            memcpy<Char>(new_data, self.data, self.length);
-            free(self.data);
-            self.data = new_data;
-            self.capacity = new_capacity;
-        }
-    }
-
-    def push(self: &mut String, value: Char) {
-        if self.length > self.capacity / 2 {
-            self.reserve(self.capacity * 2);
-        }
-        self.data[self.length] = value;
-        self.length += 1;
-    }
-
-    def from_str(s: &Char): String {
-        let mut string = String.make();
-        for let mut i=0; s[i] != '\\0'; i+=1 {
-            string.push(s[i]);
-        }
-        return string;
-    }
-
-    def from_int(mut i: Int): String {
-        let mut string = String.make();
-        if i < 0 {
-            string.push('-');
-            i = -i;
-        }
-        if i == 0 {
-            string.push('0');
-        }
-        while i > 0 {
-            string.push(('0' as Int + (i % 10)) as Char);
-            i /= 10;
-        }
-        return string;
-    }
-
-    def pop(self: &mut String): Option<Char> {
-        if self.length == 0 {
-            return Option<Char> of Nothing;
-        }
-        self.length -= 1;
-        return Option<Char> of Some(self.data[self.length]);
-    }
-
-    def print(self: &String) {
-        for let mut i=0; i<self.length; i+=1 {
-            print(self.data[i]);
-        }
-    }
-
-    def println(self: &String) {
-        self.print();
-        println();
-    }
-}
-
-main();`);
-                    break;
-                case "hex-editor":
-                    document.getElementById("input").value = `+100 !ee 40.B0=7f
-d0=48
-d1=65
-d2=6c
-d3=6c
-d4=6f
-d5=2c
-d6=20
-d7=77
-d8=6f
-d9=72
-da=6c
-db=64
-dc=21
-dd=0
-r`;
-                    source.setValue(`// Used to represent a value that may or may not exist
-enum Option<T> {
-    // Some value
-    Some(T),
-    // No value
-    Nothing,
-}
-
-// A command issued to the hex editor
-enum Command {
-    // Write some data to memory
-    Write {
-        // Start address
-        start: Int,
-        // End address
-        end: Option<Int>,
-        // Value to write
-        value: Int,
-    },
-    // Examine some data in memory
-    Examine {
-        // Start address
-        start: Int,
-        // End address
-        end: Option<Int>
-    },
-    // Clear memory to an optional value (or zero)
-    Clear(Option<Int>),
-    // Grow memory up to a specific size
-    Grow(Int),
-    // Shrink memory down to a specific size
-    Shrink(Int),
-    // Quit the program
-    Quit,
-    // Print the current memory state
-    Report,
-    // Print the help message
-    Help,
-    // Unknown command
-    Unknown,
-}
-
-// A memory buffer
-struct Memory {
-    // A pointer to the data in memory
-    data: &mut Int,
-    // The number of bytes in memory
-    length: Int,
-    // The number of bytes allocated in memory
-    capacity: Int,
-}
-
-const HELP_MESSAGE = "HELP
-====
-Commands:
-1. Examine a byte in memory:
-    '<address>'           to examine a single byte
-    '<address>.<address>' to examine a range of memory
-
-2. Write to a byte in memory:
-    '<address>=<value>'           to write a single byte
-    '<address>.<address>=<value>' to write a range of memory
-
-3. Clear memory:
-    '!'         to clear all memory to zero
-    '! <value>' to clear all memory to a specific value
-
-4. Grow or shrink memory:
-    '+ <value>' to grow memory to a specific size
-    '- <value>' to shrink memory to a specific size
-
-5. Report:
-    'r' to print the current memory state
-    'h' to print this help message
-
-6. Quit:
-    'q' to quit
-    EOF to quit
-    
-All numbers are hexadecimal.";
-
-def main() {
-    let mut m = Memory_default();
-
-    let mut is_done = False;
-    while !is_done {
-        let result = Command_read();
-        match result {
-            of Examine {
-                start,
-                end=of Some(end)
-            } => {
-                for let mut i=start; i<end; i+=1 {
-                    print_byte(Memory_get(&mut m, i));
-                    print(" ");
-                }
-                print("\\n");
-            },
-    
-            of Examine {
-                start,
-                end=of Nothing
-            } => {
-                print_byte(Memory_get(&mut m, start));
-                print("\\n");
-            },
-    
-            of Write {
-                start,
-                end=of Some(end),
-                value
-            } => {
-                for let mut i=start; i<end; i+=1 {
-                    Memory_set(&mut m, i, value);
-                }
-            },
-            
-            of Write {
-                start,
-                end=of Nothing,
-                value
-            } => {
-                Memory_set(&mut m, start, value);
-            },
-    
-            of Clear(of Some(val)) => {
-                for let mut i=0; i<m.length; i+=1 {
-                    m.data[i] = val;
-                }
-            },
-    
-            of Clear(of Nothing) => {
-                for let mut i=0; i<m.length; i+=1 {
-                    m.data[i] = 0;
-                }
-            },
-    
-            of Grow(val) => {
-                if val < m.length {
-                    print("Cannot grow memory to a smaller size ", val, "\\n");
-                } else {
-                    Memory_extend(&mut m, val - m.length);
-                }
-            },
-    
-            of Shrink(val) => {
-                if val > m.length {
-                    print("Cannot shrink memory to a greater size ", val, "\\n");
-                } else {
-                    Memory_shrink(&mut m, m.length - val);
-                }
-            },
-    
-            of Quit => {
-                is_done = True;
-            },
-    
-            of Help => {
-                print(HELP_MESSAGE, "\\n");
-            },
-
-            of Report => {
-                Memory_print(&m);
-            },
-    
-            _ => {
-                print("unknown\\n");
-            }
-        }
-
-    }
-    Memory_free(&m);
-}
-
-def is_char_between(ch: Char, start: Char, end: Char): Bool {
-    return ch as Int >= start as Int && ch as Int <= end as Int;
-}
-
-def digit_to_int(ch: Char): Int {
-    if (is_char_between(ch, '0', '9')) {
-        return ch as Int - '0' as Int;
-    } elif (is_char_between(ch, 'A', 'F')) {
-        return ch as Int - 'A' as Int + 10;
-    } elif (is_char_between(ch, 'a', 'f')) {
-        return ch as Int - 'a' as Int + 10;
+    hm.println();
+    let idx = Point.new(1.0, -1.0);
+    if let of Some(result) = hm.get(idx) {
+        println("hm[", idx, "] = ", *result);
     } else {
-        return 0;
+        println("Could not find hm[", idx, "]");
     }
 }
 
-def is_digit(ch: Char): Bool {
-    return is_char_between(ch, '0', '9') || is_char_between(ch, 'A', 'F') || is_char_between(ch, 'a', 'f');
+struct Point {
+    x: Float,
+    y: Float
 }
 
-def read_int(): Int {
-    let mut ch = ' ';
-    input(&mut ch);
-    while ch == ' ' || ch == '\\t' || ch == '\\n' || ch == '\\r' {
-        input(&mut ch);
+impl Point {
+    fun new(x: Float, y: Float): Point {
+        return {x=x, y=y};
     }
 
-    let mut start = digit_to_int(ch);
-    while is_digit(ch) {
-        input(&mut ch);
-        if is_digit(ch) {
-            start = start * 16 + digit_to_int(ch);
-        }
-    }
-
-    return start;
-}
-
-def Command_read(): Command {
-    let mut ch = ' ';
-    while ch {
-        input(&mut ch);
-        while ch == ' ' || ch == '\\t' || ch == '\\n' || ch == '\\r' {
-            input(&mut ch);
-        }
-
-        if ch as Int == -1 {
-            return Command of Quit;
-        }
-
-        if is_digit(ch) {
-            // Parse a hex number
-            let mut start = digit_to_int(ch);
-            while is_digit(ch) {
-                input(&mut ch);
-                if is_digit(ch) {
-                    start = start * 16 + digit_to_int(ch);
-                }
-            }
-
-            // Check for a range
-            if ch == '.' {
-                // Parse another int
-                input(&mut ch);
-                let mut end = digit_to_int(ch);
-                while is_digit(ch) {
-                    input(&mut ch);
-                    if is_digit(ch) {
-                        end = end * 16 + digit_to_int(ch);
-                    }
-                }
-
-                if end < start {
-                    print("Invalid range\\n");
-                    return Command of Unknown;
-                } else {
-                    // Check for an assignment
-                    if ch == '\\n' {
-                        return Command of Examine {
-                            start=start,
-                            end=Option<Int> of Some(end)
-                        };
-                    } elif ch == '=' {
-                        let value = read_int();
-                        return Command of Write {
-                            start=start,
-                            end=Option<Int> of Some(end),
-                            value=value
-                        };
-                    } else {
-                        return Command of Examine {
-                            start=start,
-                            end=Option<Int> of Some(end)
-                        };
-                    }
-                }
-            } elif ch == '=' {
-                let value = read_int();
-                return Command of Write {
-                    start=start,
-                    end=Option<Int> of Nothing,
-                    value=value
-                };
-            } else {
-                return Command of Examine {
-                    start=start,
-                    end=Option<Int> of Nothing
-                };
-            }
-            
-            return Command of Unknown;
-        } else {
-            match ch {
-                'h' | 'H' => {
-                    return Command of Help;
-                },
-                'r' | 'R' => {
-                    return Command of Report;
-                },
-    
-                'q' | 'Q' | '\\0' => {
-                    return Command of Quit;
-                },
-
-                '+' => {
-                    let value = read_int();
-                    if value <= 0 {
-                        print("Invalid value\\n");
-                        return Command of Unknown;
-                    }
-                    return Command of Grow(value);
-                },
-
-                '-' => {
-                    let value = read_int();
-                    if value <= 0 {
-                        print("Invalid value\\n");
-                        return Command of Unknown;
-                    }
-                    return Command of Shrink(value);
-                },
-
-                '\\\\' | '!' => {
-                    let value = read_int();
-                    return Command of Clear(Option<Int> of Some(value));
-                },
-    
-                _ => {
-                    return Command of Unknown;
-                }
-            }
-        }
-
-    }
-    return Command of Unknown;
-}
-
-def copy<T>(dst: &mut T, src: &T, count: Int) {
-    for let mut i=0; i<count; i+=1 {
-        dst[i] = src[i];
-    }
-}
-
-def allocate<T>(count: Int): &mut T {
-    return alloc(sizeof<T>() * count) as &mut T;
-}
-
-def reallocate<T>(src: &T, old_size: Int, new_size: Int): &T {
-    let dst = allocate<T>(new_size);
-    copy<T>(dst, src, old_size);
-    del src;
-    return dst;
-}
-
-def Memory_push(m: &mut Memory, value: Int) {
-    while (m.length >= m.capacity) {
-        m.capacity *= 2;
-    }
-    m.data = allocate<Int>(m.capacity);
-    m.data[m.length] = value;
-    m.length += 1;
-}
-
-def Memory_extend(m: &mut Memory, count: Int) {
-    while (m.length + count >= m.capacity) {
-        m.capacity *= 2;
-    }
-    m.data = reallocate<Int>(m.data, m.length, m.capacity);
-    m.length += count;
-}
-
-def Memory_pop(m: &mut Memory): Int {
-    if (m.length == 0) {
-        return 0;
-    }
-    m.length -= 1;
-    return m.data[m.length];
-}
-
-def Memory_shrink(m: &mut Memory, count: Int) {
-    if (m.length < count) {
-        m.length = 0;
-    } else {
-        m.length -= count;
-    }
-}
-
-def Memory_index(m: &mut Memory, index: Int): &mut Int {
-    if (index >= m.length) {
-        Memory_extend(m, index - m.length + 1);
-    }
-    return &mut (m.data[index]);
-}
-
-def Memory_get(m: &mut Memory, index: Int): Int {
-    return *(Memory_index(m, index));
-}
-
-def Memory_set(m: &mut Memory, index: Int, value: Int) {
-    *(Memory_index(m, index)) = value;
-}
-
-def Memory_new(n: Int): Memory {
-    return {
-        data=allocate<Int>(n),
-        length=0,
-        capacity=n
-    };
-}
-
-def Memory_default(): Memory {
-    return Memory_new(10000);
-}
-
-def Memory_free(m: &Memory) {
-    del m.data;
-}
-
-def print_byte(mut c: Int) {
-    c = c & 0xFF;
-    let hex = "0123456789ABCDEF";
-    print(hex[(c / 16) & 0xF]);
-    print(hex[c & 0xF]);
-}
-
-def print_addr(mut c: Int) {
-    c = c & 0xFFFFFFFF;
-    let hex = "0123456789ABCDEF";
-    print(hex[(c / 0x10000000) & 0xF]);
-    print(hex[(c / 0x1000000) & 0xF]);
-    print(hex[(c / 0x100000) & 0xF]);
-    print(hex[(c / 0x10000) & 0xF]);
-    print(hex[(c / 0x1000) & 0xF]);
-    print(hex[(c / 0x100) & 0xF]);
-    print(hex[(c / 0x10) & 0xF]);
-    print(hex[c & 0xF]);
-}
-
-def Memory_print(m: &Memory) {
-    print("Memory: ", m.length, "/", m.capacity, "\\n");
-    if (m.length == 0) {
-        print("Empty\\n");
-    }
-    for let mut i=0; i<m.length; i+=1 {
-        // Print address
-        if (i % 16 == 0) {
-            print_addr(i);
-            print(": ");
-        }
-
-        print_byte(m.data[i]);
-        print(" ");
-        if i % 16 == 15 {
-            // print ASCII
-            print(" | ");
-            for let mut j=i-15; j<=i; j+=1 {
-                let c = m.data[j];
-                if (c >= 32 && c <= 126) {
-                    print(c as Char);
-                } else {
-                    print(".");
-                }
-            }
-            print("\\n");
-        }
-    }
-
-    // print ASCII
-    if (m.length % 16 != 0) {
-        let i = m.length;
-        let j = i - (i % 16);
-        for let mut k=i; k<j+16; k+=1 {
-            print("   ");
-        }
-        print(" | ");
-        for let mut k=j; k<i; k+=1 {
-            let c = m.data[k];
-            if (c >= 32 && c <= 126) {
-                print(c as Char);
-            } else {
-                print(".");
-            }
-        }
-        print("\\n");
+    fun move(&mut self, dx: Float, dy: Float) {
+        self.x += dx;
+        self.y += dy;
     }
 }
 
 main();`);
                     break;
                 case "aes":
-                    source.setValue(`def print_hex(n: Int, lower: Bool) {
+                    source.setValue(`fun print_hex(n: Int, lower: Bool) {
     if n < 10 {
         print((n + '0' as Int) as Char);
-    } elif n < 16 {
-        print((n - 10 + (lower? 'a' : 'A') as Int) as Char);
+    } else if n < 16 {
+        print((n - 10 + (if lower { 'a' } else { 'A' }) as Int) as Char);
     } else {
         print_hex(n / 16, lower);
         print_hex(n % 16, lower);
     }
 }
 
-def print_byte(mut n: Int, lower: Bool) {
+fun print_byte(mut n: Int, lower: Bool) {
     n &= 0xFF;
     print_hex(n / 16, lower);
     print_hex(n % 16, lower);
 }
 
-def left_shift(mut a: Int, mut b: Int): Int = {
+fun left_shift(mut a: Int, mut b: Int): Int {
     while b {
         a *= 2;
         b -= 1;
@@ -1175,9 +149,10 @@ def left_shift(mut a: Int, mut b: Int): Int = {
 
 const MIN_INT = -2147483648;
 
-def right_shift(mut a: Int, mut b: Int): Int = {
-    let mut offset = MIN_INT, was_negative = a < 0;
-    for let mut i=0; i < b - 1; i += 1 {
+fun right_shift(mut a: Int, mut b: Int): Int {
+    let mut offset = MIN_INT;
+    let was_negative = a < 0;
+    for let mut i=0; i < b - 1; i += 1; {
         offset /= 2;
     }
 
@@ -1193,29 +168,33 @@ def right_shift(mut a: Int, mut b: Int): Int = {
     return a;
 }
 
-def print_hexln(n: Int, lower: Bool) {
+fun print_hexln(n: Int, lower: Bool) {
     print_hex(n, lower);
     print("\\n");
 }
 
-def print_byteln(n: Int, lower: Bool) {
+fun print_byteln(n: Int, lower: Bool) {
     print_byte(n, lower);
     print("\\n");
 }
 
-def xtime(mut n: Int): Int {
+fun xtime(mut n: Int): Int {
     n &= 0xFF;
     n *= 2;
 
-    return n < 0x100? n : n ^ 0x1B;
+    if n < 0x100 {
+        n
+    } else {
+        n ^ 0x1B
+    }
 }
 
-def multiply(mut a: Int, mut b: Int): Int {
+fun multiply(mut a: Int, mut b: Int): Int {
     a &= 0xFF;
     b &= 0xFF;
     let mut result = 0;
     let mut next_term = a;
-    for let mut i=0; i < 8; i += 1 {
+    for let mut i=0; i < 8; i += 1; {
         if b & 1 {
             result ^= next_term;
         }
@@ -1228,37 +207,41 @@ def multiply(mut a: Int, mut b: Int): Int {
 
 type State = [Int * 16];
 
-def row_major(c0r0: Int, c1r0: Int, c2r0: Int, c3r0: Int,
+fun row_major(c0r0: Int, c1r0: Int, c2r0: Int, c3r0: Int,
     c0r1: Int, c1r1: Int, c2r1: Int, c3r1: Int,
     c0r2: Int, c1r2: Int, c2r2: Int, c3r2: Int,
-    c0r3: Int, c1r3: Int, c2r3: Int, c3r3: Int): State = [
-    c0r0, c0r1, c0r2, c0r3,
-    c1r0, c1r1, c1r2, c1r3,
-    c2r0, c2r1, c2r2, c2r3,
-    c3r0, c3r1, c3r2, c3r3
-];
+    c0r3: Int, c1r3: Int, c2r3: Int, c3r3: Int): State {
+    return [
+        c0r0, c0r1, c0r2, c0r3,
+        c1r0, c1r1, c1r2, c1r3,
+        c2r0, c2r1, c2r2, c2r3,
+        c3r0, c3r1, c3r2, c3r3
+    ];
+}
 
-def col_major(c0r0: Int, c0r1: Int, c0r2: Int, c0r3: Int,
+fun col_major(c0r0: Int, c0r1: Int, c0r2: Int, c0r3: Int,
     c1r0: Int, c1r1: Int, c1r2: Int, c1r3: Int,
     c2r0: Int, c2r1: Int, c2r2: Int, c2r3: Int,
-    c3r0: Int, c3r1: Int, c3r2: Int, c3r3: Int): State = [
-    c0r0, c0r1, c0r2, c0r3,
-    c1r0, c1r1, c1r2, c1r3,
-    c2r0, c2r1, c2r2, c2r3,
-    c3r0, c3r1, c3r2, c3r3
-];
+    c3r0: Int, c3r1: Int, c3r2: Int, c3r3: Int): State {
+    return [
+        c0r0, c0r1, c0r2, c0r3,
+        c1r0, c1r1, c1r2, c1r3,
+        c2r0, c2r1, c2r2, c2r3,
+        c3r0, c3r1, c3r2, c3r3
+    ];
+}
 
-def get(state: &State, row: Int, col: Int): Int {
+fun get(state: &State, row: Int, col: Int): Int {
     return (state as &Int)[row * 4 + col];
 }
 
-def set(state: &mut State, row: Int, col: Int, value: Int) {
+fun set(state: &mut State, row: Int, col: Int, value: Int) {
     (state as &mut Int)[row * 4 + col] = value;
 }
 
-def print_state(self: &State) {
-    for let mut i=0; i < 4; i += 1 {
-        for let mut j=0; j < 4; j += 1 {
+fun print_state(self: &State) {
+    for let mut i=0; i < 4; i += 1; {
+        for let mut j=0; j < 4; j += 1; {
             print_byte(get(self, i, j), False);
             print(" ");
         }
@@ -1266,8 +249,8 @@ def print_state(self: &State) {
     }
 }
 
-def rotate_row(self: &mut State, row: Int, steps: Int) {
-    for let mut i=0; i<steps; i += 1 {
+fun rotate_row(self: &mut State, row: Int, steps: Int) {
+    for let mut i=0; i<steps; i += 1; {
         let temp = get(self, row, 0);
         set(self, row, 0, get(self, row, 1));
         set(self, row, 1, get(self, row, 2));
@@ -1276,28 +259,28 @@ def rotate_row(self: &mut State, row: Int, steps: Int) {
     }
 }
 
-def shift_rows(self: &mut State) {
+fun shift_rows(self: &mut State) {
     rotate_row(self, 1, 1);
     rotate_row(self, 2, 2);
     rotate_row(self, 3, 3);
 }
 
-def inverse_shift_rows(self: &mut State) {
+fun inverse_shift_rows(self: &mut State) {
     rotate_row(self, 1, 3);
     rotate_row(self, 2, 2);
     rotate_row(self, 3, 1);
 }
 
-def add_round_key(self: &mut State, round_key: &State) {
+fun add_round_key(self: &mut State, round_key: &State) {
     let round_key_ptr = round_key as &Int;
     let self_ptr = self as &mut Int;
-    for let mut i=0; i < 16; i += 1 {
+    for let mut i=0; i < 16; i += 1; {
         self_ptr[i] ^= round_key_ptr[i];
     }
 }
 
-def mix_columns(self: &mut State) {
-    for let mut j=0; j < 4; j += 1 {
+fun mix_columns(self: &mut State) {
+    for let mut j=0; j < 4; j += 1; {
         let s0 = get(self, 0, j);
         let s1 = get(self, 1, j);
         let s2 = get(self, 2, j);
@@ -1310,8 +293,8 @@ def mix_columns(self: &mut State) {
     }
 }
 
-def inverse_mix_columns(self: &mut State) {
-    for let mut j=0; j < 4; j += 1 {
+fun inverse_mix_columns(self: &mut State) {
+    for let mut j=0; j < 4; j += 1; {
         let s0 = get(self, 0, j);
         let s1 = get(self, 1, j);
         let s2 = get(self, 2, j);
@@ -1325,7 +308,7 @@ def inverse_mix_columns(self: &mut State) {
 }
 
 
-def substitute_byte(mut byte: Int): Int {
+fun substitute_byte(mut byte: Int): Int {
     let S_BOX = [[99, 124, 119, 123, 242, 107, 111, 197, 48, 1, 103, 43, 254, 215, 171, 118], [202, 130, 201, 125, 250, 89, 71, 240, 173, 212, 162, 175, 156, 164, 114, 192], [183, 253, 147, 38, 54, 63, 247, 204, 52, 165, 229, 241, 113, 216, 49, 21], [4, 199, 35, 195, 24, 150, 5, 154, 7, 18, 128, 226, 235, 39, 178, 117], [9, 131, 44, 26, 27, 110, 90, 160, 82, 59, 214, 179, 41, 227, 47, 132], [83, 209, 0, 237, 32, 252, 177, 91, 106, 203, 190, 57, 74, 76, 88, 207], [208, 239, 170, 251, 67, 77, 51, 133, 69, 249, 2, 127, 80, 60, 159, 168], [81, 163, 64, 143, 146, 157, 56, 245, 188, 182, 218, 33, 16, 255, 243, 210], [205, 12, 19, 236, 95, 151, 68, 23, 196, 167, 126, 61, 100, 93, 25, 115], [96, 129, 79, 220, 34, 42, 144, 136, 70, 238, 184, 20, 222, 94, 11, 219], [224, 50, 58, 10, 73, 6, 36, 92, 194, 211, 172, 98, 145, 149, 228, 121], [231, 200, 55, 109, 141, 213, 78, 169, 108, 86, 244, 234, 101, 122, 174, 8], [186, 120, 37, 46, 28, 166, 180, 198, 232, 221, 116, 31, 75, 189, 139, 138], [112, 62, 181, 102, 72, 3, 246, 14, 97, 53, 87, 185, 134, 193, 29, 158], [225, 248, 152, 17, 105, 217, 142, 148, 155, 30, 135, 233, 206, 85, 40, 223], [140, 161, 137, 13, 191, 230, 66, 104, 65, 153, 45, 15, 176, 84, 187, 22]];
     byte &= 0xFF;
     let row = right_shift(byte, 4) & 0xF;
@@ -1333,7 +316,7 @@ def substitute_byte(mut byte: Int): Int {
     return S_BOX[row][col];
 }
 
-def inverse_substitute_byte(mut byte: Int): Int {
+fun inverse_substitute_byte(mut byte: Int): Int {
     let INVERSE_S_BOX = [[82, 9, 106, 213, 48, 54, 165, 56, 191, 64, 163, 158, 129, 243, 215, 251], [124, 227, 57, 130, 155, 47, 255, 135, 52, 142, 67, 68, 196, 222, 233, 203], [84, 123, 148, 50, 166, 194, 35, 61, 238, 76, 149, 11, 66, 250, 195, 78], [8, 46, 161, 102, 40, 217, 36, 178, 118, 91, 162, 73, 109, 139, 209, 37], [114, 248, 246, 100, 134, 104, 152, 22, 212, 164, 92, 204, 93, 101, 182, 146], [108, 112, 72, 80, 253, 237, 185, 218, 94, 21, 70, 87, 167, 141, 157, 132], [144, 216, 171, 0, 140, 188, 211, 10, 247, 228, 88, 5, 184, 179, 69, 6], [208, 44, 30, 143, 202, 63, 15, 2, 193, 175, 189, 3, 1, 19, 138, 107], [58, 145, 17, 65, 79, 103, 220, 234, 151, 242, 207, 206, 240, 180, 230, 115], [150, 172, 116, 34, 231, 173, 53, 133, 226, 249, 55, 232, 28, 117, 223, 110], [71, 241, 26, 113, 29, 41, 197, 137, 111, 183, 98, 14, 170, 24, 190, 27], [252, 86, 62, 75, 198, 210, 121, 32, 154, 219, 192, 254, 120, 205, 90, 244], [31, 221, 168, 51, 136, 7, 199, 49, 177, 18, 16, 89, 39, 128, 236, 95], [96, 81, 127, 169, 25, 181, 74, 13, 45, 229, 122, 159, 147, 201, 156, 239], [160, 224, 59, 77, 174, 42, 245, 176, 200, 235, 187, 60, 131, 83, 153, 97], [23, 43, 4, 126, 186, 119, 214, 38, 225, 105, 20, 99, 85, 33, 12, 125]];
     byte &= 0xFF;
     let row = right_shift(byte, 4) & 0xF;
@@ -1341,17 +324,17 @@ def inverse_substitute_byte(mut byte: Int): Int {
     return INVERSE_S_BOX[row][col];
 }
 
-def substitute_bytes(self: &mut State) {
-    for let mut i=0; i < 4; i += 1 {
-        for let mut j=0; j < 4; j += 1 {
+fun substitute_bytes(self: &mut State) {
+    for let mut i=0; i < 4; i += 1; {
+        for let mut j=0; j < 4; j += 1; {
             set(self, i, j, substitute_byte(get(self, i, j)));
         }
     }
 }
 
-def inverse_substitute_bytes(self: &mut State) {
-    for let mut i=0; i < 4; i += 1 {
-        for let mut j=0; j < 4; j += 1 {
+fun inverse_substitute_bytes(self: &mut State) {
+    for let mut i=0; i < 4; i += 1; {
+        for let mut j=0; j < 4; j += 1; {
             set(self, i, j, inverse_substitute_byte(get(self, i, j)));
         }
     }
@@ -1363,7 +346,7 @@ enum Key {
     Key256([Int * 32]),
 }
 
-def get_key_rounds(self: &Key): Int {
+fun get_key_rounds(self: &Key): Int {
     match self {
         &of Key128(_) => 10,
         &of Key192(_) => 12,
@@ -1372,7 +355,7 @@ def get_key_rounds(self: &Key): Int {
     }
 }
 
-def get_key_length(self: &Key): Int {
+fun get_key_length(self: &Key): Int {
     match self {
         &of Key128(_) => 4,
         &of Key192(_) => 6,
@@ -1381,33 +364,33 @@ def get_key_length(self: &Key): Int {
     }
 }
 
-def get_key_size(self: &Key): Int {
+fun get_key_size(self: &Key): Int {
     return get_key_length(self) * 4;
 }
 
-def get_key_data(key: &Key): &Int = key as &Int;
+fun get_key_data(key: &Key): &Int = key as &Int;
 
-def print_key(self: &Key) {
+fun print_key(self: &Key) {
     match self {
         &of Key128(key) => print("Key128: "),
         &of Key192(key) => print("Key192: "),
         &of Key256(key) => print("Key256: "),
-        _ => print("Unknown key type: "),
+        _ => print("Unknown key type: ")
     }
     let size = get_key_size(self);
     let data = get_key_data(self);
-    for let mut i=0; i < size; i+=1 {
+    for let mut i=0; i < size; i+=1; {
         print_byte(data[i], False);
     }
 }
 
-def print_keyln(self: &Key) {
+fun print_keyln(self: &Key) {
     print_key(self);
     print("\\n");
 }
 
 
-def substitute_word(word: Int): Int {
+fun substitute_word(word: Int): Int {
     let byte0 = substitute_byte(right_shift(word, 24) & 0xFF);
     let byte1 = substitute_byte(right_shift(word, 16) & 0xFF);
     let byte2 = substitute_byte(right_shift(word, 8) & 0xFF);
@@ -1415,7 +398,7 @@ def substitute_word(word: Int): Int {
     return left_shift(byte0, 24) + left_shift(byte1, 16) + left_shift(byte2, 8) + byte3;
 }
 
-def rotate_word(word: Int): Int {
+fun rotate_word(word: Int): Int {
     let byte0 = right_shift(word, 24) & 0xFF;
     let byte1 = right_shift(word, 16) & 0xFF;
     let byte2 = right_shift(word, 8) & 0xFF;
@@ -1423,11 +406,11 @@ def rotate_word(word: Int): Int {
     return left_shift(byte1, 24) + left_shift(byte2, 16) + left_shift(byte3, 8) + byte0;
 }
 
-def word(byte3: Int, byte2: Int, byte1: Int, byte0: Int): Int {
+fun word(byte3: Int, byte2: Int, byte1: Int, byte0: Int): Int {
     return left_shift(byte3, 24) + left_shift(byte2, 16) + left_shift(byte1, 8) + byte0;
 }
 
-def bytes(word: Int): [Int * 4] {
+fun bytes(word: Int): [Int * 4] {
     let byte0 = right_shift(word, 24) & 0xFF;
     let byte1 = right_shift(word, 16) & 0xFF;
     let byte2 = right_shift(word, 8) & 0xFF;
@@ -1435,7 +418,7 @@ def bytes(word: Int): [Int * 4] {
     return [byte0, byte1, byte2, byte3];
 }
 
-def round_key(word0: Int, word1: Int, word2: Int, word3: Int): State {
+fun round_key(word0: Int, word1: Int, word2: Int, word3: Int): State {
     let bytes0 = bytes(word0);
     let bytes1 = bytes(word1);
     let bytes2 = bytes(word2);
@@ -1446,19 +429,19 @@ def round_key(word0: Int, word1: Int, word2: Int, word3: Int): State {
               bytes0[3], bytes1[3], bytes2[3], bytes3[3]);
 }
 
-def key_expansion(key: &Key, nr: Int, nk: Int): &Int = {
+fun key_expansion(key: &Key, nr: Int, nk: Int): &Int {
     let key_data = key as &Int;
     let w = alloc(4 * (nr + 1) * sizeof<Int>()) as &mut Int;
-    for let mut i=0; i < nk; i+=1 {
+    for let mut i=0; i < nk; i+=1; {
         w[i] = word(key_data[4*i], key_data[4*i+1], key_data[4*i+2], key_data[4*i+3]);
     }
 
     let rcon = [1, 2, 4, 8, 16, 32, 64, 128, 27, 54];
-    for let mut i=nk; i < 4 * (nr + 1); i += 1 {
+    for let mut i=nk; i < 4 * (nr + 1); i += 1; {
         let mut temp = w[i-1];
         if i % nk == 0 {
             temp = substitute_word(rotate_word(temp)) ^ word(rcon[i / nk - 1], 0, 0, 0);
-        } elif nk == 8 && i % nk == 4 {
+        } else if nk == 8 && i % nk == 4 {
             temp = substitute_word(temp);
         }
 
@@ -1468,13 +451,13 @@ def key_expansion(key: &Key, nr: Int, nk: Int): &Int = {
     return w;
 }
 
-def cipher(self: &mut State, key: &Key) {
+fun cipher(self: &mut State, key: &Key) {
     let len = get_key_length(key);
     let nr = get_key_rounds(key);
     let k = key_expansion(key, nr, len);
     let mut rk = round_key(k[0], k[1], k[2], k[3]);
     add_round_key(self, &rk);
-    for let mut i=4; i < 4 * (nr + 1); i+=4 {
+    for let mut i=4; i < 4 * (nr + 1); i+=4; {
         rk = round_key(k[i], k[i+1], k[i+2], k[i+3]);
         substitute_bytes(self);
         shift_rows(self);
@@ -1484,17 +467,17 @@ def cipher(self: &mut State, key: &Key) {
         add_round_key(self, &rk);
     }
 
-    del k;
+    free(k);
 }
 
-def inverse_cipher(self: &mut State, key: &Key) {
+fun inverse_cipher(self: &mut State, key: &Key) {
     let len = get_key_length(key);
     let nr = get_key_rounds(key);
     let k = key_expansion(key, nr, len);
 
     let mut rk = round_key(k[4*nr], k[4*nr+1], k[4*nr+2], k[4*nr+3]);
     add_round_key(self, &rk);
-    for let mut i=4*nr-4; i >= 0; i-=4 {
+    for let mut i=4*nr-4; i >= 0; i-=4; {
         rk = round_key(k[i], k[i+1], k[i+2], k[i+3]);
         inverse_shift_rows(self);
         inverse_substitute_bytes(self);
@@ -1504,7 +487,7 @@ def inverse_cipher(self: &mut State, key: &Key) {
         }
     }
 
-    del k;
+    free(k);
 }
 let key = Key of Key128 [
     0x00, 0x01, 0x02, 0x03,
@@ -1534,65 +517,8 @@ inverse_cipher(&mut state, &key);
 print_state(&state);
 print("\\n");`);
                     break;
-                case "realloc-stack":
-                    source.setValue(`
-def realloc_stack(size: Int) {
-    let mut new_sp: &mut Cell = Null;
-    let mut new_fp: &mut Cell = Null;
-    let mut new_gp: &mut Cell = Null;
-    let mut new_stack_start: &mut Cell = Null;
-    let mut old_sp: &mut Cell = Null;
-    let mut old_fp: &mut Cell = Null;
-    let mut old_gp: &mut Cell = Null;
-    let mut old_frame: &mut Cell = Null;
-    let mut globals_size = 0;
-    let mut old_stack_start: &mut Cell = Null;
-    let mut old_stack_size = 0;
-    let mut old_frame_size = 0;
-    let mut fp_stack_ptr: &mut Cell = get_fp_stack();
-    let mut i = 0;
-    old_sp = get_sp();
-    old_fp = get_fp();
-    old_gp = get_gp();
-    old_stack_start = get_stack_start();
-    for i=0; (&(old_stack_start[i])) as Cell != old_sp as Cell; i+=1 {
-        old_stack_size += 1;
-    }
-    for i=0; (&(old_stack_start[i])) as Cell != old_fp as Cell; i+=1 {
-        old_frame_size += 1;
-    }
-    for i=0; (&(old_gp[i])) as Cell != old_stack_start as Cell; i+=1 {
-        globals_size += 1;
-    }
-    new_gp = alloc(globals_size + size) as &mut Cell;
-    new_sp = &(new_gp[globals_size]);
-    new_stack_start = new_sp;
-    new_fp = &(new_stack_start[old_frame_size]);
-    new_sp = &(new_stack_start[old_stack_size]);
-    
-    for i=0; i<old_stack_size; i+=1 {
-        new_stack_start[i] = old_stack_start[i];
-    }
-    for i=0; i<globals_size; i+=1 {
-        new_gp[i] = old_gp[i];
-    }
-    set_stack_start(new_stack_start);
-    set_fp(new_fp);
-    set_sp(new_sp);
-    set_gp(new_gp);
-    fp_stack_ptr[0] = fp_stack_ptr[0] as Cell + new_fp as Cell - old_fp as Cell;
-}
-
-realloc_stack(1000000);
-let x = &"Testing";
-let static test: &Char = x;
-
-for let mut i=0; test[i] != '\\0'; i+=1 {
-    print(test[i]);
-}
-println();`);
                 case "structural-types":
-                    source.setValue(`def main() {
+                    source.setValue(`fun main() {
     // Add the position and the size to get a rectangle
     let rect = Position.make(10, 20) + Size.make(30, 40);
 
@@ -1612,10 +538,10 @@ struct Rectangle {
 
 impl Rectangle {
     // Calculate the area of the rectangle
-    def area(self: &Rectangle): Int = self.width * self.height;
+    fun area(self: &Rectangle): Int { self.width * self.height }
 
     // Calculate the perimeter of the rectangle
-    def perimeter(self: &Rectangle): Int = 2 * (self.width + self.height);
+    fun perimeter(self: &Rectangle): Int { 2 * (self.width + self.height) }
 }
 
 // A type for representing the dimensions of a 2D shape
@@ -1626,7 +552,7 @@ struct Size {
 
 impl Size {
     // Create a new size with the given width and height
-    def make(width: Int, height: Int): Size = { width=width, height=height };
+    fun make(width: Int, height: Int): Size { { width=width, height=height } }
 }
 
 // A type for representing the position of a 2D shape
@@ -1637,118 +563,17 @@ struct Position {
 
 impl Position {
     // Create a new position with the given x and y coordinates
-    def make(x: Int, y: Int): Position = { x=x, y=y };
+    fun make(x: Int, y: Int): Position { { x=x, y=y } }
 }
 
 main();
 `);
                     break;
-                case "list":
-                    source.setValue(`def main() {
-    // Create a linked list of integers
-    let mut vals = List<Int> of Nil;
-
-    // Add some values to the list
-    for let mut i=20; i>=0; i-=1 {
-        vals = vals.cons(i);
-    }
-
-    print("List of integers: ");
-    vals.println();
-
-    def square(n: Int): Int = n * n;
-
-    // Create a new list of all the squares of the values in the first list
-    let squares = vals.map<Int>(square);
-
-    // Print the squared values
-    print("List of squares:  ");
-    squares.println();
-}
-
-// A type for nullable values
-enum Option<T> {
-    Some(T),
-    Nothing
-}
-
-// A function for halting the program
-def exit(n: Int): ! {
-    // \`!\` is the type of a value that never returns
-    println("Exit: ", n);
-    debug();
-    while True {}
-}
-
-// Throw an uncaught exception
-def panic(msg: &Char): ! {
-    for let mut i=0; msg[i] != '\\0'; i+=1 {
-        print(msg);
-    }
-    println();
-    debug();
-    exit(1);
-}
-
-// A recursive linked list type
-enum List<T> {
-    // A list with a head and a tail
-    Cons(T, &List<T>),
-    // The empty list
-    Nil,
-}
-
-impl List<T> {
-    def make(value: T): List<T> {
-        return List<T> of Cons(value, new List<T> of Nil);
-    }
-
-    def cons(list: List<T>, value: T): List<T> {
-        return List<T> of Cons(value, new list);
-    }
-
-    def head(self: &List<T>): T {
-        match self {
-            &of Cons(head, _) => head,
-            _ => panic(&"head of empty list")
-        }
-    }
-
-    def tail(self: &List<T>): &List<T> {
-        match self {
-            &of Cons(_, tail) => tail,
-            _ => panic(&"tail of empty list")
-        }
-    }
-
-    def print(self: &List<T>) {
-        match self {
-            &of Cons(head, tail) => {
-                print(head);
-                print(" ");
-                tail.print();
-            },
-            _ => {}
-        }
-    }
-
-    def println(self: &List<T>) {
-        self.print();
-        println();
-    }
-
-    def map<U>(self: List<T>, f: T -> U): List<U> {
-        match self {
-            of Cons(head, tail) => tail.map<U>(f).cons(f(head)),
-            _ => List<U> of Nil
-        }
-    }
-}
-
-main();`)
-                    break;
                 case "result":
-                    source.setValue(`// An error type that represents a failure in the program
+                    source.setValue(`from std.fallible import Result;
+
+
+// An error type that represents a failure in the program
 enum Error {
     // A division by zero error
     DivideByZero {
@@ -1760,18 +585,18 @@ enum Error {
 }
 
 // The main function of the program is fallible, so it returns a Result
-def main(): Result<(), Error> {
+fun main(): Result<(), Error> {
     // Divide 5 by 1
     match divide(5, 1) {
-        of Ok(n) => println("Success (expected)! ", n, " is a valid result."),
-        of Err(e) => println("Error (unexpected): ", e),
+        of Ok(n) => println("Success (this is expected)! ", n, " is a valid result."),
+        of Err(e) => println("Caught error (unexpected): ", e)
     }
     println();
 
     // Divide 2 by 0
     match divide(2, 0) {
-        of Ok(n) => println("Success (unexpected)! ", n, " is a valid result."),
-        of Err(e) => println("Error (expected): ", e),
+        of Ok(n) => println("Success (unexpected): ", n, " is a valid result."),
+        of Err(e) => println("Caught error (this is expected)! ", e)
     }
     println();
 
@@ -1779,7 +604,7 @@ def main(): Result<(), Error> {
 }
 
 // Divide two integers, returning a fallible result
-def divide(x: Int, y: Int): Result<Int, Error> {
+fun divide(x: Int, y: Int): Result<Int, Error> {
     println("About to divide ", x, " and ", y);
     if y == 0 {
         return Result<Int, Error> of Err(Error of DivideByZero { numerator = x });
@@ -1788,284 +613,77 @@ def divide(x: Int, y: Int): Result<Int, Error> {
     }
 }
 
-enum Option<T> {
-    // Some value T
-    Some(T),
-    // No value
-    Nothing,
-}
-
-impl Option<T> {
-    def is_some(self: &Option<T>): Bool {
-        match self {
-            &of Some(_) => True,
-            _ => False,
-        }
-    }
-
-    def is_nothing(self: &Option<T>): Bool {
-        match self {
-            &of Some(_) => False,
-            _ => True,
-        }
-    }
-
-    def unwrap(self: &Option<T>): T {
-        match self {
-            &of Some(v) => v,
-            _ => panic(&"called \`Option::unwrap()\` on a \`Nothing\` value"),
-        }
-    }
-
-    def unwrap_or(self: &Option<T>, default: T): T {
-        match self {
-            &of Some(v) => v,
-            _ => default,
-        }
-    }
-
-    def unwrap_or_else(self: &Option<T>, f: () -> T): T {
-        match self {
-            &of Some(v) => v,
-            _ => f(),
-        }
-    }
-
-    def map<U>(self: &Option<T>, f: T -> U): Option<U> {
-        match self {
-            &of Some(v) => Some(f(v)),
-            _ => Nothing,
-        }
-    }
-
-    def map_or<U>(self: &Option<T>, default: U, f: T -> U): U {
-        match self {
-            &of Some(v) => f(v),
-            _ => default,
-        }
-    }
-
-    def map_or_else<U>(self: &Option<T>, default: () -> U, f: T -> U): U {
-        match self {
-            &of Some(v) => f(v),
-            _ => default(),
-        }
-    }
-
-    def and<U>(self: &Option<T>, optb: Option<U>): Option<U> {
-        match self {
-            &of Some(_) => optb,
-            _ => Option<U> of Nothing,
-        }
-    }
-
-    def and_then<U>(self: &Option<T>, f: T -> Option<U>): Option<U> {
-        match self {
-            &of Some(v) => f(v),
-            _ => Option<U> of Nothing,
-        }
-    }
-
-    def or(self: &Option<T>, optb: Option<T>): Option<T> {
-        match self {
-            &of Some(_) => *self,
-            _ => optb,
-        }
-    }
-}
-
-
-
-// A Result of an operation that can either succeed with a value of type T or fail with an error of type E.
-enum Result<T, E> {
-    // A success, containing a value
-    Ok(T),
-    // A failure, containing an error
-    Err(E),
-}
-
-impl Result<T, E> {
-    def is_ok(self: &Result<T, E>): Bool {
-        match self {
-            &of Ok(_) => True,
-            _ => False,
-        }
-    }
-
-    def is_err(self: &Result<T, E>): Bool {
-        match self {
-            &of Ok(_) => False,
-            _ => True,
-        }
-    }
-
-    def ok(self: &Result<T, E>): Option<T> {
-        match self {
-            &of Ok(v) => Option<T> of Some(v),
-            _ => Option<T> of Nothing,
-        }
-    }
-}
-
-def panic(msg: &Char): ! {
-    println("[ERROR] ", msg);
-    debug();
-    while True {}
-}
-
 if let of Err(e) = main() {
     println("Error: ", e);
 }`);
                     break;
+                case "list":
+                    source.setValue(`from std.fallible import Option;
+from std.collections import *;
 
+fun main() {
+    from std.math import gcd;
+    println("GCD of 12 and 15 is ", gcd(12, 15));
+
+    print("List of integers:  ");
+    let vals = range(0, 10);
+    vals.println();
+    
+    // Create a new list of all the squares of the values in the first list
+    fun square(n: Int): Int = n * n;
+    let squares = vals.map<Int>(square);
+    
+    // Print the squared values
+    print("List of squares:  ");
+    squares.println();
+}
+
+// Create a list of integers from a low to a high value
+fun range(low: Int, high: Int): List<Int> {
+    // Create a linked list of integers
+    let mut vals = List<Int> of Nil;
+    
+    // Add some values to the list
+    for let mut i=high; i>=low; i-=1; {
+        vals = vals.cons(i);
+    }
+
+    vals
+}
+main();`);
+                    break;
                 case "vector":
-                    source.setValue(`def main() {
+                    source.setValue(`from std.collections import *;
+
+fun main() {
     // Create a vector of integers
     let mut v = Vec.make<Int>();
 
     // Print the length
     println("v.len() = ", v.len());
     
-    // Add 10000 elements
-    for let mut i=0; i<10000; i+=1 {
+    // Add 100 elements
+    for let mut i=0; i<100; i+=1; {
         v.push(i);
     }
     // Print the new length
     println("v.len() = ", v.len());
 
-    def double(x: Int): Int = x * 2;
-    def sum(x: Int, y: Int): Int = x + y;
+    fun double(x: Int): Int = x * 2;
+    fun sum(x: Int, y: Int): Int = x + y;
 
     // Create a new vector with all the values doubled
     let mut v2 = v.map<Int>(double);
     println("v2.len() = ", v2.len());
 
-    // Print the sum of all the elements in the original list
+    // Print the sum of all the elements in the original vector
     println("sum of v = ", v.reduce<Int>(sum, 0));
-    // Print the sum of all the elements in the new, doubled list
+    // Print the sum of all the elements in the new, doubled vector
     println("sum of v2 = ", v2.reduce<Int>(sum, 0));
 
-    // Print all the elements in the new, doubled list
-    for let mut i=0; i<v2.len(); i+=1 {
-        let opt = v2.get(i);
-        println("v2[", i, "] = ", opt.unwrap());
-    }
-}
-
-enum Option<T> {
-    Some(T),
-    Nothing
-}
-
-// A function for halting the program
-def exit(n: Int): ! {
-    // \`!\` is the type of a value that never returns
-    println("Exit: ", n);
-    debug();
-    while True {}
-}
-
-// Throw an uncaught exception
-def panic(msg: &Char): ! {
-    for let mut i=0; msg[i] != '\\0'; i+=1 {
-        print(msg);
-    }
-    println();
-    debug();
-    exit(1);
-}
-
-impl Option<T> {
-    def unwrap(self: &Option<T>): T {
-        match self {
-            &of Some(x) => x,
-            _ => panic(&"unwrap called on Nothing")
-        }
-    }
-
-    def is_some(self: &Option<T>): Bool {
-        match self {
-            &of Some(_) => True,
-            _ => False
-        }
-    }
-}
-
-struct Vec<T> {
-    data: &mut T,
-    length: Int,
-    capacity: Int
-}
-
-def memcpy<T>(dest: &mut T, src: &T, size: Int) {
-    for let mut i=0; i<size; i+=1 {
-        dest[i] = src[i];
-    }
-}
-
-impl Vec<T> {
-    def make(): Vec<T> {
-        let capacity = 128;
-        let data = alloc(capacity * sizeof<T>());
-        return {
-            data = data,
-            length = 0,
-            capacity = capacity
-        };
-    }
-
-    def reserve(self: &mut Vec<T>, new_capacity: Int) {
-        if new_capacity >= self.capacity {
-            let size = new_capacity * sizeof<T>() + 1024;
-            let new_data = alloc(size);
-            memcpy<T>(new_data, self.data, self.length);
-            free(self.data);
-            self.data = new_data;
-            self.capacity = new_capacity;
-        }
-    }
-
-    def push(self: &mut Vec<T>, value: T) {
-        if self.length > self.capacity / 2 {
-            self.reserve(self.capacity * 2);
-        }
-        self.data[self.length] = value;
-        self.length += 1;
-    }
-
-    def pop(self: &mut Vec<T>): Option<T> {
-        if self.length == 0 {
-            return Option<T> of Nothing;
-        }
-        self.length -= 1;
-        return Option<T> of Some(self.data[self.length]);
-    }
-
-    def map<U>(self: &Vec<T>, f: T -> U): Vec<U> {
-        let mut result = Vec.make<U>();
-        for let mut i=0; i<self.length; i+=1 {
-            result.push(f(self.data[i]));
-        }
-        return result;
-    }
-
-    def reduce<U>(self: &Vec<T>, f: (U, T) -> U, init: U): U {
-        let mut result = init;
-        for let mut i=0; i<self.length; i+=1 {
-            result = f(result, self.data[i]);
-        }
-        return result;
-    }
-
-    def get(self: &Vec<T>, index: Int): Option<T> {
-        if index < 0 || index >= self.length {
-            return Option<T> of Nothing;
-        }
-        return Option<T> of Some(self.data[index]);
-    }
-
-    def len(self: &Vec<T>): Int {
-        return self.length;
+    // Print all the elements in the new, doubled vector
+    for let mut i=0; i<v2.len(); i+=1; {
+        println("v2[", i, "] = ", *v2.get(i));
     }
 }
 
@@ -2074,66 +692,90 @@ main();`);
 
                 case "calculator":
                     document.getElementById("input").value = "(4 + 6) * ((8 - 3) / 2) + (9 % 5)";
-                    source.setValue(`// A mathematical expression for the calculator to evaluate.
-enum Expr {
-    // Addition of two sub-expressions.
+                    source.setValue(`enum Expr {
     Add (&Expr, &Expr),
-    // Subtraction of two sub-expressions.
     Sub (&Expr, &Expr),
-    // Multiplication of two sub-expressions.
     Mul (&Expr, &Expr),
-    // Division of two sub-expressions.
     Div (&Expr, &Expr),
-    // Remainder of two sub-expressions.
     Rem (&Expr, &Expr),
-    // A number.
     Num Float,
-    // Parenthesized sub-expression.
     Group &Expr,
 }
 
-// The current input to the parser.
 struct Input {
-    // The start of the entire input.
     start: &Char,
-    // The current location in the input.
     loc: Int,
-    // The length of the input.
     length: Int
 }
 
-// The result of parsing an expression.
 enum ParseResult {
-    // A successful parse.
-    // This contains the remaining input and the parsed expression.
     Ok (Input, &Expr),
-    // An error while parsing.
-    // This contains the location of the error.
     Err Int
 }
 
-// Main code of the calculator.
-def main() {
-    // Read the input.
-    let input = read();
-    // Parse the input.
-    match parse_expr(input) {
-        // If the parse was successful, evaluate the expression.
-        of Ok (input, n) => {
-            // Print the expression.
-            print_expr(n);
-            // Print the result of the evaluation.
-            print("\\n => ", eval(n), "\\n");
-            // Free the expression and the input.
-            free_expr(n);
-            free_input(input);
-        },
-        // If the parse failed, print an error message.
-        of Err n => print("\\nCalculator: error while parsing at character: \\n", input.start[n], "\\n")
+fun is_ok(result: ParseResult): Bool {
+    match result {
+        of Ok _ => True,
+        of Err _ => False
     }
 }
 
-def eval(expr: &Expr): Float = match *expr {
+fun putint(n: Int) {
+    if (n < 0) {
+        print('-');
+        putint(-n);
+    } else if (n < 10) {
+        print(('0' as Int + n) as Char);
+    } else {
+        putint(n / 10);
+        print(('0' as Int + n % 10) as Char);
+    }
+}
+
+fun main() {
+    let mut is_done = False;
+    print("+ Adam's Calculator\\n");
+    print("  Welcome to Adam's calculator!\\n");
+    print("+ About\\n");
+    print("  This is written in the Sage programming language: https:\\/\\/adam-mcdaniel.net\\/sage\\n");
+    print("  And compiled as an ELF userspace application for our custom OS!\\n");
+    print("+ Usage\\n");
+    print("  This calculator supports the following infix operators: \\\"+\\\", \\\"-\\\", \\\"*\\\", \\\"/\\\", \\\"%\\\"\\n");
+    print("  Type a math expression (integers only) to evaluate it.\\n");
+    print("  Type \\\"exit\\\" to quit the program.\\n");
+    print("  Example expression syntax: (4 + 6) * ((8 - 2) / 2) + (9 % 5)\\n");
+    let buf = alloc(sizeof<Char>() * 1024) as &mut Char;
+
+    let exit_text = "exit\\0";
+    let exit_str = (&exit_text) as &Char;
+    while !is_done {
+        let input = read(buf);
+
+        match parse_expr(input) {
+            of Ok (input, n) => {
+                print("Input: ");
+                print_expr(n);
+                print("\\n => ");
+                print(eval(n));
+                print("\\n");
+                free_expr(n);
+            },
+            of Err n => {
+                if (is_ok(parse_symbol(input, exit_str))) {
+                    is_done = True;
+                } else if (input.length > 0) {
+                    print("\\nCalculator: error while parsing at character: \\n", input.start[n], "\\n");
+                } else {
+                    print("No input\\n");
+                }
+            }
+        }
+    }
+    print("Bye!\\n");
+}
+
+
+fun eval(expr: &Expr): Float = match *expr {
     of Add (lhs, rhs) => eval(lhs) + eval(rhs),
     of Sub (lhs, rhs) => eval(lhs) - eval(rhs),
     of Mul (lhs, rhs) => eval(lhs) * eval(rhs),
@@ -2143,7 +785,7 @@ def eval(expr: &Expr): Float = match *expr {
     of Group inner => eval(inner)
 };
 
-def print_expr(expr: &Expr) {
+fun print_expr(expr: &Expr) {
     match *expr {
         of Add(lhs, rhs) => {
             print_expr(lhs);
@@ -2179,7 +821,7 @@ def print_expr(expr: &Expr) {
     }
 }
 
-def free_expr(expr: &Expr) {
+fun free_expr(expr: &Expr) {
     match *expr {
         of Add (lhs, rhs)
         | of Sub (lhs, rhs)
@@ -2192,22 +834,22 @@ def free_expr(expr: &Expr) {
         of Group inner => free_expr(inner),
         _ => {}
     }
-    del expr;
+    free(expr);
 }
 
-def free_input(input: Input) {
-    del input.start;
+fun free_input(input: Input) {
+    free(input.start);
 }
 
-def is_between_inclusive(ch: Char, start: Char, end: Char): Bool {
-    let start = start as Int,
-        end = end as Int,
-        ch = ch as Int;
+fun is_between_inclusive(ch: Char, start: Char, end: Char): Bool {
+    let start = start as Int;
+    let end = end as Int;
+    let ch = ch as Int;
 
     return start <= ch && ch <= end;
 }
 
-def parse_float(mut input: Input): ParseResult {
+fun parse_float(mut input: Input): ParseResult {
     let save = input;
     let mut n = 0.0;
 
@@ -2219,28 +861,28 @@ def parse_float(mut input: Input): ParseResult {
         return ParseResult of Err (input.loc);
     }
 
-    for (); input.loc < input.length && is_between_inclusive(input.start[input.loc], '0', '9'); input.loc += 1 {
-        n *= 10.0;
-        n += (input.start[input.loc] as Int - '0' as Int) as Float;
+    for (); input.loc < input.length && is_between_inclusive(input.start[input.loc], '0', '9'); input.loc += 1; {
+        n *= 10;
+        n += (input.start[input.loc] as Int - '0' as Int) as Int;
     }
 
     if (input.loc < input.length && input.start[input.loc] == '.') {
         input.loc += 1;
         let mut m = 0.1;
-        for (); input.loc < input.length && is_between_inclusive(input.start[input.loc], '0', '9'); input.loc += 1 {
-            n += (input.start[input.loc] as Int - '0' as Int) as Float * m;
+        for (); input.loc < input.length && is_between_inclusive(input.start[input.loc], '0', '9'); input.loc += 1; {
+            n += (input.start[input.loc] as Int - '0' as Int) as Int * m;
             m *= 0.1;
         }
     }
     return ParseResult of Ok (input, new Expr of Num n);
 }
 
-def binop(
+fun binop(
     lhs: &Expr,
     mut input: Input,
     op: Char,
-    factor: Input -> ParseResult,
-    cons: (&Expr, &Expr) -> &Expr): ParseResult {
+    factor: fun(Input) -> ParseResult,
+    cons: fun(&Expr, &Expr) -> &Expr): ParseResult {
 
     input = parse_whitespaces(input);
     if (input.loc == input.length) {
@@ -2263,17 +905,17 @@ def binop(
     }
 }
 
-def parse_expr(mut input: Input): ParseResult {
+fun parse_expr(mut input: Input): ParseResult {
     let save = input;
 
     if (input.loc == input.length) {
         return ParseResult of Err (input.loc);
     }
 
-    def add_cons(lhs: &Expr, rhs: &Expr): &Expr {
+    fun add_cons(lhs: &Expr, rhs: &Expr): &Expr {
         return new Expr of Add(lhs, rhs);
     } 
-    def sub_cons(lhs: &Expr, rhs: &Expr): &Expr {
+    fun sub_cons(lhs: &Expr, rhs: &Expr): &Expr {
         return new Expr of Sub(lhs, rhs);
     }
 
@@ -2303,20 +945,20 @@ def parse_expr(mut input: Input): ParseResult {
     }
 }
 
-def parse_term(mut input: Input): ParseResult {
+fun parse_term(mut input: Input): ParseResult {
     let save = input;
 
     if (input.loc == input.length) {
         return ParseResult of Err (input.loc);
     }
 
-    def mul_cons(lhs: &Expr, rhs: &Expr): &Expr {
+    fun mul_cons(lhs: &Expr, rhs: &Expr): &Expr {
         return new Expr of Mul(lhs, rhs);
     } 
-    def div_cons(lhs: &Expr, rhs: &Expr): &Expr {
+    fun div_cons(lhs: &Expr, rhs: &Expr): &Expr {
         return new Expr of Div(lhs, rhs);
     }
-    def rem_cons(lhs: &Expr, rhs: &Expr): &Expr {
+    fun rem_cons(lhs: &Expr, rhs: &Expr): &Expr {
         return new Expr of Rem(lhs, rhs);
     }
 
@@ -2352,8 +994,24 @@ def parse_term(mut input: Input): ParseResult {
     }
 }
 
+fun parse_symbol(mut input: Input, match_string: &Char): ParseResult {
+    let save = input;
 
-def parse_atom(input: Input): ParseResult {
+    if (input.loc == input.length) {
+        return ParseResult of Err (input.loc);
+    }
+
+    for let mut i = 0; match_string[i] != '\\0'; i+=1; {
+        if (input.loc == input.length || input.start[input.loc] != match_string[i]) {
+            return ParseResult of Err (input.loc);
+        }
+        input.loc += 1;
+    }
+
+    return ParseResult of Ok (input, new Expr of Num 0.0);
+}
+
+fun parse_atom(input: Input): ParseResult {
     let save = input;
 
     if (input.loc == input.length) {
@@ -2367,7 +1025,7 @@ def parse_atom(input: Input): ParseResult {
     return result;
 }
 
-def parse_group(mut input: Input): ParseResult {
+fun parse_group(mut input: Input): ParseResult {
     let save = input;
 
     if (input.loc == input.length) {
@@ -2394,47 +1052,54 @@ def parse_group(mut input: Input): ParseResult {
     };
 }
 
-def parse_whitespaces(mut input: Input): Input {
+fun parse_whitespaces(mut input: Input): Input {
     let save = input;
 
     if (input.loc == input.length) {
         return input;
     }
 
-    for (); input.loc < input.length && (input.start[input.loc] == ' ' || input.start[input.loc] == '\\r' || input.start[input.loc] == '\\n'); input.loc += 1 {}
+    for (); input.loc < input.length && (input.start[input.loc] == ' ' || input.start[input.loc] == '\r' || input.start[input.loc] == '\\n'); input.loc += 1; {}
 
     return input;
 }
 
-def is_done(input: Input): Bool = input.loc >= input.length;
+fun is_done(input: Input): Bool = input.loc >= input.length;
 
-def strlen(ch: &Char): Int {
+fun strlen(ch: &Char): Int {
     let mut i = 0;
-    for (); ch[i] != '\\0'; i+=1 {}
+    for (); ch[i] != '\\0'; i+=1; {}
     return i;
 }
 
-def getchar(): Char {
-    let mut ch = ' ';
-    input(&mut ch);
+fun is_ascii(ch: Char): Bool {
+    return ch as Int < 128;
+}
+
+fun getchar(): Char {
+    let mut ch = '\\0';
+
+    while !(is_ascii(ch)) || ch == '\\0' {
+        input(&mut ch);
+    }
+
     return ch;
 }
 
-def readline(ch: &mut Char, len: Int): Int {
+fun readline(ch: &mut Char, len: Int): Int {
     let mut i = len;
 
     let mut c = getchar();
-    for (); c != '\\n' && c != '\\0'; i+=1 {
+    
+    for (); c != '\\n' && c != '\\0'; i+=1; {
         ch[i] = c;
         c = getchar();
     }
     return i;
 }
 
-def read(): Input {
-    let buf = alloc(sizeof<Char>() * 1024) as &mut Char;
-
-    print("? ");
+fun read(buf: &mut Char): Input {
+    print(">>> ");
     let len = readline(buf, 0);
     buf[len] = '\\0';
 
@@ -2444,428 +1109,39 @@ def read(): Input {
         loc = 0
     };
 }
-
-main();`);
-                    break;
-                case "tree":
-                    source.setValue(`enum Option<T> {
-    Some(T),
-    Nothing
-}
-
-def print_option<T>(opt: Option<T>, printer: T -> None) {
-	match opt {
-        of Some(x) => {
-            print("Some(");
-            printer(x);
-            print(")");
-        },
-        of Nothing => { print("Nothing"); }
+fun test(): Input {
+    let buf = alloc(sizeof<Char>() * 1024) as &mut Char;
+    let text = "(4 + 6) * ((8 - 3) / 2) + (9 % 5)";
+    for let mut i = 0; text[i] != '\\0'; i+=1; {
+        buf[i] = text[i];
     }
-}
-
-enum List<T> {
-    Cons(T, &List<T>),
-    Nil
-}
-
-def print_list<T>(list: &List<T>): Option<T> {
-    match *list {
-        of Cons(x, &of Nil) => {
-            print(x);
-            return Option<T> of Some(x);
-        },
-        of Cons(x, xs) => {
-            print(x, ", ");
-            let _ = print_list<T>(xs);
-            return Option<T> of Some(x);
-        },
-        of Nil => Option<T> of Nothing
-    }
-}
-
-enum Tree<T> {
-    Node(T, &List<Tree<T>>),
-    Leaf(T),
-}
-
-def print_tree_list<T>(list: &List<Tree<T>>): Option<T> {
-    match *list {
-        of Cons(x, &of Nil) => {
-            return print_tree<T>(&x);
-        },
-        of Cons(x, xs) => {
-            let _ = print_tree<T>(&x);
-            print(", ");
-            return print_tree_list<T>(xs);
-        },
-        of Nil => Option<T> of Nothing
-    }
-}
-
-def print_tree<T>(tree: &Tree<T>): Option<T> {
-    match *tree {
-        of Node(x, &of Nil) => {
-            print(x);
-            return Option<T> of Some(x);
-        },
-        of Node(x, xs) => {
-            print(x, ", ");
-            return print_tree_list<T>(xs);
-        },
-        of Leaf n => {
-            print(n);
-            return Option<T> of Some(n);
-        }
-    }
-}
-
-def test<T>(tree: &Tree<T>, printer: T -> None) {
-    let result = print_tree<T>(tree);
-    print("\\n");
-    print_option<T>(result, printer);
-}
-
-let x = Tree<Int> of Node(
-    1,
-    new List<Tree<Int>> of Cons(
-        Tree<Int> of Leaf(2),
-        new List<Tree<Int>> of Cons(
-            Tree<Int> of Leaf(3),
-            new List<Tree<Int>> of Nil
-        )
-    )
-);
-
-let y = Tree<Char> of Node(
-    'a',
-    new List<Tree<Char>> of Cons(
-        Tree<Char> of Leaf('b'),
-        new List<Tree<Char>> of Cons(
-            Tree<Char> of Leaf('c'),
-            new List<Tree<Char>> of Nil
-        )
-    )
-);
-def print_int(x: Int) = print(x);
-def print_char(x: Char) = print(x);
-test<Int>(&x, print_int);
-print("\\n");
-test<Char>(&y, print_char);
-print("\\n");
-`);
-                    break;
-                case "lisp":
-                    source.setValue(`// Implement a scheme evaluator in Sage.
-def strlen(ch: &Char): Int {
-    let mut len = 0;
-    while ch[len] != '\\0' {
-        len += 1;
-    }
-    return len;
-}
-
-def strcpy(dst: &mut Char, src: &Char) {
-    let mut i = 0;
-    for (); src[i] != '\\0'; i+=1 {
-        dst[i] = src[i];
-    }
-    dst[i] = '\\0';
-}
-
-struct String {
-    data: &mut Char,
-    len: Int,
-}
-
-def string_new(s: &Char): String {
-    let mut len = 0;
-    while s[len] != '\\0' {
-        len += 1;
-    }
-
-    let buffer = alloc(sizeof<Char>() * len) as &mut Char;
-    strcpy(buffer, s);
-
+    
     return {
-        data = buffer,
-        len = len
+        start = buf as &Char,
+        length = strlen(buf),
+        loc = 0
     };
 }
 
-def string_print(s: String) {
-    for let mut i=0; i < s.len; i+=1 {
-        print(s.data[i]);
-    }
-}
 
-enum Expr {
-    Boolean Bool,
-    Decimal Float,
-    Integer Int,
-    Complex {
-        real: Float,
-        imag: Float,
-    },
-    Symbol String,
-    String String,
-    Pair {
-        car: &Expr,
-        cdr: &Expr,
-    },
-    Nil,
-    defedure {
-        params: &Expr,
-        body: &Expr,
-        env: &Env,
-    },
-    Closure {
-        params: &Expr,
-        body: &Expr,
-        env: &Env,
-    },
-    Builtin(String, (&Expr, &Env) -> Expr),
-    Continuation {
-        env: &Env,
-    },
-}
+fun test_main() {
+    let input = test();
 
-struct Env {
-    bindings: Expr,
-    parent: &Env,
-}
-
-def root_env(): Env = {
-    bindings = Expr of Nil,
-    parent = Null
-};
-
-def env_free(env: Env) {
-    expr_free(env.bindings);
-}
-
-def expr_free(expr: Expr) {
-    match expr {
-        of Pair { car, cdr } => {
-            expr_free(*car);
-            expr_free(*cdr);
-            del car;
-            del cdr;
+    match parse_expr(input) {
+        of Ok (input, n) => {
+            print_expr(n);
+            print("\\n => ");
+            print(eval(n));
+            print("\\n");
+            free_expr(n);
         },
-        of defedure { params, body, env } => {
-            expr_free(*params);
-            expr_free(*body);
-            env_free(*env);
-            del params;
-            del body;
-            del env;
-        },
-        of Closure { params, body, env } => {
-            expr_free(*params);
-            expr_free(*body);
-            env_free(*env);
-            del params;
-            del body;
-            del env;
-        },
-        of Continuation { env } => {
-            env_free(*env);
-            del env;
-        },
-        _ => {}
-    }
-}
-
-def cons(car: Expr, cdr: Expr): Expr {
-    return Expr of Pair {
-        car = new car,
-        cdr = new cdr
-    };
-}
-
-def expr_print(expr: &Expr) {
-    match *expr {
-        of Boolean b => print(b),
-        of Integer i => print(i),
-        of Symbol s => print(s),
-        of String s => print(s),
-        of Pair { car, cdr } => {
-            print("(");
-            expr_print(car);
-            print(" . ");
-            expr_print(cdr);
-            print(")");
-        },
-        of Nil => print("()"),
-        of defedure { params, body, env } => {
-            print("#<defedure>");
-        },
-        of Closure { params, body, env } => {
-            print("#<closure>");
-        },
-        of Builtin b => {
-            print("#<builtin>");
-        },
-        of Continuation { env } => {
-            print("#<continuation>");
-        },
-        _ => {}
-    }
-}
-
-def expr_println(expr: &Expr) {
-    expr_print(expr);
-    print("\\n");
-}
-
-def expr_reduce(mut acc: Expr, x: Expr, env: &Env, fun: (Expr, Expr, &Env) -> Expr): Expr {
-    match x {
-        of Pair { car, cdr } => {
-            acc = fun(acc, *car, env);
-            expr_reduce(acc, *cdr, env, fun);
-        },
-        of Nil => acc,
-        _ => fun(acc, x, env)
-    }
-}
-
-def expr_map(x: Expr, env: &Env, fun: (Expr, &Env) -> Expr): Expr {
-    match x {
-        of Pair { car, cdr } => cons(fun(*car, env), expr_map(*cdr, env, fun)),
-        of Nil => Expr of Nil,
-        _ => fun(x, env)
-    }
-}
-
-def sum(acc: Expr, x: Expr, env: &Env): Expr {
-    match acc {
-        of Integer i => {
-            match x {
-                of Integer j => Expr of Integer (i + j),
-                of Decimal j => Expr of Decimal (i as Float + j),
-                _ => acc
-            }
-        },
-        of Decimal i => {
-            match x {
-                of Integer j => Expr of Decimal (i + j as Float),
-                of Decimal j => Expr of Decimal (i + j),
-                _ => acc
-            }
-        },
-        _ => acc
-    }
-}
-
-def prod(acc: Expr, x: Expr, env: &Env): Expr {
-    match acc {
-        of Integer i => {
-            match x {
-                of Integer j => Expr of Integer (i * j),
-                of Decimal j => Expr of Decimal (i as Float * j),
-                _ => acc
-            }
-        },
-        of Decimal i => {
-            match x {
-                of Integer j => Expr of Decimal (i * j as Float),
-                of Decimal j => Expr of Decimal (i * j),
-                _ => acc
-            }
-        },
-        _ => acc
-    }
-}
-
-def inc(x: Expr, env: &Env): Expr {
-    match x {
-        of Integer i => Expr of Integer (i + 1),
-        of Decimal i => Expr of Decimal (i + 1.0),
-        _ => x
-    }
-}
-
-def dec(x: Expr, env: &Env): Expr {
-    match x {
-        of Integer i => Expr of Integer (i - 1),
-        of Decimal i => Expr of Decimal (i - 1.0),
-        _ => x
-    }
-}
-
-
-def range(start: Int, end: Int): Expr {
-    if start > end {
-        return Expr of Nil;
-    } else {
-        return cons(Expr of Integer start, range(start + 1, end));
-    }
-}
-
-let expr = cons(Expr of Integer 1, cons(Expr of Integer 2, cons(Expr of Integer 3, cons(Expr of Integer 4, Expr of Nil))));
-let env = root_env();
-
-print("expr: ");
-expr_println(&expr);
-
-print("  reduce(sum): ");
-let result = expr_reduce(Expr of Integer 0, expr, &env, sum);
-expr_println(&result);
-
-print("  reduce(product): ");
-let result = expr_reduce(Expr of Integer 1, expr, &env, prod);
-expr_println(&result);
-
-print("  map(increment): ");
-let result = expr_map(expr, &env, inc);
-expr_println(&result);
-
-for let mut i=0; i<20; i+=1 {
-    let range = range(1, i);
-    expr_println(&range);
-}
-
-let text = "woo!!!\\0";
-let s = string_new(&text as &Char);
-string_print(s);
-`);
-                    break;
-                case "alloc":
-                    source.setValue(`enum Option<T> {
-    Some(T),
-    Nothing
-}
-
-def allocate<T>(count: Int): Option<&mut T> {
-    if (count <= 0) {
-        return Option<&mut T> of Nothing;
-    }
-    let ptr = alloc(count * sizeof<T>()) as &mut T;
-    if (ptr == Null) {
-        return Option<&mut T> of Nothing;
-    } else {
-        return Option<&mut T> of Some(ptr);
-    }
-}
-
-struct Point<T> {
-    x: T,
-    y: T
-}
-
-match allocate<Point<Int>>(5) {
-    of Some(val) => {
-        for let mut i=0; i<5; i+=1 {
-            val[i].x = i;
-            val[i].y = i * 2;
+        of Err n => {
+            print("\\nCalculator: error while parsing at character: \\n", input.start[n], "\\n");
         }
-        print("Allocated 5 items: ", *(val as &[{x: Int, y: Int} * 5]), "\\n");
-        print("                 : ", *(val as &[Int * 10]), "\\n");
-    },
-    of Nothing => {
-        print("Failed to allocate memory");
     }
-}`);
+}
+
+test_main();`);
                     break;
                 case "match":
                     source.setValue(`// Create a C-like enum
@@ -2893,7 +1169,7 @@ enum Option<T> {
 }
 
 // Define a fallible division operation
-def divide(n: Int, d: Int): Option<Int> {
+fun divide(n: Int, d: Int): Option<Int> {
     if (d == 0) {
         return Option<Int> of Nothing;
     } else {
@@ -2918,57 +1194,15 @@ while (ch != '\\0') {
 }`);
                     document.getElementById("input").value = "this is a cat program!";
                     break;
-                case "templates":
-                    source.setValue(`// Create an example template that takes two arguments, and returns another template
-// that takes one argument and returns it.
-type Test = (A, B) => C => C;
-
-// Define \`x\` to have type \`Float\`, but using our curried template type.
-// This will discard the first template arguments (\`Char, Int\`) and return \`Float\`.
-let x: Test<Char, Int><Float> = 3.14159;
-print("Pi is ", x);
-
-// Take two curried template arguments, and return the first.
-type K = A => B => A;
-let y: K<Char><Int> = '!';
-println(y);`);
-                    break;
-                    
                 case "tuple":
                     source.setValue(`// Define a type for a pair of tuple elements
 type Pair<A, B> = (A, B);
 
 impl Pair<A, B> {
     // Get the first tuple element
-    def first(self: &(A, B)): A = self.0;
+    fun first(self: &(A, B)): A { self.0 }
     // Get the second tuple element
-    def second(self: &(A, B)): B = self.1;
-}
-
-// Make a pair of elements
-let tup = ("hello", "world!");
-
-// Print the two elements separated by a space
-println(tup.first(), " ", tup.second());
-
-// Make a pair of an Int and a Float
-let tup2 = (5, 6.5);
-println(tup2.first() + tup2.second());`);
-                    break;
-                case "tuple-inline-template":
-                    source.setValue(`// You can also use templates on their own without a type definition
-type Point = (X, Y, Z) => {x: X, y: Y, z: Z};
-
-// Make a point
-let p: Point<Int, Int, Int> = {x = 5, y = 6, z = 7};
-println(p);
-
-// Implement some methods for a generic pair of elements
-impl ((A, B) => (A, B))<A, B> {
-    // Get the first tuple element
-    def first(self: &(A, B)): A = self.0;
-    // Get the second tuple element
-    def second(self: &(A, B)): B = self.1;
+    fun second(self: &(A, B)): B { self.1 }
 }
 
 // Make a pair of elements
@@ -2982,7 +1216,7 @@ let tup2 = (5, 6.5);
 println(tup2.first() + tup2.second());`);
                     break;
                 case "factorial":
-                    source.setValue(`def fact(n: Int): Int {
+                    source.setValue(`fun fact(n: Int): Int {
     match n {
         0 | 1 => 1,
         _ => n * fact(n - 1)
@@ -3003,22 +1237,22 @@ print(fact(n));`);
 // sure you only provide bindings for safe foreign functions to execute!
 // (e.g.\`eval\` is surely not safe, but something like \`alert\` is generally safe.)
 
-extern def alert(message: &Char);
-extern def eval(code: &mut Char, size: Int);
+extern fun alert(message: &Char);
+extern fun eval(code: &mut Char, size: Int);
 
 const BUFFER_SIZE = 1024;
 
-def read(buf: &mut Char) {
+fun read(buf: &mut Char) {
     let mut ch = ' ';
     input(&mut ch);
-    for let mut i = 0; ch; i+=1 {
+    for let mut i = 0; ch; i+=1; {
         buf[i] = ch;
         input(&mut ch);
     }
 }
 
-def write(buf: &Char) {
-    for let mut i = 0; buf[i]; i+=1 {
+fun write(buf: &Char) {
+    for let mut i = 0; buf[i]; i+=1; {
         print(buf[i]);
     }
 }
@@ -3055,15 +1289,15 @@ alert(buf);`);
 // sure you only provide bindings for safe foreign functions to execute!
 // (e.g.\`eval\` is surely not safe, but something like \`alert\` is generally safe.)
 // Eval is all you need!
-extern def eval(str: &mut Char, size: Int);
+extern fun eval(str: &mut Char, size: Int);
 
 const RECTANGLE_COUNT = 50;
 const CIRCLE_COUNT = 50;
 const RECTANGLE_WIDTH = 20;
 const RECTANGLE_HEIGHT = 20;
 
-def main() {
-    println(\"Hello, world!\");
+fun main() {
+    println("Hello, world!");
     
     // Make a 400x400 canvas
     let mut canvas = Canvas.make(400, 400);
@@ -3073,7 +1307,7 @@ def main() {
     // Draw some random rectangles with some random colors
     let width = 20;
     let height = 20;
-    for let mut i = 0; i < RECTANGLE_COUNT; i += 1 {
+    for let mut i = 0; i < RECTANGLE_COUNT; i += 1; {
         // Get a random rectangle on the canvas
         let rect = canvas.rand_section(RECTANGLE_WIDTH, RECTANGLE_HEIGHT);
         // Fill the rectangle with a random color
@@ -3084,7 +1318,7 @@ def main() {
 
     // Draw some random circles with some random colors
     let radius = 15;
-    for let mut i = 0; i < CIRCLE_COUNT; i += 1 {
+    for let mut i = 0; i < CIRCLE_COUNT; i += 1; {
         let (x, y) = (rand(0, canvas.width), rand(0, canvas.height));
         canvas.draw_circle(Color.rand(), x, y, radius);
     }
@@ -3096,31 +1330,31 @@ def main() {
     let len = sizeof(colors) / sizeof<Color>();
 
     // Draw the lines over the canvas
-    for let mut i = 0; i < canvas.width; i += 3 {
+    for let mut i = 0; i < canvas.width; i += 3; {
         let rect = Rectangle.make(i, ((i / 60.0).sin() * 100.0 + 120.0) as Int, 6, 6);
-        for let mut j = 0; j < len; j += 1 {
+        for let mut j = 0; j < len; j += 1; {
             canvas.draw_rect(colors[j], rect.move(0, (j * 30.0) as Int));
         }
     }
 }
 
 impl Float {
-    def abs(self: Float): Float {
+    fun abs(self: Float): Float {
         if self < 0.0 {
             return -self;
         }
         return self;
     }
 
-    def square(self: Float): Float {
+    fun square(self: Float): Float {
         return self * self;
     }
 
-    def cube(self: Float): Float {
+    fun cube(self: Float): Float {
         return self * self * self;
     }
 
-    def sin(mut self: Float): Float {
+    fun sin(mut self: Float): Float {
         // Taylor series approximation
         self %= 3.14159 * 2;
         let mut result = 0.0;
@@ -3134,7 +1368,7 @@ impl Float {
         return result;
     }
 
-    def cos(mut self: Float): Float {
+    fun cos(mut self: Float): Float {
         // Taylor series approximation
         self %= 3.14159 * 2;
         let mut result = 0.0;
@@ -3155,13 +1389,13 @@ struct Canvas {
 }
 
 impl Canvas {
-    def clear(self: &mut Canvas, color: Color) {
+    fun clear(self: &mut Canvas, color: Color) {
         // Draw the background
         let rect = Rectangle.make(0, 0, self.width, self.height);
         self.draw_rect(color, rect);
     }
 
-    def rand_section(self: &Canvas, width: Int, height: Int): Rectangle {
+    fun rand_section(self: &Canvas, width: Int, height: Int): Rectangle {
         return {
             x=rand(0, self.width - width),
             y=rand(0, self.height - height),
@@ -3170,7 +1404,7 @@ impl Canvas {
         };
     }
 
-    def make(width: Int, height: Int): Canvas {
+    fun make(width: Int, height: Int): Canvas {
         let mut buf = \"try {window.eval(\`
         const parentDocument = window.parent.document;
         let output = parentDocument.getElementById('output-content');
@@ -3214,62 +1448,61 @@ impl Canvas {
         };
     }
 
-    def draw_rect(self: &mut Canvas, color: Color, rect: Rectangle) {
+    fun draw_rect(self: &mut Canvas, color: Color, rect: Rectangle) {
         let mut command_str = ['\\0'] * 128;
         let color_str = color.to_str();
         let rect_str = rect.to_str();
-        strcat(&mut command_str, &\"draw_rect(\\"#\");
+        strcat(&mut command_str, &"draw_rect(\\"#");
 
         strcat(&mut command_str, &color_str);
-        strcat(&mut command_str, &\"\\", \");
+        strcat(&mut command_str, &"\\", ");
 
         strcat(&mut command_str, &rect_str);
-        strcat(&mut command_str, &\");\");
-        // println(\"about to eval: \", command_str);
+        strcat(&mut command_str, &");");
+        // println("about to eval: ", command_str);
         eval(&mut command_str, sizeof(command_str));
     }
 
-    def draw_circle(self: &mut Canvas, color: Color, x: Int, y: Int, radius: Int) {
+    fun draw_circle(self: &mut Canvas, color: Color, x: Int, y: Int, radius: Int) {
         let mut command_str = ['\\0'] * 128;
         let color_str = color.to_str();
         let x_str = x.to_str();
         let y_str = y.to_str();
         let radius_str = radius.to_str();
-        strcat(&mut command_str, &\"draw_circle(\\"#\");
+        strcat(&mut command_str, &"draw_circle(\\\"#");
 
         strcat(&mut command_str, &color_str);
-        strcat(&mut command_str, &\"\\", \");
+        strcat(&mut command_str, &"\\", ");
 
         strcat(&mut command_str, &x_str);
-        strcat(&mut command_str, &\", \");
+        strcat(&mut command_str, &", ");
 
         strcat(&mut command_str, &y_str);
-        strcat(&mut command_str, &\", \");
+        strcat(&mut command_str, &", ");
 
         strcat(&mut command_str, &radius_str);
-        strcat(&mut command_str, &\");\");
-        // println(\"about to eval: \", command_str);
+        strcat(&mut command_str, &");");
         eval(&mut command_str, sizeof(command_str));
     }
 }
 
 let static mut SEED: Int = 0x12345;
 
-def seed(n: Int) {
+fun seed(n: Int) {
     SEED = n;
 }
 
-def rand(low: Int, high: Int): Int {
+fun rand(low: Int, high: Int): Int {
     SEED = (SEED * 1103515245 + 12345) & 0x7FFFFFFF;
     return low + SEED % (high - low);
 }
 
 impl Int {
-    def to_str(self: &Int): [Char * 9] {
+    fun to_str(self: &Int): [Char * 9] {
         let mut n = *self;
         let mut result = [' '] * 9;
         result[8] = '\\0';
-        for let mut i=0; i<8; i+=1 {
+        for let mut i=0; i<8; i+=1; {
             let digit = n % 10;
             result[7 - i] = (digit + '0' as Int) as Char;
             n /= 10;
@@ -3286,12 +1519,12 @@ impl Int {
             i += 1;
         }
 
-        for let mut j=0; j<i; j+=1 {
+        for let mut j=0; j<i; j+=1; {
             result[j] = ' ';
         }
 
-        // If the result is empty, then just return \"0\"
-        for let mut j=0; j<8; j+=1 {
+        // If the result is empty, then just return "0"
+        for let mut j=0; j<8; j+=1; {
             if result[j] != ' ' {
                 return result;
             }
@@ -3329,7 +1562,7 @@ impl Color {
         Color.MAGENTA,
     ];
 
-    def rand(): Color {
+    fun rand(): Color {
         return {
             r=rand(0, 256),
             g=rand(0, 256),
@@ -3337,7 +1570,7 @@ impl Color {
         };
     }
 
-    def make(r: Int, g: Int, b: Int): Color {
+    fun make(r: Int, g: Int, b: Int): Color {
         return {
             r=r,
             g=g,
@@ -3345,7 +1578,7 @@ impl Color {
         };
     }
 
-    def to_str(self: &Color): [Char * 7] {
+    fun to_str(self: &Color): [Char * 7] {
         let mut result = [' '] * 7;
         result[6] = '\\0' as Char;
         let mut hex = byte_to_hex(self.r);
@@ -3372,7 +1605,7 @@ struct Rectangle {
 }
 
 impl Rectangle {
-    def make(x: Int, y: Int, width: Int, height: Int): Rectangle {
+    fun make(x: Int, y: Int, width: Int, height: Int): Rectangle {
         return {
             x=x,
             y=y,
@@ -3381,7 +1614,7 @@ impl Rectangle {
         };
     }
 
-    def rand_section(self: &Rectangle, width: Int, height: Int): Rectangle {
+    fun rand_section(self: &Rectangle, width: Int, height: Int): Rectangle {
         let mut x = rand(self.x, self.x + self.width - width);
         let mut y = rand(self.y, self.y + self.height - height);
         return {
@@ -3393,7 +1626,7 @@ impl Rectangle {
     }
 
     // Remove margin
-    def shrink(self: &Rectangle, margin: Int): Rectangle {
+    fun shrink(self: &Rectangle, margin: Int): Rectangle {
         return {
             x=self.x + margin,
             y=self.y + margin,
@@ -3402,7 +1635,7 @@ impl Rectangle {
         };
     }
 
-    def move(self: &Rectangle, dx: Int, dy: Int): Rectangle {
+    fun move(self: &Rectangle, dx: Int, dy: Int): Rectangle {
         return {
             x=self.x + dx,
             y=self.y + dy,
@@ -3411,38 +1644,38 @@ impl Rectangle {
         };
     }
 
-    def to_str(self: &Rectangle): [Char * 40] {
+    fun to_str(self: &Rectangle): [Char * 40] {
         let mut result = [' '] * 40;
         let x_str = self.x.to_str();
-        // println(\"x_str: \", x_str);
+        // println("x_str: ", x_str);
         let y_str = self.y.to_str();
-        // println(\"y_str: \", y_str);
+        // println("y_str: ", y_str);
         let width_str = self.width.to_str();
-        // println(\"width_str: \", width_str);
+        // println("width_str: ", width_str);
         let height_str = self.height.to_str();
-        // println(\"height_str: \", height_str);
+        // println("height_str: ", height_str);
         let mut i = 0;
 
-        for (); i < 8; i += 1 {
+        for (); i < 8; i += 1; {
             result[i] = x_str[i];
         }
 
         result[8] = ',' as Char;
         i += 1;
 
-        for (); i < 16; i += 1 {
+        for (); i < 16; i += 1; {
             result[i] = y_str[i - 8];
         }
         result[16] = ',' as Char;
         i += 1;
 
-        for (); i < 24; i += 1 {
+        for (); i < 24; i += 1; {
             result[i] = width_str[i - 16];
         }
         result[24] = ',' as Char;
         i += 1;
 
-        for (); i < 32; i += 1 {
+        for (); i < 32; i += 1; {
             result[i] = height_str[i - 24];
         }
 
@@ -3454,7 +1687,7 @@ impl Rectangle {
     }
 }
 
-def strcat(dst: &mut Char, src: &Char) {
+fun strcat(dst: &mut Char, src: &Char) {
     let mut i = 0;
     while dst[i] != '\\0' {
         i += 1;
@@ -3470,7 +1703,7 @@ def strcat(dst: &mut Char, src: &Char) {
 }
 
 
-def byte_to_hex(mut byte: Int): [Char * 3] {
+fun byte_to_hex(mut byte: Int): [Char * 3] {
     // Convert a byte to a hex string
     let mut result = ['0'] * 3;
 
@@ -3491,7 +1724,7 @@ def byte_to_hex(mut byte: Int): [Char * 3] {
     return result;
 }
 
-def byte_to_dec(mut byte: Int): [Char * 4] {
+fun byte_to_dec(mut byte: Int): [Char * 4] {
     // Convert a byte to a decimal string
     let mut result = [' '] * 4;
 
@@ -3540,10 +1773,7 @@ println("a: ", a);
 println("b: ", b);
 println("x: ", x);
 println("y: ", y);
-println("z: ", z);
-
-// You can also bind within a new scope.
-let test = 5, ing = 6 in println("5 + 6 = ", test + ing);`)
+println("z: ", z);`)
                     break;
                 default:
                     console.log("Unknown example: " + example);
@@ -3600,24 +1830,20 @@ let test = 5, ing = 6 in println("5 + 6 = ", test + ing);`)
 
         <select id="example" style="height: 3em; float: left;">
             <option value="hello world">Click to select example program (Default Hello World)</option>
+            <option value="graphics">Graphical FFI Demo (JavaScript FFI)</option>
+            <option value="hashmap">Standard Lib Hashmap</option>
+            <option value="vector">Standard Lib Vector</option>
+            <option value="list">Standard Lib Linked List</option>
+            <option value="result">Standard Lib Error Handling</option>
             <option value="factorial">Factorial</option>
             <option value="match">Pattern Matching</option>
-            <option value="list">Linked List (Generics)</option>
-            <option value="vector">Vector (Generics)</option>
-            <option value="hashmap">HashMap (Generics)</option>
             <option value="ffi">Simple FFI Example (JavaScript FFI)</option>
-            <option value="graphics">Graphical FFI Demo (JavaScript FFI)</option>
             <option value="let-bindings">Let-Bindings</option>
             <option value="tuple">Pair (Generics)</option>
-            <!-- <option value="tuple-inline-template">Pair With Inline-Template (Generics)</option> -->
-            <option value="templates">Type Functions (Generics)</option>
-            <option value="string">String</option>
-            <option value="result">Fallible Result Types (Generics)</option>
             <option value="structural-types">Structural Typing Demo</option>
             <option value="calculator">Calculator (Parser)</option>
             <option value="hex-editor">Hex Editor</option>
             <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
-            <option value="alloc">Allocator</option>
             <option value="cat">Cat</option>
         </select>
         <div class="row">

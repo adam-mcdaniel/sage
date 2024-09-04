@@ -4948,8 +4948,30 @@
 <a href="#4947" id="4947">4947</a>
 <a href="#4948" id="4948">4948</a>
 <a href="#4949" id="4949">4949</a>
+<a href="#4950" id="4950">4950</a>
+<a href="#4951" id="4951">4951</a>
+<a href="#4952" id="4952">4952</a>
+<a href="#4953" id="4953">4953</a>
+<a href="#4954" id="4954">4954</a>
+<a href="#4955" id="4955">4955</a>
+<a href="#4956" id="4956">4956</a>
+<a href="#4957" id="4957">4957</a>
+<a href="#4958" id="4958">4958</a>
+<a href="#4959" id="4959">4959</a>
+<a href="#4960" id="4960">4960</a>
+<a href="#4961" id="4961">4961</a>
+<a href="#4962" id="4962">4962</a>
+<a href="#4963" id="4963">4963</a>
+<a href="#4964" id="4964">4964</a>
+<a href="#4965" id="4965">4965</a>
+<a href="#4966" id="4966">4966</a>
+<a href="#4967" id="4967">4967</a>
+<a href="#4968" id="4968">4968</a>
+<a href="#4969" id="4969">4969</a>
+<a href="#4970" id="4970">4970</a>
+<a href="#4971" id="4971">4971</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
-    collections::{BTreeMap, HashMap}, hash::Hash, result, sync::{Arc, RwLock}
+    collections::{BTreeMap, HashMap}, hash::Hash, path::Path, result, sync::{Arc, RwLock}
 };
 <span class="kw">use </span>log::{trace, info, warn, error, debug};
 <span class="kw">use </span>nom::{
@@ -6351,8 +6373,12 @@
 
 <span class="kw">pub fn </span>parse_source(input: <span class="kw-2">&amp;</span>str, filename: <span class="prelude-ty">Option</span>&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, String&gt; {
     obliterate_save();
+    <span class="kw">let </span>old_dir = <span class="kw">match </span><span class="kw-2">&amp;</span>filename {
+        <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; std::env::current_dir().unwrap_or(std::path::PathBuf::new()),
+        <span class="prelude-val">None </span>=&gt; std::path::PathBuf::new()
+    };
 
-    setup_source_code_locations(input, filename);
+    setup_source_code_locations(input, filename.clone());
 
     <span class="kw">fn </span>parse_helper&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;&gt;(input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str, Expr, E&gt; {
         <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
@@ -6361,7 +6387,16 @@
         <span class="prelude-val">Ok</span>((input, stmts_to_expr(stmts, <span class="bool-val">true</span>)))
     }
 
-    <span class="kw">match </span>all_consuming(parse_helper::&lt;VerboseError&lt;<span class="kw-2">&amp;</span>str&gt;&gt;)(input) {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = <span class="kw-2">&amp;</span>filename {
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(current_dir) = std::env::current_dir() {
+            <span class="kw">let _ </span>= std::env::set_current_dir(
+                current_dir.join(std::path::Path::new(<span class="kw-2">&amp;</span>path).parent().unwrap())
+            );
+        }
+    }
+    <span class="kw">let </span>result = all_consuming(parse_helper::&lt;VerboseError&lt;<span class="kw-2">&amp;</span>str&gt;&gt;)(input);
+    <span class="kw">let _ </span>= std::env::set_current_dir(<span class="kw-2">&amp;</span>old_dir);
+    <span class="kw">match </span>result {
         <span class="prelude-val">Err</span>(nom::Err::Error(e)) =&gt; {
             <span class="macro">trace!</span>(<span class="string">"Error: {e}"</span>);
             <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">"{}"</span>, convert_error(input, e)))
@@ -6556,7 +6591,7 @@
             parse_pattern,
             preceded(
                 delimited(whitespace, cut(tag(<span class="string">"=&gt;"</span>)), whitespace),
-                cut(alt((parse_block, parse_expr)))
+                alt((parse_block, parse_expr))
             )
         ),
         preceded(whitespace, tag(<span class="string">","</span>))
@@ -6567,7 +6602,7 @@
             parse_pattern,
             preceded(
                 delimited(whitespace, cut(tag(<span class="string">"=&gt;"</span>)), whitespace),
-                cut(alt((parse_block, parse_expr)))
+                alt((parse_block, parse_expr))
             )
         ))(input)<span class="question-mark">?</span>;
         
@@ -6580,7 +6615,7 @@
 
 
     </span><span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, <span class="kw">_</span>) = cut(tag(<span class="string">"}"</span>))(input)<span class="question-mark">?</span>;
+    <span class="kw">let </span>(input, <span class="kw">_</span>) = tag(<span class="string">"}"</span>)(input)<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>((input, Expr::Match(expr.into(), branches.into_iter().map(|(pat, body)| (pat, body)).collect())))
 }
 
@@ -6715,12 +6750,12 @@
     }
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>(input, <span class="kw">_</span>) = cut(tag(<span class="string">"}"</span>))(input)<span class="question-mark">?</span>;
+    <span class="kw">let </span>(input, <span class="kw">_</span>) = tag(<span class="string">"}"</span>)(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>source_code_loc = end_source_code_tracking(input);
 
-    <span class="prelude-val">Ok</span>((input, stmts_to_expr(stmts, <span class="bool-val">false</span>)))
+    <span class="prelude-val">Ok</span>((input, stmts_to_expr(stmts, <span class="bool-val">false</span>).annotate(source_code_loc)))
 }
 
 <span class="kw">fn </span>parse_stmt&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;&gt;(input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str, Statement, E&gt; {
@@ -7310,9 +7345,16 @@
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, name) = parse_symbol(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
+    <span class="kw">let </span>(input, opt_template_params) = opt(parse_type_params)(input)<span class="question-mark">?</span>;
+    <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
+
     <span class="kw">let </span>(input, <span class="kw">_</span>) = tag(<span class="string">"="</span>)(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, ty) = parse_type(input)<span class="question-mark">?</span>;
+    <span class="kw">let </span>(input, <span class="kw-2">mut </span>ty) = parse_type(input)<span class="question-mark">?</span>;
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(template_params) = opt_template_params {
+        ty = Type::Poly(template_params, ty.into());
+    }
+
     <span class="prelude-val">Ok</span>((input, Statement::Declaration(Declaration::Type(name.to_owned(), ty), <span class="prelude-val">None</span>)))
 }
 
@@ -8258,6 +8300,7 @@
 }
 
 <span class="kw">fn </span>parse_expr_struct&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;&gt;(input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str, Expr, E&gt; {
+    <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, <span class="kw">_</span>) = opt(tag(<span class="string">"struct"</span>))(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, <span class="kw">_</span>) = tag(<span class="string">"{"</span>)(input)<span class="question-mark">?</span>;
@@ -8274,9 +8317,10 @@
             ),
             map(parse_symbol, |x| (x, Expr::var(x.to_string()))),
         )),
-        tag(<span class="string">","</span>)
+        preceded(whitespace, tag(<span class="string">","</span>))
     ))(input)<span class="question-mark">?</span>;
 
+    <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, last) = opt(
         alt((
             pair(

@@ -95,11 +95,11 @@ mod fallible {
 
     // Add some associated functions to the Option enum
     impl Option<T> {
-        fun nullify(self: &mut Option<T>) {
+        fun nullify(&mut self) {
             *self = Option<T> of Nothing;
         }
 
-        fun as_ref(self: &Option<T>): Option<&T> {
+        fun as_ref(&self): Option<&T> {
             let inner = self as &T;
             if let &of Nothing = self {
                 return Option<&T> of Nothing;
@@ -107,7 +107,7 @@ mod fallible {
             return Option<&T> of Some(inner);
         }
 
-        fun as_ref_mut(self: &mut Option<T>): Option<&mut T> {
+        fun as_ref_mut(&mut self): Option<&mut T> {
             let inner = self as &mut T;
             if let &of Nothing = self {
                 return Option<&mut T> of Nothing;
@@ -115,47 +115,47 @@ mod fallible {
             return Option<&mut T> of Some(inner);
         }
 
-        fun print(self: &Option<T>) {
+        fun print(&self) {
             match self {
                 &of Some(x) => print("Some(", x, ")"),
                 _ => print("Nothing")
             }
         }
 
-        fun println(self: &Option<T>) {
+        fun println(&self) {
             self.print();
             print("\n");
         }
 
-        fun map<U>(self: &Option<T>, f: fun(T) -> U): Option<U> {
+        fun map<U>(&self, f: fun(T) -> U): Option<U> {
             match *self {
                 of Some(x) => Option<U> of Some(f(x)),
                 _ => Option<U> of Nothing
             }
         }
 
-        fun is_some(self: &Option<T>): Bool {
+        fun is_some(&self): Bool {
             match self {
                 &of Some(_) => True,
                 _ => False
             }
         }
 
-        fun is_none(self: &Option<T>): Bool {
+        fun is_none(&self): Bool {
             match self {
                 &of Some(_) => False,
                 _ => True
             }
         }
 
-        fun unwrap(self: Option<T>): T {
+        fun unwrap(self): T {
             match self {
                 of Some(x) => x,
                 _ => panic(&"called `Option.unwrap()` on a `Nothing` value")
             }
         }
 
-        fun unwrap_or(self: Option<T>, default: T): T {
+        fun unwrap_or(self, default: T): T {
             match self {
                 of Some(x) => x,
                 _ => default
@@ -243,7 +243,7 @@ mod collections {
             };
         }
 
-        fun reserve(self: &mut Vec<T>, cap: Int) {
+        fun reserve(&mut self, cap: Int) {
             if cap > self.cap {
                 let mut new_data = malloc<T>(cap);
                 memcpy<T>(new_data, self.data, self.length);
@@ -253,7 +253,7 @@ mod collections {
             }
         }
 
-        fun push(self: &mut Vec<T>, x: T) {
+        fun push(&mut self, x: T) {
             if self.length == self.cap {
                 self.reserve(self.cap * 2);
             }
@@ -261,7 +261,7 @@ mod collections {
             self.length += 1;
         }
 
-        fun pop(self: &mut Vec<T>): Option<T> {
+        fun pop(&mut self): Option<T> {
             if self.length == 0 {
                 return Option<T> of Nothing;
             }
@@ -269,11 +269,11 @@ mod collections {
             return Option<T> of Some(self.data[self.length]);
         }
 
-        fun clear(self: &mut Vec<T>) {
+        fun clear(&mut self) {
             self.length = 0;
         }
 
-        fun print(self: &Vec<T>) {
+        fun print(&self) {
             print("[");
             for let mut i=0; i < self.length; i += 1; {
                 print(self.data[i]);
@@ -284,40 +284,48 @@ mod collections {
             print("]");
         }
 
-        fun println(self: &Vec<T>) {
+        fun println(&self) {
             self.print();
             print("\n");
         }
 
-        fun get(self: &Vec<T>, i: Int): &T {
+        fun get(&self, i: Int): &T {
             return &(self.data[i]);
         }
 
-        fun get_mut(self: &mut Vec<T>, i: Int): &mut T {
+        fun get_mut(&mut self, i: Int): &mut T {
             return &mut (self.data[i]);
         }
 
-        fun set(self: &mut Vec<T>, i: Int, x: T) {
+        fun set(&mut self, i: Int, x: T) {
             self.data[i] = x;
         }
 
-        fun nth(self: &Vec<T>, i: Int): Option<&T> {
+        fun nth(&self, i: Int): Option<&T> {
             if i < 0 || i >= self.length {
                 return Option<&T> of Nothing;
             }
             return Option<&T> of Some(self.get(i));
         }
 
-        fun len(self: &Vec<T>): Int {
+        fun len(&self): Int {
             return self.length;
         }
 
-        fun map<U>(self: &Vec<T>, f: fun(T) -> U): Vec<U> {
+        fun map<U>(&self, f: fun(T) -> U): Vec<U> {
             let mut new_vec = Vec.make<U>();
             for let mut i=0; i < self.length; i += 1; {
                 new_vec.push(f(self.data[i]));
             }
             return new_vec;
+        }
+
+        fun reduce<U>(&self, f: fun(U, T) -> U, init: U): U {
+            let mut result = init;
+            for let mut i=0; i<self.length; i+=1; {
+                result = f(result, self.data[i]);
+            }
+            return result;
         }
     }
 
@@ -386,11 +394,11 @@ mod collections {
             };
         }
 
-        fun len(self: &HashMap<K, V>): Int {
+        fun len(&self): Int {
             return self.occupied;
         }
 
-        fun contains_key(self: &HashMap<K, V>, key: K): Bool {
+        fun contains_key(&self, key: K): Bool {
             let mut index = hash<K>(key) % self.data.len();
             while self.data.get(index).is_some() {
                 if eq<K>(self.data.get(index).unwrap().key, key) {
@@ -401,7 +409,7 @@ mod collections {
             return False;
         }
         
-        fun insert(self: &mut HashMap<K, V>, key: K, value: V) {
+        fun insert(&mut self, key: K, value: V) {
             if self.occupied * 2 > self.data.len() {
                 for let mut i=0; i < self.occupied * 2; i += 1; {
                     self.data.push(Option<Entry<K, V>> of Nothing);
@@ -419,7 +427,7 @@ mod collections {
             self.occupied += 1;
         }
 
-        fun remove(self: &mut HashMap<K, V>, key: K) {
+        fun remove(&mut self, key: K) {
             let mut index = hash<K>(key) % self.data.len();
             while self.data.get(index).is_some() {
                 if eq<K>(self.data.get(index).unwrap().key, key) {
@@ -431,7 +439,7 @@ mod collections {
             }
         }
         
-        fun get_and_unwrap(self: &HashMap<K, V>, key: K): V {
+        fun get_and_unwrap(&self, key: K): V {
             let mut index = hash<K>(key) % self.data.len();
             while self.data.get(index).is_some() {
                 if eq<K>(self.data.get(index).unwrap().key, key) {
@@ -447,7 +455,7 @@ mod collections {
             panic(&"called `HashMap.get_and_unwrap()` on a `Nothing` value");
         }
 
-        fun get(self: &HashMap<K, V>, key: K): Option<&V> {
+        fun get(&self, key: K): Option<&V> {
             let mut index = hash<K>(key) % self.data.len();
             while self.data.get(index).is_some() {
                 if eq<K>(self.data.get(index).unwrap().key, key) {
@@ -463,7 +471,7 @@ mod collections {
             return Option<&V> of Nothing;
         }
 
-        fun get_mut(self: &mut HashMap<K, V>, key: K): Option<&mut V> {
+        fun get_mut(&mut self, key: K): Option<&mut V> {
             let mut index = hash<K>(key) % self.data.len();
             while self.data.get(index).is_some() {
                 if eq<K>(self.data.get(index).unwrap().key, key) {
@@ -479,7 +487,7 @@ mod collections {
             return Option<&mut V> of Nothing;
         }
 
-        fun print(self: &HashMap<K, V>) {
+        fun print(&self) {
             print("{");
             let mut first = True;
             for let mut i=0; i < self.data.len(); i += 1; {
@@ -496,7 +504,7 @@ mod collections {
             print("}");
         }
 
-        fun println(self: &HashMap<K, V>) {
+        fun println(&self) {
             self.print();
             print("\n");
         }

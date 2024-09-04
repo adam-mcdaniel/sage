@@ -244,7 +244,7 @@ fn format_error<T: core::fmt::Debug>(script: &str, err: SyntaxError<T>) -> Strin
                 column,
             )
         }
-        SyntaxError::UnrecognizedEOF { location, .. } => {
+        SyntaxError::UnrecognizedEof { location, .. } => {
             let (line_number, line, _) = get_line(script, location);
             make_error(&line, "EOF", line_number, line.len())
         }

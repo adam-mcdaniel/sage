@@ -521,7 +521,7 @@
                 column,
             )
         }
-        SyntaxError::UnrecognizedEOF { location, .. } =&gt; {
+        SyntaxError::UnrecognizedEof { location, .. } =&gt; {
             <span class="kw">let </span>(line_number, line, <span class="kw">_</span>) = get_line(script, location);
             make_error(<span class="kw-2">&amp;</span>line, <span class="string">"EOF"</span>, line_number, line.len())
         }
