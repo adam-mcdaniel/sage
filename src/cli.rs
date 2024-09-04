@@ -20,7 +20,6 @@ use log::error;
 
 // The stack sizes of the threads used to compile the code.
 const RELEASE_STACK_SIZE_MB: usize = 512;
-// const RELEASE_STACK_SIZE_MB: usize = 2048;
 const DEBUG_STACK_SIZE_MB: usize = RELEASE_STACK_SIZE_MB;
 
 #[derive(clap::ValueEnum, Default, Clone, Debug, PartialEq)]
