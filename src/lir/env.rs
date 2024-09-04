@@ -765,7 +765,6 @@ impl Env {
                 self.define_const(name, e.clone());
             }
             Declaration::FromImport { module, names } => {
-
                 let module = module.clone().eval(self)?;
                 for (name, alias) in names {
                     let access = module.clone().field(ConstExpr::Symbol(name.clone()));
@@ -1061,7 +1060,7 @@ impl Env {
     /// Define a constant with a given name under this environment.
     pub(super) fn define_const(&mut self, name: impl ToString, e: ConstExpr) {
         let name = name.to_string();
-        
+
         /*
         Removed this code in favor of using Declaration::FromImport
         to add types from constant expressions

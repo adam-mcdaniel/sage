@@ -41,7 +41,7 @@ pub enum Declaration {
     /// Many declarations.
     Many(Arc<Vec<Declaration>>),
     /// Declare a module
-    /// 
+    ///
     /// Do NOT instantiate this directly:
     /// use the `Declaration::module` method.
     /// This will redistribute the declarations to make sure
