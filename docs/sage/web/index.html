@@ -1775,6 +1775,45 @@ println("x: ", x);
 println("y: ", y);
 println("z: ", z);`)
                     break;
+                case "modules":
+                    document.getElementById("input").value = "hello modules!";
+                    source.setValue(`// Define a module \`io\` with \`getchar\`
+mod io {
+    fun getchar(): Char {
+        let mut ch = '\\0';
+        input(&mut ch);
+        return ch;
+    }
+}
+
+// A module to test importing from other modules
+mod testing {
+    mod internals {
+        // Import getchar from two modules up
+        from io import getchar;
+        
+        // Use it in a function
+		fun get_two(): (Char, Char) { (getchar(), getchar()) }
+    }
+
+    // Get two chars and print them
+    fun get_two_then_print() {
+        // Import from a submodule, which imports from a supermodule
+        from internals import get_two;
+        let (a, b) = get_two();
+        print(a, b);
+    }
+}
+
+from testing import get_two_then_print;
+get_two_then_print();
+
+// Get two values and print them
+for let mut i=0; i<6; i+=1; {
+    // We can also use the full path name
+ 	testing.get_two_then_print();
+}`);
+                    break;
                 case "sum-types":
                     source.setValue(`enum Option<T> {
     Some(T),
@@ -1858,13 +1897,14 @@ main();`)
 
         <select id="example" style="height: 3em; float: left;">
             <option value="hello world">Click to select example program (Default Hello World)</option>
-            <option value="structural-types">Structural Typing Demo</option>
             <option value="list">Standard Lib Linked List</option>
             <option value="result">Standard Lib Error Handling</option>
             <option value="hashmap">Standard Lib Hashmap</option>
             <option value="vector">Standard Lib Vector</option>
+            <option value="structural-types">Structural Typing Demo</option>
             <option value="graphics">Graphical Javascript Interop Demo</option>
             <option value="ffi">Alert Javascript Demo</option>
+            <option value="modules">Module System</option>
             <option value="sum-types">Sum Types</option>
             <option value="match">Pattern Matching</option>
             <option value="tuple">Pair (Generics)</option>
