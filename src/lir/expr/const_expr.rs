@@ -104,18 +104,12 @@ impl ConstExpr {
     }
 
     pub fn template(&self, params: Vec<String>) -> Self {
-        // if let Self::Proc(proc) = self {
-        //     Self::PolyProc(PolyProcedure::from_mono(proc.clone(), params))
-        // } else {
-        //     Self::Template(params, Box::new(self.clone()))
-        // }
         match self {
             Self::Proc(proc) => Self::PolyProc(PolyProcedure::from_mono(proc.clone(), params)),
             Self::Declare(decls, inner) => inner.template(params).with(decls.clone()),
             Self::Annotated(inner, metadata) => inner.template(params).annotate(metadata.clone()),
             _ => Self::Template(params, Box::new(self.clone())),
         }
-        // Self::Template(params, Box::new(self.clone()))
     }
 
     /// Evaluate a variable in the current scope.
@@ -256,15 +250,7 @@ impl ConstExpr {
                             access.eval_checked(&new_env, i)?.with(decls)
                         }
 
-                        // (Self::Symbol(..), member)
-                        // | (Self::Member(..), member) => {
-                        //     // container.eval_checked(env, i)?.field(member).eval_checked(env, i)?
-                        // }
                         (Self::Symbol(name), member) => {
-                            // if env.get_var(&name).is_some() {
-                            //     return Ok(Self::var(name).field(member));
-                            // }
-
                             if env.get_const(&name).is_some() {
                                 container
                                     .eval_checked(env, i)?
@@ -346,18 +332,6 @@ impl ConstExpr {
                             // container.eval_checked(env, i)?.field(member).eval_checked(env, i)?
                             return Err(Error::MemberNotFound((*container).into(), member));
                         }
-                        // (container, Self::Symbol(name)) => {
-                        //     if let Some((constant, _)) =
-                        //         env.get_associated_const(&container_ty, &name)
-                        //     {
-                        //         constant.eval_checked(env, i)?
-                        //     } else {
-                        //         warn!(
-                        //             "(Unknown container {container:?}) member access of {member} not implemented for: {container_ty} . {member}"
-                        //         );
-                        //         return Err(Error::MemberNotFound(container.into(), *member));
-                        //     }
-                        // }
                         _ => {
                             if let Ok(Some((constant, _))) = member
                                 .clone()
@@ -493,11 +467,6 @@ impl ConstExpr {
     /// Try to get this constant expression as an integer.
     pub fn as_int(self, env: &Env) -> Result<i64, Error> {
         trace!("Getting int from constexpr: {self}");
-        // match self.eval_checked(env, 0) {
-        //     Ok(Self::Int(n)) => Ok(n),
-        //     Ok(other) => Err(Error::NonIntegralConst(other)),
-        //     Err(err) => Err(err),
-        // }
         match self {
             Self::Int(n) => Ok(n),
             other => match other.eval(env)? {
@@ -510,11 +479,6 @@ impl ConstExpr {
     /// Try to get this constant expression as a character.
     pub fn as_char(self, env: &Env) -> Result<char, Error> {
         trace!("Getting char from constexpr: {self}");
-        // match self.eval_checked(env, 0) {
-        //     Ok(Self::Int(n)) => Ok(n),
-        //     Ok(other) => Err(Error::NonIntegralConst(other)),
-        //     Err(err) => Err(err),
-        // }
         match self {
             Self::Char(ch) => Ok(ch),
             other => match other.eval(env)? {
@@ -527,11 +491,6 @@ impl ConstExpr {
     /// Try to get this constant expression as a float.
     pub fn as_float(self, env: &Env) -> Result<f64, Error> {
         trace!("Getting float from constexpr: {self}");
-        // match self.eval_checked(env, 0) {
-        //     Ok(Self::Float(n)) => Ok(n),
-        //     Ok(other) => Err(Error::NonIntegralConst(other)),
-        //     Err(err) => Err(err),
-        // }
         match self {
             Self::Float(n) => Ok(n),
             other => match other.eval(env)? {
@@ -544,11 +503,6 @@ impl ConstExpr {
     /// Try to get this constant expression as a boolean value.
     pub fn as_bool(self, env: &Env) -> Result<bool, Error> {
         trace!("Getting bool from constexpr: {self}");
-        // match self.eval_checked(env, 0) {
-        //     Ok(Self::Bool(b)) => Ok(b),
-        //     Ok(other) => Err(Error::NonIntegralConst(other)),
-        //     Err(err) => Err(err),
-        // }
         match self {
             Self::Bool(n) => Ok(n),
             other => match other.eval(env)? {
@@ -589,10 +543,6 @@ impl GetType for ConstExpr {
                     new_env.define_type(param, Type::Symbol(param.clone()));
                 }
                 Type::Poly(params, expr.get_type_checked(&new_env, i)?.into())
-                // return Ok(Type::Poly(
-                //     params,
-                //     expr.get_type_checked(env, i)?.simplify(env)?.into()
-                // ));
             }
 
             Self::Type(t) => Type::Type(t.into()),

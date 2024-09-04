@@ -41,6 +41,11 @@ pub enum Declaration {
     /// Many declarations.
     Many(Arc<Vec<Declaration>>),
     /// Declare a module
+    /// 
+    /// Do NOT instantiate this directly:
+    /// use the `Declaration::module` method.
+    /// This will redistribute the declarations to make sure
+    /// everything is in-order internally to be imported/exported.
     Module(String, Arc<Vec<Declaration>>),
     /// Import an element from a module.
     FromImport {
@@ -60,28 +65,27 @@ impl Declaration {
         Self::StaticVar(name.into(), mutability, ty, expr.into())
     }
 
+    /// Create a collection of declarations
     pub fn many(decls: impl Into<Vec<Self>>) -> Self {
         Self::Many(Arc::new(decls.into()))
     }
 
+    /// Create a module with a given name and a list of declarations
     pub fn module(name: impl ToString, decls: impl Into<Vec<Self>>) -> Self {
         let mut decls = decls.into();
         let mut import = Self::many(decls.clone());
         import.filter(&|decl| {
             decl.is_compile_time_declaration() && !matches!(decl, Declaration::Impl(..))
-                || matches!(decl, Self::StaticVar(..))
-        }); //&& !matches!(decl, Declaration::Module(..)));
+        });
 
         for decl in &mut decls {
             decl.distribute_decls(&import.clone());
-            // if !matches!(decl, Declaration::Module(..)) {
-            //     decl.distribute_decls(&import.clone());
-            // }
         }
 
         Self::Module(name.to_string(), Arc::new(decls))
     }
 
+    /// Filter all the subdeclarations to satisfy some condition.
     fn filter(&mut self, f: &impl Fn(&Declaration) -> bool) {
         match self {
             Self::Many(decls) => {
@@ -98,12 +102,15 @@ impl Declaration {
         }
     }
 
+    /// Make this declaration only have compile time subdeclarations
     fn filter_for_compile_time_only(&mut self) {
         self.filter(&|decl| decl.is_compile_time_declaration());
     }
 
+    /// Distribute a declaration amongst several other declarations.
+    /// This makes sure the declaration is in scope for all the subexpressions
+    /// in the other declarations.
     fn distribute_decls(&mut self, distributed: &Self) {
-        // eprintln!("Distributing declarations");
         match self {
             Self::Many(decls) => {
                 let decls = Arc::make_mut(decls);

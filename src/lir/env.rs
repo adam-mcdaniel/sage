@@ -223,22 +223,6 @@ impl Env {
         }
     }
 
-    // pub fn add_monomorphs(&self, template: Type, monomorphs: Vec<Type>) -> Result<(), Error> {
-    //     // let mut processed_monomorphizations = self.processed_monomorphizations.write().unwrap();
-    //     // if processed_monomorphizations
-    //     //     .get(&template)
-    //     //     .map(|monos| monos.iter().any(|mono| monomorphs.iter().any(|m| m == mono)))
-    //     //     .unwrap_or(false)
-    //     // {
-    //     //     return Ok(());
-    //     // }
-    //     // processed_monomorphizations
-    //     //     .entry(template.clone())
-    //     //     .or_default()
-    //     //     .extend(monomorphs);
-    //     // Ok(())
-    // }
-
     pub(crate) fn has_type_checked_const(&self, const_expr: &ConstExpr) -> bool {
         self.type_checked_consts
             .read()
@@ -587,25 +571,7 @@ impl Env {
         monomorph: Type,
         ty_args: Vec<Type>,
     ) -> Result<(), Error> {
-        // return Ok(());
         debug!("Adding monomorphized associated constants of type {template} to {monomorph} with type arguments {ty_args:?} to environment");
-        // // If we can't acquire the lock, just return.
-        // // This is because we don't want to block the thread if we can't acquire the lock.
-        // if let Ok(mut lock) = self.processed_monomorphizations.try_write() {
-        //     // If the template type has already been monomorphized to the monomorph type, return.
-        //     if lock.get(&template).map(|monomorphs| monomorphs.iter().any(|mono| mono == &monomorph)).unwrap_or(false) {
-        //         debug!("Type {template} has already been monomorphized to {monomorph}");
-        //         return Ok(());
-        //     }
-        //     // Otherwise, add the monomorphization to the list of processed monomorphizations.
-        //     lock.entry(template.clone()).or_default().push(template.clone());
-        //     lock.entry(template.clone()).or_default().push(monomorph.clone());
-        // } else {
-        //     // If we can't acquire the lock, just return.
-        //     // This is because we don't want to block the thread if we can't acquire the lock.
-        //     debug!("Failed to acquire lock on processed monomorphizations");
-        //     return Ok(());
-        // }
 
         let monomorph = if let Ok(simplified) = monomorph.simplify_until_simple(self) {
             debug!("Simplified {monomorph} to {simplified}");
@@ -731,11 +697,6 @@ impl Env {
                     return Ok(());
                 }
 
-                // let mut new_env = self.clone();
-                // for decl in decls.iter() {
-                //     new_env.add_compile_time_declaration(decl)?;
-                // }
-
                 // Get all the declaration names
                 let mut exports = vec![];
                 for decl in Declaration::Many(decls.clone()).flatten().iter() {
@@ -802,22 +763,13 @@ impl Env {
             }
             Declaration::Const(name, e) => {
                 self.define_const(name, e.clone());
-                // if let Ok(Type::Type(ty)) = e.get_type(self) {
-                //     self.define_type(name, *ty);
-                // }
             }
             Declaration::FromImport { module, names } => {
-                // let access = module.clone().field(ConstExpr::var(name));
-                // let name = alias.clone().unwrap_or(name.clone());
-                // let module_ty = module.get_type(self)?;
 
                 let module = module.clone().eval(self)?;
                 for (name, alias) in names {
                     let access = module.clone().field(ConstExpr::Symbol(name.clone()));
                     let name = alias.clone().unwrap_or(name.clone());
-                    // if self.consts.contains_key(&name) {
-                    //     continue;
-                    // }
 
                     // if !self.types.contains_key(&name) {
                     self.define_const(&name, access.clone());
@@ -827,17 +779,12 @@ impl Env {
                 }
             }
             Declaration::FromImportAll(module) => {
-                // let access = module.clone().field(ConstExpr::var(name));
-                // let name = alias.clone().unwrap_or(name.clone());
-                // let module_ty = module.get_type(self)?;
-
                 let module = module.clone().eval(self)?;
                 let module_ty = module.get_type(self)?;
                 if let Type::Struct(fields) = module_ty {
                     for name in fields.keys() {
                         let access = module.clone().field(ConstExpr::Symbol(name.clone()));
 
-                        // if !self.types.contains_key(&name) {
                         self.define_const(name, access.clone());
                         if let Ok(Type::Type(ty)) = access.get_type(self) {
                             self.define_type(name, *ty);
@@ -1048,10 +995,6 @@ impl Env {
     /// Define a type with a given name under this environment.
     pub(super) fn define_type(&mut self, name: impl ToString, ty: Type) {
         let name = name.to_string();
-        // if self.types.contains_key(&name) {
-        //     debug!("Redefining type {name} in {self}");
-        //     return;
-        // }
 
         match &ty {
             Type::Symbol(sym) if sym == &name => {
@@ -1118,17 +1061,22 @@ impl Env {
     /// Define a constant with a given name under this environment.
     pub(super) fn define_const(&mut self, name: impl ToString, e: ConstExpr) {
         let name = name.to_string();
+        
+        /*
+        Removed this code in favor of using Declaration::FromImport
+        to add types from constant expressions
 
-        // trace!("Defining constant {name} as {e}");
-        // match e.get_type(self) {
-        //     Ok(Type::Type(t)) => {
-        //         trace!("{name} is a type declaration for {t}");
-        //         self.define_type(name.clone(), *t);
-        //     }
-        //     _ => {
-        //         trace!("{name} is a constant declaration for {e}");
-        //     }
-        // }
+        trace!("Defining constant {name} as {e}");
+        match e.get_type(self) {
+            Ok(Type::Type(t)) => {
+                trace!("{name} is a type declaration for {t}");
+                self.define_type(name.clone(), *t);
+            }
+            _ => {
+                trace!("{name} is a constant declaration for {e}");
+            }
+        }
+        */
 
         Arc::make_mut(&mut self.consts).insert(name, e);
     }
@@ -1142,10 +1090,6 @@ impl Env {
     pub(super) fn define_proc(&mut self, name: impl ToString, proc: Procedure) {
         let name = name.to_string();
         trace!("Defining procedure {name} as {proc}");
-        // if self.procs.contains_key(&name) {
-        //     debug!("Redefining procedure {name} in {self}");
-        //     return;
-        // }
         Arc::make_mut(&mut self.procs).insert(name.clone(), proc.clone());
         Arc::make_mut(&mut self.consts).insert(name, ConstExpr::Proc(proc));
     }
