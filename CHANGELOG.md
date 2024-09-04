@@ -121,7 +121,7 @@ mod testing {
         from io import getchar;
         
         // Use it in a function
-		fun get_two(): (Char, Char) { (getchar(), getchar()) }
+        fun get_two(): (Char, Char) { (getchar(), getchar()) }
     }
 
     // Get two chars and print them
