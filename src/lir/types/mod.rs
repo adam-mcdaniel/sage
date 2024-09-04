@@ -478,7 +478,6 @@ impl Type {
                     matched_symbols.insert(name.clone(), other.clone());
                 } else if let Some(t) = env.get_type(name) {
                     debug!("Symbol {name} is {t}");
-                    // let mut new_matched_symbols = HashMap::new();
                     other.get_monomorph_template_args(t, matched_symbols, param_symbols, env)?;
                 }
             }
