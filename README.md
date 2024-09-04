@@ -324,6 +324,8 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 
 You can read [my blog post](https://adam-mcdaniel-blog.github.io/compilers-for-the-future) (~20 minute read) about the programming language to learn more about the implementation!
 
+[Here's a 23 minute YouTube video that covers how compilers work, and delves into Sage!](https://www.youtube.com/watch?v=QdnxjYj1pS0)
+
 Join the [Discord server](https://discord.gg/rSGkM4bcdP) to chat about Sage!
 
 ## How do I contribute?
