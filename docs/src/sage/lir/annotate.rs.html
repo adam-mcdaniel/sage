@@ -214,14 +214,18 @@
 <a href="#213" id="213">213</a>
 <a href="#214" id="214">214</a>
 <a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::parse::SourceCodeLocation;
 <span class="kw">use </span>core::ops::{BitOr, BitOrAssign};
 <span class="kw">use </span>std::collections::BTreeSet;
+<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
+
 
 <span class="doccomment">/// An annotation for metadata about an LIR expression.
 /// This is used for error reporting, debugging, optimization,
 /// and for representing the LIR in a human-readable format.
-</span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+</span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>Annotation {
     <span class="doccomment">/// The source code location of the expression.
     </span>Location(SourceCodeLocation),

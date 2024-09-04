@@ -1,0 +1,35 @@
+from std.collections import *;
+
+fun main() {
+    // Create a vector of integers
+    let mut v = Vec.make<Int>();
+
+    // Print the length
+    println("v.len() = ", v.len());
+    
+    // Add 100 elements
+    for let mut i=0; i<100; i+=1; {
+        v.push(i);
+    }
+    // Print the new length
+    println("v.len() = ", v.len());
+
+    fun double(x: Int): Int = x * 2;
+    fun sum(x: Int, y: Int): Int = x + y;
+
+    // Create a new vector with all the values doubled
+    let mut v2 = v.map<Int>(double);
+    println("v2.len() = ", v2.len());
+
+    // Print the sum of all the elements in the original list
+    println("sum of v = ", v.reduce<Int>(sum, 0));
+    // Print the sum of all the elements in the new, doubled list
+    println("sum of v2 = ", v2.reduce<Int>(sum, 0));
+
+    // Print all the elements in the new, doubled list
+    for let mut i=0; i<v2.len(); i+=1; {
+        println("v2[", i, "] = ", *v2.get(i));
+    }
+}
+
+main();

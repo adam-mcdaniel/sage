@@ -38,7 +38,7 @@ pub trait GetType {
 /// Infer the type associated with an expression under a given environment.
 impl GetType for Expr {
     fn get_type_checked(&self, env: &Env, i: usize) -> Result<Type, Error> {
-        trace!("Getting type of expression {}", self);
+        trace!("Getting type of expression {self} in env {env}");
         let i = i + 1;
         Ok(match self {
             Self::Annotated(expr, annotation) => {
@@ -48,6 +48,12 @@ impl GetType for Expr {
             }
 
             Self::Declare(declaration, body) => {
+                if let Ok(ty) = body.get_type_checked(env, i) {
+                    // If the body returns a value, then the declaration
+                    // returns the type of the body.
+                    return Ok(ty);
+                }
+
                 // Create a new environment with the declarations.
                 let mut new_env = env.clone();
                 // Add the declarations to the environment.
@@ -82,6 +88,10 @@ impl GetType for Expr {
             }
 
             Self::UnaryOp(unop, expr) => {
+                let unop = env
+                    .get_unop(unop)
+                    .ok_or(Error::UnimplementedOperator(unop.clone()))?;
+
                 if let Self::Annotated(expr, metadata) = &**expr {
                     return unop
                         .return_type(expr, env)
@@ -92,6 +102,9 @@ impl GetType for Expr {
                 unop.return_type(expr, env)?
             }
             Self::BinaryOp(binop, lhs, rhs) => {
+                let binop = env
+                    .get_binop(binop)
+                    .ok_or(Error::UnimplementedOperator(binop.clone()))?;
                 // Infer the type of the binary operation
                 // on the two expressions.
                 if let Self::Annotated(lhs, metadata) = &**lhs {
@@ -108,6 +121,10 @@ impl GetType for Expr {
                 binop.return_type(lhs, rhs, env)?
             }
             Self::TernaryOp(ternop, a, b, c) => {
+                let ternop = env
+                    .get_ternop(ternop)
+                    .ok_or(Error::UnimplementedOperator(ternop.clone()))?;
+
                 if let Self::Annotated(a, metadata) = &**a {
                     return ternop
                         .return_type(a, b, c, env)
@@ -128,6 +145,10 @@ impl GetType for Expr {
                 ternop.return_type(a, b, c, env)?
             }
             Self::AssignOp(op, dst, src) => {
+                let op = env
+                    .get_assignop(op)
+                    .ok_or(Error::UnimplementedOperator(op.clone()))?;
+
                 if let Self::Annotated(dst, metadata) = &**dst {
                     return op
                         .return_type(dst, src, env)
@@ -375,10 +396,8 @@ impl GetType for Expr {
                     // If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
                     val_type => {
-                        // error!("BING BONG");
                         // Try to get the member of the underlying type.
                         if let Ok((t, _)) = val_type.get_member_offset(field, val, env) {
-                            info!("BING BONG");
                             return Ok(t);
                         }
 
@@ -386,12 +405,7 @@ impl GetType for Expr {
                         return env
                             .get_type_of_associated_const(&val_type, &as_symbol?)
                             .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
-                    } // Err(e) => {
-                      //     // Try to get the member of the underlying type.
-                      //     // return Err(e);
-                      //     return env.get_type_of_associated_const(&val_type, &as_symbol?)
-                      //         .ok_or(Error::MemberNotFound(*val.clone(), field.clone()));
-                      // }
+                    }
                 }
             }
 

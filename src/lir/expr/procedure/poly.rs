@@ -3,21 +3,22 @@
 //! A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 //! This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 //! A procedure is compiled down to a label in the assembly code.
-use crate::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
-use core::fmt;
-use log::{debug, error, trace};
+use super::Procedure;
+use crate::lir::{ConstExpr, Declaration, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
 use std::{
     collections::HashMap,
+    fmt,
     sync::{Arc, RwLock},
 };
 use std::{hash::Hash, hash::Hasher};
 
-use super::Procedure;
+use log::{debug, error, trace};
+use serde_derive::{Deserialize, Serialize};
 
 /// A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 /// This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 /// A procedure is compiled down to a label in the assembly code.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PolyProcedure {
     /// The name of the procedure.
     name: String,
@@ -30,7 +31,9 @@ pub struct PolyProcedure {
     /// The body of the procedure.
     body: Box<Expr>,
     /// The monomorphs of the procedure.
+    #[serde(skip)]
     monomorphs: Arc<RwLock<HashMap<String, Procedure>>>,
+    #[serde(skip)]
     has_type_checked: Arc<RwLock<bool>>,
 }
 
@@ -62,6 +65,15 @@ impl PolyProcedure {
             body: Box::new(body.into()),
             monomorphs: Arc::new(RwLock::new(HashMap::new())),
             has_type_checked: Arc::new(RwLock::new(false)),
+        }
+    }
+
+    pub fn with(&self, decls: impl Into<Declaration>) -> Self {
+        Self {
+            body: Box::new(self.body.with(decls)),
+            monomorphs: Arc::new(RwLock::new(HashMap::new())),
+            has_type_checked: Arc::new(RwLock::new(false)),
+            ..self.clone()
         }
     }
 

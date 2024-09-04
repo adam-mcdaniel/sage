@@ -4,8 +4,8 @@
     <strong>Sage advice for your coding conundrums!</strong>
   </p>
   <p float="left">
-    <img src="./assets/code1.png" width="29.5%"/>
-    <a href="https://adam-mcdaniel.net/sage"><img src="./assets/sage.png" width="68%"/></a>
+    <img src="./assets/code1_redone.png" width="26.5%"/>
+    <a href="https://adam-mcdaniel.net/sage"><img src="./assets/sage.png" width="69.5%"/></a>
   </p>
   <p>
     <a href="https://adam-mcdaniel.net/sage"><b><i>Use the online compiler playground!</i></b></a>
@@ -40,9 +40,9 @@ Sage is a programming language that tries to be maximally portable, expressive, 
 
 <div align="center">
   <p float="left">
-    <img src="./assets/code2.png" width="32.5%"/>
-    <img src="./assets/code1.png" width="31.5%"/>
-    <img src="./assets/code3.png" width="28.5%"/>
+    <img src="./assets/code2_redone.png" width="33.5%"/>
+    <img src="./assets/code1_redone.png" width="31%"/>
+    <img src="./assets/code3_redone.png" width="33.75%"/>
   </p>
 </div>
 
@@ -54,29 +54,37 @@ Sage is very portable -- run it on your thermostat! Here's the complete list of 
 
 | Instruction | C Equivalent    |
 | ----------- | --------------- |
-| `while`     | `while (reg) {` |
-| `if`        | `if (reg) {`    |
+| `while`     | `while (reg[0]) {` |
+| `if`        | `if (reg[0]) {`    |
 | `else`      | `} else {`      |
 | `end`       | `}`             |
-| `set N`     | `reg = N;`      |
-| `call`      | `funs[reg]();`  |
+| `set N_0, N_1, ..., N_X`     | `reg[0] = N_0; reg[1] = N_1; ... reg[x] = N_X;` |
+| `call`      | `funs[reg[0]]();`  |
 | `ret`       | `return;`       |
-| `save`      | `*tape_ptr = reg;` |
-| `res`       | `reg = *tape_ptr;` |
+| `load N`    | `memcpy(reg, tape_ptr, N * sizeof(cell));` |
+| `store N`   | `memcpy(tape_ptr, reg, N * sizeof(cell));` |
 | `move N`    | `tape_ptr += N;`   |
-| `where`     | `reg = tape_ptr;`   |
+| `where`     | `reg[0].p = tape_ptr;`   |
 | `deref`     | `push(tape_ptr); tape_ptr = *tape_ptr;` |
 | `refer`     | `tape_ptr = pop();` |
-| `index`     | `reg = (cell*)(reg) + *tape_ptr;`    |
-| `add`       | `reg += *tape_ptr;` |
-| `sub`       | `reg -= *tape_ptr;` |
-| `mul`       | `reg *= *tape_ptr;` |
-| `div`       | `reg /= *tape_ptr;` |
-| `rem`       | `reg %= *tape_ptr;` |
-| `nand`      | `reg = ~(reg & *tape_ptr);` |
-| `gez`       | `reg = reg >= 0;`  |
-
-You could fit this instruction set on a T-shirt!
+| `index N`   | `for (int i=0; i<N; i++) reg[i].p += tape_ptr->i;` |
+| `offset O, N` | `for (int i=0; i<N; i++) reg[i].p += O;` |
+| `swap N` | `for (int i=0; i<N; i++) swap(reg + i, tape_ptr + i);` |
+| `add N` | `for (int i=0; i<N; i++) reg[i].i += tape_ptr[i].i;` |
+| `sub N` | `for (int i=0; i<N; i++) reg[i].i -= tape_ptr[i].i;` |
+| `mul N` | `for (int i=0; i<N; i++) reg[i].i *= tape_ptr[i].i;` |
+| `div N` | `for (int i=0; i<N; i++) reg[i].i /= tape_ptr[i].i;` |
+| `rem N` | `for (int i=0; i<N; i++) reg[i].i %= tape_ptr[i].i;` |
+| `or N` | `for (int i=0; i<N; i++) reg[i].i \|\|= tape_ptr[i].i;` |
+| `and N` | `for (int i=0; i<N; i++) reg[i].i &&= tape_ptr[i].i;` |
+| `not N` | `for (int i=0; i<N; i++) reg[i].i = !reg[i].i;` |
+| `bitand N` | `for (int i=0; i<N; i++) reg[i].i &= tape_ptr[i].i;` |
+| `bitor N` | `for (int i=0; i<N; i++) reg[i].i \|= tape_ptr[i].i;` |
+| `bitxor N` | `for (int i=0; i<N; i++) reg[i].i ^= tape_ptr[i].i;` |
+| `lsh N` | `for (int i=0; i<N; i++) reg[i].i <<= tape_ptr[i].i;` |
+| `l-rsh N` | `for (int i=0; i<N; i++) reg[i].i = (uint64_t)reg[i].i >> tape_ptr[i].i;` |
+| `a-rsh N` | `for (int i=0; i<N; i++) reg[i].i >>= tape_ptr[i].i;` |
+| `gez N` | `for (int i=0; i<N; i++) reg[i].i = reg[i].i >= 0;` |
 
 The compiler can target this limited "core" instruction set, with an expanded "standard" instruction set for floating point operations and foreign functions. The core instruction set is designed to be as simple as possible for anyone to implement their own backend. [Try to see if you can implement it yourself for your backend of choice!](https://github.com/adam-mcdaniel/sage/blob/main/src/targets/c.rs)
 
@@ -129,29 +137,144 @@ Check out the [code for the web-demo](https://github.com/adam-mcdaniel/sage/tree
 
 ## What does Sage look like?
 
-Here's an example of a polymorphic linked list in Sage using Rust-like `enum`s! It's straightforward to implement operations like `map` with just a few lines.
+Here's an example using the `collections` submodule of Sage's builtin `std` module!
+The example uses a custom struct `Point` as the key for a `HashMap` instance.
+
+```rs
+from std.collections import *;
+
+struct Point {
+    x: Float,
+    y: Float
+}
+
+impl Point {
+    fun new(x: Float, y: Float): Point {
+        return {x=x, y=y};
+    }
+
+    fun move(&mut self, dx: Float, dy: Float) {
+        self.x += dx;
+        self.y += dy;
+    }
+}
 
 
-<div align="center">
-  <img src="./assets/code1.png" width="66%"/>  
-</div>
+fun main() {
+    let mut hm = HashMap.make<Point, Int>();
 
+    hm.insert(Point.new(4.0, 5.0), 5);
+    hm.insert(Point.new(1.0, -1.0), -100);
+
+    hm.println();
+    let idx = Point.new(1.0, -1.0);
+    if let of Some(result) = hm.get(idx) {
+        println(idx, " -> ", *result);
+    } else {
+        println("Could not find hm[", idx, "]");
+    }
+}
+
+main();
+```
 
 Here's an example of Sage's structural typing: a `Rectangle` can be created by concatenating the fields of a `Position` and a `Size`!
 
+```rs
+fun main() {
+    // Add the position and the size to get a rectangle
+    let rect = Position.make(10, 20) + Size.make(30, 40);
 
-<div align="center">
-  <img src="./assets/code2.png" width="66%"/>
-</div>
+    // Print the rectangle and its stats
+    println("Rectangle: ", rect);
+    println("Area:      ", rect.area()); 
+    println("Perimeter: ", rect.perimeter());
+}
 
+// A rectangle has an \`x\` and \`y\` position, a \`width\`, and a \`height\`.
+struct Rectangle {
+    x: Int,
+    y: Int,
+    width: Int,
+    height: Int
+}
+
+impl Rectangle {
+    // Calculate the area of the rectangle
+    fun area(&self): Int { self.width * self.height }
+
+    // Calculate the perimeter of the rectangle
+    fun perimeter(&self): Int { 2 * (self.width + self.height) }
+}
+
+// A type for representing the dimensions of a 2D shape
+struct Size {
+    width: Int,
+    height: Int
+}
+
+impl Size {
+    // Create a new size with the given width and height
+    fun make(width: Int, height: Int): Size { { width=width, height=height } }
+}
+
+// A type for representing the position of a 2D shape
+struct Position {
+    x: Int,
+    y: Int
+}
+
+impl Position {
+    // Create a new position with the given x and y coordinates
+    fun make(x: Int, y: Int): Position { { x=x, y=y } }
+}
+
+main();
+```
 
 Here's an example of Sage's pattern matching: it's easy to deconstruct a value using `match`, `if let`, or a simple `let` binding. Sage's `match` expressions are very powerful!
 
+```rs
+// Create a C-like enum
+enum Direction {
+    North, South, East, West
+}
 
-<div align="center">
-  <img src="./assets/code3.png" width="66%"/>
-</div>
+// Pattern match over a tuple of a Direction, Int, and struct
+match (Direction of South, 2, {x = 5, y = -6}) {
+    (of North, _, _)
+    | (of East, _, _)
+    | (of West, _, _)
+    | (of South, 3, _) => print("Incorrect!\\n"),
+    (of South, 2, {x = 5, y = -6}) => {
+        // This will be the branch that matches
+        print("Correct!\\n");
+    },
+    _ => print("Incorrect!\\n")
+}
 
+// Create a polymorphic Rust-like enum
+enum Option<T> {
+    Some(T),
+    Nothing
+}
+
+// Define a fallible division operation
+fun divide(n: Int, d: Int): Option<Int> {
+    if (d == 0) {
+        return Option<Int> of Nothing;
+    } else {
+        return Option<Int> of Some(n / d);
+    }
+}
+
+// Match over a division operation with an if-let statement
+if let of Some(n) = divide(6, 2) {
+    print("6 / 2 = ", n, "\\n");
+} else {
+    print("6 / 2 = undefined\\n");
+}
+```
 
 Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](https://github.com/adam-mcdaniel/sage/tree/main/examples/frontend) folder to see more code examples.
 
@@ -179,10 +302,10 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 - [ ] VSCode extension (syntax highlighting, code completion, etc.)
 - [ ] Typeclasses
 - [ ] `no-std` implementation of compiler
-- [ ] Modules
-- [ ] A standard library
+- [x] Modules
+- [x] A standard library
   - [ ] Type Reflection Module
-  - [ ] Collections Module
+  - [x] Collections Module
   - [ ] Networking Module
   - [ ] Filesystem Module
   - [ ] Graphics Module
@@ -190,10 +313,10 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
   - [ ] GUI Module
   - [ ] WebAssembly Module
   - [ ] Foreign Function Interface Module (create backend with `.toml` file)
-  - [ ] Memory Management Module
-- [ ] Better frontend parser (switch to [Nom](https://crates.io/crates/nom)?)
+  - [x] Memory Management Module
+- [x] Better frontend parser (switch to [Nom](https://crates.io/crates/nom)?)
 - [ ] A package manager
-- [ ] AST Macros
+- [x] AST Macros
 - [ ] C frontend (compile C to Sage VM)
 - [ ] Self-hosting implementation
 

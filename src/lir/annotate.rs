@@ -1,11 +1,12 @@
 use crate::parse::SourceCodeLocation;
 use core::ops::{BitOr, BitOrAssign};
+use serde_derive::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
 /// An annotation for metadata about an LIR expression.
 /// This is used for error reporting, debugging, optimization,
 /// and for representing the LIR in a human-readable format.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Annotation {
     /// The source code location of the expression.
     Location(SourceCodeLocation),

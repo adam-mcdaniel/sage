@@ -5,6 +5,7 @@
 //! typesystem.
 use super::{ConstExpr, Env, Error, Expr, Simplify};
 use core::fmt;
+use serde_derive::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::sync::Mutex;
@@ -24,7 +25,7 @@ use log::*;
 /// An immutable pointer can only be used to read the value it points to.
 /// An `Any` pointer can be used to read or write the value it points to; this is
 /// used to override pointer access protections for compiler-builtins.
-#[derive(Copy, Clone, Default, Debug, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Default, Debug, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Mutability {
     /// Mutable access to a value.
     Mutable,
@@ -117,7 +118,7 @@ impl fmt::Display for Mutability {
 }
 
 /// The representation of a type in the LIR type system.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum Type {
     /// Bind a type to a name in a temporary scope.
     Let(String, Box<Self>, Box<Self>),
@@ -471,13 +472,6 @@ impl Type {
                     ret.get_monomorph_template_args(other, matched_symbols, param_symbols, env)?;
                 }
             }
-
-            (Self::Symbol(name), template) => {
-                if let Some(t) = env.get_type(name) {
-                    t.get_monomorph_template_args(template, matched_symbols, param_symbols, env)?;
-                }
-            }
-
             (other, Self::Symbol(name)) => {
                 if param_symbols.contains(name) {
                     debug!("Found match {}: {}", name, other);
@@ -485,6 +479,12 @@ impl Type {
                 } else if let Some(t) = env.get_type(name) {
                     debug!("Symbol {name} is {t}");
                     other.get_monomorph_template_args(t, matched_symbols, param_symbols, env)?;
+                }
+            }
+
+            (Self::Symbol(name), template) => {
+                if let Some(t) = env.get_type(name) {
+                    t.get_monomorph_template_args(template, matched_symbols, param_symbols, env)?;
                 }
             }
 
@@ -627,14 +627,14 @@ impl Type {
                     );
                     result
                 } else {
-                    warn!("get_template_params: Couldn't find type {}", name);
+                    debug!("get_template_params: Couldn't find type {}", name);
                     vec![]
                 }
             }
             result => {
                 match result {
-                    Ok(result) => warn!("get_template_params: Couldn't find template params for {result}"),
-                    Err(e) => error!("get_template_params: Couldn't simplify {self} to a polymorphic type due to {e}")
+                    Ok(result) => debug!("get_template_params: Couldn't find template params for {result}"),
+                    Err(e) => debug!("get_template_params: Couldn't simplify {self} to a polymorphic type due to {e}")
                 }
                 vec![]
             }
@@ -1910,6 +1910,7 @@ impl Type {
         expr: &Expr,
         env: &Env,
     ) -> Result<(), Error> {
+        trace!("Typechecking member \"{member}\" of {expr} in {env}");
         match self {
             Type::Type(ty) => {
                 let name = member.clone().as_symbol(env)?;

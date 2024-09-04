@@ -288,26 +288,40 @@
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Poly-Procedure
 //!
 //! A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 //! This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 //! A procedure is compiled down to a label in the assembly code.
-</span><span class="kw">use </span><span class="kw">crate</span>::lir::{ConstExpr, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
-<span class="kw">use </span>core::fmt;
-<span class="kw">use </span>log::{debug, error, trace};
+</span><span class="kw">use </span><span class="kw">crate</span>::lir::{ConstExpr, Declaration, Env, Error, Expr, GetType, Mutability, Type, TypeCheck};
 <span class="kw">use </span>std::{
+    fmt,
     collections::HashMap,
     sync::{Arc, RwLock},
 };
 <span class="kw">use </span>std::{hash::Hash, hash::Hasher};
-
 <span class="kw">use </span><span class="kw">super</span>::Procedure;
+
+<span class="kw">use </span>serde_derive::{Serialize, Deserialize};
+<span class="kw">use </span>log::{debug, error, trace};
 
 <span class="doccomment">/// A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
 /// This is mono-morphed into a `Procedure` when it is called with a list of type arguments.
 /// A procedure is compiled down to a label in the assembly code.
-</span><span class="attr">#[derive(Clone, Debug)]
+</span><span class="attr">#[derive(Clone, Debug, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>PolyProcedure {
     <span class="doccomment">/// The name of the procedure.
     </span>name: String,
@@ -320,8 +334,10 @@
     <span class="doccomment">/// The body of the procedure.
     </span>body: Box&lt;Expr&gt;,
     <span class="doccomment">/// The monomorphs of the procedure.
+    </span><span class="attr">#[serde(skip)]
     </span>monomorphs: Arc&lt;RwLock&lt;HashMap&lt;String, Procedure&gt;&gt;&gt;,
-    has_type_checked: Arc&lt;RwLock&lt;bool&gt;&gt;,
+    <span class="attr">#[serde(skip)]
+    </span>has_type_checked: Arc&lt;RwLock&lt;bool&gt;&gt;,
 }
 
 <span class="kw">impl </span>PartialEq <span class="kw">for </span>PolyProcedure {
@@ -354,6 +370,16 @@
             has_type_checked: Arc::new(RwLock::new(<span class="bool-val">false</span>)),
         }
     }
+
+    <span class="kw">pub fn </span>with(<span class="kw-2">&amp;</span><span class="self">self</span>, decls: <span class="kw">impl </span>Into&lt;Declaration&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            body: Box::new(<span class="self">self</span>.body.with(decls)),
+            monomorphs: Arc::new(RwLock::new(HashMap::new())),
+            has_type_checked: Arc::new(RwLock::new(<span class="bool-val">false</span>)),
+            ..<span class="self">self</span>.clone()
+        }
+    }
+
 
     <span class="kw">pub fn </span>from_mono(mono: Procedure, ty_params: Vec&lt;String&gt;) -&gt; <span class="self">Self </span>{
         <span class="macro">debug!</span>(target: <span class="string">"mono"</span>, <span class="string">"Creating polymorphic procedure from monomorph {}"</span>, mono);

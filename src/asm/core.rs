@@ -34,13 +34,14 @@ use crate::{
     side_effects::{Input, InputMode, Output, OutputMode},
     vm::{self, VirtualMachineProgram},
 };
+use serde_derive::{Deserialize, Serialize};
 use std::{collections::BTreeSet, fmt};
 
 use log::{info, trace};
 
 /// An assembly program composed of core instructions, which can be assembled
 /// into the core virtual machine instructions.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct CoreProgram {
     /// The list of core assembly instructions in the program.
     pub code: Vec<CoreOp>,
@@ -267,7 +268,7 @@ impl AssemblyProgram for CoreProgram {
 
 /// A core instruction of the assembly language. These are instructions
 /// guaranteed to be implemented for every target possible.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum CoreOp {
     Comment(String),
     /// Many instructions to execute; conveniently grouped together.

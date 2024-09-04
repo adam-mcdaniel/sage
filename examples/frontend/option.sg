@@ -3,21 +3,21 @@ enum Option<T> {
     Nothing,
 }
 
-def panic(): Never {
+fun panic(): Never {
     println("Panicking!");
     while True {}
 }
 
-impl Option {
-    def unwrap<T>(self: Option<T>): T {
+impl Option<T> {
+    fun unwrap(self): T {
         match self {
             of Some(x) => x,
-            of Nothing => panic(),
+            of Nothing => panic()
         }
     }
 }
 
-def main() {
+fun main() {
     let x = Option<Int> of Some(5);
     println(Option.unwrap<Int>(x));
 }

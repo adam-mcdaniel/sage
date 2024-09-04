@@ -1,27 +1,28 @@
-def print_hex(n: Int, lower: Bool) {
+fun print_hex(n: Int, lower: Bool) {
     if n < 10 {
         print((n + '0' as Int) as Char);
-    } elif n < 16 {
-        print((n - 10 + (lower? 'a' : 'A') as Int) as Char);
+    } else if n < 16 {
+        print((n - 10 + (if lower { 'a' } else { 'A' }) as Int) as Char);
     } else {
         print_hex(n / 16, lower);
         print_hex(n % 16, lower);
     }
 }
 
-def print_byte(mut n: Int, lower: Bool) {
+fun print_byte(mut n: Int, lower: Bool) {
     n &= 0xFF;
     print_hex(n / 16, lower);
     print_hex(n % 16, lower);
 }
 
-def print_bytes(b: &Int, len: Int) {
-    for let mut i = 0; i < len; i +=1 {
+
+fun print_bytes(b: &Int, len: Int) {
+    for let mut i = 0; i < len; i +=1; {
         print_byte(b[i], False);
     }
 }
 
-def shl(mut a: Int, mut b: Int): Int = {
+fun shl(mut a: Int, mut b: Int): Int {
     while b {
         a *= 2;
         b -= 1;
@@ -31,9 +32,10 @@ def shl(mut a: Int, mut b: Int): Int = {
 
 const INT_MIN = -2147483648;
 
-def shr(mut a: Int, mut b: Int): Int = {
-    let mut offset = INT_MIN, was_negative = a < 0;
-    for let mut i = 0; i < b - 1; i += 1 {
+fun shr(mut a: Int, mut b: Int): Int {
+    let mut offset = INT_MIN;
+    let was_negative = a < 0;
+    for let mut i = 0; i < b - 1; i += 1; {
         offset /= 2;
     }
 
@@ -49,26 +51,26 @@ def shr(mut a: Int, mut b: Int): Int = {
     return a;
 }
 
-def add32(mut a: Int, mut b: Int): Int = {
+fun add32(mut a: Int, mut b: Int): Int {
     return (a + b) & 0xffffffff;
 }
 
-def rotl32(mut a: Int, mut b: Int): Int = {
+fun rotl32(mut a: Int, mut b: Int): Int {
     return (shl(a, b) | shr(a, 32 - b)) & 0xffffffff;
 }
 
-def unpack_u32(b: &Int, i: Int): Int {
+fun unpack_u32(b: &Int, i: Int): Int {
     return b[i + 0] + b[i + 1] * 256 + b[i + 2] * 65536 + b[i + 3] * 16777216;
 }
 
-def pack_u32(b: &mut Int, i: Int, w: Int) {
+fun pack_u32(b: &mut Int, i: Int, w: Int) {
     b[i + 0] = w & 0xff;
     b[i + 1] = shr(w, 8) & 0xff;
     b[i + 2] = shr(w, 16) & 0xff;
     b[i + 3] = shr(w, 24) & 0xff;
 }
 
-def c20_quarterround(x_: &mut [Int * 16], a: Int, b: Int, c: Int, d: Int) {
+fun c20_quarterround(x_: &mut [Int * 16], a: Int, b: Int, c: Int, d: Int) {
     let x: &mut Int = x_ as &mut Int;
 
     x[a] = add32(x[a], x[b]);
@@ -84,14 +86,14 @@ def c20_quarterround(x_: &mut [Int * 16], a: Int, b: Int, c: Int, d: Int) {
     x[b] = rotl32(x[b] ^ x[c], 7);
 }
 
-def c20_core(output: &mut [Int * 64], input: &[Int * 16], rounds: Int) {
+fun c20_core(output: &mut [Int * 64], input: &[Int * 16], rounds: Int) {
     let mut x = [0] * 16;
 
-    for let mut i = 0; i < 16; i += 1 {
+    for let mut i = 0; i < 16; i += 1; {
         x[i] = (input as &Int)[i];
     }
 
-    for let mut i = rounds; i > 0; i -= 2 {
+    for let mut i = rounds; i > 0; i -= 2; {
         c20_quarterround(&mut x, 0, 4, 8, 12);
         c20_quarterround(&mut x, 1, 5, 9, 13);
         c20_quarterround(&mut x, 2, 6, 10, 14);
@@ -102,25 +104,26 @@ def c20_core(output: &mut [Int * 64], input: &[Int * 16], rounds: Int) {
         c20_quarterround(&mut x, 3, 4, 9, 14);
     }
 
-    for let mut i = 0; i < 16; i += 1 {
+    for let mut i = 0; i < 16; i += 1; {
         x[i] = x[i] + (input as &Int)[i];
 
         pack_u32(output, 4 * i, x[i]);
     }
 }
 
-def c20_crypt(buf: &mut Int, buflen: Int, key: &[Int * 32], nonce: &[Int * 8], counter: Int) {
-    let mut block = [0] * 64, mut input = [0] * 16;
+fun c20_crypt(buf: &mut Int, buflen: Int, key: &[Int * 32], nonce: &[Int * 8], counter: Int) {
+    let mut block = [0] * 64;
+    let mut input = [0] * 16;
 
     let static sigma: [Int * 16] = [
         0x65, 0x78, 0x70, 0x61, 0x6e, 0x64, 0x20, 0x33,
         0x32, 0x2d, 0x62, 0x79, 0x74, 0x65, 0x20, 0x6b
     ];
 
-    input[0] = unpack_u32(&sigma as &Int, 0);
-    input[1] = unpack_u32(&sigma as &Int, 4);
-    input[2] = unpack_u32(&sigma as &Int, 8);
-    input[3] = unpack_u32(&sigma as &Int, 12);
+    input[0] = unpack_u32((&sigma) as &Int, 0);
+    input[1] = unpack_u32((&sigma) as &Int, 4);
+    input[2] = unpack_u32((&sigma) as &Int, 8);
+    input[3] = unpack_u32((&sigma) as &Int, 12);
 
     input[4] = unpack_u32(key, 0);
     input[5] = unpack_u32(key, 4);
@@ -138,10 +141,10 @@ def c20_crypt(buf: &mut Int, buflen: Int, key: &[Int * 32], nonce: &[Int * 8], c
     input[14] = unpack_u32(nonce, 0);
     input[15] = unpack_u32(nonce, 4);
 
-    for let mut i = 0; i < buflen; i += 64 {
+    for let mut i = 0; i < buflen; i += 64; {
         c20_core(&mut block, &input, 20);
 
-        for let mut j = 0; j < 64 && j < buflen - i; j += 1 {
+        for let mut j = 0; j < 64 && j < buflen - i; j += 1; {
             buf[i + j] = buf[i + j] ^ block[j];
         }
 

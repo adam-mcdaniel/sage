@@ -1,45 +1,91 @@
+###############################################################################
+#                        THE SAGE PROGRAMMING LANGUAGE                        #
+#                                                                             #
+#           █████   ██████    ███████  ██████   `-.        _.-'               #
+#          ███░░   ░░░░░███  ███░░███ ███░░███   \ `,    .'/.'                #
+#         ░░█████   ███████ ░███ ░███░███████     \`.`. :.-'.-= .-'/          #
+#          ░░░░███ ███░░███ ░███ ░███░███░░░       `-.:/o  .'-'/ .'           #
+#          ██████ ░░████████░░███████░░██████         o\o / ._/.'             #
+#         ░░░░░░   ░░░░░░░░  ░░░░░███ ░░░░░░            \| /o|\`.             #
+#                            ███ ░███                    |'o `.`.'.           #
+#                           ░░██████                           `--'           #
+#                            ░░░░░░                                           #
+#                                                                             #
+###############################################################################
 [package]
 name = "sage"
 authors = ["Adam McDaniel <adam.mcdaniel17@gmail.com> (https://adam-mcdaniel.net)"]
-version = "0.0.4-alpha"
+version = "0.1.0-alpha"
 edition = "2021"
 license = "MIT"
 description = "A portable programming language with a compact backend"
 readme = "README.md"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-[lib]
-bench = false
-
+###############################################################################
+##                                BINARIES
+###############################################################################
 [[bin]]
 name = "sage"
 path = "src/cli.rs"
 bench = false
 
+###############################################################################
+##                                DEPENDENCIES
+###############################################################################
 [dependencies]
-regex = { version = "1.8.1", features = ["unicode"] }
-maplit = "1.0.2"
-lazy_static = "1.4.0"
-lalrpop-util = "0.19.8"
-lalrpop = { version = "=0.19.9", features = ["lexer"] }
-clap = { version ="4.2.4", features = ["derive", "cargo"] }
+#######################################
+## QUALITY OF LIFE / MACROS
+#######################################
+maplit = "1.0"
+lazy_static = "1.5"
+nom = "7.1"
+
+#######################################
+## THREADING / PARALLELISM
+#######################################
+rayon = "1.10"
+
+#######################################
+## ERROR REPORTING
+#######################################
+codespan-reporting = "0.11"
+log = {version = "0.4", features = ["release_max_level_error"] }
+env_logger = "0.11"
+
+#######################################
+## SAGE LISP PREPROCESSING
+#######################################
+serde = { version = "1.0", features = ["rc"] }
+serde_derive = "1.0"
+sage-lisp = { git = "https://github.com/adam-mcdaniel/sage-lisp" }
+
+
+#######################################
+## PARSING
+#######################################
+lalrpop-util = { version = "0.21", features = ["lexer"] }
+regex = { version = "1.10", features = ["unicode"] }
+clap = { version ="4.5", features = ["derive", "cargo"] }
 no-comment = "0.0.3"
-pest = "2.6.0"
-pest_derive = "2.6.0"
-snailquote = "0.3.1"
-codespan-reporting = "0.11.1"
-log = {version = "0.4.20", features = ["release_max_level_info"] }
-env_logger = "0.10.0"
-rayon = "1.9.0"
+snailquote = "0.3"
 
-[dev-dependencies]
-criterion = "0.5"
-
-# Add a build-time dependency on the lalrpop library:
 [build-dependencies]
-regex = { version = "1.8.1", features = ["unicode"] }
-lalrpop = { version = "=0.19.9", features = ["lexer"] }
+regex = { version = "1.10", features = ["unicode"] }
+lalrpop = "0.21"
+
+###############################################################################
+##                                PROFILING
+###############################################################################
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+bench = false
 
 [[bench]]
 name = "frontend"
 harness = false
+
+[dev-dependencies]
+criterion = "0.5"
+
+[profile.release]
+debug = true

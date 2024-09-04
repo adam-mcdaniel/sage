@@ -164,9 +164,9 @@ pub Expr: Expr = {
     <x: Pointer> "%=" <val: Expr> => x.refer(Mutability::Any).assign_op(Assign::new(Arithmetic::Remainder), val),
     <x: Pointer> "**=" <val: Expr> => x.refer(Mutability::Any).assign_op(Assign::new(Arithmetic::Power), val),
     "return" <Expr> => Expr::Return(Box::new(<>)),
-    "debug" <Expr> => Expr::UnaryOp(Put::Debug.clone_box(), Box::new(<>)),
-    "put" <Expr> => Expr::UnaryOp(Put::Display.clone_box(), Box::new(<>)),
-    "new" <Expr> => Expr::UnaryOp(New.clone_box(), Box::new(<>)),
+    "debug" <Expr> => Expr::UnaryOp("debug".to_string(), Box::new(<>)),
+    "put" <Expr> => Expr::UnaryOp("put".to_string(), Box::new(<>)),
+    "new" <Expr> => Expr::UnaryOp("new".to_string(), Box::new(<>)),
     Pointer => <>
 }
 

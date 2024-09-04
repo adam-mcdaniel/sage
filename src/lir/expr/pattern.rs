@@ -3,6 +3,7 @@ use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::collections::{BTreeMap, HashMap};
 
 use log::{error, trace};
+use serde_derive::{Deserialize, Serialize};
 
 /// A pattern which can be matched against an expression.
 ///
@@ -11,7 +12,7 @@ use log::{error, trace};
 /// When `match`ing, the pattern just checks if the expression matches the pattern.
 /// When `bind`ing, the pattern binds the expression to corresponding variables in the
 /// pattern, and evaluates an expression with those variables.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Pattern {
     Tuple(Vec<Pattern>),
     Struct(BTreeMap<String, Pattern>),

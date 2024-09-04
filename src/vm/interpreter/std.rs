@@ -3,6 +3,7 @@
 //! This module implements an interpreter for the Standard virtual machine
 //! variant.
 
+use super::TAPE_EXTENSION_SIZE;
 use crate::vm::{CoreOp, Device, StandardDevice, StandardOp, StandardProgram};
 
 /// A function to reinterpret the bits of an integer as a float.
@@ -254,7 +255,7 @@ where
     /// Get the current cell pointed to on the turing tape.
     fn get_cell(&mut self) -> &mut i64 {
         while self.pointer >= self.cells.len() {
-            self.cells.extend(vec![0; 1000]);
+            self.cells.extend(vec![0; TAPE_EXTENSION_SIZE]);
         }
 
         &mut self.cells[self.pointer]
@@ -308,7 +309,7 @@ where
 
                     CoreOp::Load(n) => {
                         while self.pointer + n >= self.cells.len() {
-                            self.cells.extend(vec![0; 1000]);
+                            self.cells.extend(vec![0; TAPE_EXTENSION_SIZE]);
                         }
 
                         self.reg_mut_vector().clear();
@@ -321,7 +322,7 @@ where
 
                     CoreOp::Store(n) => {
                         while self.pointer + n >= self.cells.len() {
-                            self.cells.extend(vec![0; 1000]);
+                            self.cells.extend(vec![0; TAPE_EXTENSION_SIZE]);
                         }
 
                         for i in 0..*n {
@@ -410,26 +411,30 @@ where
                     CoreOp::Add(n) => {
                         for i in 0..*n {
                             let val = self.cells[self.pointer + i];
-                            self.reg_mut_vector()[i] += val;
+                            self.reg_mut_vector()[i] =
+                                self.reg_mut_vector()[i].overflowing_add(val).0;
                         }
                     }
                     CoreOp::Sub(n) => {
                         for i in 0..*n {
                             let val = self.cells[self.pointer + i];
-                            self.reg_mut_vector()[i] -= val;
+                            self.reg_mut_vector()[i] =
+                                self.reg_mut_vector()[i].overflowing_sub(val).0;
                         }
                     }
                     CoreOp::Mul(n) => {
                         for i in 0..*n {
                             let val = self.cells[self.pointer + i];
-                            self.reg_mut_vector()[i] *= val;
+                            self.reg_mut_vector()[i] =
+                                self.reg_mut_vector()[i].overflowing_mul(val).0;
                         }
                     }
                     CoreOp::Div(n) => {
                         for i in 0..*n {
                             let val = self.cells[self.pointer + i];
                             if val != 0 {
-                                self.reg_mut_vector()[i] /= val;
+                                self.reg_mut_vector()[i] =
+                                    self.reg_mut_vector()[i].overflowing_div(val).0
                             }
                         }
                     }
@@ -437,13 +442,14 @@ where
                         for i in 0..*n {
                             let val = self.cells[self.pointer + i];
                             if val != 0 {
-                                self.reg_mut_vector()[i] %= val;
+                                self.reg_mut_vector()[i] =
+                                    self.reg_mut_vector()[i].overflowing_rem(val).0
                             }
                         }
                     }
                     CoreOp::Neg(n) => {
                         for i in 0..*n {
-                            self.reg_mut_vector()[i] *= -1;
+                            self.reg_mut_vector()[i] = self.reg_mut_vector()[i].overflowing_neg().0;
                         }
                     }
 

@@ -221,6 +221,9 @@ impl TypeCheck for Expr {
             }
 
             Self::UnaryOp(unop, expr) => {
+                let unop = env
+                    .get_unop(unop)
+                    .ok_or(Error::UnimplementedOperator(unop.clone()))?;
                 if let Self::Annotated(expr, metadata) = &**expr {
                     return unop
                         .type_check(expr, env)
@@ -229,6 +232,9 @@ impl TypeCheck for Expr {
                 unop.type_check(expr, env)
             }
             Self::BinaryOp(binop, lhs, rhs) => {
+                let binop = env
+                    .get_binop(binop)
+                    .ok_or(Error::UnimplementedOperator(binop.clone()))?;
                 if let Self::Annotated(lhs, metadata) = &**lhs {
                     return binop
                         .type_check(lhs, rhs, env)
@@ -243,6 +249,9 @@ impl TypeCheck for Expr {
                 binop.type_check(lhs, rhs, env)
             }
             Self::TernaryOp(ternop, a, b, c) => {
+                let ternop = env
+                    .get_ternop(ternop)
+                    .ok_or(Error::UnimplementedOperator(ternop.clone()))?;
                 if let Self::Annotated(a, metadata) = &**a {
                     return ternop
                         .type_check(a, b, c, env)
@@ -261,6 +270,9 @@ impl TypeCheck for Expr {
                 ternop.type_check(a, b, c, env)
             }
             Self::AssignOp(op, dst, src) => {
+                let op = env
+                    .get_assignop(op)
+                    .ok_or(Error::UnimplementedOperator(op.clone()))?;
                 if let Self::Annotated(src, metadata) = &**src {
                     return op
                         .type_check(dst, src, env)
@@ -313,6 +325,7 @@ impl TypeCheck for Expr {
                         // Check that the branch type matches the result type.
                         if !branch_ty.can_decay_to(result_ty, &new_env)? {
                             // If it doesn't, return an error.
+                            error!("Branch of match has unexpected return type");
                             return Err(Error::MismatchedTypes {
                                 found: branch_ty,
                                 expected: result_ty.clone(),
@@ -354,6 +367,7 @@ impl TypeCheck for Expr {
                 let then_type = pat.get_branch_result_type(expr, then, env)?;
                 let otherwise_type = otherwise.get_type(env)?;
                 if !otherwise_type.can_decay_to(&then_type, env)? {
+                    error!("The else branch of the if statement has an unexpected type");
                     return Err(Error::MismatchedTypes {
                         expected: then_type,
                         found: otherwise_type,
@@ -576,6 +590,7 @@ impl TypeCheck for Expr {
                             })
                         }
                     } else {
+                        error!("Could not assign to pointer of different type");
                         // If it isn't, return an error.
                         Err(Error::MismatchedTypes {
                             expected: val_type,
@@ -585,6 +600,7 @@ impl TypeCheck for Expr {
                     }
                 } else {
                     // If the destination to store isn't a pointer, return an error.
+                    error!("Could not assign to non-pointer");
                     Err(Error::MismatchedTypes {
                         expected: Type::Pointer(Mutability::Mutable, Box::new(Type::Any)),
                         found: ptr_type,
@@ -619,6 +635,7 @@ impl TypeCheck for Expr {
                             Type::Proc(expected_arg_tys, ret_ty) => {
                                 // If the number of arguments is incorrect, then return an error.
                                 if expected_arg_tys.len() != found_arg_tys.len() {
+                                    error!("Unexpected number of arguments");
                                     return Err(Error::MismatchedTypes {
                                         expected: Type::Proc(expected_arg_tys, ret_ty.clone()),
                                         found: Type::Proc(found_arg_tys, ret_ty),
@@ -632,6 +649,7 @@ impl TypeCheck for Expr {
                                 {
                                     // If the types don't match, return an error.
                                     if !found.can_decay_to(&expected, env)? {
+                                        error!("Procedure argument type mismatch");
                                         return Err(Error::MismatchedTypes {
                                             expected,
                                             found,
@@ -643,11 +661,12 @@ impl TypeCheck for Expr {
                             }
                             // If the function is not a procedure, return an error.
                             _ => {
+                                error!("Called non-procedure");
                                 return Err(Error::MismatchedTypes {
                                     expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
                                     found: f_type,
                                     expr: self.clone(),
-                                })
+                                });
                             }
                         }
                     }
@@ -684,6 +703,7 @@ impl TypeCheck for Expr {
                         {
                             // If the types don't match, return an error.
                             if !found.can_decay_to(&expected, env)? {
+                                error!("Procedure argument type mismatch");
                                 return Err(Error::MismatchedTypes {
                                     expected,
                                     found,
@@ -694,11 +714,14 @@ impl TypeCheck for Expr {
                         Ok(())
                     }
                     // If the function is not a procedure, return an error.
-                    _ => Err(Error::MismatchedTypes {
-                        expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
-                        found: f_type,
-                        expr: self.clone(),
-                    }),
+                    _ => {
+                        error!("Called non-function {self}");
+                        Err(Error::MismatchedTypes {
+                            expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
+                            found: f_type,
+                            expr: self.clone(),
+                        })
+                    }
                 }
             }
 
@@ -711,6 +734,7 @@ impl TypeCheck for Expr {
                     .cloned()
                     .unwrap_or(Type::None);
                 if !found.can_decay_to(&expected, env)? {
+                    error!("The found return type does not match expected type");
                     return Err(Error::MismatchedTypes {
                         expected,
                         found,
@@ -803,6 +827,7 @@ impl TypeCheck for Expr {
                             val.type_check(env)?;
                             let found = val.get_type(env)?;
                             if !found.can_decay_to(expected_ty, env)? {
+                                error!("Could not verify variant of enum {self}");
                                 return Err(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
                                     found,
@@ -840,6 +865,7 @@ impl TypeCheck for Expr {
 
             // Typecheck a member access.
             Self::Member(e, field) => {
+                trace!("Typechecking regular member access {e}.{field}");
                 // Typecheck the expression we want to access a member of.
                 e.type_check(env)?;
                 // Get the type of the expression.
@@ -850,13 +876,17 @@ impl TypeCheck for Expr {
                 match e_type.type_check_member(field, e, env) {
                     Ok(_) => Ok(()),
                     Err(e) => {
+                        warn!("Type {e_type} doesn't have member {field} in environment {env}");
                         match field
                             .clone()
                             .as_symbol(env)
                             .map(|name| env.get_associated_const(&e_type, &name))
                         {
                             Ok(_) => Ok(()),
-                            Err(_) => Err(e),
+                            Err(_) => {
+                                error!("Could not find member {field} in type {e_type} in environment {env}");
+                                Err(e)
+                            }
                         }
                     }
                 }
@@ -899,7 +929,7 @@ impl TypeCheck for ConstExpr {
             return Ok(());
         }
 
-        trace!("Typechecking constant expression: {}", self);
+        debug!("Typechecking constant expression: {}", self);
         match self {
             Self::Template(_ty_params, _template) => {
                 // Create a new environment with the type parameters defined.
@@ -934,14 +964,25 @@ impl TypeCheck for ConstExpr {
                 // Typecheck the member we want to access.
                 match e_type.type_check_member(field, &Expr::ConstExpr(*e.clone()), env) {
                     Ok(_) => Ok(()),
-                    Err(e) => {
+                    Err(_err) => {
+                        warn!("Member {field} not found in type {e_type} in environment {env}");
                         match field
                             .clone()
                             .as_symbol(env)
                             .map(|name| env.get_associated_const(&e_type, &name))
                         {
-                            Ok(_) => Ok(()),
-                            Err(_) => Err(e),
+                            Ok(_) => {
+                                warn!("Associated constant {field} found in type {e_type} in environment {env}");
+                                Ok(())
+                            }
+                            // Err(_) => Err(e),
+                            Err(_) => {
+                                // Try to perform the member op as a regular member op.
+                                warn!("Associated constant {field} not found in type {e_type} in environment {env}");
+                                warn!("Falling back on regular member access");
+                                Expr::Member(Box::new(Expr::ConstExpr(*e.clone())), *field.clone())
+                                    .type_check(env)
+                            }
                         }
                     }
                 }

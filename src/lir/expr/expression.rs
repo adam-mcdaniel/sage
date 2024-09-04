@@ -10,15 +10,18 @@ use crate::lir::{
     Annotation, ConstExpr, Declaration, Env, Error, GetType, Mutability, Pattern, Procedure, Type,
 };
 use core::fmt;
-use std::collections::BTreeMap;
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::BTreeMap,
+    hash::{Hash, Hasher},
+};
 
 use log::*;
+use serde_derive::{Deserialize, Serialize};
 
 /// TODO: Add variants for `LetProc`, `LetVar`, etc. to support multiple definitions.
 ///       This way, we don't overflow the stack with several clones of the environment.
 /// A runtime expression.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Expr {
     /// An expression along with data about its source code location.
     /// This is used for error reporting.
@@ -59,13 +62,13 @@ pub enum Expr {
     IfLet(Pattern, Box<Self>, Box<Self>, Box<Self>),
 
     /// Perform a unary operation on two expressions.
-    UnaryOp(Box<dyn UnaryOp>, Box<Self>),
+    UnaryOp(String, Box<Self>),
     /// Perform a binary operation on two expressions.
-    BinaryOp(Box<dyn BinaryOp>, Box<Self>, Box<Self>),
+    BinaryOp(String, Box<Self>, Box<Self>),
     /// Perform a ternary operation on three expressions.
-    TernaryOp(Box<dyn TernaryOp>, Box<Self>, Box<Self>, Box<Self>),
+    TernaryOp(String, Box<Self>, Box<Self>, Box<Self>),
     /// Perform an assignment operation on two expressions.
-    AssignOp(Box<dyn AssignOp>, Box<Self>, Box<Self>),
+    AssignOp(String, Box<Self>, Box<Self>),
 
     /// Reference this expression (i.e. get a pointer to it).
     Refer(Mutability, Box<Self>),
@@ -104,6 +107,8 @@ pub enum Expr {
     /// Get a field or member from a structure, union, or tuple.
     /// For tuples, use an `Int` constant expression to access the nth field (zero indexed).
     /// For unions or structures, use a `Symbol` constant expression to access the field.
+    ///
+    /// Do NOT instantiate this directly: use the `.field` method on the container expression.
     Member(Box<Self>, ConstExpr),
     /// Index an array or pointer with an expression that evaluates to an `Int` at runtime.
     Index(Box<Self>, Box<Self>),
@@ -120,6 +125,17 @@ impl Expr {
     /// This constant is defined so that we don't have to write `Expr::ConstExpr`
     /// every time we want to use `None`.
     pub const NONE: Self = Self::ConstExpr(ConstExpr::None);
+
+    pub fn print(self) -> Self {
+        self.unop(Put::Display)
+    }
+
+    pub fn println(self) -> Self {
+        Self::Many(vec![
+            self.clone().print(),
+            Self::ConstExpr(ConstExpr::Char('\n')).print(),
+        ])
+    }
 
     pub fn is_method_call(&self, env: &Env) -> Result<bool, Error> {
         let result = match self {
@@ -199,7 +215,7 @@ impl Expr {
     }
 
     pub fn transform_method_call(&self, env: &Env) -> Result<Self, Error> {
-        debug!("transform_method_call: {self} -- {self:?}");
+        debug!("transform_method_call: {self}");
 
         let result = match self {
             Self::Annotated(inner, metadata) => inner
@@ -226,7 +242,10 @@ impl Expr {
                                 trace!(target: "member", "WHOOP WHOOP");
                                 let (mut associated_function, mut associated_function_type) = env
                                     .get_associated_const(&val_type, &name)
-                                    .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
+                                    .ok_or_else(|| {
+                                        error!(target: "member", "Symbol not defined: {name} while getting member");
+                                        Error::SymbolNotDefined(name.clone())
+                                })?;
                                 // .monomorphize(ty_args.clone());
                                 associated_function =
                                     associated_function.monomorphize(ty_args.clone());
@@ -301,7 +320,10 @@ impl Expr {
 
                             let (associated_function, associated_function_type) = env
                                 .get_associated_const(&val_type, &name)
-                                .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
+                                .ok_or_else(|| {
+                                    error!(target: "member", "Symbol not defined: {name} while getting member");
+                                    Error::SymbolNotDefined(name.clone())
+                                })?;
 
                             // let associated_function = env
                             //     .get_associated_const(&val_type, &name)
@@ -369,7 +391,10 @@ impl Expr {
                             trace!(target: "member", "WHOOP WHOOP");
                             let (associated_function, associated_function_type) = env
                                 .get_associated_const(&val_type, &name)
-                                .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
+                                .ok_or_else(|| {
+                                    error!(target: "member", "Symbol not defined: {name} while getting member");
+                                    Error::SymbolNotDefined(name.clone())
+                                })?;
                             trace!(target: "member", "function value: {associated_function} in {env}");
 
                             // Get the type of the function
@@ -479,15 +504,24 @@ impl Expr {
             Self::Declare(younger_decls, expr) => {
                 // Start with the older declarations.
                 let mut result = older_decls.into();
-                // Add the younder declarations to the older declarations.
-                result.append(*younger_decls.clone());
-                // Return the merged declaration.
-                Self::Declare(Box::new(result), expr.clone())
+
+                if let Declaration::Module(..) = result {
+                    self.hard_with(result)
+                } else {
+                    // Add the younder declarations to the older declarations.
+                    result.append(*younger_decls.clone());
+                    // Return the merged declaration.
+                    Self::Declare(Box::new(result), expr.clone())
+                }
             }
 
             // Return the expression with the declaration in scope.
             _ => Self::Declare(Box::new(older_decls.into()), Box::new(self.clone())),
         }
+    }
+
+    pub fn hard_with(&self, older_decls: impl Into<Declaration>) -> Self {
+        Self::Declare(Box::new(older_decls.into()), self.clone().into())
     }
 
     /// Get the size of an expression.
@@ -501,8 +535,8 @@ impl Expr {
     }
 
     /// Apply a unary operation to this expression.
-    pub fn unop(self, op: impl UnaryOp + 'static) -> Self {
-        Self::UnaryOp(Box::new(op), Box::new(self))
+    pub fn unop(self, op: impl ToString) -> Self {
+        Self::UnaryOp(op.to_string(), Box::new(self))
     }
 
     /// Logical not this expression.
@@ -576,8 +610,8 @@ impl Expr {
         self.binop(And, other)
     }
 
-    fn binop(self, op: impl BinaryOp + 'static, other: impl Into<Self>) -> Self {
-        Expr::BinaryOp(Box::new(op), Box::new(self), Box::new(other.into()))
+    pub(crate) fn binop(self, op: impl ToString, other: impl Into<Self>) -> Self {
+        Expr::BinaryOp(op.to_string(), Box::new(self), Box::new(other.into()))
     }
 
     /// Logical or this expression with another.
@@ -632,7 +666,10 @@ impl Expr {
     /// For tuples, use an `Int` constant expression to access the nth field (zero indexed).
     /// For unions or structures, use a `Symbol` constant expression to access the field.
     pub fn field(self, field: ConstExpr) -> Self {
-        Expr::Member(Box::new(self), field)
+        match self {
+            Self::ConstExpr(cexpr) => Self::ConstExpr(cexpr.field(field)),
+            _ => Self::Member(Box::new(self), field),
+        }
     }
 
     /// Index an array or pointer with an expression that evaluates to an `Int` at runtime.
@@ -758,13 +795,13 @@ impl Expr {
     }
 
     /// Perform an AssignOp on this expression.
-    pub fn assign_op(self, op: impl AssignOp + 'static, e: impl Into<Self>) -> Self {
-        Expr::AssignOp(Box::new(op), Box::new(self), Box::new(e.into()))
+    pub fn assign_op(self, op: impl ToString, e: impl Into<Self>) -> Self {
+        Expr::AssignOp(op.to_string(), Box::new(self), Box::new(e.into()))
     }
 
     /// Perform an AssignOp on this expression.
-    pub fn assign(self, op: Box<dyn AssignOp>, e: impl Into<Self>) -> Self {
-        Expr::AssignOp(op, Box::new(self), Box::new(e.into()))
+    pub fn assign(self, op: impl ToString, e: impl Into<Self>) -> Self {
+        Expr::AssignOp(op.to_string(), Box::new(self), Box::new(e.into()))
     }
 }
 
@@ -848,10 +885,10 @@ impl fmt::Display for Expr {
                 write!(f, "{ty} of {variant} {val}")
             }
 
-            Self::UnaryOp(op, x) => write!(f, "{}", op.display(x)),
-            Self::BinaryOp(op, x, y) => write!(f, "{}", op.display(x, y)),
-            Self::TernaryOp(op, x, y, z) => write!(f, "{}", op.display(x, y, z)),
-            Self::AssignOp(op, x, y) => write!(f, "{}", op.display(x, y)),
+            Self::UnaryOp(op, x) => write!(f, "{op}{x}"),
+            Self::BinaryOp(op, x, y) => write!(f, "{x}{op}{y}"),
+            Self::TernaryOp(op, x, y, z) => write!(f, "{x}{op}{y}, {z}"),
+            Self::AssignOp(op, x, y) => write!(f, "{x} {op}= {y}"),
 
             Self::Member(val, field) => write!(f, "({val}).{field}"),
             Self::Index(val, idx) => write!(f, "{val}[{idx}]"),
@@ -970,6 +1007,9 @@ impl PartialEq for Expr {
 
             // Index an array or pointer with an expression that evaluates to an `Int` at runtime.
             (Index(val1, idx1), Index(val2, idx2)) => val1 == val2 && idx1 == idx2,
+
+            (Declare(decl1, expr1), Declare(decl2, expr2)) => expr1 == expr2 && decl1 == decl2,
+
             _ => false,
         }
     }
@@ -1022,20 +1062,21 @@ impl Hash for Expr {
 
             UnaryOp(op, val) => {
                 state.write_u8(5);
-                op.display(val).hash(state);
+                // op.display(val).hash(state);
+                op.hash(state);
                 val.hash(state);
             }
 
             BinaryOp(op, lhs, rhs) => {
                 state.write_u8(6);
-                op.display(lhs, rhs).hash(state);
+                op.hash(state);
                 lhs.hash(state);
                 rhs.hash(state);
             }
 
             TernaryOp(op, a, b, c) => {
                 state.write_u8(7);
-                op.display(a, b, c).hash(state);
+                op.hash(state);
                 a.hash(state);
                 b.hash(state);
                 c.hash(state);
@@ -1043,7 +1084,7 @@ impl Hash for Expr {
 
             AssignOp(op, lhs, rhs) => {
                 state.write_u8(8);
-                op.display(lhs, rhs).hash(state);
+                op.hash(state);
                 lhs.hash(state);
                 rhs.hash(state);
             }

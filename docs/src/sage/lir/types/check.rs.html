@@ -1277,6 +1277,39 @@
 <a href="#1276" id="1276">1276</a>
 <a href="#1277" id="1277">1277</a>
 <a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
+<a href="#1300" id="1300">1300</a>
+<a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Checking
 //!
 //! This module contains the type checking logic for the Lower Intermediate Representation.
@@ -1500,6 +1533,7 @@
             }
 
             <span class="self">Self</span>::UnaryOp(unop, expr) =&gt; {
+                <span class="kw">let </span>unop = env.get_unop(unop).ok_or(Error::UnimplementedOperator(unop.clone()))<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(expr, metadata) = <span class="kw-2">&amp;**</span>expr {
                     <span class="kw">return </span>unop
                         .type_check(expr, env)
@@ -1508,6 +1542,7 @@
                 unop.type_check(expr, env)
             }
             <span class="self">Self</span>::BinaryOp(binop, lhs, rhs) =&gt; {
+                <span class="kw">let </span>binop = env.get_binop(binop).ok_or(Error::UnimplementedOperator(binop.clone()))<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(lhs, metadata) = <span class="kw-2">&amp;**</span>lhs {
                     <span class="kw">return </span>binop
                         .type_check(lhs, rhs, env)
@@ -1522,6 +1557,7 @@
                 binop.type_check(lhs, rhs, env)
             }
             <span class="self">Self</span>::TernaryOp(ternop, a, b, c) =&gt; {
+                <span class="kw">let </span>ternop = env.get_ternop(ternop).ok_or(Error::UnimplementedOperator(ternop.clone()))<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(a, metadata) = <span class="kw-2">&amp;**</span>a {
                     <span class="kw">return </span>ternop
                         .type_check(a, b, c, env)
@@ -1540,6 +1576,7 @@
                 ternop.type_check(a, b, c, env)
             }
             <span class="self">Self</span>::AssignOp(op, dst, src) =&gt; {
+                <span class="kw">let </span>op = env.get_assignop(op).ok_or(Error::UnimplementedOperator(op.clone()))<span class="question-mark">?</span>;
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(src, metadata) = <span class="kw-2">&amp;**</span>src {
                     <span class="kw">return </span>op
                         .type_check(dst, src, env)
@@ -1592,7 +1629,8 @@
                         <span class="comment">// Check that the branch type matches the result type.
                         </span><span class="kw">if </span>!branch_ty.can_decay_to(result_ty, <span class="kw-2">&amp;</span>new_env)<span class="question-mark">? </span>{
                             <span class="comment">// If it doesn't, return an error.
-                            </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
+                            </span><span class="macro">error!</span>(<span class="string">"Branch of match has unexpected return type"</span>);
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                 found: branch_ty,
                                 expected: result_ty.clone(),
                                 expr: branch.clone(),
@@ -1633,6 +1671,7 @@
                 <span class="kw">let </span>then_type = pat.get_branch_result_type(expr, then, env)<span class="question-mark">?</span>;
                 <span class="kw">let </span>otherwise_type = otherwise.get_type(env)<span class="question-mark">?</span>;
                 <span class="kw">if </span>!otherwise_type.can_decay_to(<span class="kw-2">&amp;</span>then_type, env)<span class="question-mark">? </span>{
+                    <span class="macro">error!</span>(<span class="string">"The else branch of the if statement has an unexpected type"</span>);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                         expected: then_type,
                         found: otherwise_type,
@@ -1855,6 +1894,7 @@
                             })
                         }
                     } <span class="kw">else </span>{
+                        <span class="macro">error!</span>(<span class="string">"Could not assign to pointer of different type"</span>);
                         <span class="comment">// If it isn't, return an error.
                         </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                             expected: val_type,
@@ -1864,7 +1904,8 @@
                     }
                 } <span class="kw">else </span>{
                     <span class="comment">// If the destination to store isn't a pointer, return an error.
-                    </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
+                    </span><span class="macro">error!</span>(<span class="string">"Could not assign to non-pointer"</span>);
+                    <span class="prelude-val">Err</span>(Error::MismatchedTypes {
                         expected: Type::Pointer(Mutability::Mutable, Box::new(Type::Any)),
                         found: ptr_type,
                         expr: <span class="self">self</span>.clone(),
@@ -1898,6 +1939,7 @@
                             Type::Proc(expected_arg_tys, ret_ty) =&gt; {
                                 <span class="comment">// If the number of arguments is incorrect, then return an error.
                                 </span><span class="kw">if </span>expected_arg_tys.len() != found_arg_tys.len() {
+                                    <span class="macro">error!</span>(<span class="string">"Unexpected number of arguments"</span>);
                                     <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                         expected: Type::Proc(expected_arg_tys, ret_ty.clone()),
                                         found: Type::Proc(found_arg_tys, ret_ty),
@@ -1911,6 +1953,7 @@
                                 {
                                     <span class="comment">// If the types don't match, return an error.
                                     </span><span class="kw">if </span>!found.can_decay_to(<span class="kw-2">&amp;</span>expected, env)<span class="question-mark">? </span>{
+                                        <span class="macro">error!</span>(<span class="string">"Procedure argument type mismatch"</span>);
                                         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                             expected,
                                             found,
@@ -1922,6 +1965,7 @@
                             }
                             <span class="comment">// If the function is not a procedure, return an error.
                             </span><span class="kw">_ </span>=&gt; {
+                                <span class="macro">error!</span>(<span class="string">"Called non-procedure"</span>);
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                     expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
                                     found: f_type,
@@ -1963,6 +2007,7 @@
                         {
                             <span class="comment">// If the types don't match, return an error.
                             </span><span class="kw">if </span>!found.can_decay_to(<span class="kw-2">&amp;</span>expected, env)<span class="question-mark">? </span>{
+                                <span class="macro">error!</span>(<span class="string">"Procedure argument type mismatch"</span>);
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                     expected,
                                     found,
@@ -1973,11 +2018,14 @@
                         <span class="prelude-val">Ok</span>(())
                     }
                     <span class="comment">// If the function is not a procedure, return an error.
-                    </span><span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(Error::MismatchedTypes {
-                        expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
-                        found: f_type,
-                        expr: <span class="self">self</span>.clone(),
-                    }),
+                    </span><span class="kw">_ </span>=&gt; {
+                        <span class="macro">error!</span>(<span class="string">"Called non-function {self}"</span>);
+                        <span class="prelude-val">Err</span>(Error::MismatchedTypes {
+                            expected: Type::Proc(found_arg_tys, Box::new(Type::Any)),
+                            found: f_type,
+                            expr: <span class="self">self</span>.clone(),
+                        })
+                    },
                 }
             }
 
@@ -1990,6 +2038,7 @@
                     .cloned()
                     .unwrap_or(Type::None);
                 <span class="kw">if </span>!found.can_decay_to(<span class="kw-2">&amp;</span>expected, env)<span class="question-mark">? </span>{
+                    <span class="macro">error!</span>(<span class="string">"The found return type does not match expected type"</span>);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                         expected,
                         found,
@@ -2082,6 +2131,7 @@
                             </span>val.type_check(env)<span class="question-mark">?</span>;
                             <span class="kw">let </span>found = val.get_type(env)<span class="question-mark">?</span>;
                             <span class="kw">if </span>!found.can_decay_to(expected_ty, env)<span class="question-mark">? </span>{
+                                <span class="macro">error!</span>(<span class="string">"Could not verify variant of enum {self}"</span>);
                                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                                     expected: expected_ty.clone(),
                                     found,
@@ -2119,6 +2169,7 @@
 
             <span class="comment">// Typecheck a member access.
             </span><span class="self">Self</span>::Member(e, field) =&gt; {
+                <span class="macro">trace!</span>(<span class="string">"Typechecking regular member access {e}.{field}"</span>);
                 <span class="comment">// Typecheck the expression we want to access a member of.
                 </span>e.type_check(env)<span class="question-mark">?</span>;
                 <span class="comment">// Get the type of the expression.
@@ -2129,13 +2180,17 @@
                 </span><span class="kw">match </span>e_type.type_check_member(field, e, env) {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
                     <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">warn!</span>(<span class="string">"Type {e_type} doesn't have member {field} in environment {env}"</span>);
                         <span class="kw">match </span>field
                             .clone()
                             .as_symbol(env)
                             .map(|name| env.get_associated_const(<span class="kw-2">&amp;</span>e_type, <span class="kw-2">&amp;</span>name))
                         {
                             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
-                            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(e),
+                            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                                <span class="macro">error!</span>(<span class="string">"Could not find member {field} in type {e_type} in environment {env}"</span>);
+                                <span class="prelude-val">Err</span>(e)
+                            },
                         }
                     }
                 }
@@ -2178,7 +2233,7 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
-        <span class="macro">trace!</span>(<span class="string">"Typechecking constant expression: {}"</span>, <span class="self">self</span>);
+        <span class="macro">debug!</span>(<span class="string">"Typechecking constant expression: {}"</span>, <span class="self">self</span>);
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Template(_ty_params, _template) =&gt; {
                 <span class="comment">// Create a new environment with the type parameters defined.
@@ -2213,14 +2268,25 @@
                 // Typecheck the member we want to access.
                 </span><span class="kw">match </span>e_type.type_check_member(field, <span class="kw-2">&amp;</span>Expr::ConstExpr(<span class="kw-2">*</span>e.clone()), env) {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
-                    <span class="prelude-val">Err</span>(e) =&gt; {
+                    <span class="prelude-val">Err</span>(_err) =&gt; {
+                        <span class="macro">warn!</span>(<span class="string">"Member {field} not found in type {e_type} in environment {env}"</span>);
                         <span class="kw">match </span>field
                             .clone()
                             .as_symbol(env)
                             .map(|name| env.get_associated_const(<span class="kw-2">&amp;</span>e_type, <span class="kw-2">&amp;</span>name))
                         {
-                            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
-                            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(e),
+                            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                                <span class="macro">warn!</span>(<span class="string">"Associated constant {field} found in type {e_type} in environment {env}"</span>);
+                                <span class="prelude-val">Ok</span>(())
+                            },
+                            <span class="comment">// Err(_) =&gt; Err(e),
+                            </span><span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                                <span class="comment">// Try to perform the member op as a regular member op.
+                                </span><span class="macro">warn!</span>(<span class="string">"Associated constant {field} not found in type {e_type} in environment {env}"</span>);
+                                <span class="macro">warn!</span>(<span class="string">"Falling back on regular member access"</span>);
+                                Expr::Member(Box::new(Expr::ConstExpr(<span class="kw-2">*</span>e.clone())), <span class="kw-2">*</span>field.clone())
+                                    .type_check(env)
+                            }
                         }
                     }
                 }

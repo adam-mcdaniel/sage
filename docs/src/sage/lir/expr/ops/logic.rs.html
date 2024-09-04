@@ -342,37 +342,37 @@
 
 <span class="kw">impl </span>Debug <span class="kw">for </span>And {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
-        <span class="macro">write!</span>(f, <span class="string">"and"</span>)
+        <span class="macro">write!</span>(f, <span class="string">"&amp;&amp;"</span>)
     }
 }
 
 <span class="kw">impl </span>Display <span class="kw">for </span>And {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
-        <span class="macro">write!</span>(f, <span class="string">"and"</span>)
+        <span class="macro">write!</span>(f, <span class="string">"&amp;&amp;"</span>)
     }
 }
 
 <span class="kw">impl </span>Debug <span class="kw">for </span>Or {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
-        <span class="macro">write!</span>(f, <span class="string">"or"</span>)
+        <span class="macro">write!</span>(f, <span class="string">"||"</span>)
     }
 }
 
 <span class="kw">impl </span>Display <span class="kw">for </span>Or {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
-        <span class="macro">write!</span>(f, <span class="string">"or"</span>)
+        <span class="macro">write!</span>(f, <span class="string">"||"</span>)
     }
 }
 
 <span class="kw">impl </span>Debug <span class="kw">for </span>Not {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
-        <span class="macro">write!</span>(f, <span class="string">"not"</span>)
+        <span class="macro">write!</span>(f, <span class="string">"!"</span>)
     }
 }
 
 <span class="kw">impl </span>Display <span class="kw">for </span>Not {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter) -&gt; FmtResult {
-        <span class="macro">write!</span>(f, <span class="string">"not"</span>)
+        <span class="macro">write!</span>(f, <span class="string">"!"</span>)
     }
 }
 </code></pre></div></section></main></body></html>

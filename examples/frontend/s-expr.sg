@@ -1,5 +1,5 @@
 // Implement a scheme evaluator in Sage.
-def strlen(ch: &Char): Int {
+fun strlen(ch: &Char): Int {
     let mut len = 0;
     while ch[len] != '\0' {
         len += 1;
@@ -7,9 +7,9 @@ def strlen(ch: &Char): Int {
     return len;
 }
 
-def strcpy(dst: &mut Char, src: &Char) {
+fun strcpy(dst: &mut Char, src: &Char) {
     let mut i = 0;
-    for (); src[i] != '\0'; i+=1 {
+    for (); src[i] != '\0'; i+=1; {
         dst[i] = src[i];
     }
     dst[i] = '\0';
@@ -20,7 +20,7 @@ struct String {
     len: Int,
 }
 
-def string_new(s: &Char): String {
+fun string_new(s: &Char): String {
     let mut len = 0;
     while s[len] != '\0' {
         len += 1;
@@ -35,28 +35,28 @@ def string_new(s: &Char): String {
     };
 }
 
-def string_print(s: String) {
-    for let mut i=0; i < s.len; i+=1 {
+fun string_print(s: String) {
+    for let mut i=0; i < s.len; i+=1; {
         print(s.data[i]);
     }
 }
 
 enum Expr {
-    Boolean Bool,
-    Decimal Float,
-    Integer Int,
+    Boolean(Bool),
+    Decimal(Float),
+    Integer(Int),
     Complex {
         real: Float,
         imag: Float,
     },
-    Symbol String,
-    String String,
+    Symbol(String),
+    String(String),
     Pair {
         car: &Expr,
         cdr: &Expr,
     },
     Nil,
-    defedure {
+    Procedure {
         params: &Expr,
         body: &Expr,
         env: &Env,
@@ -66,10 +66,10 @@ enum Expr {
         body: &Expr,
         env: &Env,
     },
-    Builtin(String, (&Expr, &Env) -> Expr),
+    Builtin(String, fun(&Expr, &Env) -> Expr),
     Continuation {
         env: &Env,
-    },
+    }
 }
 
 struct Env {
@@ -77,55 +77,55 @@ struct Env {
     parent: &Env,
 }
 
-def root_env(): Env = {
+fun root_env(): Env = {
     bindings = Expr of Nil,
     parent = Null
 };
 
-def env_free(env: Env) {
+fun env_free(env: Env) {
     expr_free(env.bindings);
 }
 
-def expr_free(expr: Expr) {
+fun expr_free(expr: Expr) {
     match expr {
         of Pair { car, cdr } => {
             expr_free(*car);
             expr_free(*cdr);
-            del car;
-            del cdr;
+            free(car);
+            free(cdr);
         },
-        of defedure { params, body, env } => {
+        of Procedure { params, body, env } => {
             expr_free(*params);
             expr_free(*body);
             env_free(*env);
-            del params;
-            del body;
-            del env;
+            free(params);
+            free(body);
+            free(env);
         },
         of Closure { params, body, env } => {
             expr_free(*params);
             expr_free(*body);
             env_free(*env);
-            del params;
-            del body;
-            del env;
+            free(params);
+            free(body);
+            free(env);
         },
         of Continuation { env } => {
             env_free(*env);
-            del env;
+            free(env);
         },
         _ => {}
     }
 }
 
-def cons(car: Expr, cdr: Expr): Expr {
+fun cons(car: Expr, cdr: Expr): Expr {
     return Expr of Pair {
         car = new car,
         cdr = new cdr
     };
 }
 
-def expr_print(expr: &Expr) {
+fun expr_print(expr: &Expr) {
     match *expr {
         of Boolean b => print(b),
         of Integer i => print(i),
@@ -139,8 +139,8 @@ def expr_print(expr: &Expr) {
             print(")");
         },
         of Nil => print("()"),
-        of defedure { params, body, env } => {
-            print("#<defedure>");
+        of Procedure { params, body, env } => {
+            print("#<procedure>");
         },
         of Closure { params, body, env } => {
             print("#<closure>");
@@ -155,31 +155,31 @@ def expr_print(expr: &Expr) {
     }
 }
 
-def expr_println(expr: &Expr) {
+fun expr_println(expr: &Expr) {
     expr_print(expr);
     print("\n");
 }
 
-def expr_reduce(mut acc: Expr, x: Expr, env: &Env, fun: (Expr, Expr, &Env) -> Expr): Expr {
+fun expr_reduce(mut acc: Expr, x: Expr, env: &Env, f: fun(Expr, Expr, &Env) -> Expr): Expr {
     match x {
         of Pair { car, cdr } => {
-            acc = fun(acc, *car, env);
-            expr_reduce(acc, *cdr, env, fun);
+            acc = f(acc, *car, env);
+            expr_reduce(acc, *cdr, env, f);
         },
         of Nil => acc,
-        _ => fun(acc, x, env)
+        _ => f(acc, x, env)
     }
 }
 
-def expr_map(x: Expr, env: &Env, fun: (Expr, &Env) -> Expr): Expr {
+fun expr_map(x: Expr, env: &Env, f: fun(Expr, &Env) -> Expr): Expr {
     match x {
-        of Pair { car, cdr } => cons(fun(*car, env), expr_map(*cdr, env, fun)),
+        of Pair { car, cdr } => cons(f(*car, env), expr_map(*cdr, env, f)),
         of Nil => Expr of Nil,
-        _ => fun(x, env)
+        _ => f(x, env)
     }
 }
 
-def sum(acc: Expr, x: Expr, env: &Env): Expr {
+fun sum(acc: Expr, x: Expr, env: &Env): Expr {
     match acc {
         of Integer i => {
             match x {
@@ -199,7 +199,7 @@ def sum(acc: Expr, x: Expr, env: &Env): Expr {
     }
 }
 
-def prod(acc: Expr, x: Expr, env: &Env): Expr {
+fun prod(acc: Expr, x: Expr, env: &Env): Expr {
     match acc {
         of Integer i => {
             match x {
@@ -219,7 +219,7 @@ def prod(acc: Expr, x: Expr, env: &Env): Expr {
     }
 }
 
-def inc(x: Expr, env: &Env): Expr {
+fun inc(x: Expr, env: &Env): Expr {
     match x {
         of Integer i => Expr of Integer (i + 1),
         of Decimal i => Expr of Decimal (i + 1.0),
@@ -227,7 +227,7 @@ def inc(x: Expr, env: &Env): Expr {
     }
 }
 
-def dec(x: Expr, env: &Env): Expr {
+fun dec(x: Expr, env: &Env): Expr {
     match x {
         of Integer i => Expr of Integer (i - 1),
         of Decimal i => Expr of Decimal (i - 1.0),
@@ -236,7 +236,7 @@ def dec(x: Expr, env: &Env): Expr {
 }
 
 
-def range(start: Int, end: Int): Expr {
+fun range(start: Int, end: Int): Expr {
     if start > end {
         return Expr of Nil;
     } else {
@@ -262,11 +262,11 @@ print("  map(increment): ");
 let result = expr_map(expr, &env, inc);
 expr_println(&result);
 
-for let mut i=0; i<20; i+=1 {
+for let mut i=0; i<20; i+=1; {
     let range = range(1, i);
     expr_println(&range);
 }
 
 let text = "woo!!!\0";
-let s = string_new(&text as &Char);
+let s = string_new(&text);
 string_print(s);

@@ -628,12 +628,15 @@
 <a href="#627" id="627">627</a>
 <a href="#628" id="628">628</a>
 <a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Standard Interpreter Module
 //!
 //! This module implements an interpreter for the Standard virtual machine
 //! variant.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::vm::{CoreOp, Device, StandardDevice, StandardOp, StandardProgram};
+<span class="kw">use </span><span class="kw">super</span>::TAPE_EXTENSION_SIZE;
 
 <span class="doccomment">/// A function to reinterpret the bits of an integer as a float.
 </span><span class="kw">pub fn </span>as_float(n: i64) -&gt; f64 {
@@ -650,6 +653,7 @@
         <span class="self">Self</span>::new(StandardDevice::default())
     }
 }
+
 
 <span class="doccomment">/// The interpreter which runs the standard variant of virtual machine programs.
 </span><span class="kw">pub struct </span>StandardInterpreter&lt;T&gt;
@@ -884,7 +888,7 @@
     <span class="doccomment">/// Get the current cell pointed to on the turing tape.
     </span><span class="kw">fn </span>get_cell(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>i64 {
         <span class="kw">while </span><span class="self">self</span>.pointer &gt;= <span class="self">self</span>.cells.len() {
-            <span class="self">self</span>.cells.extend(<span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">1000</span>]);
+            <span class="self">self</span>.cells.extend(<span class="macro">vec!</span>[<span class="number">0</span>; TAPE_EXTENSION_SIZE]);
         }
 
         <span class="kw-2">&amp;mut </span><span class="self">self</span>.cells[<span class="self">self</span>.pointer]
@@ -938,7 +942,7 @@
 
                     CoreOp::Load(n) =&gt; {
                         <span class="kw">while </span><span class="self">self</span>.pointer + n &gt;= <span class="self">self</span>.cells.len() {
-                            <span class="self">self</span>.cells.extend(<span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">1000</span>]);
+                            <span class="self">self</span>.cells.extend(<span class="macro">vec!</span>[<span class="number">0</span>; TAPE_EXTENSION_SIZE]);
                         }
 
                         <span class="self">self</span>.reg_mut_vector().clear();
@@ -951,7 +955,7 @@
 
                     CoreOp::Store(n) =&gt; {
                         <span class="kw">while </span><span class="self">self</span>.pointer + n &gt;= <span class="self">self</span>.cells.len() {
-                            <span class="self">self</span>.cells.extend(<span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">1000</span>]);
+                            <span class="self">self</span>.cells.extend(<span class="macro">vec!</span>[<span class="number">0</span>; TAPE_EXTENSION_SIZE]);
                         }
 
                         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="kw-2">*</span>n {
@@ -1040,40 +1044,40 @@
                     CoreOp::Add(n) =&gt; {
                         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="kw-2">*</span>n {
                             <span class="kw">let </span>val = <span class="self">self</span>.cells[<span class="self">self</span>.pointer + i];
-                            <span class="self">self</span>.reg_mut_vector()[i] += val;
+                            <span class="self">self</span>.reg_mut_vector()[i] = <span class="self">self</span>.reg_mut_vector()[i].overflowing_add(val).<span class="number">0</span>;
                         }
                     }
                     CoreOp::Sub(n) =&gt; {
                         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="kw-2">*</span>n {
                             <span class="kw">let </span>val = <span class="self">self</span>.cells[<span class="self">self</span>.pointer + i];
-                            <span class="self">self</span>.reg_mut_vector()[i] -= val;
+                            <span class="self">self</span>.reg_mut_vector()[i] = <span class="self">self</span>.reg_mut_vector()[i].overflowing_sub(val).<span class="number">0</span>;
                         }
                     }
                     CoreOp::Mul(n) =&gt; {
                         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="kw-2">*</span>n {
                             <span class="kw">let </span>val = <span class="self">self</span>.cells[<span class="self">self</span>.pointer + i];
-                            <span class="self">self</span>.reg_mut_vector()[i] <span class="kw-2">*</span>= val;
+                            <span class="self">self</span>.reg_mut_vector()[i] = <span class="self">self</span>.reg_mut_vector()[i].overflowing_mul(val).<span class="number">0</span>;
                         }
                     }
                     CoreOp::Div(n) =&gt; {
                         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="kw-2">*</span>n {
                             <span class="kw">let </span>val = <span class="self">self</span>.cells[<span class="self">self</span>.pointer + i];
                             <span class="kw">if </span>val != <span class="number">0 </span>{
-                                <span class="self">self</span>.reg_mut_vector()[i] /= val;
-                            }
+                                <span class="self">self</span>.reg_mut_vector()[i] = <span class="self">self</span>.reg_mut_vector()[i].overflowing_div(val).<span class="number">0
+                            </span>}
                         }
                     }
                     CoreOp::Rem(n) =&gt; {
                         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="kw-2">*</span>n {
                             <span class="kw">let </span>val = <span class="self">self</span>.cells[<span class="self">self</span>.pointer + i];
                             <span class="kw">if </span>val != <span class="number">0 </span>{
-                                <span class="self">self</span>.reg_mut_vector()[i] %= val;
-                            }
+                                <span class="self">self</span>.reg_mut_vector()[i] = <span class="self">self</span>.reg_mut_vector()[i].overflowing_rem(val).<span class="number">0
+                            </span>}
                         }
                     }
                     CoreOp::Neg(n) =&gt; {
                         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="kw-2">*</span>n {
-                            <span class="self">self</span>.reg_mut_vector()[i] <span class="kw-2">*</span>= -<span class="number">1</span>;
+                            <span class="self">self</span>.reg_mut_vector()[i] = <span class="self">self</span>.reg_mut_vector()[i].overflowing_neg().<span class="number">0</span>;
                         }
                     }
 

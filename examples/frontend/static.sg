@@ -1,5 +1,5 @@
-
-let static mut x: Int = 5, mut y: Int = 6;
+let static mut x: Int = 5;
+let static mut y: Int = 6;
 
 // Declare int `z` on the stack.
 print("[Before allocating z on stack]\n");
@@ -8,10 +8,10 @@ let z = 7;
 print("[After allocating z on stack]\n");
 debug();
 
-let SP: &Cell = get_sp(),
-    GP: &Cell = get_gp(),
-    FP: &Cell = get_fp(),
-    FP_STACK: &Cell = get_fp_stack();
+let SP: &Cell = get_sp();
+let GP: &Cell = get_gp();
+let FP: &Cell = get_fp();
+let FP_STACK: &Cell = get_fp_stack();
 
 print("Stack pointer (GP + sizeof(A) + sizeof(B) + sizeof(x) + sizeof(y) + sizeof(z)): SP=",
       SP, ", GP=", GP, ", diff=", SP as Cell as Int - GP as Cell as Int, "\n");
@@ -24,17 +24,18 @@ print("[&y == GP + 1] y=", y, " ===> GP[1]=", GP[1], "\n");
 
 print("Frame pointer: ", FP, "\n");
 
-let static mut A: Int = 100, mut B: Int = 200;
+let static mut A: Int = 100;
+let static mut B: Int = 200;
 
 // Test that `A` can be mutated.
-def test1() {
+fun test1() {
     print("[before A += 1] A: ", A, ", B: ", B, "\n");
     A += 1;
     print("[after  B += 1] A: ", A, ", B: ", B, "\n");
 }
 
 // Test that `B` can be mutated.
-def test2() {
+fun test2() {
     print("[before A += 1] A: ", A, ", B: ", B, "\n");
     B += 1;
     print("[after  B += 1] A: ", A, ", B: ", B, "\n");

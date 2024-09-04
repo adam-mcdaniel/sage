@@ -1,9 +1,8 @@
 
-
 impl Int {
-    def inc(self: &mut Int) { *self += 1; }
+    fun inc(self: &mut Int) { *self += 1; }
 
-    def fact(self: Int): Int {
+    fun fact(self: Int): Int {
         if self <= 1 {
             return 1;
         } else {
@@ -19,7 +18,7 @@ x.inc();
 println("Factorial of ", x, " is ", x.fact());
 
 
-def main() {
+fun main() {
     let board = Board.default();
     board.print();
     
@@ -46,7 +45,7 @@ enum PieceType {
 }
 
 impl PieceType {
-    def to_char(self: PieceType, color: Color): Char {
+    fun to_char(self: PieceType, color: Color): Char {
         match color {
             of White => match self {
                 of Pawn => 'P',
@@ -74,28 +73,28 @@ enum Color {
 }
 
 impl Color {
-    def opposite(self: Color): Color {
+    fun opposite(self: Color): Color {
         match self {
             of White => Color of Black,
             of Black => Color of White
         }
     }
 
-    def print_foreground(self: Color) {
+    fun print_foreground(self: Color) {
         match self {
             of White => print(27 as Char, "[37m"),
             of Black => print(27 as Char, "[30m")
         }
     }
 
-    def print_background(self: Color) {
+    fun print_background(self: Color) {
         match self {
             of White => print(27 as Char, "[46m"),
             of Black => print(27 as Char, "[45m")
         }
     }
 
-    def print_reset() {
+    fun print_reset() {
         print(27 as Char, "[0m");
     }
 }
@@ -112,15 +111,15 @@ impl Square {
     const BLACK_QUEEN = (7, 3);
     const BLACK_KING = (7, 4);
 
-    def occupied(ty: PieceType, color: Color): Square {
+    fun occupied(ty: PieceType, color: Color): Square {
         return Square of Occupied(ty, color);
     }
 
-    def empty(): Square {
+    fun empty(): Square {
         return Square of Empty;
     }
 
-    def get_color(row: Int, col: Int): Color {
+    fun get_color(row: Int, col: Int): Color {
         if (row + col) % 2 == 0 {
             return Color of White;
         } else {
@@ -132,7 +131,7 @@ impl Square {
 type Board = [Square * 64];
 
 impl Board {
-    def default(): Board {
+    fun default(): Board {
         return [
             Square.occupied(PieceType of Rook, Color of White),
             Square.occupied(PieceType of Knight, Color of White),
@@ -206,13 +205,13 @@ impl Board {
         ];
     }
 
-    def get_square(self: &Board, row: Int, col: Int): Square {
+    fun get_square(self: &Board, row: Int, col: Int): Square {
         return (self as &Square)[row * 8 + col];
     }
 
-    def print(self: &Board) {
-        for let mut row = 7; row >= 0; row -= 1 {
-            for let mut col = 0; col < 8; col += 1 {
+    fun print(self: &Board) {
+        for let mut row = 7; row >= 0; row -= 1; {
+            for let mut col = 0; col < 8; col += 1; {
                 let square = self.get_square(row, col);
                 match square {
                     of Occupied(ty, color) => {

@@ -59,7 +59,7 @@ impl UnaryOp for Get {
             output.op(CoreOp::Get(SP.deref().deref(), Input::stdin_float()));
         } else {
             return Err(Error::UnsupportedOperation(Expr::UnaryOp(
-                self.clone_box(),
+                self.name(),
                 Box::new(Expr::ConstExpr(ConstExpr::None)),
             )));
         }
@@ -438,6 +438,13 @@ impl Put {
             Type::Char => {
                 output.op(CoreOp::Put(addr, Output::stdout_char()));
             }
+            Type::Type(t) => {
+                for ch in t.to_string().chars() {
+                    output.op(CoreOp::Set(A, ch as u8 as i64));
+                    output.op(CoreOp::Put(A, Output::stdout_char()));
+                }
+            }
+
             // Char pointer is a string
             Type::Pointer(_, inner) => {
                 if inner.equals(&Type::Char, env)? {

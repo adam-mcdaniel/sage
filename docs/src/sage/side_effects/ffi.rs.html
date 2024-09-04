@@ -44,6 +44,8 @@
 <a href="#43" id="43">43</a>
 <a href="#44" id="44">44</a>
 <a href="#45" id="45">45</a>
+<a href="#46" id="46">46</a>
+<a href="#47" id="47">47</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Foreign Function Interface
 //!
 //! This module contains the definition of the foreign function interface (FFI) bindings, which
@@ -51,12 +53,14 @@
 
 </span><span class="kw">use </span>std::fmt::{Debug, Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 
+<span class="kw">use </span>serde_derive::{Serialize, Deserialize};
+
 <span class="doccomment">/// This is an FFI binding, which is used to call a foreign function in the virtual machine code.
 ///
 /// The name is the symbol for the foreign function. The input cells is the number of cells that
 /// the foreign function will read from the FFI channel. The output cells is the number of cells
 /// that the foreign function will write to the FFI channel.
-</span><span class="attr">#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+</span><span class="attr">#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>FFIBinding {
     <span class="kw">pub </span>name: String,
     <span class="kw">pub </span>input_cells: usize,

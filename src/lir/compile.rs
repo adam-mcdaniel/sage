@@ -68,7 +68,9 @@ pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
 /// Compile an LIR expression into several core assembly instructions.
 impl Compile for Expr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
-        trace!("Compiling expression {self} in environment {env}");
+        let is_const = matches!(self, Self::ConstExpr(_));
+        trace!("Compiling expression {self} (is_const={is_const}) {self:?} in environment {env}");
+
         let mut debug_str = format!("{self:50}");
         debug_str.truncate(50);
 
@@ -101,6 +103,10 @@ impl Compile for Expr {
             }
 
             Self::UnaryOp(unop, expr) => {
+                let unop = env
+                    .get_unop(&unop)
+                    .ok_or(Error::UnimplementedOperator(unop))?
+                    .clone();
                 if let Expr::Annotated(expr, metadata) = *expr {
                     return unop
                         .compile(&expr, env, output)
@@ -111,6 +117,10 @@ impl Compile for Expr {
                 unop.compile(&expr, env, output)?;
             }
             Self::BinaryOp(binop, lhs, rhs) => {
+                let binop = env
+                    .get_binop(&binop)
+                    .ok_or(Error::UnimplementedOperator(binop))?
+                    .clone();
                 if let Expr::Annotated(lhs, metadata) = &*lhs {
                     return binop
                         .compile(lhs, &rhs, env, output)
@@ -126,6 +136,10 @@ impl Compile for Expr {
                 binop.compile(&lhs, &rhs, env, output)?;
             }
             Self::TernaryOp(ternop, a, b, c) => {
+                let ternop = env
+                    .get_ternop(&ternop)
+                    .ok_or(Error::UnimplementedOperator(ternop))?
+                    .clone();
                 if let Expr::Annotated(a, metadata) = &*a {
                     return ternop
                         .compile(a, &b, &c, env, output)
@@ -146,6 +160,10 @@ impl Compile for Expr {
                 ternop.compile(&a, &b, &c, env, output)?;
             }
             Self::AssignOp(op, dst, src) => {
+                let op = env
+                    .get_assignop(&op)
+                    .ok_or(Error::UnimplementedOperator(op))?
+                    .clone();
                 if let Expr::Annotated(dst, metadata) = &*dst {
                     return op
                         .compile(dst, &src, env, output)
@@ -305,6 +323,36 @@ impl Compile for Expr {
                         }
                     }
 
+                    Expr::ConstExpr(ConstExpr::Member(val, name)) => {
+                        debug!("Compiling (const) member function call {name} on {val} in environment {env}");
+                        // let access = Expr::Member(Box::new((*val).into()), *name);
+                        // access.compile_expr(env, output)?;
+
+                        // Try to get the member of the underlying type.
+                        if self_clone.is_method_call(env)? {
+                            debug!("Is method call!");
+                            let transformed = self_clone.transform_method_call(env)?;
+                            debug!("Transformed: {transformed}");
+                            transformed.compile_expr(env, output)?;
+                        } else {
+                            // Push the arguments to the procedure on the stack.
+                            debug!("Is not method call!");
+                            debug!("Compiling member function call {name} on {val} in environment {env}");
+                            for arg in &args {
+                                // Compile the argument (push it on the stack)
+                                arg.clone().compile_expr(env, output)?;
+                            }
+
+                            // Compile it normally:
+                            // Push the procedure on the stack.
+                            val.field(*name).compile_expr(env, output)?;
+                            // Pop the "function pointer" from the stack.
+                            output.op(CoreOp::Pop(Some(A), 1));
+                            // Call the procedure on the arguments.
+                            output.op(CoreOp::Call(A));
+                            debug!("Success!");
+                        }
+                    }
                     Expr::Member(val, name) => {
                         // Try to get the member of the underlying type.
                         if self_clone.is_method_call(env)? {
@@ -649,6 +697,19 @@ impl Compile for Expr {
 
             // Compile a member access operation.
             Self::Member(ref val, ref member) => {
+                if let Self::Annotated(expr, metadata) = val.as_ref() {
+                    return Self::Member(expr.clone(), member.clone())
+                        .compile_expr(env, output)
+                        .map_err(|e| e.annotate(metadata.clone()));
+                }
+
+                if let Self::ConstExpr(container) = val.as_ref() {
+                    // Write more elegantly
+                    if let Ok(val) = container.clone().field(member.clone()).eval(env) {
+                        return val.compile_expr(env, output);
+                    }
+                }
+
                 // If the value we're getting a field from is a pointer,
                 // then dereference it and get the field from the value.
                 match val.get_type(env)? {
@@ -666,6 +727,7 @@ impl Compile for Expr {
                         {
                             return constant.clone().compile_expr(env, output);
                         } else {
+                            error!("Could not get associated constant {member_as_symbol} from {ty} in environment {env}");
                             return Err(Error::SymbolNotDefined(member_as_symbol));
                         }
                     }
@@ -775,6 +837,60 @@ impl Compile for Expr {
                         return Err(Error::SymbolNotDefined(name.clone()));
                     }
                 }
+                Expr::ConstExpr(ConstExpr::Member(val, name)) => {
+                    // Get the type of the value we want to get a field from.
+                    let val_type = val.get_type(env)?;
+                    // val_type.add_monomorphized_associated_consts(env)?;
+
+                    // Push the address of the struct, tuple, or union onto the stack.
+                    match val_type.simplify_until_has_members(env)? {
+                        // If the value is a struct, tuple, or union:
+                        Type::Struct(_) | Type::Tuple(_) | Type::Union(_) => {
+                            // Compile a reference to the inner value with the expected mutability.
+                            Self::Refer(expected_mutability, Expr::from(*val.clone()).into())
+                                .compile_expr(env, output)?;
+                        }
+                        // If the value is a pointer:
+                        Type::Pointer(found_mutability, _) => {
+                            // Confirm that the pointer can decay to the expected mutability.
+                            if !found_mutability.can_decay_to(&expected_mutability) {
+                                // If the pointer cannot decay to the expected mutability,
+                                // then return an error.
+                                return Err(Error::MismatchedMutability {
+                                    found: found_mutability,
+                                    expected: expected_mutability,
+                                    expr: Expr::Member(Expr::from(*val.clone()).into(), *name),
+                                });
+                            }
+                            // Compile the pointer to get the address of the value.
+                            val.clone().compile_expr(env, output)?;
+                        }
+                        other => {
+                            error!("Tried to get a member {name} of a non-struct, non-tuple, non-union, non-pointer type: {other} of value {val} in environment {env}");
+                            return Err(Error::InvalidRefer(Expr::Member(
+                                Expr::from(*val.clone()).into(),
+                                *name,
+                            )));
+                        }
+                    }
+
+                    // Calculate the offset of the field from the address of the value.
+                    let (_, offset) =
+                        val_type.get_member_offset(&name, &Expr::from(*val.clone()), env)?;
+
+                    output.op(CoreOp::Pop(Some(A), 1));
+                    output.op(CoreOp::Set(B, offset as i64));
+                    // Index the address of the struct, tuple, or union with the offset of the field.
+                    // This is the address of the field.
+                    output.op(CoreOp::Index {
+                        src: A,
+                        offset: B,
+                        dst: C,
+                    });
+                    // Push this address to the stack.
+                    output.op(CoreOp::Push(C, 1));
+                }
+
                 Expr::ConstExpr(cexpr) => {
                     // Create a new static variable for the constant.
 
@@ -964,7 +1080,9 @@ impl Compile for ConstExpr {
                 // Do nothing.
             }
             Self::Member(container, member) => {
-                match (container.clone().eval(env)?, member.clone().eval(env)?) {
+                let new_container = *container.clone();
+                debug!("Compiling (const) member access {member} on {new_container} in environment {env}");
+                match (new_container, *member.clone()) {
                     (Self::Tuple(tuple), Self::Int(n)) => {
                         // If the index is out of bounds, return an error.
                         if n >= tuple.len() as i64 || n < 0 {
@@ -984,11 +1102,22 @@ impl Compile for ConstExpr {
                             debug!("Compiling associated constant {constant} in environment {env}");
                             return constant.clone().compile_expr(env, output);
                         } else {
+                            error!("Could not get associated constant {name} from {ty} in environment {env}");
                             return Err(Error::SymbolNotDefined(name));
                         }
                     }
-                    _ => {
-                        return Err(Error::MemberNotFound((*container).into(), *member));
+                    (Self::Declare(bindings, expr), field) => {
+                        let mut new_env = env.clone();
+                        new_env.add_declaration(&bindings)?;
+                        expr.field(field).compile_expr(&mut new_env, output)?;
+                    }
+                    (a, b) => {
+                        debug!("Could not identify member access {b} on {a} in environment {env}");
+                        Expr::Member(
+                            Box::new(Expr::ConstExpr(*container.clone())),
+                            *member.clone(),
+                        )
+                        .compile_expr(env, output)?;
                     }
                 }
             }
@@ -997,7 +1126,10 @@ impl Compile for ConstExpr {
                     .map_err(|err| err.annotate(metadata))?;
             }
             Self::Declare(bindings, body) => {
-                bindings.compile(Expr::ConstExpr(*body), env, output)?;
+                debug!("Compiling declaration {bindings} with body {body} in environment {env}");
+                let mut new_env = env.clone();
+                new_env.add_declaration(&bindings)?;
+                body.compile_expr(&mut new_env, output)?;
             }
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
                 Self::PolyProc(poly_proc) => {
@@ -1040,8 +1172,15 @@ impl Compile for ConstExpr {
 
                     result.compile_expr(env, output)?;
                 }
+                Self::Declare(bindings, expr) => {
+                    let mut new_env = env.clone();
+                    new_env.add_declaration(&bindings)?;
+                    expr.monomorphize(ty_args)
+                        .compile_expr(&mut new_env, output)?;
+                }
 
                 val => {
+                    error!("Could not identify template value {val} in environment {env}");
                     return Err(Error::InvalidMonomorphize(val));
                 }
             },
@@ -1109,6 +1248,16 @@ impl Compile for ConstExpr {
             }
             // Compile an array constant.
             Self::Array(items) => {
+                for item in items {
+                    // Compile the item.
+                    item.compile_expr(env, output)?;
+                }
+                /*
+                // WARNING:
+                // This optimizes how arrays are compiled *when their values are known at compile time*
+                // This causes issues when arrays contain values like variables which are not known at compile time.
+                // So, this optimization is disabled for now.
+
                 // If all the items are the same, we can compile the array as a single value.
                 if !items.is_empty() && items.iter().all(|item| item == &items[0]) {
                     let item_size = items[0].get_size(env)?;
@@ -1209,6 +1358,7 @@ impl Compile for ConstExpr {
                         }
                     }
                 }
+                */
             }
             // Compile a struct constant.
             Self::Struct(items) => {

@@ -157,10 +157,10 @@
         <span class="kw">let </span>size = ty.get_size(env)<span class="question-mark">?</span>;
 
         <span class="comment">// output.op(CoreOp::Next(SP, None));
-        </span>output.op(CoreOp::Set(A, size <span class="kw">as </span>i64));
+        </span>output.op(CoreOp::Set(A, size <span class="kw">as </span>i64 + <span class="number">32</span>));
         output.std_op(StandardOp::Alloc(A)).map_err(|<span class="kw">_</span>| {
             Error::UnsupportedOperation(Expr::UnaryOp(
-                <span class="self">self</span>.clone_box(),
+                <span class="self">self</span>.name(),
                 Box::new(Expr::ConstExpr(ConstExpr::None)),
             ))
         })<span class="question-mark">?</span>;
@@ -222,7 +222,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         output.std_op(StandardOp::Free(SP.deref())).map_err(|<span class="kw">_</span>| {
             Error::UnsupportedOperation(Expr::UnaryOp(
-                <span class="self">self</span>.clone_box(),
+                <span class="self">self</span>.name(),
                 Box::new(Expr::ConstExpr(ConstExpr::None)),
             ))
         })<span class="question-mark">?</span>;

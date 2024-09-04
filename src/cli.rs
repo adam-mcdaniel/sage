@@ -19,8 +19,7 @@ use std::{
 use log::error;
 
 // The stack sizes of the threads used to compile the code.
-// const RELEASE_STACK_SIZE_MB: usize = 512;
-const RELEASE_STACK_SIZE_MB: usize = 2048;
+const RELEASE_STACK_SIZE_MB: usize = 512;
 const DEBUG_STACK_SIZE_MB: usize = RELEASE_STACK_SIZE_MB;
 
 #[derive(clap::ValueEnum, Default, Clone, Debug, PartialEq)]
@@ -99,7 +98,7 @@ struct Args {
     target_type: TargetType,
 
     /// The number of cells allocated for the call stack.
-    #[clap(short, long, value_parser, default_value = "8192")]
+    #[clap(short, long, value_parser, default_value = "12582912")]
     call_stack_size: usize,
 
     /// The log level to use.
@@ -366,7 +365,7 @@ fn compile(
             // If the code is standard variant virtual machine code
             Err(vm_code) => {
                 StandardInterpreter::new(StandardDevice::default())
-                    .run(&vm_code) 
+                    .run(&vm_code)
                     .map_err(Error::InterpreterError)?;
             }
         },
@@ -466,6 +465,7 @@ fn cli() {
 
     builder.init();
 
+    // Set the directory of the current executable to be that of the file
     match read_file(&args.input) {
         Ok(file_contents) => {
             match compile(

@@ -34,10 +34,11 @@ use log::trace;
 
 use lalrpop_util::lalrpop_mod;
 use no_comment::{languages, IntoWithoutComments};
+use serde_derive::{Deserialize, Serialize};
 
 /// A struct representing a location in the source code.
 /// This is used to format errors properly.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct SourceCodeLocation {
     pub line: usize,
     pub column: usize,
@@ -148,10 +149,16 @@ pub fn parse_lir(input: impl ToString) -> Result<Expr, String> {
 
 /// Parse frontend sage code into an LIR expression.
 pub fn parse_frontend(input: impl ToString, filename: Option<&str>) -> Result<Expr, String> {
-    // let start = std::time::Instant::now();
-    let result = frontend::parse(input, filename)?;
+    let result = frontend::parse(input, filename, true, true)?;
     trace!(target: "parse", "Parsed frontend code: {result}");
-    // info!(target: "parse", "Parsed frontend code in {time}ms", time = start.elapsed().as_millis());
+    Ok(result)
+}
+
+pub fn parse_frontend_minimal(
+    input: impl ToString,
+    filename: Option<&str>,
+) -> Result<Expr, String> {
+    let result = frontend::parse(input, filename, false, false)?;
     Ok(result)
 }
 
@@ -240,7 +247,7 @@ fn format_error<T: core::fmt::Debug>(script: &str, err: SyntaxError<T>) -> Strin
                 column,
             )
         }
-        SyntaxError::UnrecognizedEOF { location, .. } => {
+        SyntaxError::UnrecognizedEof { location, .. } => {
             let (line_number, line, _) = get_line(script, location);
             make_error(&line, "EOF", line_number, line.len())
         }

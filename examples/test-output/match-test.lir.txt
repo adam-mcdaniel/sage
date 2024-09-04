@@ -4,6 +4,6 @@ Done!
 Hello, world!2316-17Nope!
 a
 union {a: Int = 5, b: Float = 2.5e-323, c: Bool = true}
-Allocated 16 cells at &mut (38999)
+Allocated 16 cells at &mut (99999)
 Null pointer!
 4 3 2 1 

@@ -71,7 +71,7 @@ impl AssignOp for Assign {
                     Box::new(Expr::var(lhs.to_string())),
                     // Perform the operation.
                     Box::new(Expr::BinaryOp(
-                        self.0.clone_box(),
+                        self.0.name(),
                         Box::new(Expr::var(lhs.to_string()).deref()),
                         Box::new(rhs.clone()),
                     )),

@@ -1,1 +1,8 @@
-1, 2, 3Some(3)a, b, cSome(c)
+1
+enum {Leaf Int, Node (Int, &((T) => enum {Cons (T, &(List)<T>), Nil None})<(Tree)<Int>>)} of Leaf 2, 
+enum {Leaf Int, Node (Int, &((T) => enum {Cons (T, &(List)<T>), Nil None})<(Tree)<Int>>)} of Leaf 3, 
+ (nil) 
+a
+enum {Leaf Char, Node (Char, &((T) => enum {Cons (T, &(List)<T>), Nil None})<(Tree)<Char>>)} of Leaf 'b', 
+enum {Leaf Char, Node (Char, &((T) => enum {Cons (T, &(List)<T>), Nil None})<(Tree)<Char>>)} of Leaf 'c', 
+ (nil) 

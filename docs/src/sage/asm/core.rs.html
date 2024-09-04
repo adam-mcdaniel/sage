@@ -1635,6 +1635,7 @@
 <a href="#1634" id="1634">1634</a>
 <a href="#1635" id="1635">1635</a>
 <a href="#1636" id="1636">1636</a>
+<a href="#1637" id="1637">1637</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Core Assembly Variant
 //!
 //! This variant of the assembly language is intended to be used
@@ -1667,6 +1668,7 @@
     location::{FP_STACK, TMP},
     AssemblyProgram, Env, Error, Location, StandardOp, FP, GP, SP, STACK_START, START_OF_FP_STACK,
 };
+<span class="kw">use </span>serde_derive::{Serialize, Deserialize};
 <span class="kw">use crate</span>::{
     side_effects::{Input, InputMode, Output, OutputMode},
     vm::{<span class="self">self</span>, VirtualMachineProgram},
@@ -1677,7 +1679,7 @@
 
 <span class="doccomment">/// An assembly program composed of core instructions, which can be assembled
 /// into the core virtual machine instructions.
-</span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+</span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>CoreProgram {
     <span class="doccomment">/// The list of core assembly instructions in the program.
     </span><span class="kw">pub </span>code: Vec&lt;CoreOp&gt;,
@@ -1904,7 +1906,7 @@
 
 <span class="doccomment">/// A core instruction of the assembly language. These are instructions
 /// guaranteed to be implemented for every target possible.
-</span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+</span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>CoreOp {
     Comment(String),
     <span class="doccomment">/// Many instructions to execute; conveniently grouped together.

@@ -1,0 +1,34 @@
+from std.fallible import Option;
+from std.collections import List, Vec, HashMap, Entry;
+
+// Create a list of integers from a low to a high value
+fun range(low: Int, high: Int): List<Int> {
+    // Create a linked list of integers
+    let mut vals = List<Int> of Nil;
+    
+    // Add some values to the list
+    for let mut i=high; i>=low; i-=1; {
+        vals = vals.cons(i);
+    }
+
+    vals
+}
+
+fun main() {
+    from std.math import gcd;
+    println("GCD of 12 and 15 is ", gcd(12, 15));
+
+    print("List of integers:  ");
+    let vals = range(0, 10);
+    vals.println();
+    
+    // Create a new list of all the squares of the values in the first list
+    fun square(n: Int): Int = n * n;
+    let squares = vals.map<Int>(square);
+    
+    // Print the squared values
+    print("List of squares:  ");
+    squares.println();
+}
+
+main();

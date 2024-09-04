@@ -61,6 +61,8 @@
 //!   ```rs
 //!   Indirect(Address(6)) // go the address pointed to by the value in the 6th cell of the tape
 //!   ```
+use serde_derive::{Deserialize, Serialize};
+
 use crate::{
     side_effects::{Input, Output},
     vm::{self, Error, VirtualMachineProgram},
@@ -102,7 +104,7 @@ pub(crate) const START_OF_FP_STACK: Location = Location::Address(12);
 pub const REGISTERS: [Location; 12] = [SP, TMP, FP, FP_STACK, GP, A, B, C, D, E, F, STACK_START];
 
 /// A location in memory (on the tape of the virtual machine).
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum Location {
     /// A fixed position in the tape (a constant address known at compile time).
     Address(usize),

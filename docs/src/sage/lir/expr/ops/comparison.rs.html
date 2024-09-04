@@ -279,11 +279,23 @@
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Comparison Operations
 //!
 //! This module implements comparison operators between two expressions.
 
-</span><span class="kw">use crate</span>::{
+</span><span class="kw">use </span>log::error;
+<span class="kw">use crate</span>::{
     asm::{AssemblyProgram, CoreOp, StandardOp, SP},
     lir::<span class="kw-2">*</span>,
 };
@@ -324,11 +336,13 @@
             (Type::Unit(name1, a_type), <span class="kw">_</span>, Type::Unit(name2, b_type)) =&gt; {
                 <span class="comment">// Make sure that the two units are the same.
                 </span><span class="kw">if </span>name1 != name2 {
+                    <span class="macro">error!</span>(<span class="string">"Cannot apply {self} to {lhs} and {lhs}"</span>);
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
                 }
 
                 <span class="comment">// Make sure that inner types are compatible.
                 </span><span class="kw">if </span>!a_type.equals(b_type, env)<span class="question-mark">? </span>{
+                    <span class="macro">error!</span>(<span class="string">"Cannot apply {self} to {lhs} and {lhs}"</span>);
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
                 }
 
@@ -337,7 +351,11 @@
             (a, <span class="self">Self</span>::Equal, b) | (a, <span class="self">Self</span>::NotEqual, b) =&gt; {
                 <span class="prelude-val">Ok</span>(a.can_decay_to(b, env)<span class="question-mark">? </span>&amp;&amp; a.get_size(env)<span class="question-mark">? </span>== <span class="number">1</span>)
             }
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
+            (a, <span class="kw">_</span>, b) =&gt; {
+                <span class="macro">error!</span>(<span class="string">"Cannot apply {self} to {a} and {b}"</span>);
+                
+                <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
+            },
         }
     }
 
@@ -378,11 +396,14 @@
                 <span class="prelude-val">Ok</span>(ConstExpr::Bool((a <span class="kw">as </span>f64) &gt; b))
             }
 
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(Error::InvalidBinaryOp(
-                <span class="self">self</span>.clone_box(),
-                Expr::ConstExpr(lhs.clone()),
-                Expr::ConstExpr(rhs.clone()),
-            )),
+            (a, <span class="kw">_</span>, b) =&gt; {
+                <span class="macro">error!</span>(<span class="string">"Invalid comparison between consts {a} and {b}"</span>);
+                <span class="prelude-val">Err</span>(Error::InvalidBinaryOp(
+                    <span class="self">self</span>.clone_box(),
+                    Expr::ConstExpr(lhs.clone()),
+                    Expr::ConstExpr(rhs.clone()),
+                ))
+            },
         }
     }
 
@@ -515,7 +536,8 @@
             }
 
             <span class="comment">// Cannot do arithmetic on other pairs of types.
-            </span><span class="kw">_ </span>=&gt; {
+            </span>(a, <span class="kw">_</span>, b) =&gt; {
+                <span class="macro">error!</span>(<span class="string">"Invalid comparison between types {a} and {b}"</span>);
                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidBinaryOpTypes(
                     Box::new(<span class="kw-2">*</span><span class="self">self</span>),
                     lhs.clone(),

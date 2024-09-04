@@ -11,11 +11,24 @@ const CALL_STACK_SIZE: usize = 8192;
 
 #[test]
 fn test_frontend_examples() {
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(1)
+    // Enable logging
+    let mut builder = env_logger::Builder::from_default_env();
+    builder.format_timestamp(None);
+    builder.filter(
+        None,
+        // LogLevel::Error if args.debug.is_none() => log::LevelFilter::Error,
+        // LogLevel::Warn if args.debug.is_none() => log::LevelFilter::Warn,
+        // LogLevel::Off if args.debug.is_none() => log::LevelFilter::Error,
+        // LogLevel::Info if args.debug.is_none() => log::LevelFilter::Info,
+        // LogLevel::Trace => log::LevelFilter::Trace,
+        log::LevelFilter::Info,
+    );
+    builder.init();
+
+    let _ = rayon::ThreadPoolBuilder::new()
+        .num_threads(16)
         .stack_size(512 * 1024 * 1024)
-        .build_global()
-        .unwrap();
+        .build_global();
     // Compiling most examples overflows the tiny stack for tests.
     // So, we spawn a new thread with a larger stack size.
     let child = std::thread::Builder::new()
@@ -57,6 +70,7 @@ fn test_frontend_examples_helper() {
                 Ok(contents) => Some(contents.replace("\r\n", "\n")),
                 Err(_) => None,
             };
+
             let correct_output_text = match read_to_string(&correct_output_path) {
                 Ok(contents) => contents.replace("\r\n", "\n"),
                 Err(_) if correct_error.is_none() => {
@@ -64,6 +78,7 @@ fn test_frontend_examples_helper() {
                     // Just compile the program to confirm it doesn't error.
                     let frontend_src = read_to_string(&path)
                         .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
+
                     let frontend_code = parse_frontend(&frontend_src, path.to_str())
                         .unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
                     let asm_code = frontend_code.compile().unwrap();
@@ -84,8 +99,9 @@ fn test_frontend_examples_helper() {
 
             let frontend_src = read_to_string(&path)
                 .unwrap_or_else(|_| panic!("Could not read contents of file `{path:?}`"));
+
             let frontend_code = parse_frontend(&frontend_src, path.to_str())
-                .unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
+                .unwrap_or_else(|e| panic!("Could not parse `{path:?}`: {e}"));
             drop(frontend_src);
             let asm_code = frontend_code.compile();
 
@@ -132,10 +148,31 @@ fn test_frontend_examples_helper() {
 
 #[test]
 fn test_lir_examples() {
+    /*
+    // Enable logging
+    let mut builder = env_logger::Builder::from_default_env();
+    builder.format_timestamp(None);
+    builder.filter(
+        None,
+        // LogLevel::Error if args.debug.is_none() => log::LevelFilter::Error,
+        // LogLevel::Warn if args.debug.is_none() => log::LevelFilter::Warn,
+        // LogLevel::Off if args.debug.is_none() => log::LevelFilter::Error,
+        // LogLevel::Info if args.debug.is_none() => log::LevelFilter::Info,
+        // LogLevel::Trace => log::LevelFilter::Trace,
+        log::LevelFilter::Info,
+    );
+    builder.init();
+     */
+
+    let _ = rayon::ThreadPoolBuilder::new()
+        .num_threads(16)
+        .stack_size(512 * 1024 * 1024)
+        .build_global();
+
     // Compiling most examples overflows the tiny stack for tests.
     // So, we spawn a new thread with a larger stack size.
     let child = std::thread::Builder::new()
-        .stack_size(64 * 1024 * 1024)
+        .stack_size(512 * 1024 * 1024)
         .spawn(test_lir_examples_helper)
         .unwrap();
 

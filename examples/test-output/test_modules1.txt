@@ -1,0 +1,4 @@
+GCD of 12 and 15 = 3
+2
+enum {Nothing None, Some Int} of Nothing None
+25.0

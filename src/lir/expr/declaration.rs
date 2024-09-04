@@ -12,14 +12,16 @@ use core::{
 };
 use log::*;
 use rayon::prelude::*;
+use serde_derive::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
 /// A declaration of a variable, function, type, etc.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Declaration {
     /// A static variable declaration.
-    StaticVar(String, Mutability, Type, ConstExpr),
+    StaticVar(String, Mutability, Type, Expr),
     /// A variable declaration.
     Var(String, Mutability, Option<Type>, Expr),
     /// A procedure declaration.
@@ -37,7 +39,20 @@ pub enum Declaration {
     /// Declare associated constants and procedures for a type.
     Impl(Type, Vec<(String, ConstExpr)>),
     /// Many declarations.
-    Many(Vec<Declaration>),
+    Many(Arc<Vec<Declaration>>),
+    /// Declare a module
+    ///
+    /// Do NOT instantiate this directly:
+    /// use the `Declaration::module` method.
+    /// This will redistribute the declarations to make sure
+    /// everything is in-order internally to be imported/exported.
+    Module(String, Arc<Vec<Declaration>>),
+    /// Import an element from a module.
+    FromImport {
+        module: ConstExpr,
+        names: Vec<(String, Option<String>)>,
+    },
+    FromImportAll(ConstExpr),
 }
 
 impl Declaration {
@@ -45,9 +60,85 @@ impl Declaration {
         name: impl Into<String>,
         mutability: Mutability,
         ty: Type,
-        expr: ConstExpr,
+        expr: impl Into<Expr>,
     ) -> Self {
-        Self::StaticVar(name.into(), mutability, ty, expr)
+        Self::StaticVar(name.into(), mutability, ty, expr.into())
+    }
+
+    /// Create a collection of declarations
+    pub fn many(decls: impl Into<Vec<Self>>) -> Self {
+        Self::Many(Arc::new(decls.into()))
+    }
+
+    /// Create a module with a given name and a list of declarations
+    pub fn module(name: impl ToString, decls: impl Into<Vec<Self>>) -> Self {
+        let mut decls = decls.into();
+        let mut import = Self::many(decls.clone());
+        import.filter(&|decl| {
+            decl.is_compile_time_declaration() && !matches!(decl, Declaration::Impl(..))
+        });
+
+        for decl in &mut decls {
+            decl.distribute_decls(&import.clone());
+        }
+
+        Self::Module(name.to_string(), Arc::new(decls))
+    }
+
+    /// Filter all the subdeclarations to satisfy some condition.
+    fn filter(&mut self, f: &impl Fn(&Declaration) -> bool) {
+        match self {
+            Self::Many(decls) => {
+                let decls = Arc::make_mut(decls);
+                decls.retain(|decl| f(decl));
+                decls.iter_mut().for_each(|decl| decl.filter(f));
+            }
+            Self::Module(_name, decls) => {
+                let decls = Arc::make_mut(decls);
+                decls.retain(|decl| f(decl));
+                decls.iter_mut().for_each(|decl| decl.filter(f));
+            }
+            _ => {}
+        }
+    }
+
+    /// Make this declaration only have compile time subdeclarations
+    fn filter_for_compile_time_only(&mut self) {
+        self.filter(&|decl| decl.is_compile_time_declaration());
+    }
+
+    /// Distribute a declaration amongst several other declarations.
+    /// This makes sure the declaration is in scope for all the subexpressions
+    /// in the other declarations.
+    fn distribute_decls(&mut self, distributed: &Self) {
+        match self {
+            Self::Many(decls) => {
+                let decls = Arc::make_mut(decls);
+                for decl in decls.iter_mut() {
+                    decl.distribute_decls(distributed);
+                }
+            }
+            Self::Module(_name, decls) => {
+                let decls = Arc::make_mut(decls);
+                for decl in decls.iter_mut() {
+                    decl.distribute_decls(distributed);
+                }
+            }
+            Self::Impl(_ty, impls) => {
+                let mut distributed = distributed.clone();
+                distributed.filter_for_compile_time_only();
+                for (_name, expr) in impls {
+                    *expr = expr.with(distributed.clone());
+                }
+            }
+            Self::Proc(_name, proc) => {
+                *proc = proc.with(distributed.clone());
+            }
+            Self::PolyProc(_name, proc) => {
+                *proc = proc.with(distributed.clone());
+            }
+            _ => {}
+        }
     }
 
     /// Flatten a multi-declaration into a single-dimensional vector of declarations.
@@ -55,8 +146,8 @@ impl Declaration {
         match self {
             Self::Many(decls) => {
                 let mut flattened = Vec::new();
-                for decl in decls {
-                    flattened.append(&mut decl.flatten());
+                for decl in decls.iter() {
+                    flattened.append(&mut decl.clone().flatten());
                 }
                 flattened
             }
@@ -84,7 +175,11 @@ impl Declaration {
             Self::Proc(..) => true,
             Self::PolyProc(..) => true,
             Self::ExternProc(..) => true,
+            Self::Module(..) => true,
             Self::Impl(..) => true,
+            Self::FromImport { .. } => true,
+            Self::FromImportAll(..) => true,
+            Self::StaticVar(..) => true,
             Self::Many(decls) => decls
                 .par_iter()
                 .all(|decl| decl.is_compile_time_declaration()),
@@ -183,7 +278,7 @@ impl Declaration {
                 output.log_instructions_after(&name, &log_message, current_instruction);
             }
             Declaration::Many(decls) => {
-                for decl in decls {
+                for decl in decls.iter() {
                     // Compile all the sub-declarations,
                     // and leave their variables on the stack.
                     // Add their variable sizes to the total variable size.
@@ -242,17 +337,17 @@ impl Declaration {
     pub(crate) fn append(&mut self, other: impl Into<Self>) {
         match (self, other.into()) {
             (Self::Many(decls), Self::Many(mut other_decls)) => {
-                decls.append(&mut other_decls);
+                Arc::make_mut(decls).append(Arc::make_mut(&mut other_decls));
             }
             (Self::Many(decls), other) => {
-                decls.append(&mut other.flatten());
+                Arc::make_mut(decls).append(&mut other.flatten());
             }
             (self_, Self::Many(mut other_decls)) => {
                 let mut result = self_.clone().flatten();
-                result.append(&mut other_decls);
-                *self_ = Self::Many(result)
+                result.append(Arc::make_mut(&mut other_decls));
+                *self_ = Self::many(result)
             }
-            (self_, other) => *self_ = Self::Many(vec![self_.clone(), other]),
+            (self_, other) => *self_ = Self::many(vec![self_.clone(), other]),
         }
     }
 
@@ -299,10 +394,19 @@ impl Declaration {
                 // for decl in decls {
                 //     decl.substitute(substitution_name, substitution_ty);
                 // }
-                decls.par_iter_mut().for_each(|decl| {
+                Arc::make_mut(decls).par_iter_mut().for_each(|decl| {
                     decl.substitute(substitution_name, substitution_ty);
                 });
             }
+            Self::Module(_name, decls) => {
+                Arc::make_mut(decls).par_iter_mut().for_each(|decl| {
+                    decl.substitute(substitution_name, substitution_ty);
+                });
+            }
+            Self::FromImport { module, .. } => {
+                module.substitute(substitution_name, substitution_ty);
+            }
+            Self::FromImportAll(module) => module.substitute(substitution_name, substitution_ty),
         }
     }
 }
@@ -375,6 +479,7 @@ impl TypeCheck for Declaration {
                 // Make sure the type of the expression matches the type of the variable.
                 if !found_ty.can_decay_to(expected_ty, &new_env)? {
                     // If it does not, then we throw an error.
+                    error!("Static variable {name} has type {found_ty} and cannot coerce to {expected_ty}");
                     return Err(Error::MismatchedTypes {
                         expected: expected_ty.clone(),
                         found: found_ty.clone(),
@@ -437,6 +542,7 @@ impl TypeCheck for Declaration {
                     let template_params = template.get_template_params(&new_env);
 
                     if template_params.len() != supplied_params.len() {
+                        error!("Invalid impl for {template}");
                         return Err(Error::MismatchedTypes {
                             expected: *template.clone(),
                             found: Type::Apply(template.clone(), supplied_params.clone()),
@@ -491,12 +597,6 @@ impl TypeCheck for Declaration {
                         new_env.add_associated_const(ty.clone(), name, associated_const.clone())?;
                     }
 
-                    // If we are at the limit of parallel recursion, then we should
-                    // type check the associated constants sequentially.
-                    // for (_name, associated_const) in impls {
-                    //     associated_const.type_check(&new_env)?;
-                    // }
-
                     impls.par_iter().try_for_each(|(_name, associated_const)| {
                         associated_const.type_check(&new_env)
                     })?;
@@ -506,7 +606,7 @@ impl TypeCheck for Declaration {
             Self::Many(decls) => {
                 let mut new_env = env.clone();
                 // Add all the compile-time declarations to the environment.
-                new_env.add_compile_time_declaration(&self.clone())?;
+                new_env.add_declaration(&self.clone())?;
 
                 // Get all the compile time declarations so we can type check them in parallel.
                 let (comp_time_decls, run_time_decls): (Vec<_>, Vec<_>) = decls
@@ -515,10 +615,19 @@ impl TypeCheck for Declaration {
 
                 if !comp_time_decls.is_empty() {
                     // Type check all the compile time declarations in parallel.
-                    comp_time_decls
-                        .par_iter()
-                        .try_for_each(|decl| decl.type_check(&new_env))?;
+                    comp_time_decls.par_iter().try_for_each(|decl| {
+                        debug!("Typechecking decl: {decl}");
+                        decl.type_check(&new_env)
+                    })?;
                 }
+
+                run_time_decls
+                    .iter()
+                    // .map(|decl| decl.type_check(&new_env))
+                    .try_for_each(|decl| {
+                        decl.type_check(&new_env)?;
+                        new_env.add_declaration(decl)
+                    })?;
 
                 /*
                 lazy_static! {
@@ -543,7 +652,7 @@ impl TypeCheck for Declaration {
                     //         decl.type_check(&new_env)
                     //     })?;
                     // }
-                    info!("Typechecking {} declarations in parallel", comp_time_decls.len());
+                    debug!("Typechecking {} declarations in parallel", comp_time_decls.len());
                     comp_time_decls.par_iter().try_for_each(|decl| {
                         decl.type_check(&new_env)
                     })?;
@@ -557,22 +666,37 @@ impl TypeCheck for Declaration {
                     }
                 }
                  */
-
-                run_time_decls
-                    .iter()
-                    // .map(|decl| decl.type_check(&new_env))
-                    .try_for_each(|decl| {
-                        decl.type_check(&new_env)?;
-                        new_env.add_declaration(decl)
-                    })?;
-
-                // for decl in decls {
-                //     // Typecheck any variable declarations in the old scope
-                //     decl.type_check(&new_env)?;
-                //     // Add them to the new scope.
-                //     new_env.add_declaration(decl)?;
-                // }
             }
+
+            Self::Module(name, decls) => {
+                let mut new_env = env.clone();
+
+                // Add all the compile-time declarations to the environment.
+                // new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
+                new_env.add_declaration(&Self::Many(decls.clone()))?;
+                trace!("Typechecking module {}", name);
+                // Get all the compile time declarations so we can type check them in parallel.
+                let (comp_time_decls, _run_time_decls): (Vec<_>, Vec<_>) = decls
+                    .iter()
+                    .partition(|decl| decl.is_compile_time_declaration());
+
+                // trace!("Compile time declarations: {:?}", comp_time_decls);
+                if !comp_time_decls.is_empty() {
+                    // Type check all the compile time declarations in parallel.
+                    comp_time_decls
+                        .par_iter()
+                        .try_for_each(|decl| decl.type_check(&new_env))?;
+                }
+            }
+
+            Self::FromImport { module, names } => {
+                module.type_check(env)?;
+                for (name, _) in names {
+                    let access = module.clone().field(ConstExpr::var(name));
+                    access.type_check(env)?;
+                }
+            }
+            Self::FromImportAll(module) => module.type_check(env)?,
         }
         Ok(())
     }
@@ -621,10 +745,23 @@ impl Display for Declaration {
                 write!(f, "}}")?;
             }
             Self::Many(decls) => {
-                for decl in decls {
+                for decl in decls.iter() {
                     writeln!(f, "{}", decl)?;
                 }
             }
+            Self::Module(name, _decls) => {
+                write!(f, "module {} {{..}}", name)?;
+            }
+            Self::FromImport { module, names } => {
+                write!(f, "from {} import", module)?;
+                for (name, alias) in names {
+                    write!(f, " {}", name)?;
+                    if let Some(alias) = alias {
+                        write!(f, " as {}", alias)?;
+                    }
+                }
+            }
+            Self::FromImportAll(module) => write!(f, "from {module} import *")?,
         }
         Ok(())
     }
@@ -749,7 +886,12 @@ where
     (K, V): Into<Declaration>,
 {
     fn from(bt: BTreeMap<K, V>) -> Self {
-        Self::Many(bt.into_iter().map(|(k, v)| (k, v).into()).collect())
+        Self::Many(
+            bt.into_iter()
+                .map(|(k, v)| (k, v).into())
+                .collect::<Vec<_>>()
+                .into(),
+        )
     }
 }
 
@@ -764,7 +906,13 @@ where
     T: Into<Declaration>,
 {
     fn from(decls: Vec<T>) -> Self {
-        Self::Many(decls.into_iter().map(|decl| decl.into()).collect())
+        Self::Many(
+            decls
+                .into_iter()
+                .map(|decl| decl.into())
+                .collect::<Vec<_>>()
+                .into(),
+        )
     }
 }
 
@@ -843,6 +991,20 @@ impl Hash for Declaration {
             Self::Many(decls) => {
                 state.write_u8(9);
                 decls.hash(state);
+            }
+            Self::Module(name, decls) => {
+                state.write_u8(10);
+                name.hash(state);
+                decls.hash(state);
+            }
+            Self::FromImport { module, names } => {
+                state.write_u8(11);
+                module.hash(state);
+                names.hash(state);
+            }
+            Self::FromImportAll(module) => {
+                state.write_u8(12);
+                module.hash(state);
             }
         }
     }
