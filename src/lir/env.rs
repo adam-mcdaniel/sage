@@ -256,7 +256,7 @@ impl Env {
                 let template = other_ty.clone();
 
                 let ty_params = template.get_template_params(self);
-                let ty_param_set = ty_params.clone().into_iter().collect::<HashSet<_>>();
+                let ty_param_set = ty_params.clone().into_iter().map(|x| x.0).collect::<HashSet<_>>();
                 let monomorph = ty.clone();
                 debug!("Monomorph of {template} is {monomorph}");
                 let mut symbols = HashMap::new();
@@ -272,12 +272,12 @@ impl Env {
                     debug!("Failed to get monomorph template args for {monomorph} of {template}");
                     continue;
                 }
-                for (symbol, ty) in &symbols {
-                    debug!("----> {symbol} == {ty}");
+                for (symbol, (ty, specifier)) in &symbols {
+                    debug!("----> {symbol} == {ty}: {specifier:?}");
                 }
                 let template_associated_consts = consts.clone();
                 let mut ty_args = Vec::new();
-                for ty_param in &ty_params {
+                for (ty_param, _) in &ty_params {
                     if let Some(arg) = symbols.get(ty_param) {
                         ty_args.push(arg.clone());
                     } else {
@@ -300,7 +300,7 @@ impl Env {
                     debug!("Found cached associated const (type) {name} of type {const_ty}");
                     // let result = const_ty.apply(ty_args.clone()).simplify_until_simple(self).ok()?;
                     // let result = const_ty.apply(ty_args.clone());
-                    let result = const_ty.apply(ty_args.clone());
+                    let result = const_ty.apply(ty_args.clone().into_iter().map(|x|x.0).collect());
                     match result.simplify_until_simple(self) {
                         Ok(result) => {
                             debug!("Found associated const (type) {name} of type {ty} = {result}");
@@ -325,7 +325,7 @@ impl Env {
             }
 
             if !ty.can_decay_to(other_ty, self).unwrap_or(false) {
-                trace!("Type {other_ty} does not equal {ty}");
+                // trace!("Type {other_ty} does not equal {ty}");
                 continue;
             }
             if let Some((constant, expr_ty)) = consts.get(name) {
@@ -381,7 +381,7 @@ impl Env {
                 let monomorph = ty.clone();
                 let mut symbols = HashMap::new();
                 let ty_params = template.get_template_params(self);
-                let ty_param_set = ty_params.clone().into_iter().collect::<HashSet<_>>();
+                let ty_param_set = ty_params.clone().into_iter().map(|x| x.0).collect::<HashSet<_>>();
                 if monomorph
                     .get_monomorph_template_args(
                         &template.strip_template(self),
@@ -394,13 +394,13 @@ impl Env {
                     debug!("Failed to get monomorph template args for {monomorph} of {template}");
                     continue;
                 }
-                for (symbol, ty) in &symbols {
-                    debug!("----> {symbol} == {ty}");
-                }
+                // for (symbol, ty) in &symbols {
+                //     debug!("----> {symbol} == {ty}");
+                // }
                 let template_associated_consts = consts.clone();
                 let mut ty_args = Vec::new();
-                for ty_param in &ty_params {
-                    if let Some(arg) = symbols.get(ty_param) {
+                for (ty_param, _) in &ty_params {
+                    if let Some((arg, _)) = symbols.get(ty_param) {
                         ty_args.push(arg.clone());
                     } else {
                         continue;
@@ -541,7 +541,7 @@ impl Env {
     }
 
     pub(super) fn has_any_associated_const(&self, ty: &Type) -> bool {
-        trace!("Checking if type {ty} has any associated constants");
+        // trace!("Checking if type {ty} has any associated constants");
         let associated_constants = self.associated_constants.read().unwrap();
         if let Some(consts) = associated_constants.get(ty) {
             if !consts.is_empty() {
@@ -554,7 +554,7 @@ impl Env {
                 continue;
             }
             if !ty.can_decay_to(other_ty, self).unwrap_or(false) {
-                trace!("Type {other_ty} does not equal {ty}");
+                // trace!("Type {other_ty} does not equal {ty}");
                 continue;
             }
             trace!("Found eligible type {other_ty} for {ty}");
@@ -640,7 +640,7 @@ impl Env {
             // Strip off the template parameters from the type arguments.
             let mono_const = if let ConstExpr::Template(ty_params, cexpr) = const_expr {
                 let mut tmp = *cexpr.clone();
-                for (param, arg) in ty_params.iter().zip(ty_args.iter()) {
+                for ((param, _), arg) in ty_params.iter().zip(ty_args.iter()) {
                     tmp.substitute(param, arg);
                 }
                 tmp
@@ -773,7 +773,7 @@ impl Env {
                     // if !self.types.contains_key(&name) {
                     self.define_const(&name, access.clone());
                     if let Ok(Type::Type(ty)) = access.get_type(self) {
-                        self.define_type(name, *ty);
+                        self.define_type(&name, *ty);
                     }
                 }
             }
@@ -852,7 +852,7 @@ impl Env {
 
                     for (name, associated_const) in impls {
                         let templated_const =
-                            associated_const.template(supplied_param_symbols.clone());
+                            associated_const.template(template_params.clone());
                         self.add_associated_const(*template.clone(), name, templated_const)?;
                     }
                 } else {
@@ -999,14 +999,22 @@ impl Env {
             Type::Symbol(sym) if sym == &name => {
                 trace!("Defining type {ty} to itself as {name}");
             }
+            Type::ConstParam(cexpr) => {
+                trace!("Defining constant param: {name} => {cexpr}");
+                self.define_const(&name, *cexpr.clone());
+            }
             _ => {
                 trace!("Defining type {name} as {ty}");
                 Arc::make_mut(&mut self.consts).insert(name.clone(), ConstExpr::Type(ty.clone()));
-                Arc::make_mut(&mut self.types).insert(name, ty.clone());
+                Arc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
 
                 if let Ok(simplified) = ty.simplify_until_concrete(self) {
                     if let Ok(size) = simplified.get_size(self) {
-                        self.set_precalculated_size(simplified, size);
+                        self.set_precalculated_size(simplified.clone(), size);
+                    }
+                    if let Type::ConstParam(cexpr) = simplified {
+                        trace!("Found const param \"{name}\": {cexpr}");
+                        self.define_const(&name, *cexpr);
                     }
                 }
             }

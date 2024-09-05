@@ -59,6 +59,8 @@ impl GetSize for Type {
         }
 
         let result = match self {
+            Self::ConstParam(cexpr) => cexpr.get_size_checked(env, i)?,
+
             // None or Never are not real types, so they have no size.
             // They are not represented with data. They have zero size.
             Self::Type(_) | Self::None | Self::Never => 0,

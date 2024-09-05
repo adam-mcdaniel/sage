@@ -2617,7 +2617,7 @@ fn parse_struct_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
                 Declaration::Type(
                     name.to_owned(),
                     Type::Poly(
-                        params.into_iter().map(|x| x.to_owned()).collect(),
+                        params,
                         Type::Struct(fields).into(),
                     ),
                 ),
@@ -2678,7 +2678,7 @@ fn parse_enum_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
                 Declaration::Type(
                     name.to_owned(),
                     Type::Poly(
-                        params.into_iter().map(|x| x.to_owned()).collect(),
+                        params,
                         Type::EnumUnion(fields).into(),
                     ),
                 ),
@@ -2949,12 +2949,18 @@ fn parse_type_enum<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 
 fn parse_type_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, Vec<String>, E> {
+) -> IResult<&'a str, Vec<(String, Option<Type>)>, E> {
     let (input, _) = tag("<")(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, mut params) = many0(terminated(parse_symbol, tag(",")))(input)?;
+    let (input, mut params) = many0(terminated(alt((
+        map(pair(parse_symbol, delimited(terminated(whitespace, tag(":")), parse_type, whitespace)), |(name, ty)| (name, Some(ty))),
+        map(parse_symbol, |x| (x, None))
+    )), tag(",")))(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, last_param) = opt(parse_symbol)(input)?;
+    let (input, last_param) = opt(alt((
+        map(pair(parse_symbol, delimited(terminated(whitespace, tag(":")), parse_type, whitespace)), |(name, ty)| (name, Some(ty))),
+        map(parse_symbol, |x| (x, None))
+    )))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, _) = tag(">")(input)?;
 
@@ -2962,7 +2968,7 @@ fn parse_type_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         params.push(last_param);
     }
 
-    Ok((input, params.into_iter().map(|x| x.to_string()).collect()))
+    Ok((input, params.into_iter().map(|(name, ty)| (name.to_string(), ty)).collect()))
 }
 
 fn parse_type_function<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
@@ -3053,6 +3059,7 @@ fn parse_type_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         parse_type_function,
         map(parse_symbol, |x| Type::Symbol(x.to_string())),
         parse_type_group,
+        map(parse_const_atom, |x| Type::ConstParam(x.into()))
     ))(input)?;
 
     Ok((input, ty))

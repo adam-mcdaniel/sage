@@ -40,6 +40,7 @@ impl TypeCheck for Type {
             | Self::Char
             | Self::Enum(_) => Ok(()),
 
+            Self::ConstParam(cexpr) => cexpr.type_check(env),
             Self::Type(t) => t.type_check(env),
 
             // Units are sound if their inner type is sound.
@@ -69,11 +70,16 @@ impl TypeCheck for Type {
                 // Check the inner type and the length constant-expression.
                 t.type_check(env)?;
                 len.clone().type_check(env)?;
+
                 // Check that the length is non-negative.
-                if len.clone().as_int(env)? < 0 {
-                    // If it is negative, return an error.
-                    error!("Negative array length detected in type {self} in environment {env}");
-                    return Err(Error::NegativeArrayLength(Expr::ConstExpr(*len.clone())));
+                warn!("About to convert {len} to int");
+                match len.clone().as_int(env) {
+                    Ok(n) if n < 0 => {
+                        // If it is negative, return an error.
+                        error!("Negative array length detected in type {self} in environment {env}");
+                        return Err(Error::NegativeArrayLength(Expr::ConstExpr(*len.clone())));
+                    }
+                    _ => {}
                 }
                 // Otherwise, return success.
                 Ok(())
@@ -129,7 +135,7 @@ impl TypeCheck for Type {
                     ty_params
                         .clone()
                         .into_iter()
-                        .map(|p| (p.clone(), Type::Unit(p, Box::new(Type::Any))))
+                        .map(|p| (p.0.clone(), Type::Unit(p.0, Box::new(Type::Any))))
                         .collect(),
                 );
                 // Check the template type.
@@ -732,9 +738,9 @@ impl TypeCheck for Expr {
                 let expected = env
                     .get_expected_return_type()
                     .cloned()
-                    .unwrap_or(Type::None);
+                    .unwrap_or(Type::None).simplify(env)?;
                 if !found.can_decay_to(&expected, env)? {
-                    error!("The found return type does not match expected type");
+                    error!("The found return type {found} does not match expected type {expected} in {env}");
                     return Err(Error::MismatchedTypes {
                         expected,
                         found,
@@ -931,6 +937,7 @@ impl TypeCheck for ConstExpr {
 
         debug!("Typechecking constant expression: {}", self);
         match self {
+            Self::Any => Ok(()),
             Self::Template(_ty_params, _template) => {
                 // Create a new environment with the type parameters defined.
                 // let mut new_env = env.clone();
@@ -1025,9 +1032,23 @@ impl TypeCheck for ConstExpr {
                         // Create a new environment with the type parameters defined.
                         let mut new_env = env.clone();
                         // Define the type parameters in the environment.
-                        new_env.define_types(
-                            ty_params.clone().into_iter().zip(ty_args.clone()).collect(),
-                        );
+                        // new_env.define_types(
+                        //     ty_params.clone().into_iter().map(|x| x.0).zip(ty_args.clone()).collect(),
+                        // );
+                        for ((name, ty_param), ty_arg) in ty_params.iter().zip(ty_args) {
+                            new_env.define_type(name, match ty_param {
+                                Some(ty_param) => {
+                                    if !ty_arg.equals(ty_param, env)? {
+                                        return Err(Error::InvalidMonomorphize(self.clone()))
+                                    }
+                                    ty_arg.clone()
+                                }
+                                None => {
+                                    ty_arg.clone()
+                                }
+                            })
+                        }
+
                         // Check the template type.
                         template.type_check(&new_env)
                         // Ok(())

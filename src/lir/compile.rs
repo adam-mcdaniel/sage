@@ -1071,13 +1071,17 @@ impl Compile for ConstExpr {
         let ty = self.get_type(env)?;
         // Compile the constant expression.
         match self {
-            Self::Template(_, _) => {
+            Self::Any
+            | Self::Template(_, _) => {
                 // Cannot compile a template expression.
                 return Err(Error::UnsizedType(ty));
             }
 
-            Self::Type(_) => {
-                // Do nothing.
+            Self::Type(t) => {
+                match t.simplify(env)? {
+                    Type::ConstParam(cexpr) => cexpr.compile_expr(env, output)?,
+                    _ => {}
+                }
             }
             Self::Member(container, member) => {
                 let new_container = *container.clone();
@@ -1164,7 +1168,7 @@ impl Compile for ConstExpr {
                     }
 
                     let mut result = *result.clone();
-                    for (param, ty_arg) in params.into_iter().zip(ty_args) {
+                    for ((param, _), ty_arg) in params.into_iter().zip(ty_args) {
                         result.substitute(&param, &ty_arg);
                     }
                     result = result.eval(env)?;

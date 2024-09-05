@@ -23,7 +23,7 @@ pub struct PolyProcedure {
     /// The name of the procedure.
     name: String,
     /// The type parameters of the procedure.
-    ty_params: Vec<String>,
+    ty_params: Vec<(String, Option<Type>)>,
     /// The arguments of the procedure.
     args: Vec<(String, Mutability, Type)>,
     /// The return type of the procedure.
@@ -52,7 +52,7 @@ impl PolyProcedure {
     /// a return type, and the body of the procedure.
     pub fn new(
         name: String,
-        ty_params: Vec<String>,
+        ty_params: Vec<(String, Option<Type>)>,
         args: Vec<(String, Mutability, Type)>,
         ret: Type,
         body: impl Into<Expr>,
@@ -77,7 +77,7 @@ impl PolyProcedure {
         }
     }
 
-    pub fn from_mono(mono: Procedure, ty_params: Vec<String>) -> Self {
+    pub fn from_mono(mono: Procedure, ty_params: Vec<(String, Option<Type>)>) -> Self {
         debug!(target: "mono", "Creating polymorphic procedure from monomorph {}", mono);
         let name = mono
             .get_common_name()
@@ -102,6 +102,10 @@ impl PolyProcedure {
         &self.name
     }
 
+    fn type_param_names(&self) -> Vec<String> {
+        self.ty_params.clone().into_iter().map(|(ty, _)| ty).collect()
+    }
+
     /// Take some type arguments and produce a monomorphized version of the procedure.
     /// This monomorphized version can then be compiled directly. Additionally, the
     /// mono version of the procedure is memoized, so that it is only compiled once.
@@ -110,6 +114,21 @@ impl PolyProcedure {
 
         // This is a helper function to distribute the defined type
         // arguments over the body and arguments of the function.
+
+        for ((_name, ty_param), ty_arg) in self.ty_params.iter().zip(ty_args.iter()) {
+            if let Some(ty_param) = ty_param {
+                if !ty_param.equals(&ty_arg, env)? {
+                    return Err(Error::MismatchedTypes { expected: ty_param.clone(), found: ty_arg.clone(), expr: Expr::ConstExpr(self.clone().into()) })
+                }
+            } else {
+                use crate::lir::Simplify;
+                if matches!(ty_arg.clone().simplify(env)?, Type::ConstParam(..)) {
+                    return Err(Error::UnexpectedConstParam {
+                        found: ty_arg.clone(), expr: Expr::ConstExpr(self.clone().into())
+                    })
+                }
+            }
+        }
 
         // Simplify all the type arguments until they are concrete
         let simplified_ty_args = ty_args
@@ -172,11 +191,11 @@ impl PolyProcedure {
                 let mut body = *self.body.clone();
 
                 // Substitute the type arguments into the body of the function.
-                body.substitute_types(&self.ty_params, &simplified_ty_args);
+                body.substitute_types(&self.type_param_names(), &simplified_ty_args);
 
                 // Wrap the body in a let expression to bind the type arguments.
                 body = body.with(
-                    self.ty_params
+                    self.type_param_names()
                         .iter()
                         .zip(simplified_ty_args.iter())
                         .map(|(a, b)| (a.clone(), b.clone()))
@@ -206,7 +225,7 @@ impl GetType for PolyProcedure {
     }
 
     fn substitute(&mut self, name: &str, ty: &Type) {
-        if self.ty_params.contains(&name.to_string()) {
+        if self.type_param_names().contains(&name.to_string()) {
             return;
         }
         self.args
@@ -227,13 +246,24 @@ impl TypeCheck for PolyProcedure {
         // Create a new scope for the procedure's body, and define the arguments for the scope.
         let mut new_env = env.new_scope();
         // Define the type parameters of the procedure.
-        new_env.define_types(
-            self.ty_params
-                .clone()
-                .into_iter()
-                .map(|ty_param| (ty_param.clone(), Type::Unit(ty_param, Box::new(Type::None))))
-                .collect(),
-        );
+        // new_env.define_types(
+        //     self.type_param_names()
+        //         .clone()
+        //         .into_iter()
+        //         .map(|ty_param| (ty_param.clone(), Type::Unit(ty_param, Box::new(Type::None))))
+        //         .collect(),
+        // );
+
+        for (name, ty) in &self.ty_params {
+            match ty {
+                Some(ty) => {
+                    new_env.define_type(name, ty.clone());
+                }
+                None => {
+                    new_env.define_type(name, Type::Unit(name.clone(), Box::new(Type::None)));
+                }
+            }
+        }
         // Define the arguments of the procedure.
         new_env.define_args(self.args.clone())?;
         new_env.set_expected_return_type(self.ret.clone());
@@ -268,8 +298,11 @@ impl TypeCheck for PolyProcedure {
 impl fmt::Display for PolyProcedure {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "proc[")?;
-        for (i, ty_param) in self.ty_params.iter().enumerate() {
+        for (i, (ty_param, ty)) in self.ty_params.iter().enumerate() {
             write!(f, "{}", ty_param)?;
+            if let Some(ty) = ty {
+                write!(f, ": {}", ty)?;
+            }
             if i < self.ty_params.len() - 1 {
                 write!(f, ", ")?;
             }

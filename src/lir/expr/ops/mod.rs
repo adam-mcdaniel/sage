@@ -311,6 +311,7 @@ pub trait BinaryOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
         self.compile_types(&lhs.get_type(env)?, &rhs.get_type(env)?, env, output)?;
         Ok(())
     }
+    
     /// Compiles the operation on the given types. (Generates the code for the operation.)
     fn compile_types(
         &self,
