@@ -252,7 +252,7 @@ impl Env {
         // Go through all the types and see if any equals the given type.
         for (other_ty, consts) in associated_constants.iter() {
             if matches!(ty.is_monomorph_of(other_ty, self), Ok(true)) {
-                info!("Type {ty} is monomorph of {other_ty}");
+                debug!("Type {ty} is monomorph of {other_ty}");
                 for (name, (constant, ty)) in consts {
                     debug!("   {name}: {ty} = {constant}")
                 }
@@ -366,7 +366,7 @@ impl Env {
     }
 
     pub fn get_associated_const(&self, ty: &Type, name: &str) -> Option<(ConstExpr, Type)> {
-        info!(
+        debug!(
             "Getting associated const {name} of type {ty} in {self} with types {:?}",
             self.types
         );
@@ -672,7 +672,7 @@ impl Env {
         expr: ConstExpr,
     ) -> Result<(), Error> {
         let associated_const_name = associated_const_name.to_string();
-        info!("Defining associated const {associated_const_name} as {expr} to type {ty}");
+        debug!("Defining associated const {associated_const_name} as {expr} to type {ty}");
         let expr_ty = expr.get_type(self)?;
         let mut associated_constants = self.associated_constants.write().unwrap();
         associated_constants

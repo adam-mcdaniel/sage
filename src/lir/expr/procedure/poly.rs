@@ -182,30 +182,29 @@ impl PolyProcedure {
         drop(monomorphs);
         let mut monomorphs = self.monomorphs.write().unwrap();
 
+        debug!(target: "mono", "Memoizing monomorphized procedure {}", mangled_name);
+        let mut body = *self.body.clone();
+
+        // Substitute the type arguments into the body of the function.
+        body.substitute_types(&self.type_param_names(), &simplified_ty_args);
+
+        // Wrap the body in a let expression to bind the type arguments.
+        body = body.with(
+            self.type_param_names()
+                .iter()
+                .zip(simplified_ty_args.iter())
+                .map(|(a, b)| (a.clone(), b.clone()))
+                .collect::<Vec<_>>(),
+        );
+
+        let monomorph = Procedure::new(Some(mangled_name.clone()), args, ret, body);
+        monomorph.type_check(env)?;
         // If the monomorphized procedure has already been memoized, return it, otherwise memoize it.
         debug!(target: "mono", "Inserting entry for {}", mangled_name);
         let monomorph = monomorphs
             .entry(mangled_name.clone())
-            .or_insert_with(|| {
-                debug!(target: "mono", "Memoizing monomorphized procedure {}", mangled_name);
-                let mut body = *self.body.clone();
-
-                // Substitute the type arguments into the body of the function.
-                body.substitute_types(&self.type_param_names(), &simplified_ty_args);
-
-                // Wrap the body in a let expression to bind the type arguments.
-                body = body.with(
-                    self.type_param_names()
-                        .iter()
-                        .zip(simplified_ty_args.iter())
-                        .map(|(a, b)| (a.clone(), b.clone()))
-                        .collect::<Vec<_>>(),
-                );
-
-                Procedure::new(Some(mangled_name.clone()), args, ret, body)
-            })
+            .or_insert_with(|| monomorph)
             .clone();
-
         // Unlock the mutex to prevent a deadlock.
         drop(monomorphs);
         // Return the monomorphized procedure.

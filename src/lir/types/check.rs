@@ -715,6 +715,8 @@ impl TypeCheck for Expr {
                                     found,
                                     expr: self.clone(),
                                 });
+                            } else {
+                                info!("Found {found} can decay to {expected} in {self}")
                             }
                         }
                         Ok(())
