@@ -23,7 +23,7 @@ pub enum Comparison {
 impl BinaryOp for Comparison {
     /// Can this binary operation be applied to the given types?
     fn can_apply(&self, lhs: &Type, rhs: &Type, env: &Env) -> Result<bool, Error> {
-        match (lhs, self, rhs) {
+        match (&lhs.clone().discard_type_wrapper(), self, &rhs.clone().discard_type_wrapper()) {
             (Type::Int, Self::LessThan, Type::Int)
             | (Type::Int, Self::LessThanOrEqual, Type::Int)
             | (Type::Int, Self::GreaterThan, Type::Int)

@@ -20,7 +20,7 @@ pub fn parse(
     use crate::side_effects::Output;
     if include_std {
         let std_lib = parse_module("std", &without_comments(include_str!("std_lib.sg")))?;
-        expr = expr.with(std_lib)
+        expr = expr.hard_with(std_lib)
     }
     if include_builtins {
         let alloc = crate::lir::ConstExpr::StandardBuiltin(crate::lir::StandardBuiltin {

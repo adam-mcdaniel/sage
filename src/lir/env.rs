@@ -252,7 +252,10 @@ impl Env {
         // Go through all the types and see if any equals the given type.
         for (other_ty, consts) in associated_constants.iter() {
             if matches!(ty.is_monomorph_of(other_ty, self), Ok(true)) {
-                debug!("Type {ty} is monomorph of {other_ty}");
+                info!("Type {ty} is monomorph of {other_ty}");
+                for (name, (constant, ty)) in consts {
+                    debug!("   {name}: {ty} = {constant}")
+                }
                 let template = other_ty.clone();
 
                 let ty_params = template.get_template_params(self);
@@ -285,11 +288,11 @@ impl Env {
                     }
                 }
 
-                if ty_args.len() != ty_params.len() {
-                    debug!("Mismatched number of template arguments for {monomorph} of {template}");
-                    debug!("Expected {ty_params:?}, found {ty_args:?}");
-                    continue;
-                }
+                // if ty_args.len() != ty_params.len() {
+                //     error!("Mismatched number of template arguments for {monomorph} of {template}");
+                //     error!("Expected {ty_params:?}, found {ty_args:?}");
+                //     continue;
+                // }
 
                 debug!(
                     "Associated constants for {monomorph} are {:?}",
@@ -301,7 +304,7 @@ impl Env {
                     // let result = const_ty.apply(ty_args.clone()).simplify_until_simple(self).ok()?;
                     // let result = const_ty.apply(ty_args.clone());
                     let result = const_ty.apply(ty_args.clone().into_iter().map(|x|x.0).collect());
-                    match result.simplify_until_simple(self) {
+                    match result.simplify_until_simple(self, false) {
                         Ok(result) => {
                             debug!("Found associated const (type) {name} of type {ty} = {result}");
                             return Some(result);
@@ -314,7 +317,7 @@ impl Env {
                             // continue;
                         }
                     }
-                    // info!("Found associated const (type) {name} of type {ty} = {result}");
+                    // debug!("Found associated const (type) {name} of type {ty} = {result}");
                     // return Some(result);
                 }
 
@@ -322,11 +325,15 @@ impl Env {
                 for template_const_name in template_associated_consts.keys() {
                     debug!("   {template_const_name} != {name}");
                 }
+            } else {
+                debug!("Type {ty} is not monomorph of {other_ty}");
             }
 
             if !ty.can_decay_to(other_ty, self).unwrap_or(false) {
-                // trace!("Type {other_ty} does not equal {ty}");
+                debug!("Type {other_ty} does not equal {ty}");
                 continue;
+            } else {
+                debug!("Type {other_ty} equals {ty}");
             }
             if let Some((constant, expr_ty)) = consts.get(name) {
                 let constant = constant.clone();
@@ -337,7 +344,6 @@ impl Env {
                 return Some(expr_ty);
             }
         }
-        trace!("Could not find associated const {name} of type {ty} in {self}");
         drop(associated_constants);
 
         if let Type::Type(inner_ty) = ty {
@@ -355,11 +361,12 @@ impl Env {
                 return Some(ty);
             }
         }
+        error!("Could not find associated const {name} of type {ty} in {self}");
         None
     }
 
     pub fn get_associated_const(&self, ty: &Type, name: &str) -> Option<(ConstExpr, Type)> {
-        trace!(
+        info!(
             "Getting associated const {name} of type {ty} in {self} with types {:?}",
             self.types
         );
@@ -394,16 +401,16 @@ impl Env {
                     debug!("Failed to get monomorph template args for {monomorph} of {template}");
                     continue;
                 }
-                // for (symbol, ty) in &symbols {
-                //     debug!("----> {symbol} == {ty}");
-                // }
+                for (symbol, (ty, expected)) in &symbols {
+                    debug!("----> {symbol} == {ty}, {expected:?}");
+                }
                 let template_associated_consts = consts.clone();
                 let mut ty_args = Vec::new();
                 for (ty_param, _) in &ty_params {
                     if let Some((arg, _)) = symbols.get(ty_param) {
                         ty_args.push(arg.clone());
                     } else {
-                        continue;
+                        debug!("Could not find symbol {ty_param}");
                     }
                 }
 
@@ -416,7 +423,7 @@ impl Env {
                 if let Some((const_expr, const_ty)) = template_associated_consts.get(name) {
                     debug!("Found cached associated const pair: {const_expr} with type {const_ty}");
                     let mut result_ty = const_ty.apply(ty_args.clone());
-                    result_ty = match result_ty.simplify_until_simple(self) {
+                    result_ty = match result_ty.simplify_until_simple(self, true) {
                         Ok(result) => {
                             debug!("Found associated const {name} of type {ty} = {result}");
                             result
@@ -436,7 +443,7 @@ impl Env {
                 debug!("Could not find associated const {name} of type {ty} in {template}");
                 // return self.get_associated_const(&monomorph, name);
             } else {
-                // info!("Type {ty} is not monomorph of {other_ty}");
+                debug!("Type {ty} is not monomorph of {other_ty}");
             }
 
             if !ty.can_decay_to(other_ty, self).unwrap_or(false) {
@@ -573,7 +580,7 @@ impl Env {
     ) -> Result<(), Error> {
         debug!("Adding monomorphized associated constants of type {template} to {monomorph} with type arguments {ty_args:?} to environment");
 
-        let monomorph = if let Ok(simplified) = monomorph.simplify_until_simple(self) {
+        let monomorph = if let Ok(simplified) = monomorph.simplify_until_simple(self, false) {
             debug!("Simplified {monomorph} to {simplified}");
             simplified
         } else {
@@ -665,7 +672,7 @@ impl Env {
         expr: ConstExpr,
     ) -> Result<(), Error> {
         let associated_const_name = associated_const_name.to_string();
-        trace!("Defining associated const {associated_const_name} as {expr} to type {ty}");
+        info!("Defining associated const {associated_const_name} as {expr} to type {ty}");
         let expr_ty = expr.get_type(self)?;
         let mut associated_constants = self.associated_constants.write().unwrap();
         associated_constants
@@ -852,7 +859,9 @@ impl Env {
 
                     for (name, associated_const) in impls {
                         let templated_const =
-                            associated_const.template(template_params.clone());
+                            // associated_const.template(supplied_param_symbols.clone().into_iter().map(|x| (x, None)).collect());
+                            // associated_const.template(template_params.clone());
+                            associated_const.template(template_params.clone().into_iter().zip(supplied_param_symbols.clone().into_iter()).map(|((_, ty), param)| (param, ty)).collect());
                         self.add_associated_const(*template.clone(), name, templated_const)?;
                     }
                 } else {
@@ -1008,7 +1017,7 @@ impl Env {
                 Arc::make_mut(&mut self.consts).insert(name.clone(), ConstExpr::Type(ty.clone()));
                 Arc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
 
-                if let Ok(simplified) = ty.simplify_until_concrete(self) {
+                if let Ok(simplified) = ty.simplify_until_concrete(self, false) {
                     if let Ok(size) = simplified.get_size(self) {
                         self.set_precalculated_size(simplified.clone(), size);
                     }
@@ -1048,7 +1057,7 @@ impl Env {
         }
 
         for (_, ty) in types {
-            if let Ok(simplified) = ty.simplify_until_concrete(self) {
+            if let Ok(simplified) = ty.simplify_until_concrete(self, false) {
                 if let Ok(size) = simplified.get_size(self) {
                     self.set_precalculated_size(simplified, size);
                 } else {
@@ -1283,7 +1292,7 @@ impl Env {
 
 impl Display for Env {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        // return Ok(());
+        return Ok(());
         writeln!(f, "Env")?;
         writeln!(f, "   Types:")?;
         for (name, ty) in self.types.iter() {
@@ -1292,10 +1301,10 @@ impl Display for Env {
             if constants.is_empty() {
                 continue;
             }
-            // writeln!(f, "         Associated constants:")?;
-            // for (name, cexpr) in constants {
-            //     writeln!(f, "            {}: {}", name, cexpr)?;
-            // }
+            writeln!(f, "         Associated constants:")?;
+            for (name, cexpr) in constants {
+                writeln!(f, "            {}: {}", name, cexpr)?;
+            }
         }
         // writeln!(f, "   Constants:")?;
         // for (i, (name, e)) in self.consts.iter().enumerate() {

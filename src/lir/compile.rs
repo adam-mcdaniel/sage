@@ -548,7 +548,7 @@ impl Compile for Expr {
             Self::EnumUnion(t, variant, val) => {
                 // Get the size of the tagged union.
                 let result_size = t.get_size(env)?;
-                let t = t.simplify_until_concrete(env)?;
+                let t = t.simplify_until_concrete(env, false)?;
                 if let Type::EnumUnion(fields) = t {
                     // Get the list of possible variant names.
                     let variants = fields.clone().into_keys().collect::<Vec<_>>();
@@ -843,7 +843,7 @@ impl Compile for Expr {
                     // val_type.add_monomorphized_associated_consts(env)?;
 
                     // Push the address of the struct, tuple, or union onto the stack.
-                    match val_type.simplify_until_has_members(env)? {
+                    match val_type.simplify_until_has_members(env, false)? {
                         // If the value is a struct, tuple, or union:
                         Type::Struct(_) | Type::Tuple(_) | Type::Union(_) => {
                             // Compile a reference to the inner value with the expected mutability.
@@ -928,7 +928,7 @@ impl Compile for Expr {
                     // val_type.add_monomorphized_associated_consts(env)?;
 
                     // Push the address of the struct, tuple, or union onto the stack.
-                    match val_type.simplify_until_has_members(env)? {
+                    match val_type.simplify_until_has_members(env, false)? {
                         // If the value is a struct, tuple, or union:
                         Type::Struct(_) | Type::Tuple(_) | Type::Union(_) => {
                             // Compile a reference to the inner value with the expected mutability.
@@ -1389,7 +1389,7 @@ impl Compile for ConstExpr {
             Self::EnumUnion(t, variant, val) => {
                 // Get the size of the tagged union.
                 let result_size = t.get_size(env)?;
-                let t = t.simplify_until_has_variants(env)?;
+                let t = t.simplify_until_has_variants(env, false)?;
 
                 // Get the inner list of variants and compile the expression using this information.
                 if let Type::EnumUnion(variants) = t.clone().simplify(env)? {
@@ -1463,7 +1463,7 @@ impl Compile for ConstExpr {
             Self::Of(enum_type, variant) => {
                 // Only try to simplify the type 50 times at most.
                 // This is to prevent infinite loops and to keep recursion under control.
-                match enum_type.simplify_until_has_variants(env)? {
+                match enum_type.simplify_until_has_variants(env, false)? {
                     // If the type is an enum, we can continue.
                     Type::Enum(variants) => {
                         // Get the index of the variant.

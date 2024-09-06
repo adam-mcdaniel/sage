@@ -204,7 +204,6 @@ impl BinaryOp for Arithmetic {
 
     /// Get the type of the result of applying this binary operation to the given types.
     fn return_type(&self, lhs: &Expr, rhs: &Expr, env: &Env) -> Result<Type, Error> {
-        error!("Can I {self} to {lhs} and {rhs} in {env}?");
         if let Expr::Annotated(lhs, metadata) = lhs {
             if let Expr::Annotated(rhs, _) = rhs {
                 return self.return_type(lhs, rhs, env);
@@ -221,7 +220,6 @@ impl BinaryOp for Arithmetic {
         let lhs_ty = lhs.get_type(env)?;
         let rhs_ty = rhs.get_type(env)?;
 
-        error!("Can I {self} to {lhs_ty} and {rhs_ty} in {env}?");
         let result = Ok(match (lhs_ty.discard_type_wrapper(), rhs_ty.discard_type_wrapper()) {
             (Type::Int, Type::Int) => Type::Int,
             (Type::Int, Type::Float) | (Type::Float, Type::Int) | (Type::Float, Type::Float) => {
@@ -298,7 +296,6 @@ impl BinaryOp for Arithmetic {
                 ))
             }
         });
-        error!("Well, can I?? {result:?}");
         result
     }
 

@@ -166,7 +166,7 @@ impl GetSize for Type {
                     return Ok(size);
                 }
 
-                let result = self.clone().simplify_until_concrete(env)?;
+                let result = self.clone().simplify_until_concrete(env, false)?;
 
                 result.get_size_checked(env, i)?
             }

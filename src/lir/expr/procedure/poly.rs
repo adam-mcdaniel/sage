@@ -115,20 +115,20 @@ impl PolyProcedure {
         // This is a helper function to distribute the defined type
         // arguments over the body and arguments of the function.
 
-        for ((_name, ty_param), ty_arg) in self.ty_params.iter().zip(ty_args.iter()) {
-            if let Some(ty_param) = ty_param {
-                if !ty_param.equals(&ty_arg, env)? {
-                    return Err(Error::MismatchedTypes { expected: ty_param.clone(), found: ty_arg.clone(), expr: Expr::ConstExpr(self.clone().into()) })
-                }
-            } else {
-                use crate::lir::Simplify;
-                if matches!(ty_arg.clone().simplify(env)?, Type::ConstParam(..)) {
-                    return Err(Error::UnexpectedConstParam {
-                        found: ty_arg.clone(), expr: Expr::ConstExpr(self.clone().into())
-                    })
-                }
-            }
-        }
+        // for ((_name, ty_param), ty_arg) in self.ty_params.iter().zip(ty_args.iter()) {
+        //     if let Some(ty_param) = ty_param {
+        //         if !ty_param.equals(&ty_arg, env)? {
+        //             return Err(Error::MismatchedTypes { expected: ty_param.clone(), found: ty_arg.clone(), expr: Expr::ConstExpr(self.clone().into()) })
+        //         }
+        //     } else {
+        //         use crate::lir::Simplify;
+        //         if matches!(ty_arg.clone().simplify(env)?, Type::ConstParam(..)) {
+        //             return Err(Error::UnexpectedConstParam {
+        //                 found: ty_arg.clone(), expr: Expr::ConstExpr(self.clone().into())
+        //             })
+        //         }
+        //     }
+        // }
 
         // Simplify all the type arguments until they are concrete
         let simplified_ty_args = ty_args
@@ -136,7 +136,7 @@ impl PolyProcedure {
             .into_iter()
             .map(|ty| {
                 // Simplify the type until it is concrete
-                let concrete = ty.simplify_until_concrete(env)?;
+                let concrete = ty.simplify_until_concrete(env, true)?;
                 // concrete.add_monomorphized_associated_consts(env)?;
                 Ok(concrete)
             })
@@ -153,7 +153,7 @@ impl PolyProcedure {
             );
             // Simplify the type until it is simple.
             // This reduces to the concrete version of the type application.
-            let concrete = ty.simplify_until_concrete(env)?;
+            let concrete = ty.simplify_until_concrete(env, true)?;
             // concrete.add_monomorphized_associated_consts(env)?;
             Ok(concrete)
         };
@@ -226,12 +226,18 @@ impl GetType for PolyProcedure {
 
     fn substitute(&mut self, name: &str, ty: &Type) {
         if self.type_param_names().contains(&name.to_string()) {
+            debug!("Not substituting {name} in {ty} because of symbol conflict");
             return;
         }
+        for (_, ty_arg) in &mut self.ty_params {
+            *ty_arg = ty_arg.as_mut().map(|ty_arg| ty_arg.substitute(name, ty));
+        }
+
         self.args
             .iter_mut()
             .for_each(|(_, _, t)| *t = t.substitute(name, ty));
         self.ret = self.ret.substitute(name, ty);
+        self.body.substitute(name, ty);
     }
 }
 

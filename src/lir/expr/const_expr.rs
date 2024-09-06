@@ -105,9 +105,18 @@ impl ConstExpr {
         Self::Monomorphize(Box::new(self), ty_args)
     }
 
-    pub fn equals(&self, other: &Self) -> bool {
+    pub fn equals(&self, other: &Self, env: &Env) -> bool {
+        info!("{self} == {other} in const?");
         match (self, other) {
             (Self::Any, _) | (_, Self::Any) => true,
+            (Self::Type(Type::Any), _) | (_, Self::Type(Type::Any)) => true,
+            (Self::Symbol(name), other) | (other, Self::Symbol(name)) => {
+                if let Some(c) = env.get_const(name) {
+                    c.equals(other, env)
+                } else {
+                    &Self::Symbol(name.clone()) == other
+                }
+            }
             (a, b) => a == b,
         }
     }
@@ -391,7 +400,9 @@ impl ConstExpr {
                         }
                         *ret
                     }
-                    Self::PolyProc(proc) => Self::Proc(proc.monomorphize(ty_args.clone(), env)?),
+                    Self::PolyProc(proc) => {
+                        Self::Proc(proc.monomorphize(ty_args.clone(), env)?)
+                    },
                     Self::Declare(bindings, expr) => {
                         let mut new_env = env.clone();
                         new_env.add_compile_time_declaration(&bindings)?;
@@ -403,6 +414,7 @@ impl ConstExpr {
                         .monomorphize(ty_args.clone())
                         .eval_checked(env, i)
                         .map_err(|x| x.annotate(metadata))?,
+
                     _other => {
                         Self::Monomorphize(Box::new(expr.eval_checked(env, i)?), ty_args.clone())
                     }
@@ -580,7 +592,7 @@ impl GetType for ConstExpr {
                 debug!("Got type of container access {val} . {field}\nContainer: {val_type}");
                 // val_type.add_monomorphized_associated_consts(env)?;
                 // Get the type of the value to get the member of.
-                match &val_type.simplify_until_concrete(env)? {
+                match &val_type.simplify_until_concrete(env, false)? {
                     Type::Unit(_unit_name, inner_ty) => {
                         // Get the type of the field.
                         env.get_type_of_associated_const(inner_ty, &as_symbol?)
@@ -589,7 +601,7 @@ impl GetType for ConstExpr {
 
                     Type::Pointer(_found_mutability, t) => {
                         let val = &Expr::ConstExpr(*val);
-                        let t = t.clone().simplify_until_concrete(env)?;
+                        let t = t.clone().simplify_until_concrete(env, false)?;
                         match t.get_member_offset(&field, val, env) {
                             Ok((t, _)) => t,
                             Err(_) => {
@@ -736,6 +748,7 @@ impl GetType for ConstExpr {
                             .simplify_until_type_checks(env);
                     }
                     Self::Template(params, ret) => {
+                        debug!("Getting type of monomorphized template {self}");
                         if params.len() != ty_args.len() {
                             return Err(Error::InvalidMonomorphize(expr));
                         }
@@ -748,19 +761,25 @@ impl GetType for ConstExpr {
                                     let expected = expected_ty.clone();
                                     let found = cexpr.get_type_checked(env, i)?;
                                     if !found.equals(expected_ty, env)? {
+                                        error!("Mismatch in expected type for constant parameter");
                                         return Err(Error::MismatchedTypes { expected, found, expr: (*cexpr.clone()).into() })
                                     }
+                                    ret.substitute(param, ty_arg)
                                 }
+                                ret.substitute(param, ty_arg);
                                 new_env.define_const(param, *cexpr.clone());
                             } else {
-                                ret.substitute(param, ty_arg)
+                                ret.substitute(param, ty_arg);
+                                new_env.define_type(param, ty_arg.clone());
                             }
                         }
-                        ret.get_type_checked(&new_env, i)?
-                            .simplify_until_type_checks(env)?
+                        debug!("Result: {ret}");
+                        let ret = ret.get_type_checked(&new_env, i)?
+                            .simplify_until_poly(&new_env, false)?;
+                        ret
                     }
                     _ => {
-                        // warn!("Monomorphizing non-template: {expr}");
+                        // debug!("Monomorphizing non-template: {expr}");
                         Type::Apply(Box::new(template_ty.clone()), ty_args.clone())
                     }
                 };
@@ -942,9 +961,9 @@ impl GetType for ConstExpr {
             }
             Self::Symbol(symbol_name) if symbol_name == name => {
                 // A constant symbol cannot be substituted for a type variable.
-                warn!("Subbing {self} for {substitution}");
+                // debug!("Subbing {self} for {substitution}");
                 *self = ConstExpr::Type(substitution.clone());
-                warn!("Subbed into {self}");
+                // debug!("Subbed into {self}");
             }
             _ => {}
         }

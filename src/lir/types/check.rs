@@ -72,7 +72,7 @@ impl TypeCheck for Type {
                 len.clone().type_check(env)?;
 
                 // Check that the length is non-negative.
-                warn!("About to convert {len} to int");
+                debug!("About to convert {len} to int");
                 match len.clone().as_int(env) {
                     Ok(n) if n < 0 => {
                         // If it is negative, return an error.
@@ -158,14 +158,14 @@ impl TypeCheck for Type {
                     .try_for_each(|t| t.type_check(env))?;
 
                 // Try to confirm that the polymorphic type is a template.
-                match poly.simplify_until_poly(env)? {
+                match poly.simplify_until_poly(env, true)? {
                     Type::Symbol(name) => {
                         // Get the type definition.
                         let ty = env
                             .get_type(&name)
                             .ok_or(Error::TypeNotDefined(name.clone()))?;
                         // Check that the type is a template.
-                        match ty.simplify_until_poly(env)? {
+                        match ty.simplify_until_poly(env, true)? {
                             Type::Poly(ty_params, _) => {
                                 // Check that the number of type arguments matches the number of type parameters.
                                 if ty_args.len() != ty_params.len() {
@@ -631,7 +631,7 @@ impl TypeCheck for Expr {
                         f.type_check(env)?;
 
                         // Get the type of the function.
-                        let f_type = f.get_type(env)?.simplify_until_concrete(env)?;
+                        let f_type = f.get_type(env)?.simplify_until_concrete(env, true)?;
                         // Infer the types of the supplied arguments.
                         let mut found_arg_tys = vec![];
                         for arg in args {
@@ -686,7 +686,7 @@ impl TypeCheck for Expr {
                 }
 
                 // Get the type of the function.
-                let f_type = f.get_type(env)?.simplify_until_concrete(env)?;
+                let f_type = f.get_type(env)?.simplify_until_concrete(env, true)?;
                 // Infer the types of the supplied arguments.
                 let mut found_arg_tys = vec![];
                 for arg in args {
@@ -789,7 +789,7 @@ impl TypeCheck for Expr {
             Self::Union(t, field, val) => {
                 // Typecheck the type.
                 t.type_check(env)?;
-                let t = t.simplify_until_union(env)?;
+                let t = t.simplify_until_union(env, true)?;
                 match t {
                     Type::Union(fields) => {
                         // Confirm that the variant is a valid variant.
@@ -823,7 +823,7 @@ impl TypeCheck for Expr {
             Self::EnumUnion(t, variant, val) => {
                 // Typecheck the type
                 t.type_check(env)?;
-                let t = t.simplify_until_union(env)?;
+                let t = t.simplify_until_union(env, true)?;
 
                 match t {
                     Type::EnumUnion(fields) => {
@@ -882,7 +882,7 @@ impl TypeCheck for Expr {
                 match e_type.type_check_member(field, e, env) {
                     Ok(_) => Ok(()),
                     Err(e) => {
-                        warn!("Type {e_type} doesn't have member {field} in environment {env}");
+                        debug!("Type {e_type} doesn't have member {field} in environment {env}");
                         match field
                             .clone()
                             .as_symbol(env)
@@ -972,21 +972,21 @@ impl TypeCheck for ConstExpr {
                 match e_type.type_check_member(field, &Expr::ConstExpr(*e.clone()), env) {
                     Ok(_) => Ok(()),
                     Err(_err) => {
-                        warn!("Member {field} not found in type {e_type} in environment {env}");
+                        debug!("Member {field} not found in type {e_type} in environment {env}");
                         match field
                             .clone()
                             .as_symbol(env)
                             .map(|name| env.get_associated_const(&e_type, &name))
                         {
                             Ok(_) => {
-                                warn!("Associated constant {field} found in type {e_type} in environment {env}");
+                                debug!("Associated constant {field} found in type {e_type} in environment {env}");
                                 Ok(())
                             }
                             // Err(_) => Err(e),
                             Err(_) => {
                                 // Try to perform the member op as a regular member op.
-                                warn!("Associated constant {field} not found in type {e_type} in environment {env}");
-                                warn!("Falling back on regular member access");
+                                debug!("Associated constant {field} not found in type {e_type} in environment {env}");
+                                debug!("Falling back on regular member access");
                                 Expr::Member(Box::new(Expr::ConstExpr(*e.clone())), *field.clone())
                                     .type_check(env)
                             }
@@ -1030,27 +1030,36 @@ impl TypeCheck for ConstExpr {
                 match **expr {
                     Self::Template(ref ty_params, ref template) => {
                         // Create a new environment with the type parameters defined.
-                        let mut new_env = env.clone();
                         // Define the type parameters in the environment.
                         // new_env.define_types(
                         //     ty_params.clone().into_iter().map(|x| x.0).zip(ty_args.clone()).collect(),
                         // );
-                        for ((name, ty_param), ty_arg) in ty_params.iter().zip(ty_args) {
-                            new_env.define_type(name, match ty_param {
-                                Some(ty_param) => {
-                                    if !ty_arg.equals(ty_param, env)? {
-                                        return Err(Error::InvalidMonomorphize(self.clone()))
-                                    }
-                                    ty_arg.clone()
-                                }
-                                None => {
-                                    ty_arg.clone()
-                                }
-                            })
-                        }
 
+                        let mut ret = template.clone();
+                        let mut new_env = env.clone();
+                        for ((param, ty), ty_arg) in ty_params.iter().zip(ty_args.iter()) {
+                            if let Type::ConstParam(cexpr) = ty_arg {
+                                if let Some(expected_ty) = ty {
+                                    let expected = expected_ty.clone();
+                                    let found = cexpr.get_type(env)?;
+                                    if !found.equals(expected_ty, env)? {
+                                        error!("Mismatch in expected type for constant parameter");
+                                        return Err(Error::MismatchedTypes { expected, found, expr: (*cexpr.clone()).into() })
+                                    }
+                                    ret.substitute(param, ty_arg)
+                                }
+                                ret.substitute(param, ty_arg);
+                                new_env.define_const(param, *cexpr.clone());
+                            } else {
+                                ret.substitute(param, ty_arg);
+                                new_env.define_type(param, ty_arg.clone());
+                            }
+                        }
+                        debug!("Result: {ret}");
+                        let ret = ret.get_type(&new_env)?
+                            .simplify_until_poly(&new_env, true)?;
                         // Check the template type.
-                        template.type_check(&new_env)
+                        ret.type_check(&new_env)
                         // Ok(())
                     }
                     Self::PolyProc(ref poly) => {
@@ -1142,7 +1151,7 @@ impl TypeCheck for ConstExpr {
             // Typecheck a variant of an enum.
             Self::Of(t, variant) => {
                 let t = t
-                    .simplify_until_has_variants(env)
+                    .simplify_until_has_variants(env, true)
                     .map_err(|_| Error::VariantNotFound(t.clone(), variant.clone()))?;
 
                 match t {
@@ -1264,7 +1273,7 @@ impl TypeCheck for ConstExpr {
             // Typecheck a union literal.
             Self::Union(t, field, val) => {
                 // Confirm the type supplied is a union.
-                let t = t.simplify_until_union(env)?;
+                let t = t.simplify_until_union(env, true)?;
 
                 match t {
                     Type::Union(fields) => {
@@ -1303,7 +1312,7 @@ impl TypeCheck for ConstExpr {
             // Typecheck a tagged union literal.
             Self::EnumUnion(t, variant, val) => {
                 // Confirm the type supplied is a union.
-                let t = t.simplify_until_union(env)?;
+                let t = t.simplify_until_union(env, true)?;
                 match t {
                     Type::EnumUnion(fields) => {
                         // Confirm that the variant is a valid variant.

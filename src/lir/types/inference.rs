@@ -232,7 +232,7 @@ impl GetType for Expr {
                 // Get the type of the expression.
                 let t = expr
                     .get_type_checked(env, i)?
-                    .simplify_until_concrete(env)?;
+                    .simplify_until_concrete(env, false)?;
                 // If the type is a pointer, return the inner type of the pointer.
                 if let Type::Pointer(_, inner) = t {
                     // If the type *evaluates* to a pointer, return that inner type.
@@ -253,7 +253,7 @@ impl GetType for Expr {
                 // Get the type of the function.
                 let ty = func
                     .get_type_checked(env, i)?
-                    .simplify_until_concrete(env)?;
+                    .simplify_until_concrete(env, false)?;
                 match ty {
                     Type::Proc(_, ret) => *ret,
                     _ => return Err(Error::ApplyNonProc(self.clone())),
@@ -313,7 +313,7 @@ impl GetType for Expr {
                 // Get the type of the value to get the member of.
                 let val_type = val.get_type_checked(env, i)?;
                 // val_type.add_monomorphized_associated_consts(env)?;
-                let val_type = val_type.simplify_until_concrete(env)?;
+                let val_type = val_type.simplify_until_concrete(env, false)?;
                 // val_type.add_monomorphized_associated_consts(env)?;
                 match val_type {
                     Type::Type(ty) => {

@@ -4475,7 +4475,7 @@ mod tests {
         assert_parse_type(
             "fun<T>(Option<T>) -> Bool",
             Some(Type::Poly(
-                vec!["T".to_string()],
+                vec![("T".to_string(), None)],
                 Type::Proc(
                     vec![Type::Apply(
                         Box::new(Type::Symbol("Option".to_string())),
@@ -4490,7 +4490,7 @@ mod tests {
         assert_parse_type(
             "fun<T>(Option<T>, Int) -> Bool",
             Some(Type::Poly(
-                vec!["T".to_string()],
+                vec![("T".to_string(), None)],
                 Type::Proc(
                     vec![
                         Type::Apply(

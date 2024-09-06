@@ -13,7 +13,7 @@ pub struct Get;
 impl UnaryOp for Get {
     /// Can this unary operation be applied to the given type?
     fn can_apply(&self, ty: &Type, env: &Env) -> Result<bool, Error> {
-        ty.simplify_until_concrete(env).map(|ty| {
+        ty.simplify_until_concrete(env, false).map(|ty| {
             if let Type::Pointer(mutability, x) = ty {
                 match *x {
                     Type::Char | Type::Int | Type::Float => mutability.is_mutable(),
@@ -100,7 +100,7 @@ impl Put {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        let t = &t.simplify_until_concrete(env)?;
+        let t = &t.simplify_until_concrete(env, false)?;
         match t {
             Type::Type(t) => {
                 for c in format!("{}", t).chars() {
@@ -430,7 +430,7 @@ impl Put {
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
-        let t = &t.simplify_until_concrete(env)?;
+        let t = &t.simplify_until_concrete(env, false)?;
         match t {
             Type::Cell => {
                 output.op(CoreOp::Put(addr, Output::stdout_int()));
@@ -597,7 +597,7 @@ impl UnaryOp for Put {
         // Get the size of the type.
         let size = ty.get_size(env)? as isize;
 
-        let ty = &ty.simplify_until_concrete(env)?;
+        let ty = &ty.simplify_until_concrete(env, false)?;
 
         // Calculate the address of the expression on the stack.
         let addr = SP.deref().offset(-size + 1);

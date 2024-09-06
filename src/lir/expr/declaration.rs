@@ -571,7 +571,9 @@ impl TypeCheck for Declaration {
 
                     for (name, associated_const) in impls {
                         let templated_const =
-                            associated_const.template(supplied_param_symbols.clone().into_iter().map(|x| (x, None)).collect());
+                            // associated_const.template(supplied_param_symbols.clone().into_iter().map(|x| (x, None)).collect());
+                            // associated_const.template(template_params.clone());
+                            associated_const.template(template_params.clone().into_iter().zip(supplied_param_symbols.clone().into_iter()).map(|((_, ty), param)| (param, ty)).collect());
                         new_env.add_associated_const(
                             *template.clone(),
                             name,
