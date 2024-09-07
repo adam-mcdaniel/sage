@@ -6,7 +6,8 @@ use crate::{
     side_effects::*,
 };
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
-use log::info;
+
+
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Get;
 

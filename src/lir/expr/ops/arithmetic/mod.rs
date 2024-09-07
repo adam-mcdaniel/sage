@@ -228,7 +228,7 @@ impl BinaryOp for Arithmetic {
             (Type::Int | Type::Float | Type::Cell, Type::Cell)
             | (Type::Cell, Type::Int | Type::Float) => Type::Cell,
 
-            (Type::Array(elem, size), other) => {
+            (Type::Array(elem, size), _other) => {
                 if let (Self::Multiply, Expr::ConstExpr(const_rhs)) = (self, rhs) {
                     let size = size.as_int(env)?;
                     if let Ok(n) = const_rhs.clone().as_int(env) {
@@ -403,10 +403,10 @@ impl BinaryOp for Arithmetic {
     /// Compile the binary operation.
     fn compile_types(
         &self,
-        lhs: &Type,
-        rhs: &Type,
-        env: &mut Env,
-        output: &mut dyn AssemblyProgram,
+        _lhs: &Type,
+        _rhs: &Type,
+        _env: &mut Env,
+        _output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
         Ok(())
     }

@@ -1300,7 +1300,6 @@ impl Env {
 
 impl Display for Env {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        return Ok(());
         writeln!(f, "Env")?;
         writeln!(f, "   Types:")?;
         for (name, ty) in self.types.iter() {

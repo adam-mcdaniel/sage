@@ -18,7 +18,7 @@ impl Matrix<T, Rows, Cols> {
         add: fun(T, T) -> T,
         mul: fun(T, T) -> T
     ): Matrix<T, Rows, NewCols> {
-        let mut result = Matrix.new<T, Rows, NewCols>(zero);
+        let mut result = Matrix.new<T, Rows, NewCols>(0);
         for let mut j=0; j<NewCols; j+=1; {
             for let mut i=0; i<Rows; i+=1; {
                 let mut sum = zero;

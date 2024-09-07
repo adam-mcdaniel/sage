@@ -12,7 +12,7 @@ use std::{
 };
 use std::{hash::Hash, hash::Hasher};
 
-use log::{debug, error, trace, info};
+use log::{debug, error, info};
 use serde_derive::{Deserialize, Serialize};
 
 /// A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
@@ -250,15 +250,8 @@ impl TypeCheck for PolyProcedure {
         info!("Type checking {self}");
         // Create a new scope for the procedure's body, and define the arguments for the scope.
         let mut new_env = env.new_scope();
+        
         // Define the type parameters of the procedure.
-        // new_env.define_types(
-        //     self.type_param_names()
-        //         .clone()
-        //         .into_iter()
-        //         .map(|ty_param| (ty_param.clone(), Type::Unit(ty_param, Box::new(Type::None))))
-        //         .collect(),
-        // );
-
         for (name, ty) in &self.ty_params {
             match ty {
                 Some(ty) => {

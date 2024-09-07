@@ -28,7 +28,6 @@ impl Point {
     }
 }
 
-
 fun test3<P: Point>() {
     let mut p = P;
     p.move(1, 1);

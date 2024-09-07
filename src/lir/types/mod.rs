@@ -571,8 +571,8 @@ impl Type {
             }
 
             (Self::Array(elem1, len1), Self::Array(elem2, len2)) => {
-                // return Ok(elem1.is_monomorph_of(elem2, env)? && len1.get_type(env)?.equals(&len2.get_type(env)?, env)?)
-                return Ok(elem1.is_monomorph_of(elem2, env)?)
+                return Ok(elem1.is_monomorph_of(elem2, env)? && len1.get_type(env)?.equals(&len2.get_type(env)?, env)?)
+                // return Ok(elem1.is_monomorph_of(elem2, env)?)
             }
 
             (Self::ConstParam(cexpr), other) => cexpr.get_type(env)?.equals(other, env),
@@ -990,7 +990,7 @@ impl Type {
 
 
     /// Simplify until the type is concrete.
-    pub fn simplify_until_const_param(&self, env: &Env, checked: bool) -> Result<ConstExpr, Error> {
+    pub fn simplify_until_const_param(&self, env: &Env, _checked: bool) -> Result<ConstExpr, Error> {
         let mut simplified = self.clone().simplify(env)?;
         for _ in 0..3 {
             if let Self::ConstParam(cexpr) = simplified {
@@ -1293,12 +1293,12 @@ impl Type {
         // }
 
         match (self, desired) {
-            (Type::Type(ty), desired) => {
-                ty.can_decay_to(desired, env)
-            }
-            (ty, Type::Type(desired)) => {
-                ty.can_decay_to(desired, env)
-            }
+            // (Type::Type(ty), desired) => {
+            //     ty.can_decay_to(desired, env)
+            // }
+            // (ty, Type::Type(desired)) => {
+            //     ty.can_decay_to(desired, env)
+            // }
             // (Self::Unit(_, inner), _) => inner.can_decay_to(desired, env),
             (Self::Unit(name1, t1), Self::Unit(name2, t2)) => {
                 if name1 == name2 {
@@ -1942,7 +1942,7 @@ impl Type {
 
                 // Create a new environment.
                 let mut new_env = env.clone();
-                for ((name1, ty1), (name2, ty2)) in ty_params1.iter().zip(ty_params2.iter()) {
+                for ((name1, _ty1), (name2, _ty2)) in ty_params1.iter().zip(ty_params2.iter()) {
                     // match (ty1, ty2) {
                     //     (Some(ty1), Some(ty2)) => {
                     //         if !ty1.equals_checked(&ty2, compared_symbols, &new_env, i)? {
@@ -2020,7 +2020,7 @@ impl Type {
             (Self::ConstParam(cexpr), other) | (other, Self::ConstParam(cexpr)) => {
                 cexpr.get_type(env)?.equals_checked(other, compared_symbols, env, i)?
             },
-            (a, b) => {
+            (_a, _b) => {
                 // error!("{} is not equal to {}", a, b);
                 false
             }
@@ -2276,8 +2276,7 @@ impl Simplify for Type {
             | Self::Cell
             | Self::Enum(_) => self.clone(),
             Self::Poly(mut ty_params, body) => {
-                for (name, ty) in &mut ty_params {
-                    // *ty = ty.map(|ty| ty.simplify_checked(env, i));
+                for (_name, ty) in &mut ty_params {
                     if let Some(ty) = ty {
                         *ty = ty.clone().simplify_checked(env, i)?;
                     }
@@ -2315,7 +2314,6 @@ impl Simplify for Type {
 
             Self::Unit(unit_name, t) => {
                 Self::Unit(unit_name, Box::new(t.simplify_checked(env, i)?))
-                // self
             }
 
             Self::Symbol(ref name) => {
