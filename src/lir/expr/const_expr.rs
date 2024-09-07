@@ -803,18 +803,21 @@ impl GetType for ConstExpr {
                         let mut ret = ret.clone();
                         let mut new_env = env.clone();
                         for ((param, ty), ty_arg) in params.iter().zip(ty_args.iter()) {
-                            if let Type::ConstParam(cexpr) = ty_arg {
+                            if ty_arg.is_const_param() {
+                                let cexpr = ty_arg.simplify_until_const_param(env, false)?;
+                            // if let Type::ConstParam(cexpr) = ty_arg {
+                            //     let cexpr = *cexpr.clone();
                                 if let Some(expected_ty) = ty {
                                     let expected = expected_ty.clone();
                                     let found = cexpr.get_type_checked(env, i)?;
                                     if !found.equals(expected_ty, env)? {
                                         error!("Mismatch in expected type for constant parameter");
-                                        return Err(Error::MismatchedTypes { expected, found, expr: (*cexpr.clone()).into() })
+                                        return Err(Error::MismatchedTypes { expected, found, expr: (cexpr.clone()).into() })
                                     }
                                     ret.substitute(param, ty_arg)
                                 }
                                 ret.substitute(param, ty_arg);
-                                new_env.define_const(param, *cexpr.clone());
+                                new_env.define_const(param, cexpr.clone());
                             } else {
                                 ret.substitute(param, ty_arg);
                                 new_env.define_type(param, ty_arg.clone());
@@ -1148,9 +1151,10 @@ impl Hash for ConstExpr {
                 container.hash(state);
                 member.hash(state);
             }
-            Self::Annotated(expr, _) => {
+            Self::Annotated(expr, metadata) => {
                 state.write_u8(3);
                 expr.hash(state);
+                metadata.hash(state);
             }
             Self::FFIProcedure(ffi_proc) => {
                 state.write_u8(4);

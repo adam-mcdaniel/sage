@@ -2036,7 +2036,7 @@ impl Type {
         expr: &Expr,
         env: &Env,
     ) -> Result<(Type, usize), Error> {
-        trace!("Getting offset of member {member} in expression {self} in the environment {env}");
+        info!("Getting offset of member {member} in expression {self} in the environment {env}");
         match self {
             Type::Pointer(_, t) => t.get_member_offset(member, expr, env),
             Type::Struct(members) => {
@@ -2413,7 +2413,7 @@ impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::ConstParam(t) => write!(f, "const param {t}"),
-            Self::Type(t) => write!(f, "{t}"),
+            Self::Type(t) => write!(f, "type {t}"),
             Self::Any => write!(f, "Any"),
             Self::Never => write!(f, "Never"),
             Self::Pointer(mutability, ty) => {

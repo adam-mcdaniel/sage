@@ -77,7 +77,7 @@ impl Pattern {
         let mut new_env = env.clone();
         for (var, (mutabilty, ty)) in bindings {
             // Define the variables in the new environment.
-            new_env.define_var(var, mutabilty, ty)?;
+            new_env.define_var(var, mutabilty, ty, true)?;
         }
 
         // Get the type of the branch.
@@ -500,7 +500,7 @@ impl Pattern {
         // Get the type of the expression being matched
         let match_type = expr.get_type(env)?.simplify_until_concrete(env, false)?;
         // Define the variable in the new environment.
-        new_env.define_var(var_name.clone(), Mutability::Immutable, match_type.clone())?;
+        new_env.define_var(var_name.clone(), Mutability::Immutable, match_type.clone(), true)?;
         // Generate the expression which evaluates the `match` expression.
         let match_expr = Pattern::match_pattern_helper(&Expr::var(&var_name), branches, &new_env)?;
 
@@ -890,7 +890,7 @@ impl Pattern {
         bindings.sort_by_key(|(_, (_, _, offset))| *offset);
         // Define all the bindings in the environment.
         for (name, (mutability, ty, _)) in &bindings {
-            env.define_var(name, *mutability, ty.clone())?;
+            env.define_var(name, *mutability, ty.clone(), true)?;
         }
         Ok(())
     }

@@ -778,10 +778,10 @@ impl Env {
                     let name = alias.clone().unwrap_or(name.clone());
 
                     // if !self.types.contains_key(&name) {
-                    self.define_const(&name, access.clone());
                     if let Ok(Type::Type(ty)) = access.get_type(self) {
                         self.define_type(&name, *ty);
                     }
+                    self.define_const(&name, access.clone());
                 }
             }
             Declaration::FromImportAll(module) => {
@@ -791,10 +791,10 @@ impl Env {
                     for name in fields.keys() {
                         let access = module.clone().field(ConstExpr::Symbol(name.clone()));
 
-                        self.define_const(name, access.clone());
                         if let Ok(Type::Type(ty)) = access.get_type(self) {
                             self.define_type(name, *ty);
                         }
+                        self.define_const(name, access.clone());
                     }
                 } else {
                     error!("Invalid module type: {module_ty}");
@@ -957,7 +957,7 @@ impl Env {
                     None => expr.get_type(self)?,
                 };
                 // ty.add_monomorphized_associated_consts(self)?;
-                self.define_var(name, *mutability, ty)?;
+                self.define_var(name, *mutability, ty, false)?;
             }
             Declaration::VarPat(pat, expr) => {
                 let ty = expr.get_type(self)?;
@@ -1007,6 +1007,7 @@ impl Env {
         if ty.is_const_param() {
             if let Ok(ty) = ty.clone().simplify_until_const_param(self, false) {
                 self.define_const(&name, ty);
+                return;
             }
         }
         match &ty {
@@ -1038,35 +1039,36 @@ impl Env {
     /// typechecking errors if the environment does not already have a memoized size
     /// for the type of a subexpression.
     pub fn define_types(&mut self, types: Vec<(String, Type)>) {
-        for (name, ty) in &types {
-            match &ty {
-                Type::Symbol(sym) if sym == name => {
-                    trace!("Defining type {ty} to itself as {name}");
-                }
-                _ => {
-                    if self.types.contains_key(name) {
-                        debug!("Redefining type {name} in {self}");
-                    } else {
-                        trace!("Defining type {name} as {ty}");
-                        Arc::make_mut(&mut self.consts)
-                            .insert(name.clone(), ConstExpr::Type(ty.clone()));
-                        Arc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
-                    }
-                }
-            }
+        for (name, ty) in types {
+            self.define_type(name, ty)
+            // match &ty {
+            //     Type::Symbol(sym) if sym == name => {
+            //         trace!("Defining type {ty} to itself as {name}");
+            //     }
+            //     _ => {
+            //         if self.types.contains_key(name) {
+            //             debug!("Redefining type {name} in {self}");
+            //         } else {
+            //             trace!("Defining type {name} as {ty}");
+            //             Arc::make_mut(&mut self.consts)
+            //                 .insert(name.clone(), ConstExpr::Type(ty.clone()));
+            //             Arc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
+            //         }
+            //     }
+            // }
         }
 
-        for (_, ty) in types {
-            if let Ok(simplified) = ty.simplify_until_concrete(self, false) {
-                if let Ok(size) = simplified.get_size(self) {
-                    self.set_precalculated_size(simplified, size);
-                } else {
-                    debug!("Failed to memoize type size for {simplified}");
-                }
-            } else {
-                debug!("Failed to simplify type {ty}");
-            }
-        }
+        // for (_, ty) in types {
+        //     if let Ok(simplified) = ty.simplify_until_concrete(self, false) {
+        //         if let Ok(size) = simplified.get_size(self) {
+        //             self.set_precalculated_size(simplified, size);
+        //         } else {
+        //             debug!("Failed to memoize type size for {simplified}");
+        //         }
+        //     } else {
+        //         debug!("Failed to simplify type {ty}");
+        //     }
+        // }
     }
 
     /// Get a type definition from this environment.
@@ -1224,10 +1226,15 @@ impl Env {
         var: impl ToString,
         mutability: Mutability,
         ty: Type,
+        compiling: bool
     ) -> Result<isize, Error> {
         let var = var.to_string();
         // Get the size of the variable we're defining.
-        let size = ty.get_size(self)? as isize;
+        let size = if compiling {
+            ty.get_size(self)?
+        } else {
+            ty.get_size(self).unwrap_or(0)
+        } as isize;
         // Remember the offset of the variable under the current scope.
         let offset = self.fp_offset;
         // Increment the frame pointer offset by the size of the variable
@@ -1301,6 +1308,7 @@ impl Env {
 impl Display for Env {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         writeln!(f, "Env")?;
+        return Ok(());
         writeln!(f, "   Types:")?;
         for (name, ty) in self.types.iter() {
             writeln!(f, "      {}: {}", name, ty)?;

@@ -58,6 +58,11 @@ impl GetSize for Type {
             });
         }
 
+        if self.is_const_param() {
+            let cexpr = self.clone().simplify_until_const_param(env, false)?;
+            return cexpr.get_size_checked(env, i)
+        }
+
         let result = match self {
             Self::ConstParam(cexpr) => cexpr.get_size_checked(env, i)?,
 
@@ -115,6 +120,8 @@ impl GetSize for Type {
             // Array types are the size of their element type times the size of
             // the array.
             Self::Array(elem, size) => {
+                error!("ABOUT TO GET ARRAY LEN {self}");
+
                 elem.get_size_checked(env, i)? * size.clone().as_int(env)? as usize
             }
             // Struct types are the sum of the sizes of their fields.
