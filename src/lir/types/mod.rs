@@ -2058,7 +2058,7 @@ impl Type {
         expr: &Expr,
         env: &Env,
     ) -> Result<(Type, usize), Error> {
-        info!("Getting offset of member {member} in expression {self} in the environment {env}");
+        debug!("Getting offset of member {member} in expression {self} in the environment {env}");
         match self {
             Type::Pointer(_, t) => t.get_member_offset(member, expr, env),
             Type::Struct(members) => {
