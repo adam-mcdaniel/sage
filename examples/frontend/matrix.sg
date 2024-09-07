@@ -1,0 +1,113 @@
+struct Matrix<T, Rows: Int, Cols: Int> {
+    arr: [[T * Cols] * Rows]
+}
+
+impl Matrix<T, Rows, Cols> {
+    fun new(x: T): Matrix<T, Rows, Cols> {
+        return {arr=[[x] * Cols] * Rows};
+    }
+
+    fun get(&self, row: Int, col: Int): &T {
+        return &self.arr[row][col];
+    }
+
+    fun mul<NewCols: Int>(
+        &self,
+        other: &Matrix<T, Cols, NewCols>,
+        zero: T,
+        add: fun(T, T) -> T,
+        mul: fun(T, T) -> T
+    ): Matrix<T, Rows, NewCols> {
+        let mut result = Matrix.new<T, Rows, NewCols>(zero);
+        for let mut j=0; j<NewCols; j+=1; {
+            for let mut i=0; i<Rows; i+=1; {
+                let mut sum = zero;
+                for let mut k=0; k<Cols; k+=1; {
+                    sum = add(sum, mul(self.arr[i][k], other.arr[k][j]));
+                }
+                result.arr[i][j] = sum;
+            }
+        }
+        result
+    }
+
+    fun set<X: T>(&mut self, row: Int, col: Int) {
+        self.arr[row][col] = X;
+    }
+
+    fun set_range<N: Int, X: [T * N]>(&mut self, row: Int) {
+        for let mut i=0; i<Cols && i<N; i+=1; {
+            self.arr[row][i] = X[i];
+        }
+    }
+
+    fun set_row<X: [T * Cols]>(&mut self, row: Int) {
+        for let mut i=0; i<Cols; i+=1; {
+            self.arr[row][i] = X[i];
+        }
+    }
+
+    fun set_col<X: [T * Rows]>(&mut self, col: Int) {
+        for let mut i=0; i<Rows; i+=1; {
+            self.arr[i][col] = X[i];
+        }
+    }
+
+    fun print(&self) {
+        for let mut row=0; row<Rows; row+=1; {
+            for let mut col=0; col<Cols; col+=1; {
+                print(*self.get(row, col), " ");
+            }
+            println();
+        }
+    }
+}
+
+#![(defun echo(x) {
+    (println x)
+    x
+})]
+
+let mut x = Matrix.new<Int, 4, 4>(10);
+let mut y = Matrix.new<Int, 4, 4>(5);
+for let mut row=0; row < 4; row += 1; {
+    y.set_row<[1, 2, 3, 4]>(row);
+}
+y.set_range<4, [4, 3, 2, 1]>(0);
+
+x.set_col<[1, 2, 3, 4]>(0);
+x.set<5>(1, 1);
+
+x.print();
+println();
+y.print();
+println();
+
+fun add_ints(a: Int, b: Int): Int = a + b;
+fun mul_ints(a: Int, b: Int): Int = a * b;
+
+let z = y.mul<4>(&x, 0, add_ints, mul_ints);
+z.print();
+
+struct Test {
+    a: Matrix<Int, 10, 1>,
+    b: Matrix<Int, 10, 10>,
+    c: Matrix<Int, 10, 1>
+}
+
+impl Test {
+    fun new(): Test {
+        {a=Matrix.new<Int, 10, 1>(10), b=Matrix.new<Int, 10, 10>(5), c=Matrix.new<Int, 10, 1>(0)}
+    }
+
+    fun test(&mut self) {
+        let b = self.b;
+        self.c = b.mul<1>(&self.a, 0, add_ints, mul_ints);
+    }
+}
+
+let mut t = Test.new();
+for let mut i=0; i<1; i+=1; {
+    t.test();
+}
+t.c.print();
