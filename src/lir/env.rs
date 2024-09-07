@@ -1310,7 +1310,6 @@ impl Env {
 impl Display for Env {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         writeln!(f, "Env")?;
-        return Ok(());
         writeln!(f, "   Types:")?;
         for (name, ty) in self.types.iter() {
             writeln!(f, "      {}: {}", name, ty)?;
@@ -1318,10 +1317,10 @@ impl Display for Env {
             if constants.is_empty() {
                 continue;
             }
-            writeln!(f, "         Associated constants:")?;
-            for (name, cexpr) in constants {
-                writeln!(f, "            {}: {}", name, cexpr)?;
-            }
+            // writeln!(f, "         Associated constants:")?;
+            // for (name, cexpr) in constants {
+            //     writeln!(f, "            {}: {}", name, cexpr)?;
+            // }
         }
         // writeln!(f, "   Constants:")?;
         // for (i, (name, e)) in self.consts.iter().enumerate() {
