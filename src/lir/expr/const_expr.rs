@@ -391,10 +391,16 @@ impl ConstExpr {
                 | Self::Proc(_)
                 | Self::PolyProc(_) => Ok(self),
                 Self::Type(ty) => {
-                    match ty.clone().simplify(env)? {
-                        Type::ConstParam(cexpr) => cexpr.eval_checked(env, i),
-                        ty => Ok(Self::Type(ty.clone()))
+                    if ty.is_const_param() {
+                        let cexpr = ty.simplify_until_const_param(env, false)?;
+                        cexpr.eval_checked(env, i)
+                    } else {
+                        Ok(Self::Type(ty.clone()))
                     }
+                    // match ty.clone().simplify(env)? {
+                    //     Type::ConstParam(cexpr) => ,
+                    //     ty => Ok(Self::Type(ty.clone()))
+                    // }
                 }
 
                 Self::Declare(bindings, expr) => {
@@ -560,7 +566,7 @@ impl ConstExpr {
             other => match other.eval(env)? {
                 Self::Symbol(name) => Ok(name),
                 other => {
-                    error!("Could not convert {other} to symbol");
+                    // error!("Could not convert {other} to symbol");
                     Err(Error::NonSymbol(other))
                 },
             },
@@ -593,17 +599,23 @@ impl GetType for ConstExpr {
 
             Self::Type(t) => {
                 info!("Getting type of type {t}");
-                let result = match t.clone().simplify(env)? {
-                    Type::ConstParam(cexpr) => cexpr.get_type(env)?,
-                    t => Type::Type(t.into())
+                let result = if t.is_const_param() {
+                    let cexpr = t.simplify_until_const_param(env, false)?;
+                    cexpr.get_type(env)?
+                } else {
+                    Type::Type(t.into())
                 };
+                // let result = match t.clone().simplify(env)? {
+                //     Type::ConstParam(cexpr) => cexpr.get_type(env)?,
+                //     t => Type::Type(t.into())
+                // };
                 // let result = if let Type::ConstParam(cexpr) = t.clone().simplify(env)? {
                 //     // Type::ConstParam(cexpr.eval(env)?.into())
                 //     cexpr.get_type(env)?
                 // } else {
                 //     Type::Type(t.clone().into())
                 // };
-                info!("Got type of type {t} = {result}");
+                // info!("Got type of type {t} = {result}");
                 result
             }
 
