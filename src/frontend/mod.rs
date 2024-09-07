@@ -16,10 +16,7 @@ pub fn parse(
     include_builtins: bool,
     include_std: bool,
 ) -> Result<Expr, String> {
-    let start_time = std::time::Instant::now();
     let mut expr = parse_source(&without_comments(input), filename.map(|x| x.to_owned()))?;
-    use log::info;
-    info!("Parsed {} in {}ms", filename.unwrap_or("input"), start_time.elapsed().as_millis());
     use crate::side_effects::Output;
     if include_std {
         let std_lib = parse_module("std", &without_comments(include_str!("std_lib.sg")))?;

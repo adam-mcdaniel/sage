@@ -1190,6 +1190,7 @@ impl Env {
     pub(super) fn define_args(
         &mut self,
         args: Vec<(String, Mutability, Type)>,
+        compiling: bool,
     ) -> Result<usize, Error> {
         debug!("Defining arguments {args:?} in\n{self}");
         self.fp_offset = 1;
@@ -1198,7 +1199,12 @@ impl Env {
         // For each argument in reverse order (starting from the last argument)
         for (name, mutability, ty) in args.into_iter().rev() {
             // Get the size of the argument we're defining.
-            let size = ty.get_size(self)?;
+            let size = if compiling {
+                ty.get_size(self)?
+            } else {
+                0
+            };
+            
             // Add the size of the argument to the total number of cells taken up by the arguments.
             self.args_size += size;
             // Decrement the frame pointer offset by the size of the argument
@@ -1310,6 +1316,8 @@ impl Env {
 impl Display for Env {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         writeln!(f, "Env")?;
+        // return Ok(());
+        /*
         writeln!(f, "   Types:")?;
         for (name, ty) in self.types.iter() {
             writeln!(f, "      {}: {}", name, ty)?;
@@ -1317,19 +1325,19 @@ impl Display for Env {
             if constants.is_empty() {
                 continue;
             }
-            // writeln!(f, "         Associated constants:")?;
-            // for (name, cexpr) in constants {
-            //     writeln!(f, "            {}: {}", name, cexpr)?;
-            // }
+            writeln!(f, "         Associated constants:")?;
+            for (name, cexpr) in constants {
+                writeln!(f, "            {}: {}", name, cexpr)?;
+            }
         }
-        // writeln!(f, "   Constants:")?;
-        // for (i, (name, e)) in self.consts.iter().enumerate() {
-        //     writeln!(f, "      {i}. {}: {}", name, e)?;
-        // }
-        // writeln!(f, "   Procedures:")?;
-        // for (name, proc) in self.procs.iter() {
-        //     writeln!(f, "      {}: {}", name, proc)?;
-        // }
+        writeln!(f, "   Constants:")?;
+        for (i, (name, e)) in self.consts.iter().enumerate() {
+            writeln!(f, "      {i}. {}: {}", name, e)?;
+        }
+        writeln!(f, "   Procedures:")?;
+        for (name, proc) in self.procs.iter() {
+            writeln!(f, "      {}: {}", name, proc)?;
+        }
         writeln!(f, "   Globals:")?;
         for (name, (mutability, ty, location)) in self.static_vars.iter() {
             writeln!(f, "      {mutability} {name}: {ty} (location {location})")?;
@@ -1338,6 +1346,7 @@ impl Display for Env {
         for (name, (mutability, ty, offset)) in self.vars.iter() {
             writeln!(f, "      {mutability} {name}: {ty} (frame-offset {offset})")?;
         }
+         */
         Ok(())
     }
 }

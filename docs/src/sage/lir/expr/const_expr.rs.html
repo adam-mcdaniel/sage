@@ -1283,6 +1283,7 @@
 <a href="#1282" id="1282">1282</a>
 <a href="#1283" id="1283">1283</a>
 <a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Constant Expressions
 //!
 //! Constant expressions are expressions that can be evaluated at compile time.
@@ -2088,18 +2089,20 @@
                         <span class="kw">let </span><span class="kw-2">mut </span>ret = ret.clone();
                         <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                         <span class="kw">for </span>((param, ty), ty_arg) <span class="kw">in </span>params.iter().zip(ty_args.iter()) {
-                            <span class="kw">if let </span>Type::ConstParam(cexpr) = ty_arg {
-                                <span class="kw">if let </span><span class="prelude-val">Some</span>(expected_ty) = ty {
+                            <span class="kw">if </span>ty_arg.is_const_param() {
+                                <span class="kw">let </span>cexpr = ty_arg.simplify_until_const_param(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+                            <span class="comment">// if let Type::ConstParam(cexpr) = ty_arg {
+                            //     let cexpr = *cexpr.clone();
+                                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(expected_ty) = ty {
                                     <span class="kw">let </span>expected = expected_ty.clone();
                                     <span class="kw">let </span>found = cexpr.get_type_checked(env, i)<span class="question-mark">?</span>;
                                     <span class="kw">if </span>!found.equals(expected_ty, env)<span class="question-mark">? </span>{
                                         <span class="macro">error!</span>(<span class="string">"Mismatch in expected type for constant parameter"</span>);
-                                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes { expected, found, expr: (<span class="kw-2">*</span>cexpr.clone()).into() })
+                                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes { expected, found, expr: (cexpr.clone()).into() })
                                     }
-                                    ret.substitute(param, ty_arg)
                                 }
                                 ret.substitute(param, ty_arg);
-                                new_env.define_const(param, <span class="kw-2">*</span>cexpr.clone());
+                                new_env.define_const(param, cexpr.clone());
                             } <span class="kw">else </span>{
                                 ret.substitute(param, ty_arg);
                                 new_env.define_type(param, ty_arg.clone());
@@ -2293,9 +2296,7 @@
             }
             <span class="self">Self</span>::Symbol(symbol_name) <span class="kw">if </span>symbol_name == name =&gt; {
                 <span class="comment">// A constant symbol cannot be substituted for a type variable.
-                </span><span class="macro">debug!</span>(<span class="string">"Subbing {self} for {substitution}"</span>);
-                <span class="kw-2">*</span><span class="self">self </span>= ConstExpr::Type(substitution.clone());
-                <span class="macro">debug!</span>(<span class="string">"Subbed into {self}"</span>);
+                </span><span class="kw-2">*</span><span class="self">self </span>= ConstExpr::Type(substitution.clone());
             }
             <span class="kw">_ </span>=&gt; {}
         }
@@ -2433,10 +2434,11 @@
                 container.hash(state);
                 member.hash(state);
             }
-            <span class="self">Self</span>::Annotated(expr, <span class="kw">_</span>) =&gt; {
+            <span class="self">Self</span>::Annotated(expr, _metadata) =&gt; {
                 state.write_u8(<span class="number">3</span>);
                 expr.hash(state);
-            }
+                <span class="comment">// metadata.hash(state);
+            </span>}
             <span class="self">Self</span>::FFIProcedure(ffi_proc) =&gt; {
                 state.write_u8(<span class="number">4</span>);
                 ffi_proc.hash(state);

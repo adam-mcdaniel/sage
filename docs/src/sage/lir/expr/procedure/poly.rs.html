@@ -334,6 +334,11 @@
 <a href="#333" id="333">333</a>
 <a href="#334" id="334">334</a>
 <a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Poly-Procedure
 //!
 //! A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
@@ -411,6 +416,10 @@
             has_type_checked: Arc::new(RwLock::new(<span class="bool-val">false</span>)),
             ..<span class="self">self</span>.clone()
         }
+    }
+
+    <span class="kw">pub fn </span>get_type_params(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;(String, <span class="prelude-ty">Option</span>&lt;Type&gt;)&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.ty_params
     }
 
     <span class="kw">pub fn </span>from_mono(mono: Procedure, ty_params: Vec&lt;(String, <span class="prelude-ty">Option</span>&lt;Type&gt;)&gt;) -&gt; <span class="self">Self </span>{
@@ -534,7 +543,7 @@
         );
 
         <span class="kw">let </span>monomorph = Procedure::new(<span class="prelude-val">Some</span>(mangled_name.clone()), args, ret, body);
-        monomorph.type_check(env)<span class="question-mark">?</span>;
+
         <span class="comment">// If the monomorphized procedure has already been memoized, return it, otherwise memoize it.
         </span><span class="macro">debug!</span>(target: <span class="string">"mono"</span>, <span class="string">"Inserting entry for {}"</span>, mangled_name);
         <span class="kw">let </span>monomorph = monomorphs
@@ -591,6 +600,7 @@
         </span><span class="kw">for </span>(name, ty) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.ty_params {
             <span class="kw">match </span>ty {
                 <span class="prelude-val">Some</span>(ty) =&gt; {
+                    new_env.define_var(name, Mutability::Immutable, ty.clone(), <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                     new_env.define_type(name, ty.clone());
                 }
                 <span class="prelude-val">None </span>=&gt; {
@@ -599,7 +609,7 @@
             }
         }
         <span class="comment">// Define the arguments of the procedure.
-        </span>new_env.define_args(<span class="self">self</span>.args.clone())<span class="question-mark">?</span>;
+        </span>new_env.define_args(<span class="self">self</span>.args.clone(), <span class="bool-val">false</span>)<span class="question-mark">?</span>;
         new_env.set_expected_return_type(<span class="self">self</span>.ret.clone());
 
         <span class="comment">// Typecheck the types of the arguments and return value

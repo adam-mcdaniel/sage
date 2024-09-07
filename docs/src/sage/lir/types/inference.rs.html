@@ -559,6 +559,13 @@
 <a href="#558" id="558">558</a>
 <a href="#559" id="559">559</a>
 <a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Inference
 //!
 //! This module contains the type inference algorithm for the language.
@@ -618,7 +625,7 @@
                 <span class="comment">// Create a new environment with the declarations.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                 <span class="comment">// Add the declarations to the environment.
-                </span>new_env.add_declaration(declaration)<span class="question-mark">?</span>;
+                </span>new_env.add_declaration(declaration, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                 <span class="comment">// Get the type of the body in the new environment.
                 </span>body.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?
             </span>}
@@ -975,8 +982,15 @@
                 <span class="comment">// Only arrays and pointers can be indexed.
                 </span>Type::Array(item, <span class="kw">_</span>) =&gt; <span class="kw-2">*</span>item,
                 Type::Pointer(<span class="kw">_</span>, item) =&gt; <span class="kw-2">*</span>item,
+                <span class="comment">// Type::Type(ty) =&gt; {
+                //     match *ty {
+                //         Type::Array(item, _) =&gt; *item,
+                //         Type::Pointer(_, item) =&gt; *item,
+                //         _ =&gt; return Err(Error::InvalidIndex(self.clone())),
+                //     }
+                // }
 
-                <span class="comment">// If we're accessing an index of a type that is not an array or pointer,
+                // If we're accessing an index of a type that is not an array or pointer,
                 // we cannot access an index.
                 </span><span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidIndex(<span class="self">self</span>.clone())),
             },

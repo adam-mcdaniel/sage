@@ -2654,7 +2654,7 @@
                     }
                     (<span class="self">Self</span>::Declare(bindings, expr), field) =&gt; {
                         <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                        new_env.add_declaration(<span class="kw-2">&amp;</span>bindings)<span class="question-mark">?</span>;
+                        new_env.add_declaration(<span class="kw-2">&amp;</span>bindings, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
                         expr.field(field).compile_expr(<span class="kw-2">&amp;mut </span>new_env, output)<span class="question-mark">?</span>;
                     }
                     (a, b) =&gt; {
@@ -2674,7 +2674,7 @@
             <span class="self">Self</span>::Declare(bindings, body) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">"Compiling declaration {bindings} with body {body} in environment {env}"</span>);
                 <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                new_env.add_declaration(<span class="kw-2">&amp;</span>bindings)<span class="question-mark">?</span>;
+                new_env.add_declaration(<span class="kw-2">&amp;</span>bindings, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
                 body.compile_expr(<span class="kw-2">&amp;mut </span>new_env, output)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; <span class="kw">match </span>expr.eval(env)<span class="question-mark">? </span>{
@@ -2720,7 +2720,7 @@
                 }
                 <span class="self">Self</span>::Declare(bindings, expr) =&gt; {
                     <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                    new_env.add_declaration(<span class="kw-2">&amp;</span>bindings)<span class="question-mark">?</span>;
+                    new_env.add_declaration(<span class="kw-2">&amp;</span>bindings, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
                     expr.monomorphize(ty_args)
                         .compile_expr(<span class="kw-2">&amp;mut </span>new_env, output)<span class="question-mark">?</span>;
                 }

@@ -268,7 +268,7 @@ impl TypeCheck for PolyProcedure {
             }
         }
         // Define the arguments of the procedure.
-        new_env.define_args(self.args.clone())?;
+        new_env.define_args(self.args.clone(), false)?;
         new_env.set_expected_return_type(self.ret.clone());
 
         // Typecheck the types of the arguments and return value

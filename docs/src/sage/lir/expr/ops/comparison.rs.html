@@ -315,7 +315,7 @@
 <span class="kw">impl </span>BinaryOp <span class="kw">for </span>Comparison {
     <span class="doccomment">/// Can this binary operation be applied to the given types?
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, lhs: <span class="kw-2">&amp;</span>Type, rhs: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
-        <span class="kw">match </span>(<span class="kw-2">&amp;</span>lhs.clone().simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>.discard_type_wrapper(), <span class="self">self</span>, <span class="kw-2">&amp;</span>rhs.clone().simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>.discard_type_wrapper()) {
+        <span class="kw">match </span>(<span class="kw-2">&amp;</span>lhs.clone().discard_type_wrapper(), <span class="self">self</span>, <span class="kw-2">&amp;</span>rhs.clone().discard_type_wrapper()) {
             (Type::Int, <span class="self">Self</span>::LessThan, Type::Int)
             | (Type::Int, <span class="self">Self</span>::LessThanOrEqual, Type::Int)
             | (Type::Int, <span class="self">Self</span>::GreaterThan, Type::Int)

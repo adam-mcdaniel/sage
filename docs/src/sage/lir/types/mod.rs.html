@@ -2629,6 +2629,28 @@
 <a href="#2628" id="2628">2628</a>
 <a href="#2629" id="2629">2629</a>
 <a href="#2630" id="2630">2630</a>
+<a href="#2631" id="2631">2631</a>
+<a href="#2632" id="2632">2632</a>
+<a href="#2633" id="2633">2633</a>
+<a href="#2634" id="2634">2634</a>
+<a href="#2635" id="2635">2635</a>
+<a href="#2636" id="2636">2636</a>
+<a href="#2637" id="2637">2637</a>
+<a href="#2638" id="2638">2638</a>
+<a href="#2639" id="2639">2639</a>
+<a href="#2640" id="2640">2640</a>
+<a href="#2641" id="2641">2641</a>
+<a href="#2642" id="2642">2642</a>
+<a href="#2643" id="2643">2643</a>
+<a href="#2644" id="2644">2644</a>
+<a href="#2645" id="2645">2645</a>
+<a href="#2646" id="2646">2646</a>
+<a href="#2647" id="2647">2647</a>
+<a href="#2648" id="2648">2648</a>
+<a href="#2649" id="2649">2649</a>
+<a href="#2650" id="2650">2650</a>
+<a href="#2651" id="2651">2651</a>
+<a href="#2652" id="2652">2652</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Types Module
 //!
 //! This module contains a collection of types and traits
@@ -3620,14 +3642,36 @@
     }
 
 
-    <span class="doccomment">/// Simplify until the type is concrete.
+    <span class="comment">// /// Simplify until the type is concrete.
+    // pub fn simplify_until_const_param(&amp;self, env: &amp;Env, _checked: bool) -&gt; Result&lt;ConstExpr, Error&gt; {
+    //     let mut simplified = self.clone();
+    //     for _ in 0..4 {
+    //         if let Self::ConstParam(cexpr) = simplified {
+    //             return Ok(*cexpr);
+    //         }
+    //         simplified = simplified.simplify(env)?;
+    //     }
+    //     // if result.is_err() {
+    //     //     debug!("Couldn't simplify {} to a constant param", self);
+    //     // }
+
+    //     match simplified {
+    //         Type::ConstParam(cexpr) =&gt; Ok(*cexpr),
+    //         result =&gt; panic!("Unexpected {result}")
+    //     }
+    // }
+
+    </span><span class="doccomment">/// Simplify until the type is concrete.
     </span><span class="kw">pub fn </span>simplify_until_const_param(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env, _checked: bool) -&gt; <span class="prelude-ty">Result</span>&lt;ConstExpr, Error&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>simplified = <span class="self">self</span>.clone().simplify(env)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>simplified = <span class="self">self</span>.clone();
         <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">3 </span>{
             <span class="kw">if let </span><span class="self">Self</span>::ConstParam(cexpr) = simplified {
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="kw-2">*</span>cexpr);
             }
             simplified = simplified.simplify(env)<span class="question-mark">?</span>;
+            <span class="kw">if let </span><span class="self">Self</span>::ConstParam(cexpr) = simplified {
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="kw-2">*</span>cexpr);
+            }
             simplified = <span class="kw">match </span>simplified {
                 <span class="self">Self</span>::Tuple(items) =&gt; {
                     <span class="kw">let </span>simple_items = items
@@ -4091,7 +4135,7 @@
         }
 
         <span class="kw">let </span>result = <span class="kw">match </span>(<span class="self">self</span>, other) {
-            (<span class="self">Self</span>::ConstParam(a), <span class="self">Self</span>::ConstParam(b)) =&gt; <span class="prelude-val">Ok</span>(a == b),
+            (<span class="self">Self</span>::ConstParam(a), <span class="self">Self</span>::ConstParam(b)) =&gt; <span class="prelude-val">Ok</span>(a.equals(b, env)),
 
             (<span class="self">Self</span>::Let(name, t, ret), other) | (other, <span class="self">Self</span>::Let(name, t, ret)) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
@@ -4667,7 +4711,7 @@
         expr: <span class="kw-2">&amp;</span>Expr,
         env: <span class="kw-2">&amp;</span>Env,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Type, usize), Error&gt; {
-        <span class="macro">trace!</span>(<span class="string">"Getting offset of member {member} in expression {self} in the environment {env}"</span>);
+        <span class="macro">debug!</span>(<span class="string">"Getting offset of member {member} in expression {self} in the environment {env}"</span>);
         <span class="kw">match </span><span class="self">self </span>{
             Type::Pointer(<span class="kw">_</span>, t) =&gt; t.get_member_offset(member, expr, env),
             Type::Struct(members) =&gt; {
@@ -5044,7 +5088,7 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::ConstParam(t) =&gt; <span class="macro">write!</span>(f, <span class="string">"const param {t}"</span>),
-            <span class="self">Self</span>::Type(t) =&gt; <span class="macro">write!</span>(f, <span class="string">"{t}"</span>),
+            <span class="self">Self</span>::Type(t) =&gt; <span class="macro">write!</span>(f, <span class="string">"type {t}"</span>),
             <span class="self">Self</span>::Any =&gt; <span class="macro">write!</span>(f, <span class="string">"Any"</span>),
             <span class="self">Self</span>::Never =&gt; <span class="macro">write!</span>(f, <span class="string">"Never"</span>),
             <span class="self">Self</span>::Pointer(mutability, ty) =&gt; {

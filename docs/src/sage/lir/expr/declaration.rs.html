@@ -1249,7 +1249,7 @@
                 </span>expr.clone().compile_expr(env, output)<span class="question-mark">?</span>;
 
                 <span class="comment">// Add the variable to the environment, so that it can be used in the body.
-                </span>env.add_local_variable_declaration(<span class="self">self</span>)<span class="question-mark">?</span>;
+                </span>env.add_local_variable_declaration(<span class="self">self</span>, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
                 <span class="comment">// Log the instructions for the declaration.
                 </span>output.log_instructions_after(name, <span class="kw-2">&amp;</span>log_message, current_instruction);
             }
@@ -1622,7 +1622,7 @@
             </span><span class="self">Self</span>::Many(decls) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                 <span class="comment">// Add all the compile-time declarations to the environment.
-                </span>new_env.add_declaration(<span class="kw-2">&amp;</span><span class="self">self</span>.clone())<span class="question-mark">?</span>;
+                </span>new_env.add_declaration(<span class="kw-2">&amp;</span><span class="self">self</span>.clone(), <span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
                 <span class="comment">// Get all the compile time declarations so we can type check them in parallel.
                 </span><span class="kw">let </span>(comp_time_decls, run_time_decls): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = decls
@@ -1642,7 +1642,7 @@
                     <span class="comment">// .map(|decl| decl.type_check(&amp;new_env))
                     </span>.try_for_each(|decl| {
                         decl.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
-                        new_env.add_declaration(decl)
+                        new_env.add_declaration(decl, <span class="bool-val">false</span>)
                     })<span class="question-mark">?</span>;
 
                 <span class="comment">/*
@@ -1689,7 +1689,7 @@
 
                 <span class="comment">// Add all the compile-time declarations to the environment.
                 // new_env.add_compile_time_declaration(&amp;Self::Many(decls.clone()))?;
-                </span>new_env.add_declaration(<span class="kw-2">&amp;</span><span class="self">Self</span>::Many(decls.clone()))<span class="question-mark">?</span>;
+                </span>new_env.add_declaration(<span class="kw-2">&amp;</span><span class="self">Self</span>::Many(decls.clone()), <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                 <span class="macro">trace!</span>(<span class="string">"Typechecking module {}"</span>, name);
                 <span class="comment">// Get all the compile time declarations so we can type check them in parallel.
                 </span><span class="kw">let </span>(comp_time_decls, _run_time_decls): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = decls

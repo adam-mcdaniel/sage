@@ -4946,6 +4946,43 @@
 <a href="#4945" id="4945">4945</a>
 <a href="#4946" id="4946">4946</a>
 <a href="#4947" id="4947">4947</a>
+<a href="#4948" id="4948">4948</a>
+<a href="#4949" id="4949">4949</a>
+<a href="#4950" id="4950">4950</a>
+<a href="#4951" id="4951">4951</a>
+<a href="#4952" id="4952">4952</a>
+<a href="#4953" id="4953">4953</a>
+<a href="#4954" id="4954">4954</a>
+<a href="#4955" id="4955">4955</a>
+<a href="#4956" id="4956">4956</a>
+<a href="#4957" id="4957">4957</a>
+<a href="#4958" id="4958">4958</a>
+<a href="#4959" id="4959">4959</a>
+<a href="#4960" id="4960">4960</a>
+<a href="#4961" id="4961">4961</a>
+<a href="#4962" id="4962">4962</a>
+<a href="#4963" id="4963">4963</a>
+<a href="#4964" id="4964">4964</a>
+<a href="#4965" id="4965">4965</a>
+<a href="#4966" id="4966">4966</a>
+<a href="#4967" id="4967">4967</a>
+<a href="#4968" id="4968">4968</a>
+<a href="#4969" id="4969">4969</a>
+<a href="#4970" id="4970">4970</a>
+<a href="#4971" id="4971">4971</a>
+<a href="#4972" id="4972">4972</a>
+<a href="#4973" id="4973">4973</a>
+<a href="#4974" id="4974">4974</a>
+<a href="#4975" id="4975">4975</a>
+<a href="#4976" id="4976">4976</a>
+<a href="#4977" id="4977">4977</a>
+<a href="#4978" id="4978">4978</a>
+<a href="#4979" id="4979">4979</a>
+<a href="#4980" id="4980">4980</a>
+<a href="#4981" id="4981">4981</a>
+<a href="#4982" id="4982">4982</a>
+<a href="#4983" id="4983">4983</a>
+<a href="#4984" id="4984">4984</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::{error, trace};
 <span class="kw">use </span>nom::{
     branch::alt,
@@ -6441,33 +6478,63 @@
     </span><span class="kw">let </span>(input, template_args) = cut(opt(parse_type_params))(input)<span class="question-mark">?</span>;
     <span class="macro">trace!</span>(<span class="string">"Parsed template args: {template_args:#?}"</span>);
     <span class="comment">// Get the function parameters with mutability
-    </span><span class="kw">let </span>(input, (params, ret)) = parse_method_params(input, ty)<span class="question-mark">?</span>;
-    <span class="macro">trace!</span>(<span class="string">"Parsed method parameters: {params:#?}, {ret:#?}"</span>);
-    <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, body) = cut(parse_block)(input)<span class="question-mark">?</span>;
-    <span class="comment">// Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body))))
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(args) = template_args {
-        <span class="prelude-val">Ok</span>((
-            input,
-            (
-                name.to_owned(),
-                ConstExpr::PolyProc(PolyProcedure::new(
+    </span><span class="kw">if let </span><span class="prelude-val">Ok</span>((input, (params, ret))) = parse_method_params::&lt;E&gt;(input, ty) {
+        <span class="macro">trace!</span>(<span class="string">"Parsed method parameters: {params:#?}, {ret:#?}"</span>);
+        <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(input, body) = cut(parse_block)(input)<span class="question-mark">?</span>;
+        <span class="comment">// Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body))))
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(args) = template_args {
+            <span class="prelude-val">Ok</span>((
+                input,
+                (
                     name.to_owned(),
-                    args.into_iter().map(|x| x.to_owned()).collect(),
-                    params,
-                    ret,
-                    body,
-                )),
-            ),
-        ))
+                    ConstExpr::PolyProc(PolyProcedure::new(
+                        name.to_owned(),
+                        args.into_iter().map(|x| x.to_owned()).collect(),
+                        params,
+                        ret,
+                        body,
+                    )),
+                ),
+            ))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>((
+                input,
+                (
+                    name.to_owned(),
+                    ConstExpr::Proc(Procedure::new(<span class="prelude-val">Some</span>(name.to_owned()), params, ret, body)),
+                ),
+            ))
+        }
     } <span class="kw">else </span>{
-        <span class="prelude-val">Ok</span>((
-            input,
-            (
-                name.to_owned(),
-                ConstExpr::Proc(Procedure::new(<span class="prelude-val">Some</span>(name.to_owned()), params, ret, body)),
-            ),
-        ))
+        <span class="kw">let </span>(input, (params, ret)) = parse_fun_params(input)<span class="question-mark">?</span>;
+        <span class="macro">trace!</span>(<span class="string">"Parsed method parameters: {params:#?}, {ret:#?}"</span>);
+        <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(input, body) = cut(parse_block)(input)<span class="question-mark">?</span>;
+        <span class="comment">// Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body))))
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(args) = template_args {
+            <span class="prelude-val">Ok</span>((
+                input,
+                (
+                    name.to_owned(),
+                    ConstExpr::PolyProc(PolyProcedure::new(
+                        name.to_owned(),
+                        args.into_iter().map(|x| x.to_owned()).collect(),
+                        params,
+                        ret,
+                        body,
+                    )),
+                ),
+            ))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>((
+                input,
+                (
+                    name.to_owned(),
+                    ConstExpr::Proc(Procedure::new(<span class="prelude-val">Some</span>(name.to_owned()), params, ret, body)),
+                ),
+            ))
+        }
     }
 }
 
@@ -7960,19 +8027,23 @@
 ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str, Type, E&gt; {
     <span class="kw">let </span>(input, ty) = parse_type_atom(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, <span class="kw">_</span>) = tag(<span class="string">"&lt;"</span>)(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, <span class="kw-2">mut </span>args) = many0(terminated(parse_type, tag(<span class="string">","</span>)))(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, last_arg) = opt(parse_type)(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, <span class="kw">_</span>) = tag(<span class="string">"&gt;"</span>)(input)<span class="question-mark">?</span>;
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(last_arg) = last_arg {
-        args.push(last_arg);
+    <span class="kw">if let </span><span class="prelude-val">Ok</span>((input, <span class="kw">_</span>)) = tag::&lt;<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>str, E&gt;(<span class="string">"&lt;"</span>)(input) {
+        <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(input, <span class="kw-2">mut </span>args) = many0(terminated(parse_type, tag(<span class="string">","</span>)))(input)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(input, last_arg) = opt(parse_type)(input)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(input, <span class="kw">_</span>) = tag(<span class="string">"&gt;"</span>)(input)<span class="question-mark">?</span>;
+    
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(last_arg) = last_arg {
+            args.push(last_arg);
+        }
+    
+        <span class="prelude-val">Ok</span>((input, Type::Apply(Box::new(ty), args)))
+    } <span class="kw">else </span>{
+        <span class="kw">return </span><span class="prelude-val">Ok</span>((input, ty))
     }
-
-    <span class="prelude-val">Ok</span>((input, Type::Apply(Box::new(ty), args)))
 }
 
 <span class="kw">fn </span>parse_type_primitive&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;&gt;(
@@ -8482,19 +8553,22 @@
 ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str, ConstExpr, E&gt; {
     <span class="kw">let </span>(input, expr) = parse_const_term(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, <span class="kw">_</span>) = tag(<span class="string">"&lt;"</span>)(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, <span class="kw-2">mut </span>tys) = many0(terminated(parse_type, tag(<span class="string">","</span>)))(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, last_ty) = opt(parse_type)(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, <span class="kw">_</span>) = tag(<span class="string">"&gt;"</span>)(input)<span class="question-mark">?</span>;
-
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(last_ty) = last_ty {
-        tys.push(last_ty);
+    <span class="kw">if let </span><span class="prelude-val">Ok</span>((input, <span class="kw">_</span>)) = tag::&lt;<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>str, E&gt;(<span class="string">"&lt;"</span>)(input) {
+        <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(input, <span class="kw-2">mut </span>tys) = many0(terminated(parse_type, tag(<span class="string">","</span>)))(input)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(input, last_ty) = opt(parse_type)(input)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(input, <span class="kw">_</span>) = tag(<span class="string">"&gt;"</span>)(input)<span class="question-mark">?</span>;
+    
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(last_ty) = last_ty {
+            tys.push(last_ty);
+        }
+    
+        <span class="prelude-val">Ok</span>((input, expr.monomorphize(tys)))
+    } <span class="kw">else </span>{
+        <span class="prelude-val">Ok</span>((input, expr))
     }
-
-    <span class="prelude-val">Ok</span>((input, expr.monomorphize(tys)))
 }
 
 <span class="kw">fn </span>parse_const_variant&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;&gt;(
@@ -8561,6 +8635,7 @@
         parse_const_sizeof_expr,
         parse_const_sizeof_type,
         parse_const_tuple,
+        parse_const_group,
         parse_const_bool,
         parse_const_null,
         parse_const_none,
@@ -8578,7 +8653,6 @@
         }),
         parse_const_array,
         parse_const_struct,
-        parse_const_group,
         map(parse_symbol, |x| ConstExpr::Symbol(x.to_string())),
     ))(input)
 }
