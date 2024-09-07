@@ -2953,12 +2953,13 @@ fn parse_type_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     let (input, _) = tag("<")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, mut params) = many0(terminated(alt((
-        map(pair(parse_symbol, delimited(terminated(whitespace, tag(":")), parse_type, whitespace)), |(name, ty)| (name, Some(ty))),
+        preceded(delimited(whitespace, tag("const"), whitespace), map(pair(parse_symbol, delimited(terminated(whitespace, tag(":")), parse_type, whitespace)), |(name, ty)| (name, Some(ty)))),
         map(parse_symbol, |x| (x, None))
-    )), tag(",")))(input)?;
+    )), preceded(whitespace, tag(","))))(input)?;
     let (input, _) = whitespace(input)?;
     let (input, last_param) = opt(alt((
-        map(pair(parse_symbol, delimited(terminated(whitespace, tag(":")), parse_type, whitespace)), |(name, ty)| (name, Some(ty))),
+        preceded(delimited(whitespace, tag("const"), whitespace), map(pair(parse_symbol, delimited(terminated(whitespace, tag(":")), parse_type, whitespace)), |(name, ty)| (name, Some(ty)))),
+        // map(pair(parse_symbol, delimited(terminated(whitespace, tag(":")), parse_type, whitespace)), |(name, ty)| (name, Some(ty))),
         map(parse_symbol, |x| (x, None))
     )))(input)?;
     let (input, _) = whitespace(input)?;

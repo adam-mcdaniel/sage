@@ -1,4 +1,4 @@
-struct Matrix<T, Rows: Int, Cols: Int> {
+struct Matrix<T, const Rows: Int, const Cols: Int> {
     arr: [[T * Cols] * Rows]
 }
 
@@ -11,7 +11,7 @@ impl Matrix<T, Rows, Cols> {
         return &self.arr[row][col];
     }
 
-    fun mul<NewCols: Int>(
+    fun mul<const NewCols: Int>(
         &self,
         other: &Matrix<T, Cols, NewCols>,
         zero: T,
@@ -31,23 +31,23 @@ impl Matrix<T, Rows, Cols> {
         result
     }
 
-    fun set<X: T>(&mut self, row: Int, col: Int) {
+    fun set<const X: T>(&mut self, row: Int, col: Int) {
         self.arr[row][col] = X;
     }
 
-    fun set_range<N: Int, X: [T * N]>(&mut self, row: Int) {
+    fun set_range<const N: Int, const X: [T * N]>(&mut self, row: Int) {
         for let mut i=0; i<Cols && i<N; i+=1; {
             self.arr[row][i] = X[i];
         }
     }
 
-    fun set_row<X: [T * Cols]>(&mut self, row: Int) {
+    fun set_row<const X: [T * Cols]>(&mut self, row: Int) {
         for let mut i=0; i<Cols; i+=1; {
             self.arr[row][i] = X[i];
         }
     }
 
-    fun set_col<X: [T * Rows]>(&mut self, col: Int) {
+    fun set_col<const X: [T * Rows]>(&mut self, col: Int) {
         for let mut i=0; i<Rows; i+=1; {
             self.arr[i][col] = X[i];
         }

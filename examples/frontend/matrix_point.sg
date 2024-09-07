@@ -1,4 +1,4 @@
-struct Matrix<T, Rows: Int, Cols: Int> {
+struct Matrix<T, const Rows: Int, const Cols: Int> {
     arr: [[T * Cols] * Rows]
 }
 
@@ -11,7 +11,7 @@ impl Matrix<T, Rows, Cols> {
         return &self.arr[row][col];
     }
 
-    fun mul<NewCols: Int>(
+    fun mul<const NewCols: Int>(
         &self,
         other: &Matrix<T, Cols, NewCols>,
         zero: T,

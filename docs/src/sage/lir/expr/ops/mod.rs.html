@@ -612,6 +612,7 @@
 <a href="#611" id="611">611</a>
 <a href="#612" id="612">612</a>
 <a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Operations
 //!
 //! This module contains implementations of various
@@ -925,6 +926,7 @@
         <span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>lhs.get_type(env)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span>rhs.get_type(env)<span class="question-mark">?</span>, env, output)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
+    
     <span class="doccomment">/// Compiles the operation on the given types. (Generates the code for the operation.)
     </span><span class="kw">fn </span>compile_types(
         <span class="kw-2">&amp;</span><span class="self">self</span>,

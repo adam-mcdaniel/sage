@@ -793,7 +793,7 @@
                 <span class="comment">// Get the type of the expression.
                 </span><span class="kw">let </span>t = expr
                     .get_type_checked(env, i)<span class="question-mark">?
-                    </span>.simplify_until_concrete(env)<span class="question-mark">?</span>;
+                    </span>.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                 <span class="comment">// If the type is a pointer, return the inner type of the pointer.
                 </span><span class="kw">if let </span>Type::Pointer(<span class="kw">_</span>, inner) = t {
                     <span class="comment">// If the type *evaluates* to a pointer, return that inner type.
@@ -814,7 +814,7 @@
                 <span class="comment">// Get the type of the function.
                 </span><span class="kw">let </span>ty = func
                     .get_type_checked(env, i)<span class="question-mark">?
-                    </span>.simplify_until_concrete(env)<span class="question-mark">?</span>;
+                    </span>.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                 <span class="kw">match </span>ty {
                     Type::Proc(<span class="kw">_</span>, ret) =&gt; <span class="kw-2">*</span>ret,
                     <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ApplyNonProc(<span class="self">self</span>.clone())),
@@ -874,7 +874,7 @@
                 <span class="comment">// Get the type of the value to get the member of.
                 </span><span class="kw">let </span>val_type = val.get_type_checked(env, i)<span class="question-mark">?</span>;
                 <span class="comment">// val_type.add_monomorphized_associated_consts(env)?;
-                </span><span class="kw">let </span>val_type = val_type.simplify_until_concrete(env)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>val_type = val_type.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                 <span class="comment">// val_type.add_monomorphized_associated_consts(env)?;
                 </span><span class="kw">match </span>val_type {
                     Type::Type(ty) =&gt; {

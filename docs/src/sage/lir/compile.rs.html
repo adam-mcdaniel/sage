@@ -1526,6 +1526,15 @@
 <a href="#1525" id="1525">1525</a>
 <a href="#1526" id="1526">1526</a>
 <a href="#1527" id="1527">1527</a>
+<a href="#1528" id="1528">1528</a>
+<a href="#1529" id="1529">1529</a>
+<a href="#1530" id="1530">1530</a>
+<a href="#1531" id="1531">1531</a>
+<a href="#1532" id="1532">1532</a>
+<a href="#1533" id="1533">1533</a>
+<a href="#1534" id="1534">1534</a>
+<a href="#1535" id="1535">1535</a>
+<a href="#1536" id="1536">1536</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compile
 //!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
@@ -2076,7 +2085,7 @@
             </span><span class="self">Self</span>::EnumUnion(t, variant, val) =&gt; {
                 <span class="comment">// Get the size of the tagged union.
                 </span><span class="kw">let </span>result_size = t.get_size(env)<span class="question-mark">?</span>;
-                <span class="kw">let </span>t = t.simplify_until_concrete(env)<span class="question-mark">?</span>;
+                <span class="kw">let </span>t = t.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                 <span class="kw">if let </span>Type::EnumUnion(fields) = t {
                     <span class="comment">// Get the list of possible variant names.
                     </span><span class="kw">let </span>variants = fields.clone().into_keys().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
@@ -2371,7 +2380,7 @@
                     <span class="comment">// val_type.add_monomorphized_associated_consts(env)?;
 
                     // Push the address of the struct, tuple, or union onto the stack.
-                    </span><span class="kw">match </span>val_type.simplify_until_has_members(env)<span class="question-mark">? </span>{
+                    </span><span class="kw">match </span>val_type.simplify_until_has_members(env, <span class="bool-val">false</span>)<span class="question-mark">? </span>{
                         <span class="comment">// If the value is a struct, tuple, or union:
                         </span>Type::Struct(<span class="kw">_</span>) | Type::Tuple(<span class="kw">_</span>) | Type::Union(<span class="kw">_</span>) =&gt; {
                             <span class="comment">// Compile a reference to the inner value with the expected mutability.
@@ -2456,7 +2465,7 @@
                     <span class="comment">// val_type.add_monomorphized_associated_consts(env)?;
 
                     // Push the address of the struct, tuple, or union onto the stack.
-                    </span><span class="kw">match </span>val_type.simplify_until_has_members(env)<span class="question-mark">? </span>{
+                    </span><span class="kw">match </span>val_type.simplify_until_has_members(env, <span class="bool-val">false</span>)<span class="question-mark">? </span>{
                         <span class="comment">// If the value is a struct, tuple, or union:
                         </span>Type::Struct(<span class="kw">_</span>) | Type::Tuple(<span class="kw">_</span>) | Type::Union(<span class="kw">_</span>) =&gt; {
                             <span class="comment">// Compile a reference to the inner value with the expected mutability.
@@ -2599,14 +2608,20 @@
         <span class="kw">let </span>ty = <span class="self">self</span>.get_type(env)<span class="question-mark">?</span>;
         <span class="comment">// Compile the constant expression.
         </span><span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Template(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
+            <span class="self">Self</span>::Any
+            | <span class="self">Self</span>::Template(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
                 <span class="comment">// Cannot compile a template expression.
                 </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsizedType(ty));
             }
 
-            <span class="self">Self</span>::Type(<span class="kw">_</span>) =&gt; {
-                <span class="comment">// Do nothing.
-            </span>}
+            <span class="self">Self</span>::Type(t) =&gt; {
+                <span class="kw">match </span>t.simplify(env)<span class="question-mark">? </span>{
+                    Type::ConstParam(cexpr) =&gt; cexpr.compile_expr(env, output)<span class="question-mark">?</span>,
+                    <span class="kw">_ </span>=&gt; {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsizedType(ty));
+                    }
+                }
+            }
             <span class="self">Self</span>::Member(container, member) =&gt; {
                 <span class="kw">let </span>new_container = <span class="kw-2">*</span>container.clone();
                 <span class="macro">debug!</span>(<span class="string">"Compiling (const) member access {member} on {new_container} in environment {env}"</span>);
@@ -2624,6 +2639,9 @@
                             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), <span class="kw-2">*</span>member));
                         }
                         fields[<span class="kw-2">&amp;</span>name].clone().compile_expr(env, output)<span class="question-mark">?
+                    </span>}
+                    (<span class="self">Self</span>::Type(ty), member) <span class="kw">if </span>ty.is_const_param() =&gt; {
+                        ty.simplify_until_const_param(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>.field(member).compile_expr(env, output)<span class="question-mark">?
                     </span>}
                     (<span class="self">Self</span>::Type(ty), <span class="self">Self</span>::Symbol(name)) =&gt; {
                         <span class="kw">if let </span><span class="prelude-val">Some</span>((constant, <span class="kw">_</span>)) = env.get_associated_const(<span class="kw-2">&amp;</span>ty, <span class="kw-2">&amp;</span>name) {
@@ -2692,7 +2710,7 @@
                     }
 
                     <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="kw-2">*</span>result.clone();
-                    <span class="kw">for </span>(param, ty_arg) <span class="kw">in </span>params.into_iter().zip(ty_args) {
+                    <span class="kw">for </span>((param, <span class="kw">_</span>), ty_arg) <span class="kw">in </span>params.into_iter().zip(ty_args) {
                         result.substitute(<span class="kw-2">&amp;</span>param, <span class="kw-2">&amp;</span>ty_arg);
                     }
                     result = result.eval(env)<span class="question-mark">?</span>;
@@ -2913,7 +2931,7 @@
             </span><span class="self">Self</span>::EnumUnion(t, variant, val) =&gt; {
                 <span class="comment">// Get the size of the tagged union.
                 </span><span class="kw">let </span>result_size = t.get_size(env)<span class="question-mark">?</span>;
-                <span class="kw">let </span>t = t.simplify_until_has_variants(env)<span class="question-mark">?</span>;
+                <span class="kw">let </span>t = t.simplify_until_has_variants(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
                 <span class="comment">// Get the inner list of variants and compile the expression using this information.
                 </span><span class="kw">if let </span>Type::EnumUnion(variants) = t.clone().simplify(env)<span class="question-mark">? </span>{
@@ -2987,7 +3005,7 @@
             </span><span class="self">Self</span>::Of(enum_type, variant) =&gt; {
                 <span class="comment">// Only try to simplify the type 50 times at most.
                 // This is to prevent infinite loops and to keep recursion under control.
-                </span><span class="kw">match </span>enum_type.simplify_until_has_variants(env)<span class="question-mark">? </span>{
+                </span><span class="kw">match </span>enum_type.simplify_until_has_variants(env, <span class="bool-val">false</span>)<span class="question-mark">? </span>{
                     <span class="comment">// If the type is an enum, we can continue.
                     </span>Type::Enum(variants) =&gt; {
                         <span class="comment">// Get the index of the variant.

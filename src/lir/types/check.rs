@@ -716,7 +716,7 @@ impl TypeCheck for Expr {
                                     expr: self.clone(),
                                 });
                             } else {
-                                info!("Found {found} can decay to {expected} in {self}")
+                                debug!("Found {found} can decay to {expected} in {self}")
                             }
                         }
                         Ok(())
@@ -933,7 +933,7 @@ impl TypeCheck for Expr {
 // Typecheck a constant expression.
 impl TypeCheck for ConstExpr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
-        info!("Typechecking constant expression: {}", self);
+        debug!("Typechecking constant expression: {}", self);
         if env.has_type_checked_const(self) {
             return Ok(());
         }
@@ -974,7 +974,7 @@ impl TypeCheck for ConstExpr {
                 match e_type.type_check_member(field, &Expr::ConstExpr(*e.clone()), env) {
                     Ok(_) => Ok(()),
                     Err(_err) => {
-                        info!("Member {field} not found in type {e_type} in environment {env}");
+                        debug!("Member {field} not found in type {e_type} in environment {env}");
                         match field
                             .clone()
                             .as_symbol(env)

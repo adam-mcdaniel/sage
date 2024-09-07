@@ -4921,6 +4921,31 @@
 <a href="#4920" id="4920">4920</a>
 <a href="#4921" id="4921">4921</a>
 <a href="#4922" id="4922">4922</a>
+<a href="#4923" id="4923">4923</a>
+<a href="#4924" id="4924">4924</a>
+<a href="#4925" id="4925">4925</a>
+<a href="#4926" id="4926">4926</a>
+<a href="#4927" id="4927">4927</a>
+<a href="#4928" id="4928">4928</a>
+<a href="#4929" id="4929">4929</a>
+<a href="#4930" id="4930">4930</a>
+<a href="#4931" id="4931">4931</a>
+<a href="#4932" id="4932">4932</a>
+<a href="#4933" id="4933">4933</a>
+<a href="#4934" id="4934">4934</a>
+<a href="#4935" id="4935">4935</a>
+<a href="#4936" id="4936">4936</a>
+<a href="#4937" id="4937">4937</a>
+<a href="#4938" id="4938">4938</a>
+<a href="#4939" id="4939">4939</a>
+<a href="#4940" id="4940">4940</a>
+<a href="#4941" id="4941">4941</a>
+<a href="#4942" id="4942">4942</a>
+<a href="#4943" id="4943">4943</a>
+<a href="#4944" id="4944">4944</a>
+<a href="#4945" id="4945">4945</a>
+<a href="#4946" id="4946">4946</a>
+<a href="#4947" id="4947">4947</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::{error, trace};
 <span class="kw">use </span>nom::{
     branch::alt,
@@ -7540,7 +7565,7 @@
                 Declaration::Type(
                     name.to_owned(),
                     Type::Poly(
-                        params.into_iter().map(|x| x.to_owned()).collect(),
+                        params,
                         Type::Struct(fields).into(),
                     ),
                 ),
@@ -7601,7 +7626,7 @@
                 Declaration::Type(
                     name.to_owned(),
                     Type::Poly(
-                        params.into_iter().map(|x| x.to_owned()).collect(),
+                        params,
                         Type::EnumUnion(fields).into(),
                     ),
                 ),
@@ -7872,12 +7897,19 @@
 
 <span class="kw">fn </span>parse_type_params&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;&gt;(
     input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str,
-) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str, Vec&lt;String&gt;, E&gt; {
+) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str, Vec&lt;(String, <span class="prelude-ty">Option</span>&lt;Type&gt;)&gt;, E&gt; {
     <span class="kw">let </span>(input, <span class="kw">_</span>) = tag(<span class="string">"&lt;"</span>)(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, <span class="kw-2">mut </span>params) = many0(terminated(parse_symbol, tag(<span class="string">","</span>)))(input)<span class="question-mark">?</span>;
+    <span class="kw">let </span>(input, <span class="kw-2">mut </span>params) = many0(terminated(alt((
+        preceded(delimited(whitespace, tag(<span class="string">"const"</span>), whitespace), map(pair(parse_symbol, delimited(terminated(whitespace, tag(<span class="string">":"</span>)), parse_type, whitespace)), |(name, ty)| (name, <span class="prelude-val">Some</span>(ty)))),
+        map(parse_symbol, |x| (x, <span class="prelude-val">None</span>))
+    )), preceded(whitespace, tag(<span class="string">","</span>))))(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
-    <span class="kw">let </span>(input, last_param) = opt(parse_symbol)(input)<span class="question-mark">?</span>;
+    <span class="kw">let </span>(input, last_param) = opt(alt((
+        preceded(delimited(whitespace, tag(<span class="string">"const"</span>), whitespace), map(pair(parse_symbol, delimited(terminated(whitespace, tag(<span class="string">":"</span>)), parse_type, whitespace)), |(name, ty)| (name, <span class="prelude-val">Some</span>(ty)))),
+        <span class="comment">// map(pair(parse_symbol, delimited(terminated(whitespace, tag(":")), parse_type, whitespace)), |(name, ty)| (name, Some(ty))),
+        </span>map(parse_symbol, |x| (x, <span class="prelude-val">None</span>))
+    )))(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, <span class="kw">_</span>) = tag(<span class="string">"&gt;"</span>)(input)<span class="question-mark">?</span>;
 
@@ -7885,7 +7917,7 @@
         params.push(last_param);
     }
 
-    <span class="prelude-val">Ok</span>((input, params.into_iter().map(|x| x.to_string()).collect()))
+    <span class="prelude-val">Ok</span>((input, params.into_iter().map(|(name, ty)| (name.to_string(), ty)).collect()))
 }
 
 <span class="kw">fn </span>parse_type_function&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;&gt;(
@@ -7976,6 +8008,7 @@
         parse_type_function,
         map(parse_symbol, |x| Type::Symbol(x.to_string())),
         parse_type_group,
+        map(parse_const_atom, |x| Type::ConstParam(x.into()))
     ))(input)<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>((input, ty))
@@ -9016,9 +9049,26 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">fn </span>compile_and_run(code: <span class="kw-2">&amp;</span>str, input: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
-        <span class="kw">let _ </span>= rayon::ThreadPoolBuilder::new()
+        <span class="comment">// let has_init = {*INIT.read().unwrap()};
+        // if !has_init {
+        //     let mut builder = env_logger::Builder::from_default_env();
+        //     builder.format_timestamp(None);
+        //     builder.filter(
+        //         None,
+        //         // LogLevel::Error if args.debug.is_none() =&gt; log::LevelFilter::Error,
+        //         // LogLevel::Warn if args.debug.is_none() =&gt; log::LevelFilter::Warn,
+        //         // LogLevel::Off if args.debug.is_none() =&gt; log::LevelFilter::Error,
+        //         // LogLevel::Info if args.debug.is_none() =&gt; log::LevelFilter::Info,
+        //         log::LevelFilter::Trace,
+        //         // log::LevelFilter::Info,
+        //     );
+        //     builder.init();
+        //     *INIT.write().unwrap() = true;
+        // }
+            
+        </span><span class="kw">let _ </span>= rayon::ThreadPoolBuilder::new()
             .num_threads(<span class="number">16</span>)
-            .stack_size(<span class="number">2048 </span>* <span class="number">1024 </span>* <span class="number">1024</span>)
+            .stack_size(<span class="number">512 </span>* <span class="number">1024 </span>* <span class="number">1024</span>)
             .build_global();
         <span class="comment">// Compiling most examples overflows the tiny stack for tests.
         // So, we spawn a new thread with a larger stack size.
@@ -9391,7 +9441,7 @@
         assert_parse_type(
             <span class="string">"fun&lt;T&gt;(Option&lt;T&gt;) -&gt; Bool"</span>,
             <span class="prelude-val">Some</span>(Type::Poly(
-                <span class="macro">vec!</span>[<span class="string">"T"</span>.to_string()],
+                <span class="macro">vec!</span>[(<span class="string">"T"</span>.to_string(), <span class="prelude-val">None</span>)],
                 Type::Proc(
                     <span class="macro">vec!</span>[Type::Apply(
                         Box::new(Type::Symbol(<span class="string">"Option"</span>.to_string())),
@@ -9406,7 +9456,7 @@
         assert_parse_type(
             <span class="string">"fun&lt;T&gt;(Option&lt;T&gt;, Int) -&gt; Bool"</span>,
             <span class="prelude-val">Some</span>(Type::Poly(
-                <span class="macro">vec!</span>[<span class="string">"T"</span>.to_string()],
+                <span class="macro">vec!</span>[(<span class="string">"T"</span>.to_string(), <span class="prelude-val">None</span>)],
                 Type::Proc(
                     <span class="macro">vec!</span>[
                         Type::Apply(

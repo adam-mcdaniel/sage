@@ -1010,6 +1010,8 @@
 <a href="#1009" id="1009">1009</a>
 <a href="#1010" id="1010">1010</a>
 <a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{PolyProcedure, Procedure};
 <span class="kw">use crate</span>::{
     asm::{AssemblyProgram, CoreOp, Location, SP},
@@ -1583,7 +1585,9 @@
 
                     <span class="kw">for </span>(name, associated_const) <span class="kw">in </span>impls {
                         <span class="kw">let </span>templated_const =
-                            associated_const.template(supplied_param_symbols.clone());
+                            <span class="comment">// associated_const.template(supplied_param_symbols.clone().into_iter().map(|x| (x, None)).collect());
+                            // associated_const.template(template_params.clone());
+                            </span>associated_const.template(template_params.clone().into_iter().zip(supplied_param_symbols.clone().into_iter()).map(|((<span class="kw">_</span>, ty), param)| (param, ty)).collect());
                         new_env.add_associated_const(
                             <span class="kw-2">*</span>template.clone(),
                             name,

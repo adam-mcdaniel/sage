@@ -106,7 +106,7 @@ impl ConstExpr {
     }
 
     pub fn equals(&self, other: &Self, env: &Env) -> bool {
-        info!("{self} == {other} in const?");
+        debug!("{self} == {other} in const?");
         match (self, other) {
             (Self::Any, _) | (_, Self::Any) => true,
             (Self::Type(Type::Any), _) | (_, Self::Type(Type::Any)) => true,
@@ -247,7 +247,7 @@ impl ConstExpr {
 
                 Self::Member(container, member) => {
                     let container_ty = container.get_type_checked(env, i)?;
-                    info!("Member access on type: {container_ty:?}: {container} . {member}");
+                    debug!("Member access on type: {container_ty:?}: {container} . {member}");
                     Ok(match (*container.clone(), *member.clone()) {
                         (Self::Annotated(inner, metadata), member) => {
                             Self::Member(inner, member.into())
@@ -325,7 +325,7 @@ impl ConstExpr {
                             }
                         }
                         (Self::Type(ty), Self::Symbol(name)) => {
-                            info!("Getting member {name} from {ty}");
+                            debug!("Getting member {name} from {ty}");
                             if ty.is_const_param() {
                                 let cexpr = ty.simplify_until_const_param(env, false)?;
                                 return cexpr.eval_checked(env, i)?.field(Self::Symbol(name)).eval_checked(env, i)
@@ -598,7 +598,7 @@ impl GetType for ConstExpr {
             }
 
             Self::Type(t) => {
-                info!("Getting type of type {t}");
+                debug!("Getting type of type {t}");
                 let result = if t.is_const_param() {
                     let cexpr = t.simplify_until_const_param(env, false)?;
                     cexpr.get_type(env)?
@@ -615,7 +615,7 @@ impl GetType for ConstExpr {
                 // } else {
                 //     Type::Type(t.clone().into())
                 // };
-                // info!("Got type of type {t} = {result}");
+                // debug!("Got type of type {t} = {result}");
                 result
             }
 
@@ -627,7 +627,7 @@ impl GetType for ConstExpr {
                 let as_int = field.clone().as_int(env);
 
                 let val_type = val.get_type_checked(env, i)?;
-                info!("Got type of container access {val} . {field}\nContainer: {val_type:?}, is_const_param: {}", val_type.is_const_param());
+                debug!("Got type of container access {val} . {field}\nContainer: {val_type:?}, is_const_param: {}", val_type.is_const_param());
                 // val_type.add_monomorphized_associated_consts(env)?;
                 // Get the type of the value to get the member of.
                 let val_type = val_type.simplify_until_concrete(env, false)?;
@@ -655,7 +655,7 @@ impl GetType for ConstExpr {
                     }
 
                     Type::Type(ty) => {
-                        info!("Got type {ty}");
+                        debug!("Got type {ty}");
                         if ty.is_const_param() {
                             ty.simplify_until_const_param(env, false)?.eval(env)?.field(*field).get_type_checked(env, i)?
                         } else {

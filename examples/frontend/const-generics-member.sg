@@ -1,8 +1,8 @@
-fun test<X: (Int, Int)>() {
+fun test<const X: (Int, Int)>() {
     println(X.0);
 }
 
-fun test2<X: {x: Int, y: Int}>() {
+fun test2<const X: {x: Int, y: Int}>() {
     println(X);
     println("x: ", X.x);
     println("y: ", X.y);
@@ -28,7 +28,7 @@ impl Point {
     }
 }
 
-fun test3<P: Point>() {
+fun test3<const P: Point>() {
     let mut p = P;
     p.move(1, 1);
     println(p)

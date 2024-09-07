@@ -25,7 +25,7 @@ fn test_c_target_frontend_examples() {
     builder.init();
 
     rayon::ThreadPoolBuilder::new()
-        .num_threads(1)
+        .num_threads(16)
         .stack_size(512 * 1024 * 1024)
         .build_global()
         .unwrap();

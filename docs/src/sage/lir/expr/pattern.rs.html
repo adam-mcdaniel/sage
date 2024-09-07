@@ -1164,7 +1164,7 @@
         env: <span class="kw-2">&amp;</span>Env,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
         <span class="comment">// Get the type of the expression being matched.
-        </span><span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>.simplify_until_concrete(env)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
         <span class="comment">// Get the bindings for the pattern.
         </span><span class="kw">let </span>bindings = <span class="self">self</span>.get_bindings(expr, <span class="kw-2">&amp;</span>ty, env)<span class="question-mark">?</span>;
         <span class="comment">// Create a new environment with the bindings.
@@ -1192,7 +1192,7 @@
         matching_expr_ty: <span class="kw-2">&amp;</span>Type,
         env: <span class="kw-2">&amp;</span>Env,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
-        <span class="kw">let </span>matching_expr_ty = <span class="kw-2">&amp;</span>matching_expr_ty.simplify_until_concrete(env)<span class="question-mark">?</span>;
+        <span class="kw">let </span>matching_expr_ty = <span class="kw-2">&amp;</span>matching_expr_ty.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
         <span class="kw">match </span>matching_expr_ty {
             Type::Bool =&gt; {
                 <span class="comment">// If the type is a boolean, the patterns are exhaustive if they match both `true` and `false`.
@@ -1483,7 +1483,7 @@
     </span><span class="kw">pub fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, matching_expr: <span class="kw-2">&amp;</span>Expr, branch: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="macro">trace!</span>(<span class="string">"Type checking pattern match: {} =&gt; {}"</span>, <span class="self">self</span>, branch);
         <span class="comment">// Get the type of the expression being matched.
-        </span><span class="kw">let </span>matching_ty = matching_expr.get_type(env)<span class="question-mark">?</span>.simplify_until_concrete(env)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>matching_ty = matching_expr.get_type(env)<span class="question-mark">?</span>.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
         <span class="comment">// Get the type of the branch as a result of the match.
         </span><span class="kw">let </span>expected = <span class="self">self</span>.get_branch_result_type(matching_expr, branch, env)<span class="question-mark">?</span>;
         <span class="comment">// Type-check the expression generated to match the pattern.
@@ -1592,7 +1592,7 @@
         <span class="comment">// Create a new environment with the bindings
         </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
         <span class="comment">// Get the type of the expression being matched
-        </span><span class="kw">let </span>match_type = expr.get_type(env)<span class="question-mark">?</span>.simplify_until_concrete(env)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>match_type = expr.get_type(env)<span class="question-mark">?</span>.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
         <span class="comment">// Define the variable in the new environment.
         </span>new_env.define_var(var_name.clone(), Mutability::Immutable, match_type.clone())<span class="question-mark">?</span>;
         <span class="comment">// Generate the expression which evaluates the `match` expression.
@@ -1664,7 +1664,7 @@
         env: <span class="kw-2">&amp;</span>Env,
         <span class="kw-2">mut </span>origin: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;HashMap&lt;String, (Mutability, Type, usize)&gt;, Error&gt; {
-        <span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty.simplify_until_concrete(env)<span class="question-mark">?</span>;
+        <span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>(<span class="self">self</span>, ty) {
             <span class="comment">// If the pattern is a tuple, and the type is a tuple, then
             // get the bindings for each element of the tuple.
@@ -1813,7 +1813,7 @@
     <span class="doccomment">/// Does this pattern match the given expression?
     /// This function returns an expression which evaluates to true if the expression matches the pattern.
     </span><span class="kw">fn </span>matches(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, Error&gt; {
-        <span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty.simplify_until_concrete(env)<span class="question-mark">?</span>;
+        <span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>(<span class="self">self</span>, ty) {
             <span class="comment">// If the pattern is a variant, and the type is a EnumUnion,
             // check if the variant matches the pattern.
@@ -1973,7 +1973,7 @@
     /// then this will not work correctly. This function does not check the arguments.***
     </span><span class="kw">pub fn </span>declare_let_bind(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;mut </span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="comment">// Get the type of the expression being matched.
-        </span><span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty.simplify_until_concrete(env)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
         <span class="comment">// Get the variable bindings for the pattern.
         // This tells us the type and mutability of each variable.
         </span><span class="kw">let </span>bindings = <span class="self">self</span>.get_bindings_with_offset(expr, ty, env, <span class="number">0</span>)<span class="question-mark">?</span>;
@@ -1999,7 +1999,7 @@
     /// added to the environment, and will be bound to the corresponding value in
     /// the expression which is being matched.
     </span><span class="kw">fn </span>bind(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, ty: <span class="kw-2">&amp;</span>Type, ret: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Expr, Error&gt; {
-        <span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty.simplify_until_concrete(env)<span class="question-mark">?</span>;
+        <span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>(<span class="self">self</span>, ty) {
             <span class="comment">// If the pattern is a variant, and the type is a tagged union,
             // bind the pattern to the corresponding variant type in the tagged union.
