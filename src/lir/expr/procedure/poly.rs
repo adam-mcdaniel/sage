@@ -254,13 +254,12 @@ impl TypeCheck for PolyProcedure {
         debug!("Type checking {self}");
         // Create a new scope for the procedure's body, and define the arguments for the scope.
         let mut new_env = env.new_scope();
-        let mut new_env_save = env.new_scope();
         
         // Define the type parameters of the procedure.
         for (name, ty) in &self.ty_params {
             match ty {
                 Some(ty) => {
-                    new_env.define_var(name, Mutability::Immutable, ty.clone(), false);
+                    new_env.define_var(name, Mutability::Immutable, ty.clone(), false)?;
                     new_env.define_type(name, ty.clone());
                 }
                 None => {

@@ -1117,7 +1117,7 @@ impl Compile for ConstExpr {
                     }
                     (Self::Declare(bindings, expr), field) => {
                         let mut new_env = env.clone();
-                        new_env.add_declaration(&bindings)?;
+                        new_env.add_declaration(&bindings, true)?;
                         expr.field(field).compile_expr(&mut new_env, output)?;
                     }
                     (a, b) => {
@@ -1137,7 +1137,7 @@ impl Compile for ConstExpr {
             Self::Declare(bindings, body) => {
                 debug!("Compiling declaration {bindings} with body {body} in environment {env}");
                 let mut new_env = env.clone();
-                new_env.add_declaration(&bindings)?;
+                new_env.add_declaration(&bindings, true)?;
                 body.compile_expr(&mut new_env, output)?;
             }
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
@@ -1183,7 +1183,7 @@ impl Compile for ConstExpr {
                 }
                 Self::Declare(bindings, expr) => {
                     let mut new_env = env.clone();
-                    new_env.add_declaration(&bindings)?;
+                    new_env.add_declaration(&bindings, true)?;
                     expr.monomorphize(ty_args)
                         .compile_expr(&mut new_env, output)?;
                 }

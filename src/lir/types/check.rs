@@ -204,7 +204,7 @@ impl TypeCheck for Type {
 /// Check the type-soundness of a given expression.
 impl TypeCheck for Expr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
-        error!("Type checking expression: {self}");
+        trace!("Type checking expression: {self}");
         let ty = self.get_type(env)?;
         ty.type_check(env)?;
 
@@ -221,7 +221,7 @@ impl TypeCheck for Expr {
                 // Check the declaration.
                 declaration.type_check(&new_env)?;
                 // Add the declarations to the environment.
-                new_env.add_declaration(declaration)?;
+                new_env.add_declaration(declaration, false)?;
                 // Check the body with the declarations defined.
                 body.type_check(&new_env)
             }
@@ -318,7 +318,7 @@ impl TypeCheck for Expr {
                     let bindings = pat.get_bindings(expr, &ty, env)?;
                     // Define the bindings in the environment.
                     for (name, (mutability, ty)) in bindings {
-                        new_env.define_var(name, mutability, ty, true)?;
+                        new_env.define_var(name, mutability, ty, false)?;
                     }
                     // Check the branch under the new environment.
                     pat.type_check(expr, branch, env)?;
@@ -1069,7 +1069,7 @@ impl TypeCheck for ConstExpr {
                 debug!(
                     "Monomorphizing {expr} with type arguments {ty_args:?} in environment {env}"
                 );
-                match expr.clone().eval(env)? {
+                match *expr.clone() {
                     Self::Template(ref ty_params, ref template) => {
                         // Create a new environment with the type parameters defined.
                         // Define the type parameters in the environment.
@@ -1091,7 +1091,6 @@ impl TypeCheck for ConstExpr {
                                         error!("Mismatch in expected type for constant parameter");
                                         return Err(Error::MismatchedTypes { expected, found, expr: (cexpr.clone()).into() })
                                     }
-                                    ret.substitute(param, ty_arg)
                                 }
                                 ret.substitute(param, ty_arg);
                                 new_env.define_const(param, cexpr.clone());

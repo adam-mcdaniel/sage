@@ -684,9 +684,9 @@ impl Env {
     }
 
     /// Add all the declarations to this environment.
-    pub(super) fn add_declaration(&mut self, declaration: &Declaration) -> Result<(), Error> {
+    pub(super) fn add_declaration(&mut self, declaration: &Declaration, compiling: bool) -> Result<(), Error> {
         self.add_compile_time_declaration(declaration)?;
-        self.add_local_variable_declaration(declaration)?;
+        self.add_local_variable_declaration(declaration, compiling)?;
         Ok(())
     }
 
@@ -918,6 +918,7 @@ impl Env {
     pub(super) fn add_local_variable_declaration(
         &mut self,
         declaration: &Declaration,
+        compiling: bool
     ) -> Result<(), Error> {
         trace!("Adding local declaration {declaration}");
         match declaration {
@@ -957,7 +958,7 @@ impl Env {
                     None => expr.get_type(self)?,
                 };
                 // ty.add_monomorphized_associated_consts(self)?;
-                self.define_var(name, *mutability, ty, false)?;
+                self.define_var(name, *mutability, ty, compiling)?;
             }
             Declaration::VarPat(pat, expr) => {
                 let ty = expr.get_type(self)?;
@@ -966,7 +967,7 @@ impl Env {
             }
             Declaration::Many(decls) => {
                 for decl in decls.iter() {
-                    self.add_local_variable_declaration(decl)?;
+                    self.add_local_variable_declaration(decl, compiling)?;
                 }
             }
         }
@@ -1233,7 +1234,8 @@ impl Env {
         let size = if compiling {
             ty.get_size(self)?
         } else {
-            ty.get_size(self).unwrap_or(0)
+            // ty.get_size(self).unwrap_or(0)
+            0
         } as isize;
         // Remember the offset of the variable under the current scope.
         let offset = self.fp_offset;

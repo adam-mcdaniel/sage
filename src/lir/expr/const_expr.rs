@@ -814,7 +814,6 @@ impl GetType for ConstExpr {
                                         error!("Mismatch in expected type for constant parameter");
                                         return Err(Error::MismatchedTypes { expected, found, expr: (cexpr.clone()).into() })
                                     }
-                                    ret.substitute(param, ty_arg)
                                 }
                                 ret.substitute(param, ty_arg);
                                 new_env.define_const(param, cexpr.clone());
@@ -1151,10 +1150,10 @@ impl Hash for ConstExpr {
                 container.hash(state);
                 member.hash(state);
             }
-            Self::Annotated(expr, metadata) => {
+            Self::Annotated(expr, _metadata) => {
                 state.write_u8(3);
                 expr.hash(state);
-                metadata.hash(state);
+                // metadata.hash(state);
             }
             Self::FFIProcedure(ffi_proc) => {
                 state.write_u8(4);

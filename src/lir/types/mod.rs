@@ -989,14 +989,36 @@ impl Type {
     }
 
 
+    // /// Simplify until the type is concrete.
+    // pub fn simplify_until_const_param(&self, env: &Env, _checked: bool) -> Result<ConstExpr, Error> {
+    //     let mut simplified = self.clone();
+    //     for _ in 0..4 {
+    //         if let Self::ConstParam(cexpr) = simplified {
+    //             return Ok(*cexpr);
+    //         }
+    //         simplified = simplified.simplify(env)?;
+    //     }
+    //     // if result.is_err() {
+    //     //     debug!("Couldn't simplify {} to a constant param", self);
+    //     // }
+
+    //     match simplified {
+    //         Type::ConstParam(cexpr) => Ok(*cexpr),
+    //         result => panic!("Unexpected {result}")
+    //     }
+    // }
+
     /// Simplify until the type is concrete.
     pub fn simplify_until_const_param(&self, env: &Env, _checked: bool) -> Result<ConstExpr, Error> {
-        let mut simplified = self.clone().simplify(env)?;
+        let mut simplified = self.clone();
         for _ in 0..3 {
             if let Self::ConstParam(cexpr) = simplified {
                 return Ok(*cexpr);
             }
             simplified = simplified.simplify(env)?;
+            if let Self::ConstParam(cexpr) = simplified {
+                return Ok(*cexpr);
+            }
             simplified = match simplified {
                 Self::Tuple(items) => {
                     let simple_items = items
@@ -1460,7 +1482,7 @@ impl Type {
         }
 
         let result = match (self, other) {
-            (Self::ConstParam(a), Self::ConstParam(b)) => Ok(a == b),
+            (Self::ConstParam(a), Self::ConstParam(b)) => Ok(a.equals(b, env)),
 
             (Self::Let(name, t, ret), other) | (other, Self::Let(name, t, ret)) => {
                 let mut new_env = env.clone();

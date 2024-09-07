@@ -235,7 +235,7 @@ impl Declaration {
                 expr.clone().compile_expr(env, output)?;
 
                 // Add the variable to the environment, so that it can be used in the body.
-                env.add_local_variable_declaration(self)?;
+                env.add_local_variable_declaration(self, true)?;
                 // Log the instructions for the declaration.
                 output.log_instructions_after(name, &log_message, current_instruction);
             }
@@ -608,7 +608,7 @@ impl TypeCheck for Declaration {
             Self::Many(decls) => {
                 let mut new_env = env.clone();
                 // Add all the compile-time declarations to the environment.
-                new_env.add_declaration(&self.clone())?;
+                new_env.add_declaration(&self.clone(), false)?;
 
                 // Get all the compile time declarations so we can type check them in parallel.
                 let (comp_time_decls, run_time_decls): (Vec<_>, Vec<_>) = decls
@@ -628,7 +628,7 @@ impl TypeCheck for Declaration {
                     // .map(|decl| decl.type_check(&new_env))
                     .try_for_each(|decl| {
                         decl.type_check(&new_env)?;
-                        new_env.add_declaration(decl)
+                        new_env.add_declaration(decl, false)
                     })?;
 
                 /*
@@ -675,7 +675,7 @@ impl TypeCheck for Declaration {
 
                 // Add all the compile-time declarations to the environment.
                 // new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
-                new_env.add_declaration(&Self::Many(decls.clone()))?;
+                new_env.add_declaration(&Self::Many(decls.clone()), false)?;
                 trace!("Typechecking module {}", name);
                 // Get all the compile time declarations so we can type check them in parallel.
                 let (comp_time_decls, _run_time_decls): (Vec<_>, Vec<_>) = decls
