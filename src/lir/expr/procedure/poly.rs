@@ -202,7 +202,7 @@ impl PolyProcedure {
         );
 
         let monomorph = Procedure::new(Some(mangled_name.clone()), args, ret, body);
-        monomorph.type_check(env)?;
+
         // If the monomorphized procedure has already been memoized, return it, otherwise memoize it.
         debug!(target: "mono", "Inserting entry for {}", mangled_name);
         let monomorph = monomorphs

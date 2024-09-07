@@ -38,34 +38,28 @@ pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
         // First, type check the expression.
         self.type_check(&Env::default())?;
         // Then, attempt to compile the expression into a core assembly program.
+        let mut core_asm = CoreProgram::default();
+
         info!("Compiling...");
-        
-        // let mut core_asm = CoreProgram::default();
-        // // If the expression cannot be compiled into a core assembly program,
-        // // then compile it into a standard assembly program.
-        // if let Err(err) = self
-        //     .clone()
-        //     // Compile the expression into the core assembly program.
-        //     .compile_expr(&mut Env::default(), &mut core_asm)
-        // {
-        //     warn!("Failed to compile into core assembly program: {err}, falling back on standard assembly");
-        //     let mut std_asm = StandardProgram::default();
-        //     // Compile the expression into the standard assembly program.
-        //     self.compile_expr(&mut Env::default(), &mut std_asm)?;
-        //     info!("Compiled to standard assembly successfully");
-        //     // Return the fallback standard assembly program.
-        //     Ok(Err(std_asm))
-        // } else {
-        //     info!("Compiled to core assembly successfully");
-        //     // Return the successfully compiled core assembly program.
-        //     Ok(Ok(core_asm))
-        // }
-        let mut std_asm = StandardProgram::default();
-        // Compile the expression into the standard assembly program.
-        self.compile_expr(&mut Env::default(), &mut std_asm)?;
-        info!("Compiled to standard assembly successfully");
-        // Return the fallback standard assembly program.
-        Ok(Err(std_asm))
+        // If the expression cannot be compiled into a core assembly program,
+        // then compile it into a standard assembly program.
+        if let Err(err) = self
+            .clone()
+            // Compile the expression into the core assembly program.
+            .compile_expr(&mut Env::default(), &mut core_asm)
+        {
+            warn!("Failed to compile into core assembly program: {err}, falling back on standard assembly");
+            let mut std_asm = StandardProgram::default();
+            // Compile the expression into the standard assembly program.
+            self.compile_expr(&mut Env::default(), &mut std_asm)?;
+            info!("Compiled to standard assembly successfully");
+            // Return the fallback standard assembly program.
+            Ok(Err(std_asm))
+        } else {
+            info!("Compiled to core assembly successfully");
+            // Return the successfully compiled core assembly program.
+            Ok(Ok(core_asm))
+        }
     }
     // Compile a specific expression into an assembly program.
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error>;

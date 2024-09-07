@@ -1010,9 +1010,7 @@ impl GetType for ConstExpr {
             }
             Self::Symbol(symbol_name) if symbol_name == name => {
                 // A constant symbol cannot be substituted for a type variable.
-                debug!("Subbing {self} for {substitution}");
                 *self = ConstExpr::Type(substitution.clone());
-                debug!("Subbed into {self}");
             }
             _ => {}
         }
