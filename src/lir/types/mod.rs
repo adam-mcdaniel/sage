@@ -1537,12 +1537,12 @@ impl Type {
                             let _poly = Self::Poly(params.clone(), mono_ty.clone());
                             let mut mono_ty = *mono_ty;
                             if !checked {
-                                for ((param, expected_ty), ty_arg) in params.iter().zip(ty_args.iter()) {
+                                for ((param, _expected_ty), ty_arg) in params.iter().zip(ty_args.iter()) {
                                     mono_ty = mono_ty.substitute(param, ty_arg);
                                 }
                             } else {
                                 let mut new_env = env.clone();
-                                for ((param, expected_ty), ty_arg) in params.iter().zip(ty_args.iter()) {
+                                for ((param, _expected_ty), ty_arg) in params.iter().zip(ty_args.iter()) {
                                     new_env.define_type(param, ty_arg.clone());
                                 }
                                 for ((param, expected_ty), ty_arg) in params.iter().zip(ty_args.iter()) {
@@ -1560,12 +1560,12 @@ impl Type {
                             Some(Self::Poly(params, mono_ty)) => {
                                 let mut mono_ty = *mono_ty;
                                 if !checked {
-                                    for ((param, expected_ty), ty_arg) in params.iter().zip(ty_args.iter()) {
+                                    for ((param, _expected_ty), ty_arg) in params.iter().zip(ty_args.iter()) {
                                         mono_ty = mono_ty.substitute(param, ty_arg);
                                     }
                                 } else {
                                     let mut new_env = env.clone();
-                                    for ((param, expected_ty), ty_arg) in params.iter().zip(ty_args.iter()) {
+                                    for ((param, _expected_ty), ty_arg) in params.iter().zip(ty_args.iter()) {
                                         new_env.define_type(param, ty_arg.clone());
                                     }
                                     for ((param, expected_ty), ty_arg) in params.iter().zip(ty_args.iter()) {
