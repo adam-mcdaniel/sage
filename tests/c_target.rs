@@ -99,7 +99,7 @@ fn test_c_target_frontend_examples_helper() {
                 if let Some(correct_error) = correct_error {
                     let text = e.to_string();
                     if text != correct_error {
-                        panic!("{text:?} != {correct_error:?}, error did not match correct error for program {path:?}")
+                        panic!("{text:?} (incorrect) != {correct_error:?} (correct), error did not match correct error for program {path:?}")
                     } else {
                         continue;
                     }

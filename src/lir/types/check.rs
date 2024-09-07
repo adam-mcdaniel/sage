@@ -491,7 +491,7 @@ impl TypeCheck for Expr {
                         Err(Error::InvalidRefer(self.clone()))
                     }
                 }
-                Expr::ConstExpr(_cexpr) => Ok(()),
+                Expr::ConstExpr(cexpr) => cexpr.type_check(env),
                 Expr::Deref(inner) | Expr::Index(inner, _) => {
                     // Confirm that the inner expression can be referenced.
                     match inner.get_type(env)? {
@@ -933,11 +933,11 @@ impl TypeCheck for Expr {
 // Typecheck a constant expression.
 impl TypeCheck for ConstExpr {
     fn type_check(&self, env: &Env) -> Result<(), Error> {
+        info!("Typechecking constant expression: {}", self);
         if env.has_type_checked_const(self) {
             return Ok(());
         }
 
-        debug!("Typechecking constant expression: {}", self);
         match self {
             Self::Any => Ok(()),
             Self::Template(_ty_params, _template) => {
@@ -974,7 +974,7 @@ impl TypeCheck for ConstExpr {
                 match e_type.type_check_member(field, &Expr::ConstExpr(*e.clone()), env) {
                     Ok(_) => Ok(()),
                     Err(_err) => {
-                        debug!("Member {field} not found in type {e_type} in environment {env}");
+                        info!("Member {field} not found in type {e_type} in environment {env}");
                         match field
                             .clone()
                             .as_symbol(env)

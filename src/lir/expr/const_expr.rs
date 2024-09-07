@@ -247,7 +247,7 @@ impl ConstExpr {
 
                 Self::Member(container, member) => {
                     let container_ty = container.get_type_checked(env, i)?;
-                    trace!("Member access on type: {container_ty}: {container} . {member}");
+                    info!("Member access on type: {container_ty:?}: {container} . {member}");
                     Ok(match (*container.clone(), *member.clone()) {
                         (Self::Annotated(inner, metadata), member) => {
                             Self::Member(inner, member.into())
@@ -314,7 +314,23 @@ impl ConstExpr {
                             trace!("Found struct field: {container_ty} . {member}");
                             fields[&name].clone().eval_checked(env, i)?
                         }
+                        (Self::Type(ty), Self::Int(n)) => {
+                            warn!("Getting member {n} from {ty}");
+                            if ty.is_const_param() {
+                                let cexpr = ty.simplify_until_const_param(env, false)?;
+                                return cexpr.field(Self::Int(n)).eval_checked(env, i)
+                            } else {
+                                // return Err(Error::MemberNotFound((*container).into(), *member));
+                                return Ok(Self::Type(ty).field(Self::Int(n)));
+                            }
+                        }
                         (Self::Type(ty), Self::Symbol(name)) => {
+                            info!("Getting member {name} from {ty}");
+                            if ty.is_const_param() {
+                                let cexpr = ty.simplify_until_const_param(env, false)?;
+                                return cexpr.eval_checked(env, i)?.field(Self::Symbol(name)).eval_checked(env, i)
+                            }
+
                             if let Some((constant, _)) = env.get_associated_const(&ty, &name) {
                                 constant.eval_checked(env, i)?
                             } else {
@@ -328,7 +344,7 @@ impl ConstExpr {
                                 error!(
                                     "Type member access not implemented for: {container_ty} . {member}, symbol {name} not defined"
                                 );
-                                return Err(Error::SymbolNotDefined(name));
+                                return Ok(Self::Type(ty).field(Self::Symbol(name)));
                             }
                         }
 
@@ -343,6 +359,7 @@ impl ConstExpr {
                             }
                             debug!("Member access not implemented for: {container_ty} . {member}");
                             return Err(Error::MemberNotFound((*container).into(), member));
+                            // return container.eval_checked(env, i)?.field(member).eval(env)
                         }
                         _ => {
                             if let Ok(Some((constant, _))) = member
@@ -374,10 +391,9 @@ impl ConstExpr {
                 | Self::Proc(_)
                 | Self::PolyProc(_) => Ok(self),
                 Self::Type(ty) => {
-                    if let Type::ConstParam(cexpr) = ty {
-                        cexpr.eval_checked(env, i)
-                    } else {
-                        Ok(Self::Type(ty.clone().simplify(env)?))
+                    match ty.clone().simplify(env)? {
+                        Type::ConstParam(cexpr) => cexpr.eval_checked(env, i),
+                        ty => Ok(Self::Type(ty.clone()))
                     }
                 }
 
@@ -543,7 +559,10 @@ impl ConstExpr {
             // If not, evaluate it and see if it's a symbol.
             other => match other.eval(env)? {
                 Self::Symbol(name) => Ok(name),
-                other => Err(Error::NonSymbol(other)),
+                other => {
+                    error!("Could not convert {other} to symbol");
+                    Err(Error::NonSymbol(other))
+                },
             },
         }
     }
@@ -573,12 +592,19 @@ impl GetType for ConstExpr {
             }
 
             Self::Type(t) => {
-                if let Type::ConstParam(cexpr) = t.clone().simplify(env)? {
-                    // Type::ConstParam(cexpr.eval(env)?.into())
-                    cexpr.get_type(env)?
-                } else {
-                    Type::Type(t.into())
-                }
+                info!("Getting type of type {t}");
+                let result = match t.clone().simplify(env)? {
+                    Type::ConstParam(cexpr) => cexpr.get_type(env)?,
+                    t => Type::Type(t.into())
+                };
+                // let result = if let Type::ConstParam(cexpr) = t.clone().simplify(env)? {
+                //     // Type::ConstParam(cexpr.eval(env)?.into())
+                //     cexpr.get_type(env)?
+                // } else {
+                //     Type::Type(t.clone().into())
+                // };
+                info!("Got type of type {t} = {result}");
+                result
             }
 
             Self::Member(val, field) => {
@@ -589,10 +615,11 @@ impl GetType for ConstExpr {
                 let as_int = field.clone().as_int(env);
 
                 let val_type = val.get_type_checked(env, i)?;
-                debug!("Got type of container access {val} . {field}\nContainer: {val_type}");
+                info!("Got type of container access {val} . {field}\nContainer: {val_type:?}, is_const_param: {}", val_type.is_const_param());
                 // val_type.add_monomorphized_associated_consts(env)?;
                 // Get the type of the value to get the member of.
-                match &val_type.simplify_until_concrete(env, false)? {
+                let val_type = val_type.simplify_until_concrete(env, false)?;
+                match &val_type {
                     Type::Unit(_unit_name, inner_ty) => {
                         // Get the type of the field.
                         env.get_type_of_associated_const(inner_ty, &as_symbol?)
@@ -616,9 +643,17 @@ impl GetType for ConstExpr {
                     }
 
                     Type::Type(ty) => {
-                        // Get the associated constant expression's type.
-                        env.get_type_of_associated_const(ty, &as_symbol?)
-                            .ok_or(Error::MemberNotFound((*val.clone()).into(), *field.clone()))?
+                        info!("Got type {ty}");
+                        if ty.is_const_param() {
+                            ty.simplify_until_const_param(env, false)?.eval(env)?.field(*field).get_type_checked(env, i)?
+                        } else {
+                            // Get the associated constant expression's type.
+                            if let Ok((ty, _)) = ty.get_member_offset(&field, &Expr::from(self.clone()), env) {
+                                return Ok(ty);
+                            }
+                            env.get_type_of_associated_const(ty, &as_symbol?)
+                                .ok_or(Error::MemberNotFound((*val.clone()).into(), *field.clone()))?
+                        }
                     }
                     // If we're accessing a member of a tuple,
                     // we use the `as_int` interpretation of the field.
@@ -961,9 +996,9 @@ impl GetType for ConstExpr {
             }
             Self::Symbol(symbol_name) if symbol_name == name => {
                 // A constant symbol cannot be substituted for a type variable.
-                // debug!("Subbing {self} for {substitution}");
+                debug!("Subbing {self} for {substitution}");
                 *self = ConstExpr::Type(substitution.clone());
-                // debug!("Subbed into {self}");
+                debug!("Subbed into {self}");
             }
             _ => {}
         }

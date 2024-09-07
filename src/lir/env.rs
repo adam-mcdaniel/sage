@@ -1003,17 +1003,17 @@ impl Env {
     /// Define a type with a given name under this environment.
     pub(super) fn define_type(&mut self, name: impl ToString, ty: Type) {
         let name = name.to_string();
-
+        trace!("Defining type {name} as {ty}");
+        if ty.is_const_param() {
+            if let Ok(ty) = ty.clone().simplify_until_const_param(self, false) {
+                self.define_const(&name, ty);
+            }
+        }
         match &ty {
             Type::Symbol(sym) if sym == &name => {
                 trace!("Defining type {ty} to itself as {name}");
             }
-            Type::ConstParam(cexpr) => {
-                trace!("Defining constant param: {name} => {cexpr}");
-                self.define_const(&name, *cexpr.clone());
-            }
             _ => {
-                trace!("Defining type {name} as {ty}");
                 Arc::make_mut(&mut self.consts).insert(name.clone(), ConstExpr::Type(ty.clone()));
                 Arc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
 
@@ -1077,6 +1077,7 @@ impl Env {
     /// Define a constant with a given name under this environment.
     pub(super) fn define_const(&mut self, name: impl ToString, e: ConstExpr) {
         let name = name.to_string();
+        trace!("Defining constant {name} as {e}");
 
         /*
         Removed this code in favor of using Declaration::FromImport
@@ -1233,6 +1234,13 @@ impl Env {
         // so that the next variable is allocated directly after this variable.
         debug!("Defining variable {var} of type {ty} at {offset} in\n{self}");
         self.fp_offset += size;
+
+        let ty = match ty {
+            Type::Type(ty) => *ty,
+            Type::ConstParam(ty) => ty.get_type(self)?,
+            other => other
+        };
+        
         // Store the variable's type and offset in the environment.
         Arc::make_mut(&mut self.vars).insert(var, (mutability, ty, offset));
         // Return the offset of the variable from the frame pointer.

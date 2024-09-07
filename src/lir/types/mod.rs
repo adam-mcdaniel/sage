@@ -220,6 +220,17 @@ impl Type {
         self.is_recursive_helper(&mut symbols, env)
     }
 
+    pub fn is_const_param(&self) -> bool {
+        // matches!(self, Type::ConstParam(..))
+        match self {
+            Type::ConstParam(..) => true,
+            Type::Struct(fields) => fields.iter().map(|(_name, ty)| ty).all(Self::is_const_param),
+            Type::Tuple(items) => items.iter().all(Self::is_const_param),
+            Type::Type(t) => t.is_const_param(),
+            _ => false,
+        }
+    }
+
     pub(crate) fn discard_type_wrapper(self) -> Self {
         match self {
             Self::Type(ty) | Self::Unit(_, ty) => *ty,
@@ -751,6 +762,7 @@ impl Type {
     pub fn is_concrete(&self) -> bool {
         match self {
             Self::Poly(_, _) | Self::Symbol(_) | Self::Apply(_, _) | Self::Let(_, _, _) => false,
+
             Self::None
             | Self::Int
             | Self::Float
@@ -767,8 +779,8 @@ impl Type {
             | Self::Proc(_, _)
             | Self::Tuple(_)
             | Self::Unit(_, _)
-            | Self::Type(_)
             | Self::Array(_, _)
+            | Self::Type(_)
             | Self::Pointer(_, _) => true,
         }
     }
@@ -787,6 +799,7 @@ impl Type {
             | Self::Enum(_)
             | Self::ConstParam(_)
             | Self::Type(_) => true,
+            
             Self::Unit(_, t) => t.is_atomic(),
             Self::Tuple(inner) => inner.iter().all(|t| t.is_atomic()),
             Self::Array(inner, expr) => inner.is_atomic() && matches!(**expr, ConstExpr::Int(_)),
@@ -971,7 +984,67 @@ impl Type {
         if result.is_err() {
             debug!("Couldn't simplify {} to a concrete type", self);
         }
+        
         result
+    }
+
+
+    /// Simplify until the type is concrete.
+    pub fn simplify_until_const_param(&self, env: &Env, checked: bool) -> Result<ConstExpr, Error> {
+        let mut simplified = self.clone().simplify(env)?;
+        for _ in 0..3 {
+            if let Self::ConstParam(cexpr) = simplified {
+                return Ok(*cexpr);
+            }
+            simplified = simplified.simplify(env)?;
+            simplified = match simplified {
+                Self::Tuple(items) => {
+                    let simple_items = items
+                        .into_iter()
+                        .map(|t| t.simplify(env))
+                        .collect::<Result<Vec<_>, Error>>()?;
+                    
+                    if simple_items.iter().all(Self::is_const_param) {
+                        Self::ConstParam(ConstExpr::Tuple(simple_items
+                            .into_iter()
+                            .map(|t| Ok(match t {
+                                Type::ConstParam(cexpr) => cexpr.eval(env)?,
+                                _ => unreachable!()
+                            }))
+                            .collect::<Result<_, Error>>()?).into())
+                    } else {
+                        Self::Tuple(simple_items)
+                    }
+                }
+                Self::Struct(fields) => {
+                    let simple_fields = fields
+                        .into_iter()
+                        .map(|(name, t)| Ok((name, t.simplify(env)?)))
+                        .collect::<Result<BTreeMap<_, _>, Error>>()?;
+                    
+                    if simple_fields.iter().map(|(_x, t)| t).all(Self::is_const_param) {
+                        Self::ConstParam(ConstExpr::Struct(simple_fields
+                            .into_iter()
+                            .map(|(name, t)| Ok(match t {
+                                Type::ConstParam(cexpr) => (name, cexpr.eval(env)?),
+                                _ => unreachable!()
+                            }))
+                            .collect::<Result<_, Error>>()?).into())
+                    } else {
+                        Self::Struct(simple_fields)
+                    }
+                }
+                other => other
+            };
+        }
+        // if result.is_err() {
+        //     debug!("Couldn't simplify {} to a constant param", self);
+        // }
+
+        match simplified {
+            Type::ConstParam(cexpr) => Ok(*cexpr),
+            result => panic!("Unexpected {result}")
+        }
     }
 
     /// Simplify an expression until it matches a given function which "approves" of a type.
@@ -2022,7 +2095,7 @@ impl Type {
             Type::Unit(_unit_name, t) => t.get_member_offset(member, expr, env),
 
             Type::Apply(_, _) | Type::Poly(_, _) => {
-                let t = self.simplify_until_concrete(env, true)?;
+                let t = self.simplify_until_concrete(env, false)?;
                 t.get_member_offset(member, expr, env)
             }
 
@@ -2032,6 +2105,14 @@ impl Type {
                 } else {
                     error!("Type {self} not defined in environment {env}");
                     Err(Error::TypeNotDefined(name.clone()))
+                }
+            }
+
+            Type::Type(ty) => {
+                if ty.is_const_param() {
+                    ty.simplify_until_const_param(env, false)?.get_type(env)?.get_member_offset(member, expr, env)
+                } else {
+                    Err(Error::MemberNotFound(expr.clone(), member.clone()))
                 }
             }
 
@@ -2048,12 +2129,19 @@ impl Type {
         trace!("Typechecking member \"{member}\" of {expr} in {env}");
         match self {
             Type::Type(ty) => {
-                let name = member.clone().as_symbol(env)?;
-
-                if env.has_associated_const(ty, &name) {
-                    Ok(())
+                if ty.type_check_member(member, expr, env).is_ok() {
+                    return Ok(())
+                }
+                if ty.is_const_param() {
+                    ty.simplify_until_const_param(env, true)?.get_type(env)?.type_check_member(member, expr, env)
                 } else {
-                    Err(Error::MemberNotFound(expr.clone(), member.clone()))
+                    let name = member.clone().as_symbol(env)?;
+        
+                    if env.has_associated_const(ty, &name) {
+                        Ok(())
+                    } else {
+                        Err(Error::MemberNotFound(expr.clone(), member.clone()))
+                    }
                 }
             }
 
@@ -2170,11 +2258,10 @@ impl Simplify for Type {
         let _s = self.to_string();
         let result = match self {
             Self::Type(t) => {
-                match *t {
-                    Self::ConstParam(cexpr) => {
-                        Self::ConstParam(cexpr.eval(env)?.into())
-                    }
-                    t => Self::Type(t.into())
+                if t.is_const_param() {
+                    Self::ConstParam(t.simplify_until_const_param(env, false)?.into())
+                } else {
+                    Self::Type(t.into())
                 }
             },
             Self::ConstParam(cexpr) => Self::ConstParam(cexpr.eval(env)?.into()),
@@ -2246,22 +2333,47 @@ impl Simplify for Type {
                 Box::new(ret.simplify_checked(env, i)?),
             ),
 
-            Self::Tuple(items) => Self::Tuple(
-                items
-                    .into_iter()
-                    .flat_map(|t| t.simplify_checked(env, i))
-                    .collect(),
-            ),
             Self::Array(inner, size) => Self::Array(
                 Box::new(inner.simplify_checked(env, i)?),
                 Box::new(size.eval(env)?),
             ),
-            Self::Struct(fields) => Self::Struct(
-                fields
+
+            Self::Tuple(items) => {
+                let simple_items = items
                     .into_iter()
-                    .map(|(k, t)| Ok((k, t.simplify_checked(env, i)?)))
-                    .collect::<Result<BTreeMap<String, Type>, Error>>()?,
-            ),
+                    .map(|t| t.simplify_checked(env, i))
+                    .collect::<Result<Vec<_>, Error>>()?;
+                
+                if simple_items.iter().all(Self::is_const_param) {
+                    Self::ConstParam(ConstExpr::Tuple(simple_items
+                        .into_iter()
+                        .map(|t| Ok(match t {
+                            Type::ConstParam(cexpr) => cexpr.eval(env)?,
+                            _ => unreachable!()
+                        }))
+                        .collect::<Result<_, Error>>()?).into())
+                } else {
+                    Self::Tuple(simple_items)
+                }
+            }
+            Self::Struct(fields) => {
+                let simple_fields = fields
+                    .into_iter()
+                    .map(|(name, t)| Ok((name, t.simplify_checked(env, i)?)))
+                    .collect::<Result<BTreeMap<_, _>, Error>>()?;
+                
+                if simple_fields.iter().map(|(_x, t)| t).all(Self::is_const_param) {
+                    Self::ConstParam(ConstExpr::Struct(simple_fields
+                        .into_iter()
+                        .map(|(name, t)| Ok(match t {
+                            Type::ConstParam(cexpr) => (name, cexpr.eval(env)?),
+                            _ => unreachable!()
+                        }))
+                        .collect::<Result<_, Error>>()?).into())
+                } else {
+                    Self::Struct(simple_fields)
+                }
+            }
             Self::Union(types) => Self::Union(
                 types
                     .into_iter()

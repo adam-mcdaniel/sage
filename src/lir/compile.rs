@@ -1080,7 +1080,9 @@ impl Compile for ConstExpr {
             Self::Type(t) => {
                 match t.simplify(env)? {
                     Type::ConstParam(cexpr) => cexpr.compile_expr(env, output)?,
-                    _ => {}
+                    _ => {
+                        return Err(Error::UnsizedType(ty));
+                    }
                 }
             }
             Self::Member(container, member) => {
@@ -1100,6 +1102,9 @@ impl Compile for ConstExpr {
                             return Err(Error::MemberNotFound((*container).into(), *member));
                         }
                         fields[&name].clone().compile_expr(env, output)?
+                    }
+                    (Self::Type(ty), member) if ty.is_const_param() => {
+                        ty.simplify_until_const_param(env, false)?.field(member).compile_expr(env, output)?
                     }
                     (Self::Type(ty), Self::Symbol(name)) => {
                         if let Some((constant, _)) = env.get_associated_const(&ty, &name) {
