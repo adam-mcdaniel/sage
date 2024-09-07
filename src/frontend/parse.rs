@@ -2,8 +2,8 @@ use log::{error, trace};
 use nom::{
     branch::alt,
     bytes::complete::{is_not, tag, take_while, take_while1, take_while_m_n},
-    character::complete::{char, digit1, hex_digit1, multispace1, oct_digit1},
-    combinator::{all_consuming, cut, map, map_opt, opt, recognize, verify},
+    character::complete::{char, digit1, hex_digit1, multispace1, oct_digit1, one_of},
+    combinator::{all_consuming, consumed, cut, map, map_opt, opt, recognize, verify},
     error::{context, ContextError, ParseError},
     multi::{fold_many0, many0, many0_count, many1},
     sequence::{delimited, pair, preceded, terminated},
@@ -1493,33 +1493,63 @@ fn parse_impl_method<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     let (input, template_args) = cut(opt(parse_type_params))(input)?;
     trace!("Parsed template args: {template_args:#?}");
     // Get the function parameters with mutability
-    let (input, (params, ret)) = parse_method_params(input, ty)?;
-    trace!("Parsed method parameters: {params:#?}, {ret:#?}");
-    let (input, _) = whitespace(input)?;
-    let (input, body) = cut(parse_block)(input)?;
-    // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body))))
-    if let Some(args) = template_args {
-        Ok((
-            input,
-            (
-                name.to_owned(),
-                ConstExpr::PolyProc(PolyProcedure::new(
+    if let Ok((input, (params, ret))) = parse_method_params::<E>(input, ty) {
+        trace!("Parsed method parameters: {params:#?}, {ret:#?}");
+        let (input, _) = whitespace(input)?;
+        let (input, body) = cut(parse_block)(input)?;
+        // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body))))
+        if let Some(args) = template_args {
+            Ok((
+                input,
+                (
                     name.to_owned(),
-                    args.into_iter().map(|x| x.to_owned()).collect(),
-                    params,
-                    ret,
-                    body,
-                )),
-            ),
-        ))
+                    ConstExpr::PolyProc(PolyProcedure::new(
+                        name.to_owned(),
+                        args.into_iter().map(|x| x.to_owned()).collect(),
+                        params,
+                        ret,
+                        body,
+                    )),
+                ),
+            ))
+        } else {
+            Ok((
+                input,
+                (
+                    name.to_owned(),
+                    ConstExpr::Proc(Procedure::new(Some(name.to_owned()), params, ret, body)),
+                ),
+            ))
+        }
     } else {
-        Ok((
-            input,
-            (
-                name.to_owned(),
-                ConstExpr::Proc(Procedure::new(Some(name.to_owned()), params, ret, body)),
-            ),
-        ))
+        let (input, (params, ret)) = parse_fun_params(input)?;
+        trace!("Parsed method parameters: {params:#?}, {ret:#?}");
+        let (input, _) = whitespace(input)?;
+        let (input, body) = cut(parse_block)(input)?;
+        // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body))))
+        if let Some(args) = template_args {
+            Ok((
+                input,
+                (
+                    name.to_owned(),
+                    ConstExpr::PolyProc(PolyProcedure::new(
+                        name.to_owned(),
+                        args.into_iter().map(|x| x.to_owned()).collect(),
+                        params,
+                        ret,
+                        body,
+                    )),
+                ),
+            ))
+        } else {
+            Ok((
+                input,
+                (
+                    name.to_owned(),
+                    ConstExpr::Proc(Procedure::new(Some(name.to_owned()), params, ret, body)),
+                ),
+            ))
+        }
     }
 }
 
@@ -3012,19 +3042,23 @@ fn parse_type_apply<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Type, E> {
     let (input, ty) = parse_type_atom(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, _) = tag("<")(input)?;
-    let (input, _) = whitespace(input)?;
-    let (input, mut args) = many0(terminated(parse_type, tag(",")))(input)?;
-    let (input, _) = whitespace(input)?;
-    let (input, last_arg) = opt(parse_type)(input)?;
-    let (input, _) = whitespace(input)?;
-    let (input, _) = tag(">")(input)?;
 
-    if let Some(last_arg) = last_arg {
-        args.push(last_arg);
+    if let Ok((input, _)) = tag::<&str, &str, E>("<")(input) {
+        let (input, _) = whitespace(input)?;
+        let (input, mut args) = many0(terminated(parse_type, tag(",")))(input)?;
+        let (input, _) = whitespace(input)?;
+        let (input, last_arg) = opt(parse_type)(input)?;
+        let (input, _) = whitespace(input)?;
+        let (input, _) = tag(">")(input)?;
+    
+        if let Some(last_arg) = last_arg {
+            args.push(last_arg);
+        }
+    
+        Ok((input, Type::Apply(Box::new(ty), args)))
+    } else {
+        return Ok((input, ty))
     }
-
-    Ok((input, Type::Apply(Box::new(ty), args)))
 }
 
 fn parse_type_primitive<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
@@ -3534,19 +3568,22 @@ fn parse_const_monomorph<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, ConstExpr, E> {
     let (input, expr) = parse_const_term(input)?;
     let (input, _) = whitespace(input)?;
-    let (input, _) = tag("<")(input)?;
-    let (input, _) = whitespace(input)?;
-    let (input, mut tys) = many0(terminated(parse_type, tag(",")))(input)?;
-    let (input, _) = whitespace(input)?;
-    let (input, last_ty) = opt(parse_type)(input)?;
-    let (input, _) = whitespace(input)?;
-    let (input, _) = tag(">")(input)?;
-
-    if let Some(last_ty) = last_ty {
-        tys.push(last_ty);
+    if let Ok((input, _)) = tag::<&str, &str, E>("<")(input) {
+        let (input, _) = whitespace(input)?;
+        let (input, mut tys) = many0(terminated(parse_type, tag(",")))(input)?;
+        let (input, _) = whitespace(input)?;
+        let (input, last_ty) = opt(parse_type)(input)?;
+        let (input, _) = whitespace(input)?;
+        let (input, _) = tag(">")(input)?;
+    
+        if let Some(last_ty) = last_ty {
+            tys.push(last_ty);
+        }
+    
+        Ok((input, expr.monomorphize(tys)))
+    } else {
+        Ok((input, expr))
     }
-
-    Ok((input, expr.monomorphize(tys)))
 }
 
 fn parse_const_variant<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
@@ -3613,6 +3650,7 @@ fn parse_const_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         parse_const_sizeof_expr,
         parse_const_sizeof_type,
         parse_const_tuple,
+        parse_const_group,
         parse_const_bool,
         parse_const_null,
         parse_const_none,
@@ -3630,7 +3668,6 @@ fn parse_const_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         }),
         parse_const_array,
         parse_const_struct,
-        parse_const_group,
         map(parse_symbol, |x| ConstExpr::Symbol(x.to_string())),
     ))(input)
 }

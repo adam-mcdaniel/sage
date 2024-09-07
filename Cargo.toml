@@ -87,5 +87,5 @@ harness = false
 [dev-dependencies]
 criterion = "0.5"
 
-[profile.release]
-debug = true
+# [profile.release]
+# debug = true

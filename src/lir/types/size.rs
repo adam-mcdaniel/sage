@@ -58,10 +58,10 @@ impl GetSize for Type {
             });
         }
 
-        // if self.is_const_param() {
-        //     let cexpr = self.clone().simplify_until_const_param(env, false)?;
-        //     return cexpr.get_size_checked(env, i)
-        // }
+        if self.is_const_param() {
+            let cexpr = self.clone().simplify_until_const_param(env, false)?;
+            return cexpr.get_size_checked(env, i)
+        }
 
         let result = match self {
             Self::ConstParam(cexpr) => cexpr.get_size_checked(env, i)?,
