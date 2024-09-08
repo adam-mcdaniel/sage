@@ -4083,23 +4083,6 @@ fn parse_const_struct<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 #[cfg(test)]
 mod tests {
     fn compile_and_run(code: &str, input: &str) -> Result<String, String> {
-        // let has_init = {*INIT.read().unwrap()};
-        // if !has_init {
-        //     let mut builder = env_logger::Builder::from_default_env();
-        //     builder.format_timestamp(None);
-        //     builder.filter(
-        //         None,
-        //         // LogLevel::Error if args.debug.is_none() => log::LevelFilter::Error,
-        //         // LogLevel::Warn if args.debug.is_none() => log::LevelFilter::Warn,
-        //         // LogLevel::Off if args.debug.is_none() => log::LevelFilter::Error,
-        //         // LogLevel::Info if args.debug.is_none() => log::LevelFilter::Info,
-        //         log::LevelFilter::Trace,
-        //         // log::LevelFilter::Info,
-        //     );
-        //     builder.init();
-        //     *INIT.write().unwrap() = true;
-        // }
-            
         let _ = rayon::ThreadPoolBuilder::new()
             .num_threads(16)
             .stack_size(512 * 1024 * 1024)
