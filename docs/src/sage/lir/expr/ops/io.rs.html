@@ -642,6 +642,7 @@
 <a href="#641" id="641">641</a>
 <a href="#642" id="642">642</a>
 <a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use crate</span>::{
@@ -651,13 +652,14 @@
 };
 <span class="kw">use </span>::core::fmt::{Debug, Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 
+
 <span class="attr">#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 </span><span class="kw">pub struct </span>Get;
 
 <span class="kw">impl </span>UnaryOp <span class="kw">for </span>Get {
     <span class="doccomment">/// Can this unary operation be applied to the given type?
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
-        ty.simplify_until_concrete(env).map(|ty| {
+        ty.simplify_until_concrete(env, <span class="bool-val">false</span>).map(|ty| {
             <span class="kw">if let </span>Type::Pointer(mutability, x) = ty {
                 <span class="kw">match </span><span class="kw-2">*</span>x {
                     Type::Char | Type::Int | Type::Float =&gt; mutability.is_mutable(),
@@ -744,7 +746,7 @@
         env: <span class="kw-2">&amp;mut </span>Env,
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">let </span>t = <span class="kw-2">&amp;</span>t.simplify_until_concrete(env)<span class="question-mark">?</span>;
+        <span class="kw">let </span>t = <span class="kw-2">&amp;</span>t.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
         <span class="kw">match </span>t {
             Type::Type(t) =&gt; {
                 <span class="kw">for </span>c <span class="kw">in </span><span class="macro">format!</span>(<span class="string">"{}"</span>, t).chars() {
@@ -1074,7 +1076,7 @@
         env: <span class="kw-2">&amp;mut </span>Env,
         output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="kw">let </span>t = <span class="kw-2">&amp;</span>t.simplify_until_concrete(env)<span class="question-mark">?</span>;
+        <span class="kw">let </span>t = <span class="kw-2">&amp;</span>t.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
         <span class="kw">match </span>t {
             Type::Cell =&gt; {
                 output.op(CoreOp::Put(addr, Output::stdout_int()));
@@ -1241,7 +1243,7 @@
         <span class="comment">// Get the size of the type.
         </span><span class="kw">let </span>size = ty.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>isize;
 
-        <span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty.simplify_until_concrete(env)<span class="question-mark">?</span>;
+        <span class="kw">let </span>ty = <span class="kw-2">&amp;</span>ty.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Calculate the address of the expression on the stack.
         </span><span class="kw">let </span>addr = SP.deref().offset(-size + <span class="number">1</span>);

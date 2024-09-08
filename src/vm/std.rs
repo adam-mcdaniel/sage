@@ -83,7 +83,6 @@ impl VirtualMachineProgram for StandardProgram {
                     self.0.pop();
                     self.op(CoreOp::Set(vec![(n[0] >= 0) as i64]))
                 }
-
                 (_, op) => {
                     self.0.push(StandardOp::CoreOp(op));
                 }

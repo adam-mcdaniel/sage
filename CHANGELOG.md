@@ -186,3 +186,66 @@ The compiler is significantly faster -- about 20 times faster at compiling the A
 This is mainly due to the much faster parser implemented with Nom instead of Pest.
 There are also several optimizations with constant evaluation I added, along with optimizations
 for how declarations are typechecked.
+
+
+## [0.1.1-alpha] - 2024-9-8
+
+### Added
+
+Added `const` generics, so constant parameters can be passed along with types through templates. This allows the typechecker to be applied to many more aspects of code, including examples like typechecking dimensions of matrix multiplications at compile time.
+
+```rs
+struct Matrix<T, const Rows: Int, const Cols: Int> {
+    arr: [[T * Cols] * Rows]
+}
+
+impl Matrix<T, Rows, Cols> {
+    fun new(x: T): Matrix<T, Rows, Cols> {
+        return {arr=[[x] * Cols] * Rows};
+    }
+
+    fun get(&self, row: Int, col: Int): &T {
+        return &self.arr[row][col];
+    }
+
+    fun mul<const NewCols: Int>(
+        &self,
+        other: &Matrix<T, Cols, NewCols>,
+        zero: T,
+        add: fun(T, T) -> T,
+        mul: fun(T, T) -> T
+    ): Matrix<T, Rows, NewCols> {
+        let mut result = Matrix.new<T, Rows, NewCols>(zero);
+        for let mut j=0; j<NewCols; j+=1; {
+            for let mut i=0; i<Rows; i+=1; {
+                let mut sum = zero;
+                for let mut k=0; k<Cols; k+=1; {
+                    sum = add(sum, mul(self.arr[i][k], other.arr[k][j]));
+                }
+                result.arr[i][j] = sum;
+            }
+        }
+        result
+    }
+}
+
+let mut x = Matrix.new<Int, 4, 4>(10);
+let mut y = Matrix.new<Int, 4, 4>(5);
+
+println(x);
+println(y);
+
+fun add_ints(a: Int, b: Int): Int = a + b;
+fun mul_ints(a: Int, b: Int): Int = a * b;
+
+let z = y.mul<4>(&x, 0, add_ints, mul_ints);
+println(z);
+```
+
+### Changed
+
+Changed type system to accommodate const generics. This was done by adding a `ConstParam` variant to types.
+
+### Fixed
+
+Improved parser speed by a significant amount during the process.

@@ -194,6 +194,13 @@
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
 <a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Size
 //!
 //! This module contains the `GetSize` trait, which is used to calculate the size
@@ -254,7 +261,14 @@
             });
         }
 
+        <span class="kw">if </span><span class="self">self</span>.is_const_param() {
+            <span class="kw">let </span>cexpr = <span class="self">self</span>.clone().simplify_until_const_param(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+            <span class="kw">return </span>cexpr.get_size_checked(env, i)
+        }
+
         <span class="kw">let </span>result = <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::ConstParam(cexpr) =&gt; cexpr.get_size_checked(env, i)<span class="question-mark">?</span>,
+
             <span class="comment">// None or Never are not real types, so they have no size.
             // They are not represented with data. They have zero size.
             </span><span class="self">Self</span>::Type(<span class="kw">_</span>) | <span class="self">Self</span>::None | <span class="self">Self</span>::Never =&gt; <span class="number">0</span>,
@@ -360,7 +374,7 @@
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(size);
                 }
 
-                <span class="kw">let </span>result = <span class="self">self</span>.clone().simplify_until_concrete(env)<span class="question-mark">?</span>;
+                <span class="kw">let </span>result = <span class="self">self</span>.clone().simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
                 result.get_size_checked(env, i)<span class="question-mark">?
             </span>}

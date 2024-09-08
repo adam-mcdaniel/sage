@@ -1318,6 +1318,24 @@
 <a href="#1317" id="1317">1317</a>
 <a href="#1318" id="1318">1318</a>
 <a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
+<a href="#1326" id="1326">1326</a>
+<a href="#1327" id="1327">1327</a>
+<a href="#1328" id="1328">1328</a>
+<a href="#1329" id="1329">1329</a>
+<a href="#1330" id="1330">1330</a>
+<a href="#1331" id="1331">1331</a>
+<a href="#1332" id="1332">1332</a>
+<a href="#1333" id="1333">1333</a>
+<a href="#1334" id="1334">1334</a>
+<a href="#1335" id="1335">1335</a>
+<a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Checking
 //!
 //! This module contains the type checking logic for the Lower Intermediate Representation.
@@ -1360,6 +1378,7 @@
             | <span class="self">Self</span>::Char
             | <span class="self">Self</span>::Enum(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
 
+            <span class="self">Self</span>::ConstParam(cexpr) =&gt; cexpr.type_check(env),
             <span class="self">Self</span>::Type(t) =&gt; t.type_check(env),
 
             <span class="comment">// Units are sound if their inner type is sound.
@@ -1367,7 +1386,7 @@
 
             <span class="comment">// Symbols are sound if they are defined in the environment
             </span><span class="self">Self</span>::Symbol(name) =&gt; {
-                <span class="kw">if </span>env.get_type(name).is_some() {
+                <span class="kw">if </span>env.get_type(name).is_some() || env.get_const(name).is_some() {
                     <span class="prelude-val">Ok</span>(())
                 } <span class="kw">else </span>{
                     <span class="macro">debug!</span>(<span class="string">"Type {name} not defined in environment {env}"</span>);
@@ -1389,11 +1408,16 @@
                 <span class="comment">// Check the inner type and the length constant-expression.
                 </span>t.type_check(env)<span class="question-mark">?</span>;
                 len.clone().type_check(env)<span class="question-mark">?</span>;
+
                 <span class="comment">// Check that the length is non-negative.
-                </span><span class="kw">if </span>len.clone().as_int(env)<span class="question-mark">? </span>&lt; <span class="number">0 </span>{
-                    <span class="comment">// If it is negative, return an error.
-                    </span><span class="macro">error!</span>(<span class="string">"Negative array length detected in type {self} in environment {env}"</span>);
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NegativeArrayLength(Expr::ConstExpr(<span class="kw-2">*</span>len.clone())));
+                </span><span class="macro">debug!</span>(<span class="string">"About to convert {len} to int"</span>);
+                <span class="kw">match </span>len.clone().as_int(env) {
+                    <span class="prelude-val">Ok</span>(n) <span class="kw">if </span>n &lt; <span class="number">0 </span>=&gt; {
+                        <span class="comment">// If it is negative, return an error.
+                        </span><span class="macro">error!</span>(<span class="string">"Negative array length detected in type {self} in environment {env}"</span>);
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::NegativeArrayLength(Expr::ConstExpr(<span class="kw-2">*</span>len.clone())));
+                    }
+                    <span class="kw">_ </span>=&gt; {}
                 }
                 <span class="comment">// Otherwise, return success.
                 </span><span class="prelude-val">Ok</span>(())
@@ -1449,7 +1473,7 @@
                     ty_params
                         .clone()
                         .into_iter()
-                        .map(|p| (p.clone(), Type::Unit(p, Box::new(Type::Any))))
+                        .map(|p| (p.<span class="number">0</span>.clone(), Type::Unit(p.<span class="number">0</span>, Box::new(Type::Any))))
                         .collect(),
                 );
                 <span class="comment">// Check the template type.
@@ -1472,14 +1496,14 @@
                     .try_for_each(|t| t.type_check(env))<span class="question-mark">?</span>;
 
                 <span class="comment">// Try to confirm that the polymorphic type is a template.
-                </span><span class="kw">match </span>poly.simplify_until_poly(env)<span class="question-mark">? </span>{
+                </span><span class="kw">match </span>poly.simplify_until_poly(env, <span class="bool-val">true</span>)<span class="question-mark">? </span>{
                     Type::Symbol(name) =&gt; {
                         <span class="comment">// Get the type definition.
                         </span><span class="kw">let </span>ty = env
                             .get_type(<span class="kw-2">&amp;</span>name)
                             .ok_or(Error::TypeNotDefined(name.clone()))<span class="question-mark">?</span>;
                         <span class="comment">// Check that the type is a template.
-                        </span><span class="kw">match </span>ty.simplify_until_poly(env)<span class="question-mark">? </span>{
+                        </span><span class="kw">match </span>ty.simplify_until_poly(env, <span class="bool-val">true</span>)<span class="question-mark">? </span>{
                             Type::Poly(ty_params, <span class="kw">_</span>) =&gt; {
                                 <span class="comment">// Check that the number of type arguments matches the number of type parameters.
                                 </span><span class="kw">if </span>ty_args.len() != ty_params.len() {
@@ -1535,7 +1559,7 @@
                 <span class="comment">// Check the declaration.
                 </span>declaration.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
                 <span class="comment">// Add the declarations to the environment.
-                </span>new_env.add_declaration(declaration)<span class="question-mark">?</span>;
+                </span>new_env.add_declaration(declaration, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                 <span class="comment">// Check the body with the declarations defined.
                 </span>body.type_check(<span class="kw-2">&amp;</span>new_env)
             }
@@ -1632,7 +1656,7 @@
                     </span><span class="kw">let </span>bindings = pat.get_bindings(expr, <span class="kw-2">&amp;</span>ty, env)<span class="question-mark">?</span>;
                     <span class="comment">// Define the bindings in the environment.
                     </span><span class="kw">for </span>(name, (mutability, ty)) <span class="kw">in </span>bindings {
-                        new_env.define_var(name, mutability, ty)<span class="question-mark">?</span>;
+                        new_env.define_var(name, mutability, ty, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                     }
                     <span class="comment">// Check the branch under the new environment.
                     </span>pat.type_check(expr, branch, env)<span class="question-mark">?</span>;
@@ -1805,7 +1829,7 @@
                         </span><span class="prelude-val">Err</span>(Error::InvalidRefer(<span class="self">self</span>.clone()))
                     }
                 }
-                Expr::ConstExpr(_cexpr) =&gt; <span class="prelude-val">Ok</span>(()),
+                Expr::ConstExpr(cexpr) =&gt; cexpr.type_check(env),
                 Expr::Deref(inner) | Expr::Index(inner, <span class="kw">_</span>) =&gt; {
                     <span class="comment">// Confirm that the inner expression can be referenced.
                     </span><span class="kw">match </span>inner.get_type(env)<span class="question-mark">? </span>{
@@ -1828,7 +1852,9 @@
                             inner.refer(<span class="kw-2">*</span>expected_mutability).type_check(env)<span class="question-mark">?</span>;
                         }
 
-                        <span class="kw">_ </span>=&gt; {}
+                        ty =&gt; {
+                            <span class="macro">warn!</span>(<span class="string">"Unexpected deref of type {ty}"</span>);
+                        }
                     }
 
                     e.type_check(env)
@@ -1894,7 +1920,7 @@
                 </span><span class="kw">let </span>ptr_type = ptr.get_type(env)<span class="question-mark">?</span>;
                 <span class="kw">let </span>val_type = val.get_type(env)<span class="question-mark">?</span>;
                 <span class="comment">// Check that the pointer is a pointer.
-                </span><span class="kw">if let </span>Type::Pointer(mutability, ptr_elem_ty) = ptr_type {
+                </span><span class="kw">if let </span>Type::Pointer(mutability, ptr_elem_ty) = ptr_type.clone().discard_type_wrapper() {
                     <span class="comment">// Check that the type of the value is compatible
                     // with the type of data stored at the pointer's
                     // address.
@@ -1945,7 +1971,7 @@
                         f.type_check(env)<span class="question-mark">?</span>;
 
                         <span class="comment">// Get the type of the function.
-                        </span><span class="kw">let </span>f_type = f.get_type(env)<span class="question-mark">?</span>.simplify_until_concrete(env)<span class="question-mark">?</span>;
+                        </span><span class="kw">let </span>f_type = f.get_type(env)<span class="question-mark">?</span>.simplify_until_concrete(env, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
                         <span class="comment">// Infer the types of the supplied arguments.
                         </span><span class="kw">let </span><span class="kw-2">mut </span>found_arg_tys = <span class="macro">vec!</span>[];
                         <span class="kw">for </span>arg <span class="kw">in </span>args {
@@ -2000,7 +2026,7 @@
                 }
 
                 <span class="comment">// Get the type of the function.
-                </span><span class="kw">let </span>f_type = f.get_type(env)<span class="question-mark">?</span>.simplify_until_concrete(env)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>f_type = f.get_type(env)<span class="question-mark">?</span>.simplify_until_concrete(env, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
                 <span class="comment">// Infer the types of the supplied arguments.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>found_arg_tys = <span class="macro">vec!</span>[];
                 <span class="kw">for </span>arg <span class="kw">in </span>args {
@@ -2029,6 +2055,8 @@
                                     found,
                                     expr: <span class="self">self</span>.clone(),
                                 });
+                            } <span class="kw">else </span>{
+                                <span class="macro">debug!</span>(<span class="string">"Found {found} can decay to {expected} in {self}"</span>)
                             }
                         }
                         <span class="prelude-val">Ok</span>(())
@@ -2052,9 +2080,9 @@
                 <span class="kw">let </span>expected = env
                     .get_expected_return_type()
                     .cloned()
-                    .unwrap_or(Type::None);
+                    .unwrap_or(Type::None).simplify(env)<span class="question-mark">?</span>;
                 <span class="kw">if </span>!found.can_decay_to(<span class="kw-2">&amp;</span>expected, env)<span class="question-mark">? </span>{
-                    <span class="macro">error!</span>(<span class="string">"The found return type does not match expected type"</span>);
+                    <span class="macro">error!</span>(<span class="string">"The found return type {found} does not match expected type {expected} in {env}"</span>);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes {
                         expected,
                         found,
@@ -2103,7 +2131,7 @@
             </span><span class="self">Self</span>::Union(t, field, val) =&gt; {
                 <span class="comment">// Typecheck the type.
                 </span>t.type_check(env)<span class="question-mark">?</span>;
-                <span class="kw">let </span>t = t.simplify_until_union(env)<span class="question-mark">?</span>;
+                <span class="kw">let </span>t = t.simplify_until_union(env, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
                 <span class="kw">match </span>t {
                     Type::Union(fields) =&gt; {
                         <span class="comment">// Confirm that the variant is a valid variant.
@@ -2137,7 +2165,7 @@
             </span><span class="self">Self</span>::EnumUnion(t, variant, val) =&gt; {
                 <span class="comment">// Typecheck the type
                 </span>t.type_check(env)<span class="question-mark">?</span>;
-                <span class="kw">let </span>t = t.simplify_until_union(env)<span class="question-mark">?</span>;
+                <span class="kw">let </span>t = t.simplify_until_union(env, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
 
                 <span class="kw">match </span>t {
                     Type::EnumUnion(fields) =&gt; {
@@ -2196,7 +2224,7 @@
                 </span><span class="kw">match </span>e_type.type_check_member(field, e, env) {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">warn!</span>(<span class="string">"Type {e_type} doesn't have member {field} in environment {env}"</span>);
+                        <span class="macro">debug!</span>(<span class="string">"Type {e_type} doesn't have member {field} in environment {env}"</span>);
                         <span class="kw">match </span>field
                             .clone()
                             .as_symbol(env)
@@ -2245,26 +2273,26 @@
 <span class="comment">// Typecheck a constant expression.
 </span><span class="kw">impl </span>TypeCheck <span class="kw">for </span>ConstExpr {
     <span class="kw">fn </span>type_check(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="macro">debug!</span>(<span class="string">"Typechecking constant expression: {}"</span>, <span class="self">self</span>);
         <span class="kw">if </span>env.has_type_checked_const(<span class="self">self</span>) {
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
-        <span class="macro">debug!</span>(<span class="string">"Typechecking constant expression: {}"</span>, <span class="self">self</span>);
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Template(_ty_params, _template) =&gt; {
+            <span class="self">Self</span>::Any =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="self">Self</span>::Template(ty_params, template) =&gt; {
                 <span class="comment">// Create a new environment with the type parameters defined.
-                // let mut new_env = env.clone();
-                // // Define the type parameters in the environment.
-                // new_env.define_types(
-                //     ty_params
-                //         .clone()
-                //         .into_iter()
-                //         .map(|p| (p.clone(), Type::Unit(p, Box::new(Type::None))))
-                //         .collect(),
-                // );
-                // Check the template type.
-                // template.type_check(&amp;new_env)
-                </span><span class="prelude-val">Ok</span>(())
+                </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
+                <span class="kw">for </span>(name, ty) <span class="kw">in </span>ty_params {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(ty) = ty {
+                        new_env.define_type(name, ty.clone());
+                        new_env.define_var(name, Mutability::Immutable, ty.clone(), <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+                    } <span class="kw">else </span>{
+                        new_env.define_type(name, Type::Unit(name.clone(), Box::new(Type::None)))
+                    }
+                }
+                <span class="comment">// Check the template type.
+                </span>template.type_check(<span class="kw-2">&amp;</span>new_env)
             }
 
             <span class="self">Self</span>::Annotated(expr, metadata) =&gt; expr
@@ -2280,26 +2308,25 @@
                 </span>e.type_check(env)<span class="question-mark">?</span>;
                 <span class="comment">// Get the type of the expression.
                 </span><span class="kw">let </span>e_type = e.get_type(env)<span class="question-mark">?</span>;
-                <span class="comment">// e_type.add_monomorphized_associated_consts(env)?;
-                // Typecheck the member we want to access.
+                <span class="comment">// Typecheck the member we want to access.
                 </span><span class="kw">match </span>e_type.type_check_member(field, <span class="kw-2">&amp;</span>Expr::ConstExpr(<span class="kw-2">*</span>e.clone()), env) {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
                     <span class="prelude-val">Err</span>(_err) =&gt; {
-                        <span class="macro">warn!</span>(<span class="string">"Member {field} not found in type {e_type} in environment {env}"</span>);
+                        <span class="macro">debug!</span>(<span class="string">"Member {field} not found in type {e_type} in environment {env}"</span>);
                         <span class="kw">match </span>field
                             .clone()
                             .as_symbol(env)
                             .map(|name| env.get_associated_const(<span class="kw-2">&amp;</span>e_type, <span class="kw-2">&amp;</span>name))
                         {
                             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                                <span class="macro">warn!</span>(<span class="string">"Associated constant {field} found in type {e_type} in environment {env}"</span>);
+                                <span class="macro">debug!</span>(<span class="string">"Associated constant {field} found in type {e_type} in environment {env}"</span>);
                                 <span class="prelude-val">Ok</span>(())
                             }
                             <span class="comment">// Err(_) =&gt; Err(e),
                             </span><span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                                 <span class="comment">// Try to perform the member op as a regular member op.
-                                </span><span class="macro">warn!</span>(<span class="string">"Associated constant {field} not found in type {e_type} in environment {env}"</span>);
-                                <span class="macro">warn!</span>(<span class="string">"Falling back on regular member access"</span>);
+                                </span><span class="macro">debug!</span>(<span class="string">"Associated constant {field} not found in type {e_type} in environment {env}"</span>);
+                                <span class="macro">debug!</span>(<span class="string">"Falling back on regular member access"</span>);
                                 Expr::Member(Box::new(Expr::ConstExpr(<span class="kw-2">*</span>e.clone())), <span class="kw-2">*</span>field.clone())
                                     .type_check(env)
                             }
@@ -2340,46 +2367,55 @@
                 <span class="macro">debug!</span>(
                     <span class="string">"Monomorphizing {expr} with type arguments {ty_args:?} in environment {env}"
                 </span>);
-                <span class="kw">match </span><span class="kw-2">**</span>expr {
+                <span class="kw">match </span><span class="kw-2">*</span>expr.clone() {
                     <span class="self">Self</span>::Template(<span class="kw-2">ref </span>ty_params, <span class="kw-2">ref </span>template) =&gt; {
+                        <span class="comment">// Create a new environment with the type parameters defined.
+                        // Define the type parameters in the environment.
+                        </span><span class="kw">let </span><span class="kw-2">mut </span>ret = template.clone();
+                        <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
+                        <span class="kw">for </span>((param, ty), ty_arg) <span class="kw">in </span>ty_params.iter().zip(ty_args.iter()) {
+                            <span class="kw">if </span>ty_arg.is_const_param() {
+                                <span class="kw">let </span>cexpr = ty_arg.simplify_until_const_param(env, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+                                <span class="kw">if let </span><span class="prelude-val">Some</span>(expected_ty) = ty {
+                                    <span class="kw">let </span>expected = expected_ty.clone();
+                                    <span class="kw">let </span>found = cexpr.get_type(env)<span class="question-mark">?</span>;
+                                    <span class="kw">if </span>!found.equals(expected_ty, env)<span class="question-mark">? </span>{
+                                        <span class="macro">error!</span>(<span class="string">"Mismatch in expected type for constant parameter"</span>);
+                                        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MismatchedTypes { expected, found, expr: (cexpr.clone()).into() })
+                                    }
+                                }
+                                ret.substitute(param, ty_arg);
+                                new_env.define_const(param, cexpr.clone());
+                            } <span class="kw">else </span>{
+                                ret.substitute(param, ty_arg);
+                                new_env.define_type(param, ty_arg.clone());
+                            }
+                        }
+                        <span class="macro">debug!</span>(<span class="string">"Result: {ret}"</span>);
+                        <span class="kw">let </span>ret = ret.get_type(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?
+                            </span>.simplify_until_poly(<span class="kw-2">&amp;</span>new_env, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+                        <span class="comment">// Check the template type.
+                        </span>ret.type_check(<span class="kw-2">&amp;</span>new_env)
+                    }
+                    <span class="self">Self</span>::PolyProc(<span class="kw-2">ref </span>poly) =&gt; {
                         <span class="comment">// Create a new environment with the type parameters defined.
                         </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                         <span class="comment">// Define the type parameters in the environment.
                         </span>new_env.define_types(
-                            ty_params.clone().into_iter().zip(ty_args.clone()).collect(),
+                            poly.get_type_params()
+                                .clone()
+                                .into_iter()
+                                .map(|(name, <span class="kw">_</span>)| name)
+                                .zip(ty_args.clone())
+                                .collect(),
                         );
                         <span class="comment">// Check the template type.
-                        </span>template.type_check(<span class="kw-2">&amp;</span>new_env)
-                        <span class="comment">// Ok(())
-                    </span>}
-                    <span class="self">Self</span>::PolyProc(<span class="kw-2">ref </span>poly) =&gt; {
-                        <span class="comment">// poly.monomorphize(ty_args.clone(), env)?.type_check(env)
-                        // Create a new environment with the type parameters defined.
-                        // let mut new_env = env.clone();
-                        // // Define the type parameters in the environment.
-                        // new_env.define_types(
-                        //     poly.ty_params
-                        //         .clone()
-                        //         .into_iter()
-                        //         .zip(ty_args.clone())
-                        //         .collect(),
-                        // );
-                        // Check the template type.
                         </span>poly.type_check(env)
-                        <span class="comment">// Ok(())
-                    </span>}
+                    }
                     <span class="kw">_ </span>=&gt; {
                         <span class="self">self</span>.get_type(env)<span class="question-mark">?</span>.type_check(env)<span class="question-mark">?</span>;
                         expr.type_check(env)<span class="question-mark">?</span>;
-                        <span class="comment">// if let Self::PolyProc(poly) = *expr.clone() {
-                        //     poly.type_check(env)?
-                        // }
-                        /*
-                        for ty in ty_args {
-                            ty.type_check(env)?;
-                        }
-                        */
-                        </span>ty_args
+                        ty_args
                             .into_par_iter()
                             .try_for_each(|ty| ty.type_check(env))<span class="question-mark">?</span>;
                         <span class="prelude-val">Ok</span>(())
@@ -2441,7 +2477,7 @@
             <span class="comment">// Typecheck a variant of an enum.
             </span><span class="self">Self</span>::Of(t, variant) =&gt; {
                 <span class="kw">let </span>t = t
-                    .simplify_until_has_variants(env)
+                    .simplify_until_has_variants(env, <span class="bool-val">true</span>)
                     .map_err(|<span class="kw">_</span>| Error::VariantNotFound(t.clone(), variant.clone()))<span class="question-mark">?</span>;
 
                 <span class="kw">match </span>t {
@@ -2563,7 +2599,7 @@
             <span class="comment">// Typecheck a union literal.
             </span><span class="self">Self</span>::Union(t, field, val) =&gt; {
                 <span class="comment">// Confirm the type supplied is a union.
-                </span><span class="kw">let </span>t = t.simplify_until_union(env)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>t = t.simplify_until_union(env, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
 
                 <span class="kw">match </span>t {
                     Type::Union(fields) =&gt; {
@@ -2602,7 +2638,7 @@
             <span class="comment">// Typecheck a tagged union literal.
             </span><span class="self">Self</span>::EnumUnion(t, variant, val) =&gt; {
                 <span class="comment">// Confirm the type supplied is a union.
-                </span><span class="kw">let </span>t = t.simplify_until_union(env)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>t = t.simplify_until_union(env, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
                 <span class="kw">match </span>t {
                     Type::EnumUnion(fields) =&gt; {
                         <span class="comment">// Confirm that the variant is a valid variant.

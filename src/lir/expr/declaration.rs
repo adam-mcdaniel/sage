@@ -235,7 +235,7 @@ impl Declaration {
                 expr.clone().compile_expr(env, output)?;
 
                 // Add the variable to the environment, so that it can be used in the body.
-                env.add_local_variable_declaration(self)?;
+                env.add_local_variable_declaration(self, true)?;
                 // Log the instructions for the declaration.
                 output.log_instructions_after(name, &log_message, current_instruction);
             }
@@ -511,9 +511,6 @@ impl TypeCheck for Declaration {
                 let bindings = pat.get_bindings(expr, &ty, env)?;
                 // Get the size of all the bindings
                 let size_of_bindings = bindings
-                    // .iter()
-                    // .map(|(_name, (_mut, ty))| ty.get_size(env).unwrap_or(0))
-                    // .sum::<usize>();
                     .values()
                     .collect::<Vec<_>>()
                     .par_iter()
@@ -571,7 +568,7 @@ impl TypeCheck for Declaration {
 
                     for (name, associated_const) in impls {
                         let templated_const =
-                            associated_const.template(supplied_param_symbols.clone());
+                            associated_const.template(template_params.clone().into_iter().zip(supplied_param_symbols.clone().into_iter()).map(|((_, ty), param)| (param, ty)).collect());
                         new_env.add_associated_const(
                             *template.clone(),
                             name,
@@ -584,10 +581,6 @@ impl TypeCheck for Declaration {
 
                     // If we are at the limit of parallel recursion, then we should
                     // type check the associated constants sequentially.
-                    // for templated_const in templated_consts {
-                    //     templated_const.type_check(&new_env)?;
-                    // }
-
                     templated_consts
                         .par_iter()
                         .try_for_each(|templated_const| templated_const.type_check(&new_env))?;
@@ -606,7 +599,7 @@ impl TypeCheck for Declaration {
             Self::Many(decls) => {
                 let mut new_env = env.clone();
                 // Add all the compile-time declarations to the environment.
-                new_env.add_declaration(&self.clone())?;
+                new_env.add_declaration(&self.clone(), false)?;
 
                 // Get all the compile time declarations so we can type check them in parallel.
                 let (comp_time_decls, run_time_decls): (Vec<_>, Vec<_>) = decls
@@ -626,7 +619,7 @@ impl TypeCheck for Declaration {
                     // .map(|decl| decl.type_check(&new_env))
                     .try_for_each(|decl| {
                         decl.type_check(&new_env)?;
-                        new_env.add_declaration(decl)
+                        new_env.add_declaration(decl, false)
                     })?;
 
                 /*
@@ -672,15 +665,13 @@ impl TypeCheck for Declaration {
                 let mut new_env = env.clone();
 
                 // Add all the compile-time declarations to the environment.
-                // new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
-                new_env.add_declaration(&Self::Many(decls.clone()))?;
+                new_env.add_declaration(&Self::Many(decls.clone()), false)?;
                 trace!("Typechecking module {}", name);
                 // Get all the compile time declarations so we can type check them in parallel.
                 let (comp_time_decls, _run_time_decls): (Vec<_>, Vec<_>) = decls
                     .iter()
                     .partition(|decl| decl.is_compile_time_declaration());
 
-                // trace!("Compile time declarations: {:?}", comp_time_decls);
                 if !comp_time_decls.is_empty() {
                     // Type check all the compile time declarations in parallel.
                     comp_time_decls

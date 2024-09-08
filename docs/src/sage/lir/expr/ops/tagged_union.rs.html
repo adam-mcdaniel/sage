@@ -186,12 +186,12 @@
     <span class="doccomment">/// Can this unary operation be applied to the given type?
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
         <span class="kw">let </span>ty = ty.clone().simplify(env)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(ty.simplify_until_has_variants(env).is_ok())
+        <span class="prelude-val">Ok</span>(ty.simplify_until_has_variants(env, <span class="bool-val">false</span>).is_ok())
     }
 
     <span class="doccomment">/// Get the type of the result of applying this unary operation to the given type.
     </span><span class="kw">fn </span>return_type(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
-        <span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>.simplify_until_has_variants(env)<span class="question-mark">?</span>;
+        <span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>.simplify_until_has_variants(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
         <span class="kw">match </span>ty {
             Type::EnumUnion(variants) =&gt; <span class="prelude-val">Ok</span>(Type::Enum(variants.into_keys().collect())),
@@ -275,12 +275,12 @@
     <span class="doccomment">/// Can this unary operation be applied to the given type?
     </span><span class="kw">fn </span>can_apply(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span>Type, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
         <span class="kw">let </span>ty = ty.clone().simplify(env)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(ty.simplify_until_has_variants(env).is_ok())
+        <span class="prelude-val">Ok</span>(ty.simplify_until_has_variants(env, <span class="bool-val">false</span>).is_ok())
     }
 
     <span class="doccomment">/// Get the type of the result of applying this unary operation to the given type.
     </span><span class="kw">fn </span>return_type(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>Expr, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;Type, Error&gt; {
-        <span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>.simplify_until_has_variants(env)<span class="question-mark">?</span>;
+        <span class="kw">let </span>ty = expr.get_type(env)<span class="question-mark">?</span>.simplify_until_has_variants(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
         <span class="kw">match </span>ty {
             Type::EnumUnion(variants) =&gt; <span class="prelude-val">Ok</span>(Type::Union(variants)),

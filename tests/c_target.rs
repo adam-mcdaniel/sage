@@ -25,7 +25,7 @@ fn test_c_target_frontend_examples() {
     builder.init();
 
     rayon::ThreadPoolBuilder::new()
-        .num_threads(1)
+        .num_threads(16)
         .stack_size(512 * 1024 * 1024)
         .build_global()
         .unwrap();
@@ -99,7 +99,7 @@ fn test_c_target_frontend_examples_helper() {
                 if let Some(correct_error) = correct_error {
                     let text = e.to_string();
                     if text != correct_error {
-                        panic!("{text:?} != {correct_error:?}, error did not match correct error for program {path:?}")
+                        panic!("{text:?} (incorrect) != {correct_error:?} (correct), error did not match correct error for program {path:?}")
                     } else {
                         continue;
                     }

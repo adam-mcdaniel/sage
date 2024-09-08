@@ -1,0 +1,79 @@
+struct Matrix<T, const Rows: Int, const Cols: Int> {
+    arr: [[T * Cols] * Rows]
+}
+
+impl Matrix<T, Rows, Cols> {
+    fun new(x: T): Matrix<T, Rows, Cols> {
+        return {arr=[[x] * Cols] * Rows};
+    }
+
+    fun get(&self, row: Int, col: Int): &T {
+        return &self.arr[row][col];
+    }
+
+    fun mul<const NewCols: Int>(
+        &self,
+        other: &Matrix<T, Cols, NewCols>,
+        zero: T,
+        add: fun(T, T) -> T,
+        mul: fun(T, T) -> T
+    ): Matrix<T, Rows, NewCols> {
+        let mut result = Matrix.new<T, Rows, NewCols>(zero);
+        for let mut j=0; j<NewCols; j+=1; {
+            for let mut i=0; i<Rows; i+=1; {
+                let mut sum = zero;
+                for let mut k=0; k<Cols; k+=1; {
+                    sum = add(sum, mul(self.arr[i][k], other.arr[k][j]));
+                }
+                result.arr[i][j] = sum;
+            }
+        }
+        result
+    }
+
+    fun print(&self) {
+        for let mut row=0; row<Rows; row+=1; {
+            for let mut col=0; col<Cols; col+=1; {
+                print(*self.get(row, col), " ");
+            }
+            println();
+        }
+    }
+}
+
+
+struct Point {
+    x: Int,
+    y: Int
+}
+
+impl Point {
+    fun default(): Point {
+        Point.new(0, 0)
+    }
+
+    fun new(x: Int, y: Int): Point {
+        {x=x, y=y}
+    }
+
+    fun mul(self, other: Point): Point {
+        {x=self.x * other.x, y=self.y * other.y}
+    }
+
+    fun add(self, other: Point): Point {
+        {x=self.x + other.x, y=self.y + other.y}
+    }
+}
+
+let mut x = Matrix.new<Point, 4, 4>(Point.new(1, 2));
+let mut y = Matrix.new<Point, 4, 4>(Point.new(-4, 5));
+
+x.print();
+println();
+y.print();
+println();
+
+let z = y.mul<4>(&x, Point.default(), Point.add, Point.mul);
+
+z.print();
+println();

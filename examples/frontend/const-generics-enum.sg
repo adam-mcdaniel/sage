@@ -1,0 +1,84 @@
+
+
+fun exit(code: Int): ! {
+    while True {}
+}
+
+fun panic(msg: &Char): ! {
+    for let mut i=0; msg[i] != '\0'; i+=1; {
+        print(msg);
+    }
+    println();
+    debug();
+    exit(1);
+}
+
+enum List<T, const N: Int> {
+    Cons(T, &List<T, N>),
+    Nil
+}
+
+impl List<T, N> {
+    fun make(value: T): List<T, N> {
+        return List<T, N> of Cons(value, new List<T, N> of Nil);
+    }
+
+    fun cons(List: List<T, N>, value: T): List<T, N> {
+        return List<T, N> of Cons(value, new List);
+    }
+
+    fun head(self: &List<T, N>): T {
+        match self {
+            &of Cons(head, _) => head,
+            _ => panic(&"head of empty List")
+        }
+    }
+
+    fun tail(self: &List<T, N>): &List<T, N> {
+        match self {
+            &of Cons(_, tail) => tail,
+            _ => panic(&"tail of empty List")
+        }
+    }
+
+    fun print(self: &List<T, N>) {
+        match self {
+            &of Cons(head, tail) => {
+                print(head);
+                print(" ");
+                tail.print();
+            },
+            _ => {}
+        }
+    }
+
+    fun println(self: &List<T, N>) {
+        self.print();
+        println(" (special number=", N, ")");
+    }
+
+    fun map<U>(self, f: fun(T) -> U): List<U, N> {
+        match self {
+            of Cons(head, tail) => {
+                let map = tail.map<U>(f);
+                map.cons(f(head))
+            },
+            _ => List<U, N> of Nil
+        }
+    }
+}
+
+const N = 555;
+let l1 = List.make<Int, 999>(1);
+let l2 = List.make<Float, N>(2.0).cons(1.0);
+
+fun dub_int(n: Int): Int = n * 2;
+fun dub_float(n: Float): Float = n * 2.0;
+
+l1.println();
+l2.println();
+
+let l3 = l1.map<Int>(dub_int);
+let l4 = l2.map<Float>(dub_float);
+l3.println();
+l4.println();

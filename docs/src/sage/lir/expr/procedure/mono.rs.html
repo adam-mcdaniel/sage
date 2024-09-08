@@ -457,7 +457,7 @@
 
         <span class="comment">// Create a new scope for the procedure's body, and define the arguments for the scope.
         </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.new_scope();
-        new_env.define_args(<span class="self">self</span>.args.clone())<span class="question-mark">?</span>;
+        new_env.define_args(<span class="self">self</span>.args.clone(), <span class="bool-val">false</span>)<span class="question-mark">?</span>;
         new_env.set_expected_return_type(<span class="self">self</span>.ret.clone());
 
         <span class="comment">// Get the type of the procedure's body, and confirm that it matches the return type.
@@ -507,7 +507,7 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.new_scope();
 
         <span class="comment">// Declare the arguments and get their size
-        </span><span class="kw">let </span>args_size = new_env.define_args(<span class="self">self</span>.args)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>args_size = new_env.define_args(<span class="self">self</span>.args, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
         <span class="comment">// Get the size of the return value to leave on the stack
         </span><span class="kw">let </span>ret_size = <span class="self">self</span>.ret.get_size(env)<span class="question-mark">?</span>;
 

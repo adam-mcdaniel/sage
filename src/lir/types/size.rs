@@ -58,7 +58,14 @@ impl GetSize for Type {
             });
         }
 
+        if self.is_const_param() {
+            let cexpr = self.clone().simplify_until_const_param(env, false)?;
+            return cexpr.get_size_checked(env, i)
+        }
+
         let result = match self {
+            Self::ConstParam(cexpr) => cexpr.get_size_checked(env, i)?,
+
             // None or Never are not real types, so they have no size.
             // They are not represented with data. They have zero size.
             Self::Type(_) | Self::None | Self::Never => 0,
@@ -164,7 +171,7 @@ impl GetSize for Type {
                     return Ok(size);
                 }
 
-                let result = self.clone().simplify_until_concrete(env)?;
+                let result = self.clone().simplify_until_concrete(env, false)?;
 
                 result.get_size_checked(env, i)?
             }

@@ -162,7 +162,7 @@ impl TypeCheck for Procedure {
 
         // Create a new scope for the procedure's body, and define the arguments for the scope.
         let mut new_env = env.new_scope();
-        new_env.define_args(self.args.clone())?;
+        new_env.define_args(self.args.clone(), false)?;
         new_env.set_expected_return_type(self.ret.clone());
 
         // Get the type of the procedure's body, and confirm that it matches the return type.
@@ -212,7 +212,7 @@ impl Compile for Procedure {
         let mut new_env = env.new_scope();
 
         // Declare the arguments and get their size
-        let args_size = new_env.define_args(self.args)?;
+        let args_size = new_env.define_args(self.args, true)?;
         // Get the size of the return value to leave on the stack
         let ret_size = self.ret.get_size(env)?;
 

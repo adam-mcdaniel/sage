@@ -1,0 +1,37 @@
+fun test<const X: (Int, Int)>() {
+    println(X.0);
+}
+
+fun test2<const X: {x: Int, y: Int}>() {
+    println(X);
+    println("x: ", X.x);
+    println("y: ", X.y);
+}
+
+test<(5, 6)>();
+test2<{x=45, y=37}>();
+
+type Test = {x: Int, y: Int};
+struct Point {
+    x: Int,
+    y: Int
+}
+
+impl Point {
+    fun new(x: Int, y: Int): Point {
+        {x=x, y=y}
+    }
+
+    fun move(&mut self, dx: Int, dy: Int) {
+        self.x += dx;
+        self.y += dy;
+    }
+}
+
+fun test3<const P: Point>() {
+    let mut p = P;
+    p.move(1, 1);
+    println(p)
+}
+
+test3<{x=5, y=6}>();

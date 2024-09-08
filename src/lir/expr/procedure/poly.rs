@@ -12,7 +12,7 @@ use std::{
 };
 use std::{hash::Hash, hash::Hasher};
 
-use log::{debug, error, trace};
+use log::{debug, error};
 use serde_derive::{Deserialize, Serialize};
 
 /// A polymorphic procedure of LIR code which can be applied to a list of arguments with type arguments.
@@ -23,7 +23,7 @@ pub struct PolyProcedure {
     /// The name of the procedure.
     name: String,
     /// The type parameters of the procedure.
-    ty_params: Vec<String>,
+    ty_params: Vec<(String, Option<Type>)>,
     /// The arguments of the procedure.
     args: Vec<(String, Mutability, Type)>,
     /// The return type of the procedure.
@@ -52,7 +52,7 @@ impl PolyProcedure {
     /// a return type, and the body of the procedure.
     pub fn new(
         name: String,
-        ty_params: Vec<String>,
+        ty_params: Vec<(String, Option<Type>)>,
         args: Vec<(String, Mutability, Type)>,
         ret: Type,
         body: impl Into<Expr>,
@@ -77,7 +77,11 @@ impl PolyProcedure {
         }
     }
 
-    pub fn from_mono(mono: Procedure, ty_params: Vec<String>) -> Self {
+    pub fn get_type_params(&self) -> &Vec<(String, Option<Type>)> {
+        &self.ty_params
+    }
+
+    pub fn from_mono(mono: Procedure, ty_params: Vec<(String, Option<Type>)>) -> Self {
         debug!(target: "mono", "Creating polymorphic procedure from monomorph {}", mono);
         let name = mono
             .get_common_name()
@@ -102,6 +106,10 @@ impl PolyProcedure {
         &self.name
     }
 
+    fn type_param_names(&self) -> Vec<String> {
+        self.ty_params.clone().into_iter().map(|(ty, _)| ty).collect()
+    }
+
     /// Take some type arguments and produce a monomorphized version of the procedure.
     /// This monomorphized version can then be compiled directly. Additionally, the
     /// mono version of the procedure is memoized, so that it is only compiled once.
@@ -117,7 +125,7 @@ impl PolyProcedure {
             .into_iter()
             .map(|ty| {
                 // Simplify the type until it is concrete
-                let concrete = ty.simplify_until_concrete(env)?;
+                let concrete = ty.simplify_until_concrete(env, true)?;
                 // concrete.add_monomorphized_associated_consts(env)?;
                 Ok(concrete)
             })
@@ -134,7 +142,7 @@ impl PolyProcedure {
             );
             // Simplify the type until it is simple.
             // This reduces to the concrete version of the type application.
-            let concrete = ty.simplify_until_concrete(env)?;
+            let concrete = ty.simplify_until_concrete(env, true)?;
             // concrete.add_monomorphized_associated_consts(env)?;
             Ok(concrete)
         };
@@ -163,30 +171,29 @@ impl PolyProcedure {
         drop(monomorphs);
         let mut monomorphs = self.monomorphs.write().unwrap();
 
+        debug!(target: "mono", "Memoizing monomorphized procedure {}", mangled_name);
+        let mut body = *self.body.clone();
+
+        // Substitute the type arguments into the body of the function.
+        body.substitute_types(&self.type_param_names(), &simplified_ty_args);
+
+        // Wrap the body in a let expression to bind the type arguments.
+        body = body.with(
+            self.type_param_names()
+                .iter()
+                .zip(simplified_ty_args.iter())
+                .map(|(a, b)| (a.clone(), b.clone()))
+                .collect::<Vec<_>>(),
+        );
+
+        let monomorph = Procedure::new(Some(mangled_name.clone()), args, ret, body);
+
         // If the monomorphized procedure has already been memoized, return it, otherwise memoize it.
         debug!(target: "mono", "Inserting entry for {}", mangled_name);
         let monomorph = monomorphs
             .entry(mangled_name.clone())
-            .or_insert_with(|| {
-                debug!(target: "mono", "Memoizing monomorphized procedure {}", mangled_name);
-                let mut body = *self.body.clone();
-
-                // Substitute the type arguments into the body of the function.
-                body.substitute_types(&self.ty_params, &simplified_ty_args);
-
-                // Wrap the body in a let expression to bind the type arguments.
-                body = body.with(
-                    self.ty_params
-                        .iter()
-                        .zip(simplified_ty_args.iter())
-                        .map(|(a, b)| (a.clone(), b.clone()))
-                        .collect::<Vec<_>>(),
-                );
-
-                Procedure::new(Some(mangled_name.clone()), args, ret, body)
-            })
+            .or_insert_with(|| monomorph)
             .clone();
-
         // Unlock the mutex to prevent a deadlock.
         drop(monomorphs);
         // Return the monomorphized procedure.
@@ -206,13 +213,19 @@ impl GetType for PolyProcedure {
     }
 
     fn substitute(&mut self, name: &str, ty: &Type) {
-        if self.ty_params.contains(&name.to_string()) {
+        if self.type_param_names().contains(&name.to_string()) {
+            debug!("Not substituting {name} in {ty} because of symbol conflict");
             return;
         }
+        for (_, ty_arg) in &mut self.ty_params {
+            *ty_arg = ty_arg.as_mut().map(|ty_arg| ty_arg.substitute(name, ty));
+        }
+
         self.args
             .iter_mut()
             .for_each(|(_, _, t)| *t = t.substitute(name, ty));
         self.ret = self.ret.substitute(name, ty);
+        self.body.substitute(name, ty);
     }
 }
 
@@ -223,19 +236,24 @@ impl TypeCheck for PolyProcedure {
         }
 
         *self.has_type_checked.write().unwrap() = true;
-        trace!("Type checking {self}");
+        debug!("Type checking {self}");
         // Create a new scope for the procedure's body, and define the arguments for the scope.
         let mut new_env = env.new_scope();
+        
         // Define the type parameters of the procedure.
-        new_env.define_types(
-            self.ty_params
-                .clone()
-                .into_iter()
-                .map(|ty_param| (ty_param.clone(), Type::Unit(ty_param, Box::new(Type::None))))
-                .collect(),
-        );
+        for (name, ty) in &self.ty_params {
+            match ty {
+                Some(ty) => {
+                    new_env.define_var(name, Mutability::Immutable, ty.clone(), false)?;
+                    new_env.define_type(name, ty.clone());
+                }
+                None => {
+                    new_env.define_type(name, Type::Unit(name.clone(), Box::new(Type::None)));
+                }
+            }
+        }
         // Define the arguments of the procedure.
-        new_env.define_args(self.args.clone())?;
+        new_env.define_args(self.args.clone(), false)?;
         new_env.set_expected_return_type(self.ret.clone());
 
         // Typecheck the types of the arguments and return value
@@ -245,7 +263,9 @@ impl TypeCheck for PolyProcedure {
         self.ret.type_check(&new_env)?;
 
         // Get the type of the procedure's body, and confirm that it matches the return type.
+        debug!("Getting body type of {}", self.name);
         let body_type = self.body.get_type(&new_env)?;
+        debug!("Got body type {body_type} of {}", self.name);
 
         if !body_type.can_decay_to(&self.ret, &new_env)? {
             error!(
@@ -260,6 +280,7 @@ impl TypeCheck for PolyProcedure {
             })
         } else {
             // Typecheck the procedure's body.
+            debug!("Typechecking body of {} = {}", self.name, self.body);
             self.body.type_check(&new_env)
         }
     }
@@ -268,8 +289,11 @@ impl TypeCheck for PolyProcedure {
 impl fmt::Display for PolyProcedure {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "proc[")?;
-        for (i, ty_param) in self.ty_params.iter().enumerate() {
+        for (i, (ty_param, ty)) in self.ty_params.iter().enumerate() {
             write!(f, "{}", ty_param)?;
+            if let Some(ty) = ty {
+                write!(f, ": {}", ty)?;
+            }
             if i < self.ty_params.len() - 1 {
                 write!(f, ", ")?;
             }

@@ -548,7 +548,7 @@ impl Compile for Expr {
             Self::EnumUnion(t, variant, val) => {
                 // Get the size of the tagged union.
                 let result_size = t.get_size(env)?;
-                let t = t.simplify_until_concrete(env)?;
+                let t = t.simplify_until_concrete(env, false)?;
                 if let Type::EnumUnion(fields) = t {
                     // Get the list of possible variant names.
                     let variants = fields.clone().into_keys().collect::<Vec<_>>();
@@ -843,7 +843,7 @@ impl Compile for Expr {
                     // val_type.add_monomorphized_associated_consts(env)?;
 
                     // Push the address of the struct, tuple, or union onto the stack.
-                    match val_type.simplify_until_has_members(env)? {
+                    match val_type.simplify_until_has_members(env, false)? {
                         // If the value is a struct, tuple, or union:
                         Type::Struct(_) | Type::Tuple(_) | Type::Union(_) => {
                             // Compile a reference to the inner value with the expected mutability.
@@ -928,7 +928,7 @@ impl Compile for Expr {
                     // val_type.add_monomorphized_associated_consts(env)?;
 
                     // Push the address of the struct, tuple, or union onto the stack.
-                    match val_type.simplify_until_has_members(env)? {
+                    match val_type.simplify_until_has_members(env, false)? {
                         // If the value is a struct, tuple, or union:
                         Type::Struct(_) | Type::Tuple(_) | Type::Union(_) => {
                             // Compile a reference to the inner value with the expected mutability.
@@ -1071,13 +1071,19 @@ impl Compile for ConstExpr {
         let ty = self.get_type(env)?;
         // Compile the constant expression.
         match self {
-            Self::Template(_, _) => {
+            Self::Any
+            | Self::Template(_, _) => {
                 // Cannot compile a template expression.
                 return Err(Error::UnsizedType(ty));
             }
 
-            Self::Type(_) => {
-                // Do nothing.
+            Self::Type(t) => {
+                if t.is_const_param() {
+                    let cexpr = t.simplify_until_const_param(env, false)?;
+                    cexpr.compile_expr(env, output)?
+                } else {
+                    return Err(Error::UnsizedType(ty));
+                }
             }
             Self::Member(container, member) => {
                 let new_container = *container.clone();
@@ -1097,6 +1103,9 @@ impl Compile for ConstExpr {
                         }
                         fields[&name].clone().compile_expr(env, output)?
                     }
+                    (Self::Type(ty), member) if ty.is_const_param() => {
+                        ty.simplify_until_const_param(env, false)?.field(member).compile_expr(env, output)?
+                    }
                     (Self::Type(ty), Self::Symbol(name)) => {
                         if let Some((constant, _)) = env.get_associated_const(&ty, &name) {
                             debug!("Compiling associated constant {constant} in environment {env}");
@@ -1108,7 +1117,7 @@ impl Compile for ConstExpr {
                     }
                     (Self::Declare(bindings, expr), field) => {
                         let mut new_env = env.clone();
-                        new_env.add_declaration(&bindings)?;
+                        new_env.add_declaration(&bindings, true)?;
                         expr.field(field).compile_expr(&mut new_env, output)?;
                     }
                     (a, b) => {
@@ -1128,7 +1137,7 @@ impl Compile for ConstExpr {
             Self::Declare(bindings, body) => {
                 debug!("Compiling declaration {bindings} with body {body} in environment {env}");
                 let mut new_env = env.clone();
-                new_env.add_declaration(&bindings)?;
+                new_env.add_declaration(&bindings, true)?;
                 body.compile_expr(&mut new_env, output)?;
             }
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
@@ -1164,7 +1173,7 @@ impl Compile for ConstExpr {
                     }
 
                     let mut result = *result.clone();
-                    for (param, ty_arg) in params.into_iter().zip(ty_args) {
+                    for ((param, _), ty_arg) in params.into_iter().zip(ty_args) {
                         result.substitute(&param, &ty_arg);
                     }
                     result = result.eval(env)?;
@@ -1174,7 +1183,7 @@ impl Compile for ConstExpr {
                 }
                 Self::Declare(bindings, expr) => {
                     let mut new_env = env.clone();
-                    new_env.add_declaration(&bindings)?;
+                    new_env.add_declaration(&bindings, true)?;
                     expr.monomorphize(ty_args)
                         .compile_expr(&mut new_env, output)?;
                 }
@@ -1385,7 +1394,7 @@ impl Compile for ConstExpr {
             Self::EnumUnion(t, variant, val) => {
                 // Get the size of the tagged union.
                 let result_size = t.get_size(env)?;
-                let t = t.simplify_until_has_variants(env)?;
+                let t = t.simplify_until_has_variants(env, false)?;
 
                 // Get the inner list of variants and compile the expression using this information.
                 if let Type::EnumUnion(variants) = t.clone().simplify(env)? {
@@ -1459,7 +1468,7 @@ impl Compile for ConstExpr {
             Self::Of(enum_type, variant) => {
                 // Only try to simplify the type 50 times at most.
                 // This is to prevent infinite loops and to keep recursion under control.
-                match enum_type.simplify_until_has_variants(env)? {
+                match enum_type.simplify_until_has_variants(env, false)? {
                     // If the type is an enum, we can continue.
                     Type::Enum(variants) => {
                         // Get the index of the variant.

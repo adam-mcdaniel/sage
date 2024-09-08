@@ -70,14 +70,14 @@ impl Pattern {
         env: &Env,
     ) -> Result<Type, Error> {
         // Get the type of the expression being matched.
-        let ty = expr.get_type(env)?.simplify_until_concrete(env)?;
+        let ty = expr.get_type(env)?.simplify_until_concrete(env, false)?;
         // Get the bindings for the pattern.
         let bindings = self.get_bindings(expr, &ty, env)?;
         // Create a new environment with the bindings.
         let mut new_env = env.clone();
         for (var, (mutabilty, ty)) in bindings {
             // Define the variables in the new environment.
-            new_env.define_var(var, mutabilty, ty)?;
+            new_env.define_var(var, mutabilty, ty, true)?;
         }
 
         // Get the type of the branch.
@@ -98,7 +98,7 @@ impl Pattern {
         matching_expr_ty: &Type,
         env: &Env,
     ) -> Result<bool, Error> {
-        let matching_expr_ty = &matching_expr_ty.simplify_until_concrete(env)?;
+        let matching_expr_ty = &matching_expr_ty.simplify_until_concrete(env, false)?;
         match matching_expr_ty {
             Type::Bool => {
                 // If the type is a boolean, the patterns are exhaustive if they match both `true` and `false`.
@@ -389,7 +389,7 @@ impl Pattern {
     pub fn type_check(&self, matching_expr: &Expr, branch: &Expr, env: &Env) -> Result<(), Error> {
         trace!("Type checking pattern match: {} => {}", self, branch);
         // Get the type of the expression being matched.
-        let matching_ty = matching_expr.get_type(env)?.simplify_until_concrete(env)?;
+        let matching_ty = matching_expr.get_type(env)?.simplify_until_concrete(env, false)?;
         // Get the type of the branch as a result of the match.
         let expected = self.get_branch_result_type(matching_expr, branch, env)?;
         // Type-check the expression generated to match the pattern.
@@ -498,9 +498,9 @@ impl Pattern {
         // Create a new environment with the bindings
         let mut new_env = env.clone();
         // Get the type of the expression being matched
-        let match_type = expr.get_type(env)?.simplify_until_concrete(env)?;
+        let match_type = expr.get_type(env)?.simplify_until_concrete(env, false)?;
         // Define the variable in the new environment.
-        new_env.define_var(var_name.clone(), Mutability::Immutable, match_type.clone())?;
+        new_env.define_var(var_name.clone(), Mutability::Immutable, match_type.clone(), true)?;
         // Generate the expression which evaluates the `match` expression.
         let match_expr = Pattern::match_pattern_helper(&Expr::var(&var_name), branches, &new_env)?;
 
@@ -570,7 +570,7 @@ impl Pattern {
         env: &Env,
         mut origin: usize,
     ) -> Result<HashMap<String, (Mutability, Type, usize)>, Error> {
-        let ty = &ty.simplify_until_concrete(env)?;
+        let ty = &ty.simplify_until_concrete(env, false)?;
         Ok(match (self, ty) {
             // If the pattern is a tuple, and the type is a tuple, then
             // get the bindings for each element of the tuple.
@@ -719,7 +719,7 @@ impl Pattern {
     /// Does this pattern match the given expression?
     /// This function returns an expression which evaluates to true if the expression matches the pattern.
     fn matches(&self, expr: &Expr, ty: &Type, env: &Env) -> Result<Expr, Error> {
-        let ty = &ty.simplify_until_concrete(env)?;
+        let ty = &ty.simplify_until_concrete(env, false)?;
         Ok(match (self, ty) {
             // If the pattern is a variant, and the type is a EnumUnion,
             // check if the variant matches the pattern.
@@ -879,7 +879,7 @@ impl Pattern {
     /// then this will not work correctly. This function does not check the arguments.***
     pub fn declare_let_bind(&self, expr: &Expr, ty: &Type, env: &mut Env) -> Result<(), Error> {
         // Get the type of the expression being matched.
-        let ty = &ty.simplify_until_concrete(env)?;
+        let ty = &ty.simplify_until_concrete(env, false)?;
         // Get the variable bindings for the pattern.
         // This tells us the type and mutability of each variable.
         let bindings = self.get_bindings_with_offset(expr, ty, env, 0)?;
@@ -890,7 +890,7 @@ impl Pattern {
         bindings.sort_by_key(|(_, (_, _, offset))| *offset);
         // Define all the bindings in the environment.
         for (name, (mutability, ty, _)) in &bindings {
-            env.define_var(name, *mutability, ty.clone())?;
+            env.define_var(name, *mutability, ty.clone(), true)?;
         }
         Ok(())
     }
@@ -905,7 +905,7 @@ impl Pattern {
     /// added to the environment, and will be bound to the corresponding value in
     /// the expression which is being matched.
     fn bind(&self, expr: &Expr, ty: &Type, ret: &Expr, env: &Env) -> Result<Expr, Error> {
-        let ty = &ty.simplify_until_concrete(env)?;
+        let ty = &ty.simplify_until_concrete(env, false)?;
         Ok(match (self, ty) {
             // If the pattern is a variant, and the type is a tagged union,
             // bind the pattern to the corresponding variant type in the tagged union.

@@ -23,7 +23,7 @@ pub enum Comparison {
 impl BinaryOp for Comparison {
     /// Can this binary operation be applied to the given types?
     fn can_apply(&self, lhs: &Type, rhs: &Type, env: &Env) -> Result<bool, Error> {
-        match (lhs, self, rhs) {
+        match (&lhs.clone().discard_type_wrapper(), self, &rhs.clone().discard_type_wrapper()) {
             (Type::Int, Self::LessThan, Type::Int)
             | (Type::Int, Self::LessThanOrEqual, Type::Int)
             | (Type::Int, Self::GreaterThan, Type::Int)
@@ -198,7 +198,7 @@ impl BinaryOp for Comparison {
         let dst = SP.deref().offset(-1);
         let tmp = SP.deref().offset(1);
         // Now, perform the correct assembly expressions based on the types of the two expressions.
-        match (lhs, self, rhs) {
+        match (&lhs.clone().discard_type_wrapper(), self, &rhs.clone().discard_type_wrapper()) {
             // If a `Float` and a `Cell` are used, we just interpret the `Cell` as a `Float`.
             (Type::Cell, _, Type::Float) | (Type::Float, _, Type::Cell) => {
                 output.op(CoreOp::Move { src: dst, dst: tmp });

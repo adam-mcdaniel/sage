@@ -85,6 +85,138 @@
             }
             console.log(document.getElementById("example").value);
             switch (document.getElementById("example").value) {
+                case "const-generics":
+                    source.setValue(`fun main() {
+    // Create an array struct
+    let mut a = Array.new<Int, 5>([1, 2, 3, 4, 5]);
+    // Print it out
+    a.println();
+    // Set a value!
+    a.set(1, 1000);
+    // Print the changed value
+    println(*a.get(1));
+    // Print the whole changed array
+    a.println();
+}
+
+// An array with a constant parameter length
+struct Array<T, const N: Int> {
+    data: [T * N]
+}
+
+impl Array<T, N> {
+    // Create a new Array container
+    fun new(arr: [T * N]): Array<T, N> {
+        return {data=arr};
+    }
+
+    // Get a value from the array
+    fun get(&self, n: Int): &T {
+        if n < N {
+            return &self.data[n];
+        } else {
+            return Null;
+        }
+    }
+
+    // Set a value in the array
+    fun set(&mut self, n: Int, val: T) {
+        self.data[n] = val;
+    }
+
+    // Print the array
+    fun print(&self) {
+        print("[");
+        for let mut i=0; i<N; i+=1; {
+            print(self.data[i]);
+            if i != N - 1 {
+                print(", ")
+            }
+        }
+        print("]");
+    }
+
+    fun println(&self) {
+        self.print();
+        println();
+    }
+}
+
+main();`);
+                    break;
+                case "matrix":
+                    source.setValue(`fun main() {
+    // Create two 4x4 matrices
+    let x = Matrix.new<Int, 4, 4>(10); // Populate with 10
+    let y = Matrix.new<Int, 4, 4>(5);  // Populate with 5
+
+    // Print the two matrices
+    x.print();
+    y.print();
+
+    // Provide the matrix with the operations for the elem type
+    fun add_ints(a: Int, b: Int): Int = a + b;
+    fun mul_ints(a: Int, b: Int): Int = a * b;
+
+    // Perform the mat mul!
+    let z = y.mul<4>(&x, 0, add_ints, mul_ints);
+    // Print the result
+    z.print();
+}
+
+// Define a constant sized matrix with a generic element type
+// and parameterized width and height.
+struct Matrix<T, const Rows: Int, const Cols: Int> {
+    arr: [[T * Cols] * Rows]
+}
+
+// Add some methods to our matrix
+impl Matrix<T, Rows, Cols> {
+    // Create a new matrix populated with initial values
+    fun new(x: T): Matrix<T, Rows, Cols> {
+        return {arr=[[x] * Cols] * Rows};
+    }
+
+    // Get a value from a matrix
+    fun get(&self, row: Int, col: Int): &T {
+        return &self.arr[row][col];
+    }
+
+    // Multiply with another matrix
+    fun mul<const NewCols: Int>(
+        &self,
+        other: &Matrix<T, Cols, NewCols>,
+        zero: T,
+        add: fun(T, T) -> T,
+        mul: fun(T, T) -> T
+    ): Matrix<T, Rows, NewCols> {
+        let mut result = Matrix.new<T, Rows, NewCols>(zero);
+        for let mut j=0; j<NewCols; j+=1; {
+            for let mut i=0; i<Rows; i+=1; {
+                let mut sum = zero;
+                for let mut k=0; k<Cols; k+=1; {
+                    sum = add(sum, mul(self.arr[i][k], other.arr[k][j]));
+                }
+                result.arr[i][j] = sum;
+            }
+        }
+        result
+    }
+
+    // Print the matrix
+    fun print(&self) {
+        for let mut row=0; row<Rows; row+=1; {
+            for let mut col=0; col<Cols; col+=1; {
+                print(*self.get(row, col), " ");
+            }
+            println();
+        }
+        println();
+    }
+}
+
+main();`);
+                    break;
                 case "hashmap":
                     source.setValue(`from std.collections import *;
 
@@ -1810,7 +1942,12 @@ for let mut i=0; i<6; i+=1; {
 }`);
                     break;
                 case "sum-types":
-                    source.setValue(`enum Option<T> {
+                    source.setValue(`fun main() {
+    let x = Option<Int> of Some(5);
+    println(x.unwrap());
+}
+
+enum Option<T> {
     Some(T),
     Nothing,
 }
@@ -1828,11 +1965,6 @@ impl Option<T> {
             of Nothing => panic()
         }
     }
-}
-
-fun main() {
-    let x = Option<Int> of Some(5);
-    println(Option.unwrap<Int>(x));
 }
 
 main();`)
@@ -1899,7 +2031,9 @@ main();`)
             <option value="vector">Standard Lib Vector</option>
             <option value="structural-types">Structural Typing Demo</option>
             <option value="ffi">Alert Javascript Demo</option>
+            <option value="matrix">Matrix Operations</option>
             <option value="modules">Module System</option>
+            <option value="const-generics">Const-Generics</option>
             <option value="sum-types">Sum Types</option>
             <option value="match">Pattern Matching</option>
             <option value="tuple">Pair (Generics)</option>

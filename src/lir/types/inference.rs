@@ -57,7 +57,7 @@ impl GetType for Expr {
                 // Create a new environment with the declarations.
                 let mut new_env = env.clone();
                 // Add the declarations to the environment.
-                new_env.add_declaration(declaration)?;
+                new_env.add_declaration(declaration, false)?;
                 // Get the type of the body in the new environment.
                 body.get_type_checked(&new_env, i)?
             }
@@ -232,7 +232,7 @@ impl GetType for Expr {
                 // Get the type of the expression.
                 let t = expr
                     .get_type_checked(env, i)?
-                    .simplify_until_concrete(env)?;
+                    .simplify_until_concrete(env, false)?;
                 // If the type is a pointer, return the inner type of the pointer.
                 if let Type::Pointer(_, inner) = t {
                     // If the type *evaluates* to a pointer, return that inner type.
@@ -253,7 +253,7 @@ impl GetType for Expr {
                 // Get the type of the function.
                 let ty = func
                     .get_type_checked(env, i)?
-                    .simplify_until_concrete(env)?;
+                    .simplify_until_concrete(env, false)?;
                 match ty {
                     Type::Proc(_, ret) => *ret,
                     _ => return Err(Error::ApplyNonProc(self.clone())),
@@ -313,12 +313,10 @@ impl GetType for Expr {
                 // Get the type of the value to get the member of.
                 let val_type = val.get_type_checked(env, i)?;
                 // val_type.add_monomorphized_associated_consts(env)?;
-                let val_type = val_type.simplify_until_concrete(env)?;
+                let val_type = val_type.simplify_until_concrete(env, false)?;
                 // val_type.add_monomorphized_associated_consts(env)?;
                 match val_type {
                     Type::Type(ty) => {
-                        // ty.add_monomorphized_associated_consts(env)?;
-
                         // Get the associated constant expression's type.
                         env.get_type_of_associated_const(&ty, &as_symbol?)
                             .ok_or(Error::MemberNotFound(*val.clone(), field.clone()))?
