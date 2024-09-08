@@ -2588,69 +2588,6 @@
 <a href="#2587" id="2587">2587</a>
 <a href="#2588" id="2588">2588</a>
 <a href="#2589" id="2589">2589</a>
-<a href="#2590" id="2590">2590</a>
-<a href="#2591" id="2591">2591</a>
-<a href="#2592" id="2592">2592</a>
-<a href="#2593" id="2593">2593</a>
-<a href="#2594" id="2594">2594</a>
-<a href="#2595" id="2595">2595</a>
-<a href="#2596" id="2596">2596</a>
-<a href="#2597" id="2597">2597</a>
-<a href="#2598" id="2598">2598</a>
-<a href="#2599" id="2599">2599</a>
-<a href="#2600" id="2600">2600</a>
-<a href="#2601" id="2601">2601</a>
-<a href="#2602" id="2602">2602</a>
-<a href="#2603" id="2603">2603</a>
-<a href="#2604" id="2604">2604</a>
-<a href="#2605" id="2605">2605</a>
-<a href="#2606" id="2606">2606</a>
-<a href="#2607" id="2607">2607</a>
-<a href="#2608" id="2608">2608</a>
-<a href="#2609" id="2609">2609</a>
-<a href="#2610" id="2610">2610</a>
-<a href="#2611" id="2611">2611</a>
-<a href="#2612" id="2612">2612</a>
-<a href="#2613" id="2613">2613</a>
-<a href="#2614" id="2614">2614</a>
-<a href="#2615" id="2615">2615</a>
-<a href="#2616" id="2616">2616</a>
-<a href="#2617" id="2617">2617</a>
-<a href="#2618" id="2618">2618</a>
-<a href="#2619" id="2619">2619</a>
-<a href="#2620" id="2620">2620</a>
-<a href="#2621" id="2621">2621</a>
-<a href="#2622" id="2622">2622</a>
-<a href="#2623" id="2623">2623</a>
-<a href="#2624" id="2624">2624</a>
-<a href="#2625" id="2625">2625</a>
-<a href="#2626" id="2626">2626</a>
-<a href="#2627" id="2627">2627</a>
-<a href="#2628" id="2628">2628</a>
-<a href="#2629" id="2629">2629</a>
-<a href="#2630" id="2630">2630</a>
-<a href="#2631" id="2631">2631</a>
-<a href="#2632" id="2632">2632</a>
-<a href="#2633" id="2633">2633</a>
-<a href="#2634" id="2634">2634</a>
-<a href="#2635" id="2635">2635</a>
-<a href="#2636" id="2636">2636</a>
-<a href="#2637" id="2637">2637</a>
-<a href="#2638" id="2638">2638</a>
-<a href="#2639" id="2639">2639</a>
-<a href="#2640" id="2640">2640</a>
-<a href="#2641" id="2641">2641</a>
-<a href="#2642" id="2642">2642</a>
-<a href="#2643" id="2643">2643</a>
-<a href="#2644" id="2644">2644</a>
-<a href="#2645" id="2645">2645</a>
-<a href="#2646" id="2646">2646</a>
-<a href="#2647" id="2647">2647</a>
-<a href="#2648" id="2648">2648</a>
-<a href="#2649" id="2649">2649</a>
-<a href="#2650" id="2650">2650</a>
-<a href="#2651" id="2651">2651</a>
-<a href="#2652" id="2652">2652</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Types Module
 //!
 //! This module contains a collection of types and traits
@@ -2873,9 +2810,11 @@
         <span class="self">self</span>.is_recursive_helper(<span class="kw-2">&amp;mut </span>symbols, env)
     }
 
-    <span class="kw">pub fn </span>is_const_param(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="comment">// matches!(self, Type::ConstParam(..))
-        </span><span class="kw">match </span><span class="self">self </span>{
+    <span class="doccomment">/// Is this type a constant parameter?
+    /// 
+    /// This will recursively detect if the subtypes are constant parameters as well
+    </span><span class="kw">pub fn </span>is_const_param(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self </span>{
             Type::ConstParam(..) =&gt; <span class="bool-val">true</span>,
             Type::Struct(fields) =&gt; fields.iter().map(|(_name, ty)| ty).all(<span class="self">Self</span>::is_const_param),
             Type::Tuple(items) =&gt; items.iter().all(<span class="self">Self</span>::is_const_param),
@@ -2884,14 +2823,16 @@
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>discard_type_wrapper(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Discard the wrappers of Type::Type and Type::Unit
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>discard_type_wrapper(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Type(ty) | <span class="self">Self</span>::Unit(<span class="kw">_</span>, ty) =&gt; <span class="kw-2">*</span>ty,
             other =&gt; other
         }
     }
 
-    <span class="kw">pub fn </span>is_recursive_helper(
+    <span class="doccomment">/// Is this type recursive?
+    </span><span class="kw">pub fn </span>is_recursive_helper(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         symbols: <span class="kw-2">&amp;mut </span>HashSet&lt;String&gt;,
         env: <span class="kw-2">&amp;</span>Env,
@@ -3017,7 +2958,8 @@
         result
     }
 
-    <span class="kw">pub fn </span>strip_template(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Strip the template arguments to get the inner type
+    </span><span class="kw">pub fn </span>strip_template(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="self">Self </span>{
         <span class="macro">debug!</span>(<span class="string">"strip_template: {}"</span>, <span class="self">self</span>);
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Apply(template, <span class="kw">_</span>) =&gt; template.strip_template(env),
@@ -3035,11 +2977,14 @@
         }
     }
 
-    <span class="kw">pub fn </span>is_poly(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    <span class="doccomment">/// Is this a polymorphic function?
+    </span><span class="kw">pub fn </span>is_poly(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="macro">matches!</span>(<span class="self">self</span>, <span class="self">Self</span>::Poly(<span class="kw">_</span>, <span class="kw">_</span>))
     }
 
-    <span class="kw">pub fn </span>get_monomorph_template_args(
+    <span class="doccomment">/// Get the template arguments for the monomorph (this type) of some polymorphic base type.
+    /// This will match the symbols in the template against the monomorph.
+    </span><span class="kw">pub fn </span>get_monomorph_template_args(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         template: <span class="kw-2">&amp;</span><span class="self">Self</span>,
         matched_symbols: <span class="kw-2">&amp;mut </span>HashMap&lt;String, (<span class="self">Self</span>, <span class="prelude-ty">Option</span>&lt;Type&gt;)&gt;,
@@ -3192,7 +3137,8 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>is_monomorph_of(<span class="kw-2">&amp;</span><span class="self">self</span>, template: <span class="kw-2">&amp;</span><span class="self">Self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
+    <span class="doccomment">/// Is this type a monomorph of a given template type?
+    </span><span class="kw">pub fn </span>is_monomorph_of(<span class="kw-2">&amp;</span><span class="self">self</span>, template: <span class="kw-2">&amp;</span><span class="self">Self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;bool, Error&gt; {
         <span class="macro">debug!</span>(<span class="string">"{self} is mono of {template}?"</span>);
         <span class="kw">let </span>result = <span class="kw">match </span>(<span class="self">self</span>, template) {
             (<span class="self">Self</span>::Apply(template1, <span class="kw">_</span>), template2) =&gt; {
@@ -3225,8 +3171,7 @@
 
             (<span class="self">Self</span>::Array(elem1, len1), <span class="self">Self</span>::Array(elem2, len2)) =&gt; {
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(elem1.is_monomorph_of(elem2, env)<span class="question-mark">? </span>&amp;&amp; len1.get_type(env)<span class="question-mark">?</span>.equals(<span class="kw-2">&amp;</span>len2.get_type(env)<span class="question-mark">?</span>, env)<span class="question-mark">?</span>)
-                <span class="comment">// return Ok(elem1.is_monomorph_of(elem2, env)?)
-            </span>}
+            }
 
             (<span class="self">Self</span>::ConstParam(cexpr), other) =&gt; cexpr.get_type(env)<span class="question-mark">?</span>.equals(other, env),
 
@@ -3240,9 +3185,9 @@
         result
     }
 
-    <span class="kw">pub fn </span>add_monomorphized_associated_consts(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
-        <span class="comment">// warn!("add_monomorphized_associated_consts: Adding monomorphized associated consts for {}", self);
-        </span><span class="kw">match </span><span class="self">self</span>.clone() {
+    <span class="doccomment">/// Add monomorphized methods for a given monomorph of a template type with methods.
+    </span><span class="kw">pub fn </span>add_monomorphized_associated_consts(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="kw">match </span><span class="self">self</span>.clone() {
             <span class="self">Self</span>::Apply(template, args) =&gt; {
                 <span class="kw">let </span>simplified_args = args
                     .iter()
@@ -3251,9 +3196,8 @@
 
                 <span class="kw">let </span><span class="kw-2">mut </span>mono_ty = <span class="self">Self</span>::Apply(template.clone(), simplified_args.clone());
                 mono_ty = mono_ty.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
-                <span class="comment">// warn!("add_monomorphized_associated_consts: Adding monomorphized associated consts for {self} to {}", mono_ty);
 
-                </span>env.add_monomorphized_associated_consts(<span class="kw-2">*</span>template, mono_ty, simplified_args)<span class="question-mark">?</span>;
+                env.add_monomorphized_associated_consts(<span class="kw-2">*</span>template, mono_ty, simplified_args)<span class="question-mark">?</span>;
             }
 
             <span class="self">Self</span>::Struct(fields) =&gt; {
@@ -3318,26 +3262,16 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>get_template_params(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; Vec&lt;(String, <span class="prelude-ty">Option</span>&lt;Type&gt;)&gt; {
+    <span class="doccomment">/// Get the template parameters for this template type.
+    </span><span class="kw">pub fn </span>get_template_params(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env) -&gt; Vec&lt;(String, <span class="prelude-ty">Option</span>&lt;Type&gt;)&gt; {
         <span class="macro">debug!</span>(<span class="string">"get_template_params: {}"</span>, <span class="self">self</span>);
         <span class="kw">match </span><span class="self">self</span>.simplify_until_poly(env, <span class="bool-val">false</span>) {
             <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Poly(params, <span class="kw">_</span>)) =&gt; {
-                <span class="comment">// debug!(
-                //     "get_template_params: {} params: {}",
-                //     self,
-                //     params.join(", ")
-                // );
-                </span>params.clone()
+                params.clone()
             }
             <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Symbol(name)) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = env.get_type(<span class="kw-2">&amp;</span>name) {
-                    <span class="kw">let </span>result = t.get_template_params(env);
-                    <span class="comment">// debug!(
-                    //     "get_template_params: {} params: {}",
-                    //     name,
-                    //     result.join(", ")
-                    // );
-                    </span>result
+                    t.get_template_params(env)
                 } <span class="kw">else </span>{
                     <span class="macro">debug!</span>(<span class="string">"get_template_params: Couldn't find type {}"</span>, name);
                     <span class="macro">vec!</span>[]
@@ -3353,7 +3287,8 @@
         }
     }
 
-    <span class="kw">pub fn </span>apply(<span class="kw-2">&amp;</span><span class="self">self</span>, args: Vec&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Apply this template type with some type arguments.
+    </span><span class="kw">pub fn </span>apply(<span class="kw-2">&amp;</span><span class="self">self</span>, args: Vec&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Apply(Box::new(<span class="self">self</span>.clone()), args)
     }
 
@@ -3412,7 +3347,11 @@
         }
     }
 
-    <span class="kw">pub fn </span>is_concrete(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    <span class="doccomment">/// Is this type simplified enough to get information about what the
+    /// outer type is? Is it a tuple, a struct, etc?
+    /// 
+    /// Symbols and polymorphic types do not satisfy this condition.
+    </span><span class="kw">pub fn </span>is_concrete(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Poly(<span class="kw">_</span>, <span class="kw">_</span>) | <span class="self">Self</span>::Symbol(<span class="kw">_</span>) | <span class="self">Self</span>::Apply(<span class="kw">_</span>, <span class="kw">_</span>) | <span class="self">Self</span>::Let(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
 
@@ -3460,9 +3399,8 @@
             <span class="self">Self</span>::Pointer(<span class="kw">_</span>, inner) =&gt; inner.is_atomic(),
             <span class="self">Self</span>::Struct(inner) =&gt; inner.iter().all(|(<span class="kw">_</span>, t)| t.is_atomic()),
             <span class="self">Self</span>::EnumUnion(inner) =&gt; inner.iter().all(|(<span class="kw">_</span>, t)| t.is_atomic()),
-            <span class="comment">// Self::Poly(_, _) | Self::Symbol(_) | Self::Apply(_, _) =&gt; false,
-            // Self::Let(_, _, ret) =&gt; ret.is_atomic(),
-            </span><span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
 
@@ -3510,7 +3448,8 @@
             .simplify_until_matches(env, Type::Any, |t, env| t.type_check(env).map(|<span class="kw">_</span>| <span class="bool-val">true</span>), <span class="bool-val">true</span>)
     }
 
-    <span class="kw">fn </span>possibly_has_members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    <span class="doccomment">/// Does this type possibly have some members/fields?
+    </span><span class="kw">fn </span>possibly_has_members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">if </span><span class="macro">matches!</span>(
             <span class="self">self</span>,
             <span class="self">Self</span>::Tuple(<span class="kw">_</span>) | <span class="self">Self</span>::Struct(<span class="kw">_</span>) | <span class="self">Self</span>::Union(<span class="kw">_</span>) | <span class="self">Self</span>::Pointer(<span class="kw">_</span>, <span class="kw">_</span>) | <span class="self">Self</span>::Type(<span class="kw">_</span>)
@@ -3538,7 +3477,8 @@
         result
     }
 
-    <span class="kw">fn </span>is_union(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    <span class="doccomment">/// Is this a union type?
+    </span><span class="kw">fn </span>is_union(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">if </span><span class="macro">matches!</span>(<span class="self">self</span>, <span class="self">Self</span>::Union(<span class="kw">_</span>) | <span class="self">Self</span>::EnumUnion(<span class="kw">_</span>)) {
             <span class="kw">return </span><span class="bool-val">true</span>;
         }
@@ -3561,7 +3501,8 @@
         result
     }
 
-    <span class="kw">fn </span>has_variants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    <span class="doccomment">/// Does this type have enum variants?
+    </span><span class="kw">fn </span>has_variants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">if </span><span class="macro">matches!</span>(<span class="self">self</span>, <span class="self">Self</span>::Enum(<span class="kw">_</span>) | <span class="self">Self</span>::EnumUnion(<span class="kw">_</span>)) {
             <span class="kw">return </span><span class="bool-val">true</span>;
         }
@@ -3584,7 +3525,8 @@
         result
     }
 
-    <span class="kw">fn </span>is_polymorphic(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    <span class="doccomment">/// Is this type polymorphic?
+    </span><span class="kw">fn </span>is_polymorphic(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">if </span><span class="macro">matches!</span>(<span class="self">self</span>, <span class="self">Self</span>::Poly(<span class="kw">_</span>, <span class="kw">_</span>)) {
             <span class="kw">return </span><span class="bool-val">true</span>;
         }
@@ -3641,27 +3583,7 @@
         result
     }
 
-
-    <span class="comment">// /// Simplify until the type is concrete.
-    // pub fn simplify_until_const_param(&amp;self, env: &amp;Env, _checked: bool) -&gt; Result&lt;ConstExpr, Error&gt; {
-    //     let mut simplified = self.clone();
-    //     for _ in 0..4 {
-    //         if let Self::ConstParam(cexpr) = simplified {
-    //             return Ok(*cexpr);
-    //         }
-    //         simplified = simplified.simplify(env)?;
-    //     }
-    //     // if result.is_err() {
-    //     //     debug!("Couldn't simplify {} to a constant param", self);
-    //     // }
-
-    //     match simplified {
-    //         Type::ConstParam(cexpr) =&gt; Ok(*cexpr),
-    //         result =&gt; panic!("Unexpected {result}")
-    //     }
-    // }
-
-    </span><span class="doccomment">/// Simplify until the type is concrete.
+    <span class="doccomment">/// Simplify until the type is concrete.
     </span><span class="kw">pub fn </span>simplify_until_const_param(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Env, _checked: bool) -&gt; <span class="prelude-ty">Result</span>&lt;ConstExpr, Error&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>simplified = <span class="self">self</span>.clone();
         <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">3 </span>{
@@ -3712,11 +3634,8 @@
                 other =&gt; other
             };
         }
-        <span class="comment">// if result.is_err() {
-        //     debug!("Couldn't simplify {} to a constant param", self);
-        // }
 
-        </span><span class="kw">match </span>simplified {
+        <span class="kw">match </span>simplified {
             Type::ConstParam(cexpr) =&gt; <span class="prelude-val">Ok</span>(<span class="kw-2">*</span>cexpr),
             result =&gt; <span class="macro">panic!</span>(<span class="string">"Unexpected {result}"</span>)
         }
@@ -3823,8 +3742,7 @@
     <span class="doccomment">/// Substitute all occurences of a symbol with another type.
     /// This will not traverse into let-bindings when the symbol is overshadowed.
     </span><span class="kw">pub fn </span>substitute(<span class="kw-2">&amp;</span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str, substitution: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="self">Self </span>{
-        <span class="comment">// warn!("Subbing {name} for {substitution} in {self}");
-        </span><span class="kw">let </span>result = <span class="kw">match </span><span class="self">self </span>{
+        <span class="kw">let </span>result = <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Type(t) =&gt; <span class="self">Self</span>::Type(Box::new(t.substitute(name, substitution))),
             <span class="self">Self</span>::Let(typename, binding, ret) =&gt; <span class="self">Self</span>::Let(
                 typename.clone(),
@@ -3934,8 +3852,7 @@
                 <span class="self">Self</span>::Pointer(<span class="kw-2">*</span>mutability, Box::new(ptr.substitute(name, substitution)))
             }
         };
-        <span class="comment">// warn!("Got back {result}");
-        </span>result
+        result
     }
 
     <span class="doccomment">/// Does this type have an element type matching the supplied type?
@@ -3963,19 +3880,8 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
         }
 
-        <span class="comment">// if !self.is_simple() || !desired.is_simple() {
-        //     return Ok(false);
-        // }
-
-        </span><span class="kw">match </span>(<span class="self">self</span>, desired) {
-            <span class="comment">// (Type::Type(ty), desired) =&gt; {
-            //     ty.can_decay_to(desired, env)
-            // }
-            // (ty, Type::Type(desired)) =&gt; {
-            //     ty.can_decay_to(desired, env)
-            // }
-            // (Self::Unit(_, inner), _) =&gt; inner.can_decay_to(desired, env),
-            </span>(<span class="self">Self</span>::Unit(name1, t1), <span class="self">Self</span>::Unit(name2, t2)) =&gt; {
+        <span class="kw">match </span>(<span class="self">self</span>, desired) {
+            (<span class="self">Self</span>::Unit(name1, t1), <span class="self">Self</span>::Unit(name2, t2)) =&gt; {
                 <span class="kw">if </span>name1 == name2 {
                     t1.can_decay_to(t2, env)
                 } <span class="kw">else </span>{
@@ -4085,24 +3991,7 @@
                 </span><span class="macro">trace!</span>(<span class="string">"{} can decay to {}"</span>, <span class="self">self</span>, desired);
                 <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
             }
-
-            <span class="comment">// (Type::Apply(f, args), other) =&gt; {
-            //     match *f.clone() {
-            //         Type::Poly(params, template) =&gt; {
-            //             let mut template = *template.clone();
-            //             for (param, arg) in params.iter().zip(args.iter()) {
-            //                 template = template.substitute(param, arg);
-            //             }
-            //             template.can_decay_to(other, env)
-            //         }
-
-            //     }
-            //     // let mut f = f.clone();
-            //     // for arg in args {
-            //     //     f = f.substitute(, substitution)
-            //     // }
-            // }
-            </span>(Type::Cell, Type::Int) | (Type::Int, Type::Cell) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
+            (Type::Cell, Type::Int) | (Type::Int, Type::Cell) =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
 
             (a, b) =&gt; a.equals(b, env),
         }
@@ -4420,9 +4309,8 @@
             );
             <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
         }
-        <span class="comment">// trace!("Checking if {} equals {}", self, other);
 
-        </span><span class="kw">let </span>i = i + <span class="number">1</span>;
+        <span class="kw">let </span>i = i + <span class="number">1</span>;
 
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>(<span class="self">self</span>, other) {
             (<span class="self">Self</span>::Any, <span class="kw">_</span>)
@@ -4994,6 +4882,8 @@
             <span class="self">Self</span>::Symbol(<span class="kw-2">ref </span>name) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = env.get_type(name) {
                     t.clone()
+                } <span class="kw">else if let </span><span class="prelude-val">Some</span>(cexpr) = env.get_const(name) {
+                    Type::ConstParam(cexpr.clone().into())
                 } <span class="kw">else </span>{
                     <span class="self">self</span>.clone()
                 }
@@ -5061,26 +4951,10 @@
             ),
 
             <span class="self">Self</span>::Apply(poly, ty_args) =&gt; {
-                <span class="comment">// let poly_clone = poly.clone();
-                // match *poly {
-                //     Self::Poly(params, mut result) =&gt; {
-                //         for (param, arg) in params.iter().zip(ty_args.iter()) {
-                //             *result = result.substitute(param, arg);
-                //         }
-                //         // *result = result.simplify_checked(env, i)?;
-
-                //         // Add mono type to environment
-                //         env.add_monomorphized_associated_consts(*poly_clone, *result.clone(), ty_args)?;
-                //         *result
-                //     }
-                //     _ =&gt; Self::Apply(Box::new(poly.simplify_checked(env, i)?), ty_args)
-                // }
-
-                </span><span class="self">Self</span>::Apply(Box::new(poly.simplify_checked(env, i)<span class="question-mark">?</span>), ty_args)
+                <span class="self">Self</span>::Apply(Box::new(poly.simplify_checked(env, i)<span class="question-mark">?</span>), ty_args)
             }
         };
-        <span class="comment">// warn!("Simplified {_s} into {result}");
-        </span><span class="prelude-val">Ok</span>(result)
+        <span class="prelude-val">Ok</span>(result)
     }
 }
 

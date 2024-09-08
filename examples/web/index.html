@@ -1942,7 +1942,12 @@ for let mut i=0; i<6; i+=1; {
 }`);
                     break;
                 case "sum-types":
-                    source.setValue(`enum Option<T> {
+                    source.setValue(`fun main() {
+    let x = Option<Int> of Some(5);
+    println(x.unwrap());
+}
+
+enum Option<T> {
     Some(T),
     Nothing,
 }
@@ -1960,11 +1965,6 @@ impl Option<T> {
             of Nothing => panic()
         }
     }
-}
-
-fun main() {
-    let x = Option<Int> of Some(5);
-    println(Option.unwrap<Int>(x));
 }
 
 main();`)

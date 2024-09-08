@@ -1336,63 +1336,6 @@
 <a href="#1335" id="1335">1335</a>
 <a href="#1336" id="1336">1336</a>
 <a href="#1337" id="1337">1337</a>
-<a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
-<a href="#1347" id="1347">1347</a>
-<a href="#1348" id="1348">1348</a>
-<a href="#1349" id="1349">1349</a>
-<a href="#1350" id="1350">1350</a>
-<a href="#1351" id="1351">1351</a>
-<a href="#1352" id="1352">1352</a>
-<a href="#1353" id="1353">1353</a>
-<a href="#1354" id="1354">1354</a>
-<a href="#1355" id="1355">1355</a>
-<a href="#1356" id="1356">1356</a>
-<a href="#1357" id="1357">1357</a>
-<a href="#1358" id="1358">1358</a>
-<a href="#1359" id="1359">1359</a>
-<a href="#1360" id="1360">1360</a>
-<a href="#1361" id="1361">1361</a>
-<a href="#1362" id="1362">1362</a>
-<a href="#1363" id="1363">1363</a>
-<a href="#1364" id="1364">1364</a>
-<a href="#1365" id="1365">1365</a>
-<a href="#1366" id="1366">1366</a>
-<a href="#1367" id="1367">1367</a>
-<a href="#1368" id="1368">1368</a>
-<a href="#1369" id="1369">1369</a>
-<a href="#1370" id="1370">1370</a>
-<a href="#1371" id="1371">1371</a>
-<a href="#1372" id="1372">1372</a>
-<a href="#1373" id="1373">1373</a>
-<a href="#1374" id="1374">1374</a>
-<a href="#1375" id="1375">1375</a>
-<a href="#1376" id="1376">1376</a>
-<a href="#1377" id="1377">1377</a>
-<a href="#1378" id="1378">1378</a>
-<a href="#1379" id="1379">1379</a>
-<a href="#1380" id="1380">1380</a>
-<a href="#1381" id="1381">1381</a>
-<a href="#1382" id="1382">1382</a>
-<a href="#1383" id="1383">1383</a>
-<a href="#1384" id="1384">1384</a>
-<a href="#1385" id="1385">1385</a>
-<a href="#1386" id="1386">1386</a>
-<a href="#1387" id="1387">1387</a>
-<a href="#1388" id="1388">1388</a>
-<a href="#1389" id="1389">1389</a>
-<a href="#1390" id="1390">1390</a>
-<a href="#1391" id="1391">1391</a>
-<a href="#1392" id="1392">1392</a>
-<a href="#1393" id="1393">1393</a>
-<a href="#1394" id="1394">1394</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Type Checking
 //!
 //! This module contains the type checking logic for the Lower Intermediate Representation.
@@ -1443,7 +1386,7 @@
 
             <span class="comment">// Symbols are sound if they are defined in the environment
             </span><span class="self">Self</span>::Symbol(name) =&gt; {
-                <span class="kw">if </span>env.get_type(name).is_some() {
+                <span class="kw">if </span>env.get_type(name).is_some() || env.get_const(name).is_some() {
                     <span class="prelude-val">Ok</span>(())
                 } <span class="kw">else </span>{
                     <span class="macro">debug!</span>(<span class="string">"Type {name} not defined in environment {env}"</span>);
@@ -1908,31 +1851,8 @@
                         </span>Type::Array(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
                             inner.refer(<span class="kw-2">*</span>expected_mutability).type_check(env)<span class="question-mark">?</span>;
                         }
-                        <span class="comment">// Type::Type(ty) =&gt; match *ty {
-                        //     // If we are dereferencing/indexing a pointer,
-                        //     // confirm that the inner pointer has the expected mutability.
-                        //     Type::Pointer(found_mutability, _) =&gt; {
-                        //         if !found_mutability.can_decay_to(expected_mutability) {
-                        //             // If if doesn't, then return an error.
-                        //             error!("Expected mutability {expected_mutability} for expression {self}, but found mutability {found_mutability} in environment {env}");
-                        //             return Err(Error::MismatchedMutability {
-                        //                 expected: *expected_mutability,
-                        //                 found: found_mutability,
-                        //                 expr: self.clone(),
-                        //             });
-                        //         }
-                        //     }
-    
-                        //     // If we are indexing an array, confirm that the inner array can be referenced with the expected mutability.
-                        //     Type::Array(_, _) =&gt; {
-                        //         inner.refer(*expected_mutability).type_check(env)?;
-                        //     }
-                        //     ty =&gt; {
-                        //         warn!("Unexpected deref of type {ty}");
-                        //     }
-                        // }
 
-                        </span>ty =&gt; {
+                        ty =&gt; {
                             <span class="macro">warn!</span>(<span class="string">"Unexpected deref of type {ty}"</span>);
                         }
                     }
@@ -2333,11 +2253,7 @@
                 <span class="comment">// Confirm that the type is an array or pointer.
                 </span><span class="kw">match </span>val_type {
                     Type::Array(<span class="kw">_</span>, <span class="kw">_</span>) | Type::Pointer(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {}
-                    <span class="comment">// Type::Type(ty) =&gt; match *ty {
-                    //     Type::Array(_, _) | Type::Pointer(_, _) =&gt; {}
-                    //     _ =&gt; return Err(Error::InvalidIndex(self.clone())),
-                    // }
-                    // If it isn't, return an error.
+                    <span class="comment">// If it isn't, return an error.
                     </span><span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidIndex(<span class="self">self</span>.clone())),
                 }
 
@@ -2375,21 +2291,9 @@
                         new_env.define_type(name, Type::Unit(name.clone(), Box::new(Type::None)))
                     }
                 }
-                <span class="comment">// // Define the type parameters in the environment.
-                // new_env.define_types(
-                //     ty_params
-                //         .clone()
-                //         .into_iter()
-                //         .map(|(p, ty)| (p.clone(), match ty {
-                //             Some(ty) =&gt; ty.clone(),
-                //             None =&gt; Type::Unit(p, Box::new(Type::None))
-                //         }))
-                //         .collect(),
-                // );
-                // Check the template type.
+                <span class="comment">// Check the template type.
                 </span>template.type_check(<span class="kw-2">&amp;</span>new_env)
-                <span class="comment">// Ok(())
-            </span>}
+            }
 
             <span class="self">Self</span>::Annotated(expr, metadata) =&gt; expr
                 .type_check(env)
@@ -2404,8 +2308,7 @@
                 </span>e.type_check(env)<span class="question-mark">?</span>;
                 <span class="comment">// Get the type of the expression.
                 </span><span class="kw">let </span>e_type = e.get_type(env)<span class="question-mark">?</span>;
-                <span class="comment">// e_type.add_monomorphized_associated_consts(env)?;
-                // Typecheck the member we want to access.
+                <span class="comment">// Typecheck the member we want to access.
                 </span><span class="kw">match </span>e_type.type_check_member(field, <span class="kw-2">&amp;</span>Expr::ConstExpr(<span class="kw-2">*</span>e.clone()), env) {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
                     <span class="prelude-val">Err</span>(_err) =&gt; {
@@ -2468,18 +2371,12 @@
                     <span class="self">Self</span>::Template(<span class="kw-2">ref </span>ty_params, <span class="kw-2">ref </span>template) =&gt; {
                         <span class="comment">// Create a new environment with the type parameters defined.
                         // Define the type parameters in the environment.
-                        // new_env.define_types(
-                        //     ty_params.clone().into_iter().map(|x| x.0).zip(ty_args.clone()).collect(),
-                        // );
-
                         </span><span class="kw">let </span><span class="kw-2">mut </span>ret = template.clone();
                         <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                         <span class="kw">for </span>((param, ty), ty_arg) <span class="kw">in </span>ty_params.iter().zip(ty_args.iter()) {
                             <span class="kw">if </span>ty_arg.is_const_param() {
                                 <span class="kw">let </span>cexpr = ty_arg.simplify_until_const_param(env, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
-                            <span class="comment">// if let Type::ConstParam(cexpr) = ty_arg {
-                            //     let cexpr = *cexpr.clone();
-                                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(expected_ty) = ty {
+                                <span class="kw">if let </span><span class="prelude-val">Some</span>(expected_ty) = ty {
                                     <span class="kw">let </span>expected = expected_ty.clone();
                                     <span class="kw">let </span>found = cexpr.get_type(env)<span class="question-mark">?</span>;
                                     <span class="kw">if </span>!found.equals(expected_ty, env)<span class="question-mark">? </span>{
@@ -2499,13 +2396,11 @@
                             </span>.simplify_until_poly(<span class="kw-2">&amp;</span>new_env, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
                         <span class="comment">// Check the template type.
                         </span>ret.type_check(<span class="kw-2">&amp;</span>new_env)
-                        <span class="comment">// Ok(())
-                    </span>}
+                    }
                     <span class="self">Self</span>::PolyProc(<span class="kw-2">ref </span>poly) =&gt; {
-                        <span class="comment">// poly.monomorphize(ty_args.clone(), env)?.type_check(env)
-                        // Create a new environment with the type parameters defined.
+                        <span class="comment">// Create a new environment with the type parameters defined.
                         </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                        <span class="comment">// // Define the type parameters in the environment.
+                        <span class="comment">// Define the type parameters in the environment.
                         </span>new_env.define_types(
                             poly.get_type_params()
                                 .clone()
@@ -2514,22 +2409,13 @@
                                 .zip(ty_args.clone())
                                 .collect(),
                         );
-                        <span class="comment">// // Check the template type.
+                        <span class="comment">// Check the template type.
                         </span>poly.type_check(env)
-                        <span class="comment">// Ok(())
-                    </span>}
+                    }
                     <span class="kw">_ </span>=&gt; {
                         <span class="self">self</span>.get_type(env)<span class="question-mark">?</span>.type_check(env)<span class="question-mark">?</span>;
                         expr.type_check(env)<span class="question-mark">?</span>;
-                        <span class="comment">// if let Self::PolyProc(poly) = *expr.clone() {
-                        //     poly.type_check(env)?
-                        // }
-                        /*
-                        for ty in ty_args {
-                            ty.type_check(env)?;
-                        }
-                        */
-                        </span>ty_args
+                        ty_args
                             .into_par_iter()
                             .try_for_each(|ty| ty.type_check(env))<span class="question-mark">?</span>;
                         <span class="prelude-val">Ok</span>(())

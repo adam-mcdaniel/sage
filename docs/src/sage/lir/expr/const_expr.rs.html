@@ -1269,21 +1269,6 @@
 <a href="#1268" id="1268">1268</a>
 <a href="#1269" id="1269">1269</a>
 <a href="#1270" id="1270">1270</a>
-<a href="#1271" id="1271">1271</a>
-<a href="#1272" id="1272">1272</a>
-<a href="#1273" id="1273">1273</a>
-<a href="#1274" id="1274">1274</a>
-<a href="#1275" id="1275">1275</a>
-<a href="#1276" id="1276">1276</a>
-<a href="#1277" id="1277">1277</a>
-<a href="#1278" id="1278">1278</a>
-<a href="#1279" id="1279">1279</a>
-<a href="#1280" id="1280">1280</a>
-<a href="#1281" id="1281">1281</a>
-<a href="#1282" id="1282">1282</a>
-<a href="#1283" id="1283">1283</a>
-<a href="#1284" id="1284">1284</a>
-<a href="#1285" id="1285">1285</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Constant Expressions
 //!
 //! Constant expressions are expressions that can be evaluated at compile time.
@@ -1645,8 +1630,7 @@
                             }
                             <span class="macro">debug!</span>(<span class="string">"Member access not implemented for: {container_ty} . {member}"</span>);
                             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), member));
-                            <span class="comment">// return container.eval_checked(env, i)?.field(member).eval(env)
-                        </span>}
+                        }
                         <span class="kw">_ </span>=&gt; {
                             <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((constant, <span class="kw">_</span>))) = member
                                 .clone()
@@ -1683,11 +1667,7 @@
                     } <span class="kw">else </span>{
                         <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Type(ty.clone()))
                     }
-                    <span class="comment">// match ty.clone().simplify(env)? {
-                    //     Type::ConstParam(cexpr) =&gt; ,
-                    //     ty =&gt; Ok(Self::Type(ty.clone()))
-                    // }
-                </span>}
+                }
 
                 <span class="self">Self</span>::Declare(bindings, expr) =&gt; {
                     <span class="macro">debug!</span>(<span class="string">"Declaring compile time bindings: {bindings}"</span>);
@@ -1696,37 +1676,42 @@
                     <span class="prelude-val">Ok</span>(expr.eval_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?</span>.with(bindings))
                 }
 
-                <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; <span class="prelude-val">Ok</span>(<span class="kw">match </span>expr.clone().eval(env)<span class="question-mark">? </span>{
-                    <span class="self">Self</span>::Template(params, ret) =&gt; {
-                        <span class="kw">if </span>params.len() != ty_args.len() {
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidMonomorphize(<span class="kw-2">*</span>expr));
-                        }
-                        <span class="kw">let </span><span class="kw-2">mut </span>ret = ret.clone();
+                <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; {
+                    <span class="comment">// let ty_args = ty_args.into_iter().map(|t| t.simplify(env)).collect::&lt;Result&lt;Vec&lt;_&gt;, _&gt;&gt;()?;
+                    </span><span class="macro">debug!</span>(<span class="string">"Monomorphizing {expr} with ty_args {ty_args:?}"</span>);
 
-                        <span class="kw">for </span>((param, <span class="kw">_</span>), ty_arg) <span class="kw">in </span>params.iter().zip(ty_args.iter()) {
-                            ret.substitute(param, ty_arg);
-                        }
-                        <span class="kw-2">*</span>ret
-                    }
-                    <span class="self">Self</span>::PolyProc(proc) =&gt; {
-                        <span class="self">Self</span>::Proc(proc.monomorphize(ty_args.clone(), env)<span class="question-mark">?</span>)
-                    },
-                    <span class="self">Self</span>::Declare(bindings, expr) =&gt; {
-                        <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                        new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span>bindings)<span class="question-mark">?</span>;
-                        expr.monomorphize(ty_args.clone())
-                            .eval_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?
-                            </span>.with(bindings)
-                    }
-                    <span class="self">Self</span>::Annotated(_inner, metadata) =&gt; expr
-                        .monomorphize(ty_args.clone())
-                        .eval_checked(env, i)
-                        .map_err(|x| x.annotate(metadata))<span class="question-mark">?</span>,
+                    <span class="prelude-val">Ok</span>(<span class="kw">match </span>expr.clone().eval(env)<span class="question-mark">? </span>{
+                        <span class="self">Self</span>::Template(params, ret) =&gt; {
+                            <span class="kw">if </span>params.len() != ty_args.len() {
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidMonomorphize(<span class="kw-2">*</span>expr));
+                            }
+                            <span class="kw">let </span><span class="kw-2">mut </span>ret = ret.clone();
 
-                    _other =&gt; {
-                        <span class="self">Self</span>::Monomorphize(Box::new(expr.eval_checked(env, i)<span class="question-mark">?</span>), ty_args.clone())
-                    }
-                }),
+                            <span class="kw">for </span>((param, <span class="kw">_</span>), ty_arg) <span class="kw">in </span>params.iter().zip(ty_args.iter()) {
+                                ret.substitute(param, ty_arg);
+                            }
+                            <span class="kw-2">*</span>ret
+                        }
+                        <span class="self">Self</span>::PolyProc(proc) =&gt; {
+                            <span class="self">Self</span>::Proc(proc.monomorphize(ty_args.clone(), env)<span class="question-mark">?</span>)
+                        },
+                        <span class="self">Self</span>::Declare(bindings, expr) =&gt; {
+                            <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
+                            new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span>bindings)<span class="question-mark">?</span>;
+                            expr.monomorphize(ty_args.clone())
+                                .eval_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?
+                                </span>.with(bindings)
+                        }
+                        <span class="self">Self</span>::Annotated(_inner, metadata) =&gt; expr
+                            .monomorphize(ty_args.clone())
+                            .eval_checked(env, i)
+                            .map_err(|x| x.annotate(metadata))<span class="question-mark">?</span>,
+
+                        _other =&gt; {
+                            <span class="self">Self</span>::Monomorphize(Box::new(expr.eval_checked(env, i)<span class="question-mark">?</span>), ty_args.clone())
+                        }
+                    })
+                },
 
                 <span class="self">Self</span>::TypeOf(expr) =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Array(
                     expr.get_type_checked(env, i)<span class="question-mark">?
@@ -1885,24 +1870,12 @@
 
             <span class="self">Self</span>::Type(t) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">"Getting type of type {t}"</span>);
-                <span class="kw">let </span>result = <span class="kw">if </span>t.is_const_param() {
+                <span class="kw">if </span>t.is_const_param() {
                     <span class="kw">let </span>cexpr = t.simplify_until_const_param(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                     cexpr.get_type(env)<span class="question-mark">?
                 </span>} <span class="kw">else </span>{
                     Type::Type(t.into())
-                };
-                <span class="comment">// let result = match t.clone().simplify(env)? {
-                //     Type::ConstParam(cexpr) =&gt; cexpr.get_type(env)?,
-                //     t =&gt; Type::Type(t.into())
-                // };
-                // let result = if let Type::ConstParam(cexpr) = t.clone().simplify(env)? {
-                //     // Type::ConstParam(cexpr.eval(env)?.into())
-                //     cexpr.get_type(env)?
-                // } else {
-                //     Type::Type(t.clone().into())
-                // };
-                // debug!("Got type of type {t} = {result}");
-                </span>result
+                }
             }
 
             <span class="self">Self</span>::Member(val, field) =&gt; {
@@ -1914,8 +1887,8 @@
 
                 <span class="kw">let </span>val_type = val.get_type_checked(env, i)<span class="question-mark">?</span>;
                 <span class="macro">debug!</span>(<span class="string">"Got type of container access {val} . {field}\nContainer: {val_type:?}, is_const_param: {}"</span>, val_type.is_const_param());
-                <span class="comment">// val_type.add_monomorphized_associated_consts(env)?;
-                // Get the type of the value to get the member of.
+
+                <span class="comment">// Get the type of the value to get the member of.
                 </span><span class="kw">let </span>val_type = val_type.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                 <span class="kw">match </span><span class="kw-2">&amp;</span>val_type {
                     Type::Unit(_unit_name, inner_ty) =&gt; {
@@ -2014,7 +1987,6 @@
                             </span>t.clone()
                         } <span class="kw">else </span>{
                             <span class="comment">// If the field is not in the union, return an error.
-                            // return Err(Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into()));
                             </span><span class="kw">return </span>ConstExpr::Member(
                                 ConstExpr::Type(val_type).into(),
                                 field.clone(),
@@ -2091,9 +2063,7 @@
                         <span class="kw">for </span>((param, ty), ty_arg) <span class="kw">in </span>params.iter().zip(ty_args.iter()) {
                             <span class="kw">if </span>ty_arg.is_const_param() {
                                 <span class="kw">let </span>cexpr = ty_arg.simplify_until_const_param(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
-                            <span class="comment">// if let Type::ConstParam(cexpr) = ty_arg {
-                            //     let cexpr = *cexpr.clone();
-                                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(expected_ty) = ty {
+                                <span class="kw">if let </span><span class="prelude-val">Some</span>(expected_ty) = ty {
                                     <span class="kw">let </span>expected = expected_ty.clone();
                                     <span class="kw">let </span>found = cexpr.get_type_checked(env, i)<span class="question-mark">?</span>;
                                     <span class="kw">if </span>!found.equals(expected_ty, env)<span class="question-mark">? </span>{
@@ -2114,8 +2084,8 @@
                         ret
                     }
                     <span class="kw">_ </span>=&gt; {
-                        <span class="comment">// debug!("Monomorphizing non-template: {expr}");
-                        </span>Type::Apply(Box::new(template_ty.clone()), ty_args.clone())
+                        <span class="macro">debug!</span>(<span class="string">"Monomorphizing non-template: {expr}"</span>);
+                        Type::Apply(Box::new(template_ty.clone()), ty_args.clone())
                     }
                 };
 
