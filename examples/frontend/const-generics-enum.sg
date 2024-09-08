@@ -23,21 +23,21 @@ impl List<T, N> {
         return List<T, N> of Cons(value, new List<T, N> of Nil);
     }
 
-    fun cons(list: List<T, N>, value: T): List<T, N> {
-        return List<T, N> of Cons(value, new list);
+    fun cons(List: List<T, N>, value: T): List<T, N> {
+        return List<T, N> of Cons(value, new List);
     }
 
     fun head(self: &List<T, N>): T {
         match self {
             &of Cons(head, _) => head,
-            _ => panic(&"head of empty list")
+            _ => panic(&"head of empty List")
         }
     }
 
     fun tail(self: &List<T, N>): &List<T, N> {
         match self {
             &of Cons(_, tail) => tail,
-            _ => panic(&"tail of empty list")
+            _ => panic(&"tail of empty List")
         }
     }
 
@@ -68,7 +68,17 @@ impl List<T, N> {
     }
 }
 
-let l = List.make<Int, 999>(1);
-let l2 = List.make<Int, 555>(2).cons(1);
-l.println();
+const N = 555;
+let l1 = List.make<Int, 999>(1);
+let l2 = List.make<Float, N>(2.0).cons(1.0);
+
+fun dub_int(n: Int): Int = n * 2;
+fun dub_float(n: Float): Float = n * 2.0;
+
+l1.println();
 l2.println();
+
+let l3 = l1.map<Int>(dub_int);
+let l4 = l2.map<Float>(dub_float);
+l3.println();
+l4.println();

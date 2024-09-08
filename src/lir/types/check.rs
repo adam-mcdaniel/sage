@@ -48,7 +48,7 @@ impl TypeCheck for Type {
 
             // Symbols are sound if they are defined in the environment
             Self::Symbol(name) => {
-                if env.get_type(name).is_some() {
+                if env.get_type(name).is_some() || env.get_const(name).is_some() {
                     Ok(())
                 } else {
                     debug!("Type {name} not defined in environment {env}");

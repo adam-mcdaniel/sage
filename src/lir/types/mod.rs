@@ -2292,6 +2292,8 @@ impl Simplify for Type {
             Self::Symbol(ref name) => {
                 if let Some(t) = env.get_type(name) {
                     t.clone()
+                } else if let Some(cexpr) = env.get_const(name) {
+                    Type::ConstParam(cexpr.clone().into())
                 } else {
                     self.clone()
                 }

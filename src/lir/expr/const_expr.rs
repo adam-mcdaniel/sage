@@ -405,37 +405,42 @@ impl ConstExpr {
                     Ok(expr.eval_checked(&new_env, i)?.with(bindings))
                 }
 
-                Self::Monomorphize(expr, ty_args) => Ok(match expr.clone().eval(env)? {
-                    Self::Template(params, ret) => {
-                        if params.len() != ty_args.len() {
-                            return Err(Error::InvalidMonomorphize(*expr));
-                        }
-                        let mut ret = ret.clone();
+                Self::Monomorphize(expr, ty_args) => {
+                    // let ty_args = ty_args.into_iter().map(|t| t.simplify(env)).collect::<Result<Vec<_>, _>>()?;
+                    debug!("Monomorphizing {expr} with ty_args {ty_args:?}");
 
-                        for ((param, _), ty_arg) in params.iter().zip(ty_args.iter()) {
-                            ret.substitute(param, ty_arg);
-                        }
-                        *ret
-                    }
-                    Self::PolyProc(proc) => {
-                        Self::Proc(proc.monomorphize(ty_args.clone(), env)?)
-                    },
-                    Self::Declare(bindings, expr) => {
-                        let mut new_env = env.clone();
-                        new_env.add_compile_time_declaration(&bindings)?;
-                        expr.monomorphize(ty_args.clone())
-                            .eval_checked(&new_env, i)?
-                            .with(bindings)
-                    }
-                    Self::Annotated(_inner, metadata) => expr
-                        .monomorphize(ty_args.clone())
-                        .eval_checked(env, i)
-                        .map_err(|x| x.annotate(metadata))?,
+                    Ok(match expr.clone().eval(env)? {
+                        Self::Template(params, ret) => {
+                            if params.len() != ty_args.len() {
+                                return Err(Error::InvalidMonomorphize(*expr));
+                            }
+                            let mut ret = ret.clone();
 
-                    _other => {
-                        Self::Monomorphize(Box::new(expr.eval_checked(env, i)?), ty_args.clone())
-                    }
-                }),
+                            for ((param, _), ty_arg) in params.iter().zip(ty_args.iter()) {
+                                ret.substitute(param, ty_arg);
+                            }
+                            *ret
+                        }
+                        Self::PolyProc(proc) => {
+                            Self::Proc(proc.monomorphize(ty_args.clone(), env)?)
+                        },
+                        Self::Declare(bindings, expr) => {
+                            let mut new_env = env.clone();
+                            new_env.add_compile_time_declaration(&bindings)?;
+                            expr.monomorphize(ty_args.clone())
+                                .eval_checked(&new_env, i)?
+                                .with(bindings)
+                        }
+                        Self::Annotated(_inner, metadata) => expr
+                            .monomorphize(ty_args.clone())
+                            .eval_checked(env, i)
+                            .map_err(|x| x.annotate(metadata))?,
+
+                        _other => {
+                            Self::Monomorphize(Box::new(expr.eval_checked(env, i)?), ty_args.clone())
+                        }
+                    })
+                },
 
                 Self::TypeOf(expr) => Ok(Self::Array(
                     expr.get_type_checked(env, i)?
