@@ -317,8 +317,6 @@ impl GetType for Expr {
                 // val_type.add_monomorphized_associated_consts(env)?;
                 match val_type {
                     Type::Type(ty) => {
-                        // ty.add_monomorphized_associated_consts(env)?;
-
                         // Get the associated constant expression's type.
                         env.get_type_of_associated_const(&ty, &as_symbol?)
                             .ok_or(Error::MemberNotFound(*val.clone(), field.clone()))?
@@ -414,13 +412,6 @@ impl GetType for Expr {
                 // Only arrays and pointers can be indexed.
                 Type::Array(item, _) => *item,
                 Type::Pointer(_, item) => *item,
-                // Type::Type(ty) => {
-                //     match *ty {
-                //         Type::Array(item, _) => *item,
-                //         Type::Pointer(_, item) => *item,
-                //         _ => return Err(Error::InvalidIndex(self.clone())),
-                //     }
-                // }
 
                 // If we're accessing an index of a type that is not an array or pointer,
                 // we cannot access an index.

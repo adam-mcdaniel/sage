@@ -288,11 +288,11 @@ impl Env {
                     }
                 }
 
-                // if ty_args.len() != ty_params.len() {
-                //     error!("Mismatched number of template arguments for {monomorph} of {template}");
-                //     error!("Expected {ty_params:?}, found {ty_args:?}");
-                //     continue;
-                // }
+                if ty_args.len() != ty_params.len() {
+                    error!("Mismatched number of template arguments for {monomorph} of {template}");
+                    error!("Expected {ty_params:?}, found {ty_args:?}");
+                    continue;
+                }
 
                 debug!(
                     "Associated constants for {monomorph} are {:?}",
@@ -301,8 +301,7 @@ impl Env {
 
                 if let Some((_, const_ty)) = template_associated_consts.get(name) {
                     debug!("Found cached associated const (type) {name} of type {const_ty}");
-                    // let result = const_ty.apply(ty_args.clone()).simplify_until_simple(self).ok()?;
-                    // let result = const_ty.apply(ty_args.clone());
+
                     let result = const_ty.apply(ty_args.clone().into_iter().map(|x|x.0).collect());
                     match result.simplify_until_simple(self, false) {
                         Ok(result) => {
@@ -312,13 +311,8 @@ impl Env {
                         Err(_err) => {
                             debug!("Found associated const (type) {name} of type {ty} = {result} (failed to simplify)");
                             return Some(result);
-                            // debug!("Failed to simplify associated const (type) {name} of type {ty} = {result}");
-                            // debug!("Error: {err}");
-                            // continue;
                         }
                     }
-                    // debug!("Found associated const (type) {name} of type {ty} = {result}");
-                    // return Some(result);
                 }
 
                 debug!("Could not find associated const {name} of type {ty} in {template}");
@@ -548,7 +542,7 @@ impl Env {
     }
 
     pub(super) fn has_any_associated_const(&self, ty: &Type) -> bool {
-        // trace!("Checking if type {ty} has any associated constants");
+        trace!("Checking if type {ty} has any associated constants");
         let associated_constants = self.associated_constants.read().unwrap();
         if let Some(consts) = associated_constants.get(ty) {
             if !consts.is_empty() {
@@ -561,7 +555,7 @@ impl Env {
                 continue;
             }
             if !ty.can_decay_to(other_ty, self).unwrap_or(false) {
-                // trace!("Type {other_ty} does not equal {ty}");
+                trace!("Type {other_ty} does not equal {ty}");
                 continue;
             }
             trace!("Found eligible type {other_ty} for {ty}");
@@ -859,13 +853,10 @@ impl Env {
 
                     for (name, associated_const) in impls {
                         let templated_const =
-                            // associated_const.template(supplied_param_symbols.clone().into_iter().map(|x| (x, None)).collect());
-                            // associated_const.template(template_params.clone());
                             associated_const.template(template_params.clone().into_iter().zip(supplied_param_symbols.clone().into_iter()).map(|((_, ty), param)| (param, ty)).collect());
                         self.add_associated_const(*template.clone(), name, templated_const)?;
                     }
                 } else {
-                    // ty.add_monomorphized_associated_consts(self)?;
                     for (name, associated_const) in impls {
                         self.add_associated_const(ty.clone(), name, associated_const.clone())?;
                     }
@@ -875,24 +866,8 @@ impl Env {
                     // })?;
                 }
             }
-            Declaration::Var(_, _, Some(_ty), _e) => {
-                // ty.add_monomorphized_associated_consts(self).ok();
-                // if let Ok(ty) = e.get_type(self) {
-                //     ty.add_monomorphized_associated_consts(self).ok();
-                // }
-            }
-            Declaration::Var(_, _, _, _e) => {
-                // Variables are not defined at compile-time.
-                // if let Ok(ty) = e.get_type(self) {
-                //     ty.add_monomorphized_associated_consts(self).ok();
-                // }
-            }
-            Declaration::VarPat(_, _e) => {
-                // Variables are not defined at compile-time.
-                // if let Ok(ty) = e.get_type(self) {
-                //     ty.add_monomorphized_associated_consts(self).ok();
-                // }
-            }
+            Declaration::Var(_, _, _, _) => {}
+            Declaration::VarPat(_, _) => {}
             Declaration::Many(decls) => {
                 for decl in decls.iter() {
                     self.add_compile_time_declaration(decl)?;
@@ -1042,34 +1017,7 @@ impl Env {
     pub fn define_types(&mut self, types: Vec<(String, Type)>) {
         for (name, ty) in types {
             self.define_type(name, ty)
-            // match &ty {
-            //     Type::Symbol(sym) if sym == name => {
-            //         trace!("Defining type {ty} to itself as {name}");
-            //     }
-            //     _ => {
-            //         if self.types.contains_key(name) {
-            //             debug!("Redefining type {name} in {self}");
-            //         } else {
-            //             trace!("Defining type {name} as {ty}");
-            //             Arc::make_mut(&mut self.consts)
-            //                 .insert(name.clone(), ConstExpr::Type(ty.clone()));
-            //             Arc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
-            //         }
-            //     }
-            // }
         }
-
-        // for (_, ty) in types {
-        //     if let Ok(simplified) = ty.simplify_until_concrete(self, false) {
-        //         if let Ok(size) = simplified.get_size(self) {
-        //             self.set_precalculated_size(simplified, size);
-        //         } else {
-        //             debug!("Failed to memoize type size for {simplified}");
-        //         }
-        //     } else {
-        //         debug!("Failed to simplify type {ty}");
-        //     }
-        // }
     }
 
     /// Get a type definition from this environment.
@@ -1240,7 +1188,6 @@ impl Env {
         let size = if compiling {
             ty.get_size(self)?
         } else {
-            // ty.get_size(self).unwrap_or(0)
             0
         } as isize;
         // Remember the offset of the variable under the current scope.

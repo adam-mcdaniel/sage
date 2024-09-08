@@ -513,29 +513,6 @@ impl TypeCheck for Expr {
                         Type::Array(_, _) => {
                             inner.refer(*expected_mutability).type_check(env)?;
                         }
-                        // Type::Type(ty) => match *ty {
-                        //     // If we are dereferencing/indexing a pointer,
-                        //     // confirm that the inner pointer has the expected mutability.
-                        //     Type::Pointer(found_mutability, _) => {
-                        //         if !found_mutability.can_decay_to(expected_mutability) {
-                        //             // If if doesn't, then return an error.
-                        //             error!("Expected mutability {expected_mutability} for expression {self}, but found mutability {found_mutability} in environment {env}");
-                        //             return Err(Error::MismatchedMutability {
-                        //                 expected: *expected_mutability,
-                        //                 found: found_mutability,
-                        //                 expr: self.clone(),
-                        //             });
-                        //         }
-                        //     }
-    
-                        //     // If we are indexing an array, confirm that the inner array can be referenced with the expected mutability.
-                        //     Type::Array(_, _) => {
-                        //         inner.refer(*expected_mutability).type_check(env)?;
-                        //     }
-                        //     ty => {
-                        //         warn!("Unexpected deref of type {ty}");
-                        //     }
-                        // }
 
                         ty => {
                             warn!("Unexpected deref of type {ty}");
@@ -938,10 +915,6 @@ impl TypeCheck for Expr {
                 // Confirm that the type is an array or pointer.
                 match val_type {
                     Type::Array(_, _) | Type::Pointer(_, _) => {}
-                    // Type::Type(ty) => match *ty {
-                    //     Type::Array(_, _) | Type::Pointer(_, _) => {}
-                    //     _ => return Err(Error::InvalidIndex(self.clone())),
-                    // }
                     // If it isn't, return an error.
                     _ => return Err(Error::InvalidIndex(self.clone())),
                 }
@@ -980,20 +953,8 @@ impl TypeCheck for ConstExpr {
                         new_env.define_type(name, Type::Unit(name.clone(), Box::new(Type::None)))
                     }
                 }
-                // // Define the type parameters in the environment.
-                // new_env.define_types(
-                //     ty_params
-                //         .clone()
-                //         .into_iter()
-                //         .map(|(p, ty)| (p.clone(), match ty {
-                //             Some(ty) => ty.clone(),
-                //             None => Type::Unit(p, Box::new(Type::None))
-                //         }))
-                //         .collect(),
-                // );
                 // Check the template type.
                 template.type_check(&new_env)
-                // Ok(())
             }
 
             Self::Annotated(expr, metadata) => expr
@@ -1009,7 +970,6 @@ impl TypeCheck for ConstExpr {
                 e.type_check(env)?;
                 // Get the type of the expression.
                 let e_type = e.get_type(env)?;
-                // e_type.add_monomorphized_associated_consts(env)?;
                 // Typecheck the member we want to access.
                 match e_type.type_check_member(field, &Expr::ConstExpr(*e.clone()), env) {
                     Ok(_) => Ok(()),
@@ -1073,17 +1033,11 @@ impl TypeCheck for ConstExpr {
                     Self::Template(ref ty_params, ref template) => {
                         // Create a new environment with the type parameters defined.
                         // Define the type parameters in the environment.
-                        // new_env.define_types(
-                        //     ty_params.clone().into_iter().map(|x| x.0).zip(ty_args.clone()).collect(),
-                        // );
-
                         let mut ret = template.clone();
                         let mut new_env = env.clone();
                         for ((param, ty), ty_arg) in ty_params.iter().zip(ty_args.iter()) {
                             if ty_arg.is_const_param() {
                                 let cexpr = ty_arg.simplify_until_const_param(env, true)?;
-                            // if let Type::ConstParam(cexpr) = ty_arg {
-                            //     let cexpr = *cexpr.clone();
                                 if let Some(expected_ty) = ty {
                                     let expected = expected_ty.clone();
                                     let found = cexpr.get_type(env)?;
@@ -1104,13 +1058,11 @@ impl TypeCheck for ConstExpr {
                             .simplify_until_poly(&new_env, true)?;
                         // Check the template type.
                         ret.type_check(&new_env)
-                        // Ok(())
                     }
                     Self::PolyProc(ref poly) => {
-                        // poly.monomorphize(ty_args.clone(), env)?.type_check(env)
                         // Create a new environment with the type parameters defined.
                         let mut new_env = env.clone();
-                        // // Define the type parameters in the environment.
+                        // Define the type parameters in the environment.
                         new_env.define_types(
                             poly.get_type_params()
                                 .clone()
@@ -1119,21 +1071,12 @@ impl TypeCheck for ConstExpr {
                                 .zip(ty_args.clone())
                                 .collect(),
                         );
-                        // // Check the template type.
+                        // Check the template type.
                         poly.type_check(env)
-                        // Ok(())
                     }
                     _ => {
                         self.get_type(env)?.type_check(env)?;
                         expr.type_check(env)?;
-                        // if let Self::PolyProc(poly) = *expr.clone() {
-                        //     poly.type_check(env)?
-                        // }
-                        /*
-                        for ty in ty_args {
-                            ty.type_check(env)?;
-                        }
-                        */
                         ty_args
                             .into_par_iter()
                             .try_for_each(|ty| ty.type_check(env))?;

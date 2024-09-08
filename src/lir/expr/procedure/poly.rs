@@ -119,21 +119,6 @@ impl PolyProcedure {
         // This is a helper function to distribute the defined type
         // arguments over the body and arguments of the function.
 
-        // for ((_name, ty_param), ty_arg) in self.ty_params.iter().zip(ty_args.iter()) {
-        //     if let Some(ty_param) = ty_param {
-        //         if !ty_param.equals(&ty_arg, env)? {
-        //             return Err(Error::MismatchedTypes { expected: ty_param.clone(), found: ty_arg.clone(), expr: Expr::ConstExpr(self.clone().into()) })
-        //         }
-        //     } else {
-        //         use crate::lir::Simplify;
-        //         if matches!(ty_arg.clone().simplify(env)?, Type::ConstParam(..)) {
-        //             return Err(Error::UnexpectedConstParam {
-        //                 found: ty_arg.clone(), expr: Expr::ConstExpr(self.clone().into())
-        //             })
-        //         }
-        //     }
-        // }
-
         // Simplify all the type arguments until they are concrete
         let simplified_ty_args = ty_args
             .clone()

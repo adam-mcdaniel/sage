@@ -236,7 +236,6 @@ impl Expr {
 
                                 // Check if the value actually has a member with this name.
                                 let val_type = val.get_type(env)?;
-                                // val_type.add_monomorphized_associated_consts(env)?;
                                 trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
                                 // If the value has a member with this name,
                                 trace!(target: "member", "WHOOP WHOOP");
@@ -246,21 +245,12 @@ impl Expr {
                                         error!(target: "member", "Symbol not defined: {name} while getting member");
                                         Error::SymbolNotDefined(name.clone())
                                 })?;
-                                // .monomorphize(ty_args.clone());
                                 associated_function =
                                     associated_function.monomorphize(ty_args.clone());
                                 associated_function_type =
                                     associated_function_type.apply(ty_args.clone());
-                                // let associated_function = ConstExpr::Type(val_type.clone())
-                                //     .field(*member)
-                                //     .monomorphize(ty_args.clone());
+
                                 trace!(target: "member", "function value: {associated_function} in {env}");
-                                // Get the type of the function
-                                // let associated_function_type = env
-                                //     .get_type_of_associated_const(&val_type, &name)
-                                //     .ok_or_else(|| Error::SymbolNotDefined(name))?
-                                //     .apply(ty_args);
-                                // trace!(target: "member", "got function type: {}", associated_function_type);
 
                                 let mut new_args = vec![];
                                 if let Some(expected_mutability) =
@@ -313,7 +303,6 @@ impl Expr {
                             let name = name?;
                             // Check if the value actually has a member with this name.
                             let val_type = val.get_type(env)?;
-                            // val_type.add_monomorphized_associated_consts(env)?;
                             trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
                             // If the value has a member with this name,
                             trace!(target: "member", "WHOOP WHOOP");
@@ -325,18 +314,9 @@ impl Expr {
                                     Error::SymbolNotDefined(name.clone())
                                 })?;
 
-                            // let associated_function = env
-                            //     .get_associated_const(&val_type, &name)
-                            //     .ok_or_else(|| Error::SymbolNotDefined(name.clone()))?;
-                            // let associated_function = ConstExpr::Type(val_type.clone())
-                            //     .field(*member)
-                            //     .monomorphize(ty_args.clone());
                             trace!(target: "member", "function value: {associated_function} in {env}");
 
                             // Get the type of the function
-                            // let associated_function_type = env
-                            //     .get_type_of_associated_const(&val_type, &name)
-                            //     .ok_or_else(|| Error::SymbolNotDefined(name))?;
                             trace!(target: "member", "got function type: {}", associated_function_type);
                             // Get the first argument's type
                             let mut new_args = vec![];
@@ -385,7 +365,6 @@ impl Expr {
                             let name = name?;
                             // Check if the value actually has a member with this name.
                             let val_type = val.get_type(env)?;
-                            // val_type.add_monomorphized_associated_consts(env)?;
                             trace!(target: "member", "got value type: {:#?}: {val}.{name}", val_type);
                             // If the value has a member with this name,
                             trace!(target: "member", "WHOOP WHOOP");
@@ -398,10 +377,6 @@ impl Expr {
                             trace!(target: "member", "function value: {associated_function} in {env}");
 
                             // Get the type of the function
-                            // let associated_function_type = env
-                            //     .get_type_of_associated_const(&val_type, &name)
-                            //     .ok_or_else(|| Error::SymbolNotDefined(name))?
-                            //     .clone();
                             trace!(target: "member", "got function type: {}", associated_function_type);
                             // Get the first argument's type
                             let mut new_args = vec![];

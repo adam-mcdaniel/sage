@@ -359,7 +359,6 @@ impl ConstExpr {
                             }
                             debug!("Member access not implemented for: {container_ty} . {member}");
                             return Err(Error::MemberNotFound((*container).into(), member));
-                            // return container.eval_checked(env, i)?.field(member).eval(env)
                         }
                         _ => {
                             if let Ok(Some((constant, _))) = member
@@ -397,10 +396,6 @@ impl ConstExpr {
                     } else {
                         Ok(Self::Type(ty.clone()))
                     }
-                    // match ty.clone().simplify(env)? {
-                    //     Type::ConstParam(cexpr) => ,
-                    //     ty => Ok(Self::Type(ty.clone()))
-                    // }
                 }
 
                 Self::Declare(bindings, expr) => {
@@ -599,24 +594,12 @@ impl GetType for ConstExpr {
 
             Self::Type(t) => {
                 debug!("Getting type of type {t}");
-                let result = if t.is_const_param() {
+                if t.is_const_param() {
                     let cexpr = t.simplify_until_const_param(env, false)?;
                     cexpr.get_type(env)?
                 } else {
                     Type::Type(t.into())
-                };
-                // let result = match t.clone().simplify(env)? {
-                //     Type::ConstParam(cexpr) => cexpr.get_type(env)?,
-                //     t => Type::Type(t.into())
-                // };
-                // let result = if let Type::ConstParam(cexpr) = t.clone().simplify(env)? {
-                //     // Type::ConstParam(cexpr.eval(env)?.into())
-                //     cexpr.get_type(env)?
-                // } else {
-                //     Type::Type(t.clone().into())
-                // };
-                // debug!("Got type of type {t} = {result}");
-                result
+                }
             }
 
             Self::Member(val, field) => {
@@ -628,7 +611,7 @@ impl GetType for ConstExpr {
 
                 let val_type = val.get_type_checked(env, i)?;
                 debug!("Got type of container access {val} . {field}\nContainer: {val_type:?}, is_const_param: {}", val_type.is_const_param());
-                // val_type.add_monomorphized_associated_consts(env)?;
+
                 // Get the type of the value to get the member of.
                 let val_type = val_type.simplify_until_concrete(env, false)?;
                 match &val_type {
@@ -728,7 +711,6 @@ impl GetType for ConstExpr {
                             t.clone()
                         } else {
                             // If the field is not in the union, return an error.
-                            // return Err(Error::MemberNotFound((*val.clone()).into(), (*field.clone()).into()));
                             return ConstExpr::Member(
                                 ConstExpr::Type(val_type).into(),
                                 field.clone(),
@@ -805,8 +787,6 @@ impl GetType for ConstExpr {
                         for ((param, ty), ty_arg) in params.iter().zip(ty_args.iter()) {
                             if ty_arg.is_const_param() {
                                 let cexpr = ty_arg.simplify_until_const_param(env, false)?;
-                            // if let Type::ConstParam(cexpr) = ty_arg {
-                            //     let cexpr = *cexpr.clone();
                                 if let Some(expected_ty) = ty {
                                     let expected = expected_ty.clone();
                                     let found = cexpr.get_type_checked(env, i)?;
@@ -828,7 +808,7 @@ impl GetType for ConstExpr {
                         ret
                     }
                     _ => {
-                        // debug!("Monomorphizing non-template: {expr}");
+                        debug!("Monomorphizing non-template: {expr}");
                         Type::Apply(Box::new(template_ty.clone()), ty_args.clone())
                     }
                 };

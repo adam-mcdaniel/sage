@@ -1078,11 +1078,11 @@ impl Compile for ConstExpr {
             }
 
             Self::Type(t) => {
-                match t.simplify(env)? {
-                    Type::ConstParam(cexpr) => cexpr.compile_expr(env, output)?,
-                    _ => {
-                        return Err(Error::UnsizedType(ty));
-                    }
+                if t.is_const_param() {
+                    let cexpr = t.simplify_until_const_param(env, false)?;
+                    cexpr.compile_expr(env, output)?
+                } else {
+                    return Err(Error::UnsizedType(ty));
                 }
             }
             Self::Member(container, member) => {

@@ -511,9 +511,6 @@ impl TypeCheck for Declaration {
                 let bindings = pat.get_bindings(expr, &ty, env)?;
                 // Get the size of all the bindings
                 let size_of_bindings = bindings
-                    // .iter()
-                    // .map(|(_name, (_mut, ty))| ty.get_size(env).unwrap_or(0))
-                    // .sum::<usize>();
                     .values()
                     .collect::<Vec<_>>()
                     .par_iter()
@@ -571,8 +568,6 @@ impl TypeCheck for Declaration {
 
                     for (name, associated_const) in impls {
                         let templated_const =
-                            // associated_const.template(supplied_param_symbols.clone().into_iter().map(|x| (x, None)).collect());
-                            // associated_const.template(template_params.clone());
                             associated_const.template(template_params.clone().into_iter().zip(supplied_param_symbols.clone().into_iter()).map(|((_, ty), param)| (param, ty)).collect());
                         new_env.add_associated_const(
                             *template.clone(),
@@ -586,10 +581,6 @@ impl TypeCheck for Declaration {
 
                     // If we are at the limit of parallel recursion, then we should
                     // type check the associated constants sequentially.
-                    // for templated_const in templated_consts {
-                    //     templated_const.type_check(&new_env)?;
-                    // }
-
                     templated_consts
                         .par_iter()
                         .try_for_each(|templated_const| templated_const.type_check(&new_env))?;
@@ -674,7 +665,6 @@ impl TypeCheck for Declaration {
                 let mut new_env = env.clone();
 
                 // Add all the compile-time declarations to the environment.
-                // new_env.add_compile_time_declaration(&Self::Many(decls.clone()))?;
                 new_env.add_declaration(&Self::Many(decls.clone()), false)?;
                 trace!("Typechecking module {}", name);
                 // Get all the compile time declarations so we can type check them in parallel.
@@ -682,7 +672,6 @@ impl TypeCheck for Declaration {
                     .iter()
                     .partition(|decl| decl.is_compile_time_declaration());
 
-                // trace!("Compile time declarations: {:?}", comp_time_decls);
                 if !comp_time_decls.is_empty() {
                     // Type check all the compile time declarations in parallel.
                     comp_time_decls
