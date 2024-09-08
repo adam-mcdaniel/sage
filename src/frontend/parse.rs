@@ -277,14 +277,6 @@ fn make_env() -> sage_lisp::Env {
         Expr::None
     });
 
-    // env.bind_builtin("do", |env, exprs| {
-    //     let mut result = Expr::default();
-    //     for e in exprs {
-    //         result = env.eval(e.clone());
-    //     }
-    //     result
-    // });
-
     env.bind_lazy_builtin("do", |_env, exprs| Expr::Many(Vec::from(exprs)));
 
     env.bind_builtin("sqrt", |env, expr| {
@@ -1365,10 +1357,6 @@ fn parse_attribute<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 fn parse_impl_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Statement, E> {
-    // "impl" <name: Symbol> <args: Tuple<(<(<Symbol> ":")?> <Type>)>> <body: Block> => {
-    //     let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
-    //     Statement::Declaration(Declaration::Impl(name, args, body))
-    // },
     let (input, _) = tag("impl")(input)?;
 
     let (input, ty) = cut(parse_type)(input)?;
@@ -1397,7 +1385,6 @@ fn parse_impl_item<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
     ty: &Type,
 ) -> IResult<&'a str, (String, ConstExpr), E> {
-    // let (input, _) = whitespace(input)?;
     if let Ok((input, method)) = parse_impl_method::<E>(input, ty) {
         return Ok((input, method));
     }
@@ -1422,14 +1409,6 @@ fn parse_impl_fun<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     let (input, (params, ret)) = cut(parse_fun_params)(input)?;
     let (input, _) = whitespace(input)?;
     let (input, body) = cut(parse_block)(input)?;
-    // Ok((input, (name.to_owned(), ConstExpr::Proc(Procedure::new(name, params, ret, body))))
-
-    // lazy_static! {
-    //     static ref IMPL_FUN_COUNTER: RwLock<usize> = RwLock::new(0);
-    // }
-    // let mut count = *IMPL_FUN_COUNTER.read().unwrap();
-    // count += 1;
-    // *IMPL_FUN_COUNTER.write().unwrap() = count;
 
     if let Some(args) = template_args {
         Ok((
@@ -1477,10 +1456,6 @@ fn parse_impl_method<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
     ty: &Type,
 ) -> IResult<&'a str, (String, ConstExpr), E> {
-    // "fun" <name: Symbol> <args: Tuple<(<(<Symbol> ":")?> <Type>)>> ":" <ret: Type> <body: Block> => {
-    //     let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
-    //     Statement::Declaration(Declaration::Proc(name.clone(), Procedure::new(name, args, ret, body)))
-    // },
     trace!("Parsing impl method");
     let (input, _) = tag("fun")(input)?;
     trace!("Parsing method");
@@ -1497,7 +1472,6 @@ fn parse_impl_method<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         trace!("Parsed method parameters: {params:#?}, {ret:#?}");
         let (input, _) = whitespace(input)?;
         let (input, body) = cut(parse_block)(input)?;
-        // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body))))
         if let Some(args) = template_args {
             Ok((
                 input,
@@ -1526,7 +1500,6 @@ fn parse_impl_method<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         trace!("Parsed method parameters: {params:#?}, {ret:#?}");
         let (input, _) = whitespace(input)?;
         let (input, body) = cut(parse_block)(input)?;
-        // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body))))
         if let Some(args) = template_args {
             Ok((
                 input,
@@ -1587,9 +1560,6 @@ fn parse_match_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     if let Some((pat, body)) = branch {
         branches.push((pat, body));
     }
-
-    // trace!("Parsed branches: {input}");
-    // trace!("Parsed branches: {branches:#?}");
 
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("}")(input)?;
@@ -1656,7 +1626,6 @@ fn parse_pattern_atom<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         context("tuple", parse_tuple_pattern),
         context("group", delimited(tag("("), cut(parse_pattern), tag(")"))),
         context("const", map(parse_const, Pattern::ConstExpr)),
-        // context("tuple", map(ma
     ))(input)?;
     Ok((input, pattern))
 }
@@ -1866,7 +1835,7 @@ fn parse_import_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         // Optionally parse an alias
         let (input, alias) =
             opt(preceded(whitespace, preceded(tag("as"), cut(parse_symbol))))(input)?;
-        // let alias = alias.map(|x| x.to_owned());
+
         // If there's a comma, continue parsing
         let (input, _) = whitespace(input)?;
 
@@ -1880,16 +1849,6 @@ fn parse_import_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
             .into_iter()
             .map(|(x, y)| (x.to_owned(), y.map(|z| z.to_owned())))
             .collect();
-
-        // let mut decls = vec![];
-        // for (name, alias) in &imports {
-        //     // decls.push(Declaration::Const(alias.clone(), ConstExpr::var(module_name).field(ConstExpr::var(name))));
-        //     decls.push(Declaration::FromImport {
-        //         module: ,
-        //         name: name.clone(),
-        //         alias: alias.map(|x| x.to_owned()),
-        //     });
-        // }
 
         let (input, _) = whitespace(input)?;
         let (input, _) = tag(";")(input)?;
@@ -2005,7 +1964,6 @@ fn parse_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 fn parse_if_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Expr, E> {
-    // "if" <condition: Expr> <then: Block> <else: Option<Block>> => Expr::If(condition, Box::new(then), else.map(Box::new)),
     let (input, _) = tag("if")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, condition) = cut(parse_expr)(input)?;
@@ -2056,7 +2014,6 @@ fn parse_if_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 fn parse_if_let_expr<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Expr, E> {
-    // "if" <condition: Expr> <then: Block> <else: Option<Block>> => Expr::If(condition, Box::new(then), else.map(Box::new)),
     let (input, _) = tag("if")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, _) = tag("let")(input)?;
@@ -2112,7 +2069,6 @@ fn parse_when_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 fn parse_while_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Statement, E> {
-    // "while" <condition: Expr> <body: Block> => Statement::While(condition, Box::new(body)),
     let (input, _) = tag("while")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, condition) = cut(parse_expr)(input)?;
@@ -2127,7 +2083,6 @@ fn parse_while_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 fn parse_for_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Statement, E> {
-    // "for" <init: Option<Statement>> <condition: Option<Expr>> <step: Option<Statement>> <body: Block> => Statement::For(init.map(Box::new), condition.map(Box::new), step.map(Box::new), Box::new(body)),
     let (input, _) = tag("for")(input)?;
     let (input, _) = whitespace(input)?;
     let (input, init) = cut(parse_short_stmt)(input)?;
@@ -2139,7 +2094,7 @@ fn parse_for_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     let (input, step) = cut(parse_short_stmt)(input)?;
     let (input, _) = whitespace(input)?;
     let (input, body) = cut(parse_block)(input)?;
-    // Ok((input, Statement::Expr(Expr::For(init.map(Box::new), condition.map(Box::new), step.map(Box::new), Box::new(body)))))
+
     let mut init_expr = Expr::NONE;
     let mut init_decl = Declaration::many(vec![]);
     match init {
@@ -2167,10 +2122,6 @@ fn parse_for_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 fn parse_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Statement, E> {
-    // "fun" <name: Symbol> <args: Tuple<(<(<Symbol> ":")?> <Type>)>> ":" <ret: Type> <body: Block> => {
-    //     let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
-    //     Statement::Declaration(Declaration::Proc(name.clone(), Procedure::new(name, args, ret, body)))
-    // },
     let (input, _) = tag("fun")(input)?;
     trace!("Parsing function");
     let (input, _) = whitespace(input)?;
@@ -2186,7 +2137,6 @@ fn parse_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     let (input, _) = whitespace(input)?;
     let (input, body) = parse_block(input)?;
     trace!("Parsed function body: {body}");
-    // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)))))
     if let Some(args) = template_args {
         Ok((
             input,
@@ -2221,10 +2171,6 @@ fn parse_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 fn parse_quick_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Statement, E> {
-    // "fun" <name: Symbol> <args: Tuple<(<(<Symbol> ":")?> <Type>)>> ":" <ret: Type> <body: Block> => {
-    //     let args: Vec<_> = args.into_iter().map(|(_name, ty)| ty).collect();
-    //     Statement::Declaration(Declaration::Proc(name.clone(), Procedure::new(name, args, ret, body)))
-    // },
     let (input, _) = tag("fun")(input)?;
     trace!("Parsing function");
     let (input, _) = whitespace(input)?;
@@ -2244,7 +2190,7 @@ fn parse_quick_fun_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     let (input, _) = whitespace(input)?;
     let (input, _) = cut(tag(";"))(input)?;
     trace!("Parsed function body: {body}");
-    // Ok((input, Statement::Declaration(Declaration::Proc(name.to_owned(), Procedure::new(Some(name.to_owned()), params, ret, body)))))
+
     if let Some(args) = template_args {
         Ok((
             input,
@@ -2297,7 +2243,6 @@ fn parse_fun_params<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 
     let (input, _) = whitespace(input)?;
     let (input, last) = opt(pair(
-        // parse_symbol,
         pair(
             map(opt(tag("mut")), |x| match x {
                 Some(_) => Mutability::Mutable,
@@ -4933,52 +4878,5 @@ p<Int>(5);
         );
 
         trace!("Parsing block");
-        //         trace!("{:#?}", parse_suite::<nom::error::VerboseError<&str>>(0, r#"
-        // enum Result<T, E>:
-        //     Ok(T)
-        //     Err(E)
-
-        // struct Point:
-        //     x: Int
-        //     y: Int
-
-        // if True and 1 > 2 + 3:
-        //     println(a + b)
-        //     a - b
-        //     while not a:
-        //         println("Testing")
-        //         std.println<Int>(5)
-        //         increment(&mut a)
-
-        //         Result<Int, String> of Ok(5)
-
-        //         "#));
-
-        // impl Result<T, E>:
-        //     def unwrap(self) -> T:
-        //         match self:
-        //             of Ok(x) => x
-        //             of Err(e) => panic(e)
     }
-
-    // #[test]
-    // fn test_parse_const_tuple() {
-    //     let input = "(a = 1, b = 2)";
-    //     let result = parse_const_tuple(input);
-    //     assert_eq!(result, Ok(("", ConstExpr::Tuple(vec![ConstExpr::Tuple(vec![ConstExpr::Symbol("a".to_string()), ConstExpr::Int(1)]), ConstExpr::Tuple(vec![ConstExpr::Symbol("b".to_string()), ConstExpr::Int(2)])]))));
-    // }
-
-    // #[test]
-    // fn test_parse_const_array() {
-    //     let input = "[1, 2, 3]";
-    //     let result = parse_const_array(input);
-    //     assert_eq!(result, Ok(("", ConstExpr::Array(vec![ConstExpr::Int(1), ConstExpr::Int(2), ConstExpr::Int(3)])));
-    // }
-
-    // #[test]
-    // fn test_parse_const_struct() {
-    //     let input = "struct {a = 1, b = 2}";
-    //     let result = parse_const_struct(input);
-    //     assert_eq!(result, Ok(("", ConstExpr::Struct(vec![("a".to_string(), ConstExpr::Int(1)), ("b".to_string(), ConstExpr::Int(2))].into_iter().collect())));
-    // }
 }
