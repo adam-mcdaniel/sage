@@ -302,6 +302,7 @@ Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](
 - [ ] VSCode extension (syntax highlighting, code completion, etc.)
 - [ ] Typeclasses
 - [ ] `no-std` implementation of compiler
+- [x] `const` generics
 - [x] Modules
 - [x] A standard library
   - [ ] Type Reflection Module
