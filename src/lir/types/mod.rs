@@ -220,8 +220,10 @@ impl Type {
         self.is_recursive_helper(&mut symbols, env)
     }
 
+    /// Is this type a constant parameter?
+    /// 
+    /// This will recursively detect if the subtypes are constant parameters as well
     pub fn is_const_param(&self) -> bool {
-        // matches!(self, Type::ConstParam(..))
         match self {
             Type::ConstParam(..) => true,
             Type::Struct(fields) => fields.iter().map(|(_name, ty)| ty).all(Self::is_const_param),
@@ -231,6 +233,7 @@ impl Type {
         }
     }
 
+    /// Discard the wrappers of Type::Type and Type::Unit
     pub(crate) fn discard_type_wrapper(self) -> Self {
         match self {
             Self::Type(ty) | Self::Unit(_, ty) => *ty,
@@ -238,6 +241,7 @@ impl Type {
         }
     }
 
+    /// Is this type recursive?
     pub fn is_recursive_helper(
         &self,
         symbols: &mut HashSet<String>,
@@ -364,6 +368,7 @@ impl Type {
         result
     }
 
+    /// Strip the template arguments to get the inner type
     pub fn strip_template(&self, env: &Env) -> Self {
         debug!("strip_template: {}", self);
         match self {
@@ -382,10 +387,13 @@ impl Type {
         }
     }
 
+    /// Is this a polymorphic function?
     pub fn is_poly(&self) -> bool {
         matches!(self, Self::Poly(_, _))
     }
 
+    /// Get the template arguments for the monomorph (this type) of some polymorphic base type.
+    /// This will match the symbols in the template against the monomorph.
     pub fn get_monomorph_template_args(
         &self,
         template: &Self,
@@ -539,6 +547,7 @@ impl Type {
         Ok(())
     }
 
+    /// Is this type a monomorph of a given template type?
     pub fn is_monomorph_of(&self, template: &Self, env: &Env) -> Result<bool, Error> {
         debug!("{self} is mono of {template}?");
         let result = match (self, template) {
@@ -572,7 +581,6 @@ impl Type {
 
             (Self::Array(elem1, len1), Self::Array(elem2, len2)) => {
                 return Ok(elem1.is_monomorph_of(elem2, env)? && len1.get_type(env)?.equals(&len2.get_type(env)?, env)?)
-                // return Ok(elem1.is_monomorph_of(elem2, env)?)
             }
 
             (Self::ConstParam(cexpr), other) => cexpr.get_type(env)?.equals(other, env),
@@ -587,8 +595,8 @@ impl Type {
         result
     }
 
+    /// Add monomorphized methods for a given monomorph of a template type with methods.
     pub fn add_monomorphized_associated_consts(&self, env: &Env) -> Result<(), Error> {
-        // warn!("add_monomorphized_associated_consts: Adding monomorphized associated consts for {}", self);
         match self.clone() {
             Self::Apply(template, args) => {
                 let simplified_args = args
@@ -598,7 +606,6 @@ impl Type {
 
                 let mut mono_ty = Self::Apply(template.clone(), simplified_args.clone());
                 mono_ty = mono_ty.simplify_until_concrete(env, false)?;
-                // warn!("add_monomorphized_associated_consts: Adding monomorphized associated consts for {self} to {}", mono_ty);
 
                 env.add_monomorphized_associated_consts(*template, mono_ty, simplified_args)?;
             }
@@ -665,26 +672,16 @@ impl Type {
         Ok(())
     }
 
+    /// Get the template parameters for this template type.
     pub fn get_template_params(&self, env: &Env) -> Vec<(String, Option<Type>)> {
         debug!("get_template_params: {}", self);
         match self.simplify_until_poly(env, false) {
             Ok(Self::Poly(params, _)) => {
-                // debug!(
-                //     "get_template_params: {} params: {}",
-                //     self,
-                //     params.join(", ")
-                // );
                 params.clone()
             }
             Ok(Self::Symbol(name)) => {
                 if let Some(t) = env.get_type(&name) {
-                    let result = t.get_template_params(env);
-                    // debug!(
-                    //     "get_template_params: {} params: {}",
-                    //     name,
-                    //     result.join(", ")
-                    // );
-                    result
+                    t.get_template_params(env)
                 } else {
                     debug!("get_template_params: Couldn't find type {}", name);
                     vec![]
@@ -700,6 +697,7 @@ impl Type {
         }
     }
 
+    /// Apply this template type with some type arguments.
     pub fn apply(&self, args: Vec<Self>) -> Self {
         Self::Apply(Box::new(self.clone()), args)
     }
@@ -759,6 +757,10 @@ impl Type {
         }
     }
 
+    /// Is this type simplified enough to get information about what the
+    /// outer type is? Is it a tuple, a struct, etc?
+    /// 
+    /// Symbols and polymorphic types do not satisfy this condition.
     pub fn is_concrete(&self) -> bool {
         match self {
             Self::Poly(_, _) | Self::Symbol(_) | Self::Apply(_, _) | Self::Let(_, _, _) => false,
@@ -807,8 +809,7 @@ impl Type {
             Self::Pointer(_, inner) => inner.is_atomic(),
             Self::Struct(inner) => inner.iter().all(|(_, t)| t.is_atomic()),
             Self::EnumUnion(inner) => inner.iter().all(|(_, t)| t.is_atomic()),
-            // Self::Poly(_, _) | Self::Symbol(_) | Self::Apply(_, _) => false,
-            // Self::Let(_, _, ret) => ret.is_atomic(),
+
             _ => false,
         }
     }
@@ -857,6 +858,7 @@ impl Type {
             .simplify_until_matches(env, Type::Any, |t, env| t.type_check(env).map(|_| true), true)
     }
 
+    /// Does this type possibly have some members/fields?
     fn possibly_has_members(&self) -> bool {
         if matches!(
             self,
@@ -885,6 +887,7 @@ impl Type {
         result
     }
 
+    /// Is this a union type?
     fn is_union(&self) -> bool {
         if matches!(self, Self::Union(_) | Self::EnumUnion(_)) {
             return true;
@@ -908,6 +911,7 @@ impl Type {
         result
     }
 
+    /// Does this type have enum variants?
     fn has_variants(&self) -> bool {
         if matches!(self, Self::Enum(_) | Self::EnumUnion(_)) {
             return true;
@@ -931,6 +935,7 @@ impl Type {
         result
     }
 
+    /// Is this type polymorphic?
     fn is_polymorphic(&self) -> bool {
         if matches!(self, Self::Poly(_, _)) {
             return true;
@@ -988,26 +993,6 @@ impl Type {
         result
     }
 
-
-    // /// Simplify until the type is concrete.
-    // pub fn simplify_until_const_param(&self, env: &Env, _checked: bool) -> Result<ConstExpr, Error> {
-    //     let mut simplified = self.clone();
-    //     for _ in 0..4 {
-    //         if let Self::ConstParam(cexpr) = simplified {
-    //             return Ok(*cexpr);
-    //         }
-    //         simplified = simplified.simplify(env)?;
-    //     }
-    //     // if result.is_err() {
-    //     //     debug!("Couldn't simplify {} to a constant param", self);
-    //     // }
-
-    //     match simplified {
-    //         Type::ConstParam(cexpr) => Ok(*cexpr),
-    //         result => panic!("Unexpected {result}")
-    //     }
-    // }
-
     /// Simplify until the type is concrete.
     pub fn simplify_until_const_param(&self, env: &Env, _checked: bool) -> Result<ConstExpr, Error> {
         let mut simplified = self.clone();
@@ -1059,9 +1044,6 @@ impl Type {
                 other => other
             };
         }
-        // if result.is_err() {
-        //     debug!("Couldn't simplify {} to a constant param", self);
-        // }
 
         match simplified {
             Type::ConstParam(cexpr) => Ok(*cexpr),
@@ -1170,7 +1152,6 @@ impl Type {
     /// Substitute all occurences of a symbol with another type.
     /// This will not traverse into let-bindings when the symbol is overshadowed.
     pub fn substitute(&self, name: &str, substitution: &Self) -> Self {
-        // warn!("Subbing {name} for {substitution} in {self}");
         let result = match self {
             Self::Type(t) => Self::Type(Box::new(t.substitute(name, substitution))),
             Self::Let(typename, binding, ret) => Self::Let(
@@ -1281,7 +1262,6 @@ impl Type {
                 Self::Pointer(*mutability, Box::new(ptr.substitute(name, substitution)))
             }
         };
-        // warn!("Got back {result}");
         result
     }
 
@@ -1310,18 +1290,7 @@ impl Type {
             return Ok(true);
         }
 
-        // if !self.is_simple() || !desired.is_simple() {
-        //     return Ok(false);
-        // }
-
         match (self, desired) {
-            // (Type::Type(ty), desired) => {
-            //     ty.can_decay_to(desired, env)
-            // }
-            // (ty, Type::Type(desired)) => {
-            //     ty.can_decay_to(desired, env)
-            // }
-            // (Self::Unit(_, inner), _) => inner.can_decay_to(desired, env),
             (Self::Unit(name1, t1), Self::Unit(name2, t2)) => {
                 if name1 == name2 {
                     t1.can_decay_to(t2, env)
@@ -1432,23 +1401,6 @@ impl Type {
                 trace!("{} can decay to {}", self, desired);
                 Ok(true)
             }
-
-            // (Type::Apply(f, args), other) => {
-            //     match *f.clone() {
-            //         Type::Poly(params, template) => {
-            //             let mut template = *template.clone();
-            //             for (param, arg) in params.iter().zip(args.iter()) {
-            //                 template = template.substitute(param, arg);
-            //             }
-            //             template.can_decay_to(other, env)
-            //         }
-
-            //     }
-            //     // let mut f = f.clone();
-            //     // for arg in args {
-            //     //     f = f.substitute(, substitution)
-            //     // }
-            // }
             (Type::Cell, Type::Int) | (Type::Int, Type::Cell) => Ok(true),
 
             (a, b) => a.equals(b, env),
@@ -1767,7 +1719,6 @@ impl Type {
             );
             return Ok(false);
         }
-        // trace!("Checking if {} equals {}", self, other);
 
         let i = i + 1;
 
@@ -2408,25 +2359,9 @@ impl Simplify for Type {
             ),
 
             Self::Apply(poly, ty_args) => {
-                // let poly_clone = poly.clone();
-                // match *poly {
-                //     Self::Poly(params, mut result) => {
-                //         for (param, arg) in params.iter().zip(ty_args.iter()) {
-                //             *result = result.substitute(param, arg);
-                //         }
-                //         // *result = result.simplify_checked(env, i)?;
-
-                //         // Add mono type to environment
-                //         env.add_monomorphized_associated_consts(*poly_clone, *result.clone(), ty_args)?;
-                //         *result
-                //     }
-                //     _ => Self::Apply(Box::new(poly.simplify_checked(env, i)?), ty_args)
-                // }
-
                 Self::Apply(Box::new(poly.simplify_checked(env, i)?), ty_args)
             }
         };
-        // warn!("Simplified {_s} into {result}");
         Ok(result)
     }
 }
