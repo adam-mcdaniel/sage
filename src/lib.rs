@@ -24,10 +24,10 @@
 //!   </p>
 //!   <p float="left">
 //!     <img src="https://github.com/adam-mcdaniel/sage/blob/main/assets/code1_redone.png?raw=true" width="26.5%"/>
-//!     <a href="https://adam-mcdaniel.net/sage"><img src="https://github.com/adam-mcdaniel/sage/blob/main/assets/sage.png?raw=true" width="69.5%"/></a>
+//!     <a href="https://adam-mcdaniel.github.io/sage-website/"><img src="https://github.com/adam-mcdaniel/sage/blob/main/assets/sage.png?raw=true" width="69.5%"/></a>
 //!   </p>
 //!   <p>
-//!     <a href="https://github.com/adam-mcdaniel/sage"><b><i>Checkout the source code!</i></b></a>
+//!     <a href="https://adam-mcdaniel.github.io/sage-website"><b><i>Check out the main site!</i></b></a>
 //!     | <a href="https://discord.gg/rSGkM4bcdP"><b><i>Join the Discord server!</i></b></a>
 //!     | <a href="https://www.youtube.com/watch?v=QdnxjYj1pS0"><b><i>Check out a video covering Sage!</i></b></a>
 //!   </p>
@@ -45,6 +45,7 @@
 //! and its low level virtual machine.
 //!
 //! ### Checkout the git repository and the Discord server!
+//! - [Main Website](https://adam-mcdaniel.github.io/sage-website)
 //! - [Git Repository](https://github.com/adam-mcdaniel/sage)
 //! - [Discord Server](https://discord.gg/rSGkM4bcdP)
 //!
