@@ -5,10 +5,10 @@
   </p>
   <p float="left">
     <img src="./assets/code1_redone.png" width="26.5%"/>
-    <a href="https://adam-mcdaniel.net/sage"><img src="./assets/sage.png" width="69.5%"/></a>
+    <a href="https://adam-mcdaniel.net/sage-website"><img src="./assets/sage.png" width="69.5%"/></a>
   </p>
   <p>
-    <a href="https://adam-mcdaniel.net/sage"><b><i>Use the online compiler playground!</i></b></a>
+    <a href="https://adam-mcdaniel.github.io/sage-website/playgrounds/playground/"><b><i>Use the online compiler playground!</i></b></a>
     | <a href="https://discord.gg/rSGkM4bcdP"><b><i>Join the Discord server!</i></b></a>
     | <a href="https://www.youtube.com/watch?v=QdnxjYj1pS0"><b><i>Check out a video covering Sage!</i></b></a>
   </p>
@@ -36,7 +36,7 @@ Join the [Discord server](https://discord.gg/rSGkM4bcdP) to chat about Sage! Let
 
 ## What is Sage?
 
-Sage is a programming language that tries to be maximally portable, expressive, and intuitive. It borrows some aspects of Rust, C, and Python. It currently has an x86 compiler backend, a C source backend, and a VM interpreter backend [which can run on the web](https://adam-mcdaniel.net/sage).
+Sage is a programming language that tries to be maximally portable, expressive, and intuitive. It borrows some aspects of Rust, C, and Python. It currently has an x86 compiler backend, a C source backend, and a VM interpreter backend [which can run on the web](https://adam-mcdaniel.github.io/sage-website/playgrounds/playground/).
 
 <div align="center">
   <p float="left">
@@ -276,7 +276,7 @@ if let of Some(n) = divide(6, 2) {
 }
 ```
 
-Go to the [web-demo](https://adam-mcdaniel.net/sage) or the [examples/frontend](https://github.com/adam-mcdaniel/sage/tree/main/examples/frontend) folder to see more code examples.
+Go to the [web-demo](https://adam-mcdaniel.github.io/sage-website/playgrounds/playground/) or the [examples/frontend](https://github.com/adam-mcdaniel/sage/tree/main/examples/frontend) folder to see more code examples.
 
 ## Feature Roadmap
 
