@@ -1680,7 +1680,7 @@ fn parse_struct_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     let (input, _) = whitespace(input)?;
     let (input, mut fields) = many0(terminated(
         pair(
-            parse_symbol,
+            pair(opt(preceded(whitespace, tag("mut"))), parse_symbol),
             opt(preceded(pair(whitespace, tag("=")), parse_pattern)),
         ),
         tag(","),
@@ -1688,7 +1688,8 @@ fn parse_struct_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     let (input, _) = whitespace(input)?;
     let (input, pattern) = opt(terminated(
         pair(
-            parse_symbol,
+            pair(opt(preceded(whitespace, tag("mut"))), parse_symbol),
+            // parse_symbol,
             opt(preceded(pair(whitespace, tag("=")), parse_pattern)),
         ),
         whitespace,
@@ -1703,10 +1704,10 @@ fn parse_struct_pattern<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         Pattern::Struct(
             fields
                 .into_iter()
-                .map(|(name, pat)| {
+                .map(|((mut_keyword, name), pat)| {
                     (
                         name.to_owned(),
-                        pat.unwrap_or(Pattern::Symbol(Mutability::Immutable, name.to_string())),
+                        pat.unwrap_or(Pattern::Symbol(if mut_keyword.is_some() { Mutability::Mutable } else { Mutability::Immutable }, name.to_string())),
                     )
                 })
                 .collect(),
