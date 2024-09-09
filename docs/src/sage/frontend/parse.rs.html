@@ -4864,6 +4864,7 @@
 <a href="#4863" id="4863">4863</a>
 <a href="#4864" id="4864">4864</a>
 <a href="#4865" id="4865">4865</a>
+<a href="#4866" id="4866">4866</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::{error, trace};
 <span class="kw">use </span>nom::{
     branch::alt,
@@ -6546,7 +6547,7 @@
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, <span class="kw-2">mut </span>fields) = many0(terminated(
         pair(
-            parse_symbol,
+            pair(opt(preceded(whitespace, tag(<span class="string">"mut"</span>))), parse_symbol),
             opt(preceded(pair(whitespace, tag(<span class="string">"="</span>)), parse_pattern)),
         ),
         tag(<span class="string">","</span>),
@@ -6554,8 +6555,9 @@
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, pattern) = opt(terminated(
         pair(
-            parse_symbol,
-            opt(preceded(pair(whitespace, tag(<span class="string">"="</span>)), parse_pattern)),
+            pair(opt(preceded(whitespace, tag(<span class="string">"mut"</span>))), parse_symbol),
+            <span class="comment">// parse_symbol,
+            </span>opt(preceded(pair(whitespace, tag(<span class="string">"="</span>)), parse_pattern)),
         ),
         whitespace,
     ))(input)<span class="question-mark">?</span>;
@@ -6569,10 +6571,10 @@
         Pattern::Struct(
             fields
                 .into_iter()
-                .map(|(name, pat)| {
+                .map(|((mut_keyword, name), pat)| {
                     (
                         name.to_owned(),
-                        pat.unwrap_or(Pattern::Symbol(Mutability::Immutable, name.to_string())),
+                        pat.unwrap_or(Pattern::Symbol(<span class="kw">if </span>mut_keyword.is_some() { Mutability::Mutable } <span class="kw">else </span>{ Mutability::Immutable }, name.to_string())),
                     )
                 })
                 .collect(),
