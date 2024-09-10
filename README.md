@@ -3,8 +3,9 @@
   <p>
     <strong>Sage advice for your coding conundrums!</strong>
   </p>
-  <p float="left">
-    <img src="./assets/code1_redone.png" width="24.5%"/><a href="https://adam-mcdaniel.net/sage-website"><img src="./assets/sage.png" width="64.5%"/></a>
+  <p align="center">
+    <img src="./assets/code1_redone.png" width="250"/>
+    <img src="./assets/sage.png" width="655"/>
   </p>
   <p>
     <a href="https://adam-mcdaniel.github.io/sage-website/playgrounds/playground/"><b><i>Use the online compiler playground!</i></b></a>
@@ -14,6 +15,7 @@
   <!-- [***Here's a link to the online compiler playground!***](https://adam-mcdaniel.net/sage)
   [***Here's a link to the online compiler playground!***](https://adam-mcdaniel.net/sage) -->
 </div>
+
 
 
 ## Table of Contents
