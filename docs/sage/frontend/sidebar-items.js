@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["parse"]};
+window.SIDEBAR_ITEMS = {"fn":["get_lisp_env","parse","parse_module","parse_source"]};

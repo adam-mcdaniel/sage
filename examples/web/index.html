@@ -85,6 +85,130 @@
             }
             console.log(document.getElementById("example").value);
             switch (document.getElementById("example").value) {
+                case "myers-diff":
+                    source.setValue(`from std.collections import *;
+
+fun main() {
+    // Example input sequences
+    let a = "abcd";
+    let b = "acde";
+    println("First sequence:  ", a);
+    println("Second sequence: ", b);
+    println("Difference:");
+    myers_diff(&a, sizeof(a) - 1, &b, sizeof(b) - 1);
+}
+
+enum Op {
+    Insert,
+    Delete,
+    Match,
+}
+
+struct Edit {
+    op: Op,
+    // Index in sequence A
+    a: Int,
+    // Index in sequence B
+    b: Int,
+}
+
+// Perform myers diff on two strings
+// Returns a vector of Edit objects
+fun myers_diff(a: &Char, a_len: Int, b: &Char, b_len: Int) {
+    let max = a_len + b_len;
+    let mut V = Vec.make<Int>();
+    let mut edits = Vec.make<Edit>();
+
+    // Initialize V array
+    for let mut i=0; i<=2*max; i+=1; {
+        V.push(-1);
+    }
+
+    for let mut D=0; D<=max; D+=1; {
+        for let mut k=-D; k<=D; k+=2; {
+            let mut x = 0;
+            if k == -D or (k != D and *V.get(k-1+max) < *V.get(k+1+max)) {
+                // Move down (insertion into B)
+                x = *V.get(k+1+max);
+            } else {
+                // Move right (deletion from A)
+                x = *V.get(k-1+max) + 1;
+            }
+
+            let mut y = x - k;
+            // Match as far as possible along diagonal
+            while x >= 0 && y >= 0 && x < a_len and y < b_len and a[x] == b[y] {
+                edits.push({op=Op of Match, a=x, b=y});
+                x += 1;
+                y += 1;
+            }
+
+            V.set(k + max, x);
+
+            // Avoid redundant operations by checking conditions carefully
+            if x >= 0 and y >= 0 {
+                if x < a_len and (y >= b_len or a[x] != b[y]) {
+                    if edits.len() == 0 or (edits.get(edits.len()-1).op != (Op of Delete) or edits.get(edits.len()-1).a != x) {
+                        edits.push({op=Op of Delete, a=x, b=y});
+                    }
+                } else if y < b_len and (x >= a_len or a[x] != b[y]) {
+                    if edits.len() == 0 or (edits.get(edits.len()-1).op != (Op of Insert) or edits.get(edits.len()-1).b != y) {
+                        edits.push({op=Op of Insert, a=x, b=y});
+                    }
+                }
+            }
+
+            // If we have reached the end of both sequences
+            if x >= a_len and y >= b_len {
+                let mut last_pos = 0;
+                let mut last_op = Option<Op> of Nothing;
+                let mut is_first = True;
+                for let mut i=0; i<edits.len(); i+=1; {
+                    let edit = edits.get(i);
+                    if edit.a < last_pos or edit.b < last_pos {
+                    } else {
+                        last_pos = if edit.a > edit.b {edit.a} else {edit.b};
+                        match (edit.op, last_op) {
+                            // Print like a real diff
+                            (of Insert, of Some(of Insert)) => {
+                                print(b[edit.b]);
+                            },
+                            (of Insert, _) => {
+                                print("\\n> ", b[edit.b]);
+                            },
+                            (of Delete, of Some(of Delete)) => {
+                                print(a[edit.a]);
+                            },
+                            (of Delete, _) => {
+                                print("\\n< ", a[edit.a]);
+                            },
+                            (of Match, of Some(of Match)) => {
+                                print(a[edit.a]);
+                            },
+                            (of Match, _) => {
+                                if not is_first {
+                                    print("\\n");
+                                }
+                                print(a[edit.a]);
+                            },
+                            (_, _) => {
+                                println("Error: Unknown operation");
+                            }
+                        }
+                        is_first = False;
+                        last_op = Option<Op> of Some(edit.op);
+                    }
+                }
+                V.drop();
+                edits.drop();
+                return None;
+            }
+        }
+    }
+}
+
+main();`);
+                    break;
                 case "const-generics":
                     source.setValue(`fun main() {
     // Create an array struct
@@ -2041,6 +2165,7 @@ main();`)
             <option value="let-bindings">Let-Bindings</option>
             <option value="calculator">Calculator (Parser)</option>
             <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
+            <option value="myers-diff">Myers Difference Algorithm</option>
             <option value="cat">Cat</option>
         </select>
         <div class="row">
