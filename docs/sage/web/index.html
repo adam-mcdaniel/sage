@@ -113,7 +113,6 @@ struct Edit {
 }
 
 // Perform myers diff on two strings
-// Returns a vector of Edit objects
 fun myers_diff(a: &Char, a_len: Int, b: &Char, b_len: Int) {
     let max = a_len + b_len;
     let mut V = Vec.make<Int>();
