@@ -58,6 +58,8 @@ enum TargetType {
     C,
     // /// Compile to x86 assembly code.
     // X86,
+    /// Compile using the Sage-Lisp backend provided by the user.
+    SageLisp
 }
 
 /// The source language options to compile.
@@ -380,6 +382,20 @@ fn compile(
             }
             .map_err(Error::BuildError)?,
         )?,
+
+        // If the target is C source code, then compile the code to virtual machine code,
+        // and then use the C target implementation to build the output source code.
+        TargetType::SageLisp => {
+
+            write_file(format!("output.txt"), match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
+                Ok(vm_code) => targets::SageLisp::new(sage::frontend::get_lisp_env()).build_core(&vm_code.flatten()),
+                Err(vm_code) => targets::SageLisp::new(sage::frontend::get_lisp_env()).build_std(&vm_code.flatten()),
+            }.map_err(Error::BuildError)?)?
+            // write_file(
+            //     format!("{output}.c"),
+            //     .map_err(Error::BuildError)?,
+            // )?
+        }
 
         // If the target is core virtual machine code, then try to compile the source to the core variant.
         // If not possible, throw an error.

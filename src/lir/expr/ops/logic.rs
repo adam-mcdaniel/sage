@@ -36,6 +36,20 @@ impl BinaryOp for And {
         }
     }
 
+    fn compile(&self, lhs: &Expr, rhs: &Expr, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        // unimplemented!()
+        // First compile the left-hand side.
+        lhs.clone().compile_expr(env, output)?;
+        // If the left-hand side is false, jump to the end.
+        output.op(CoreOp::If(SP.deref()));
+        output.op(CoreOp::Pop(None, 1));
+        rhs.clone().compile_expr(env, output)?;
+        // If the right-hand side is false, jump to the end.
+        output.op(CoreOp::End);
+
+        Ok(())
+    }
+
     /// Compile the binary operation.
     fn compile_types(
         &self,
@@ -83,6 +97,20 @@ impl BinaryOp for Or {
                 Expr::ConstExpr(rhs.clone()),
             )),
         }
+    }
+
+    fn compile(&self, lhs: &Expr, rhs: &Expr, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        // First compile the left-hand side.
+        lhs.clone().compile_expr(env, output)?;
+        // If the left-hand side is true, jump to the end.
+        output.op(CoreOp::If(SP.deref()));
+        output.op(CoreOp::Else);
+        output.op(CoreOp::Pop(None, 1));
+        rhs.clone().compile_expr(env, output)?;
+        // If the right-hand side is true, jump to the end.
+        output.op(CoreOp::End);
+
+        Ok(())
     }
 
     /// Compile the binary operation.

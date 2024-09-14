@@ -491,6 +491,21 @@ fn make_env() -> sage_lisp::Env {
         }
     });
 
+    env.bind_builtin("panic", |env, exprs| {
+        let mut msg = "".to_string();
+        for e in exprs {
+            let e = env.eval(e.clone());
+
+            msg += &match e {
+                Expr::String(s) => format!("{}", s),
+                Expr::Symbol(s) => format!("{}", s.name()),
+                _ => format!("{}", e),
+            }
+        }
+        error!("{msg}");
+        std::process::exit(1);
+    });
+
     env.bind_builtin("quote", |_env, expr| expr[0].clone());
 
     env.bind_builtin("or", |env, expr| {
@@ -1022,6 +1037,114 @@ fn make_env() -> sage_lisp::Env {
         }
     });
 
+    env.bind_builtin("match", |env, expr| {
+        let (pivot, patterns) = expr.split_at(1);
+        let pivot = pivot[0].clone();
+        fn matches(env: &mut Env, pattern: &Expr, pivot: &Expr) -> bool {
+            match (pattern, pivot) {
+                (pattern, Expr::Symbol(_name)) => {
+                    let pivot = env.eval(pivot.clone());
+                    return matches(env, pattern, &pivot)
+                }
+                (Expr::List(p), Expr::List(q)) => {
+                    if p.len() != q.len() {
+                        return false;
+                    }
+                    for (a, b) in p.iter().zip(q.iter()) {
+                        if !matches(env, a, b) {
+                            return false;
+                        }
+                    }
+                    true
+                }
+                (Expr::Map(p), Expr::Map(q)) => {
+                    if p.len() != q.len() {
+                        return false;
+                    }
+                    for (k, v) in p {
+                        if !q.contains_key(k) || !matches(env, v, q.get(k).unwrap()) {
+                            return false;
+                        }
+                    }
+                    true
+                }
+                (Expr::Tree(p), Expr::Tree(q)) => {
+                    if p.len() != q.len() {
+                        return false;
+                    }
+                    for (k, v) in p {
+                        if !q.contains_key(k) || !matches(env, v, q.get(k).unwrap()) {
+                            return false;
+                        }
+                    }
+                    true
+                }
+                (Expr::Symbol(q), _) => {
+                    env.bind(Expr::Symbol(q.clone()), pivot.clone());
+                    true
+                },
+                (Expr::Int(p), Expr::Int(q)) => p == q,
+                (Expr::Float(p), Expr::Float(q)) => p == q,
+                (Expr::String(p), Expr::String(q)) => p == q,
+                (Expr::Bool(p), Expr::Bool(q)) => p == q,
+                (Expr::None, Expr::None) => true,
+                (Expr::Function(_, _, _), Expr::Function(_, _, _)) => true,
+                (Expr::Builtin(_), Expr::Builtin(_)) => true,
+                _ => false,
+            }
+        }
+
+        // Find the first pattern that matches the pivot.
+        for pattern in patterns {
+            let (pattern, body) = match pattern {
+                Expr::List(p) => (p[0].clone(), p[1].clone()),
+                _ => return Expr::error(format!("Invalid pattern {pattern}")),
+            };
+            let mut new_env = env.clone();
+            if matches(&mut new_env, &pattern, &pivot) {
+                return new_env.eval(body);
+            }
+        }
+
+        Expr::None
+    });
+
+    env.bind_builtin("for", |env, expr| {
+        let var = expr[0].clone();
+        let list = env.eval(expr[1].clone());
+        let body = expr[2].clone();
+
+        match list {
+            Expr::List(list) => {
+                let mut result = Expr::None;
+                for e in list {
+                    env.bind(var.clone(), e);
+                    result = env.eval(body.clone());
+                }
+                result
+            }
+            list => Expr::error(format!("Invalid list {list}")),
+        }
+    });
+
+    env.bind_builtin("is-list?", |env, expr| {
+        return Expr::Bool(matches!(env.eval(expr[0].clone()), Expr::List(_)));
+    });
+
+    env.bind_builtin("enumerate", |env, expr| {
+        let list = env.eval(expr[0].clone());
+        let mut result = vec![];
+        match list {
+            Expr::List(list) => {
+                for (i, e) in list.into_iter().enumerate() {
+                    result.push(Expr::List(vec![Expr::Int(i as i64), e]));
+                }
+                Expr::List(result)
+            }
+            list => Expr::error(format!("Invalid list {list}")),
+        }
+    });
+
     env
 }
 
@@ -1032,6 +1155,10 @@ lazy_static! {
     static ref LISP_ENV: RwLock<sage_lisp::Env> = RwLock::new(make_env());
     static ref FILE_SAVES: RwLock<Vec<(Vec<usize>, Arc<String>, Option<String>)>> =
         RwLock::new(vec![]);
+}
+
+pub fn get_lisp_env() -> sage_lisp::Env {
+    return LISP_ENV.read().unwrap().clone();
 }
 
 fn save_source_code_setup() {
@@ -1298,7 +1425,7 @@ pub fn parse_source(input: &str, filename: Option<String>) -> Result<Expr, Strin
     }
 }
 
-pub(crate) fn parse_module(name: &str, input: &str) -> Result<Declaration, String> {
+pub fn parse_module(name: &str, input: &str) -> Result<Declaration, String> {
     setup_source_code_locations(input, Some(name.to_owned()));
 
     match parse_module_contents::<VerboseError<&str>>(name, input) {
