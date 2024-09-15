@@ -267,6 +267,144 @@ impl Array<T, N> {
 
 main();`);
                     break;
+                case "sudoku":
+                    source.setValue(`fun main() {
+    // Create a 9x9 sudoku board
+    println("Initial board:\\n");
+    let mut b = Board.new<9>([
+        [5, 3, 0, 0, 7, 0, 0, 0, 0],
+        [6, 0, 0, 1, 9, 5, 0, 0, 0],
+        [0, 9, 8, 0, 0, 0, 0, 6, 0],
+        [8, 0, 0, 0, 6, 0, 0, 0, 3],
+        [4, 0, 0, 8, 0, 3, 0, 0, 1],
+        [7, 0, 0, 0, 2, 0, 0, 0, 6],
+        [0, 6, 0, 0, 0, 0, 2, 8, 0],
+        [0, 0, 0, 4, 1, 9, 0, 0, 5],
+        [0, 0, 0, 0, 8, 0, 0, 7, 9]
+    ]);
+    b.print();
+
+    if b.solve() {
+        println("\\nSolution:\\n");
+        b.print();
+        println("\\nVerified: ", b.verify());
+    } else {
+        println("No solution exists");
+    }
+}
+
+struct Board<const N: Int> {
+    data: [[Int * N] * N]
+}
+
+impl Board<N> {
+    fun empty(): Board<N> {
+        return {data=[[0] * N] * N};
+    }
+
+    fun new(data: [[Int * N] * N]): Board<N> {
+        return {data=data};
+    }
+
+    fun is_safe(&self, row: Int, col: Int, num: Int): Bool {
+        for let mut x=0; x<N; x+=1; {
+            if self.data[row][x] == num {
+                return False;
+            }
+        }
+
+        for let mut x=0; x<N; x+=1; {
+            if self.data[x][col] == num {
+                return False;
+            }
+        }
+
+        let mut start_row = row - row % 3;
+        let mut start_col = col - col % 3;
+        for let mut x=0; x< N / 3; x+=1; {
+            for let mut y=0; y<N / 3; y+=1; {
+                if self.data[x + start_row][y + start_col] == num {
+                    return False;
+                }
+            }
+        }
+
+        return True;
+    }
+
+    fun find_empty_location(&self, row: &mut Int, col: &mut Int): Bool {
+        for let mut i=0; i<N; i+=1; {
+            for let mut j=0; j<N; j+=1; {
+                if self.data[i][j] == 0 {
+                    *row = i;
+                    *col = j;
+                    return True;
+                }
+            }
+        }
+        return False;
+    }
+
+    fun solve(&mut self): Bool {
+        let mut row = 0;
+        let mut col = 0;
+        if !self.find_empty_location(&mut row, &mut col) {
+            return True;
+        }
+
+        for let mut num=1; num<=N; num+=1; {
+            if self.is_safe(row, col, num) {
+                self.data[row][col] = num;
+                if self.solve() {
+                    return True;
+                }
+                self.data[row][col] = 0;
+            }
+        }
+        return False;
+    }
+
+    fun verify(&mut self): Bool {
+        for let mut i=0; i<N; i+=1; {
+            for let mut j=0; j<N; j+=1; {
+                let mut num = self.data[i][j];
+                self.data[i][j] = 0;
+                if !self.is_safe(i, j, num) {
+                    return False;
+                }
+                self.data[i][j] = num;
+            }
+        }
+        return True;
+    }
+
+    fun print(&self) {
+        for let mut row=0; row<N; row+=1; {
+            for let mut col=0; col<N; col+=1; {
+                print(self.data[row][col]);
+                if col % 3 == 2 && col < N - 1 {
+                    print(" | ");
+                } else {
+                    print(" ");
+                }
+            }
+
+            println("");
+            if row % 3 == 2 && row < N - 1 {
+                for let mut col=0; col<N; col+=1; {
+                    print("--");
+                    if col % 3 == 2 && col < N - 1 {
+                        print("+-");
+                    }
+                }
+                println("");
+            }
+        }
+    }
+}
+
+main();`);
+                    break;
                 case "matrix":
                     source.setValue(`fun main() {
     // Create two 4x4 matrices
@@ -2148,6 +2286,7 @@ main();`)
         <select id="example" style="height: 3em; float: left;">
             <option value="hello world">Click to select example program (Default Hello World)</option>
             <option value="graphics">Screen-Drawing Javascript Interop</option>
+            <option value="sudoku">Sudoku Solver</option>
             <option value="list">Standard Lib Linked List</option>
             <option value="result">Standard Lib Error Handling</option>
             <option value="hashmap">Standard Lib Hashmap</option>
