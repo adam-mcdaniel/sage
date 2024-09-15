@@ -398,6 +398,7 @@
 <a href="#397" id="397">397</a>
 <a href="#398" id="398">398</a>
 <a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The standard instructions of the virtual machine are defined here.
 //!
 //! ## Purpose of the Standard Instructions
@@ -439,6 +440,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::side_effects::<span class="kw-2">*</span>;
 <span class="kw">use </span>core::fmt;
 <span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>serde_derive::{Deserialize, Serialize};
 
 <span class="kw">impl </span>VirtualMachineProgram <span class="kw">for </span>StandardProgram {
     <span class="kw">fn </span>op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: CoreOp) {
@@ -511,7 +513,7 @@
 }
 
 <span class="doccomment">/// A program of core and standard virtual machine instructions.
-</span><span class="attr">#[derive(Default, Clone, PartialEq, PartialOrd)]
+</span><span class="attr">#[derive(Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>StandardProgram(<span class="kw">pub </span>Vec&lt;StandardOp&gt;);
 
 <span class="kw">impl </span>StandardProgram {
@@ -687,7 +689,7 @@
 }
 
 <span class="doccomment">/// An individual standard virtual machine instruction.
-</span><span class="attr">#[derive(Clone, Debug, PartialEq, PartialOrd)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>StandardOp {
     <span class="doccomment">/// Execute a core instruction.
     </span>CoreOp(CoreOp),

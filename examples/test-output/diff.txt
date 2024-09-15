@@ -1,0 +1,7 @@
+First sequence:  abcd
+Second sequence: acde
+Difference:
+a
+< b
+cd
+> e

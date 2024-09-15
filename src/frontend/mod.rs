@@ -1,6 +1,6 @@
 mod parse;
 use crate::lir::Expr;
-use parse::{parse_module, parse_source};
+pub use parse::{parse_module, parse_source, get_lisp_env};
 
 fn without_comments(code: impl ToString) -> String {
     use no_comment::{languages, IntoWithoutComments};

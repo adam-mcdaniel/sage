@@ -38,6 +38,8 @@
 
 pub mod c;
 pub use c::*;
+pub mod sage_lisp;
+pub use sage_lisp::*;
 
 // pub mod sage_os;
 // pub use sage_os::*;

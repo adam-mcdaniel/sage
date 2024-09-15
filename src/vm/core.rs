@@ -8,6 +8,7 @@ use crate::side_effects::{Input, Output};
 use super::{Error, StandardOp, StandardProgram, VirtualMachineProgram};
 use core::fmt;
 use std::{collections::HashMap, hash::Hash};
+use serde_derive::{Deserialize, Serialize};
 
 impl VirtualMachineProgram for CoreProgram {
     fn op(&mut self, op: CoreOp) {
@@ -24,7 +25,7 @@ impl VirtualMachineProgram for CoreProgram {
 }
 
 /// A program of only core virtual machine instructions.
-#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct CoreProgram(pub Vec<CoreOp>);
 
 impl CoreProgram {
@@ -191,7 +192,7 @@ impl fmt::Display for CoreProgram {
 }
 
 /// An individual core virtual machine instruction.
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum CoreOp {
     /// A comment in the machine code (not in the compiled output).
     Comment(String),

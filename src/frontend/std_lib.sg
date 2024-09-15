@@ -327,6 +327,10 @@ mod collections {
             }
             return result;
         }
+
+        fun drop(&mut self) {
+            free(self.data);
+        }
     }
 
     // Hash a value
@@ -507,6 +511,10 @@ mod collections {
         fun println(&self) {
             self.print();
             print("\n");
+        }
+
+        fun drop(&mut self) {
+            self.data.drop();
         }
     }
 }

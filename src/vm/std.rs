@@ -39,6 +39,7 @@ use super::{CoreOp, CoreProgram, Error, VirtualMachineProgram};
 use crate::side_effects::*;
 use core::fmt;
 use std::collections::HashMap;
+use serde_derive::{Deserialize, Serialize};
 
 impl VirtualMachineProgram for StandardProgram {
     fn op(&mut self, op: CoreOp) {
@@ -111,7 +112,7 @@ impl VirtualMachineProgram for StandardProgram {
 }
 
 /// A program of core and standard virtual machine instructions.
-#[derive(Default, Clone, PartialEq, PartialOrd)]
+#[derive(Default, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct StandardProgram(pub Vec<StandardOp>);
 
 impl StandardProgram {
@@ -287,7 +288,7 @@ impl fmt::Display for StandardProgram {
 }
 
 /// An individual standard virtual machine instruction.
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum StandardOp {
     /// Execute a core instruction.
     CoreOp(CoreOp),
