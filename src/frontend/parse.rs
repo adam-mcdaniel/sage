@@ -10,8 +10,7 @@ use nom::{
     IResult, Parser,
 };
 use std::{
-    collections::BTreeMap,
-    sync::{Arc, RwLock},
+    collections::BTreeMap, hash::Hash, sync::{Arc, RwLock}
 };
 
 use crate::{lir::*, parse::SourceCodeLocation};
@@ -263,6 +262,19 @@ fn make_env() -> sage_lisp::Env {
         }
     });
 
+    env.bind_builtin("print", |env, exprs| {
+        for e in exprs {
+            let e = env.eval(e.clone());
+
+            match e {
+                Expr::String(s) => print!("{}", s),
+                Expr::Symbol(s) => print!("{}", s.name()),
+                _ => print!("{}", e),
+            }
+        }
+        Expr::None
+    });
+
     env.bind_builtin("println", |env, exprs| {
         for e in exprs {
             let e = env.eval(e.clone());
@@ -277,7 +289,7 @@ fn make_env() -> sage_lisp::Env {
         Expr::None
     });
 
-    env.bind_lazy_builtin("do", |_env, exprs| Expr::Many(Vec::from(exprs)));
+    env.bind_lazy_builtin("do", |_env, exprs| Expr::Many(Arc::new(Vec::from(exprs))));
 
     env.bind_builtin("sqrt", |env, expr| {
         let e = env.eval(expr[0].clone());
@@ -302,7 +314,7 @@ fn make_env() -> sage_lisp::Env {
 
     env.alias("^", "pow");
 
-    let lambda = |env: &mut Env, expr: &[Expr]| {
+    let lambda = |env: &mut Env, expr: Vec<Expr>| {
         let params = expr[0].clone();
         let body = expr[1].clone();
         if let Expr::List(params) = params {
@@ -333,7 +345,7 @@ fn make_env() -> sage_lisp::Env {
                     }
                     new_env.eval(*body.clone())
                 }
-                Expr::Builtin(f) => f.apply(&mut env.clone(), &args),
+                Expr::Builtin(f) => f.apply(&mut env.clone(), args),
                 f => Expr::error(format!("Invalid function {f} apply {}", Expr::from(args))),
             }
         } else {
@@ -355,7 +367,7 @@ fn make_env() -> sage_lisp::Env {
             Expr::List(vec![a, b])
         }
     });
-    let head = |env: &mut Env, expr: &[Expr]| {
+    let head = |env: &mut Env, expr: Vec<Expr>| {
         let a = env.eval(expr[0].clone());
         if let Expr::List(a) = a {
             a[0].clone()
@@ -363,7 +375,7 @@ fn make_env() -> sage_lisp::Env {
             Expr::error(format!("Invalid head {a}"))
         }
     };
-    let tail = |env: &mut Env, expr: &[Expr]| {
+    let tail = |env: &mut Env, expr: Vec<Expr>| {
         let a = env.eval(expr[0].clone());
         if let Expr::List(a) = a {
             Expr::List(a[1..].to_vec())
@@ -377,7 +389,7 @@ fn make_env() -> sage_lisp::Env {
     env.bind_builtin("cdr", tail);
     env.bind_builtin("tail", tail);
 
-    let format = |env: &mut Env, expr: &[Expr]| {
+    let format = |env: &mut Env, expr: Vec<Expr>| {
         let format = env.eval(expr[0].clone());
         // Collect the args
         let args = expr[1..].to_vec();
@@ -1040,18 +1052,22 @@ fn make_env() -> sage_lisp::Env {
     env.bind_builtin("match", |env, expr| {
         let (pivot, patterns) = expr.split_at(1);
         let pivot = pivot[0].clone();
-        fn matches(env: &mut Env, pattern: &Expr, pivot: &Expr) -> bool {
+        use std::collections::HashMap;
+        fn matches(bindings: &mut HashMap<Expr, Expr>, env: &Env, pattern: &Expr, pivot: &Expr) -> bool {
             match (pattern, pivot) {
                 (pattern, Expr::Symbol(_name)) => {
-                    let pivot = env.eval(pivot.clone());
-                    return matches(env, pattern, &pivot)
+                    if let Some(pivot) = env.get(pivot) {
+                        return matches(bindings, env, pattern, &pivot)
+                    } else {
+                        return false
+                    }
                 }
                 (Expr::List(p), Expr::List(q)) => {
                     if p.len() != q.len() {
                         return false;
                     }
                     for (a, b) in p.iter().zip(q.iter()) {
-                        if !matches(env, a, b) {
+                        if !matches(bindings, env, a, b) {
                             return false;
                         }
                     }
@@ -1062,7 +1078,7 @@ fn make_env() -> sage_lisp::Env {
                         return false;
                     }
                     for (k, v) in p {
-                        if !q.contains_key(k) || !matches(env, v, q.get(k).unwrap()) {
+                        if !q.contains_key(k) || !matches(bindings, env, v, q.get(k).unwrap()) {
                             return false;
                         }
                     }
@@ -1073,14 +1089,14 @@ fn make_env() -> sage_lisp::Env {
                         return false;
                     }
                     for (k, v) in p {
-                        if !q.contains_key(k) || !matches(env, v, q.get(k).unwrap()) {
+                        if !q.contains_key(k) || !matches(bindings, env, v, q.get(k).unwrap()) {
                             return false;
                         }
                     }
                     true
                 }
                 (Expr::Symbol(q), _) => {
-                    env.bind(Expr::Symbol(q.clone()), pivot.clone());
+                    bindings.insert(Expr::Symbol(q.clone()), pivot.clone());
                     true
                 },
                 (Expr::Int(p), Expr::Int(q)) => p == q,
@@ -1100,9 +1116,13 @@ fn make_env() -> sage_lisp::Env {
                 Expr::List(p) => (p[0].clone(), p[1].clone()),
                 _ => return Expr::error(format!("Invalid pattern {pattern}")),
             };
-            let mut new_env = env.clone();
-            if matches(&mut new_env, &pattern, &pivot) {
-                return new_env.eval(body);
+            let mut symbols = HashMap::new();
+            if matches(&mut symbols, env, &pattern, &pivot) {
+                for (alias, name) in symbols {
+                    let expr = env.eval(name);
+                    env.bind(alias, expr);
+                }
+                return env.eval(body);
             }
         }
 
@@ -1110,18 +1130,17 @@ fn make_env() -> sage_lisp::Env {
     });
 
     env.bind_builtin("for", |env, expr| {
-        let var = expr[0].clone();
-        let list = env.eval(expr[1].clone());
-        let body = expr[2].clone();
+        let var = &expr[0];
+        let list = &expr[1];
+        let body = &expr[2];
 
-        match list {
+        match env.eval(list.clone()) {
             Expr::List(list) => {
-                let mut result = Expr::None;
                 for e in list {
                     env.bind(var.clone(), e);
-                    result = env.eval(body.clone());
+                    env.eval(body.clone());
                 }
-                result
+                Expr::None
             }
             list => Expr::error(format!("Invalid list {list}")),
         }
@@ -1129,6 +1148,9 @@ fn make_env() -> sage_lisp::Env {
 
     env.bind_builtin("is-list?", |env, expr| {
         return Expr::Bool(matches!(env.eval(expr[0].clone()), Expr::List(_)));
+    });
+    env.bind_builtin("is-nil?", |env, expr| {
+        return Expr::Bool(matches!(env.eval(expr[0].clone()), Expr::None));
     });
 
     env.bind_builtin("enumerate", |env, expr| {

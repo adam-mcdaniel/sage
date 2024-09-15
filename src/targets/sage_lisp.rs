@@ -374,9 +374,13 @@ impl CompiledTarget for SageLisp {
 
         // Try to evaluate the `build-core` function from the environment on the input.
         let arg = sage_lisp::Expr::serialize(program);
-        let call = sage_lisp::Expr::symbol("build-core").apply(&[arg.quote()]);
-
-        let result = self.0.eval(call);
+        let c = sage_lisp::Expr::symbol("build-core");
+        let s = sage_lisp::Expr::symbol("build-std");
+        let result = if self.0.get(&c).is_some() {
+            self.0.eval(c.apply(&[arg.quote()]))
+        } else {
+            self.0.eval(s.apply(&[sage_lisp::Expr::serialize(crate::vm::StandardProgram::from(program.clone())).quote()]))
+        };
 
         Ok(result.to_string())
     }
