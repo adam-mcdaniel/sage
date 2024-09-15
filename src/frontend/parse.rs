@@ -10,7 +10,7 @@ use nom::{
     IResult, Parser,
 };
 use std::{
-    collections::BTreeMap, hash::Hash, sync::{Arc, RwLock}
+    collections::BTreeMap, sync::{Arc, RwLock}
 };
 
 use crate::{lir::*, parse::SourceCodeLocation};
