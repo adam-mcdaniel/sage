@@ -4,7 +4,7 @@ fun main() {
     let width = 60;
     let height = 30;
 
-    let max_iter = 1000;
+    let max_iter = 250;
     let zoom = 1.25;
 
     let bounds = get_bounds(x_center, y_center, zoom);

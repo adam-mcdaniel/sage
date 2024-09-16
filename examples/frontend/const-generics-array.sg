@@ -1,0 +1,66 @@
+fun main() {
+    // Create an array struct
+    let mut a = Array.new<Int, 5>([1, 2, 3, 4, 5]);
+    // Print it out
+    a.println();
+    // Set a value!
+    a.set(1, 1000);
+    // Print the changed value
+    println(*a.get(1));
+    // Print the whole changed array
+    a.println();
+    println(a);
+    a[0] = 555;
+    a.println();
+}
+
+// An array with a constant parameter length
+type Array<T, const N: Int> = [T * N];
+
+impl Array<T, N> {
+    // Create a new Array container
+    fun new(arr: [T * N]): Array<T, N> {
+        return arr;
+    }
+
+    // Get a value from the array
+    fun get(&self, n: Int): &T {
+        if n < N {
+            return &self.data()[n];
+        } else {
+            return Null;
+        }
+    }
+
+    fun data_mut(&mut self): &mut T {
+        return self as &mut T;
+    }
+    
+    fun data(&self): &T {
+        return self as &T;
+    }
+    
+    // Set a value in the array
+    fun set(&mut self, n: Int, val: T) {
+		self.data_mut()[n] = val;
+    }
+
+    // Print the array
+    fun print(&self) {
+        print("[");
+        for let mut i=0; i<N; i+=1; {
+            print(self.data()[i]);
+            if i != N - 1 {
+                print(", ")
+            }
+        }
+        print("]");
+    }
+
+    fun println(&self) {
+        self.print();
+        println();
+    }
+}
+
+main();
