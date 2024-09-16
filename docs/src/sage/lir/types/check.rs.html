@@ -1832,7 +1832,7 @@
                 Expr::ConstExpr(cexpr) =&gt; cexpr.type_check(env),
                 Expr::Deref(inner) | Expr::Index(inner, <span class="kw">_</span>) =&gt; {
                     <span class="comment">// Confirm that the inner expression can be referenced.
-                    </span><span class="kw">match </span>inner.get_type(env)<span class="question-mark">? </span>{
+                    </span><span class="kw">match </span>inner.get_type(env)<span class="question-mark">?</span>.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">? </span>{
                         <span class="comment">// If we are dereferencing/indexing a pointer,
                         // confirm that the inner pointer has the expected mutability.
                         </span>Type::Pointer(found_mutability, <span class="kw">_</span>) =&gt; {
@@ -2247,7 +2247,7 @@
                 <span class="comment">// Typecheck the index we want to access.
                 </span>idx.type_check(env)<span class="question-mark">?</span>;
                 <span class="comment">// Get the type of the expression we want to index.
-                </span><span class="kw">let </span>val_type = val.get_type(env)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>val_type = val.get_type(env)<span class="question-mark">?</span>.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                 <span class="comment">// Get the type of the index.
                 </span><span class="kw">let </span>idx_type = idx.get_type(env)<span class="question-mark">?</span>;
                 <span class="comment">// Confirm that the type is an array or pointer.

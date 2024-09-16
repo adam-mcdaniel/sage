@@ -967,7 +967,7 @@
             }
 
             <span class="comment">// Get the type of an index access.
-            </span><span class="self">Self</span>::Index(val, <span class="kw">_</span>) =&gt; <span class="kw">match </span>val.get_type_checked(env, i)<span class="question-mark">?</span>.simplify(env)<span class="question-mark">? </span>{
+            </span><span class="self">Self</span>::Index(val, <span class="kw">_</span>) =&gt; <span class="kw">match </span>val.get_type_checked(env, i)<span class="question-mark">?</span>.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">? </span>{
                 <span class="comment">// Only arrays and pointers can be indexed.
                 </span>Type::Array(item, <span class="kw">_</span>) =&gt; <span class="kw-2">*</span>item,
                 Type::Pointer(<span class="kw">_</span>, item) =&gt; <span class="kw-2">*</span>item,

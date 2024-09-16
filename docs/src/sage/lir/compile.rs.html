@@ -1535,6 +1535,9 @@
 <a href="#1534" id="1534">1534</a>
 <a href="#1535" id="1535">1535</a>
 <a href="#1536" id="1536">1536</a>
+<a href="#1537" id="1537">1537</a>
+<a href="#1538" id="1538">1538</a>
+<a href="#1539" id="1539">1539</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compile
 //!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
@@ -2126,7 +2129,7 @@
                 <span class="comment">// Calculate the size of this expression.
                 </span><span class="kw">let </span>size = t.get_size(env)<span class="question-mark">?</span>;
                 <span class="comment">// Get the type of the value being indexed
-                </span><span class="kw">let </span>val_type = val.get_type(env)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>val_type = val.get_type(env)<span class="question-mark">?</span>.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                 <span class="comment">// Get the size of the value being indexed.
                 </span><span class="kw">let </span>val_size = val_type.get_size(env)<span class="question-mark">?</span>;
                 <span class="comment">// Figure out what to do based on the value's type.
@@ -2511,7 +2514,7 @@
                 <span class="comment">// Get the reference of an indexed value.
                 </span>Expr::Index(val, idx) =&gt; {
                     <span class="comment">// Get the type of the value we want to index.
-                    </span><span class="kw">let </span>val_type = val.get_type(env)<span class="question-mark">?</span>;
+                    </span><span class="kw">let </span>val_type = val.get_type(env)<span class="question-mark">?</span>.simplify_until_concrete(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                     <span class="kw">match </span>val_type {
                         <span class="comment">// If the value is an array:
                         </span>Type::Array(<span class="kw-2">ref </span>elem, <span class="kw">_</span>) =&gt; {
@@ -2584,7 +2587,10 @@
                             </span>output.op(CoreOp::Push(C, <span class="number">1</span>));
                         }
                         <span class="comment">// Otherwise, return an error.
-                        </span><span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidIndex(Expr::Index(val, idx))),
+                        </span>other =&gt; {
+                            <span class="macro">error!</span>(<span class="string">"Could not index type {other}"</span>);
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidIndex(Expr::Index(val, idx)))
+                        },
                     }
                 }
                 <span class="comment">// Otherwise, return an error.
