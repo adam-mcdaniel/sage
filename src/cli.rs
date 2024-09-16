@@ -230,6 +230,7 @@ fn compile_source_to_vm(
     src: String,
     src_type: SourceType,
     call_stack_size: usize,
+    default_to_core: bool,
 ) -> Result<Result<sage::vm::CoreProgram, sage::vm::StandardProgram>, Error> {
     match src_type {
         SourceType::StdVM => {
@@ -277,7 +278,7 @@ fn compile_source_to_vm(
             // Parse the lower intermediate representation code.
             match parse_lir(src)
                 .map_err(Error::Parse)?
-                .compile()
+                .compile(true)
                 .map_err(Error::LirError)?
             {
                 // If we got back a valid program, assemble it and return the result.
@@ -292,7 +293,7 @@ fn compile_source_to_vm(
         SourceType::Sage => {
             match parse_frontend(&src, filename)
                 .map_err(Error::Parse)?
-                .compile()
+                .compile(default_to_core)
                 .map_err(Error::LirError)
                 .map_err(|e| e.annotate_with_source(&src))?
             {
@@ -328,13 +329,13 @@ fn compile_source_to_asm(
         // If the source language is LIR, parse it and compile it to assembly code.
         SourceType::LowIR => parse_lir(src)
             .map_err(Error::Parse)?
-            .compile()
+            .compile(true)
             .map_err(Error::LirError),
 
         // If the source language is Sage, parse it and compile it to assembly code.
         SourceType::Sage => parse_frontend(&src, filename)
             .map_err(Error::Parse)?
-            .compile()
+            .compile(true)
             .map_err(Error::LirError)
             .map_err(|e| e.annotate_with_source(&src)),
         // If the source language is a virtual machine program,
@@ -357,7 +358,7 @@ fn compile(
 ) -> Result<(), Error> {
     match target {
         // If the target is `Run`, then compile the code and execute it with the interpreter.
-        TargetType::Run => match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
+        TargetType::Run => match compile_source_to_vm(filename, src, src_type, call_stack_size, false)? {
             // If the code is core variant virtual machine code
             Ok(vm_code) => {
                 CoreInterpreter::new(StandardDevice::default())
@@ -376,7 +377,7 @@ fn compile(
         // and then use the C target implementation to build the output source code.
         TargetType::C => write_file(
             format!("{output}.c"),
-            match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
+            match compile_source_to_vm(filename, src, src_type, call_stack_size, false)? {
                 Ok(vm_code) => targets::C.build_core(&vm_code.flatten()),
                 Err(vm_code) => targets::C.build_std(&vm_code.flatten()),
             }
@@ -387,7 +388,7 @@ fn compile(
         // and then use the C target implementation to build the output source code.
         TargetType::SageLisp => {
 
-            write_file(format!("output.txt"), match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
+            write_file(format!("output.txt"), match compile_source_to_vm(filename, src, src_type, call_stack_size, false)? {
                 Ok(vm_code) => targets::SageLisp::new(sage::frontend::get_lisp_env()).build_core(&vm_code.flatten()),
                 Err(vm_code) => targets::SageLisp::new(sage::frontend::get_lisp_env()).build_std(&vm_code.flatten()),
             }.map_err(Error::BuildError)?)?
@@ -399,7 +400,7 @@ fn compile(
 
         // If the target is core virtual machine code, then try to compile the source to the core variant.
         // If not possible, throw an error.
-        TargetType::CoreVM => match compile_source_to_vm(filename, src, src_type, call_stack_size)?
+        TargetType::CoreVM => match compile_source_to_vm(filename, src, src_type, call_stack_size, true)?
         {
             Ok(vm_code) if debug => write_file(
                 format!("{output}.vm.sg"),
@@ -414,7 +415,7 @@ fn compile(
         // If the result is core variant, we don't care. Just return the generated code.
         TargetType::StdVM => write_file(
             format!("{output}.vm.sg"),
-            match compile_source_to_vm(filename, src, src_type, call_stack_size)? {
+            match compile_source_to_vm(filename, src, src_type, call_stack_size, false)? {
                 Ok(vm_code) if debug => format!("{:#}", vm_code.flatten()),
                 Err(vm_code) if debug => format!("{:#}", vm_code.flatten()),
                 Ok(vm_code) => vm_code.flatten().to_string(),

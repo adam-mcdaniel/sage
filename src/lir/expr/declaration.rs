@@ -13,7 +13,7 @@ use core::{
 use log::*;
 use rayon::prelude::*;
 use serde_derive::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
@@ -46,7 +46,7 @@ pub enum Declaration {
     /// use the `Declaration::module` method.
     /// This will redistribute the declarations to make sure
     /// everything is in-order internally to be imported/exported.
-    Module(String, Arc<Vec<Declaration>>),
+    Module(String, Arc<Vec<Declaration>>, bool),
     /// Import an element from a module.
     FromImport {
         module: ConstExpr,
@@ -70,10 +70,13 @@ impl Declaration {
         Self::Many(Arc::new(decls.into()))
     }
 
-    /// Create a module with a given name and a list of declarations
-    pub fn module(name: impl ToString, decls: impl Into<Vec<Self>>) -> Self {
+    /// Create a module with a given name and a list of declarations, and whether or not it is checked.
+    pub fn module(name: impl ToString, decls: impl Into<Vec<Self>>, checked: bool) -> Self {
         let mut decls = decls.into();
         let mut import = Self::many(decls.clone());
+        if !checked {
+            import.mark_no_checking();
+        }
         import.filter(&|decl| {
             decl.is_compile_time_declaration() && !matches!(decl, Declaration::Impl(..))
         });
@@ -82,7 +85,28 @@ impl Declaration {
             decl.distribute_decls(&import.clone());
         }
 
-        Self::Module(name.to_string(), Arc::new(decls))
+        let mut result = Self::Module(name.to_string(), Arc::new(decls), checked);
+        if !checked {
+            result.mark_no_checking();
+        }
+        result
+    }
+
+    fn mark_no_checking(&mut self) {
+        match self {
+            Self::Module(_, decls, checked) => {
+                *checked = false;
+                for decl in Arc::make_mut(decls).iter_mut() {
+                    decl.mark_no_checking();
+                }
+            }
+            Self::Many(decls) => {
+                for decl in Arc::make_mut(decls).iter_mut() {
+                    decl.mark_no_checking();
+                }
+            }
+            _ => {}
+        }
     }
 
     /// Filter all the subdeclarations to satisfy some condition.
@@ -93,7 +117,7 @@ impl Declaration {
                 decls.retain(|decl| f(decl));
                 decls.iter_mut().for_each(|decl| decl.filter(f));
             }
-            Self::Module(_name, decls) => {
+            Self::Module(_name, decls, ..) => {
                 let decls = Arc::make_mut(decls);
                 decls.retain(|decl| f(decl));
                 decls.iter_mut().for_each(|decl| decl.filter(f));
@@ -118,7 +142,7 @@ impl Declaration {
                     decl.distribute_decls(distributed);
                 }
             }
-            Self::Module(_name, decls) => {
+            Self::Module(_name, decls, ..) => {
                 let decls = Arc::make_mut(decls);
                 for decl in decls.iter_mut() {
                     decl.distribute_decls(distributed);
@@ -138,6 +162,22 @@ impl Declaration {
                 *proc = proc.with(distributed.clone());
             }
             _ => {}
+        }
+    }
+
+    fn is_import(&self) -> bool {
+        match self {
+            Self::FromImport { .. } => true,
+            Self::FromImportAll(..) => true,
+            _ => false,
+        }
+    }
+
+    fn is_module(&self) -> bool {
+        match self {
+            Self::Module(..) => true,
+            Self::Many(decls) => decls.iter().any(|decl| decl.is_module()),
+            _ => false,
         }
     }
 
@@ -211,7 +251,7 @@ impl Declaration {
     ) -> Result<usize, Error> {
         // Add all the compile time declarations to the environment so that they can be used
         // in these declarations.
-        env.add_compile_time_declaration(self)?;
+        env.add_compile_time_declaration(self, true)?;
         // The size of the variables declared.
         // This is used to pop the stack when we're done.
         let mut var_size = 0;
@@ -324,6 +364,25 @@ impl Declaration {
         Ok(var_size)
     }
 
+    /// Detect duplicate modules
+    fn detect_duplicate_modules(&self, modules: &mut HashSet<String>) -> Result<(), Error> {
+        match self {
+            Self::Module(name, _decls, ..) => {
+                if modules.contains(name) {
+                    return Err(Error::ModuleRedefined(name.clone()));
+                }
+                modules.insert(name.clone());
+            }
+            Self::Many(decls) => {
+                for decl in decls.iter() {
+                    decl.detect_duplicate_modules(modules)?;
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
     /// Merge two declarations into one, while preserving the order of the declarations.
     /// This will not mutate the declaration, but will return a new declaration.
     pub(crate) fn join(&self, other: impl Into<Self>) -> Self {
@@ -370,7 +429,7 @@ impl Declaration {
             Self::PolyProc(_name, proc) => {
                 proc.substitute(substitution_name, substitution_ty);
             }
-            Self::Type(_name, ty) => {
+            Self::Type(_name , ty) => {
                 *ty = ty.substitute(substitution_name, substitution_ty);
             }
             Self::Const(_name, expr) => {
@@ -398,7 +457,7 @@ impl Declaration {
                     decl.substitute(substitution_name, substitution_ty);
                 });
             }
-            Self::Module(_name, decls) => {
+            Self::Module(_name, decls, ..) => {
                 Arc::make_mut(decls).par_iter_mut().for_each(|decl| {
                     decl.substitute(substitution_name, substitution_ty);
                 });
@@ -531,7 +590,7 @@ impl TypeCheck for Declaration {
             Self::Impl(ty, impls) => {
                 let mut new_env = env.clone();
                 // Add all the compile-time declarations to the environment.
-                new_env.add_compile_time_declaration(&self.clone())?;
+                new_env.add_compile_time_declaration(&self.clone(), false)?;
 
                 if let Type::Apply(template, supplied_params) = ty {
                     // If this is an implementation for a template type, we need to
@@ -598,10 +657,16 @@ impl TypeCheck for Declaration {
             // Typecheck a multi-declaration.
             Self::Many(decls) => {
                 let mut new_env = env.clone();
+
                 // Add all the compile-time declarations to the environment.
+                self.detect_duplicate_modules(&mut HashSet::new())?;
                 new_env.add_declaration(&self.clone(), false)?;
 
                 // Get all the compile time declarations so we can type check them in parallel.
+                // let (comp_time_decls, run_time_decls): (Vec<_>, Vec<_>) = self.clone()
+                //     .flatten()
+                //     .into_iter()
+                //     .partition(|decl| decl.is_compile_time_declaration());
                 let (comp_time_decls, run_time_decls): (Vec<_>, Vec<_>) = decls
                     .iter()
                     .partition(|decl| decl.is_compile_time_declaration());
@@ -611,6 +676,7 @@ impl TypeCheck for Declaration {
                     comp_time_decls.par_iter().try_for_each(|decl| {
                         debug!("Typechecking decl: {decl}");
                         decl.type_check(&new_env)
+                        // Ok::<(), Error>(())
                     })?;
                 }
 
@@ -661,33 +727,41 @@ impl TypeCheck for Declaration {
                  */
             }
 
-            Self::Module(name, decls) => {
-                let mut new_env = env.clone();
-
-                // Add all the compile-time declarations to the environment.
-                new_env.add_declaration(&Self::Many(decls.clone()), false)?;
-                trace!("Typechecking module {}", name);
-                // Get all the compile time declarations so we can type check them in parallel.
-                let (comp_time_decls, _run_time_decls): (Vec<_>, Vec<_>) = decls
-                    .iter()
-                    .partition(|decl| decl.is_compile_time_declaration());
-
-                if !comp_time_decls.is_empty() {
-                    // Type check all the compile time declarations in parallel.
-                    comp_time_decls
-                        .par_iter()
-                        .try_for_each(|decl| decl.type_check(&new_env))?;
+            Self::Module(name, decls, checked) => {
+                Self::Many(decls.clone()).detect_duplicate_modules(&mut HashSet::new())?;
+                if *checked {
+                    let mut new_env = env.clone();
+                    // Add all the compile-time declarations to the environment.
+                    new_env.add_declaration(&Self::Many(decls.clone()), false)?;
+                    trace!("Typechecking module {}", name);
+                    // Get all the compile time declarations so we can type check them in parallel.
+                    let (comp_time_decls, _run_time_decls): (Vec<_>, Vec<_>) = decls
+                        .iter()
+                        .partition(|decl| decl.is_compile_time_declaration());
+    
+                    if !comp_time_decls.is_empty() {
+                        // Type check all the compile time declarations in parallel.
+                        comp_time_decls
+                            .par_iter()
+                            .try_for_each(|decl| decl.type_check(&new_env))?;
+                    }
+                } else {
+                    env.save_type_checked_const(ConstExpr::Symbol(name.clone()))
                 }
             }
 
             Self::FromImport { module, names } => {
                 module.type_check(env)?;
+                env.save_type_checked_const(module.clone());
                 for (name, _) in names {
                     let access = module.clone().field(ConstExpr::var(name));
                     access.type_check(env)?;
                 }
             }
-            Self::FromImportAll(module) => module.type_check(env)?,
+            Self::FromImportAll(module) => {
+                module.type_check(env)?;
+                env.save_type_checked_const(module.clone());
+            },
         }
         Ok(())
     }
@@ -740,7 +814,7 @@ impl Display for Declaration {
                     writeln!(f, "{}", decl)?;
                 }
             }
-            Self::Module(name, _decls) => {
+            Self::Module(name, _decls, ..) => {
                 write!(f, "module {} {{..}}", name)?;
             }
             Self::FromImport { module, names } => {
@@ -983,7 +1057,7 @@ impl Hash for Declaration {
                 state.write_u8(9);
                 decls.hash(state);
             }
-            Self::Module(name, decls) => {
+            Self::Module(name, decls, checked) => {
                 state.write_u8(10);
                 name.hash(state);
                 decls.hash(state);

@@ -947,7 +947,7 @@ fn make_env() -> sage_lisp::Env {
             Err(e) => e,
             Ok(frontend_code) => {
                 let asm_code = frontend_code
-                    .compile()
+                    .compile(false)
                     .map_err(|e| Expr::error(format!("Invalid AST: {e}")));
                 if let Err(e) = asm_code {
                     return e;
@@ -978,7 +978,7 @@ fn make_env() -> sage_lisp::Env {
             Err(e) => e,
             Ok(frontend_code) => {
                 let asm_code = frontend_code
-                    .compile()
+                    .compile(false)
                     .map_err(|e| Expr::error(format!("Invalid AST: {e}")));
                 if let Err(e) = asm_code {
                     return e;
@@ -1447,10 +1447,10 @@ pub fn parse_source(input: &str, filename: Option<String>) -> Result<Expr, Strin
     }
 }
 
-pub fn parse_module(name: &str, input: &str) -> Result<Declaration, String> {
+pub fn parse_module(name: &str, input: &str, checked: bool) -> Result<Declaration, String> {
     setup_source_code_locations(input, Some(name.to_owned()));
 
-    match parse_module_contents::<VerboseError<&str>>(name, input) {
+    match parse_module_contents::<VerboseError<&str>>(name, input, checked) {
         Err(nom::Err::Error(e)) => {
             trace!("Error: {e}");
             Err(convert_error(input, e).to_string())
@@ -2016,13 +2016,14 @@ fn parse_import_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 fn parse_module_contents<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     name: &str,
     input: &'a str,
+    checked: bool
 ) -> IResult<&'a str, Declaration, E> {
     let (input, _) = whitespace(input)?;
 
     let (input, decls) = many0(context("statement", parse_decl))(input)?;
 
     let (input, _) = whitespace(input)?;
-    Ok((input, Declaration::module(name, decls)))
+    Ok((input, Declaration::module(name, decls, checked)))
 }
 
 fn parse_module_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
@@ -2037,7 +2038,7 @@ fn parse_module_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 
     let (input, _) = tag("{")(input)?;
 
-    let (input, module) = parse_module_contents(name, input)?;
+    let (input, module) = parse_module_contents(name, input, true)?;
 
     let (input, _) = cut(tag("}"))(input)?;
     let (input, _) = whitespace(input)?;
@@ -2062,7 +2063,7 @@ fn parse_module_file_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         save_source_code_setup();
         setup_source_code_locations(&contents.clone(), Some(name.to_string()));
         if let Ok((new_input, module)) =
-            parse_module_contents::<VerboseError<&str>>(name, &contents)
+            parse_module_contents::<VerboseError<&str>>(name, &contents, true)
         {
             if !new_input.is_empty() {
                 return Err(nom::Err::Error(E::from_error_kind(
@@ -2097,7 +2098,7 @@ fn parse_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         context("type", parse_type_stmt),
         context("enum", parse_enum_stmt),
         context("struct", parse_struct_stmt),
-        context("extern", parse_extern_stmt),
+        context("extern", terminated(parse_extern_stmt, tag(";"))),
         context("const", terminated(parse_const_stmt, tag(";"))),
         context("impl", parse_impl_stmt),
         context("import", parse_import_stmt),
@@ -3811,17 +3812,27 @@ fn parse_float_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     let (input, _) = whitespace(input)?;
     let (input, is_negative) = opt(tag("-"))(input)?;
 
-    let (input, result) = map(
-        pair(digit1, preceded(char('.'), digit1)),
-        |(a, b): (&str, &str)| format!("{}.{}", a, b).parse::<f64>().unwrap(),
-    )(input)?;
+    // let (input, result) = map(
+    //     pair(digit1, preceded(char('.'), digit1)),
+    //     |(a, b): (&str, &str)| format!("{}.{}", a, b).parse::<f64>().unwrap(),
+    // )(input)?;
 
-    // Peek and make sure the next character is not a symbol character
-    if let Some(c) = input.chars().next() {
-        if is_symbol_char(c) {
-            return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Digit)));
-        }
-    }
+    // // Peek and make sure the next character is not a symbol character
+    // if let Some(c) = input.chars().next() {
+    //     if is_symbol_char(c) {
+    //         return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Digit)));
+    //     }
+    // }
+
+    // Use builtin nom double
+    let (input, result) = nom::number::complete::recognize_float(input)?;
+    // Try to parse as an integer first
+    let result: f64 = if let Ok(_i) = result.parse::<i64>() {
+        // Fail
+        return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Digit)));
+    } else {
+        result.parse().unwrap()
+    };
 
     if is_negative.is_some() {
         Ok((input, -result))
@@ -4270,7 +4281,7 @@ mod tests {
                         .without_comments(languages::rust())
                         .collect::<String>();
                     let parsed = crate::frontend::parse(&code, Some("input"), true, true)?;
-                    let asm_code = parsed.compile();
+                    let asm_code = parsed.compile(true);
                     // let asm_code = parsed.compile();
                     const CALL_STACK_SIZE: usize = 1024;
                     if let Err(ref e) = asm_code {

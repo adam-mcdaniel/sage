@@ -1,6 +1,5 @@
 use super::{
-    Annotation, AssignOp, BinaryOp, ConstExpr, Expr, Mutability, Pattern, PolyProcedure, TernaryOp,
-    Type, UnaryOp,
+    Annotation, AssignOp, BinaryOp, ConstExpr, Declaration, Expr, Mutability, Pattern, PolyProcedure, TernaryOp, Type, UnaryOp
 };
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
@@ -113,6 +112,9 @@ pub enum Error {
 
     /// Tried to define a type that already exists.
     TypeRedefined(String),
+
+    /// Tried to define a module that already exists.
+    ModuleRedefined(String),
 
     /// Unused expression returned a non-None value.
     UnusedExpr(Expr, Type),
@@ -322,6 +324,9 @@ impl Display for Error {
             }
             Self::TypeRedefined(ty) => {
                 write!(f, "type {} redefined", ty)
+            }
+            Self::ModuleRedefined(module) => {
+                write!(f, "module {} redefined with conflicting definitions", module)
             }
             Self::UnusedExpr(expr, ty) => {
                 write!(f, "unused expression {} of type {}", expr, ty)

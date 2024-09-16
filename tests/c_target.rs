@@ -93,7 +93,7 @@ fn test_c_target_frontend_examples_helper() {
             let frontend_code = parse_frontend(&frontend_src, path.to_str())
                 .unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
             drop(frontend_src);
-            let asm_code = frontend_code.compile();
+            let asm_code = frontend_code.compile(false);
 
             if let Err(ref e) = asm_code {
                 if let Some(correct_error) = correct_error {

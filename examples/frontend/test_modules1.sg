@@ -93,7 +93,7 @@ fun main() {
 main();
 */
 
-mod std {
+mod std2 {
     mod math {
         // Calculate the greatest common divisor of two numbers using Euclid's algorithm
         fun gcd(a: Int, b: Int): Int {
@@ -214,8 +214,8 @@ mod std {
     }
 }
 
-from std.math import gcd;
-from std.fallible import Option, Result;
+from std2.math import gcd;
+from std2.fallible import Option, Result;
 
 println("GCD of 12 and 15 = ", gcd(12, 15));
 

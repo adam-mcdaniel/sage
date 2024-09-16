@@ -1,0 +1,33 @@
+from std.math import asin, acos, atan2, ln, sqrt;
+
+// Test asin, acos, atan2
+println("Asin of 0.0: ", asin(0.0));
+println("Asin of 0.3: ", asin(0.3));
+println("Asin of 0.5: ", asin(0.5));
+println("Asin of 0.7: ", asin(0.7));
+println("Asin of 1.0: ", asin(0.99));
+
+println("Acos of 0.0: ", acos(0.01));
+println("Acos of 0.3: ", acos(0.3));
+println("Acos of 0.5: ", acos(0.5));
+println("Acos of 0.7: ", acos(0.7));
+println("Acos of 1.0: ", acos(1.0));
+
+println("Atan2 of 0.0, 0.0: ", atan2(0.0, 0.0));
+println("Atan2 of 0.0, 1.0: ", atan2(0.0, 1.0));
+println("Atan2 of 1.0, 0.0: ", atan2(1.0, 0.0));
+println("Atan2 of 1.0, 1.0: ", atan2(1.0, 1.0));
+
+// Test ln, sqrt, abs
+println("Natural log of 1.0: ", ln(1.0));
+println("Natural log of 2.0: ", ln(2.0));
+println("Natural log of 3.0: ", ln(3.0));
+
+println("Square root of one: ", sqrt(1.0));
+println("Square root of two: ", sqrt(2.0));
+println("Square root of three: ", sqrt(3.0));
+println("Square root of five: ", sqrt(5.0));
+
+println("Absolute value of -1.0: ", (-1.0).abs());
+println("Absolute value of 0.0: ", 0.0.abs());
+println("Absolute value of 1.0: ", Float.abs(1.0));
