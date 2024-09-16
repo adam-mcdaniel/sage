@@ -271,6 +271,94 @@ fun myers_diff(a: &Char, a_len: Int, b: &Char, b_len: Int) {
 
 main();`);
                     break;
+                case "planets":
+                    source.setValue(`from std.time import Instant, Date;
+from std.physics import Point3D;
+from std.physics.astronomy import Planet;
+
+fun main() {
+    let d = Date.date(2024, 9, 18);
+    print("On ");
+    d.print();
+    println();
+
+    let instant = Instant.from_date(d);
+
+    println("Position units are AU, with Sun at origin:");
+    for let mut i=0; i<8; i+=1; {
+        let planet = Planet.PLANETS[i];
+        planet.print();
+        println(": ", planet.position_at_instant(instant)
+            .convert(m_to_au));
+    }
+}
+
+fun m_to_au(m: Float): Float {
+    return m / 149597870700.0;
+}
+
+main();`);
+                    break;
+                case "lunar":
+                    source.setValue(`from std.time import Date, Weekday;
+from std.physics.astronomy import MoonPhase;
+
+fun main() {
+    lunar_calendar(10, 2024);
+}
+
+fun lunar_calendar(month: Int, year: Int) {
+    let d = Date.date(year, month, 1);
+    let start_weekday = d.weekday();
+
+    let days_in_month = d.days_in_month();
+
+    let mut day = 1;
+    let mut weekday = Weekday of Sunday;
+    println("          Lunar Calendar         ");
+    print("            ");
+    d.print();
+    println("\\n---------------------------------");
+    println("Sun  Mon  Tue  Wed  Thu  Fri  Sat");
+    let mut is_first_week = True;
+    while day <= days_in_month {
+        for let mut i=0; i<7; i+=1; {
+            if is_first_week && weekday.is_before(start_weekday) {
+                print("     ");
+            } else {
+                if day <= days_in_month {
+                    if day < 10 {
+                        print(" ");
+                    } else {
+                        print("");
+                    }
+                    print(day);
+                    MoonPhase.from_date(Date.date(year, month, day)).print();
+                    print("  ");
+                }
+                day += 1;
+            }
+            weekday = weekday.next();
+        }
+        is_first_week = False;
+        println();
+    }
+
+    println("---------------------------------\n");
+    println("Legend:");
+    println("N: New Moon");
+    println("W: Waxing Crescent");
+    println("Q: First Quarter");
+    println("G: Waxing Gibbous");
+    println("F: Full Moon");
+    println("g: Waning Gibbous");
+    println("q: Last Quarter");
+    println("w: Waning Crescent");
+}
+
+main();`);
+                    break;
+
                 case "const-generics":
                     source.setValue(`fun main() {
     // Create an array struct
@@ -2348,27 +2436,39 @@ main();`)
 
         <select id="example" style="height: 3em; float: left;">
             <option value="hello world">Click to select example program (Default Hello World)</option>
-            <option value="graphics">Screen-Drawing Javascript Interop</option>
-            <option value="sudoku">Sudoku Solver</option>
-            <option value="list">Standard Lib Linked List</option>
-            <option value="result">Standard Lib Error Handling</option>
-            <option value="hashmap">Standard Lib Hashmap</option>
-            <option value="vector">Standard Lib Vector</option>
-            <option value="structural-types">Structural Typing Demo</option>
-            <option value="ffi">Alert Javascript Demo</option>
-            <option value="matrix">Matrix Operations</option>
-            <option value="mandelbrot">Mandelbrot Set</option>
-            <option value="modules">Module System</option>
-            <option value="const-generics">Const-Generics</option>
-            <option value="sum-types">Sum Types</option>
-            <option value="match">Pattern Matching</option>
-            <option value="tuple">Pair (Generics)</option>
-            <option value="factorial">Factorial</option>
-            <option value="let-bindings">Let-Bindings</option>
-            <option value="calculator">Calculator (Parser)</option>
-            <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
-            <option value="myers-diff">Myers Difference Algorithm</option>
-            <option value="cat">Cat</option>
+            <optgroup label="Interesting Programs">
+                <option value="graphics">Screen-Drawing Javascript Interop</option>
+                <option value="sudoku">Sudoku Solver</option>
+                <option value="planets">Positions of Planets</option>
+                <option value="lunar">Lunar Calendar</option>
+                <option value="myers-diff">Myers Difference Algorithm</option>
+                <option value="calculator">Calculator (Parser)</option>
+                <option value="mandelbrot">Mandelbrot Set</option>
+                <option value="matrix">Matrix Operations</option>
+                <option value="aes">AES (128, 192, 256 bit (en/de)crypt)</option>
+            </optgroup>
+            <optgroup label="Standard Lib">
+                <option value="list">Standard Lib Linked List</option>
+                <option value="hashmap">Standard Lib Hashmap</option>
+                <option value="vector">Standard Lib Vector</option>
+                <option value="result">Standard Lib Error Handling</option>
+                <option value="planets">Standard Lib Astronomy</option>
+                <option value="lunar">Standard Lib Time</option>
+            </optgroup>
+            <optgroup label="Simple Language Features">
+                <option value="let-bindings">Let-Bindings</option>
+                <option value="factorial">Factorial</option>
+                <option value="match">Pattern Matching</option>
+                <option value="cat">Cat</option>
+            </optgroup>
+            <optgroup label="Complex Language Features">
+                <option value="structural-types">Structural Typing Demo</option>
+                <option value="sum-types">Sum Types</option>
+                <option value="const-generics">Const-Generics</option>
+                <option value="modules">Module System</option>
+                <option value="tuple">Pair (Generics)</option>
+                <option value="ffi">Alert Javascript Demo</option>
+            </optgroup>
         </select>
         <div class="row">
             <div class="col"><textarea id="source"></textarea></div>

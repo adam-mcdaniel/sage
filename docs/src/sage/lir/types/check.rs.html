@@ -2357,7 +2357,7 @@
                     </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidConstExpr(<span class="self">self</span>.clone()));
                 }
                 <span class="comment">// Add all the bindings to the environment.
-                </span>new_env.add_compile_time_declaration(bindings)<span class="question-mark">?</span>;
+                </span>new_env.add_compile_time_declaration(bindings, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                 <span class="comment">// Typecheck the bindings
                 </span>bindings.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
                 <span class="comment">// Typecheck the expression with the bindings defined.

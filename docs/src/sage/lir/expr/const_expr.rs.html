@@ -1269,6 +1269,30 @@
 <a href="#1268" id="1268">1268</a>
 <a href="#1269" id="1269">1269</a>
 <a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Constant Expressions
 //!
 //! Constant expressions are expressions that can be evaluated at compile time.
@@ -1416,6 +1440,11 @@
         <span class="self">Self</span>::Proc(Procedure::new(common_name, args, ret, body))
     }
 
+
+    <span class="kw">pub fn </span>hard_with(<span class="kw-2">&amp;</span><span class="self">self</span>, older_decls: <span class="kw">impl </span>Into&lt;Declaration&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::Declare(Box::new(older_decls.into()), <span class="self">self</span>.clone().into())
+    }
+
     <span class="doccomment">/// Return this expression, but with a given declaration in scope.
     </span><span class="kw">pub fn </span>with(<span class="kw-2">&amp;</span><span class="self">self</span>, older_decls: <span class="kw">impl </span>Into&lt;Declaration&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span><span class="self">self </span>{
@@ -1429,11 +1458,15 @@
             </span><span class="self">Self</span>::Declare(younger_decls, expr) =&gt; {
                 <span class="comment">// Start with the older declarations.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>result = older_decls.into();
-                <span class="comment">// Add the younder declarations to the older declarations.
+                <span class="comment">// if let Declaration::Module(..) = result {
+                //     self.hard_with(result)
+                // } else {
+                // Add the younder declarations to the older declarations.
                 </span>result.append(<span class="kw-2">*</span>younger_decls.clone());
                 <span class="comment">// Return the merged declaration.
                 </span><span class="self">Self</span>::Declare(Box::new(result), expr.clone())
-            }
+                <span class="comment">// }
+            </span>}
 
             <span class="self">Self</span>::Proc(proc) =&gt; <span class="self">Self</span>::Proc(proc.with(older_decls)),
             <span class="self">Self</span>::PolyProc(proc) =&gt; <span class="self">Self</span>::PolyProc(proc.with(older_decls)),
@@ -1519,6 +1552,11 @@
                 <span class="self">Self</span>::Member(container, member) =&gt; {
                     <span class="kw">let </span>container_ty = container.get_type_checked(env, i)<span class="question-mark">?</span>;
                     <span class="macro">debug!</span>(<span class="string">"Member access on type: {container_ty:?}: {container} . {member}"</span>);
+
+                    <span class="kw">if </span><span class="macro">matches!</span>(container_ty, Type::Pointer(..)) {
+                        <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::Member(container, member));
+                    }
+
                     <span class="prelude-val">Ok</span>(<span class="kw">match </span>(<span class="kw-2">*</span>container.clone(), <span class="kw-2">*</span>member.clone()) {
                         (<span class="self">Self</span>::Annotated(inner, metadata), member) =&gt; {
                             <span class="self">Self</span>::Member(inner, member.into())
@@ -1534,9 +1572,9 @@
                                 }
                             }
                             <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                            new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span>decls)<span class="question-mark">?</span>;
-                            access.eval_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?</span>.with(decls)
-                        }
+                            new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span>decls, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+                            access.eval_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?
+                        </span>}
 
                         (<span class="self">Self</span>::Symbol(name), member) =&gt; {
                             <span class="kw">if </span>env.get_const(<span class="kw-2">&amp;</span>name).is_some() {
@@ -1556,7 +1594,7 @@
                                 <span class="macro">debug!</span>(
                                     <span class="string">"Member access not implemented for: {container_ty} . {member}"
                                 </span>);
-                                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), member));
+                                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::Member(container.eval_checked(env, i)<span class="question-mark">?</span>.into(), member.into()));
                             }
                         }
 
@@ -1628,9 +1666,19 @@
                                 <span class="macro">debug!</span>(<span class="string">"Getting associated const: {container_ty} . {member}"</span>);
                                 <span class="kw">return </span>constant.eval_checked(env, i);
                             }
-                            <span class="macro">debug!</span>(<span class="string">"Member access not implemented for: {container_ty} . {member}"</span>);
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MemberNotFound((<span class="kw-2">*</span>container).into(), member));
-                        }
+
+                            <span class="kw">return </span>container.eval_checked(env, i)<span class="question-mark">?</span>.field(member).eval_checked(env, i);
+                            <span class="comment">// if let Ok(Some((constant, _))) = member
+                            //     .clone()
+                            //     .as_symbol(env)
+                            //     .map(|name| env.get_associated_const(&amp;container_ty, &amp;name))
+                            // {
+                            //     debug!("Getting associated const: {container_ty} . {member}");
+                            //     return constant.eval_checked(env, i);
+                            // }
+                            // debug!("Member access not implemented for: {container_ty} . {member}");
+                            // return Err(Error::MemberNotFound((*container).into(), member));
+                        </span>}
                         <span class="kw">_ </span>=&gt; {
                             <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((constant, <span class="kw">_</span>))) = member
                                 .clone()
@@ -1672,8 +1720,8 @@
                 <span class="self">Self</span>::Declare(bindings, expr) =&gt; {
                     <span class="macro">debug!</span>(<span class="string">"Declaring compile time bindings: {bindings}"</span>);
                     <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                    new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span>bindings)<span class="question-mark">?</span>;
-                    <span class="prelude-val">Ok</span>(expr.eval_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?</span>.with(bindings))
+                    new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span>bindings, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+                    expr.eval_checked(<span class="kw-2">&amp;</span>new_env, i)
                 }
 
                 <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; {
@@ -1697,7 +1745,7 @@
                         },
                         <span class="self">Self</span>::Declare(bindings, expr) =&gt; {
                             <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                            new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span>bindings)<span class="question-mark">?</span>;
+                            new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span>bindings, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
                             expr.monomorphize(ty_args.clone())
                                 .eval_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?
                                 </span>.with(bindings)
@@ -2000,8 +2048,8 @@
 
                     <span class="comment">// If we're accessing a member of a type that is not a tuple,
                     // struct, union, or pointer, we cannot access a member.
-                    </span><span class="kw">_ </span>=&gt; {
-                        <span class="macro">debug!</span>(<span class="string">"Member access not implemented for type: {val_type} . {field}"</span>);
+                    </span>other =&gt; {
+                        <span class="macro">debug!</span>(<span class="string">"Member access not implemented for type: {other} . {field}"</span>);
                         <span class="kw">return </span>ConstExpr::Member(ConstExpr::Type(val_type.clone()).into(), field.clone())
                             .get_type(env)
                             .or_else(|e| {
@@ -2031,7 +2079,7 @@
 
             <span class="self">Self</span>::Declare(bindings, expr) =&gt; expr.get_type_checked(env, i).or_else(|<span class="kw">_</span>| {
                 <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span>bindings)<span class="question-mark">?</span>;
+                new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span>bindings, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
                 expr.get_type_checked(<span class="kw-2">&amp;</span>new_env, i)
             })<span class="question-mark">?</span>,
 
@@ -2046,7 +2094,7 @@
                     }
                     <span class="self">Self</span>::Declare(bindings, expr) =&gt; {
                         <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                        new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span>bindings)<span class="question-mark">?</span>;
+                        new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span>bindings, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
                         <span class="kw">return </span>expr
                             .monomorphize(ty_args)
                             .get_type_checked(<span class="kw-2">&amp;</span>new_env, i)<span class="question-mark">?

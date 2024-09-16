@@ -1150,8 +1150,6 @@
 <a href="#1149" id="1149">1149</a>
 <a href="#1150" id="1150">1150</a>
 <a href="#1151" id="1151">1151</a>
-<a href="#1152" id="1152">1152</a>
-<a href="#1153" id="1153">1153</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Expression
 //!
 //! An expression is a runtime value.
@@ -1633,15 +1631,13 @@
             </span><span class="self">Self</span>::Declare(younger_decls, expr) =&gt; {
                 <span class="comment">// Start with the older declarations.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>result = older_decls.into();
-
                 <span class="kw">if let </span>Declaration::Module(..) = result {
-                    <span class="self">self</span>.hard_with(result)
-                } <span class="kw">else </span>{
-                    <span class="comment">// Add the younder declarations to the older declarations.
-                    </span>result.append(<span class="kw-2">*</span>younger_decls.clone());
-                    <span class="comment">// Return the merged declaration.
-                    </span><span class="self">Self</span>::Declare(Box::new(result), expr.clone())
+                    <span class="kw">return </span><span class="self">self</span>.hard_with(result);
                 }
+                <span class="comment">// Add the younder declarations to the older declarations.
+                </span>result.append(<span class="kw-2">*</span>younger_decls.clone());
+                <span class="comment">// Return the merged declaration.
+                </span><span class="self">Self</span>::Declare(Box::new(result), expr.clone())
             }
 
             <span class="comment">// Return the expression with the declaration in scope.

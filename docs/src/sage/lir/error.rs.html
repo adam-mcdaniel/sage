@@ -352,9 +352,13 @@
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
 <a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
-    Annotation, AssignOp, BinaryOp, ConstExpr, Expr, Mutability, Pattern, PolyProcedure, TernaryOp,
-    Type, UnaryOp,
+    Annotation, AssignOp, BinaryOp, ConstExpr, Expr, Mutability, Pattern, PolyProcedure, TernaryOp, Type, UnaryOp
 };
 <span class="kw">use </span>core::fmt::{Debug, Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 
@@ -467,6 +471,9 @@
 
     <span class="doccomment">/// Tried to define a type that already exists.
     </span>TypeRedefined(String),
+
+    <span class="doccomment">/// Tried to define a module that already exists.
+    </span>ModuleRedefined(String),
 
     <span class="doccomment">/// Unused expression returned a non-None value.
     </span>UnusedExpr(Expr, Type),
@@ -676,6 +683,9 @@
             }
             <span class="self">Self</span>::TypeRedefined(ty) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">"type {} redefined"</span>, ty)
+            }
+            <span class="self">Self</span>::ModuleRedefined(module) =&gt; {
+                <span class="macro">write!</span>(f, <span class="string">"module {} redefined with conflicting definitions"</span>, module)
             }
             <span class="self">Self</span>::UnusedExpr(expr, ty) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">"unused expression {} of type {}"</span>, expr, ty)
