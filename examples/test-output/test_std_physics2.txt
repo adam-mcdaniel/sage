@@ -1,0 +1,20 @@
+          Lunar Calendar         
+            2024-10-1
+---------------------------------
+Sun  Mon  Tue  Wed  Thu  Fri  Sat
+           1w   2w   3N   4N   5N  
+ 6W   7W   8W   9W  10Q  11Q  12Q  
+13Q  14G  15G  16G  17G  18F  19F  
+20F  21g  22g  23g  24g  25q  26q  
+27q  28q  29w  30w  31w  
+---------------------------------
+
+Legend:
+N: New Moon
+W: Waxing Crescent
+Q: First Quarter
+G: Waxing Gibbous
+F: Full Moon
+g: Waning Gibbous
+q: Last Quarter
+w: Waning Crescent

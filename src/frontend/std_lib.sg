@@ -1195,6 +1195,19 @@ mod physics {
                     z=z0
                 };
             }
+
+            fun print(self) {
+                match self {
+                    of Mercury => print("Mercury"),
+                    of Venus => print("Venus"),
+                    of Earth => print("Earth"),
+                    of Mars => print("Mars"),
+                    of Jupiter => print("Jupiter"),
+                    of Saturn => print("Saturn"),
+                    of Uranus => print("Uranus"),
+                    of Neptune => print("Neptune")
+                }
+            }
         }
     }
 }

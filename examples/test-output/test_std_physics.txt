@@ -1,0 +1,17 @@
+On 2024-9-18
+Planet: Mercury
+Position (AU): {x=0.2, y=0.2, z=0.1}
+Planet: Venus
+Position (AU): {x=0.1, y=0.7, z=0.0}
+Planet: Earth
+Position (AU): {x=0.9, y=0.0, z=0.4}
+Planet: Mars
+Position (AU): {x=-1.2, y=0.6, z=-0.6}
+Planet: Jupiter
+Position (AU): {x=2.4, y=-4.1, z=1.3}
+Planet: Saturn
+Position (AU): {x=-5.2, y=-8.0, z=-1.7}
+Planet: Uranus
+Position (AU): {x=11.0, y=-15.1, z=6.0}
+Planet: Neptune
+Position (AU): {x=-8.0, y=-28.8, z=-1.3}
