@@ -479,15 +479,13 @@ impl Expr {
             Self::Declare(younger_decls, expr) => {
                 // Start with the older declarations.
                 let mut result = older_decls.into();
-
-                // if let Declaration::Module(..) = result {
-                //     self.hard_with(result)
-                // } else {
-                    // Add the younder declarations to the older declarations.
-                    result.append(*younger_decls.clone());
-                    // Return the merged declaration.
-                    Self::Declare(Box::new(result), expr.clone())
-                // }
+                if let Declaration::Module(..) = result {
+                    return self.hard_with(result);
+                }
+                // Add the younder declarations to the older declarations.
+                result.append(*younger_decls.clone());
+                // Return the merged declaration.
+                Self::Declare(Box::new(result), expr.clone())
             }
 
             // Return the expression with the declaration in scope.

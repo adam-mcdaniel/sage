@@ -80,13 +80,11 @@ impl Compile for Expr {
         let is_const = matches!(self, Self::ConstExpr(_));
         trace!("Compiling expression {self} (is_const={is_const}) {self:?} in environment {env}");
 
-        let mut debug_str = format!("{self:50}");
-        debug_str.truncate(50);
-
         // Write a little comment about what we're compiling.
         if !matches!(self, Self::ConstExpr(_)) {
             let mut comment = format!("{self}");
-            comment.truncate(70);
+            comment = comment.chars().take(70).collect();
+            output.comment(comment);
         }
 
         // Compile the expression.
@@ -1085,7 +1083,8 @@ impl Compile for ConstExpr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         trace!("Compiling constant expression {self} in environment {env}");
         let mut debug_str = format!("{self}");
-        debug_str.truncate(50);
+        // debug_str.truncate(50);
+        debug_str = debug_str.chars().take(50).collect();
 
         let current_instruction = output.current_instruction();
         let ty = self.get_type(env)?;

@@ -17,7 +17,7 @@ use log::*;
 
 use core::fmt;
 use serde_derive::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 
 /// A compiletime expression.
@@ -166,10 +166,10 @@ impl ConstExpr {
                 // if let Declaration::Module(..) = result {
                 //     self.hard_with(result)
                 // } else {
-                    // Add the younder declarations to the older declarations.
-                    result.append(*younger_decls.clone());
-                    // Return the merged declaration.
-                    Self::Declare(Box::new(result), expr.clone())
+                // Add the younder declarations to the older declarations.
+                result.append(*younger_decls.clone());
+                // Return the merged declaration.
+                Self::Declare(Box::new(result), expr.clone())
                 // }
             }
 
@@ -278,7 +278,7 @@ impl ConstExpr {
                             }
                             let mut new_env = env.clone();
                             new_env.add_compile_time_declaration(&decls, true)?;
-                            access.eval_checked(&new_env, i)?.with(decls)
+                            access.eval_checked(&new_env, i)?
                         }
 
                         (Self::Symbol(name), member) => {

@@ -46,7 +46,7 @@ pub enum Declaration {
     /// use the `Declaration::module` method.
     /// This will redistribute the declarations to make sure
     /// everything is in-order internally to be imported/exported.
-    Module(String, Arc<Vec<Declaration>>, bool),
+    Module(String, Arc<Vec<Declaration>>, bool, usize),
     /// Import an element from a module.
     FromImport {
         module: ConstExpr,
@@ -72,6 +72,15 @@ impl Declaration {
 
     /// Create a module with a given name and a list of declarations, and whether or not it is checked.
     pub fn module(name: impl ToString, decls: impl Into<Vec<Self>>, checked: bool) -> Self {
+        lazy_static::lazy_static! {
+            static ref MODULE_COUNT: std::sync::Mutex<usize> = std::sync::Mutex::new(0);
+        }
+        let module_count = {
+            let mut count = MODULE_COUNT.lock().unwrap();
+            *count += 1;
+            *count
+        };
+
         let mut decls = decls.into();
         let mut import = Self::many(decls.clone());
         if !checked {
@@ -85,7 +94,7 @@ impl Declaration {
             decl.distribute_decls(&import.clone());
         }
 
-        let mut result = Self::Module(name.to_string(), Arc::new(decls), checked);
+        let mut result = Self::Module(name.to_string(), Arc::new(decls), checked, module_count);
         if !checked {
             result.mark_no_checking();
         }
@@ -94,7 +103,7 @@ impl Declaration {
 
     fn mark_no_checking(&mut self) {
         match self {
-            Self::Module(_, decls, checked) => {
+            Self::Module(_, decls, checked, ..) => {
                 *checked = false;
                 for decl in Arc::make_mut(decls).iter_mut() {
                     decl.mark_no_checking();
@@ -162,22 +171,6 @@ impl Declaration {
                 *proc = proc.with(distributed.clone());
             }
             _ => {}
-        }
-    }
-
-    fn is_import(&self) -> bool {
-        match self {
-            Self::FromImport { .. } => true,
-            Self::FromImportAll(..) => true,
-            _ => false,
-        }
-    }
-
-    fn is_module(&self) -> bool {
-        match self {
-            Self::Module(..) => true,
-            Self::Many(decls) => decls.iter().any(|decl| decl.is_module()),
-            _ => false,
         }
     }
 
@@ -689,7 +682,7 @@ impl TypeCheck for Declaration {
                     })?;
             }
 
-            Self::Module(name, decls, checked) => {
+            Self::Module(name, decls, checked, ..) => {
                 Self::Many(decls.clone()).detect_duplicate_modules(&mut HashSet::new())?;
                 if *checked {
                     let mut new_env = env.clone();
@@ -714,7 +707,6 @@ impl TypeCheck for Declaration {
 
             Self::FromImport { module, names } => {
                 module.type_check(env)?;
-                env.save_type_checked_const(module.clone());
                 for (name, _) in names {
                     let access = module.clone().field(ConstExpr::var(name));
                     access.type_check(env)?;
@@ -722,7 +714,6 @@ impl TypeCheck for Declaration {
             }
             Self::FromImportAll(module) => {
                 module.type_check(env)?;
-                env.save_type_checked_const(module.clone());
             },
         }
         Ok(())
@@ -1019,10 +1010,11 @@ impl Hash for Declaration {
                 state.write_u8(9);
                 decls.hash(state);
             }
-            Self::Module(name, decls, checked) => {
+            Self::Module(name, decls, _checked, id) => {
                 state.write_u8(10);
                 name.hash(state);
                 decls.hash(state);
+                id.hash(state);
             }
             Self::FromImport { module, names } => {
                 state.write_u8(11);

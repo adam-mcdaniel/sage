@@ -210,6 +210,7 @@ impl Pattern {
                                     found[index] = true;
                                 }
                             } else {
+                                error!("In pattern matching, the type of the expression does not match the type of the enum.");
                                 // If the types don't match (the pattern doesn't match the matched expression's type), return an error.
                                 return Err(Error::MismatchedTypes {
                                     expected: matching_expr_ty.clone(),
@@ -442,6 +443,7 @@ impl Pattern {
         // It should be the same as the type of the branch.
         if !expected.can_decay_to(&found, env)? {
             // If not, return an error.
+            error!("Result of match expression {} does not match expected type {} in expr {matching_expr} for branch {branch} ({result_expr})", found, expected);
             return Err(Error::MismatchedTypes {
                 expected,
                 found,

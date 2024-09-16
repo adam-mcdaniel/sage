@@ -12,8 +12,7 @@ use crate::asm::{AssemblyProgram, Globals, Location};
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 use std::{
-    collections::{HashMap, HashSet},
-    sync::{Arc, RwLock},
+    collections::{HashMap, HashSet}, sync::{Arc, RwLock}
 };
 
 use log::*;
@@ -39,7 +38,7 @@ pub struct Env {
     procs: Arc<HashMap<String, Procedure>>,
     /// The variables defined under the environment.
     vars: Arc<HashMap<String, (Mutability, Type, isize)>>,
-    modules: Arc<HashMap<String, Arc<Vec<Declaration>>>>,
+    modules: Arc<HashMap<String, usize>>,
     /// The static variables defined under the environment.
     static_vars: Arc<HashMap<String, (Mutability, Type, Location)>>,
     /// A lookup for the offsets of global variables.
@@ -697,26 +696,24 @@ impl Env {
     ) -> Result<(), Error> {
         debug!("Adding compile-time declaration {declaration}");
         match declaration {
-            Declaration::Module(module_name, decls, checked) => {
+            Declaration::Module(module_name, decls, checked, defined_id) => {
                 if !checked {
                     self.save_type_checked_const(ConstExpr::Symbol(module_name.clone()));
                 }
 
-                // Get all the declaration names
-                if self.consts.contains_key(module_name) {
-                    // If the module is already defined, we don't need to recompile it
-                    return Ok(());
-                }
-                
-                if let Some(module) = self.modules.get(module_name) {
+                if let Some(found_id) = self.modules.get(module_name) {
                     // Check if the declarations are the same
-                    if module == decls {
+                    if *found_id == *defined_id {
                         // If they are the same, we don't need to recompile the module
                         return Ok(());
                     } else {
                         // If they are different, we need to recompile the module
-                        Arc::make_mut(&mut self.modules).insert(module_name.clone(), decls.clone());
+                        // Arc::make_mut(&mut self.modules).insert(module_name.clone(), *defined_id);
+                        return Err(Error::ModuleRedefined(module_name.clone()))
                     }
+                } else {
+                    // If the module is not defined, we need to define it
+                    Arc::make_mut(&mut self.modules).insert(module_name.clone(), *defined_id);
                 }
 
                 let mut exports = vec![];
@@ -885,8 +882,8 @@ impl Env {
                     // })?;
                 }
             }
-            Declaration::Var(_, _, _, _) => {}
-            Declaration::VarPat(_, _) => {}
+            Declaration::Var(..) => {}
+            Declaration::VarPat(..) => {}
             Declaration::Many(decls) => {
                 for decl in decls.iter() {
                     self.add_compile_time_declaration(decl, compiling)?;

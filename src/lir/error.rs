@@ -1,5 +1,5 @@
 use super::{
-    Annotation, AssignOp, BinaryOp, ConstExpr, Declaration, Expr, Mutability, Pattern, PolyProcedure, TernaryOp, Type, UnaryOp
+    Annotation, AssignOp, BinaryOp, ConstExpr, Expr, Mutability, Pattern, PolyProcedure, TernaryOp, Type, UnaryOp
 };
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 

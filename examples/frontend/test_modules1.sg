@@ -1,112 +1,17 @@
-
-/*
-mod std {
-    mod io {
-        fun putln<T>(x: T) {
-            print(x);
-            print('\n');
-        }
-    
-        fun putchar(c: Char) {
-            print(c);
-        }
-
-        fun getchar(): Char {
-            let mut ch = ' ';
-            input(&mut ch);
-            return ch;
-        }
-
-        impl Char {
-            fun put(&self) {
-                putchar(*self);
-            }
-
-            fun get(): Char {
-                return getchar();
-            }
-        }
-    }
-
-    mod testing {
-        from io import putln;
-
-        const TESTING = 5;
-
-        struct Point {
-            x: Float,
-            y: Float,
-        }
-        
-        impl Point {
-            fun new(x: Float, y: Float): Point {
-                return {x=x, y=y};
-            }
-        
-            fun move(&mut self, dx: Float, dy: Float) {
-                self.x += dx;
-                self.y += dy;
-            }
-        }
-        
-        fun test() {
-            println(TESTING);
-        }
-    }
-
-    mod math {
-        from testing import TESTING, test;
-
-        fun cos(x: Float): Float {
-            println(TESTING, " from math");
-            test();
-            return 1.0 - x * x / 2.0 + x * x * x * x / 24.0;
-        }
-
-        fun sin(x: Float): Float {
-            return x - x * x * x / 6.0 + x * x * x * x * x / 120.0;
-        }
-
-        fun tan(x: Float): Float {
-            return x + x * x * x / 3.0 + 2.0 * x * x * x * x * x / 15.0;
-        }
-    }
-
-}
-
-from std.io import putln as p;
-from std.testing import Point, test;
-
-fun main() {
-    test();
-    
-    p<Char>('!');
-    let mut x = Point.new(5.0, 6.0);
-    p<Point>(x);
-    x.move(1.0, 2.0);
-    
-    p<Point>(x);
-    
-    test();
-}
-
-main();
-*/
-
 mod std2 {
     mod math {
         // Calculate the greatest common divisor of two numbers using Euclid's algorithm
-        fun gcd(a: Int, b: Int): Int {
+        fun gcd_x(a: Int, b: Int): Int {
             if b == 0 {
                 return a;
             }
-            return gcd(b, a % b);
+            return gcd_x(b, a % b);
         }
     }
 
     mod io {
         // Import from math just to test
-        from math import gcd;
+        from math import gcd_x;
 
         // Print a character to the screen
         fun putln<T>(x: T) {
@@ -214,10 +119,10 @@ mod std2 {
     }
 }
 
-from std2.math import gcd;
+from std2.math import gcd_x;
 from std2.fallible import Option, Result;
 
-println("GCD of 12 and 15 = ", gcd(12, 15));
+println("GCD of 12 and 15 = ", gcd_x(12, 15));
 
 enum Error {
     DivideByZero { numerator: Int },

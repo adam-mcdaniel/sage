@@ -15,25 +15,37 @@ mod math {
 
     impl Float {
         fun abs(self): Float {
-            if self < 0 {
+            if self < 0.0 {
                 return -self;
             }
             return self;
         }
 
         fun round(self): Int {
-            if self < 0 {
+            if self < 0.0 {
                 return (self - 0.5) as Int;
             }
             return (self + 0.5) as Int;
         }
 
         fun round_to(self, n: Int): Float {
-            let mut factor = 1;
+            let mut factor = 1.0;
             for let mut i=0; i<n; i+=1; {
                 factor *= 10;
             }
             return (self * factor).round() as Float / factor as Float;
+        }
+
+        fun floor(self: Float): Int {
+            return self as Int;
+        }
+
+        fun ceil(self: Float): Int {
+            let mut i = self as Int;
+            if self > i {
+                return i + 1;
+            }
+            return i;
         }
     }
 
@@ -839,26 +851,52 @@ mod time {
         }
 
         fun from_date(self: Date): Instant {
-            let mut days = 0;
-            for let mut y=1970; y<self.year; y+=1; {
-                days += 365;
-                if Date.date(y, 1, 1).is_leap_year() {
-                    days += 1;
-                }
-            }
-            let mut days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-            if self.is_leap_year() {
-                days_in_month[1] = 29;
-            }
-            for let mut m=1; m<self.month; m+=1; {
-                days += days_in_month[m - 1];
-            }
-            days += self.day - 1;
+            let days = self.days_since_epoch();
             
             return Instant.from_us_since_epoch(days * SECONDS_PER_DAY * 1000000)
                 .add(Duration.from_hours(self.hour))
                 .add(Duration.from_mins(self.minute))
                 .add(Duration.from_secs(self.second));
+        }
+    }
+
+    enum Weekday {
+        Sunday,
+        Monday,
+        Tuesday,
+        Wednesday,
+        Thursday,
+        Friday,
+        Saturday
+    }
+
+    impl Weekday {
+        fun next(self): Weekday {
+            match self {
+                of Sunday => Weekday of Monday,
+                of Monday => Weekday of Tuesday,
+                of Tuesday => Weekday of Wednesday,
+                of Wednesday => Weekday of Thursday,
+                of Thursday => Weekday of Friday,
+                of Friday => Weekday of Saturday,
+                of Saturday => Weekday of Sunday
+            }
+        }
+
+        fun to_int(self): Int {
+            match self {
+                of Sunday => 0,
+                of Monday => 1,
+                of Tuesday => 2,
+                of Wednesday => 3,
+                of Thursday => 4,
+                of Friday => 5,
+                of Saturday => 6
+            }
+        }
+
+        fun is_before(self, other: Weekday): Bool {
+            self.to_int() < other.to_int()
         }
     }
 
@@ -876,6 +914,46 @@ mod time {
             return { year=year, month=month, day=day, hour=0, minute=0, second=0 };
         }
 
+        fun weekday(self): Weekday {
+            match self.days_since_epoch() % 7 {
+                0 => Weekday of Thursday,
+                1 => Weekday of Friday,
+                2 => Weekday of Saturday,
+                3 => Weekday of Sunday,
+                4 => Weekday of Monday,
+                5 => Weekday of Tuesday,
+                6 => Weekday of Wednesday,
+                _ => Weekday of Sunday
+            }
+        }
+
+        fun days_since_epoch(self): Int {
+            let mut days = 0;
+            for let mut y=1970; y<self.year; y+=1; {
+                days += 365;
+                if Date.date(y, 1, 1).is_leap_year() {
+                    days += 1;
+                }
+            }
+            let mut days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            if self.is_leap_year() {
+                days_in_month[1] = 29;
+            }
+            for let mut m=1; m<self.month; m+=1; {
+                days += days_in_month[m - 1];
+            }
+            days += self.day - 1;
+            return days;
+        }
+
+        fun days_in_month(self): Int {
+            let mut days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            if self.is_leap_year() {
+                days_in_month[1] = 29;
+            }
+            return days_in_month[self.month - 1];
+        }
+
         fun is_leap_year(self): Bool {
             return self.year % 4 == 0 && (self.year % 100 != 0 || self.year % 400 == 0);
         }
@@ -888,7 +966,7 @@ mod time {
 
 mod physics {
     // Import from math just to test
-    from time import Instant, Duration, SECONDS_PER_YEAR;
+    from time import Instant, Duration, Date, SECONDS_PER_YEAR;
 
     // Calculate the distance between two points
     fun distance(x1: Float, y1: Float, x2: Float, y2: Float): Float {
@@ -971,6 +1049,51 @@ mod physics {
         // Calculate the absolute magnitude of a star
         fun absolute_magnitude(apparent_magnitude: Float, distance: Float): Float {
             return apparent_magnitude - 5 * math.ln(distance / 10);
+        }
+
+
+        enum MoonPhase {
+            New,
+            WaxingCrescent,
+            FirstQuarter,
+            WaxingGibbous,
+            Full,
+            WaningGibbous,
+            LastQuarter,
+            WaningCrescent
+        }
+
+        impl MoonPhase {
+            const SYNODIC_MONTH = 29.53058868;
+            const EPOCH_FULL_MOON_OFFSET = 22;
+            fun from_date(date: Date): MoonPhase {
+                let phase_days = (date.days_since_epoch() + MoonPhase.EPOCH_FULL_MOON_OFFSET + 1.5) % MoonPhase.SYNODIC_MONTH;
+                let phase_index = ((phase_days / MoonPhase.SYNODIC_MONTH) * 8.0).floor() % 8;
+                match phase_index {
+                    0 => MoonPhase of New,
+                    1 => MoonPhase of WaxingCrescent,
+                    2 => MoonPhase of FirstQuarter,
+                    3 => MoonPhase of WaxingGibbous,
+                    4 => MoonPhase of Full,
+                    5 => MoonPhase of WaningGibbous,
+                    6 => MoonPhase of LastQuarter,
+                    7 => MoonPhase of WaningCrescent,
+                    _ => MoonPhase of New
+                }
+            }
+
+            fun print(self) {
+                match self {
+                    of New => print("N"),
+                    of WaxingCrescent => print("W"),
+                    of FirstQuarter => print("Q"),
+                    of WaxingGibbous => print("G"),
+                    of Full => print("F"),
+                    of WaningGibbous => print("g"),
+                    of LastQuarter => print("q"),
+                    of WaningCrescent => print("w")
+                }
+            }
         }
 
         enum Planet {
