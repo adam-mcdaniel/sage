@@ -163,14 +163,10 @@ impl ConstExpr {
             Self::Declare(younger_decls, expr) => {
                 // Start with the older declarations.
                 let mut result = older_decls.into();
-                // if let Declaration::Module(..) = result {
-                //     self.hard_with(result)
-                // } else {
                 // Add the younder declarations to the older declarations.
                 result.append(*younger_decls.clone());
                 // Return the merged declaration.
                 Self::Declare(Box::new(result), expr.clone())
-                // }
             }
 
             Self::Proc(proc) => Self::Proc(proc.with(older_decls)),
@@ -430,7 +426,6 @@ impl ConstExpr {
                 }
 
                 Self::Monomorphize(expr, ty_args) => {
-                    // let ty_args = ty_args.into_iter().map(|t| t.simplify(env)).collect::<Result<Vec<_>, _>>()?;
                     debug!("Monomorphizing {expr} with ty_args {ty_args:?}");
 
                     Ok(match expr.clone().eval(env)? {
