@@ -408,7 +408,7 @@ impl GetType for Expr {
             }
 
             // Get the type of an index access.
-            Self::Index(val, _) => match val.get_type_checked(env, i)?.simplify(env)? {
+            Self::Index(val, _) => match val.get_type_checked(env, i)?.simplify_until_concrete(env, false)? {
                 // Only arrays and pointers can be indexed.
                 Type::Array(item, _) => *item,
                 Type::Pointer(_, item) => *item,

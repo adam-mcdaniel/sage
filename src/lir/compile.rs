@@ -589,7 +589,7 @@ impl Compile for Expr {
                 // Calculate the size of this expression.
                 let size = t.get_size(env)?;
                 // Get the type of the value being indexed
-                let val_type = val.get_type(env)?;
+                let val_type = val.get_type(env)?.simplify_until_concrete(env, false)?;
                 // Get the size of the value being indexed.
                 let val_size = val_type.get_size(env)?;
                 // Figure out what to do based on the value's type.
@@ -974,7 +974,7 @@ impl Compile for Expr {
                 // Get the reference of an indexed value.
                 Expr::Index(val, idx) => {
                     // Get the type of the value we want to index.
-                    let val_type = val.get_type(env)?;
+                    let val_type = val.get_type(env)?.simplify_until_concrete(env, false)?;
                     match val_type {
                         // If the value is an array:
                         Type::Array(ref elem, _) => {
@@ -1047,7 +1047,10 @@ impl Compile for Expr {
                             output.op(CoreOp::Push(C, 1));
                         }
                         // Otherwise, return an error.
-                        _ => return Err(Error::InvalidIndex(Expr::Index(val, idx))),
+                        other => {
+                            error!("Could not index type {other}");
+                            return Err(Error::InvalidIndex(Expr::Index(val, idx)))
+                        },
                     }
                 }
                 // Otherwise, return an error.

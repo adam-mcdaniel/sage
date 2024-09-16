@@ -494,7 +494,7 @@ impl TypeCheck for Expr {
                 Expr::ConstExpr(cexpr) => cexpr.type_check(env),
                 Expr::Deref(inner) | Expr::Index(inner, _) => {
                     // Confirm that the inner expression can be referenced.
-                    match inner.get_type(env)? {
+                    match inner.get_type(env)?.simplify_until_concrete(env, false)? {
                         // If we are dereferencing/indexing a pointer,
                         // confirm that the inner pointer has the expected mutability.
                         Type::Pointer(found_mutability, _) => {
@@ -909,7 +909,7 @@ impl TypeCheck for Expr {
                 // Typecheck the index we want to access.
                 idx.type_check(env)?;
                 // Get the type of the expression we want to index.
-                let val_type = val.get_type(env)?;
+                let val_type = val.get_type(env)?.simplify_until_concrete(env, false)?;
                 // Get the type of the index.
                 let idx_type = idx.get_type(env)?;
                 // Confirm that the type is an array or pointer.
