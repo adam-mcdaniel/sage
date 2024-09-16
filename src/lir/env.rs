@@ -788,10 +788,9 @@ impl Env {
             Declaration::FromImport { module, names } => {
                 let module = module.clone().eval(self)?;
                 for (name, alias) in names {
-                    let access = module.clone().field(ConstExpr::Symbol(name.clone()));
+                    let access = module.clone().field(ConstExpr::Symbol(name.clone())).eval(self)?;
                     let name = alias.clone().unwrap_or(name.clone());
 
-                    // if !self.types.contains_key(&name) {
                     if let Ok(Type::Type(ty)) = access.get_type(self) {
                         self.define_type(&name, *ty);
                     }
@@ -803,7 +802,7 @@ impl Env {
                 let module_ty = module.get_type(self)?;
                 if let Type::Struct(fields) = module_ty {
                     for name in fields.keys() {
-                        let access = module.clone().field(ConstExpr::Symbol(name.clone()));
+                        let access = module.clone().field(ConstExpr::Symbol(name.clone())).eval(self)?;
 
                         if let Ok(Type::Type(ty)) = access.get_type(self) {
                             self.define_type(name, *ty);

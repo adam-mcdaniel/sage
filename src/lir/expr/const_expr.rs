@@ -426,7 +426,7 @@ impl ConstExpr {
                     debug!("Declaring compile time bindings: {bindings}");
                     let mut new_env = env.clone();
                     new_env.add_compile_time_declaration(&bindings, true)?;
-                    Ok(expr.eval_checked(&new_env, i)?.with(bindings))
+                    expr.eval_checked(&new_env, i)
                 }
 
                 Self::Monomorphize(expr, ty_args) => {

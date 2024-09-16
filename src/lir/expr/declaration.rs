@@ -687,44 +687,6 @@ impl TypeCheck for Declaration {
                         decl.type_check(&new_env)?;
                         new_env.add_declaration(decl, false)
                     })?;
-
-                /*
-                lazy_static! {
-                    // Use this to limit recursive parallelism.
-                    static ref PARALLEL_RECURSION_DEPTH: RwLock<usize> = RwLock::new(0);
-                }
-
-                const PARALLEL_RECURSION_LIMIT: usize = 16;
-
-                // Get the current recursion depth.
-                let depth = *PARALLEL_RECURSION_DEPTH.read().unwrap();
-
-                if depth < PARALLEL_RECURSION_LIMIT && comp_time_decls.len() > 2 {
-                    // Increment the recursion depth.
-                    *PARALLEL_RECURSION_DEPTH.write().unwrap() += 1;
-
-                    // Type check all the compile time declarations in parallel.
-                    // for chunk in comp_time_decls.chunks(2) {
-                    //     info!("Typechecking {} declarations in parallel", chunk.len());
-
-                    //     chunk.par_iter().try_for_each(|decl| {
-                    //         decl.type_check(&new_env)
-                    //     })?;
-                    // }
-                    debug!("Typechecking {} declarations in parallel", comp_time_decls.len());
-                    comp_time_decls.par_iter().try_for_each(|decl| {
-                        decl.type_check(&new_env)
-                    })?;
-                    // for decl in comp_time_decls {
-                    //     decl.type_check(&new_env)?;
-                    // }
-                } else {
-                    // Type check all the compile time declarations sequentially.
-                    for decl in comp_time_decls {
-                        decl.type_check(&new_env)?;
-                    }
-                }
-                 */
             }
 
             Self::Module(name, decls, checked) => {
