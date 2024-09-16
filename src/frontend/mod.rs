@@ -19,7 +19,6 @@ pub fn parse(
     let mut expr = parse_source(&without_comments(input), filename.map(|x| x.to_owned()))?;
     use crate::side_effects::Output;
     if include_std {
-        // let std_lib = parse_module("std", &without_comments(include_str!("std_lib.sg")), false)?;
         // Only check the stdlib when we're in debug mode
         let in_debug_mode = cfg!(debug_assertions);
         let std_lib = parse_module("std", &without_comments(include_str!("std_lib.sg")), in_debug_mode)?;
