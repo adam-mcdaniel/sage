@@ -5014,6 +5014,24 @@
 <a href="#5013" id="5013">5013</a>
 <a href="#5014" id="5014">5014</a>
 <a href="#5015" id="5015">5015</a>
+<a href="#5016" id="5016">5016</a>
+<a href="#5017" id="5017">5017</a>
+<a href="#5018" id="5018">5018</a>
+<a href="#5019" id="5019">5019</a>
+<a href="#5020" id="5020">5020</a>
+<a href="#5021" id="5021">5021</a>
+<a href="#5022" id="5022">5022</a>
+<a href="#5023" id="5023">5023</a>
+<a href="#5024" id="5024">5024</a>
+<a href="#5025" id="5025">5025</a>
+<a href="#5026" id="5026">5026</a>
+<a href="#5027" id="5027">5027</a>
+<a href="#5028" id="5028">5028</a>
+<a href="#5029" id="5029">5029</a>
+<a href="#5030" id="5030">5030</a>
+<a href="#5031" id="5031">5031</a>
+<a href="#5032" id="5032">5032</a>
+<a href="#5033" id="5033">5033</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::{error, trace};
 <span class="kw">use </span>nom::{
     branch::alt,
@@ -8823,9 +8841,13 @@
 <span class="kw">fn </span>parse_float_literal&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;&gt;(
     input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str,
 ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str, f64, E&gt; {
+    <span class="comment">// Parse a signed float
+    </span><span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
+    <span class="kw">let </span>(input, is_negative) = opt(tag(<span class="string">"-"</span>))(input)<span class="question-mark">?</span>;
+
     <span class="kw">let </span>(input, result) = map(
         pair(digit1, preceded(char(<span class="string">'.'</span>), digit1)),
-        |(a, b): (<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>str)| <span class="macro">format!</span>(<span class="string">"{}.{}"</span>, a, b).parse().unwrap(),
+        |(a, b): (<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>str)| <span class="macro">format!</span>(<span class="string">"{}.{}"</span>, a, b).parse::&lt;f64&gt;().unwrap(),
     )(input)<span class="question-mark">?</span>;
 
     <span class="comment">// Peek and make sure the next character is not a symbol character
@@ -8835,7 +8857,11 @@
         }
     }
 
-    <span class="prelude-val">Ok</span>((input, result))
+    <span class="kw">if </span>is_negative.is_some() {
+        <span class="prelude-val">Ok</span>((input, -result))
+    } <span class="kw">else </span>{
+        <span class="prelude-val">Ok</span>((input, result))
+    }
 }
 
 <span class="doccomment">/// Parse a unicode sequence, of the form u{XXXX}, where XXXX is 1 to 6
@@ -8898,7 +8924,17 @@
             value(<span class="string">'/'</span>, char(<span class="string">'/'</span>)),
             value(<span class="string">'"'</span>, char(<span class="string">'"'</span>)),
             value(<span class="string">'\''</span>, char(<span class="string">'\''</span>)),
-        )),
+            <span class="comment">// Parse an \x followed by two hex digits, and convert it to a char
+            </span>map(
+                preceded(char(<span class="string">'x'</span>), take_while_m_n(<span class="number">2</span>, <span class="number">2</span>, |c: char| c.is_ascii_hexdigit())),
+                |hex| u8::from_str_radix(hex, <span class="number">16</span>).unwrap() <span class="kw">as </span>char,
+            ),
+            <span class="comment">// Parse an \u followed by four hex digits, and convert it to a char
+            // map(
+            //     preceded(char('u'), take_while_m_n(4, 4, |c: char| c.is_ascii_hexdigit())),
+            //     |hex| char::from_u32(u32::from_str_radix(hex, 16).unwrap()).unwrap(),
+            // ),
+        </span>)),
     )
     .parse(input)
 }

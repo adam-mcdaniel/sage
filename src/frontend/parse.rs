@@ -3807,9 +3807,13 @@ fn parse_int_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 fn parse_float_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, f64, E> {
+    // Parse a signed float
+    let (input, _) = whitespace(input)?;
+    let (input, is_negative) = opt(tag("-"))(input)?;
+
     let (input, result) = map(
         pair(digit1, preceded(char('.'), digit1)),
-        |(a, b): (&str, &str)| format!("{}.{}", a, b).parse().unwrap(),
+        |(a, b): (&str, &str)| format!("{}.{}", a, b).parse::<f64>().unwrap(),
     )(input)?;
 
     // Peek and make sure the next character is not a symbol character
@@ -3819,7 +3823,11 @@ fn parse_float_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         }
     }
 
-    Ok((input, result))
+    if is_negative.is_some() {
+        Ok((input, -result))
+    } else {
+        Ok((input, result))
+    }
 }
 
 /// Parse a unicode sequence, of the form u{XXXX}, where XXXX is 1 to 6
@@ -3882,6 +3890,16 @@ where
             value('/', char('/')),
             value('"', char('"')),
             value('\'', char('\'')),
+            // Parse an \x followed by two hex digits, and convert it to a char
+            map(
+                preceded(char('x'), take_while_m_n(2, 2, |c: char| c.is_ascii_hexdigit())),
+                |hex| u8::from_str_radix(hex, 16).unwrap() as char,
+            ),
+            // Parse an \u followed by four hex digits, and convert it to a char
+            // map(
+            //     preceded(char('u'), take_while_m_n(4, 4, |c: char| c.is_ascii_hexdigit())),
+            //     |hex| char::from_u32(u32::from_str_radix(hex, 16).unwrap()).unwrap(),
+            // ),
         )),
     )
     .parse(input)

@@ -85,6 +85,69 @@
             }
             console.log(document.getElementById("example").value);
             switch (document.getElementById("example").value) {
+                case "mandelbrot":
+                    source.setValue(`fun main() {
+    let (x_center, y_center) = (-0.6, 0.0);
+
+    let width = 80;
+    let height = 40;
+
+    let max_iter = 250;
+    let zoom = 1.25;
+
+    let bounds = get_bounds(x_center, y_center, zoom);
+
+    mandelbrot(bounds.x_min, bounds.x_max, bounds.y_min, bounds.y_max, width, height, max_iter);
+}
+
+fun mandelbrot(x_min: Float, x_max: Float, y_min: Float, y_max: Float, width: Int, height: Int, max_iter: Int) {
+    let mut x0 = 0.0;
+    let mut y0 = 0.0;
+
+    let (mut x, mut y) = (0.0, 0.0);
+    let mut iter = 0;
+    let mut x_temp = 0.0;
+    for let mut py=0; py<height; py+=1; {
+        for let mut px=0; px<width; px+=1; {
+            x0 = x_min + (x_max - x_min) * px / (width - 1);
+            y0 = y_min + (y_max - y_min) * py / (height - 1);
+
+            x = 0.0;
+            y = 0.0;
+            iter = 0;
+
+            while x*x + y*y < 4.0 && iter < max_iter {
+                x_temp = x*x - y*y + x0;
+                y = 2*x*y + y0;
+                x = x_temp;
+                iter += 1;
+            }
+
+            if iter == max_iter {
+                print(" ");
+            } else if iter < max_iter / 8 {
+                print(".");
+            } else if iter < max_iter / 4 {
+                print("*");
+            } else if iter < max_iter / 2 {
+                print("+");
+            } else {
+                print("#");
+            }
+        }
+        print("\\n");
+    }
+}
+
+fun get_bounds(x_center: Float, y_center: Float, zoom: Float): {x_min: Float, x_max: Float, y_min: Float, y_max: Float} {
+    // Zoom 1.0 = (x_max - x_min) = 2.0
+    let (x_min, x_max) = (x_center - 1.0 / zoom, x_center + 1.0 / zoom);
+    let (y_min, y_max) = (y_center - 1.0 / zoom, y_center + 1.0 / zoom);
+    return {x_min, x_max, y_min, y_max};
+}
+
+main();`);
+                    break;
                 case "myers-diff":
                     source.setValue(`from std.collections import *;
 
@@ -2294,6 +2357,7 @@ main();`)
             <option value="structural-types">Structural Typing Demo</option>
             <option value="ffi">Alert Javascript Demo</option>
             <option value="matrix">Matrix Operations</option>
+            <option value="mandelbrot">Mandelbrot Set</option>
             <option value="modules">Module System</option>
             <option value="const-generics">Const-Generics</option>
             <option value="sum-types">Sum Types</option>
