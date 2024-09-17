@@ -502,7 +502,7 @@ impl Pattern {
         // Get the type of the expression being matched
         let match_type = expr.get_type(env)?.simplify_until_concrete(env, false)?;
         // Define the variable in the new environment.
-        new_env.define_var(var_name.clone(), Mutability::Immutable, match_type.clone(), false)?;
+        new_env.define_var(var_name.clone(), Mutability::Immutable, match_type.clone(), true)?;
         // Generate the expression which evaluates the `match` expression.
         let match_expr = Pattern::match_pattern_helper(&Expr::var(&var_name), branches, &new_env)?;
 
