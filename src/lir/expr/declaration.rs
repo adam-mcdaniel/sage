@@ -264,7 +264,7 @@ impl Declaration {
                 };
                 // Get the size of the variables for the body of the declaration.
                 var_size = var_ty.get_size(env)?;
-                println!("Var {name} has type {var_ty:?} is {var_size}");
+                // println!("Var {name} has type {var_ty:?} is {var_size}");
                 let cur = output.current_instruction();
                 // Compile the expression to leave the value on the stack.
                 expr.clone().compile_expr(env, output)?;

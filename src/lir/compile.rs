@@ -96,10 +96,13 @@ impl Compile for Expr {
             }
 
             Self::Match(expr, branches) => {
+                let cur = output.current_instruction();
                 // Generate the pattern matching code.
                 Pattern::match_pattern(&expr, &branches, env)?
                     // Compile the pattern matching code.
                     .compile_expr(env, output)?;
+                output.log_instructions_after("match", &format!("for expr {expr}"), cur);
+                debug!(target: "match", "Matched {expr} in {env}");
             }
 
             Self::IfLet(pat, expr, t, e) => {
@@ -130,17 +133,17 @@ impl Compile for Expr {
                     .clone();
                 if let Expr::Annotated(lhs, metadata) = &*lhs {
                     return binop
-                        .compile_strict(lhs, &rhs, env, output)
+                        .compile(lhs, &rhs, env, output)
                         .map_err(|e| e.annotate(metadata.clone()));
                 }
                 if let Expr::Annotated(rhs, metadata) = &*rhs {
                     return binop
-                        .compile_strict(&lhs, rhs, env, output)
+                        .compile(&lhs, rhs, env, output)
                         .map_err(|e| e.annotate(metadata.clone()));
                 }
 
                 // Compile the binary operation on the two expressions.
-                binop.compile_strict(&lhs, &rhs, env, output)?;
+                binop.compile(&lhs, &rhs, env, output)?;
             }
             Self::TernaryOp(ternop, a, b, c) => {
                 let ternop = env
@@ -192,7 +195,7 @@ impl Compile for Expr {
             Self::Many(exprs) => {
                 for expr in exprs {
                     // Compile the expression in the block.
-                    expr.compile_expr(env, output)?;
+                    env.compile_args([expr], output)?;
                 }
             }
 
@@ -248,40 +251,29 @@ impl Compile for Expr {
                     // If the procedure is a core builtin,
                     Expr::ConstExpr(ConstExpr::CoreBuiltin(builtin)) => {
                         // Push the arguments to the procedure on the stack.
-                        for arg in &args {
-                            // Compile the argument (push it on the stack)
-                            arg.clone().compile_expr(env, output)?;
-                        }
+                        env.compile_args(args, output)?;
                         // Apply the core builtin to the arguments on the stack.
                         builtin.compile_expr(env, output)?;
                     }
                     // If the procedure is a standard builtin,
                     Expr::ConstExpr(ConstExpr::StandardBuiltin(builtin)) => {
                         // Push the arguments to the procedure on the stack.
-                        for arg in &args {
-                            // Compile the argument (push it on the stack)
-                            arg.clone().compile_expr(env, output)?;
-                        }
+                        env.compile_args(args, output)?;
                         // Apply the standard builtin to the arguments on the stack.
                         builtin.compile_expr(env, output)?;
                     }
                     // If the procedure is a foreign function,
                     Expr::ConstExpr(ConstExpr::FFIProcedure(ffi)) => {
                         // Push the arguments to the procedure on the stack.
-                        for arg in &args {
-                            // Compile the argument (push it on the stack)
-                            arg.clone().compile_expr(env, output)?;
-                        }
+                        env.compile_args(args, output)?;
                         // Apply the foreign function to the arguments on the stack.
                         ffi.compile_expr(env, output)?;
                     }
                     // If the procedure is a symbol, get the procedure from the environment.
                     Expr::ConstExpr(ConstExpr::Symbol(name)) => {
                         // Push the arguments to the procedure on the stack.
-                        for arg in &args {
-                            // Compile the argument (push it on the stack)
-                            arg.clone().compile_expr(env, output)?;
-                        }
+                        env.compile_args(args, output)?;
+
                         match env.get_const(&name) {
                             // If the procedure is a core builtin,
                             Some(ConstExpr::CoreBuiltin(builtin)) => {
@@ -314,10 +306,7 @@ impl Compile for Expr {
                         } else {
                             debug!("Method transform failed for {self_clone}; Monomorphizing {template} with {ty_args:?} in environment {env}");
                             // Push the arguments to the procedure on the stack.
-                            for arg in &args {
-                                // Compile the argument (push it on the stack)
-                                arg.clone().compile_expr(env, output)?;
-                            }
+                            env.compile_args(args, output)?;
 
                             // Compile it normally:
                             // Push the procedure on the stack.
@@ -345,10 +334,8 @@ impl Compile for Expr {
                             // Push the arguments to the procedure on the stack.
                             debug!("Is not method call!");
                             debug!("Compiling member function call {name} on {val} in environment {env}");
-                            for arg in &args {
-                                // Compile the argument (push it on the stack)
-                                arg.clone().compile_expr(env, output)?;
-                            }
+                            // Push the arguments to the procedure on the stack.
+                            env.compile_args(args, output)?;
 
                             // Compile it normally:
                             // Push the procedure on the stack.
@@ -368,10 +355,7 @@ impl Compile for Expr {
                                 .compile_expr(env, output)?;
                         } else {
                             // Push the arguments to the procedure on the stack.
-                            for arg in &args {
-                                // Compile the argument (push it on the stack)
-                                arg.clone().compile_expr(env, output)?;
-                            }
+                            env.compile_args(args, output)?;
 
                             // Compile it normally:
                             // Push the procedure on the stack.
@@ -385,10 +369,8 @@ impl Compile for Expr {
                     // Otherwise, it must be a procedure.
                     proc => {
                         // Push the arguments to the procedure on the stack.
-                        for arg in &args {
-                            // Compile the argument (push it on the stack)
-                            arg.clone().compile_expr(env, output)?;
-                        }
+                        env.compile_args(args, output)?;
+
                         // Push the procedure on the stack.
                         proc.compile_expr(env, output)?;
                         // Pop the "function pointer" from the stack.
@@ -455,17 +437,16 @@ impl Compile for Expr {
             // Compile an if statement.
             Self::If(c, t, e) => {
                 // Compile the condition
-                c.compile_expr(env, output)?;
-                let mut new_env = env.clone();
+                env.compile_args([*c], output)?;
                 output.op(CoreOp::Pop(Some(A), 1));
                 // If the condition is true
                 output.op(CoreOp::If(A));
                 // Compile the true branch
-                t.compile_expr(&mut new_env, output)?;
+                env.compile_args([*t], output)?;
                 // If the condition is false
                 output.op(CoreOp::Else);
                 // Compile the false branch
-                e.compile_expr(env, output)?;
+                env.compile_args([*e], output)?;
                 // Label the end of the if statement
                 output.op(CoreOp::End);
             }
@@ -515,25 +496,19 @@ impl Compile for Expr {
             // Compile an array literal.
             Self::Array(elems) => {
                 // Compile the elements
-                for elem in elems {
-                    elem.compile_expr(env, output)?;
-                }
+                env.compile_args(elems, output)?
             }
 
             // Compile a tuple literal.
             Self::Tuple(items) => {
                 // Compile the items
-                for item in items {
-                    item.compile_expr(env, output)?;
-                }
+                env.compile_args(items, output)?
             }
 
             // Compile a struct literal.
             Self::Struct(items) => {
                 // Compile the items
-                for (_, val) in items {
-                    val.compile_expr(env, output)?;
-                }
+                env.compile_args(items.into_iter().map(|(_, x)| x), output)?
             }
 
             // Compile a union literal.
@@ -633,9 +608,8 @@ impl Compile for Expr {
                         // Get the size of the element we will return.
                         let elem_size = elem.get_size(env)?;
                         // Push the array onto the stack.
-                        val.compile_expr(env, output)?;
-                        // Push the index onto the stack.
-                        idx.compile_expr(env, output)?;
+                        // Then, push the index onto the stack.
+                        env.compile_args([*val, *idx], output)?;
 
                         // Calculate the offset of the element we want to return
                         // (the index times the size of the element), and store it in `B`.
@@ -671,9 +645,8 @@ impl Compile for Expr {
                     // If the value being indexed is a pointer:
                     Type::Pointer(_, elem) => {
                         // Push the index onto the stack.
-                        idx.compile_expr(env, output)?;
-                        // Push the pointer being indexed onto the stack.
-                        val.compile_expr(env, output)?;
+                        // Then, push the pointer being indexed onto the stack.
+                        env.compile_args([*idx, *val], output)?;
 
                         // Get the size of the element we are indexing.
                         let elem_size = elem.get_size(env)?;
@@ -1137,11 +1110,12 @@ impl Compile for ConstExpr {
                             return Err(Error::SymbolNotDefined(name));
                         }
                     }
-                    (Self::Declare(declaration, expr), field) => {
+                    (Self::Declare(bindings, expr), field) => {
                         // let mut new_env = env.clone();
                         // new_env.add_declaration(&bindings, true)?;
-                        // .compile_expr(&mut new_env, output)?;
-                        declaration.compile(expr.field(field).into(), env, output)?;
+                        // expr.field(field).compile_expr(&mut new_env, output)?;
+                        env.add_declaration(&bindings, true)?;
+                        expr.field(field).compile_expr(env, output)?;
                     }
                     (Self::Symbol(name), member) => {
                         if let Some(cexpr) = env.get_const(&name) {
@@ -1171,13 +1145,10 @@ impl Compile for ConstExpr {
                 expr.compile_expr(env, output)
                     .map_err(|err| err.annotate(metadata))?;
             }
-            Self::Declare(declaration, body) => {
-                // debug!("Compiling declaration {bindings} with body {body} in environment {env}");
-                // let mut new_env = env.clone();
-                // new_env.add_compile_time_declaration(&bindings, true)?;
-                // body.compile_expr(&mut new_env, output)?;
-                declaration.compile((*body).into(), env, output)?;
-
+            Self::Declare(bindings, body) => {
+                debug!("Compiling declaration {bindings} with body {body} in environment {env}");
+                env.add_declaration(&bindings, true)?;
+                body.compile_expr(env, output)?;
             }
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
                 Self::PolyProc(poly_proc) => {
@@ -1221,10 +1192,9 @@ impl Compile for ConstExpr {
                     result.compile_expr(env, output)?;
                 }
                 Self::Declare(bindings, expr) => {
-                    let mut new_env = env.clone();
-                    new_env.add_compile_time_declaration(&bindings, true)?;
+                    env.add_declaration(&bindings, true)?;
                     expr.monomorphize(ty_args)
-                        .compile_expr(&mut new_env, output)?;
+                        .compile_expr(env, output)?;
                 }
 
                 val => {
@@ -1241,65 +1211,46 @@ impl Compile for ConstExpr {
             Self::None => {}
             // Compile a null constant.
             Self::Null => {
-                // output.op(CoreOp::Next(SP, None));
-                // output.op(CoreOp::Set(SP.deref(), NULL));
                 output.op(CoreOp::PushConst(vec![NULL]));
             }
             // Compile a char constant.
             Self::Char(ch) => {
-                // output.op(CoreOp::Next(SP, None));
-                // output.op(CoreOp::Set(SP.deref(), ch as usize as i64));
                 output.op(CoreOp::PushConst(vec![ch as usize as i64]));
             }
             // Compile a bool constant.
             Self::Bool(x) => {
-                // output.op(CoreOp::Next(SP, None));
-                // output.op(CoreOp::Set(SP.deref(), x as i64));
                 output.op(CoreOp::PushConst(vec![x as i64]));
             }
             // Compile a cell value.
             Self::Cell(n) => {
-                // output.op(CoreOp::Next(SP, None));
-                // output.op(CoreOp::Set(SP.deref(), n));
                 output.op(CoreOp::PushConst(vec![n]));
             }
             // Compile an integer constant.
             Self::Int(n) => {
-                // output.op(CoreOp::Next(SP, None));
-                // output.op(CoreOp::Set(SP.deref(), n));
                 output.op(CoreOp::PushConst(vec![n]));
             }
             // Compile a float constant.
             Self::Float(f) => {
-                // output.op(CoreOp::Next(SP, None));
-                // output.std_op(StandardOp::Set(SP.deref(), f))?;
                 output.std_op(StandardOp::PushConst(vec![f]))?;
             }
             // Calculate the size of a type.
             Self::SizeOfType(t) => {
-                // output.op(CoreOp::Next(SP, None));
-                // output.op(CoreOp::Set(SP.deref(), t.get_size(env)? as i64));
                 output.op(CoreOp::PushConst(vec![t.get_size(env)? as i64]));
             }
             // Calculate the size of an expression.
             Self::SizeOfExpr(e) => {
-                // output.op(CoreOp::Next(SP, None));
-                // output.op(CoreOp::Set(SP.deref(), e.get_size(env)? as i64));
                 output.op(CoreOp::PushConst(vec![e.get_size(env)? as i64]));
             }
             // Compile a tuple constant.
             Self::Tuple(items) => {
-                for item in items {
-                    // Compile the item.
-                    item.compile_expr(env, output)?;
-                }
+                // Compile the items
+                env.compile_args(items.into_iter().map(Expr::ConstExpr), output)?;
             }
             // Compile an array constant.
             Self::Array(items) => {
-                for item in items {
-                    // Compile the item.
-                    item.compile_expr(env, output)?;
-                }
+                // Compile the items
+                env.compile_args(items.into_iter().map(Expr::ConstExpr), output)?;
+                
                 /*
                 // WARNING:
                 // This optimizes how arrays are compiled *when their values are known at compile time*
@@ -1410,10 +1361,8 @@ impl Compile for ConstExpr {
             }
             // Compile a struct constant.
             Self::Struct(items) => {
-                for (_, expr) in items {
-                    // Compile the item.
-                    expr.compile_expr(env, output)?;
-                }
+                // Compile the items
+                env.compile_args(items.into_iter().map(|(_, x)| Expr::ConstExpr(x)), output)?;
             }
             // Compile a union constant.
             Self::Union(t, _, val) => {

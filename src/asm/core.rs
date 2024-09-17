@@ -1192,6 +1192,9 @@ impl CoreOp {
             CoreOp::Or { src, dst } => env.resolve(dst)?.or(&env.resolve(src)?, result),
 
             CoreOp::PushTo { sp, src, size } => {
+                if *size == 0 {
+                    return Ok(());
+                }
                 let sp = env.resolve(sp)?;
                 let src = env.resolve(src)?;
                 let size = *size;
@@ -1243,6 +1246,9 @@ impl CoreOp {
                 .assemble(current_instruction, env, result)?
             }
             CoreOp::Pop(dst, size) => {
+                if *size == 0 {
+                    return Ok(());
+                }
                 // If the destination is None, then we're just popping the stack into oblivion.
                 // Otherwise, we're popping the stack into `Some` destination.
                 // If we have a destination, resolve it. If we can't resolve it, return an error.
@@ -1278,18 +1284,30 @@ impl CoreOp {
                 let dst = env.resolve(dst)?;
                 let a = env.resolve(a)?;
                 let b = env.resolve(b)?;
+                if a == b {
+                    dst.set(1, result);
+                    return Ok(());
+                }
                 a.is_less_or_equal_to(&b, &dst, result)
             }
             CoreOp::IsEqual { dst, a, b } => {
                 let dst = env.resolve(dst)?;
                 let a = env.resolve(a)?;
                 let b = env.resolve(b)?;
+                if a == b {
+                    dst.set(1, result);
+                    return Ok(());
+                }
                 a.is_equal(&b, &dst, result)
             }
             CoreOp::IsNotEqual { dst, a, b } => {
                 let dst = env.resolve(dst)?;
                 let a = env.resolve(a)?;
                 let b = env.resolve(b)?;
+                if a == b {
+                    dst.set(0, result);
+                    return Ok(());
+                }
                 a.is_not_equal(&b, &dst, result)
             }
 

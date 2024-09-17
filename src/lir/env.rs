@@ -52,6 +52,9 @@ pub struct Env {
     /// The current offset of the frame pointer to assign to the next variable.
     /// This is incremented by the size of each variable as it is defined.
     fp_offset: isize,
+    // The current offset caused by temporarily pushing arguments onto the stack.
+    sp_offset: isize,
+    saved_sp_offsets: Vec<isize>,
     /// The size of the arguments supplied to the function, in cells.
     /// This is incremented by the size of each argument defined (for a procedure).
     /// This is unaffected by defining *variables* in the scope of the function.
@@ -160,6 +163,7 @@ impl Default for Env {
             procs: Arc::new(HashMap::new()),
             vars: Arc::new(HashMap::new()),
             modules: Arc::new(HashMap::new()),
+            saved_sp_offsets: Vec::new(),
             static_vars: Arc::new(HashMap::new()),
             globals: Arc::new(RwLock::new(Globals::new())),
             associated_constants: Arc::new(RwLock::new(HashMap::new())),
@@ -168,6 +172,7 @@ impl Default for Env {
 
             // The last argument is stored at `[FP]`, so our first variable must be at `[FP + 1]`.
             fp_offset: 1,
+            sp_offset: 0,
             args_size: 0,
             expected_ret: None,
         }
@@ -1162,6 +1167,12 @@ impl Env {
 
         // For each argument in reverse order (starting from the last argument)
         for (name, mutability, ty) in args.into_iter().rev() {
+            // If the variable is already defined with the same type, don't bother redefining it.
+            // if let Some((found_mutability, found_ty, _)) = self.vars.get(&name) {
+            //     if *found_mutability == mutability && found_ty.equals(&ty, self)? {
+            //         continue;
+            //     }
+            // }
             // Get the size of the argument we're defining.
             let size = if compiling {
                 ty.get_size(self)?
@@ -1200,6 +1211,13 @@ impl Env {
         compiling: bool
     ) -> Result<isize, Error> {
         let var = var.to_string();
+        // If the variable is already defined with the same type, don't bother redefining it.
+        // if let Some((found_mutability, found_ty, index)) = self.vars.get(&var) {
+        //     if *found_mutability == mutability && found_ty.equals(&ty, self)? {
+        //         debug!("Variable {var} is already defined with type {ty} in\n{self}");
+        //         return Ok(*index);
+        //     }
+        // }
         // Get the size of the variable we're defining.
         let size = if compiling {
             ty.get_size(self)?
@@ -1207,7 +1225,7 @@ impl Env {
             0
         } as isize;
         // Remember the offset of the variable under the current scope.
-        let offset = self.fp_offset;
+        let offset = self.fp_offset + self.sp_offset;
         // Increment the frame pointer offset by the size of the variable
         // so that the next variable is allocated directly after this variable.
         debug!("Defining variable {var} of type {ty} at {offset} in\n{self}");
@@ -1223,6 +1241,38 @@ impl Env {
         Arc::make_mut(&mut self.vars).insert(var, (mutability, ty, offset));
         // Return the offset of the variable from the frame pointer.
         Ok(offset)
+    }
+
+    /// Save the current state of the args being pushed onto the stack.
+    pub fn save_args(&mut self) {
+        self.saved_sp_offsets.push(self.sp_offset)
+    }
+
+    /// Compile a list of arguments, accounting for the fact that the stack is growing as we compile arguments.
+    /// 
+    /// Use this to compile arguments to an operator, to a function, or subexpressions of an intermediate expression.
+    /// 
+    /// Statement expressions don't need to use this method because they don't need to save the intermediate states of the stack.
+    pub fn compile_args(&mut self, args: impl IntoIterator<Item=Expr>, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        self.save_args();
+        for arg in args {
+            self.compile_arg(arg, output)?;
+        }
+        self.restore_args();
+        Ok(())
+    }
+
+    /// Compile an argument and account for the fact that the stack is growing as we compile arguments.
+    pub fn compile_arg(&mut self, expr: Expr, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+        let size = expr.get_size(self)?;
+        expr.compile_expr(self, output)?;
+        self.sp_offset += size as isize;
+        Ok(())
+    }
+
+    /// Resume the previous state of the args being pushed onto the stack.
+    pub fn restore_args(&mut self) {
+        self.sp_offset = self.saved_sp_offsets.pop().unwrap_or(0);
     }
 
     /// Get the expected return type of the current function.
@@ -1305,11 +1355,11 @@ impl Display for Env {
         for (name, (mutability, ty, location)) in self.static_vars.iter() {
             writeln!(f, "      {mutability} {name}: {ty} (location {location})")?;
         }
-        */
         writeln!(f, "   Variables:")?;
         for (name, (mutability, ty, offset)) in self.vars.iter() {
             writeln!(f, "      {mutability} {name}: {ty} (frame-offset {offset})")?;
         }
+         */
         Ok(())
     }
 }

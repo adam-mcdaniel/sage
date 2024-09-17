@@ -515,7 +515,6 @@ impl Pattern {
             match_expr,
         );
 
-        println!("{result}");
         Ok(result)
     }
 
