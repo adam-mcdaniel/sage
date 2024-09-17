@@ -13,6 +13,7 @@ use crate::{
     lir::*,
 };
 use ::core::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use std::sync::Mutex;
 use log::*;
 mod addition;
 mod negate;
@@ -31,15 +32,15 @@ pub enum Arithmetic {
     Power,
 }
 
-impl BinaryOp for Arithmetic {
-    /// Compiles the operation on the given expressions.
-    fn compile(
+impl Arithmetic {
+    fn compile_helper(
         &self,
         lhs: &Expr,
         rhs: &Expr,
         env: &mut Env,
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
+        println!("Compiling for {lhs:?} {self} {rhs:?}");
         if let Expr::Annotated(lhs, metadata) = lhs {
             return self
                 .compile(lhs, rhs, env, output)
@@ -52,44 +53,64 @@ impl BinaryOp for Arithmetic {
         }
 
         // trace!("Compiling binary op: {lhs} {self} {rhs} ({self:?})");
+        let cur = output.current_instruction();
+        println!("Compiling for {lhs:?} {self} {rhs:?}");
+
+        // if !matches!(lhs, Expr::ConstExpr(ConstExpr::Symbol(lhs_name))) && !matches!(rhs, Expr::ConstExpr(ConstExpr::Symbol(rhs_name))) {
+        //     Expr::let_vars(vec![
+        //         ("lhs", Mutability::Immutable, None, lhs.clone()),
+        //         ("rhs", Mutability::Immutable, None, rhs.clone()),
+        //     ], Expr::var("lhs").binop(self, Expr::var("rhs")))
+        //     .compile_expr(env, output)?;
+        // }
         lhs.clone().compile_expr(env, output)?;
         rhs.clone().compile_expr(env, output)?;
+
+        // Expr::let_var("lhs", Mutability::Immutable, None, lhs.clone(), Expr::var("lhs"))
+        //     .compile_expr(env, output)?;
+        // Expr::let_var("rhs", Mutability::Immutable, None, rhs.clone(), Expr::var("rhs"))
+        //     .compile_expr(env, output)?;
+        output.log_instructions_after("arithmetic", "the arguments:", cur);
         // self.compile_types(&, &rhs.get_type(env)?, env, output)?;
         let lhs_expr = lhs;
         let rhs_expr = rhs;
         let lhs = &lhs_expr.get_type(env)?;
         let rhs = &rhs_expr.get_type(env)?;
 
-        if let (Type::Array(_, _), Arithmetic::Multiply, Type::Int) = (lhs, self, rhs) {
-            if !rhs.equals(&Type::Int, env)? {
-                return Err(Error::MismatchedTypes { expected: Type::Int, found: rhs.clone(), expr: rhs_expr.clone() })
-            }
+        println!("continuing... for {lhs:?} {self} {rhs:?} in {env}");
+        println!("LHS SIZE: {}", lhs.get_size(env)?);
+        println!("RHS SIZE: {}", rhs.get_size(env)?);
 
-            // Copy the loop RHS times.
-            // This will just evaluate the array, evaluate the int, and then repeatedly
-            // copy the array back onto the stack `rhs` times.
-            let arr_size = lhs.get_size(env)?;
-            // Copy the integer into a register.
-            output.op(CoreOp::Many(vec![
-                // Pop into B
-                CoreOp::Pop(Some(B), 1),
-                // Store the address of the array in A.
-                CoreOp::GetAddress {
-                    addr: SP.deref().offset(1 - arr_size as isize),
-                    dst: A,
-                },
-                // While B != 0
-                CoreOp::Dec(B),
-                CoreOp::While(B),
-                // Push the array back onto the stack, starting at A
-                CoreOp::Push(A.deref(), arr_size),
-                // Decrement B
-                CoreOp::Dec(B),
-                CoreOp::End,
-            ]));
+        // if let (Type::Array(_, _), Arithmetic::Multiply, Type::Int) = (lhs, self, rhs) {
+        //     if !rhs.equals(&Type::Int, env)? {
+        //         return Err(Error::MismatchedTypes { expected: Type::Int, found: rhs.clone(), expr: rhs_expr.clone() })
+        //     }
 
-            return Ok(());
-        }
+        //     // Copy the loop RHS times.
+        //     // This will just evaluate the array, evaluate the int, and then repeatedly
+        //     // copy the array back onto the stack `rhs` times.
+        //     let arr_size = lhs.get_size(env)?;
+        //     // Copy the integer into a register.
+        //     output.op(CoreOp::Many(vec![
+        //         // Pop into B
+        //         CoreOp::Pop(Some(B), 1),
+        //         // Store the address of the array in A.
+        //         CoreOp::GetAddress {
+        //             addr: SP.deref().offset(1 - arr_size as isize),
+        //             dst: A,
+        //         },
+        //         // While B != 0
+        //         CoreOp::Dec(B),
+        //         CoreOp::While(B),
+        //         // Push the array back onto the stack, starting at A
+        //         CoreOp::Push(A.deref(), arr_size),
+        //         // Decrement B
+        //         CoreOp::Dec(B),
+        //         CoreOp::End,
+        //     ]));
+
+        //     return Ok(());
+        // }
 
         let src = SP.deref();
         let dst = SP.deref().offset(-1);
@@ -104,15 +125,15 @@ impl BinaryOp for Arithmetic {
             Self::Power => CoreOp::Many(vec![
                 // We can't use the `Pow` operation, because it's not supported by
                 // the core variant. So we have to do it with a loop.
-                CoreOp::Move {
-                    src: dst.clone(),
-                    dst: tmp.clone(),
-                },
-                CoreOp::Set(dst.clone(), 1),
-                CoreOp::While(src.clone()),
-                CoreOp::Mul { src: tmp, dst },
-                CoreOp::Dec(src),
-                CoreOp::End,
+                // CoreOp::Move {
+                //     src: dst.clone(),
+                //     dst: tmp.clone(),
+                // },
+                // CoreOp::Set(dst.clone(), 1),
+                // CoreOp::While(src.clone()),
+                // CoreOp::Mul { src: tmp, dst },
+                // CoreOp::Dec(src),
+                // CoreOp::End,
             ]),
         };
         let src = SP.deref();
@@ -171,6 +192,38 @@ impl BinaryOp for Arithmetic {
         // the arithmetic and store the result to `a` on the stack.
         output.op(CoreOp::Pop(None, 1));
         Ok(())
+    }
+}
+
+impl BinaryOp for Arithmetic {
+    /// Compiles the operation on the given expressions.
+    fn compile(
+        &self,
+        lhs: &Expr,
+        rhs: &Expr,
+        env: &mut Env,
+        output: &mut dyn AssemblyProgram,
+    ) -> Result<(), Error> {
+        // lazy_static::lazy_static! {
+        //     static ref COUNT: Mutex<usize> = Mutex::new(0);
+        // }
+        // let count = {
+        //     let mut c = COUNT.lock().unwrap();
+        //     *c += 1;
+        //     *c
+        // };
+        // if count % 2 == 1 {
+        //     let lhs_var = format!("lhs_{count}");
+        //     let rhs_var = format!("rhs_{count}");
+        //     println!("Factorizing {lhs:?} {self} {rhs:?}");
+        //     Expr::let_vars(vec![
+        //         (&lhs_var, Mutability::Immutable, None, lhs.clone()),
+        //         (&rhs_var, Mutability::Immutable, None, rhs.clone()),
+        //     ], Expr::var(&lhs_var).binop(self, Expr::var(&rhs_var)))
+        //     .compile_expr(env, output)
+        // } else {
+        // }
+        self.compile_helper(lhs, rhs, env, output)
     }
 
     /// Can this binary operation be applied to the given types?

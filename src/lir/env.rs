@@ -1305,11 +1305,11 @@ impl Display for Env {
         for (name, (mutability, ty, location)) in self.static_vars.iter() {
             writeln!(f, "      {mutability} {name}: {ty} (location {location})")?;
         }
+        */
         writeln!(f, "   Variables:")?;
         for (name, (mutability, ty, offset)) in self.vars.iter() {
             writeln!(f, "      {mutability} {name}: {ty} (frame-offset {offset})")?;
         }
-         */
         Ok(())
     }
 }

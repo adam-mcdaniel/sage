@@ -253,7 +253,7 @@ impl Declaration {
                 // Get the current instruction (for logging)
                 let current_instruction = output.current_instruction();
                 // A log message
-                let log_message = format!("Initializing '{name}' with expression '{expr}'");
+                let log_message = format!("Initializing '{name}' with expression '{expr}' in {self}");
 
                 // Get the type of the variable using its specifier,
                 // or by deducing the type ourselves.
@@ -264,8 +264,11 @@ impl Declaration {
                 };
                 // Get the size of the variables for the body of the declaration.
                 var_size = var_ty.get_size(env)?;
+                println!("Var {name} has type {var_ty:?} is {var_size}");
+                let cur = output.current_instruction();
                 // Compile the expression to leave the value on the stack.
                 expr.clone().compile_expr(env, output)?;
+                output.log_instructions_after("var", &log_message, cur);
 
                 // Add the variable to the environment, so that it can be used in the body.
                 env.add_local_variable_declaration(self, true)?;
@@ -687,7 +690,7 @@ impl TypeCheck for Declaration {
                 if *checked {
                     let mut new_env = env.clone();
                     // Add all the compile-time declarations to the environment.
-                    new_env.add_declaration(&Self::Many(decls.clone()), false)?;
+                    new_env.add_compile_time_declaration(&Self::Many(decls.clone()), false)?;
                     trace!("Typechecking module {}", name);
                     // Get all the compile time declarations so we can type check them in parallel.
                     let (comp_time_decls, _run_time_decls): (Vec<_>, Vec<_>) = decls

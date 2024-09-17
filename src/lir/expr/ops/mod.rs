@@ -205,6 +205,7 @@ pub trait UnaryOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
         output.log_instructions_after(&self.display(expr), &message, current_instruction);
         Ok(())
     }
+
     /// Compiles the operation on the given type. (Generates the code for the operation.)
     fn compile_types(
         &self,

@@ -130,17 +130,17 @@ impl Compile for Expr {
                     .clone();
                 if let Expr::Annotated(lhs, metadata) = &*lhs {
                     return binop
-                        .compile(lhs, &rhs, env, output)
+                        .compile_strict(lhs, &rhs, env, output)
                         .map_err(|e| e.annotate(metadata.clone()));
                 }
                 if let Expr::Annotated(rhs, metadata) = &*rhs {
                     return binop
-                        .compile(&lhs, rhs, env, output)
+                        .compile_strict(&lhs, rhs, env, output)
                         .map_err(|e| e.annotate(metadata.clone()));
                 }
 
                 // Compile the binary operation on the two expressions.
-                binop.compile(&lhs, &rhs, env, output)?;
+                binop.compile_strict(&lhs, &rhs, env, output)?;
             }
             Self::TernaryOp(ternop, a, b, c) => {
                 let ternop = env
@@ -456,11 +456,12 @@ impl Compile for Expr {
             Self::If(c, t, e) => {
                 // Compile the condition
                 c.compile_expr(env, output)?;
+                let mut new_env = env.clone();
                 output.op(CoreOp::Pop(Some(A), 1));
                 // If the condition is true
                 output.op(CoreOp::If(A));
                 // Compile the true branch
-                t.compile_expr(env, output)?;
+                t.compile_expr(&mut new_env, output)?;
                 // If the condition is false
                 output.op(CoreOp::Else);
                 // Compile the false branch
@@ -1136,10 +1137,11 @@ impl Compile for ConstExpr {
                             return Err(Error::SymbolNotDefined(name));
                         }
                     }
-                    (Self::Declare(bindings, expr), field) => {
-                        let mut new_env = env.clone();
-                        new_env.add_declaration(&bindings, true)?;
-                        expr.field(field).compile_expr(&mut new_env, output)?;
+                    (Self::Declare(declaration, expr), field) => {
+                        // let mut new_env = env.clone();
+                        // new_env.add_declaration(&bindings, true)?;
+                        // .compile_expr(&mut new_env, output)?;
+                        declaration.compile(expr.field(field).into(), env, output)?;
                     }
                     (Self::Symbol(name), member) => {
                         if let Some(cexpr) = env.get_const(&name) {
@@ -1169,11 +1171,13 @@ impl Compile for ConstExpr {
                 expr.compile_expr(env, output)
                     .map_err(|err| err.annotate(metadata))?;
             }
-            Self::Declare(bindings, body) => {
-                debug!("Compiling declaration {bindings} with body {body} in environment {env}");
-                let mut new_env = env.clone();
-                new_env.add_declaration(&bindings, true)?;
-                body.compile_expr(&mut new_env, output)?;
+            Self::Declare(declaration, body) => {
+                // debug!("Compiling declaration {bindings} with body {body} in environment {env}");
+                // let mut new_env = env.clone();
+                // new_env.add_compile_time_declaration(&bindings, true)?;
+                // body.compile_expr(&mut new_env, output)?;
+                declaration.compile((*body).into(), env, output)?;
+
             }
             Self::Monomorphize(expr, ty_args) => match expr.eval(env)? {
                 Self::PolyProc(poly_proc) => {
@@ -1218,7 +1222,7 @@ impl Compile for ConstExpr {
                 }
                 Self::Declare(bindings, expr) => {
                     let mut new_env = env.clone();
-                    new_env.add_declaration(&bindings, true)?;
+                    new_env.add_compile_time_declaration(&bindings, true)?;
                     expr.monomorphize(ty_args)
                         .compile_expr(&mut new_env, output)?;
                 }

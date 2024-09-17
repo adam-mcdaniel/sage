@@ -1107,6 +1107,9 @@ impl CoreOp {
             CoreOp::Move { src, dst } => {
                 let src = env.resolve(src)?;
                 let dst = env.resolve(dst)?;
+                if src == dst {
+                    return Ok(());
+                }
                 src.copy_to(&dst, result)
             }
 
@@ -1205,12 +1208,13 @@ impl CoreOp {
             }
 
             CoreOp::PopFrom { sp, dst, size } => {
-                let sp = env.resolve(sp)?;
                 let size = *size as isize;
 
                 if size == 0 {
                     return Ok(());
                 }
+
+                let sp = env.resolve(sp)?;
 
                 if let Some(dst) = dst {
                     let dst = env.resolve(dst)?;
@@ -1226,10 +1230,10 @@ impl CoreOp {
                 }
             }
             CoreOp::Push(src, size) => {
-                let src = env.resolve(src)?;
                 if *size == 0 {
                     return Ok(());
                 }
+                let src = env.resolve(src)?;
 
                 CoreOp::PushTo {
                     sp: SP,

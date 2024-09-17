@@ -1160,6 +1160,20 @@ mod physics {
                 return Planet.ORBITAL_PERIODS[self.order_from_sun()];
             }
 
+            /// Get the radius of the planet in meters.
+            fun radius(self): Float {
+                match self {
+                    of Mercury => 2439700.0,
+                    of Venus => 6051800.0,
+                    of Earth => 6371000.0,
+                    of Mars => 3389500.0,
+                    of Jupiter => 69911000.0,
+                    of Saturn => 58232000.0,
+                    of Uranus => 25362000.0,
+                    of Neptune => 24622000.0
+                }
+            }
+
             fun position_at_epoch(self): (Float, Float, Float) {
                 return Planet.POSITION_AT_EPOCH[self.order_from_sun()];
             }
