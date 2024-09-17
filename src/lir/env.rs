@@ -12,8 +12,7 @@ use crate::asm::{AssemblyProgram, Globals, Location};
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 
 use std::{
-    collections::{HashMap, HashSet},
-    sync::{Arc, RwLock},
+    collections::{HashMap, HashSet}, sync::{Arc, RwLock}
 };
 
 use log::*;
@@ -39,6 +38,7 @@ pub struct Env {
     procs: Arc<HashMap<String, Procedure>>,
     /// The variables defined under the environment.
     vars: Arc<HashMap<String, (Mutability, Type, isize)>>,
+    modules: Arc<HashMap<String, usize>>,
     /// The static variables defined under the environment.
     static_vars: Arc<HashMap<String, (Mutability, Type, Location)>>,
     /// A lookup for the offsets of global variables.
@@ -159,6 +159,7 @@ impl Default for Env {
             consts: Arc::new(HashMap::new()),
             procs: Arc::new(HashMap::new()),
             vars: Arc::new(HashMap::new()),
+            modules: Arc::new(HashMap::new()),
             static_vars: Arc::new(HashMap::new()),
             globals: Arc::new(RwLock::new(Globals::new())),
             associated_constants: Arc::new(RwLock::new(HashMap::new())),
@@ -198,6 +199,7 @@ impl Env {
             consts: self.consts.clone(),
             procs: self.procs.clone(),
             static_vars: self.static_vars.clone(),
+            modules: self.modules.clone(),
             type_sizes: {
                 // Copy the data but not the lock.
                 // let type_sizes = (*self.type_sizes).clone();
@@ -679,7 +681,7 @@ impl Env {
 
     /// Add all the declarations to this environment.
     pub(super) fn add_declaration(&mut self, declaration: &Declaration, compiling: bool) -> Result<(), Error> {
-        self.add_compile_time_declaration(declaration)?;
+        self.add_compile_time_declaration(declaration, compiling)?;
         self.add_local_variable_declaration(declaration, compiling)?;
         Ok(())
     }
@@ -690,22 +692,37 @@ impl Env {
     pub(super) fn add_compile_time_declaration(
         &mut self,
         declaration: &Declaration,
+        compiling: bool,
     ) -> Result<(), Error> {
-        trace!("Adding compile-time declaration {declaration}");
+        debug!("Adding compile-time declaration {declaration}");
         match declaration {
-            Declaration::Module(module_name, decls) => {
-                if self.consts.contains_key(module_name) {
-                    return Ok(());
+            Declaration::Module(module_name, decls, checked, defined_id) => {
+                if !checked {
+                    self.save_type_checked_const(ConstExpr::Symbol(module_name.clone()));
                 }
 
-                // Get all the declaration names
+                if let Some(found_id) = self.modules.get(module_name) {
+                    // Check if the declarations are the same
+                    if *found_id == *defined_id {
+                        // If they are the same, we don't need to recompile the module
+                        return Ok(());
+                    } else {
+                        // If they are different, we need to recompile the module
+                        // Arc::make_mut(&mut self.modules).insert(module_name.clone(), *defined_id);
+                        return Err(Error::ModuleRedefined(module_name.clone()))
+                    }
+                } else {
+                    // If the module is not defined, we need to define it
+                    Arc::make_mut(&mut self.modules).insert(module_name.clone(), *defined_id);
+                }
+
                 let mut exports = vec![];
                 for decl in Declaration::Many(decls.clone()).flatten().iter() {
                     match decl {
                         Declaration::Type(name, _) => {
                             exports.push(name.clone());
                         }
-                        Declaration::Module(name, _submodule) => {
+                        Declaration::Module(name, ..) => {
                             exports.push(name.clone());
                         }
                         Declaration::Const(name, _) => {
@@ -739,7 +756,7 @@ impl Env {
                             }
                         }
                         Declaration::Impl(_ty, _attrs) => {
-                            self.add_compile_time_declaration(decl)?;
+                            self.add_compile_time_declaration(decl, compiling)?;
                         }
                         Declaration::Many(_decls) => {
                             unreachable!()
@@ -755,7 +772,7 @@ impl Env {
                         .map(|name| (name.clone(), ConstExpr::Symbol(name)))
                         .collect(),
                 );
-
+                
                 let result = exports.with(Declaration::Many(decls.clone())).eval(self)?;
                 self.define_const(module_name, result)
             }
@@ -768,10 +785,9 @@ impl Env {
             Declaration::FromImport { module, names } => {
                 let module = module.clone().eval(self)?;
                 for (name, alias) in names {
-                    let access = module.clone().field(ConstExpr::Symbol(name.clone()));
+                    let access = module.clone().field(ConstExpr::Symbol(name.clone())).eval(self)?;
                     let name = alias.clone().unwrap_or(name.clone());
 
-                    // if !self.types.contains_key(&name) {
                     if let Ok(Type::Type(ty)) = access.get_type(self) {
                         self.define_type(&name, *ty);
                     }
@@ -783,7 +799,7 @@ impl Env {
                 let module_ty = module.get_type(self)?;
                 if let Type::Struct(fields) = module_ty {
                     for name in fields.keys() {
-                        let access = module.clone().field(ConstExpr::Symbol(name.clone()));
+                        let access = module.clone().field(ConstExpr::Symbol(name.clone())).eval(self)?;
 
                         if let Ok(Type::Type(ty)) = access.get_type(self) {
                             self.define_type(name, *ty);
@@ -866,11 +882,11 @@ impl Env {
                     // })?;
                 }
             }
-            Declaration::Var(_, _, _, _) => {}
-            Declaration::VarPat(_, _) => {}
+            Declaration::Var(..) => {}
+            Declaration::VarPat(..) => {}
             Declaration::Many(decls) => {
                 for decl in decls.iter() {
-                    self.add_compile_time_declaration(decl)?;
+                    self.add_compile_time_declaration(decl, compiling)?;
                 }
 
                 for decl in decls.iter() {
@@ -918,7 +934,7 @@ impl Env {
             Declaration::Impl(_, _) => {
                 // Implementations are not defined at runtime.
             }
-            Declaration::Module(_, _) => {
+            Declaration::Module(..) => {
                 // Modules are not defined at runtime.
             }
             Declaration::FromImport { .. } => {

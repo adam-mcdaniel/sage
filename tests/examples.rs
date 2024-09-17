@@ -81,7 +81,7 @@ fn test_frontend_examples_helper() {
 
                     let frontend_code = parse_frontend(&frontend_src, path.to_str())
                         .unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
-                    let asm_code = frontend_code.compile().unwrap();
+                    let asm_code = frontend_code.compile(false).unwrap();
                     let _vm_code = match asm_code {
                         Ok(core_asm_code) => core_asm_code.assemble(CALL_STACK_SIZE).map(Ok),
                         Err(std_asm_code) => std_asm_code.assemble(CALL_STACK_SIZE).map(Err),
@@ -103,7 +103,7 @@ fn test_frontend_examples_helper() {
             let frontend_code = parse_frontend(&frontend_src, path.to_str())
                 .unwrap_or_else(|e| panic!("Could not parse `{path:?}`: {e}"));
             drop(frontend_src);
-            let asm_code = frontend_code.compile();
+            let asm_code = frontend_code.compile(false);
 
             if let Err(ref e) = asm_code {
                 if let Some(correct_error) = correct_error {
@@ -231,7 +231,7 @@ fn test_lir_examples_helper() {
             let lir_code =
                 parse_lir(&lir_src).unwrap_or_else(|_| panic!("Could not parse `{path:?}`"));
             drop(lir_src);
-            let asm_code = lir_code.compile();
+            let asm_code = lir_code.compile(false);
 
             if let Err(ref e) = asm_code {
                 let text = e.to_string();

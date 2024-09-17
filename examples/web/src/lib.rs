@@ -203,7 +203,7 @@ pub fn compile_and_run() -> Result<(), JsValue> {
         Ok(lir_code) => {
             match lir_code
                 .clone()
-                .compile()
+                .compile(false)
                 .map_err(BetterError::LirError)
                 .map_err(|e| e.annotate_with_source(&source_code))
             {

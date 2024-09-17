@@ -1,10 +1,254 @@
 mod math {
+    const PI = 3.14159265358979323846;
+    const TAU = 6.28318530717958647693;
+    const EPSILON = 0.000001;
+    const MAX_TRIG_ITERATIONS = 100;
+    const MAX_SQRT_ITERATIONS = 20;
+    const MAX_LOG_ITERATIONS = 200;
+
+    fun factorial(n: Int): Int {
+        if n <= 0 {
+            return 1;
+        }
+        return n * factorial(n - 1);
+    }
+
+    impl Float {
+        fun abs(self): Float {
+            if self < 0.0 {
+                return -self;
+            }
+            return self;
+        }
+
+        fun round(self): Int {
+            if self < 0.0 {
+                return (self - 0.5) as Int;
+            }
+            return (self + 0.5) as Int;
+        }
+
+        fun round_to(self, n: Int): Float {
+            let mut factor = 1.0;
+            for let mut i=0; i<n; i+=1; {
+                factor *= 10;
+            }
+            return (self * factor).round() as Float / factor as Float;
+        }
+
+        fun floor(self: Float): Int {
+            return self as Int;
+        }
+
+        fun ceil(self: Float): Int {
+            let mut i = self as Int;
+            if self > i {
+                return i + 1;
+            }
+            return i;
+        }
+    }
+
+    impl Int {
+        fun abs(self): Int {
+            if self < 0 {
+                return -self;
+            }
+            return self;
+        }
+    }
+
     // Calculate the greatest common divisor of two numbers using Euclid's algorithm
     fun gcd(a: Int, b: Int): Int {
         if b == 0 {
             return a;
         }
         return gcd(b, a % b);
+    }
+
+    // Taylor series approximation of sine
+    fun sin(mut x: Float): Float {
+        x %= PI * 2;
+        let mut result = 0.0;
+        let mut term = x;
+        let mut i = 1;
+        while i < MAX_TRIG_ITERATIONS {
+            result += term;
+            term *= -x * x / (2 * i + 1) / (2 * i);
+            i += 1;
+        }
+        return result;
+    }
+
+    // Taylor series approximation of cosine
+    fun cos(x: Float): Float {
+        return sin(x + PI / 2);
+    }
+
+    // Taylor series approximation of tangent
+    fun tan(x: Float): Float {
+        return sin(x) / cos(x);
+    }
+
+    fun asin(x: Float): Float {
+        // Taylor series approximation of arcsine
+        fun asin_approx(x: Float): Float {
+
+            let x2 = x * x; // x^2
+            let x4 = x2 * x2; // x^4
+            let x6 = x4 * x2; // x^6
+            let x8 = x6 * x2; // x^8
+            let x10 = x8 * x2; // x^10
+            let x12 = x10 * x2; // x^12
+
+            return x * (1.0
+                + (1.0 / 6.0) * x2
+                + (3.0 / 40.0) * x4
+                + (5.0 / 112.0) * x6
+                + (35.0 / 1152.0) * x8
+                + (63.0 / 2816.0) * x10
+                + (231.0 / 13312.0) * x12);
+        }
+
+        // As x approaches 1, the series converges more slowly
+        // add a condition to speed up the calculation
+        if x.abs() > 0.9 {
+            let complement = sqrt(1.0 - x * x);
+            let result = PI / 2 - asin_approx(complement);
+            if x < 0 {
+                return -result;
+            }
+            return result;
+        }
+
+        return asin_approx(x);
+    }
+
+    // Taylor series approximation of arccosine
+    fun acos(x: Float): Float {
+        return PI / 2 - asin(x);
+    }
+
+    // Calculate the arctangent of a number
+    fun atan(x: Float): Float {
+        let x2 = x * x; // x^2
+        let x3 = x2 * x; // x^3
+        let x5 = x3 * x2; // x^5
+        let x7 = x5 * x2; // x^7
+        let x9 = x7 * x2; // x^9
+        let x11 = x9 * x2; // x^11
+        let x13 = x11 * x2; // x^13
+
+        return x * (1.0
+            - (1.0 / 3.0) * x2
+            + (1.0 / 5.0) * x3
+            - (1.0 / 7.0) * x5
+            + (1.0 / 9.0) * x7
+            - (1.0 / 11.0) * x9
+            + (1.0 / 13.0) * x11
+            - (1.0 / 15.0) * x13);
+    }
+
+    // Calculate the arctangent of a fraction
+    fun atan2(y: Float, x: Float): Float {
+        if x.abs() < EPSILON {
+            if y > 0 {
+                return PI / 2;
+            } else if y < 0 {
+                return -PI / 2;
+            } else {
+                return 0.0;
+            }
+        }
+        if x > 0 {
+            return atan(y / x);
+        }
+        if y > 0 {
+            return atan(y / x) + PI;
+        }
+        return atan(y / x) - PI;
+    }
+
+    // Calculate the square root of a number using Newton's method
+    fun sqrt(x: Float): Float {
+        let mut result = x;
+        let mut i = 0;
+        while i < MAX_SQRT_ITERATIONS && result > EPSILON {
+            result = (result + x / result) / 2;
+            i += 1;
+        }
+        return result;
+    }
+
+    // Calculate the natural logarithm of a number
+    fun ln(x: Float): Float {
+        let mut result = 0.0;
+        let mut term = (x - 1) / (x + 1);
+        let mut i = 1;
+        while i < MAX_LOG_ITERATIONS {
+            result += term / i;
+            term *= (x - 1) * (x - 1) / (x + 1) / (x + 1);
+            i += 2;
+        }
+        return 2 * result;
+    }
+
+    // Calculate the base 10 logarithm of a number
+    fun log10(x: Float): Float {
+        return ln(x) / ln(10.0);
+    }
+
+    // Calculate the exponential of a number
+    fun exp(x: Float): Float {
+        let mut result = 1.0;
+        let mut term = 1.0;
+        let mut i = 1;
+        while i < MAX_TRIG_ITERATIONS {
+            term *= x / i;
+            result += term;
+            i += 1;
+        }
+        return result;
+    }
+
+    // Calculate the power of a number
+    fun pow(x: Float, y: Float): Float {
+        return exp(y * ln(x));
+    }
+
+    // Calculate the hyperbolic sine of a number
+    fun sinh(x: Float): Float {
+        return (exp(x) - exp(-x)) / 2;
+    }
+
+    // Calculate the hyperbolic cosine of a number
+    fun cosh(x: Float): Float {
+        return (exp(x) + exp(-x)) / 2;
+    }
+
+    // Calculate the hyperbolic tangent of a number
+    fun tanh(x: Float): Float {
+        return sinh(x) / cosh(x);
+    }
+
+    // Calculate the hyperbolic arcsine of a number
+    fun asinh(x: Float): Float {
+        return ln(x + sqrt(x * x + 1));
+    }
+
+    // Calculate the hyperbolic arccosine of a number
+    fun acosh(x: Float): Float {
+        return ln(x + sqrt(x * x - 1));
+    }
+
+    // Calculate the hyperbolic arctangent of a number
+    fun atanh(x: Float): Float {
+        return ln((1 + x) / (1 - x)) / 2;
+    }
+
+    // Calculate the hyperbolic arctangent of a fraction
+    fun atanh2(y: Float, x: Float): Float {
+        return atanh(y / x);
     }
 }
 
@@ -173,7 +417,7 @@ mod int {
 mod collections {
     from fallible import panic, Option;
     from mem import malloc;
-    
+
     enum List<T> {
         Cons(T, &List<T>),
         Nil
@@ -519,14 +763,451 @@ mod collections {
     }
 }
 
-// A mod just to test imports some more
-mod testing {
-    // Import from a mod which imports from another mod
-    from io import getchar;
+mod time {
+    from fallible import Option;
 
-    fun test() {
-        let ch = getchar();
-        // Use a method defined in another mod
-        ch.put();
+    const SECONDS_PER_YEAR = 31556926;
+    const SECONDS_PER_DAY = 86400;
+    const SECONDS_PER_HOUR = 3600;
+    
+
+    struct Duration {
+        us: Int,
+        start: Option<Instant>,
+        end: Option<Instant>
+    }
+
+    impl Duration {
+        fun from_us(micros: Int): Duration {
+            return { us=micros, start=Option<Instant> of Nothing, end=Option<Instant> of Nothing };
+        }
+
+        fun from_ms(millis: Int): Duration {
+            return Duration.from_us(millis * 1000);
+        }
+
+        fun from_secs(seconds: Int): Duration {
+            return Duration.from_us(seconds * 1000000);
+        }
+
+        fun from_mins(minutes: Int): Duration {
+            return Duration.from_secs(minutes * 60);
+        }
+
+        fun from_hours(hours: Int): Duration {
+            return Duration.from_mins(hours * 60);
+        }
+
+        fun as_secs(self): Int {
+            return self.us / 1000000;
+        }
+
+        fun as_years(self): Float {
+            return self.us as Float / 1000000.0 / SECONDS_PER_YEAR as Float;
+        }
+    }
+
+    struct Instant {
+        us: Int
+    }
+
+    // Get the time since the Unix epoch in microseconds
+    extern fun microseconds_since_epoch(): Int;
+
+    impl Instant {
+        // Get the current time
+        fun now(): Instant {
+            return { us=microseconds_since_epoch() };
+        }
+
+        fun epoch(): Instant {
+            return { us=0 };
+        }
+
+        fun as_secs(self): Int {
+            return self.us / 1000000;
+        }
+
+        fun from_us_since_epoch(micros: Int): Instant {
+            return { us=micros };
+        }
+
+        fun time_since_epoch(self): Duration {
+            return Duration.from_us(self.us);
+        }
+
+        fun elapsed(self): Duration {
+            let now = Instant.now();
+            return {
+                us=now.us - self.us,
+                start=Option<Instant> of Some(self),
+                end=Option<Instant> of Some(now)
+            };
+        }
+
+        fun add(mut self, duration: Duration): Instant {
+            self.us += duration.us;
+            return self;
+        }
+
+        fun from_date(self: Date): Instant {
+            let days = self.days_since_epoch();
+            
+            return Instant.from_us_since_epoch(days * SECONDS_PER_DAY * 1000000)
+                .add(Duration.from_hours(self.hour))
+                .add(Duration.from_mins(self.minute))
+                .add(Duration.from_secs(self.second));
+        }
+    }
+
+    enum Weekday {
+        Sunday,
+        Monday,
+        Tuesday,
+        Wednesday,
+        Thursday,
+        Friday,
+        Saturday
+    }
+
+    impl Weekday {
+        fun next(self): Weekday {
+            match self {
+                of Sunday => Weekday of Monday,
+                of Monday => Weekday of Tuesday,
+                of Tuesday => Weekday of Wednesday,
+                of Wednesday => Weekday of Thursday,
+                of Thursday => Weekday of Friday,
+                of Friday => Weekday of Saturday,
+                of Saturday => Weekday of Sunday
+            }
+        }
+
+        fun to_int(self): Int {
+            match self {
+                of Sunday => 0,
+                of Monday => 1,
+                of Tuesday => 2,
+                of Wednesday => 3,
+                of Thursday => 4,
+                of Friday => 5,
+                of Saturday => 6
+            }
+        }
+
+        fun is_before(self, other: Weekday): Bool {
+            self.to_int() < other.to_int()
+        }
+    }
+
+    struct Date {
+        year: Int,
+        month: Int,
+        day: Int,
+        hour: Int,
+        minute: Int,
+        second: Int
+    }
+
+    impl Date {
+        fun date(year: Int, month: Int, day: Int): Date {
+            return { year=year, month=month, day=day, hour=0, minute=0, second=0 };
+        }
+
+        fun weekday(self): Weekday {
+            match self.days_since_epoch() % 7 {
+                0 => Weekday of Thursday,
+                1 => Weekday of Friday,
+                2 => Weekday of Saturday,
+                3 => Weekday of Sunday,
+                4 => Weekday of Monday,
+                5 => Weekday of Tuesday,
+                6 => Weekday of Wednesday,
+                _ => Weekday of Sunday
+            }
+        }
+
+        fun days_since_epoch(self): Int {
+            let mut days = 0;
+            for let mut y=1970; y<self.year; y+=1; {
+                days += 365;
+                if Date.date(y, 1, 1).is_leap_year() {
+                    days += 1;
+                }
+            }
+            let mut days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            if self.is_leap_year() {
+                days_in_month[1] = 29;
+            }
+            for let mut m=1; m<self.month; m+=1; {
+                days += days_in_month[m - 1];
+            }
+            days += self.day - 1;
+            return days;
+        }
+
+        fun days_in_month(self): Int {
+            let mut days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            if self.is_leap_year() {
+                days_in_month[1] = 29;
+            }
+            return days_in_month[self.month - 1];
+        }
+
+        fun is_leap_year(self): Bool {
+            return self.year % 4 == 0 && (self.year % 100 != 0 || self.year % 400 == 0);
+        }
+
+        fun print(&self) {
+            print(self.year, "-", self.month, "-", self.day);
+        }
+    }
+}
+
+mod physics {
+    // Import from math just to test
+    from time import Instant, Duration, Date, SECONDS_PER_YEAR;
+
+    // Calculate the distance between two points
+    fun distance(x1: Float, y1: Float, x2: Float, y2: Float): Float {
+        return math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+    }
+
+    struct Point3D {
+        x: Float,
+        y: Float,
+        z: Float
+    }
+
+    impl Point3D {
+        fun new(x: Float, y: Float, z: Float): Point3D {
+            return { x=x, y=y, z=z };
+        }
+
+        fun convert(self, f: fun(Float) -> Float): Point3D {
+            return Point3D.new(f(self.x), f(self.y), f(self.z));
+        }
+    }
+
+
+    const G_CONSTANT = 0.000000000066743;
+    mod kinematics {
+        // Calculate the gravitational force between two objects
+        fun gravitational_force(m1: Float, m2: Float, r: Float): Float {
+            return gravitational_acceleration(m1, r) * m2;
+        }
+
+        // Calculate the acceleration of an object due to gravity
+        fun gravitational_acceleration(m: Float, r: Float): Float {
+            return G_CONSTANT * m / (r * r);
+        }
+        
+        // Calculate the escape velocity of an object
+        fun escape_velocity(m: Float, r: Float): Float {
+            return math.sqrt(2 * gravitational_acceleration(m, r) * r);
+        }
+
+        // Calculate the period of a satellite in orbit
+        fun orbital_period(m: Float, r: Float): Float {
+            return 2 * math.PI * math.sqrt(r * r * r / (G_CONSTANT * m));
+        }
+
+        // Calculate the angular velocity of a satellite in orbit
+        fun orbital_angular_velocity(m: Float, r: Float): Float {
+            return 2 * math.PI / orbital_period(m, r);
+        }
+
+        // Calculate the centripetal force of a satellite in orbit
+        fun centripetal_force(m: Float, r: Float, v: Float): Float {
+            return m * v * v / r;
+        }
+
+        // Calculate the centripetal acceleration of a satellite in orbit
+        fun centripetal_acceleration(r: Float, v: Float): Float {
+            return v * v / r;
+        }
+
+        // Calculate the tangential velocity of a satellite in orbit
+        fun tangential_velocity(r: Float, v: Float): Float {
+            return math.sqrt(v * v - centripetal_acceleration(r, v) * r);
+        }
+    }
+
+    mod astronomy {
+        from fallible import Option;
+
+        // A module for astronomical calculations
+        fun light_years_to_meters(light_years: Float): Float {
+            return light_years * 9461000000000000.0;
+        }
+
+        // Calculate the apparent magnitude of a star
+        fun apparent_magnitude(luminosity: Float, distance: Float): Float {
+            return -2.5 * math.ln(luminosity / (4 * math.PI * distance * distance));
+        }
+
+        // Calculate the absolute magnitude of a star
+        fun absolute_magnitude(apparent_magnitude: Float, distance: Float): Float {
+            return apparent_magnitude - 5 * math.ln(distance / 10);
+        }
+
+
+        enum MoonPhase {
+            New,
+            WaxingCrescent,
+            FirstQuarter,
+            WaxingGibbous,
+            Full,
+            WaningGibbous,
+            LastQuarter,
+            WaningCrescent
+        }
+
+        impl MoonPhase {
+            const SYNODIC_MONTH = 29.53058868;
+            const EPOCH_FULL_MOON_OFFSET = 22;
+            fun from_date(date: Date): MoonPhase {
+                let phase_days = (date.days_since_epoch() + MoonPhase.EPOCH_FULL_MOON_OFFSET + 1.5) % MoonPhase.SYNODIC_MONTH;
+                let phase_index = ((phase_days / MoonPhase.SYNODIC_MONTH) * 8.0).floor() % 8;
+                match phase_index {
+                    0 => MoonPhase of New,
+                    1 => MoonPhase of WaxingCrescent,
+                    2 => MoonPhase of FirstQuarter,
+                    3 => MoonPhase of WaxingGibbous,
+                    4 => MoonPhase of Full,
+                    5 => MoonPhase of WaningGibbous,
+                    6 => MoonPhase of LastQuarter,
+                    7 => MoonPhase of WaningCrescent,
+                    _ => MoonPhase of New
+                }
+            }
+
+            fun print(self) {
+                match self {
+                    of New => print("N"),
+                    of WaxingCrescent => print("W"),
+                    of FirstQuarter => print("Q"),
+                    of WaxingGibbous => print("G"),
+                    of Full => print("F"),
+                    of WaningGibbous => print("g"),
+                    of LastQuarter => print("q"),
+                    of WaningCrescent => print("w")
+                }
+            }
+        }
+
+        enum Planet {
+            Mercury,
+            Venus,
+            Earth,
+            Mars,
+            Jupiter,
+            Saturn,
+            Uranus,
+            Neptune,
+        }
+
+        impl Planet {
+            const ORBITAL_RADII = [
+                0.39,
+                0.72,
+                1.0,
+                1.52,
+                5.2,
+                9.58,
+                19.22,
+                30.05
+            ];
+
+            const PLANETS = [
+                Planet of Mercury,
+                Planet of Venus,
+                Planet of Earth,
+                Planet of Mars,
+                Planet of Jupiter,
+                Planet of Saturn,
+                Planet of Uranus,
+                Planet of Neptune
+            ];
+
+            const ORBITAL_PERIODS = [
+                0.24,
+                0.62,
+                1.0,
+                1.88,
+                11.86,
+                29.46,
+                84.01,
+                164.8
+            ];
+
+            const POSITION_AT_EPOCH = [
+                (-42278675812.454315, 24613309950.918446, 17482615609.45234),
+                (-108190381646.73073, -13317243499.344467, 818212376.0610391),
+                (-26004940524.516987, 132621768469.43376, 57523897417.362076),
+                (-45075950705.15841, -198201555907.44907, -89682031118.63554),
+                (521378228062.63275, 493060238375.3027, 198651062155.9376),
+                (1344601806306.465, -493006383015.7458, -261550590693.13828),
+                (1834521958762.2458, 2105690989019.717, 896288551314.5364),
+                (4463253980773.344, -207488910186.74722, -196045534921.0069)
+            ];
+
+            fun orbital_radius(self): Float {
+                return Planet.ORBITAL_RADII[self.order_from_sun()];
+            }
+
+            fun orbital_period(self): Float {
+                return Planet.ORBITAL_PERIODS[self.order_from_sun()];
+            }
+
+            fun position_at_epoch(self): (Float, Float, Float) {
+                return Planet.POSITION_AT_EPOCH[self.order_from_sun()];
+            }
+
+            fun order_from_sun(self): Int {
+                match self {
+                    of Mercury => 0,
+                    of Venus => 1,
+                    of Earth => 2,
+                    of Mars => 3,
+                    of Jupiter => 4,
+                    of Saturn => 5,
+                    of Uranus => 6,
+                    of Neptune => 7
+                }
+            }
+
+            fun position_at_instant(self, now: Instant): Point3D {
+                let (x0, y0, z0) = self.position_at_epoch();
+                
+                let t = time.SECONDS_PER_YEAR;
+                
+                let omega = 2 * math.PI / t;
+                
+                let theta = omega * now.as_secs() as Float;
+                
+                let cos_theta = math.cos(theta);
+                let sin_theta = math.sin(theta);
+                
+                return {
+                    x=x0 * cos_theta - y0 * sin_theta,
+                    y=x0 * sin_theta + y0 * cos_theta,
+                    z=z0
+                };
+            }
+
+            fun print(self) {
+                match self {
+                    of Mercury => print("Mercury"),
+                    of Venus => print("Venus"),
+                    of Earth => print("Earth"),
+                    of Mars => print("Mars"),
+                    of Jupiter => print("Jupiter"),
+                    of Saturn => print("Saturn"),
+                    of Uranus => print("Uranus"),
+                    of Neptune => print("Neptune")
+                }
+            }
+        }
     }
 }

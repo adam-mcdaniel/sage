@@ -1,0 +1,56 @@
+from std.time import Date, Weekday;
+from std.physics.astronomy import MoonPhase;
+
+fun main() {
+    lunar_calendar(10, 2024);
+}
+
+fun lunar_calendar(month: Int, year: Int) {
+    let d = Date.date(year, month, 1);
+    let start_weekday = d.weekday();
+
+    let days_in_month = d.days_in_month();
+
+    let mut day = 1;
+    let mut weekday = Weekday of Sunday;
+    println("          Lunar Calendar         ");
+    print("            "); d.print(); println();
+    println("---------------------------------");
+    println("Sun  Mon  Tue  Wed  Thu  Fri  Sat");
+    let mut is_first_week = True;
+    while day <= days_in_month {
+        for let mut i=0; i<7; i+=1; {
+            if is_first_week && weekday.is_before(start_weekday) {
+                print("     ");
+            } else {
+                if day <= days_in_month {
+                    if day < 10 {
+                        print(" ");
+                    } else {
+                        print("");
+                    }
+                    print(day);
+                    MoonPhase.from_date(Date.date(year, month, day)).print();
+                    print("  ");
+                }
+                day += 1;
+            }
+            weekday = weekday.next();
+        }
+        is_first_week = False;
+        println();
+    }
+
+    println("---------------------------------\n");
+    println("Legend:");
+    println("N: New Moon");
+    println("W: Waxing Crescent");
+    println("Q: First Quarter");
+    println("G: Waxing Gibbous");
+    println("F: Full Moon");
+    println("g: Waning Gibbous");
+    println("q: Last Quarter");
+    println("w: Waning Crescent");
+}
+
+main();

@@ -29,7 +29,7 @@ pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
     /// compiled core assembly program, or a fallback standard assembly program.
     ///
     /// On an error, this will return an Err value containing the error.
-    fn compile(self) -> Result<Result<CoreProgram, StandardProgram>, Error>
+    fn compile(self, core: bool) -> Result<Result<CoreProgram, StandardProgram>, Error>
     where
         Self: Sized + Clone,
     {
@@ -41,24 +41,33 @@ pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
         let mut core_asm = CoreProgram::default();
 
         info!("Compiling...");
-        // If the expression cannot be compiled into a core assembly program,
-        // then compile it into a standard assembly program.
-        if let Err(err) = self
-            .clone()
-            // Compile the expression into the core assembly program.
-            .compile_expr(&mut Env::default(), &mut core_asm)
-        {
-            warn!("Failed to compile into core assembly program: {err}, falling back on standard assembly");
+        if core {
+            // If the expression cannot be compiled into a core assembly program,
+            // then compile it into a standard assembly program.
+            if let Err(err) = self
+                .clone()
+                // Compile the expression into the core assembly program.
+                .compile_expr(&mut Env::default(), &mut core_asm)
+            {
+                warn!("Failed to compile into core assembly program: {err}, falling back on standard assembly");
+                let mut std_asm = StandardProgram::default();
+                // Compile the expression into the standard assembly program.
+                self.compile_expr(&mut Env::default(), &mut std_asm)?;
+                info!("Compiled to standard assembly successfully");
+                // Return the fallback standard assembly program.
+                Ok(Err(std_asm))
+            } else {
+                info!("Compiled to core assembly successfully");
+                // Return the successfully compiled core assembly program.
+                Ok(Ok(core_asm))
+            }
+        } else {
             let mut std_asm = StandardProgram::default();
             // Compile the expression into the standard assembly program.
             self.compile_expr(&mut Env::default(), &mut std_asm)?;
             info!("Compiled to standard assembly successfully");
             // Return the fallback standard assembly program.
             Ok(Err(std_asm))
-        } else {
-            info!("Compiled to core assembly successfully");
-            // Return the successfully compiled core assembly program.
-            Ok(Ok(core_asm))
         }
     }
     // Compile a specific expression into an assembly program.
@@ -71,13 +80,11 @@ impl Compile for Expr {
         let is_const = matches!(self, Self::ConstExpr(_));
         trace!("Compiling expression {self} (is_const={is_const}) {self:?} in environment {env}");
 
-        let mut debug_str = format!("{self:50}");
-        debug_str.truncate(50);
-
         // Write a little comment about what we're compiling.
         if !matches!(self, Self::ConstExpr(_)) {
             let mut comment = format!("{self}");
-            comment.truncate(70);
+            comment = comment.chars().take(70).collect();
+            output.comment(comment);
         }
 
         // Compile the expression.
@@ -697,19 +704,20 @@ impl Compile for Expr {
 
             // Compile a member access operation.
             Self::Member(ref val, ref member) => {
+                debug!("Compiling non-const member access of {val} with {member} in environment {env}");
                 if let Self::Annotated(expr, metadata) = val.as_ref() {
                     return Self::Member(expr.clone(), member.clone())
                         .compile_expr(env, output)
                         .map_err(|e| e.annotate(metadata.clone()));
                 }
-
                 if let Self::ConstExpr(container) = val.as_ref() {
                     // Write more elegantly
                     if let Ok(val) = container.clone().field(member.clone()).eval(env) {
-                        return val.compile_expr(env, output);
+                        if !matches!(val, ConstExpr::Member(..)) {
+                            return val.compile_expr(env, output);
+                        }
                     }
                 }
-
                 // If the value we're getting a field from is a pointer,
                 // then dereference it and get the field from the value.
                 match val.get_type(env)? {
@@ -866,6 +874,13 @@ impl Compile for Expr {
                             val.clone().compile_expr(env, output)?;
                         }
                         other => {
+                            // First try to get the associated constant
+                            if let Ok(name) = name.clone().as_symbol(env) {
+                                if let Some((constant, _)) = env.get_associated_const(&other, &name) {
+                                    return Expr::from(constant).refer(expected_mutability).compile_expr(env, output);
+                                }
+                            }
+
                             error!("Tried to get a member {name} of a non-struct, non-tuple, non-union, non-pointer type: {other} of value {val} in environment {env}");
                             return Err(Error::InvalidRefer(Expr::Member(
                                 Expr::from(*val.clone()).into(),
@@ -1068,7 +1083,8 @@ impl Compile for ConstExpr {
     fn compile_expr(self, env: &mut Env, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         trace!("Compiling constant expression {self} in environment {env}");
         let mut debug_str = format!("{self}");
-        debug_str.truncate(50);
+        // debug_str.truncate(50);
+        debug_str = debug_str.chars().take(50).collect();
 
         let current_instruction = output.current_instruction();
         let ty = self.get_type(env)?;
@@ -1077,6 +1093,7 @@ impl Compile for ConstExpr {
             Self::Any
             | Self::Template(_, _) => {
                 // Cannot compile a template expression.
+                error!("Compiled template expression {self} in environment {env}");
                 return Err(Error::UnsizedType(ty));
             }
 
@@ -1085,6 +1102,7 @@ impl Compile for ConstExpr {
                     let cexpr = t.simplify_until_const_param(env, false)?;
                     cexpr.compile_expr(env, output)?
                 } else {
+                    error!("Compiled type expression {t} in environment {env}");
                     return Err(Error::UnsizedType(ty));
                 }
             }
@@ -1122,6 +1140,20 @@ impl Compile for ConstExpr {
                         let mut new_env = env.clone();
                         new_env.add_declaration(&bindings, true)?;
                         expr.field(field).compile_expr(&mut new_env, output)?;
+                    }
+                    (Self::Symbol(name), member) => {
+                        if let Some(cexpr) = env.get_const(&name) {
+                            debug!("Found const named {name}");
+                            cexpr.clone().field(member).compile_expr(env, output)?;
+                            // env.get_const(&name).cloned().ok_or_else(|| Error::SymbolNotDefined(name))?.field(member).eval(env)?.compile_expr(env, output)?;
+                        } else {
+                            debug!("Could not get member {member} of symbol {name} in environment {env}");
+                            Expr::Member(
+                                Box::new(Expr::ConstExpr(*container.clone())),
+                                member.into(),
+                            )
+                            .compile_expr(env, output)?
+                        }
                     }
                     (a, b) => {
                         debug!("Could not identify member access {b} on {a} in environment {env}");

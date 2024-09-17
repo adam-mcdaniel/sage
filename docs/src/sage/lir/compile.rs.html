@@ -1538,6 +1538,38 @@
 <a href="#1537" id="1537">1537</a>
 <a href="#1538" id="1538">1538</a>
 <a href="#1539" id="1539">1539</a>
+<a href="#1540" id="1540">1540</a>
+<a href="#1541" id="1541">1541</a>
+<a href="#1542" id="1542">1542</a>
+<a href="#1543" id="1543">1543</a>
+<a href="#1544" id="1544">1544</a>
+<a href="#1545" id="1545">1545</a>
+<a href="#1546" id="1546">1546</a>
+<a href="#1547" id="1547">1547</a>
+<a href="#1548" id="1548">1548</a>
+<a href="#1549" id="1549">1549</a>
+<a href="#1550" id="1550">1550</a>
+<a href="#1551" id="1551">1551</a>
+<a href="#1552" id="1552">1552</a>
+<a href="#1553" id="1553">1553</a>
+<a href="#1554" id="1554">1554</a>
+<a href="#1555" id="1555">1555</a>
+<a href="#1556" id="1556">1556</a>
+<a href="#1557" id="1557">1557</a>
+<a href="#1558" id="1558">1558</a>
+<a href="#1559" id="1559">1559</a>
+<a href="#1560" id="1560">1560</a>
+<a href="#1561" id="1561">1561</a>
+<a href="#1562" id="1562">1562</a>
+<a href="#1563" id="1563">1563</a>
+<a href="#1564" id="1564">1564</a>
+<a href="#1565" id="1565">1565</a>
+<a href="#1566" id="1566">1566</a>
+<a href="#1567" id="1567">1567</a>
+<a href="#1568" id="1568">1568</a>
+<a href="#1569" id="1569">1569</a>
+<a href="#1570" id="1570">1570</a>
+<a href="#1571" id="1571">1571</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compile
 //!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
@@ -1569,7 +1601,7 @@
     /// compiled core assembly program, or a fallback standard assembly program.
     ///
     /// On an error, this will return an Err value containing the error.
-    </span><span class="kw">fn </span>compile(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;CoreProgram, StandardProgram&gt;, Error&gt;
+    </span><span class="kw">fn </span>compile(<span class="self">self</span>, core: bool) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;CoreProgram, StandardProgram&gt;, Error&gt;
     <span class="kw">where
         </span><span class="self">Self</span>: Sized + Clone,
     {
@@ -1581,24 +1613,33 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>core_asm = CoreProgram::default();
 
         <span class="macro">info!</span>(<span class="string">"Compiling..."</span>);
-        <span class="comment">// If the expression cannot be compiled into a core assembly program,
-        // then compile it into a standard assembly program.
-        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
-            </span>.clone()
-            <span class="comment">// Compile the expression into the core assembly program.
-            </span>.compile_expr(<span class="kw-2">&amp;mut </span>Env::default(), <span class="kw-2">&amp;mut </span>core_asm)
-        {
-            <span class="macro">warn!</span>(<span class="string">"Failed to compile into core assembly program: {err}, falling back on standard assembly"</span>);
+        <span class="kw">if </span>core {
+            <span class="comment">// If the expression cannot be compiled into a core assembly program,
+            // then compile it into a standard assembly program.
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self
+                </span>.clone()
+                <span class="comment">// Compile the expression into the core assembly program.
+                </span>.compile_expr(<span class="kw-2">&amp;mut </span>Env::default(), <span class="kw-2">&amp;mut </span>core_asm)
+            {
+                <span class="macro">warn!</span>(<span class="string">"Failed to compile into core assembly program: {err}, falling back on standard assembly"</span>);
+                <span class="kw">let </span><span class="kw-2">mut </span>std_asm = StandardProgram::default();
+                <span class="comment">// Compile the expression into the standard assembly program.
+                </span><span class="self">self</span>.compile_expr(<span class="kw-2">&amp;mut </span>Env::default(), <span class="kw-2">&amp;mut </span>std_asm)<span class="question-mark">?</span>;
+                <span class="macro">info!</span>(<span class="string">"Compiled to standard assembly successfully"</span>);
+                <span class="comment">// Return the fallback standard assembly program.
+                </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(std_asm))
+            } <span class="kw">else </span>{
+                <span class="macro">info!</span>(<span class="string">"Compiled to core assembly successfully"</span>);
+                <span class="comment">// Return the successfully compiled core assembly program.
+                </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(core_asm))
+            }
+        } <span class="kw">else </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>std_asm = StandardProgram::default();
             <span class="comment">// Compile the expression into the standard assembly program.
             </span><span class="self">self</span>.compile_expr(<span class="kw-2">&amp;mut </span>Env::default(), <span class="kw-2">&amp;mut </span>std_asm)<span class="question-mark">?</span>;
             <span class="macro">info!</span>(<span class="string">"Compiled to standard assembly successfully"</span>);
             <span class="comment">// Return the fallback standard assembly program.
             </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(std_asm))
-        } <span class="kw">else </span>{
-            <span class="macro">info!</span>(<span class="string">"Compiled to core assembly successfully"</span>);
-            <span class="comment">// Return the successfully compiled core assembly program.
-            </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(core_asm))
         }
     }
     <span class="comment">// Compile a specific expression into an assembly program.
@@ -1611,13 +1652,11 @@
         <span class="kw">let </span>is_const = <span class="macro">matches!</span>(<span class="self">self</span>, <span class="self">Self</span>::ConstExpr(<span class="kw">_</span>));
         <span class="macro">trace!</span>(<span class="string">"Compiling expression {self} (is_const={is_const}) {self:?} in environment {env}"</span>);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>debug_str = <span class="macro">format!</span>(<span class="string">"{self:50}"</span>);
-        debug_str.truncate(<span class="number">50</span>);
-
         <span class="comment">// Write a little comment about what we're compiling.
         </span><span class="kw">if </span>!<span class="macro">matches!</span>(<span class="self">self</span>, <span class="self">Self</span>::ConstExpr(<span class="kw">_</span>)) {
             <span class="kw">let </span><span class="kw-2">mut </span>comment = <span class="macro">format!</span>(<span class="string">"{self}"</span>);
-            comment.truncate(<span class="number">70</span>);
+            comment = comment.chars().take(<span class="number">70</span>).collect();
+            output.comment(comment);
         }
 
         <span class="comment">// Compile the expression.
@@ -2237,19 +2276,20 @@
 
             <span class="comment">// Compile a member access operation.
             </span><span class="self">Self</span>::Member(<span class="kw-2">ref </span>val, <span class="kw-2">ref </span>member) =&gt; {
+                <span class="macro">debug!</span>(<span class="string">"Compiling non-const member access of {val} with {member} in environment {env}"</span>);
                 <span class="kw">if let </span><span class="self">Self</span>::Annotated(expr, metadata) = val.as_ref() {
                     <span class="kw">return </span><span class="self">Self</span>::Member(expr.clone(), member.clone())
                         .compile_expr(env, output)
                         .map_err(|e| e.annotate(metadata.clone()));
                 }
-
                 <span class="kw">if let </span><span class="self">Self</span>::ConstExpr(container) = val.as_ref() {
                     <span class="comment">// Write more elegantly
                     </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(val) = container.clone().field(member.clone()).eval(env) {
-                        <span class="kw">return </span>val.compile_expr(env, output);
+                        <span class="kw">if </span>!<span class="macro">matches!</span>(val, ConstExpr::Member(..)) {
+                            <span class="kw">return </span>val.compile_expr(env, output);
+                        }
                     }
                 }
-
                 <span class="comment">// If the value we're getting a field from is a pointer,
                 // then dereference it and get the field from the value.
                 </span><span class="kw">match </span>val.get_type(env)<span class="question-mark">? </span>{
@@ -2406,6 +2446,13 @@
                             </span>val.clone().compile_expr(env, output)<span class="question-mark">?</span>;
                         }
                         other =&gt; {
+                            <span class="comment">// First try to get the associated constant
+                            </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(name) = name.clone().as_symbol(env) {
+                                <span class="kw">if let </span><span class="prelude-val">Some</span>((constant, <span class="kw">_</span>)) = env.get_associated_const(<span class="kw-2">&amp;</span>other, <span class="kw-2">&amp;</span>name) {
+                                    <span class="kw">return </span>Expr::from(constant).refer(expected_mutability).compile_expr(env, output);
+                                }
+                            }
+
                             <span class="macro">error!</span>(<span class="string">"Tried to get a member {name} of a non-struct, non-tuple, non-union, non-pointer type: {other} of value {val} in environment {env}"</span>);
                             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::InvalidRefer(Expr::Member(
                                 Expr::from(<span class="kw-2">*</span>val.clone()).into(),
@@ -2608,7 +2655,8 @@
     <span class="kw">fn </span>compile_expr(<span class="self">self</span>, env: <span class="kw-2">&amp;mut </span>Env, output: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>AssemblyProgram) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
         <span class="macro">trace!</span>(<span class="string">"Compiling constant expression {self} in environment {env}"</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>debug_str = <span class="macro">format!</span>(<span class="string">"{self}"</span>);
-        debug_str.truncate(<span class="number">50</span>);
+        <span class="comment">// debug_str.truncate(50);
+        </span>debug_str = debug_str.chars().take(<span class="number">50</span>).collect();
 
         <span class="kw">let </span>current_instruction = output.current_instruction();
         <span class="kw">let </span>ty = <span class="self">self</span>.get_type(env)<span class="question-mark">?</span>;
@@ -2617,7 +2665,8 @@
             <span class="self">Self</span>::Any
             | <span class="self">Self</span>::Template(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
                 <span class="comment">// Cannot compile a template expression.
-                </span><span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsizedType(ty));
+                </span><span class="macro">error!</span>(<span class="string">"Compiled template expression {self} in environment {env}"</span>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsizedType(ty));
             }
 
             <span class="self">Self</span>::Type(t) =&gt; {
@@ -2625,6 +2674,7 @@
                     <span class="kw">let </span>cexpr = t.simplify_until_const_param(env, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                     cexpr.compile_expr(env, output)<span class="question-mark">?
                 </span>} <span class="kw">else </span>{
+                    <span class="macro">error!</span>(<span class="string">"Compiled type expression {t} in environment {env}"</span>);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(Error::UnsizedType(ty));
                 }
             }
@@ -2662,6 +2712,20 @@
                         <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                         new_env.add_declaration(<span class="kw-2">&amp;</span>bindings, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
                         expr.field(field).compile_expr(<span class="kw-2">&amp;mut </span>new_env, output)<span class="question-mark">?</span>;
+                    }
+                    (<span class="self">Self</span>::Symbol(name), member) =&gt; {
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(cexpr) = env.get_const(<span class="kw-2">&amp;</span>name) {
+                            <span class="macro">debug!</span>(<span class="string">"Found const named {name}"</span>);
+                            cexpr.clone().field(member).compile_expr(env, output)<span class="question-mark">?</span>;
+                            <span class="comment">// env.get_const(&amp;name).cloned().ok_or_else(|| Error::SymbolNotDefined(name))?.field(member).eval(env)?.compile_expr(env, output)?;
+                        </span>} <span class="kw">else </span>{
+                            <span class="macro">debug!</span>(<span class="string">"Could not get member {member} of symbol {name} in environment {env}"</span>);
+                            Expr::Member(
+                                Box::new(Expr::ConstExpr(<span class="kw-2">*</span>container.clone())),
+                                member.into(),
+                            )
+                            .compile_expr(env, output)<span class="question-mark">?
+                        </span>}
                     }
                     (a, b) =&gt; {
                         <span class="macro">debug!</span>(<span class="string">"Could not identify member access {b} on {a} in environment {env}"</span>);

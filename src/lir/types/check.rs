@@ -1019,7 +1019,7 @@ impl TypeCheck for ConstExpr {
                     return Err(Error::InvalidConstExpr(self.clone()));
                 }
                 // Add all the bindings to the environment.
-                new_env.add_compile_time_declaration(bindings)?;
+                new_env.add_compile_time_declaration(bindings, false)?;
                 // Typecheck the bindings
                 bindings.type_check(&new_env)?;
                 // Typecheck the expression with the bindings defined.

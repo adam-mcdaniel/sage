@@ -1001,6 +1001,34 @@
 <a href="#1000" id="1000">1000</a>
 <a href="#1001" id="1001">1001</a>
 <a href="#1002" id="1002">1002</a>
+<a href="#1003" id="1003">1003</a>
+<a href="#1004" id="1004">1004</a>
+<a href="#1005" id="1005">1005</a>
+<a href="#1006" id="1006">1006</a>
+<a href="#1007" id="1007">1007</a>
+<a href="#1008" id="1008">1008</a>
+<a href="#1009" id="1009">1009</a>
+<a href="#1010" id="1010">1010</a>
+<a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
+<a href="#1014" id="1014">1014</a>
+<a href="#1015" id="1015">1015</a>
+<a href="#1016" id="1016">1016</a>
+<a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a>
+<a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a>
+<a href="#1027" id="1027">1027</a>
+<a href="#1028" id="1028">1028</a>
+<a href="#1029" id="1029">1029</a>
+<a href="#1030" id="1030">1030</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{PolyProcedure, Procedure};
 <span class="kw">use crate</span>::{
     asm::{AssemblyProgram, CoreOp, Location, SP},
@@ -1016,7 +1044,7 @@
 <span class="kw">use </span>log::<span class="kw-2">*</span>;
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde_derive::{Deserialize, Serialize};
-<span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::collections::{BTreeMap, HashSet};
 <span class="kw">use </span>std::hash::{Hash, Hasher};
 <span class="kw">use </span>std::sync::Arc;
 
@@ -1049,7 +1077,7 @@
     /// use the `Declaration::module` method.
     /// This will redistribute the declarations to make sure
     /// everything is in-order internally to be imported/exported.
-    </span>Module(String, Arc&lt;Vec&lt;Declaration&gt;&gt;),
+    </span>Module(String, Arc&lt;Vec&lt;Declaration&gt;&gt;, bool, usize),
     <span class="doccomment">/// Import an element from a module.
     </span>FromImport {
         module: ConstExpr,
@@ -1073,10 +1101,22 @@
         <span class="self">Self</span>::Many(Arc::new(decls.into()))
     }
 
-    <span class="doccomment">/// Create a module with a given name and a list of declarations
-    </span><span class="kw">pub fn </span>module(name: <span class="kw">impl </span>ToString, decls: <span class="kw">impl </span>Into&lt;Vec&lt;<span class="self">Self</span>&gt;&gt;) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Create a module with a given name and a list of declarations, and whether or not it is checked.
+    </span><span class="kw">pub fn </span>module(name: <span class="kw">impl </span>ToString, decls: <span class="kw">impl </span>Into&lt;Vec&lt;<span class="self">Self</span>&gt;&gt;, checked: bool) -&gt; <span class="self">Self </span>{
+        <span class="macro">lazy_static::lazy_static! </span>{
+            <span class="kw">static </span><span class="kw-2">ref </span>MODULE_COUNT: std::sync::Mutex&lt;usize&gt; = std::sync::Mutex::new(<span class="number">0</span>);
+        }
+        <span class="kw">let </span>module_count = {
+            <span class="kw">let </span><span class="kw-2">mut </span>count = MODULE_COUNT.lock().unwrap();
+            <span class="kw-2">*</span>count += <span class="number">1</span>;
+            <span class="kw-2">*</span>count
+        };
+
         <span class="kw">let </span><span class="kw-2">mut </span>decls = decls.into();
         <span class="kw">let </span><span class="kw-2">mut </span>import = <span class="self">Self</span>::many(decls.clone());
+        <span class="kw">if </span>!checked {
+            import.mark_no_checking();
+        }
         import.filter(<span class="kw-2">&amp;</span>|decl| {
             decl.is_compile_time_declaration() &amp;&amp; !<span class="macro">matches!</span>(decl, Declaration::Impl(..))
         });
@@ -1085,7 +1125,28 @@
             decl.distribute_decls(<span class="kw-2">&amp;</span>import.clone());
         }
 
-        <span class="self">Self</span>::Module(name.to_string(), Arc::new(decls))
+        <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="self">Self</span>::Module(name.to_string(), Arc::new(decls), checked, module_count);
+        <span class="kw">if </span>!checked {
+            result.mark_no_checking();
+        }
+        result
+    }
+
+    <span class="kw">fn </span>mark_no_checking(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::Module(<span class="kw">_</span>, decls, checked, ..) =&gt; {
+                <span class="kw-2">*</span>checked = <span class="bool-val">false</span>;
+                <span class="kw">for </span>decl <span class="kw">in </span>Arc::make_mut(decls).iter_mut() {
+                    decl.mark_no_checking();
+                }
+            }
+            <span class="self">Self</span>::Many(decls) =&gt; {
+                <span class="kw">for </span>decl <span class="kw">in </span>Arc::make_mut(decls).iter_mut() {
+                    decl.mark_no_checking();
+                }
+            }
+            <span class="kw">_ </span>=&gt; {}
+        }
     }
 
     <span class="doccomment">/// Filter all the subdeclarations to satisfy some condition.
@@ -1096,7 +1157,7 @@
                 decls.retain(|decl| f(decl));
                 decls.iter_mut().for_each(|decl| decl.filter(f));
             }
-            <span class="self">Self</span>::Module(_name, decls) =&gt; {
+            <span class="self">Self</span>::Module(_name, decls, ..) =&gt; {
                 <span class="kw">let </span>decls = Arc::make_mut(decls);
                 decls.retain(|decl| f(decl));
                 decls.iter_mut().for_each(|decl| decl.filter(f));
@@ -1121,7 +1182,7 @@
                     decl.distribute_decls(distributed);
                 }
             }
-            <span class="self">Self</span>::Module(_name, decls) =&gt; {
+            <span class="self">Self</span>::Module(_name, decls, ..) =&gt; {
                 <span class="kw">let </span>decls = Arc::make_mut(decls);
                 <span class="kw">for </span>decl <span class="kw">in </span>decls.iter_mut() {
                     decl.distribute_decls(distributed);
@@ -1214,7 +1275,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, Error&gt; {
         <span class="comment">// Add all the compile time declarations to the environment so that they can be used
         // in these declarations.
-        </span>env.add_compile_time_declaration(<span class="self">self</span>)<span class="question-mark">?</span>;
+        </span>env.add_compile_time_declaration(<span class="self">self</span>, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
         <span class="comment">// The size of the variables declared.
         // This is used to pop the stack when we're done.
         </span><span class="kw">let </span><span class="kw-2">mut </span>var_size = <span class="number">0</span>;
@@ -1327,6 +1388,25 @@
         <span class="prelude-val">Ok</span>(var_size)
     }
 
+    <span class="doccomment">/// Detect duplicate modules
+    </span><span class="kw">fn </span>detect_duplicate_modules(<span class="kw-2">&amp;</span><span class="self">self</span>, modules: <span class="kw-2">&amp;mut </span>HashSet&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::Module(name, _decls, ..) =&gt; {
+                <span class="kw">if </span>modules.contains(name) {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ModuleRedefined(name.clone()));
+                }
+                modules.insert(name.clone());
+            }
+            <span class="self">Self</span>::Many(decls) =&gt; {
+                <span class="kw">for </span>decl <span class="kw">in </span>decls.iter() {
+                    decl.detect_duplicate_modules(modules)<span class="question-mark">?</span>;
+                }
+            }
+            <span class="kw">_ </span>=&gt; {}
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
     <span class="doccomment">/// Merge two declarations into one, while preserving the order of the declarations.
     /// This will not mutate the declaration, but will return a new declaration.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>join(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw">impl </span>Into&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
@@ -1373,7 +1453,7 @@
             <span class="self">Self</span>::PolyProc(_name, proc) =&gt; {
                 proc.substitute(substitution_name, substitution_ty);
             }
-            <span class="self">Self</span>::Type(_name, ty) =&gt; {
+            <span class="self">Self</span>::Type(_name , ty) =&gt; {
                 <span class="kw-2">*</span>ty = ty.substitute(substitution_name, substitution_ty);
             }
             <span class="self">Self</span>::Const(_name, expr) =&gt; {
@@ -1401,7 +1481,7 @@
                     decl.substitute(substitution_name, substitution_ty);
                 });
             }
-            <span class="self">Self</span>::Module(_name, decls) =&gt; {
+            <span class="self">Self</span>::Module(_name, decls, ..) =&gt; {
                 Arc::make_mut(decls).par_iter_mut().for_each(|decl| {
                     decl.substitute(substitution_name, substitution_ty);
                 });
@@ -1534,7 +1614,7 @@
             <span class="self">Self</span>::Impl(ty, impls) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                 <span class="comment">// Add all the compile-time declarations to the environment.
-                </span>new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span><span class="self">self</span>.clone())<span class="question-mark">?</span>;
+                </span>new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span><span class="self">self</span>.clone(), <span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
                 <span class="kw">if let </span>Type::Apply(template, supplied_params) = ty {
                     <span class="comment">// If this is an implementation for a template type, we need to
@@ -1601,10 +1681,16 @@
             <span class="comment">// Typecheck a multi-declaration.
             </span><span class="self">Self</span>::Many(decls) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
+
                 <span class="comment">// Add all the compile-time declarations to the environment.
-                </span>new_env.add_declaration(<span class="kw-2">&amp;</span><span class="self">self</span>.clone(), <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+                </span><span class="self">self</span>.detect_duplicate_modules(<span class="kw-2">&amp;mut </span>HashSet::new())<span class="question-mark">?</span>;
+                new_env.add_declaration(<span class="kw-2">&amp;</span><span class="self">self</span>.clone(), <span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
                 <span class="comment">// Get all the compile time declarations so we can type check them in parallel.
+                // let (comp_time_decls, run_time_decls): (Vec&lt;_&gt;, Vec&lt;_&gt;) = self.clone()
+                //     .flatten()
+                //     .into_iter()
+                //     .partition(|decl| decl.is_compile_time_declaration());
                 </span><span class="kw">let </span>(comp_time_decls, run_time_decls): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = decls
                     .iter()
                     .partition(|decl| decl.is_compile_time_declaration());
@@ -1614,7 +1700,8 @@
                     </span>comp_time_decls.par_iter().try_for_each(|decl| {
                         <span class="macro">debug!</span>(<span class="string">"Typechecking decl: {decl}"</span>);
                         decl.type_check(<span class="kw-2">&amp;</span>new_env)
-                    })<span class="question-mark">?</span>;
+                        <span class="comment">// Ok::&lt;(), Error&gt;(())
+                    </span>})<span class="question-mark">?</span>;
                 }
 
                 run_time_decls
@@ -1624,62 +1711,28 @@
                         decl.type_check(<span class="kw-2">&amp;</span>new_env)<span class="question-mark">?</span>;
                         new_env.add_declaration(decl, <span class="bool-val">false</span>)
                     })<span class="question-mark">?</span>;
+            }
 
-                <span class="comment">/*
-                lazy_static! {
-                    // Use this to limit recursive parallelism.
-                    static ref PARALLEL_RECURSION_DEPTH: RwLock&lt;usize&gt; = RwLock::new(0);
-                }
-
-                const PARALLEL_RECURSION_LIMIT: usize = 16;
-
-                // Get the current recursion depth.
-                let depth = *PARALLEL_RECURSION_DEPTH.read().unwrap();
-
-                if depth &lt; PARALLEL_RECURSION_LIMIT &amp;&amp; comp_time_decls.len() &gt; 2 {
-                    // Increment the recursion depth.
-                    *PARALLEL_RECURSION_DEPTH.write().unwrap() += 1;
-
-                    // Type check all the compile time declarations in parallel.
-                    // for chunk in comp_time_decls.chunks(2) {
-                    //     info!("Typechecking {} declarations in parallel", chunk.len());
-
-                    //     chunk.par_iter().try_for_each(|decl| {
-                    //         decl.type_check(&amp;new_env)
-                    //     })?;
-                    // }
-                    debug!("Typechecking {} declarations in parallel", comp_time_decls.len());
-                    comp_time_decls.par_iter().try_for_each(|decl| {
-                        decl.type_check(&amp;new_env)
-                    })?;
-                    // for decl in comp_time_decls {
-                    //     decl.type_check(&amp;new_env)?;
-                    // }
-                } else {
-                    // Type check all the compile time declarations sequentially.
-                    for decl in comp_time_decls {
-                        decl.type_check(&amp;new_env)?;
+            <span class="self">Self</span>::Module(name, decls, checked, ..) =&gt; {
+                <span class="self">Self</span>::Many(decls.clone()).detect_duplicate_modules(<span class="kw-2">&amp;mut </span>HashSet::new())<span class="question-mark">?</span>;
+                <span class="kw">if </span><span class="kw-2">*</span>checked {
+                    <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
+                    <span class="comment">// Add all the compile-time declarations to the environment.
+                    </span>new_env.add_declaration(<span class="kw-2">&amp;</span><span class="self">Self</span>::Many(decls.clone()), <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+                    <span class="macro">trace!</span>(<span class="string">"Typechecking module {}"</span>, name);
+                    <span class="comment">// Get all the compile time declarations so we can type check them in parallel.
+                    </span><span class="kw">let </span>(comp_time_decls, _run_time_decls): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = decls
+                        .iter()
+                        .partition(|decl| decl.is_compile_time_declaration());
+    
+                    <span class="kw">if </span>!comp_time_decls.is_empty() {
+                        <span class="comment">// Type check all the compile time declarations in parallel.
+                        </span>comp_time_decls
+                            .par_iter()
+                            .try_for_each(|decl| decl.type_check(<span class="kw-2">&amp;</span>new_env))<span class="question-mark">?</span>;
                     }
-                }
-                 */
-            </span>}
-
-            <span class="self">Self</span>::Module(name, decls) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-
-                <span class="comment">// Add all the compile-time declarations to the environment.
-                </span>new_env.add_declaration(<span class="kw-2">&amp;</span><span class="self">Self</span>::Many(decls.clone()), <span class="bool-val">false</span>)<span class="question-mark">?</span>;
-                <span class="macro">trace!</span>(<span class="string">"Typechecking module {}"</span>, name);
-                <span class="comment">// Get all the compile time declarations so we can type check them in parallel.
-                </span><span class="kw">let </span>(comp_time_decls, _run_time_decls): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = decls
-                    .iter()
-                    .partition(|decl| decl.is_compile_time_declaration());
-
-                <span class="kw">if </span>!comp_time_decls.is_empty() {
-                    <span class="comment">// Type check all the compile time declarations in parallel.
-                    </span>comp_time_decls
-                        .par_iter()
-                        .try_for_each(|decl| decl.type_check(<span class="kw-2">&amp;</span>new_env))<span class="question-mark">?</span>;
+                } <span class="kw">else </span>{
+                    env.save_type_checked_const(ConstExpr::Symbol(name.clone()))
                 }
             }
 
@@ -1690,7 +1743,9 @@
                     access.type_check(env)<span class="question-mark">?</span>;
                 }
             }
-            <span class="self">Self</span>::FromImportAll(module) =&gt; module.type_check(env)<span class="question-mark">?</span>,
+            <span class="self">Self</span>::FromImportAll(module) =&gt; {
+                module.type_check(env)<span class="question-mark">?</span>;
+            },
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1743,7 +1798,7 @@
                     <span class="macro">writeln!</span>(f, <span class="string">"{}"</span>, decl)<span class="question-mark">?</span>;
                 }
             }
-            <span class="self">Self</span>::Module(name, _decls) =&gt; {
+            <span class="self">Self</span>::Module(name, _decls, ..) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">"module {} {{..}}"</span>, name)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::FromImport { module, names } =&gt; {
@@ -1986,10 +2041,11 @@
                 state.write_u8(<span class="number">9</span>);
                 decls.hash(state);
             }
-            <span class="self">Self</span>::Module(name, decls) =&gt; {
+            <span class="self">Self</span>::Module(name, decls, _checked, id) =&gt; {
                 state.write_u8(<span class="number">10</span>);
                 name.hash(state);
                 decls.hash(state);
+                id.hash(state);
             }
             <span class="self">Self</span>::FromImport { module, names } =&gt; {
                 state.write_u8(<span class="number">11</span>);

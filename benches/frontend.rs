@@ -18,7 +18,7 @@ fn parse_frontend_file(filename: &str) -> Expr {
 }
 
 fn compile_frontend_file(filename: &str) -> StandardProgram {
-    match parse_frontend_file(filename).compile().unwrap() {
+    match parse_frontend_file(filename).compile(false).unwrap() {
         // If we got back a valid program, assemble it and return the result.
         Ok(asm_code) => asm_code.assemble(CALL_STACK_SIZE).unwrap().into(),
         Err(asm_code) => asm_code.assemble(CALL_STACK_SIZE).unwrap(),

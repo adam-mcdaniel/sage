@@ -1,0 +1,39 @@
+from std.time import Instant, Date;
+from std.physics import Point3D;
+from std.physics.astronomy import Planet;
+
+
+fun main() {
+    let d = Date.date(2024, 9, 18);
+    print("On ");
+    d.print();
+    println();
+
+    let instant = Instant.from_date(d);
+
+    for let mut i=0; i<8; i+=1; {
+        let planet = Planet.PLANETS[i];
+        print("Planet: ");
+        match planet {
+            of Mercury => println("Mercury"),
+            of Venus => println("Venus"),
+            of Earth => println("Earth"),
+            of Mars => println("Mars"),
+            of Jupiter => println("Jupiter"),
+            of Saturn => println("Saturn"),
+            of Uranus => println("Uranus"),
+            of Neptune => println("Neptune")
+        }
+
+        println(
+            "Position (meters, Sun relative): ",
+            convert_to_int(planet.position_at_instant(instant))
+        );
+    }
+}
+
+fun convert_to_int(x: Point3D): {x: Int, y: Int, z: Int} {
+    {x=x.x as Int, y=x.y as Int, z=x.z as Int}
+}
+
+main();

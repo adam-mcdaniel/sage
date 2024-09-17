@@ -5032,6 +5032,17 @@
 <a href="#5031" id="5031">5031</a>
 <a href="#5032" id="5032">5032</a>
 <a href="#5033" id="5033">5033</a>
+<a href="#5034" id="5034">5034</a>
+<a href="#5035" id="5035">5035</a>
+<a href="#5036" id="5036">5036</a>
+<a href="#5037" id="5037">5037</a>
+<a href="#5038" id="5038">5038</a>
+<a href="#5039" id="5039">5039</a>
+<a href="#5040" id="5040">5040</a>
+<a href="#5041" id="5041">5041</a>
+<a href="#5042" id="5042">5042</a>
+<a href="#5043" id="5043">5043</a>
+<a href="#5044" id="5044">5044</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::{error, trace};
 <span class="kw">use </span>nom::{
     branch::alt,
@@ -5981,7 +5992,7 @@
             <span class="prelude-val">Err</span>(e) =&gt; e,
             <span class="prelude-val">Ok</span>(frontend_code) =&gt; {
                 <span class="kw">let </span>asm_code = frontend_code
-                    .compile()
+                    .compile(<span class="bool-val">false</span>)
                     .map_err(|e| Expr::error(<span class="macro">format!</span>(<span class="string">"Invalid AST: {e}"</span>)));
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = asm_code {
                     <span class="kw">return </span>e;
@@ -6012,7 +6023,7 @@
             <span class="prelude-val">Err</span>(e) =&gt; e,
             <span class="prelude-val">Ok</span>(frontend_code) =&gt; {
                 <span class="kw">let </span>asm_code = frontend_code
-                    .compile()
+                    .compile(<span class="bool-val">false</span>)
                     .map_err(|e| Expr::error(<span class="macro">format!</span>(<span class="string">"Invalid AST: {e}"</span>)));
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = asm_code {
                     <span class="kw">return </span>e;
@@ -6481,10 +6492,10 @@
     }
 }
 
-<span class="kw">pub fn </span>parse_module(name: <span class="kw-2">&amp;</span>str, input: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Declaration, String&gt; {
+<span class="kw">pub fn </span>parse_module(name: <span class="kw-2">&amp;</span>str, input: <span class="kw-2">&amp;</span>str, checked: bool) -&gt; <span class="prelude-ty">Result</span>&lt;Declaration, String&gt; {
     setup_source_code_locations(input, <span class="prelude-val">Some</span>(name.to_owned()));
 
-    <span class="kw">match </span>parse_module_contents::&lt;VerboseError&lt;<span class="kw-2">&amp;</span>str&gt;&gt;(name, input) {
+    <span class="kw">match </span>parse_module_contents::&lt;VerboseError&lt;<span class="kw-2">&amp;</span>str&gt;&gt;(name, input, checked) {
         <span class="prelude-val">Err</span>(nom::Err::Error(e)) =&gt; {
             <span class="macro">trace!</span>(<span class="string">"Error: {e}"</span>);
             <span class="prelude-val">Err</span>(convert_error(input, e).to_string())
@@ -7050,13 +7061,14 @@
 <span class="kw">fn </span>parse_module_contents&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;&gt;(
     name: <span class="kw-2">&amp;</span>str,
     input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str,
+    checked: bool
 ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str, Declaration, E&gt; {
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>(input, decls) = many0(context(<span class="string">"statement"</span>, parse_decl))(input)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
-    <span class="prelude-val">Ok</span>((input, Declaration::module(name, decls)))
+    <span class="prelude-val">Ok</span>((input, Declaration::module(name, decls, checked)))
 }
 
 <span class="kw">fn </span>parse_module_stmt&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;&gt;(
@@ -7071,7 +7083,7 @@
 
     <span class="kw">let </span>(input, <span class="kw">_</span>) = tag(<span class="string">"{"</span>)(input)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>(input, module) = parse_module_contents(name, input)<span class="question-mark">?</span>;
+    <span class="kw">let </span>(input, module) = parse_module_contents(name, input, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>(input, <span class="kw">_</span>) = cut(tag(<span class="string">"}"</span>))(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
@@ -7096,7 +7108,7 @@
         save_source_code_setup();
         setup_source_code_locations(<span class="kw-2">&amp;</span>contents.clone(), <span class="prelude-val">Some</span>(name.to_string()));
         <span class="kw">if let </span><span class="prelude-val">Ok</span>((new_input, module)) =
-            parse_module_contents::&lt;VerboseError&lt;<span class="kw-2">&amp;</span>str&gt;&gt;(name, <span class="kw-2">&amp;</span>contents)
+            parse_module_contents::&lt;VerboseError&lt;<span class="kw-2">&amp;</span>str&gt;&gt;(name, <span class="kw-2">&amp;</span>contents, <span class="bool-val">true</span>)
         {
             <span class="kw">if </span>!new_input.is_empty() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(
@@ -7131,7 +7143,7 @@
         context(<span class="string">"type"</span>, parse_type_stmt),
         context(<span class="string">"enum"</span>, parse_enum_stmt),
         context(<span class="string">"struct"</span>, parse_struct_stmt),
-        context(<span class="string">"extern"</span>, parse_extern_stmt),
+        context(<span class="string">"extern"</span>, terminated(parse_extern_stmt, tag(<span class="string">";"</span>))),
         context(<span class="string">"const"</span>, terminated(parse_const_stmt, tag(<span class="string">";"</span>))),
         context(<span class="string">"impl"</span>, parse_impl_stmt),
         context(<span class="string">"import"</span>, parse_import_stmt),
@@ -8845,17 +8857,27 @@
     </span><span class="kw">let </span>(input, <span class="kw">_</span>) = whitespace(input)<span class="question-mark">?</span>;
     <span class="kw">let </span>(input, is_negative) = opt(tag(<span class="string">"-"</span>))(input)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>(input, result) = map(
-        pair(digit1, preceded(char(<span class="string">'.'</span>), digit1)),
-        |(a, b): (<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>str)| <span class="macro">format!</span>(<span class="string">"{}.{}"</span>, a, b).parse::&lt;f64&gt;().unwrap(),
-    )(input)<span class="question-mark">?</span>;
+    <span class="comment">// let (input, result) = map(
+    //     pair(digit1, preceded(char('.'), digit1)),
+    //     |(a, b): (&amp;str, &amp;str)| format!("{}.{}", a, b).parse::&lt;f64&gt;().unwrap(),
+    // )(input)?;
 
-    <span class="comment">// Peek and make sure the next character is not a symbol character
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(c) = input.chars().next() {
-        <span class="kw">if </span>is_symbol_char(c) {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(input, ErrorKind::Digit)));
-        }
-    }
+    // // Peek and make sure the next character is not a symbol character
+    // if let Some(c) = input.chars().next() {
+    //     if is_symbol_char(c) {
+    //         return Err(nom::Err::Error(E::from_error_kind(input, ErrorKind::Digit)));
+    //     }
+    // }
+
+    // Use builtin nom double
+    </span><span class="kw">let </span>(input, result) = nom::number::complete::recognize_float(input)<span class="question-mark">?</span>;
+    <span class="comment">// Try to parse as an integer first
+    </span><span class="kw">let </span>result: f64 = <span class="kw">if let </span><span class="prelude-val">Ok</span>(_i) = result.parse::&lt;i64&gt;() {
+        <span class="comment">// Fail
+        </span><span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(input, ErrorKind::Digit)));
+    } <span class="kw">else </span>{
+        result.parse().unwrap()
+    };
 
     <span class="kw">if </span>is_negative.is_some() {
         <span class="prelude-val">Ok</span>((input, -result))
@@ -9304,7 +9326,7 @@
                         .without_comments(languages::rust())
                         .collect::&lt;String&gt;();
                     <span class="kw">let </span>parsed = <span class="kw">crate</span>::frontend::parse(<span class="kw-2">&amp;</span>code, <span class="prelude-val">Some</span>(<span class="string">"input"</span>), <span class="bool-val">true</span>, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
-                    <span class="kw">let </span>asm_code = parsed.compile();
+                    <span class="kw">let </span>asm_code = parsed.compile(<span class="bool-val">true</span>);
                     <span class="comment">// let asm_code = parsed.compile();
                     </span><span class="kw">const </span>CALL_STACK_SIZE: usize = <span class="number">1024</span>;
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(<span class="kw-2">ref </span>e) = asm_code {
