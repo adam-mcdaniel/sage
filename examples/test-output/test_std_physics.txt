@@ -1,17 +1,17 @@
 On 2024-9-18
 Planet: Mercury
-Position (meters, Sun relative): {x=33383204033, y=35761196060, z=17482615609}
+Position (meters, Sun relative): {x=-31643647898, y=32191865528, z=20458410057}
 Planet: Venus
-Position (meters, Sun relative): {x=11027909171, y=108447650387, z=818212376}
+Position (meters, Sun relative): {x=-46501068354, y=-90290675415, z=-37680336395}
 Planet: Earth
-Position (meters, Sun relative): {x=135085714027, y=-4079248623, z=57523897417}
+Position (meters, Sun relative): {x=149854530247, y=-10637234519, z=-4611807541}
 Planet: Mars
-Position (meters, Sun relative): {x=-183253301950, y=87942739441, z=-89682031118}
+Position (meters, Sun relative): {x=123729030443, y=169141485920, z=74236731803}
 Planet: Jupiter
-Position (meters, Sun relative): {x=365041661741, y=-617809226669, z=198651062155}
+Position (meters, Sun relative): {x=280695820756, y=646680298840, z=270373647406}
 Planet: Saturn
-Position (meters, Sun relative): {x=-779145757340, y=-1201641044586, z=-261550590693}
+Position (meters, Sun relative): {x=1403304029894, y=-306422538267, z=-186954485413}
 Planet: Uranus
-Position (meters, Sun relative): {x=1645995896811, y=-2256125631718, z=896288551314}
+Position (meters, Sun relative): {x=1722593095389, y=2173366890976, z=927492758434}
 Planet: Neptune
-Position (meters, Sun relative): {x=-1192938488445, y=-4305878018189, z=-196045534921}
+Position (meters, Sun relative): {x=4366845262214, y=-837504145712, z=-451460391989}
