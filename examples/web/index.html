@@ -352,7 +352,6 @@ fun lunar_calendar(month: Int, year: Int) {
 main();`);
                     break;
                 case "solar-system":
-
                     // Get current year, month, day in JS
                     let today = new Date();
                     let year = today.getFullYear();
@@ -361,20 +360,25 @@ main();`);
                     document.getElementById("input").value = `${year} ${month} ${day}`;
 
                     source.setValue(`// Draw an *accurate* model of the solar system!
-// Change the date in the box below the output
+// Change the date in the input box (next to buttons below)
 // to see the positions of the planets on that date!                    
+
 from std.time import Instant, Date;
 from std.physics import Point3D;
 from std.physics.astronomy import Planet, KeplerianElements;
 
-extern fun eval(str: &mut Char, size: Int);
-
 fun main() {
-    // Get the date from the user
-    let (mut year, mut month, mut day) = (0, 0, 0);
-    print("Enter year: ");  input(&mut year);  println();
-    print("Enter month: "); input(&mut month); println();
-    print("Enter day: ");   input(&mut day);   println();
+    let mut year = 0;
+    let mut month = 0;
+    let mut day = 0;
+    print("Enter year: ");
+    input(&mut year);
+    println();
+    print("Enter month: ");
+    input(&mut month);
+    println();
+    print("Enter day: ");
+    input(&mut day);
     let d = Date.date(year, month, day);
     print("Performing calculations for date ");
     d.print();
@@ -393,31 +397,30 @@ fun main() {
     ];
     println("Mercury is white, Venus is green, Earth is blue, Mars is red.");
     let au_to_pixel_ratio = (WIDTH / 2 + HEIGHT / 2) / 2 * 0.8;
-    let radius_scale = 600;
+    let radius_scale = 700;
     for let mut i=0; i<4; i+=1; {
         let planet = Planet.PLANETS[i];
         let pos = planet.position_on_date(d);
         let color = colors[i];
         let x = pos.x * au_to_pixel_ratio + WIDTH / 2;
         let y = -pos.y * au_to_pixel_ratio + HEIGHT / 2;
-        let radius = radius_scale * m_to_au(planet.radius()) * au_to_pixel_ratio;
+        let radius = radius_scale * planet.radius() * au_to_pixel_ratio;
 
         planet.print();
-        println(" is at ", pos, " (AU, heliocentric).");
+        println(" is at ", pos, " (AU, heliocentric).", " ", planet.radius());
 
         canvas.draw_circle(color, x as Int, y as Int, radius as Int);
     }
     // Draw the sun
     let sun_radius = 20 * m_to_au(6.96e8) * au_to_pixel_ratio;
     canvas.draw_circle(Color.YELLOW, WIDTH / 2, HEIGHT / 2, sun_radius as Int);
-    println("Hello, world!");
-    
-    return ();
 }
 
 fun m_to_au(m: Float): Float {
     return m / 149597870700.0;
 }
+
+extern fun eval(str: &mut Char, size: Int);
 
 impl Float {
     fun abs(self): Float {

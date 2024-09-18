@@ -1429,16 +1429,16 @@ mod physics {
 
             // Orbital radius in AU
             fun orbital_radius(self): Float {
-                return Planet.ORBITAL_RADII_METERS[self.order_from_sun()];
+                return Planet.ORBITAL_RADII_AU[self.order_from_sun()];
             }
 
             fun orbital_period(self): Float {
                 return Planet.ORBITAL_PERIODS[self.order_from_sun()];
             }
 
-            /// Get the radius of the planet in meters.
+            /// Get the radius of the planet in AU.
             fun radius(self): Float {
-                match self {
+                (match self {
                     of Mercury => 2439700.0,
                     of Venus => 6051800.0,
                     of Earth => 6371000.0,
@@ -1447,7 +1447,7 @@ mod physics {
                     of Saturn => 58232000.0,
                     of Uranus => 25362000.0,
                     of Neptune => 24622000.0
-                }
+                }) / 149597870700.0
             }
 
             // Get the keplerian elements associated with the
