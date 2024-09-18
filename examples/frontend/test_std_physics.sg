@@ -9,8 +9,6 @@ fun main() {
     d.print();
     println();
 
-    let instant = Instant.from_date(d);
-
     for let mut i=0; i<8; i+=1; {
         let planet = Planet.PLANETS[i];
         print("Planet: ");
@@ -27,9 +25,13 @@ fun main() {
 
         println(
             "Position (meters, Sun relative): ",
-            convert_to_int(planet.position_at_instant(instant))
+            convert_to_int(planet.position_on_date(d).convert(au_to_m))
         );
     }
+}
+
+fun au_to_m(au: Float): Float {
+    au * 149597870700.7
 }
 
 fun convert_to_int(x: Point3D): {x: Int, y: Int, z: Int} {

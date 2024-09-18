@@ -77,7 +77,7 @@ impl Pattern {
         let mut new_env = env.clone();
         for (var, (mutabilty, ty)) in bindings {
             // Define the variables in the new environment.
-            new_env.define_var(var, mutabilty, ty, true)?;
+            new_env.define_var(var, mutabilty, ty, false)?;
         }
 
         // Get the type of the branch.
@@ -514,6 +514,7 @@ impl Pattern {
             expr.clone(),
             match_expr,
         );
+
         Ok(result)
     }
 

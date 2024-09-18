@@ -74,6 +74,7 @@ pub trait AssignOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
     }
     /// Clones the operation into a boxed trait object.
     fn clone_box(&self) -> Box<dyn AssignOp>;
+
     /// Formats the operation for display.
     fn display(&self, dst: &Expr, src: &Expr) -> String {
         format!("{} {} {}", dst, self, src)
@@ -118,8 +119,7 @@ pub trait AssignOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
                 .map_err(|err| err.annotate(metadata.clone()));
         }
         // trace!("Compiling assign op: {dst} {self} {src} ({self:?})");
-        dst.clone().compile_expr(env, output)?;
-        src.clone().compile_expr(env, output)?;
+        env.compile_args([dst.clone(), src.clone()], output)?;
         self.compile_types(&dst.get_type(env)?, &src.get_type(env)?, env, output)
     }
     /// Compiles the operation on the given types. (Generates the code for the operation.)
@@ -205,6 +205,7 @@ pub trait UnaryOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
         output.log_instructions_after(&self.display(expr), &message, current_instruction);
         Ok(())
     }
+
     /// Compiles the operation on the given type. (Generates the code for the operation.)
     fn compile_types(
         &self,
@@ -305,9 +306,7 @@ pub trait BinaryOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
                 .map_err(|err| err.annotate(metadata.clone()));
         }
 
-        // trace!("Compiling binary op: {lhs} {self} {rhs} ({self:?})");
-        lhs.clone().compile_expr(env, output)?;
-        rhs.clone().compile_expr(env, output)?;
+        env.compile_args([lhs.clone(), rhs.clone()], output)?;
         self.compile_types(&lhs.get_type(env)?, &rhs.get_type(env)?, env, output)?;
         Ok(())
     }
@@ -440,9 +439,7 @@ pub trait TernaryOp: std::fmt::Debug + std::fmt::Display + Send + Sync {
         }
         // trace!("Compiling ternary op: {a} {self} {b} {c} ({self:?})");
         // Evaluate the three expression on the stack.
-        a.clone().compile_expr(env, output)?;
-        b.clone().compile_expr(env, output)?;
-        c.clone().compile_expr(env, output)?;
+        env.compile_args([a.clone(), b.clone(), c.clone()], output)?;
         // Compile the operation.
         self.compile_types(
             &a.get_type(env)?,

@@ -350,8 +350,6 @@
 <a href="#349" id="349">349</a>
 <a href="#350" id="350">350</a>
 <a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     asm::{AssemblyProgram, CoreOp, StandardOp, A, SP},
     lir::<span class="kw-2">*</span>,
@@ -683,9 +681,7 @@
             },
             <span class="kw">_ </span>=&gt; {}
         }
-
-        lhs.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-        rhs.clone().compile_expr(env, output)<span class="question-mark">?</span>;
+        env.compile_args([lhs.clone(), rhs.clone()], output)<span class="question-mark">?</span>;
         <span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>lhs_type, <span class="kw-2">&amp;</span>rhs_type, env, output)
     }
 

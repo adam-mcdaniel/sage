@@ -51,10 +51,7 @@ impl BinaryOp for Arithmetic {
                 .map_err(|err| err.annotate(metadata.clone()));
         }
 
-        // trace!("Compiling binary op: {lhs} {self} {rhs} ({self:?})");
-        lhs.clone().compile_expr(env, output)?;
-        rhs.clone().compile_expr(env, output)?;
-        // self.compile_types(&, &rhs.get_type(env)?, env, output)?;
+        env.compile_args([lhs.clone(), rhs.clone()], output)?;
         let lhs_expr = lhs;
         let rhs_expr = rhs;
         let lhs = &lhs_expr.get_type(env)?;

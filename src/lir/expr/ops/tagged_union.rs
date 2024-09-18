@@ -65,12 +65,16 @@ impl UnaryOp for Tag {
         // Get the size of the type.
         let size = ty.get_size(env)?;
 
-        // Copy the tag to a temp register
-        output.op(CoreOp::Move {
-            src: SP.deref(),
-            dst: SP.deref().offset(1 - size as isize),
-        });
-        output.op(CoreOp::Pop(None, size - 1));
+        if size > 1 {
+            // Copy the tag to a temp register
+            let cur = output.current_instruction();
+            output.op(CoreOp::Move {
+                src: SP.deref(),
+                dst: SP.deref().offset(1 - size as isize),
+            });
+            output.op(CoreOp::Pop(None, size - 1));
+            output.log_instructions_after("tag", &format!("for {ty}"), cur);
+        }
 
         Ok(())
     }

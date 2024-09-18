@@ -1029,6 +1029,9 @@
 <a href="#1028" id="1028">1028</a>
 <a href="#1029" id="1029">1029</a>
 <a href="#1030" id="1030">1030</a>
+<a href="#1031" id="1031">1031</a>
+<a href="#1032" id="1032">1032</a>
+<a href="#1033" id="1033">1033</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{PolyProcedure, Procedure};
 <span class="kw">use crate</span>::{
     asm::{AssemblyProgram, CoreOp, Location, SP},
@@ -1284,7 +1287,7 @@
                 <span class="comment">// Get the current instruction (for logging)
                 </span><span class="kw">let </span>current_instruction = output.current_instruction();
                 <span class="comment">// A log message
-                </span><span class="kw">let </span>log_message = <span class="macro">format!</span>(<span class="string">"Initializing '{name}' with expression '{expr}'"</span>);
+                </span><span class="kw">let </span>log_message = <span class="macro">format!</span>(<span class="string">"Initializing '{name}' with expression '{expr}' in {self}"</span>);
 
                 <span class="comment">// Get the type of the variable using its specifier,
                 // or by deducing the type ourselves.
@@ -1295,8 +1298,11 @@
                 </span>};
                 <span class="comment">// Get the size of the variables for the body of the declaration.
                 </span>var_size = var_ty.get_size(env)<span class="question-mark">?</span>;
+                <span class="comment">// println!("Var {name} has type {var_ty:?} is {var_size}");
+                </span><span class="kw">let </span>cur = output.current_instruction();
                 <span class="comment">// Compile the expression to leave the value on the stack.
                 </span>expr.clone().compile_expr(env, output)<span class="question-mark">?</span>;
+                output.log_instructions_after(<span class="string">"var"</span>, <span class="kw-2">&amp;</span>log_message, cur);
 
                 <span class="comment">// Add the variable to the environment, so that it can be used in the body.
                 </span>env.add_local_variable_declaration(<span class="self">self</span>, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
@@ -1718,7 +1724,7 @@
                 <span class="kw">if </span><span class="kw-2">*</span>checked {
                     <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
                     <span class="comment">// Add all the compile-time declarations to the environment.
-                    </span>new_env.add_declaration(<span class="kw-2">&amp;</span><span class="self">Self</span>::Many(decls.clone()), <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+                    </span>new_env.add_compile_time_declaration(<span class="kw-2">&amp;</span><span class="self">Self</span>::Many(decls.clone()), <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                     <span class="macro">trace!</span>(<span class="string">"Typechecking module {}"</span>, name);
                     <span class="comment">// Get all the compile time declarations so we can type check them in parallel.
                     </span><span class="kw">let </span>(comp_time_decls, _run_time_decls): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = decls

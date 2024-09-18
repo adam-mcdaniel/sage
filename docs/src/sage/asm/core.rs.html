@@ -1636,6 +1636,28 @@
 <a href="#1635" id="1635">1635</a>
 <a href="#1636" id="1636">1636</a>
 <a href="#1637" id="1637">1637</a>
+<a href="#1638" id="1638">1638</a>
+<a href="#1639" id="1639">1639</a>
+<a href="#1640" id="1640">1640</a>
+<a href="#1641" id="1641">1641</a>
+<a href="#1642" id="1642">1642</a>
+<a href="#1643" id="1643">1643</a>
+<a href="#1644" id="1644">1644</a>
+<a href="#1645" id="1645">1645</a>
+<a href="#1646" id="1646">1646</a>
+<a href="#1647" id="1647">1647</a>
+<a href="#1648" id="1648">1648</a>
+<a href="#1649" id="1649">1649</a>
+<a href="#1650" id="1650">1650</a>
+<a href="#1651" id="1651">1651</a>
+<a href="#1652" id="1652">1652</a>
+<a href="#1653" id="1653">1653</a>
+<a href="#1654" id="1654">1654</a>
+<a href="#1655" id="1655">1655</a>
+<a href="#1656" id="1656">1656</a>
+<a href="#1657" id="1657">1657</a>
+<a href="#1658" id="1658">1658</a>
+<a href="#1659" id="1659">1659</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Core Assembly Variant
 //!
 //! This variant of the assembly language is intended to be used
@@ -2745,6 +2767,9 @@
             CoreOp::Move { src, dst } =&gt; {
                 <span class="kw">let </span>src = env.resolve(src)<span class="question-mark">?</span>;
                 <span class="kw">let </span>dst = env.resolve(dst)<span class="question-mark">?</span>;
+                <span class="kw">if </span>src == dst {
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                }
                 src.copy_to(<span class="kw-2">&amp;</span>dst, result)
             }
 
@@ -2827,6 +2852,9 @@
             CoreOp::Or { src, dst } =&gt; env.resolve(dst)<span class="question-mark">?</span>.or(<span class="kw-2">&amp;</span>env.resolve(src)<span class="question-mark">?</span>, result),
 
             CoreOp::PushTo { sp, src, size } =&gt; {
+                <span class="kw">if </span><span class="kw-2">*</span>size == <span class="number">0 </span>{
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                }
                 <span class="kw">let </span>sp = env.resolve(sp)<span class="question-mark">?</span>;
                 <span class="kw">let </span>src = env.resolve(src)<span class="question-mark">?</span>;
                 <span class="kw">let </span>size = <span class="kw-2">*</span>size;
@@ -2843,12 +2871,13 @@
             }
 
             CoreOp::PopFrom { sp, dst, size } =&gt; {
-                <span class="kw">let </span>sp = env.resolve(sp)<span class="question-mark">?</span>;
                 <span class="kw">let </span>size = <span class="kw-2">*</span>size <span class="kw">as </span>isize;
 
                 <span class="kw">if </span>size == <span class="number">0 </span>{
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 }
+
+                <span class="kw">let </span>sp = env.resolve(sp)<span class="question-mark">?</span>;
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(dst) = dst {
                     <span class="kw">let </span>dst = env.resolve(dst)<span class="question-mark">?</span>;
@@ -2864,10 +2893,10 @@
                 }
             }
             CoreOp::Push(src, size) =&gt; {
-                <span class="kw">let </span>src = env.resolve(src)<span class="question-mark">?</span>;
                 <span class="kw">if </span><span class="kw-2">*</span>size == <span class="number">0 </span>{
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 }
+                <span class="kw">let </span>src = env.resolve(src)<span class="question-mark">?</span>;
 
                 CoreOp::PushTo {
                     sp: SP,
@@ -2877,6 +2906,9 @@
                 .assemble(current_instruction, env, result)<span class="question-mark">?
             </span>}
             CoreOp::Pop(dst, size) =&gt; {
+                <span class="kw">if </span><span class="kw-2">*</span>size == <span class="number">0 </span>{
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                }
                 <span class="comment">// If the destination is None, then we're just popping the stack into oblivion.
                 // Otherwise, we're popping the stack into `Some` destination.
                 // If we have a destination, resolve it. If we can't resolve it, return an error.
@@ -2912,18 +2944,30 @@
                 <span class="kw">let </span>dst = env.resolve(dst)<span class="question-mark">?</span>;
                 <span class="kw">let </span>a = env.resolve(a)<span class="question-mark">?</span>;
                 <span class="kw">let </span>b = env.resolve(b)<span class="question-mark">?</span>;
+                <span class="kw">if </span>a == b {
+                    dst.set(<span class="number">1</span>, result);
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                }
                 a.is_less_or_equal_to(<span class="kw-2">&amp;</span>b, <span class="kw-2">&amp;</span>dst, result)
             }
             CoreOp::IsEqual { dst, a, b } =&gt; {
                 <span class="kw">let </span>dst = env.resolve(dst)<span class="question-mark">?</span>;
                 <span class="kw">let </span>a = env.resolve(a)<span class="question-mark">?</span>;
                 <span class="kw">let </span>b = env.resolve(b)<span class="question-mark">?</span>;
+                <span class="kw">if </span>a == b {
+                    dst.set(<span class="number">1</span>, result);
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                }
                 a.is_equal(<span class="kw-2">&amp;</span>b, <span class="kw-2">&amp;</span>dst, result)
             }
             CoreOp::IsNotEqual { dst, a, b } =&gt; {
                 <span class="kw">let </span>dst = env.resolve(dst)<span class="question-mark">?</span>;
                 <span class="kw">let </span>a = env.resolve(a)<span class="question-mark">?</span>;
                 <span class="kw">let </span>b = env.resolve(b)<span class="question-mark">?</span>;
+                <span class="kw">if </span>a == b {
+                    dst.set(<span class="number">0</span>, result);
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+                }
                 a.is_not_equal(<span class="kw-2">&amp;</span>b, <span class="kw-2">&amp;</span>dst, result)
             }
 

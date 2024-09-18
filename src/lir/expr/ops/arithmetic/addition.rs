@@ -329,9 +329,7 @@ impl BinaryOp for Add {
             },
             _ => {}
         }
-
-        lhs.clone().compile_expr(env, output)?;
-        rhs.clone().compile_expr(env, output)?;
+        env.compile_args([lhs.clone(), rhs.clone()], output)?;
         self.compile_types(&lhs_type, &rhs_type, env, output)
     }
 

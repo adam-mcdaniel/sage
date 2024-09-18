@@ -272,7 +272,7 @@ fun myers_diff(a: &Char, a_len: Int, b: &Char, b_len: Int) {
 main();`);
                     break;
                 case "planets":
-                    source.setValue(`from std.time import Instant, Date;
+                    source.setValue(`from std.time import Date;
 from std.physics import Point3D;
 from std.physics.astronomy import Planet;
 
@@ -282,19 +282,12 @@ fun main() {
     d.print();
     println();
 
-    let instant = Instant.from_date(d);
-
     println("Position units are AU, with Sun at origin:");
     for let mut i=0; i<8; i+=1; {
         let planet = Planet.PLANETS[i];
         planet.print();
-        println(": ", planet.position_at_instant(instant)
-            .convert(m_to_au));
+        println(": ", planet.position_on_date(d));
     }
-}
-
-fun m_to_au(m: Float): Float {
-    return m / 149597870700.0;
 }
 
 main();`);
@@ -358,7 +351,482 @@ fun lunar_calendar(month: Int, year: Int) {
 
 main();`);
                     break;
+                case "solar-system":
+                    // Get current year, month, day in JS
+                    let today = new Date();
+                    let year = today.getFullYear();
+                    let month = today.getMonth() + 1;
+                    let day = today.getDate();
+                    document.getElementById("input").value = `${year} ${month} ${day}`;
 
+                    source.setValue(`// Draw an *accurate* model of the solar system!
+// Change the date in the input box (next to buttons below)
+// to see the positions of the planets on that date!                    
+
+from std.time import Instant, Date;
+from std.physics import Point3D;
+from std.physics.astronomy import Planet, KeplerianElements;
+
+fun main() {
+    let mut year = 0;
+    let mut month = 0;
+    let mut day = 0;
+    print("Enter year: ");
+    input(&mut year);
+    println();
+    print("Enter month: ");
+    input(&mut month);
+    println();
+    print("Enter day: ");
+    input(&mut day);
+    let d = Date.date(year, month, day);
+    print("Performing calculations for date ");
+    d.print();
+    println();
+
+    const WIDTH = 400;
+    const HEIGHT = 400;
+    let mut canvas = Canvas.make(WIDTH, HEIGHT);
+    canvas.clear(Color.BLACK);
+
+    let colors = [
+        Color.WHITE,
+        Color.GREEN,
+        Color.BLUE,
+        Color.RED
+    ];
+    println("Mercury is white, Venus is green, Earth is blue, Mars is red.");
+    let au_to_pixel_ratio = (WIDTH / 2 + HEIGHT / 2) / 2 * 0.8;
+    let radius_scale = 700;
+    for let mut i=0; i<4; i+=1; {
+        let planet = Planet.PLANETS[i];
+        let pos = planet.position_on_date(d);
+        let color = colors[i];
+        let x = pos.x * au_to_pixel_ratio + WIDTH / 2;
+        let y = -pos.y * au_to_pixel_ratio + HEIGHT / 2;
+        let radius = radius_scale * planet.radius() * au_to_pixel_ratio;
+
+        planet.print();
+        println(" is at ", pos, " (AU, heliocentric).", " ", planet.radius());
+
+        canvas.draw_circle(color, x as Int, y as Int, radius as Int);
+    }
+    // Draw the sun
+    let sun_radius = 20 * m_to_au(6.96e8) * au_to_pixel_ratio;
+    canvas.draw_circle(Color.YELLOW, WIDTH / 2, HEIGHT / 2, sun_radius as Int);
+}
+
+fun m_to_au(m: Float): Float {
+    return m / 149597870700.0;
+}
+
+extern fun eval(str: &mut Char, size: Int);
+
+impl Float {
+    fun abs(self): Float {
+        if self < 0.0 {
+            return -self;
+        }
+        return self;
+    }
+
+    fun square(self): Float {
+        return self * self;
+    }
+
+    fun cube(self): Float {
+        return self * self * self;
+    }
+
+    fun sin(mut self): Float {
+        // Taylor series approximation
+        self %= 3.14159 * 2;
+        let mut result = 0.0;
+        let mut term = self;
+        let mut i = 1;
+        while i < 10 {
+            result += term;
+            term *= -self * self / (2 * i + 1) / (2 * i);
+            i += 1;
+        }
+        return result;
+    }
+
+    fun cos(mut self): Float {
+        // Taylor series approximation
+        self %= 3.14159 * 2;
+        let mut result = 0.0;
+        let mut term = 1.0;
+        let mut i = 0;
+        while i < 10 {
+            result += term;
+            term *= -self * self / (2 * i + 2) / (2 * i + 1);
+            i += 1;
+        }
+        return result;
+    }
+}
+
+struct Canvas {
+    width: Int,
+    height: Int,
+}
+
+impl Canvas {
+    fun clear(&mut self, color: Color) {
+        // Draw the background
+        let rect = Rectangle.make(0, 0, self.width, self.height);
+        self.draw_rect(color, rect);
+    }
+
+    fun rand_section(&self, width: Int, height: Int): Rectangle {
+        return {
+            x=rand(0, self.width - width),
+            y=rand(0, self.height - height),
+            width=width,
+            height=height
+        };
+    }
+
+    fun make(width: Int, height: Int): Canvas {
+        let mut buf = \"try {window.eval(\`
+        const parentDocument = window.parent.document;
+        let output = parentDocument.getElementById('output-content');
+        var context = null;
+        var added_elements = [];
+        var canvas = null;
+        canvas = document.createElement('canvas');\" + ['\\0'] * 1000;
+        
+        let width_str = width.to_str();
+        let height_str = height.to_str();
+        
+        strcat(&mut buf, &\"canvas.width = \");
+        strcat(&mut buf, &width_str);
+        strcat(&mut buf, &\"; canvas.height = \");
+        strcat(&mut buf, &height_str);
+        
+        strcat(&mut buf, &\"; var parentElement = output;
+        if (!parentElement) {
+            console.error('Parent element not found.', output);
+        }
+        parentElement.appendChild(canvas);
+        var spacer = document.createElement('br');
+        parentElement.appendChild(spacer);
+        context = canvas.getContext('2d');
+        function draw_rect(color, x, y, width, height) {
+          context.fillStyle = color;
+          context.fillRect(x, y, width, height);
+        }
+        function draw_circle(color, x, y, radius) {
+          context.fillStyle = color;
+          context.beginPath();
+          context.arc(x, y, radius, 0, 2 * Math.PI);
+          context.fill();
+        }
+        \`);} catch { alert(\\\"Could not create canvas on parent web-page from the embedded compiler: Disable the \\\\\\\"same-origin\\\\\\\" policy to fix this! (only affects this example)\\\"); }\");
+        
+        eval(&mut buf, 2048);
+        return {
+            width=width,
+            height=height
+        };
+    }
+
+    fun draw_rect(&mut self, color: Color, rect: Rectangle) {
+        let mut command_str = ['\\0'] * 128;
+        let color_str = color.to_str();
+        let rect_str = rect.to_str();
+        strcat(&mut command_str, &"draw_rect(\\"#");
+
+        strcat(&mut command_str, &color_str);
+        strcat(&mut command_str, &"\\", ");
+
+        strcat(&mut command_str, &rect_str);
+        strcat(&mut command_str, &");");
+        // println("about to eval: ", command_str);
+        eval(&mut command_str, sizeof(command_str));
+    }
+
+    fun draw_circle(&mut self, color: Color, x: Int, y: Int, radius: Int) {
+        let mut command_str = ['\\0'] * 128;
+        let color_str = color.to_str();
+        let x_str = x.to_str();
+        let y_str = y.to_str();
+        let radius_str = radius.to_str();
+        strcat(&mut command_str, &"draw_circle(\\\"#");
+
+        strcat(&mut command_str, &color_str);
+        strcat(&mut command_str, &"\\", ");
+
+        strcat(&mut command_str, &x_str);
+        strcat(&mut command_str, &", ");
+
+        strcat(&mut command_str, &y_str);
+        strcat(&mut command_str, &", ");
+
+        strcat(&mut command_str, &radius_str);
+        strcat(&mut command_str, &");");
+        eval(&mut command_str, sizeof(command_str));
+    }
+}
+
+let static mut SEED: Int = 0x12345;
+
+fun seed(n: Int) {
+    SEED = n;
+}
+
+fun rand(low: Int, high: Int): Int {
+    SEED = (SEED * 1103515245 + 12345) & 0x7FFFFFFF;
+    return low + SEED % (high - low);
+}
+
+impl Int {
+    fun to_str(&self): [Char * 9] {
+        let mut n = *self;
+        let mut result = [' '] * 9;
+        result[8] = '\\0';
+        for let mut i=0; i<8; i+=1; {
+            let digit = n % 10;
+            result[7 - i] = (digit + '0' as Int) as Char;
+            n /= 10;
+        }
+
+        // Remove trailing zeros
+        let mut i = 0;
+        let mut is_done = False;
+        while i < 8 && !is_done {
+            if result[i] != '0' {
+                is_done = True;
+                i -= 1;
+            }
+            i += 1;
+        }
+
+        for let mut j=0; j<i; j+=1; {
+            result[j] = ' ';
+        }
+
+        // If the result is empty, then just return "0"
+        for let mut j=0; j<8; j+=1; {
+            if result[j] != ' ' {
+                return result;
+            }
+        }
+        result[7] = '0';
+        return result;
+    }
+}
+
+struct Color {
+    r: Int,
+    g: Int,
+    b: Int,
+}
+
+impl Color {
+    const RED = {r=255, g=0, b=0};
+    const GREEN = {r=0, g=255, b=0};
+    const BLUE = {r=0, g=0, b=255};
+    const BLACK = {r=0, g=0, b=0};
+    const WHITE = {r=255, g=255, b=255};
+    const YELLOW = {r=255, g=255, b=0};
+    const CYAN = {r=0, g=255, b=255};
+    const MAGENTA = {r=255, g=0, b=255};
+
+    const PRIMARY = [
+        Color.RED,
+        Color.GREEN,
+        Color.BLUE,
+    ];
+
+    const SECONDARY = [
+        Color.YELLOW,
+        Color.CYAN,
+        Color.MAGENTA,
+    ];
+
+    fun rand(): Color {
+        return {
+            r=rand(0, 256),
+            g=rand(0, 256),
+            b=rand(0, 256)
+        };
+    }
+
+    fun make(r: Int, g: Int, b: Int): Color {
+        return {
+            r=r,
+            g=g,
+            b=b
+        };
+    }
+
+    fun to_str(&self): [Char * 7] {
+        let mut result = [' '] * 7;
+        result[6] = '\\0' as Char;
+        let mut hex = byte_to_hex(self.r);
+        result[0] = hex[0];
+        result[1] = hex[1];
+
+        hex = byte_to_hex(self.g);
+        result[2] = hex[0];
+        result[3] = hex[1];
+
+        hex = byte_to_hex(self.b);
+        result[4] = hex[0];
+        result[5] = hex[1];
+
+        return result;
+    }
+}
+
+struct Rectangle {
+    x: Int,
+    y: Int,
+    width: Int,
+    height: Int,
+}
+
+impl Rectangle {
+    fun make(x: Int, y: Int, width: Int, height: Int): Rectangle {
+        return {
+            x=x,
+            y=y,
+            width=width,
+            height=height
+        };
+    }
+
+    fun rand_section(&self, width: Int, height: Int): Rectangle {
+        let mut x = rand(self.x, self.x + self.width - width);
+        let mut y = rand(self.y, self.y + self.height - height);
+        return {
+            x=x,
+            y=y,
+            width=width,
+            height=height
+        };
+    }
+
+    // Remove margin
+    fun shrink(&self, margin: Int): Rectangle {
+        return {
+            x=self.x + margin,
+            y=self.y + margin,
+            width=self.width - margin * 2,
+            height=self.height - margin * 2
+        };
+    }
+
+    fun move(&self, dx: Int, dy: Int): Rectangle {
+        return {
+            x=self.x + dx,
+            y=self.y + dy,
+            width=self.width,
+            height=self.height
+        };
+    }
+
+    fun to_str(&self): [Char * 40] {
+        let mut result = [' '] * 40;
+        let x_str = self.x.to_str();
+        // println("x_str: ", x_str);
+        let y_str = self.y.to_str();
+        // println("y_str: ", y_str);
+        let width_str = self.width.to_str();
+        // println("width_str: ", width_str);
+        let height_str = self.height.to_str();
+        // println("height_str: ", height_str);
+        let mut i = 0;
+
+        for (); i < 8; i += 1; {
+            result[i] = x_str[i];
+        }
+
+        result[8] = ',' as Char;
+        i += 1;
+
+        for (); i < 16; i += 1; {
+            result[i] = y_str[i - 8];
+        }
+        result[16] = ',' as Char;
+        i += 1;
+
+        for (); i < 24; i += 1; {
+            result[i] = width_str[i - 16];
+        }
+        result[24] = ',' as Char;
+        i += 1;
+
+        for (); i < 32; i += 1; {
+            result[i] = height_str[i - 24];
+        }
+
+        result[32] = '\\0' as Char;
+        i += 1;
+
+
+        return result;
+    }
+}
+
+fun strcat(dst: &mut Char, src: &Char) {
+    let mut i = 0;
+    while dst[i] != '\\0' {
+        i += 1;
+    }
+
+    let mut j = 0;
+    while src[j] != '\\0' {
+        dst[i] = src[j];
+        i += 1;
+        j += 1;
+    }
+    dst[i] = '\\0';
+}
+
+
+fun byte_to_hex(mut byte: Int): [Char * 3] {
+    // Convert a byte to a hex string
+    let mut result = ['0'] * 3;
+
+    let mut i = 0;
+    while i < 2 {
+        let mut digit = byte & 0xF;
+        if digit < 10 {
+            digit += '0' as Int;
+        } else {
+            digit += 'A' as Int - 10;
+        }
+        result[i] = digit as Char;
+        byte /= 16;
+        i += 1;
+    }
+    result[2] = '\\0' as Char;
+
+    return result;
+}
+
+fun byte_to_dec(mut byte: Int): [Char * 4] {
+    // Convert a byte to a decimal string
+    let mut result = [' '] * 4;
+
+    let mut i = 0;
+    while i < 3 {
+        let mut digit = byte % 10;
+        digit += '0' as Int;
+        result[i] = digit as Char;
+        byte /= 10;
+        i += 1;
+    }
+    result[3] = '\\0' as Char;
+
+    return result;
+}
+
+main();`);
+                    break;
                 case "const-generics":
                     source.setValue(`fun main() {
     // Create an array struct
@@ -2437,9 +2905,9 @@ main();`)
         <select id="example" style="height: 3em; float: left;">
             <option value="hello world">Click to select example program (Default Hello World)</option>
             <optgroup label="Interesting Programs">
-                <option value="graphics">Screen-Drawing Javascript Interop</option>
+                <option value="solar-system">Accurate Model Solar System</option>
+                <option value="graphics">Drawing Waves + Shapes</option>
                 <option value="sudoku">Sudoku Solver</option>
-                <option value="planets">Positions of Planets</option>
                 <option value="lunar">Lunar Calendar</option>
                 <option value="myers-diff">Myers Difference Algorithm</option>
                 <option value="calculator">Calculator (Parser)</option>
@@ -2459,13 +2927,13 @@ main();`)
                 <option value="let-bindings">Let-Bindings</option>
                 <option value="factorial">Factorial</option>
                 <option value="match">Pattern Matching</option>
+                <option value="modules">Module System</option>
                 <option value="cat">Cat</option>
             </optgroup>
             <optgroup label="Complex Language Features">
                 <option value="structural-types">Structural Typing Demo</option>
                 <option value="sum-types">Sum Types</option>
                 <option value="const-generics">Const-Generics</option>
-                <option value="modules">Module System</option>
                 <option value="tuple">Pair (Generics)</option>
                 <option value="ffi">Alert Javascript Demo</option>
             </optgroup>
