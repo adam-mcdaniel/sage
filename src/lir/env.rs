@@ -1244,7 +1244,7 @@ impl Env {
     }
 
     /// Save the current state of the args being pushed onto the stack.
-    pub fn save_args(&mut self) {
+    fn save_args(&mut self) {
         self.saved_sp_offsets.push(self.sp_offset)
     }
 
@@ -1263,7 +1263,7 @@ impl Env {
     }
 
     /// Compile an argument and account for the fact that the stack is growing as we compile arguments.
-    pub fn compile_arg(&mut self, expr: Expr, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
+    fn compile_arg(&mut self, expr: Expr, output: &mut dyn AssemblyProgram) -> Result<(), Error> {
         let size = expr.get_size(self)?;
         expr.compile_expr(self, output)?;
         self.sp_offset += size as isize;
@@ -1271,7 +1271,7 @@ impl Env {
     }
 
     /// Resume the previous state of the args being pushed onto the stack.
-    pub fn restore_args(&mut self) {
+    fn restore_args(&mut self) {
         self.sp_offset = self.saved_sp_offsets.pop().unwrap_or(0);
     }
 

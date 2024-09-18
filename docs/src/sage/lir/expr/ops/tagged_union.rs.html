@@ -172,6 +172,10 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -239,12 +243,16 @@
         <span class="comment">// Get the size of the type.
         </span><span class="kw">let </span>size = ty.get_size(env)<span class="question-mark">?</span>;
 
-        <span class="comment">// Copy the tag to a temp register
-        </span>output.op(CoreOp::Move {
-            src: SP.deref(),
-            dst: SP.deref().offset(<span class="number">1 </span>- size <span class="kw">as </span>isize),
-        });
-        output.op(CoreOp::Pop(<span class="prelude-val">None</span>, size - <span class="number">1</span>));
+        <span class="kw">if </span>size &gt; <span class="number">1 </span>{
+            <span class="comment">// Copy the tag to a temp register
+            </span><span class="kw">let </span>cur = output.current_instruction();
+            output.op(CoreOp::Move {
+                src: SP.deref(),
+                dst: SP.deref().offset(<span class="number">1 </span>- size <span class="kw">as </span>isize),
+            });
+            output.op(CoreOp::Pop(<span class="prelude-val">None</span>, size - <span class="number">1</span>));
+            output.log_instructions_after(<span class="string">"tag"</span>, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"for {ty}"</span>), cur);
+        }
 
         <span class="prelude-val">Ok</span>(())
     }

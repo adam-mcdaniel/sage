@@ -1288,11 +1288,6 @@
 <a href="#1287" id="1287">1287</a>
 <a href="#1288" id="1288">1288</a>
 <a href="#1289" id="1289">1289</a>
-<a href="#1290" id="1290">1290</a>
-<a href="#1291" id="1291">1291</a>
-<a href="#1292" id="1292">1292</a>
-<a href="#1293" id="1293">1293</a>
-<a href="#1294" id="1294">1294</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Constant Expressions
 //!
 //! Constant expressions are expressions that can be evaluated at compile time.
@@ -1458,15 +1453,11 @@
             </span><span class="self">Self</span>::Declare(younger_decls, expr) =&gt; {
                 <span class="comment">// Start with the older declarations.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>result = older_decls.into();
-                <span class="comment">// if let Declaration::Module(..) = result {
-                //     self.hard_with(result)
-                // } else {
-                // Add the younder declarations to the older declarations.
+                <span class="comment">// Add the younder declarations to the older declarations.
                 </span>result.append(<span class="kw-2">*</span>younger_decls.clone());
                 <span class="comment">// Return the merged declaration.
                 </span><span class="self">Self</span>::Declare(Box::new(result), expr.clone())
-                <span class="comment">// }
-            </span>}
+            }
 
             <span class="self">Self</span>::Proc(proc) =&gt; <span class="self">Self</span>::Proc(proc.with(older_decls)),
             <span class="self">Self</span>::PolyProc(proc) =&gt; <span class="self">Self</span>::PolyProc(proc.with(older_decls)),
@@ -1725,8 +1716,7 @@
                 }
 
                 <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; {
-                    <span class="comment">// let ty_args = ty_args.into_iter().map(|t| t.simplify(env)).collect::&lt;Result&lt;Vec&lt;_&gt;, _&gt;&gt;()?;
-                    </span><span class="macro">debug!</span>(<span class="string">"Monomorphizing {expr} with ty_args {ty_args:?}"</span>);
+                    <span class="macro">debug!</span>(<span class="string">"Monomorphizing {expr} with ty_args {ty_args:?}"</span>);
 
                     <span class="prelude-val">Ok</span>(<span class="kw">match </span>expr.clone().eval(env)<span class="question-mark">? </span>{
                         <span class="self">Self</span>::Template(params, ret) =&gt; {

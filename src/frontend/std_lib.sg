@@ -151,22 +151,32 @@ mod math {
 
     // Calculate the arctangent of a fraction
     fun atan2(y: Float, x: Float): Float {
-        if x.abs() < EPSILON {
+        if x.abs() > EPSILON {
+            if x.abs() > y.abs() {
+                let z = y / x;
+                if x > 0 {
+                    return atan(z);
+                } else if y > 0 {
+                    return atan(z) + PI;
+                } else {
+                    return atan(z) - PI;
+                }
+            } else {
+                let z = x / y;
+                if y > 0 {
+                    return -atan(z) + PI / 2;
+                } else {
+                    return -atan(z) - PI / 2;
+                }
+            }
+        } else {
             if y > 0 {
                 return PI / 2;
             } else if y < 0 {
                 return -PI / 2;
-            } else {
-                return 0.0;
             }
         }
-        if x > 0 {
-            return atan(y / x);
-        }
-        if y > 0 {
-            return atan(y / x) + PI;
-        }
-        return atan(y / x) - PI;
+        return 0.0;
     }
 
     // Calculate the square root of a number using Newton's method
@@ -1033,6 +1043,36 @@ mod physics {
         }
     }
 
+    fun clamp_degrees(degrees: Float): Float {
+        let mut result = degrees;
+        while result < 0 {
+            result += 360;
+        }
+        while result > 360 {
+            result -= 360;
+        }
+        return result;
+    }
+
+    fun clamp_radians(radians: Float): Float {
+        let mut result = radians;
+        while result < 0 {
+            result += 2 * math.PI;
+        }
+        while result > 2 * math.PI {
+            result -= 2 * math.PI;
+        }
+        return result;
+    }
+
+    fun rad2deg(radians: Float): Float {
+        return radians * 180 / math.PI;
+    }
+
+    fun deg2rad(degrees: Float): Float {
+        return degrees * math.PI / 180;
+    }
+
     mod astronomy {
         from fallible import Option;
 
@@ -1096,6 +1136,242 @@ mod physics {
             }
         }
 
+        struct KeplerianElements {
+            // Longitude of the ascending node (degrees)
+            N: Float,
+            // Degrees per JD2000 day
+            N_dt: Float,
+            // Inclination to the ecliptic (degrees)
+            i: Float,
+            // Degrees per JD2000 day
+            i_dt: Float,
+            // Argument of perihelion (degrees)
+            w: Float,
+            // Degrees per JD2000 day
+            w_dt: Float,
+            // Semi-major axis (AU)
+            a: Float,
+            // AU per JD2000 day
+            a_dt: Float,
+            // Ecentricity (unitless)
+            e: Float,
+            // Unitless per JD2000 day
+            e_dt: Float,
+            // Mean anomaly (degrees)
+            M: Float,
+            // Degrees per JD2000 day
+            M_dt: Float,
+            // Obliquity of the ecliptic (degrees)
+            oblecl: Float,
+            // Degrees per JD2000 day
+            oblecl_dt: Float
+        }
+
+        impl KeplerianElements {
+            const SUN = {
+                N=0.0,
+                N_dt=0.0,
+                i=0.0,
+                i_dt=0.0,
+                w=282.9404,
+                w_dt=4.70935e-5,
+                a=1.000000,
+                a_dt=0.0,
+                e=0.01671022,
+                e_dt=-1.151e-9,
+                M=356.0470,
+                M_dt=0.9856002585,
+                oblecl=23.4393,
+                oblecl_dt=-3.563e-7
+            };
+
+            const MERCURY = {
+                N=48.3313,
+                N_dt=3.24587e-5,
+                i=7.0047,
+                i_dt=5.00e-8,
+                w=29.1241,
+                w_dt=1.01444e-5,
+                a=0.38709893,
+                a_dt=0.0,
+                e=0.20563593,
+                e_dt=5.59e-10,
+                M=168.6562,
+                M_dt=4.0923344368,
+                oblecl=23.4393,
+                oblecl_dt=-3.563e-7
+            };
+
+            const VENUS = {
+                N=76.6799,
+                N_dt=2.46590e-5,
+                i=3.3946,
+                i_dt=2.75e-8,
+                w=54.8910,
+                w_dt=1.38374e-5,
+                a=0.72333199,
+                a_dt=0.0,
+                e=0.00677323,
+                e_dt=1.302e-9,
+                M=48.0052,
+                M_dt=1.6021302244,
+                oblecl=23.4393,
+                oblecl_dt=-3.563e-7
+            };
+
+            const MARS = {
+                N=49.5574,
+                N_dt=2.11081e-5,
+                i=1.8497,
+                i_dt=-1.78e-8,
+                w=286.5016,
+                w_dt=2.92961e-5,
+                a=1.52366231,
+                a_dt=0.0,
+                e=0.09341233,
+                e_dt=2.516e-9,
+                M=18.6021,
+                M_dt=0.5240207766,
+                oblecl=23.4393,
+                oblecl_dt=-3.563e-7
+            };
+
+            const JUPITER = {
+                N=100.4542,
+                N_dt=2.76854e-5,
+                i=1.3030,
+                i_dt=-1.557e-7,
+                w=273.8777,
+                w_dt=1.64505e-5,
+                a=5.202603191,
+                a_dt=0.0,
+                e=0.04846418,
+                e_dt=4.469e-9,
+                M=19.8950,
+                M_dt=0.0830853001,
+                oblecl=23.4393,
+                oblecl_dt=-3.563e-7
+            };
+
+            const SATURN = {
+                N=113.6634,
+                N_dt=2.38980e-5,
+                i=2.4886,
+                i_dt=-1.081e-7,
+                w=339.3939,
+                w_dt=2.97661e-5,
+                a=9.554909596,
+                a_dt=0.0,
+                e=0.05550825,
+                e_dt=-9.499e-9,
+                M=316.9670,
+                M_dt=0.0334442282,
+                oblecl=23.4393,
+                oblecl_dt=-3.563e-7
+            };
+
+            const URANUS = {
+                N=74.0005,
+                N_dt=1.3978e-5,
+                i=0.7733,
+                i_dt=1.9e-8,
+                w=96.6612,
+                w_dt=3.0565e-5,
+                a=19.181263,
+                a_dt=-1.55e-8,
+                e=0.04716801,
+                e_dt=-8.16e-9,
+                M=142.5905,
+                M_dt=0.011725806,
+                oblecl=23.4393,
+                oblecl_dt=-3.563e-7
+            };
+
+            const NEPTUNE = {
+                N=131.7806,
+                N_dt=3.0173e-5,
+                i=1.7700,
+                i_dt=-2.55e-7,
+                w=272.8461,
+                w_dt=-6.027e-6,
+                a=30.05826,
+                a_dt=3.313e-8,
+                e=0.00860672,
+                e_dt=2.15e-9,
+                M=260.2471,
+                M_dt=0.005995147,
+                oblecl=23.4393,
+                oblecl_dt=-3.563e-7
+            };
+
+            /// Account for the time elapsed since JD2000
+            fun at_date(mut self, now: Date): KeplerianElements {
+                fun julian_day(mut year: Int, mut month: Int, day: Int): Float {
+                    if (month <= 2) {
+                        year -= 1;
+                        month += 12;
+                    }
+                    
+                    let A = year / 100;
+                    let B = 2 - A + (A / 4);
+                    
+                    return (365.25 * (year + 4716)) as Int + ((30.6001 * (month + 1)) as Int) + day + B - 1524.5;
+                }
+
+                fun date_to_jd2000(now: Date): Float {
+                    let Y = now.year as Float;
+                    let M = now.month as Float;
+                    let D = now.day as Float;
+                    return julian_day(now.year, now.month, now.day) - 2451543;
+                }
+
+                let d = date_to_jd2000(now);
+
+                self.N = clamp_degrees(self.N + self.N_dt * d);
+                self.i = self.i + self.i_dt * d;
+                self.w = self.w + self.w_dt * d;
+                self.a = self.a + self.a_dt * d;
+                self.e = self.e + self.e_dt * d;
+                self.M = clamp_degrees(self.M + self.M_dt * d);
+                self.oblecl = self.oblecl + self.oblecl_dt * d;
+
+                self
+            }
+
+            fun distance_and_true_anomaly(mut self, now: Date): (Float, Float) {
+                self = self.at_date(now);
+                let M = clamp_degrees(self.M);
+                let oblecl = self.oblecl;
+                let e = M + rad2deg(self.e) * math.sin(deg2rad(M)) * (1.0 + self.e * math.cos(deg2rad(M)));
+                let x = self.a * (math.cos(deg2rad(e)) - self.e);
+                let tmp = math.sqrt(1.0 - self.e * self.e);
+                let y = self.a * tmp * math.sin(deg2rad(e));
+                let r = math.sqrt(x * x + y * y);
+                let v = clamp_degrees(rad2deg(math.atan2(y, x)));
+
+                return (r, v);
+            }
+
+            // Get the position of the celestial body on a given date
+            // in the heliocentric ecliptic coordinate system.
+            fun position_on_date(mut self, now: Date): Point3D {
+                let (r, v) = self.distance_and_true_anomaly(now);
+
+                let oblecl = self.oblecl;
+                let lon = clamp_degrees(v + self.w);
+                
+                let xh = r * (math.cos(deg2rad(lon)) * math.cos(deg2rad(self.N)) - math.sin(deg2rad(lon)) * math.sin(deg2rad(self.N)) * math.cos(deg2rad(self.i)));
+                let yh = r * (math.sin(deg2rad(lon)) * math.cos(deg2rad(self.N)) + math.cos(deg2rad(lon)) * math.sin(deg2rad(self.N)) * math.cos(deg2rad(self.i)));
+                let zh = r * (math.sin(deg2rad(self.i)) * math.sin(deg2rad(lon)));
+
+                let xe = xh;
+                let ye = yh * math.cos(deg2rad(oblecl)) - zh * math.sin(deg2rad(oblecl));
+                let ze = yh * math.sin(deg2rad(oblecl)) + zh * math.cos(deg2rad(oblecl));
+
+                return Point3D.new(xe, ye, ze);
+            }
+        }
+
         enum Planet {
             Mercury,
             Venus,
@@ -1108,7 +1384,7 @@ mod physics {
         }
 
         impl Planet {
-            const ORBITAL_RADII = [
+            const ORBITAL_RADII_AU = [
                 0.39,
                 0.72,
                 1.0,
@@ -1117,6 +1393,16 @@ mod physics {
                 9.58,
                 19.22,
                 30.05
+            ];
+            const ORBITAL_RADII_METERS = [
+                57909050000.0,
+                108208930000.0,
+                149597870700.0,
+                227936640000.0,
+                778412010000.0,
+                1426725400000.0,
+                2870972200000.0,
+                4498252900000.0
             ];
 
             const PLANETS = [
@@ -1141,19 +1427,9 @@ mod physics {
                 164.8
             ];
 
-            const POSITION_AT_EPOCH = [
-                (-42278675812.454315, 24613309950.918446, 17482615609.45234),
-                (-108190381646.73073, -13317243499.344467, 818212376.0610391),
-                (-26004940524.516987, 132621768469.43376, 57523897417.362076),
-                (-45075950705.15841, -198201555907.44907, -89682031118.63554),
-                (521378228062.63275, 493060238375.3027, 198651062155.9376),
-                (1344601806306.465, -493006383015.7458, -261550590693.13828),
-                (1834521958762.2458, 2105690989019.717, 896288551314.5364),
-                (4463253980773.344, -207488910186.74722, -196045534921.0069)
-            ];
-
+            // Orbital radius in AU
             fun orbital_radius(self): Float {
-                return Planet.ORBITAL_RADII[self.order_from_sun()];
+                return Planet.ORBITAL_RADII_METERS[self.order_from_sun()];
             }
 
             fun orbital_period(self): Float {
@@ -1174,10 +1450,22 @@ mod physics {
                 }
             }
 
-            fun position_at_epoch(self): (Float, Float, Float) {
-                return Planet.POSITION_AT_EPOCH[self.order_from_sun()];
+            // Get the keplerian elements associated with the
+            // celestial body.
+            fun keplerian_elements(self): KeplerianElements {
+                match self {
+                    of Mercury => KeplerianElements.MERCURY,
+                    of Venus => KeplerianElements.VENUS,
+                    of Earth => KeplerianElements.SUN,
+                    of Mars => KeplerianElements.MARS,
+                    of Jupiter => KeplerianElements.JUPITER,
+                    of Saturn => KeplerianElements.SATURN,
+                    of Uranus => KeplerianElements.URANUS,
+                    of Neptune => KeplerianElements.NEPTUNE
+                }
             }
 
+            // Get the order of the planet from the sun
             fun order_from_sun(self): Int {
                 match self {
                     of Mercury => 0,
@@ -1191,23 +1479,17 @@ mod physics {
                 }
             }
 
-            fun position_at_instant(self, now: Instant): Point3D {
-                let (x0, y0, z0) = self.position_at_epoch();
-                
-                let t = time.SECONDS_PER_YEAR;
-                
-                let omega = 2 * math.PI / t;
-                
-                let theta = omega * now.as_secs() as Float;
-                
-                let cos_theta = math.cos(theta);
-                let sin_theta = math.sin(theta);
-                
-                return {
-                    x=x0 * cos_theta - y0 * sin_theta,
-                    y=x0 * sin_theta + y0 * cos_theta,
-                    z=z0
-                };
+            // Get the position on date, in AU
+            // This is heliocentric ecliptic coordinates.
+            fun position_on_date(self, date: Date): Point3D {
+                let elements = self.keplerian_elements();
+                fun negate(p: Float): Float {
+                    return -p;
+                }
+                if let of Earth = self {
+                    return elements.position_on_date(date).convert(negate);
+                }
+                return elements.position_on_date(date);
             }
 
             fun print(self) {

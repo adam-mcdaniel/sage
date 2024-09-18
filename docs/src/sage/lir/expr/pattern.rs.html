@@ -1094,6 +1094,7 @@
 <a href="#1093" id="1093">1093</a>
 <a href="#1094" id="1094">1094</a>
 <a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::lir::<span class="kw-2">*</span>;
 <span class="kw">use </span>core::fmt::{Debug, Display, Formatter, <span class="prelude-ty">Result </span><span class="kw">as </span>FmtResult};
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap};
@@ -1173,7 +1174,7 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
         <span class="kw">for </span>(var, (mutabilty, ty)) <span class="kw">in </span>bindings {
             <span class="comment">// Define the variables in the new environment.
-            </span>new_env.define_var(var, mutabilty, ty, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+            </span>new_env.define_var(var, mutabilty, ty, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
         }
 
         <span class="comment">// Get the type of the branch.
@@ -1610,6 +1611,7 @@
             expr.clone(),
             match_expr,
         );
+
         <span class="prelude-val">Ok</span>(result)
     }
 

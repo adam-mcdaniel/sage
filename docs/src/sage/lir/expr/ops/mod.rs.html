@@ -610,9 +610,6 @@
 <a href="#609" id="609">609</a>
 <a href="#610" id="610">610</a>
 <a href="#611" id="611">611</a>
-<a href="#612" id="612">612</a>
-<a href="#613" id="613">613</a>
-<a href="#614" id="614">614</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Operations
 //!
 //! This module contains implementations of various
@@ -689,6 +686,7 @@
     }
     <span class="doccomment">/// Clones the operation into a boxed trait object.
     </span><span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>AssignOp&gt;;
+
     <span class="doccomment">/// Formats the operation for display.
     </span><span class="kw">fn </span>display(<span class="kw-2">&amp;</span><span class="self">self</span>, dst: <span class="kw-2">&amp;</span>Expr, src: <span class="kw-2">&amp;</span>Expr) -&gt; String {
         <span class="macro">format!</span>(<span class="string">"{} {} {}"</span>, dst, <span class="self">self</span>, src)
@@ -733,8 +731,7 @@
                 .map_err(|err| err.annotate(metadata.clone()));
         }
         <span class="comment">// trace!("Compiling assign op: {dst} {self} {src} ({self:?})");
-        </span>dst.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-        src.clone().compile_expr(env, output)<span class="question-mark">?</span>;
+        </span>env.compile_args([dst.clone(), src.clone()], output)<span class="question-mark">?</span>;
         <span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>dst.get_type(env)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span>src.get_type(env)<span class="question-mark">?</span>, env, output)
     }
     <span class="doccomment">/// Compiles the operation on the given types. (Generates the code for the operation.)
@@ -820,6 +817,7 @@
         output.log_instructions_after(<span class="kw-2">&amp;</span><span class="self">self</span>.display(expr), <span class="kw-2">&amp;</span>message, current_instruction);
         <span class="prelude-val">Ok</span>(())
     }
+
     <span class="doccomment">/// Compiles the operation on the given type. (Generates the code for the operation.)
     </span><span class="kw">fn </span>compile_types(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -920,9 +918,7 @@
                 .map_err(|err| err.annotate(metadata.clone()));
         }
 
-        <span class="comment">// trace!("Compiling binary op: {lhs} {self} {rhs} ({self:?})");
-        </span>lhs.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-        rhs.clone().compile_expr(env, output)<span class="question-mark">?</span>;
+        env.compile_args([lhs.clone(), rhs.clone()], output)<span class="question-mark">?</span>;
         <span class="self">self</span>.compile_types(<span class="kw-2">&amp;</span>lhs.get_type(env)<span class="question-mark">?</span>, <span class="kw-2">&amp;</span>rhs.get_type(env)<span class="question-mark">?</span>, env, output)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
@@ -1055,9 +1051,7 @@
         }
         <span class="comment">// trace!("Compiling ternary op: {a} {self} {b} {c} ({self:?})");
         // Evaluate the three expression on the stack.
-        </span>a.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-        b.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-        c.clone().compile_expr(env, output)<span class="question-mark">?</span>;
+        </span>env.compile_args([a.clone(), b.clone(), c.clone()], output)<span class="question-mark">?</span>;
         <span class="comment">// Compile the operation.
         </span><span class="self">self</span>.compile_types(
             <span class="kw-2">&amp;</span>a.get_type(env)<span class="question-mark">?</span>,

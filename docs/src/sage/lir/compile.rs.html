@@ -1523,53 +1523,6 @@
 <a href="#1522" id="1522">1522</a>
 <a href="#1523" id="1523">1523</a>
 <a href="#1524" id="1524">1524</a>
-<a href="#1525" id="1525">1525</a>
-<a href="#1526" id="1526">1526</a>
-<a href="#1527" id="1527">1527</a>
-<a href="#1528" id="1528">1528</a>
-<a href="#1529" id="1529">1529</a>
-<a href="#1530" id="1530">1530</a>
-<a href="#1531" id="1531">1531</a>
-<a href="#1532" id="1532">1532</a>
-<a href="#1533" id="1533">1533</a>
-<a href="#1534" id="1534">1534</a>
-<a href="#1535" id="1535">1535</a>
-<a href="#1536" id="1536">1536</a>
-<a href="#1537" id="1537">1537</a>
-<a href="#1538" id="1538">1538</a>
-<a href="#1539" id="1539">1539</a>
-<a href="#1540" id="1540">1540</a>
-<a href="#1541" id="1541">1541</a>
-<a href="#1542" id="1542">1542</a>
-<a href="#1543" id="1543">1543</a>
-<a href="#1544" id="1544">1544</a>
-<a href="#1545" id="1545">1545</a>
-<a href="#1546" id="1546">1546</a>
-<a href="#1547" id="1547">1547</a>
-<a href="#1548" id="1548">1548</a>
-<a href="#1549" id="1549">1549</a>
-<a href="#1550" id="1550">1550</a>
-<a href="#1551" id="1551">1551</a>
-<a href="#1552" id="1552">1552</a>
-<a href="#1553" id="1553">1553</a>
-<a href="#1554" id="1554">1554</a>
-<a href="#1555" id="1555">1555</a>
-<a href="#1556" id="1556">1556</a>
-<a href="#1557" id="1557">1557</a>
-<a href="#1558" id="1558">1558</a>
-<a href="#1559" id="1559">1559</a>
-<a href="#1560" id="1560">1560</a>
-<a href="#1561" id="1561">1561</a>
-<a href="#1562" id="1562">1562</a>
-<a href="#1563" id="1563">1563</a>
-<a href="#1564" id="1564">1564</a>
-<a href="#1565" id="1565">1565</a>
-<a href="#1566" id="1566">1566</a>
-<a href="#1567" id="1567">1567</a>
-<a href="#1568" id="1568">1568</a>
-<a href="#1569" id="1569">1569</a>
-<a href="#1570" id="1570">1570</a>
-<a href="#1571" id="1571">1571</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Compile
 //!
 //! This module contains the `Compile` trait, which allows an LIR expression to be compiled to one of the two variants of the assembly language.
@@ -1668,10 +1621,13 @@
             }
 
             <span class="self">Self</span>::Match(expr, branches) =&gt; {
+                <span class="kw">let </span>cur = output.current_instruction();
                 <span class="comment">// Generate the pattern matching code.
                 </span>Pattern::match_pattern(<span class="kw-2">&amp;</span>expr, <span class="kw-2">&amp;</span>branches, env)<span class="question-mark">?
                     </span><span class="comment">// Compile the pattern matching code.
                     </span>.compile_expr(env, output)<span class="question-mark">?</span>;
+                output.log_instructions_after(<span class="string">"match"</span>, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"for expr {expr}"</span>), cur);
+                <span class="macro">debug!</span>(target: <span class="string">"match"</span>, <span class="string">"Matched {expr} in {env}"</span>);
             }
 
             <span class="self">Self</span>::IfLet(pat, expr, t, e) =&gt; {
@@ -1764,7 +1720,7 @@
             </span><span class="self">Self</span>::Many(exprs) =&gt; {
                 <span class="kw">for </span>expr <span class="kw">in </span>exprs {
                     <span class="comment">// Compile the expression in the block.
-                    </span>expr.compile_expr(env, output)<span class="question-mark">?</span>;
+                    </span>env.compile_args([expr], output)<span class="question-mark">?</span>;
                 }
             }
 
@@ -1820,40 +1776,29 @@
                     <span class="comment">// If the procedure is a core builtin,
                     </span>Expr::ConstExpr(ConstExpr::CoreBuiltin(builtin)) =&gt; {
                         <span class="comment">// Push the arguments to the procedure on the stack.
-                        </span><span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span>args {
-                            <span class="comment">// Compile the argument (push it on the stack)
-                            </span>arg.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-                        }
+                        </span>env.compile_args(args, output)<span class="question-mark">?</span>;
                         <span class="comment">// Apply the core builtin to the arguments on the stack.
                         </span>builtin.compile_expr(env, output)<span class="question-mark">?</span>;
                     }
                     <span class="comment">// If the procedure is a standard builtin,
                     </span>Expr::ConstExpr(ConstExpr::StandardBuiltin(builtin)) =&gt; {
                         <span class="comment">// Push the arguments to the procedure on the stack.
-                        </span><span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span>args {
-                            <span class="comment">// Compile the argument (push it on the stack)
-                            </span>arg.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-                        }
+                        </span>env.compile_args(args, output)<span class="question-mark">?</span>;
                         <span class="comment">// Apply the standard builtin to the arguments on the stack.
                         </span>builtin.compile_expr(env, output)<span class="question-mark">?</span>;
                     }
                     <span class="comment">// If the procedure is a foreign function,
                     </span>Expr::ConstExpr(ConstExpr::FFIProcedure(ffi)) =&gt; {
                         <span class="comment">// Push the arguments to the procedure on the stack.
-                        </span><span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span>args {
-                            <span class="comment">// Compile the argument (push it on the stack)
-                            </span>arg.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-                        }
+                        </span>env.compile_args(args, output)<span class="question-mark">?</span>;
                         <span class="comment">// Apply the foreign function to the arguments on the stack.
                         </span>ffi.compile_expr(env, output)<span class="question-mark">?</span>;
                     }
                     <span class="comment">// If the procedure is a symbol, get the procedure from the environment.
                     </span>Expr::ConstExpr(ConstExpr::Symbol(name)) =&gt; {
                         <span class="comment">// Push the arguments to the procedure on the stack.
-                        </span><span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span>args {
-                            <span class="comment">// Compile the argument (push it on the stack)
-                            </span>arg.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-                        }
+                        </span>env.compile_args(args, output)<span class="question-mark">?</span>;
+
                         <span class="kw">match </span>env.get_const(<span class="kw-2">&amp;</span>name) {
                             <span class="comment">// If the procedure is a core builtin,
                             </span><span class="prelude-val">Some</span>(ConstExpr::CoreBuiltin(builtin)) =&gt; {
@@ -1886,10 +1831,7 @@
                         } <span class="kw">else </span>{
                             <span class="macro">debug!</span>(<span class="string">"Method transform failed for {self_clone}; Monomorphizing {template} with {ty_args:?} in environment {env}"</span>);
                             <span class="comment">// Push the arguments to the procedure on the stack.
-                            </span><span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span>args {
-                                <span class="comment">// Compile the argument (push it on the stack)
-                                </span>arg.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-                            }
+                            </span>env.compile_args(args, output)<span class="question-mark">?</span>;
 
                             <span class="comment">// Compile it normally:
                             // Push the procedure on the stack.
@@ -1917,10 +1859,8 @@
                             <span class="comment">// Push the arguments to the procedure on the stack.
                             </span><span class="macro">debug!</span>(<span class="string">"Is not method call!"</span>);
                             <span class="macro">debug!</span>(<span class="string">"Compiling member function call {name} on {val} in environment {env}"</span>);
-                            <span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span>args {
-                                <span class="comment">// Compile the argument (push it on the stack)
-                                </span>arg.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-                            }
+                            <span class="comment">// Push the arguments to the procedure on the stack.
+                            </span>env.compile_args(args, output)<span class="question-mark">?</span>;
 
                             <span class="comment">// Compile it normally:
                             // Push the procedure on the stack.
@@ -1940,10 +1880,7 @@
                                 </span>.compile_expr(env, output)<span class="question-mark">?</span>;
                         } <span class="kw">else </span>{
                             <span class="comment">// Push the arguments to the procedure on the stack.
-                            </span><span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span>args {
-                                <span class="comment">// Compile the argument (push it on the stack)
-                                </span>arg.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-                            }
+                            </span>env.compile_args(args, output)<span class="question-mark">?</span>;
 
                             <span class="comment">// Compile it normally:
                             // Push the procedure on the stack.
@@ -1957,10 +1894,8 @@
                     <span class="comment">// Otherwise, it must be a procedure.
                     </span>proc =&gt; {
                         <span class="comment">// Push the arguments to the procedure on the stack.
-                        </span><span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span>args {
-                            <span class="comment">// Compile the argument (push it on the stack)
-                            </span>arg.clone().compile_expr(env, output)<span class="question-mark">?</span>;
-                        }
+                        </span>env.compile_args(args, output)<span class="question-mark">?</span>;
+
                         <span class="comment">// Push the procedure on the stack.
                         </span>proc.compile_expr(env, output)<span class="question-mark">?</span>;
                         <span class="comment">// Pop the "function pointer" from the stack.
@@ -2027,16 +1962,16 @@
             <span class="comment">// Compile an if statement.
             </span><span class="self">Self</span>::If(c, t, e) =&gt; {
                 <span class="comment">// Compile the condition
-                </span>c.compile_expr(env, output)<span class="question-mark">?</span>;
+                </span>env.compile_args([<span class="kw-2">*</span>c], output)<span class="question-mark">?</span>;
                 output.op(CoreOp::Pop(<span class="prelude-val">Some</span>(A), <span class="number">1</span>));
                 <span class="comment">// If the condition is true
                 </span>output.op(CoreOp::If(A));
                 <span class="comment">// Compile the true branch
-                </span>t.compile_expr(env, output)<span class="question-mark">?</span>;
+                </span>env.compile_args([<span class="kw-2">*</span>t], output)<span class="question-mark">?</span>;
                 <span class="comment">// If the condition is false
                 </span>output.op(CoreOp::Else);
                 <span class="comment">// Compile the false branch
-                </span>e.compile_expr(env, output)<span class="question-mark">?</span>;
+                </span>env.compile_args([<span class="kw-2">*</span>e], output)<span class="question-mark">?</span>;
                 <span class="comment">// Label the end of the if statement
                 </span>output.op(CoreOp::End);
             }
@@ -2086,26 +2021,20 @@
             <span class="comment">// Compile an array literal.
             </span><span class="self">Self</span>::Array(elems) =&gt; {
                 <span class="comment">// Compile the elements
-                </span><span class="kw">for </span>elem <span class="kw">in </span>elems {
-                    elem.compile_expr(env, output)<span class="question-mark">?</span>;
-                }
-            }
+                </span>env.compile_args(elems, output)<span class="question-mark">?
+            </span>}
 
             <span class="comment">// Compile a tuple literal.
             </span><span class="self">Self</span>::Tuple(items) =&gt; {
                 <span class="comment">// Compile the items
-                </span><span class="kw">for </span>item <span class="kw">in </span>items {
-                    item.compile_expr(env, output)<span class="question-mark">?</span>;
-                }
-            }
+                </span>env.compile_args(items, output)<span class="question-mark">?
+            </span>}
 
             <span class="comment">// Compile a struct literal.
             </span><span class="self">Self</span>::Struct(items) =&gt; {
                 <span class="comment">// Compile the items
-                </span><span class="kw">for </span>(<span class="kw">_</span>, val) <span class="kw">in </span>items {
-                    val.compile_expr(env, output)<span class="question-mark">?</span>;
-                }
-            }
+                </span>env.compile_args(items.into_iter().map(|(<span class="kw">_</span>, x)| x), output)<span class="question-mark">?
+            </span>}
 
             <span class="comment">// Compile a union literal.
             </span><span class="self">Self</span>::Union(t, <span class="kw">_</span>, val) =&gt; {
@@ -2204,9 +2133,8 @@
                         <span class="comment">// Get the size of the element we will return.
                         </span><span class="kw">let </span>elem_size = elem.get_size(env)<span class="question-mark">?</span>;
                         <span class="comment">// Push the array onto the stack.
-                        </span>val.compile_expr(env, output)<span class="question-mark">?</span>;
-                        <span class="comment">// Push the index onto the stack.
-                        </span>idx.compile_expr(env, output)<span class="question-mark">?</span>;
+                        // Then, push the index onto the stack.
+                        </span>env.compile_args([<span class="kw-2">*</span>val, <span class="kw-2">*</span>idx], output)<span class="question-mark">?</span>;
 
                         <span class="comment">// Calculate the offset of the element we want to return
                         // (the index times the size of the element), and store it in `B`.
@@ -2242,9 +2170,8 @@
                     <span class="comment">// If the value being indexed is a pointer:
                     </span>Type::Pointer(<span class="kw">_</span>, elem) =&gt; {
                         <span class="comment">// Push the index onto the stack.
-                        </span>idx.compile_expr(env, output)<span class="question-mark">?</span>;
-                        <span class="comment">// Push the pointer being indexed onto the stack.
-                        </span>val.compile_expr(env, output)<span class="question-mark">?</span>;
+                        // Then, push the pointer being indexed onto the stack.
+                        </span>env.compile_args([<span class="kw-2">*</span>idx, <span class="kw-2">*</span>val], output)<span class="question-mark">?</span>;
 
                         <span class="comment">// Get the size of the element we are indexing.
                         </span><span class="kw">let </span>elem_size = elem.get_size(env)<span class="question-mark">?</span>;
@@ -2709,9 +2636,11 @@
                         }
                     }
                     (<span class="self">Self</span>::Declare(bindings, expr), field) =&gt; {
-                        <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                        new_env.add_declaration(<span class="kw-2">&amp;</span>bindings, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
-                        expr.field(field).compile_expr(<span class="kw-2">&amp;mut </span>new_env, output)<span class="question-mark">?</span>;
+                        <span class="comment">// let mut new_env = env.clone();
+                        // new_env.add_declaration(&amp;bindings, true)?;
+                        // expr.field(field).compile_expr(&amp;mut new_env, output)?;
+                        </span>env.add_declaration(<span class="kw-2">&amp;</span>bindings, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+                        expr.field(field).compile_expr(env, output)<span class="question-mark">?</span>;
                     }
                     (<span class="self">Self</span>::Symbol(name), member) =&gt; {
                         <span class="kw">if let </span><span class="prelude-val">Some</span>(cexpr) = env.get_const(<span class="kw-2">&amp;</span>name) {
@@ -2743,9 +2672,8 @@
             }
             <span class="self">Self</span>::Declare(bindings, body) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">"Compiling declaration {bindings} with body {body} in environment {env}"</span>);
-                <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                new_env.add_declaration(<span class="kw-2">&amp;</span>bindings, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
-                body.compile_expr(<span class="kw-2">&amp;mut </span>new_env, output)<span class="question-mark">?</span>;
+                env.add_declaration(<span class="kw-2">&amp;</span>bindings, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+                body.compile_expr(env, output)<span class="question-mark">?</span>;
             }
             <span class="self">Self</span>::Monomorphize(expr, ty_args) =&gt; <span class="kw">match </span>expr.eval(env)<span class="question-mark">? </span>{
                 <span class="self">Self</span>::PolyProc(poly_proc) =&gt; {
@@ -2789,10 +2717,9 @@
                     </span>result.compile_expr(env, output)<span class="question-mark">?</span>;
                 }
                 <span class="self">Self</span>::Declare(bindings, expr) =&gt; {
-                    <span class="kw">let </span><span class="kw-2">mut </span>new_env = env.clone();
-                    new_env.add_declaration(<span class="kw-2">&amp;</span>bindings, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+                    env.add_declaration(<span class="kw-2">&amp;</span>bindings, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
                     expr.monomorphize(ty_args)
-                        .compile_expr(<span class="kw-2">&amp;mut </span>new_env, output)<span class="question-mark">?</span>;
+                        .compile_expr(env, output)<span class="question-mark">?</span>;
                 }
 
                 val =&gt; {
@@ -2809,65 +2736,46 @@
             </span><span class="self">Self</span>::None =&gt; {}
             <span class="comment">// Compile a null constant.
             </span><span class="self">Self</span>::Null =&gt; {
-                <span class="comment">// output.op(CoreOp::Next(SP, None));
-                // output.op(CoreOp::Set(SP.deref(), NULL));
-                </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[NULL]));
+                output.op(CoreOp::PushConst(<span class="macro">vec!</span>[NULL]));
             }
             <span class="comment">// Compile a char constant.
             </span><span class="self">Self</span>::Char(ch) =&gt; {
-                <span class="comment">// output.op(CoreOp::Next(SP, None));
-                // output.op(CoreOp::Set(SP.deref(), ch as usize as i64));
-                </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[ch <span class="kw">as </span>usize <span class="kw">as </span>i64]));
+                output.op(CoreOp::PushConst(<span class="macro">vec!</span>[ch <span class="kw">as </span>usize <span class="kw">as </span>i64]));
             }
             <span class="comment">// Compile a bool constant.
             </span><span class="self">Self</span>::Bool(x) =&gt; {
-                <span class="comment">// output.op(CoreOp::Next(SP, None));
-                // output.op(CoreOp::Set(SP.deref(), x as i64));
-                </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[x <span class="kw">as </span>i64]));
+                output.op(CoreOp::PushConst(<span class="macro">vec!</span>[x <span class="kw">as </span>i64]));
             }
             <span class="comment">// Compile a cell value.
             </span><span class="self">Self</span>::Cell(n) =&gt; {
-                <span class="comment">// output.op(CoreOp::Next(SP, None));
-                // output.op(CoreOp::Set(SP.deref(), n));
-                </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[n]));
+                output.op(CoreOp::PushConst(<span class="macro">vec!</span>[n]));
             }
             <span class="comment">// Compile an integer constant.
             </span><span class="self">Self</span>::Int(n) =&gt; {
-                <span class="comment">// output.op(CoreOp::Next(SP, None));
-                // output.op(CoreOp::Set(SP.deref(), n));
-                </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[n]));
+                output.op(CoreOp::PushConst(<span class="macro">vec!</span>[n]));
             }
             <span class="comment">// Compile a float constant.
             </span><span class="self">Self</span>::Float(f) =&gt; {
-                <span class="comment">// output.op(CoreOp::Next(SP, None));
-                // output.std_op(StandardOp::Set(SP.deref(), f))?;
-                </span>output.std_op(StandardOp::PushConst(<span class="macro">vec!</span>[f]))<span class="question-mark">?</span>;
+                output.std_op(StandardOp::PushConst(<span class="macro">vec!</span>[f]))<span class="question-mark">?</span>;
             }
             <span class="comment">// Calculate the size of a type.
             </span><span class="self">Self</span>::SizeOfType(t) =&gt; {
-                <span class="comment">// output.op(CoreOp::Next(SP, None));
-                // output.op(CoreOp::Set(SP.deref(), t.get_size(env)? as i64));
-                </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[t.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>i64]));
+                output.op(CoreOp::PushConst(<span class="macro">vec!</span>[t.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>i64]));
             }
             <span class="comment">// Calculate the size of an expression.
             </span><span class="self">Self</span>::SizeOfExpr(e) =&gt; {
-                <span class="comment">// output.op(CoreOp::Next(SP, None));
-                // output.op(CoreOp::Set(SP.deref(), e.get_size(env)? as i64));
-                </span>output.op(CoreOp::PushConst(<span class="macro">vec!</span>[e.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>i64]));
+                output.op(CoreOp::PushConst(<span class="macro">vec!</span>[e.get_size(env)<span class="question-mark">? </span><span class="kw">as </span>i64]));
             }
             <span class="comment">// Compile a tuple constant.
             </span><span class="self">Self</span>::Tuple(items) =&gt; {
-                <span class="kw">for </span>item <span class="kw">in </span>items {
-                    <span class="comment">// Compile the item.
-                    </span>item.compile_expr(env, output)<span class="question-mark">?</span>;
-                }
+                <span class="comment">// Compile the items
+                </span>env.compile_args(items.into_iter().map(Expr::ConstExpr), output)<span class="question-mark">?</span>;
             }
             <span class="comment">// Compile an array constant.
             </span><span class="self">Self</span>::Array(items) =&gt; {
-                <span class="kw">for </span>item <span class="kw">in </span>items {
-                    <span class="comment">// Compile the item.
-                    </span>item.compile_expr(env, output)<span class="question-mark">?</span>;
-                }
+                <span class="comment">// Compile the items
+                </span>env.compile_args(items.into_iter().map(Expr::ConstExpr), output)<span class="question-mark">?</span>;
+                
                 <span class="comment">/*
                 // WARNING:
                 // This optimizes how arrays are compiled *when their values are known at compile time*
@@ -2978,10 +2886,8 @@
             </span>}
             <span class="comment">// Compile a struct constant.
             </span><span class="self">Self</span>::Struct(items) =&gt; {
-                <span class="kw">for </span>(<span class="kw">_</span>, expr) <span class="kw">in </span>items {
-                    <span class="comment">// Compile the item.
-                    </span>expr.compile_expr(env, output)<span class="question-mark">?</span>;
-                }
+                <span class="comment">// Compile the items
+                </span>env.compile_args(items.into_iter().map(|(<span class="kw">_</span>, x)| Expr::ConstExpr(x)), output)<span class="question-mark">?</span>;
             }
             <span class="comment">// Compile a union constant.
             </span><span class="self">Self</span>::Union(t, <span class="kw">_</span>, val) =&gt; {
