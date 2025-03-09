@@ -584,6 +584,15 @@ fun rand(low: Int, high: Int): Int {
 impl Int {
     fun to_str(&self): [Char * 9] {
         let mut n = *self;
+        if n < 0 {
+            n = -n;
+            let mut result = n.to_str();
+            for let mut i=0; i<8; i+=1; {
+                result[i+1] = result[i];
+            }
+            result[0] = '-';
+            return result;
+        }
         let mut result = [' '] * 9;
         result[8] = '\\0';
         for let mut i=0; i<8; i+=1; {
@@ -2507,6 +2516,15 @@ fun rand(low: Int, high: Int): Int {
 impl Int {
     fun to_str(&self): [Char * 9] {
         let mut n = *self;
+        if n < 0 {
+            n = -n;
+            let mut result = n.to_str();
+            for let mut i=0; i<8; i+=1; {
+                result[i+1] = result[i];
+            }
+            result[0] = '-';
+            return result;
+        }
         let mut result = [' '] * 9;
         result[8] = '\\0';
         for let mut i=0; i<8; i+=1; {
