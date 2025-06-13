@@ -708,20 +708,22 @@ impl Env {
                     self.save_type_checked_const(ConstExpr::Symbol(module_name.clone()));
                 }
 
-                if let Some(found_id) = self.modules.get(module_name) {
-                    // Check if the declarations are the same
-                    if *found_id == *defined_id {
-                        // If they are the same, we don't need to recompile the module
-                        return Ok(());
-                    } else {
-                        // If they are different, we need to recompile the module
-                        // Arc::make_mut(&mut self.modules).insert(module_name.clone(), *defined_id);
-                        return Err(Error::ModuleRedefined(module_name.clone()))
-                    }
-                } else {
-                    // If the module is not defined, we need to define it
-                    Arc::make_mut(&mut self.modules).insert(module_name.clone(), *defined_id);
-                }
+
+                // if let Some(found_id) = self.modules.get(module_name) {
+                //     // Check if the declarations are the same
+                //     if *found_id == *defined_id {
+                //         // If they are the same, we don't need to recompile the module
+                //         return Ok(());
+                //     } else {
+                //         // If they are different, we need to recompile the module
+                //         // Arc::make_mut(&mut self.modules).insert(module_name.clone(), *defined_id);
+                //         return Err(Error::ModuleRedefined(module_name.clone()))
+                //     }
+                // } else {
+                //     // If the module is not defined, we need to define it
+                //     Arc::make_mut(&mut self.modules).insert(module_name.clone(), *defined_id);
+                // }
+                Arc::make_mut(&mut self.modules).insert(module_name.clone(), *defined_id);
 
                 let mut exports = vec![];
                 for decl in Declaration::Many(decls.clone()).flatten().iter() {
