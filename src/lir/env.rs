@@ -95,6 +95,8 @@ impl Default for Env {
                 map.insert("==".to_owned(), Box::new(crate::lir::Comparison::Equal));
                 map.insert("!=".to_owned(), Box::new(crate::lir::Comparison::NotEqual));
                 map.insert("<".to_owned(), Box::new(crate::lir::Comparison::LessThan));
+                map.insert("<<".to_owned(), Box::new(crate::lir::LeftShift));
+                map.insert(">>".to_owned(), Box::new(crate::lir::RightShift));
                 map.insert(
                     "<=".to_owned(),
                     Box::new(crate::lir::Comparison::LessThanOrEqual),
@@ -824,7 +826,7 @@ impl Env {
             Declaration::ExternProc(name, proc) => {
                 self.define_ffi_proc(name, proc.clone());
             }
-            Declaration::StaticVar(name, mutability, ty, _expr) => {
+            Declaration::StaticVar(name, mutability, ty, ..) => {
                 self.define_static_var(name, *mutability, ty.clone())?;
             }
             Declaration::Impl(ty, impls) => {
@@ -933,7 +935,7 @@ impl Env {
             Declaration::ExternProc(_, _) => {
                 // FFI procedures are not defined at runtime.
             }
-            Declaration::StaticVar(name, mutability, ty, _expr) => {
+            Declaration::StaticVar(name, mutability, ty, ..) => {
                 self.define_static_var(name, *mutability, ty.clone())?;
             }
             Declaration::Impl(_, _) => {
@@ -1014,16 +1016,6 @@ impl Env {
             _ => {
                 Arc::make_mut(&mut self.consts).insert(name.clone(), ConstExpr::Type(ty.clone()));
                 Arc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
-
-                if let Ok(simplified) = ty.simplify_until_concrete(self, false) {
-                    if let Ok(size) = simplified.get_size(self) {
-                        self.set_precalculated_size(simplified.clone(), size);
-                    }
-                    if let Type::ConstParam(cexpr) = simplified {
-                        trace!("Found const param \"{name}\": {cexpr}");
-                        self.define_const(&name, *cexpr);
-                    }
-                }
             }
         }
     }

@@ -13,7 +13,7 @@ use std::{
     collections::BTreeMap, sync::{Arc, RwLock}
 };
 
-use crate::{lir::*, parse::SourceCodeLocation};
+use crate::{frontend::without_comments, lir::*, parse::SourceCodeLocation};
 use nom::{
     character::complete::{alpha1, alphanumeric1},
     combinator::value,
@@ -1282,6 +1282,8 @@ lazy_static! {
         result.insert("*".to_owned(), (20, |a, b| a.mul(b)));
         result.insert("/".to_owned(), (20, |a, b| a.div(b)));
         result.insert("%".to_owned(), (20, |a, b| a.rem(b)));
+        result.insert("<<".to_owned(), (8, |a, b| a.lshift(b)));
+        result.insert(">>".to_owned(), (8, |a, b| a.rshift(b)));
         result.insert("==".to_owned(), (5, |a, b| a.eq(b)));
         result.insert("!=".to_owned(), (5, |a, b| a.neq(b)));
         result.insert("<".to_owned(), (5, |a, b| a.lt(b)));
@@ -2061,24 +2063,40 @@ fn parse_module_file_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     // Open the file
     if let Ok(contents) = std::fs::read_to_string(format!("{}.sg", name)) {
         save_source_code_setup();
+        let contents = without_comments(contents);
         setup_source_code_locations(&contents.clone(), Some(name.to_string()));
-        if let Ok((new_input, module)) =
-            parse_module_contents::<VerboseError<&str>>(name, &contents, true)
+        
+        
+        match parse_module_contents::<VerboseError<&str>>(name, &contents, true)
         {
-            if !new_input.is_empty() {
+            Ok((new_input, module)) => {
+                if !new_input.is_empty() {
+                    return Err(nom::Err::Error(E::from_error_kind(
+                        input,
+                        ErrorKind::Verify,
+                    )));
+                }
+                restore_source_code_setup();
+                return Ok((input, Statement::Declaration(module, None)));
+            }
+            Err(e) => {
+                match e {
+                    nom::Err::Error(e) => {
+                        error!("{}", convert_error::<&str>(contents.as_str(), e));
+                    }
+                    nom::Err::Failure(e) => {
+                        error!("{}", convert_error::<&str>(contents.as_str(), e));
+                    }
+                    nom::Err::Incomplete(needed) => {
+                        error!("Incomplete: {needed:?}");
+                    }
+                }
+                restore_source_code_setup();
                 return Err(nom::Err::Error(E::from_error_kind(
                     input,
                     ErrorKind::Verify,
                 )));
             }
-            restore_source_code_setup();
-            return Ok((input, Statement::Declaration(module, None)));
-        } else {
-            restore_source_code_setup();
-            return Err(nom::Err::Error(E::from_error_kind(
-                input,
-                ErrorKind::Verify,
-            )));
         }
     }
 
@@ -2094,6 +2112,7 @@ fn parse_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Declaration, E> {
     let (input, _) = whitespace(input)?;
     let (input, decl) = alt((
+        context("function", parse_quick_fun_stmt),
         context("function", parse_fun_stmt),
         context("type", parse_type_stmt),
         context("enum", parse_enum_stmt),
@@ -2104,6 +2123,17 @@ fn parse_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         context("import", parse_import_stmt),
         context("module", parse_module_stmt),
         context("module", parse_module_file_stmt),
+        context("static", terminated(parse_static_var_stmt, tag(";"))),
+
+
+        // context("function", parse_quick_fun_stmt),
+        // context("function", parse_fun_stmt),
+        // context("impl", parse_impl_stmt),
+        // context("enum", parse_enum_stmt),
+        // context("struct", parse_struct_stmt),
+        // context("module", parse_module_stmt),
+        // context("module", parse_module_file_stmt),
+        // context("import", parse_import_stmt),
     ))(input)?;
 
     match decl {
@@ -2630,10 +2660,9 @@ fn parse_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         ),
     ))
 }
-
-fn parse_static_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+fn parse_static_var_decl<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, Statement, E> {
+) -> IResult<&'a str, Declaration, E> {
     // "let" "static" <name: Symbol> ":" <ty: Type> "=" <value: ConstExpr> => Statement::Declaration(Declaration::StaticVar(name, Mutability::Immutable, ty, value)),
     // "let" "static" "mut" <name: Symbol> ":" <ty: Type> "=" <value: ConstExpr> => Statement::Declaration(Declaration::StaticVar(name, Mutability::Mutable, ty, value)),
     let (input, _) = tag("let")(input)?;
@@ -2662,11 +2691,15 @@ fn parse_static_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     let ty = ty.unwrap_or(Type::None);
     Ok((
         input,
-        Statement::Declaration(
-            Declaration::static_var(name.to_owned(), mutability, ty, value),
-            None,
-        ),
+        Declaration::static_var(name.to_owned(), mutability, ty, value),
     ))
+}
+
+fn parse_static_var_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Statement, E> {
+    let (input, decl) = parse_static_var_decl(input)?;
+    Ok((input, Statement::Declaration(decl, None)))
 }
 
 fn parse_type_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
@@ -2886,6 +2919,8 @@ fn parse_assign_stmt<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         Err(_) => {
             // If that fails, try the compound assignment
             let (input, op) = alt((
+                value(Assign::new(LeftShift), tag("<<=")),
+                value(Assign::new(RightShift), tag(">>=")),
                 value(Assign::new(Arithmetic::Add), tag("+=")),
                 value(Assign::new(Arithmetic::Subtract), tag("-=")),
                 value(Assign::new(Arithmetic::Multiply), tag("*=")),
@@ -3780,15 +3815,15 @@ fn parse_int_literal<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 
     let (input, result) = alt((
         map(preceded(tag("0x"), hex_digit1), |s: &str| {
-            i64::from_str_radix(s, 16).unwrap()
+            u64::from_str_radix(s, 16).unwrap() as i64
         }),
         // Try octal
         map(preceded(tag("0o"), oct_digit1), |s: &str| {
-            i64::from_str_radix(s, 8).unwrap()
+            u64::from_str_radix(s, 8).unwrap() as i64
         }),
         // Try binary
         map(preceded(tag("0b"), bin_digit1), |s: &str| {
-            i64::from_str_radix(s, 2).unwrap()
+            u64::from_str_radix(s, 2).unwrap() as i64
         }),
         map(digit1, |s: &str| s.parse().unwrap()),
     ))(input)?;

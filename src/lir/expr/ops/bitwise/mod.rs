@@ -12,6 +12,7 @@ mod nor;
 mod not;
 mod or;
 mod xor;
+mod shift;
 
 pub use and::*;
 pub use nand::*;
@@ -19,3 +20,4 @@ pub use nor::*;
 pub use not::*;
 pub use or::*;
 pub use xor::*;
+pub use shift::*;
