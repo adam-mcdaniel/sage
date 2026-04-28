@@ -338,7 +338,7 @@ impl Put {
                 }
             }
 
-            Type::Unit(_name, ty) => {
+            Type::Nominal(_name, ty) => {
                 Self::debug(addr, ty, env, output)?;
                 // for ch in format!(" ({})", name).chars() {
                 //     output.op(CoreOp::Set(A, ch as u8 as i64));

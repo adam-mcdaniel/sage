@@ -63,7 +63,7 @@ TypeTerm: Type = {
     //"enum" <Dict<Symbol, Type>> => Type::EnumUnion(<>.into_iter().collect()),
     "union" <Dict<Symbol, Type>> => Type::Union(<>.into_iter().collect()),
     "struct" <Dict<Symbol, Type>> => Type::Struct(<>.into_iter().collect()),
-    "unit" <name: Symbol> "=" <t: Type> => Type::Unit(name, Box::new(t)), 
+    "unit" <name: Symbol> "=" <t: Type> => Type::Nominal(name, Box::new(t)), 
     TypeAtom => <>
 }
 

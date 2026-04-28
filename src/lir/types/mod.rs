@@ -128,8 +128,8 @@ pub enum Type {
     /// Structural equality is also verified in addition to name equality.
     ///
     /// The inner type acts exactly the same, but it can only be type-equal
-    /// to another Unit type with the same name and inner type.
-    Unit(String, Box<Self>),
+    /// to another Nominal type with the same name and inner type.
+    Nominal(String, Box<Self>),
 
     /// A named type.
     Symbol(String),
@@ -233,10 +233,10 @@ impl Type {
         }
     }
 
-    /// Discard the wrappers of Type::Type and Type::Unit
+    /// Discard the wrappers of Type::Type and Type::Nominal
     pub(crate) fn discard_type_wrapper(self) -> Self {
         match self {
-            Self::Type(ty) | Self::Unit(_, ty) => *ty,
+            Self::Type(ty) | Self::Nominal(_, ty) => *ty,
             other => other
         }
     }
@@ -307,7 +307,7 @@ impl Type {
             }
 
             Self::Pointer(_, t) => t.is_recursive_helper(symbols, env),
-            Self::Unit(_, t) => t.is_recursive_helper(symbols, env),
+            Self::Nominal(_, t) => t.is_recursive_helper(symbols, env),
             Self::Type(t) => t.is_recursive_helper(symbols, env),
             Self::Array(t, _) => t.is_recursive_helper(symbols, env),
             Self::Tuple(items) => {
@@ -483,7 +483,7 @@ impl Type {
                 ret1.get_monomorph_template_args(ret2, matched_symbols, param_symbols, env)?;
             }
 
-            (Self::Unit(_, inner1), Self::Unit(_, inner2)) => {
+            (Self::Nominal(_, inner1), Self::Nominal(_, inner2)) => {
                 inner1.get_monomorph_template_args(inner2, matched_symbols, param_symbols, env)?;
             }
 
@@ -637,7 +637,7 @@ impl Type {
             Self::Array(inner, _)
             | Self::Pointer(_, inner)
             | Self::Type(inner)
-            | Self::Unit(_, inner) => {
+            | Self::Nominal(_, inner) => {
                 inner.add_monomorphized_associated_consts(env)?;
             }
 
@@ -723,7 +723,7 @@ impl Type {
             | Self::ConstParam(_)
             | Self::Enum(_)
             | Self::Type(_) => true,
-            Self::Unit(_, t) => t.is_simple(),
+            Self::Nominal(_, t) => t.is_simple(),
             Self::Tuple(inner) => inner.iter().all(|t| t.is_simple()),
             Self::Array(inner, expr) => inner.is_simple() && matches!(**expr, ConstExpr::Int(_)),
             Self::Proc(args, ret) => args.iter().all(|t| t.is_simple()) && ret.is_simple(),
@@ -780,7 +780,7 @@ impl Type {
             | Self::Union(_)
             | Self::Proc(_, _)
             | Self::Tuple(_)
-            | Self::Unit(_, _)
+            | Self::Nominal(_, _)
             | Self::Array(_, _)
             | Self::Type(_)
             | Self::Pointer(_, _) => true,
@@ -802,7 +802,7 @@ impl Type {
             | Self::ConstParam(_)
             | Self::Type(_) => true,
             
-            Self::Unit(_, t) => t.is_atomic(),
+            Self::Nominal(_, t) => t.is_atomic(),
             Self::Tuple(inner) => inner.iter().all(|t| t.is_atomic()),
             Self::Array(inner, expr) => inner.is_atomic() && matches!(**expr, ConstExpr::Int(_)),
             Self::Proc(args, ret) => args.iter().all(|t| t.is_atomic()) && ret.is_atomic(),
@@ -867,7 +867,7 @@ impl Type {
             return true;
         }
 
-        if let Self::Unit(_, inner) = self {
+        if let Self::Nominal(_, inner) = self {
             return inner.possibly_has_members();
         }
 
@@ -893,7 +893,7 @@ impl Type {
             return true;
         }
 
-        if let Self::Unit(_, inner) = self {
+        if let Self::Nominal(_, inner) = self {
             return inner.is_union();
         }
 
@@ -917,7 +917,7 @@ impl Type {
             return true;
         }
 
-        if let Self::Unit(_, inner) = self {
+        if let Self::Nominal(_, inner) = self {
             return inner.has_variants();
         }
 
@@ -941,7 +941,7 @@ impl Type {
             return true;
         }
 
-        if let Self::Unit(_, inner) = self {
+        if let Self::Nominal(_, inner) = self {
             return inner.is_polymorphic();
         }
 
@@ -1094,7 +1094,7 @@ impl Type {
     /// This will not count overshadowded versions of the symbol (overwritten by let-bindings).
     pub fn contains_symbol(&self, name: &str) -> bool {
         match self {
-            Self::Unit(_unit_name, t) => {
+            Self::Nominal(_unit_name, t) => {
                 // Does the inner symbol use this type variable?
                 t.contains_symbol(name)
             }
@@ -1196,7 +1196,7 @@ impl Type {
                 }
                 Self::Symbol(typename.clone())
             }
-            Self::Unit(unit_name, inner) => Self::Unit(
+            Self::Nominal(unit_name, inner) => Self::Nominal(
                 unit_name.clone(),
                 Box::new(inner.substitute(name, substitution)),
             ),
@@ -1291,14 +1291,14 @@ impl Type {
         }
 
         match (self, desired) {
-            (Self::Unit(name1, t1), Self::Unit(name2, t2)) => {
+            (Self::Nominal(name1, t1), Self::Nominal(name2, t2)) => {
                 if name1 == name2 {
                     t1.can_decay_to(t2, env)
                 } else {
                     Ok(false)
                 }
             }
-            // (Self::Unit(_, inner), other) | (other, Self::Unit(_, inner)) => other.equals(inner, env),
+            // (Self::Nominal(_, inner), other) | (other, Self::Nominal(_, inner)) => other.equals(inner, env),
             (expanded, Self::Symbol(name)) => {
                 if let Some(t) = env.get_type(name) {
                     if expanded.equals(t, env)? {
@@ -1456,13 +1456,13 @@ impl Type {
             }
 
             // Two Units can only be cast between one another if they have the same name, and the types inside them can be cast.
-            (Self::Unit(unit_name1, t1), Self::Unit(unit_name2, t2))
+            (Self::Nominal(unit_name1, t1), Self::Nominal(unit_name2, t2))
                 if unit_name1 == unit_name2 =>
             {
                 t1.can_cast_to_checked(t2, env, i)
             }
             // If we're casting to or from a Unit, we can only cast if the type inside the Unit can be cast.
-            (Self::Unit(_, t), other) | (other, Self::Unit(_, t)) => {
+            (Self::Nominal(_, t), other) | (other, Self::Nominal(_, t)) => {
                 t.can_cast_to_checked(other, env, i)
             }
 
@@ -1594,7 +1594,7 @@ impl Type {
                                 }
                                 for ((param, expected_ty), ty_arg) in params.iter().zip(ty_args.iter()) {
                                     if let Some(expected_ty) = expected_ty {
-                                        if !expected_ty.equals(ty_arg, &new_env)? && !matches!(ty_arg, Type::Unit(name, inner) if param == name || **inner == Type::None) {
+                                        if !expected_ty.equals(ty_arg, &new_env)? && !matches!(ty_arg, Type::Nominal(name, inner) if param == name || **inner == Type::None) {
                                             return Err(Error::MismatchedTypes { expected: expected_ty.clone(), found: ty_arg.clone(), expr: Expr::ConstExpr(self.clone().into()) })
                                         }
                                     }
@@ -1617,7 +1617,7 @@ impl Type {
                                     }
                                     for ((param, expected_ty), ty_arg) in params.iter().zip(ty_args.iter()) {
                                         if let Some(expected_ty) = expected_ty {
-                                            if !expected_ty.equals(ty_arg, &new_env)? && !matches!(ty_arg, Type::Unit(name, inner) if param == name || **inner == Type::None) {
+                                            if !expected_ty.equals(ty_arg, &new_env)? && !matches!(ty_arg, Type::Nominal(name, inner) if param == name || **inner == Type::None) {
                                                 return Err(Error::MismatchedTypes { expected: expected_ty.clone(), found: ty_arg.clone(), expr: Expr::ConstExpr(self.clone().into()) })
                                             }
                                         }
@@ -1823,7 +1823,7 @@ impl Type {
 
             // If we're comparing two units, then we can just compare their names and confirm
             // their structures are equal.
-            (Self::Unit(unit_name1, t1), Self::Unit(unit_name2, t2)) => {
+            (Self::Nominal(unit_name1, t1), Self::Nominal(unit_name2, t2)) => {
                 unit_name1 == unit_name2 && t1.equals_checked(t2, compared_symbols, env, i)?
             }
 
@@ -1932,7 +1932,7 @@ impl Type {
                     // }
                     // In the new environment, bind the two type parameters to the same type.
                     let combined_name = format!("{name1}+{name2}");
-                    let combined_ty = Self::Unit(combined_name, Box::new(Type::Any));
+                    let combined_ty = Self::Nominal(combined_name, Box::new(Type::Any));
                     new_env.define_type(name1, combined_ty.clone());
                     new_env.define_type(name2, combined_ty);
                 }
@@ -2065,7 +2065,7 @@ impl Type {
                 Ok((t.simplify(&new_env)?, offset))
             }
 
-            Type::Unit(_unit_name, t) => t.get_member_offset(member, expr, env),
+            Type::Nominal(_unit_name, t) => t.get_member_offset(member, expr, env),
 
             Type::Apply(_, _) | Type::Poly(_, _) => {
                 let t = self.simplify_until_concrete(env, false)?;
@@ -2178,7 +2178,7 @@ impl Type {
                     .type_check_member(member, expr, &new_env)
             }
 
-            Type::Unit(_unit_name, t) => t.type_check_member(member, expr, env),
+            Type::Nominal(_unit_name, t) => t.type_check_member(member, expr, env),
 
             Type::Symbol(name) => {
                 if let Some(t) = env.get_type(name) {
@@ -2285,8 +2285,8 @@ impl Simplify for Type {
                 }
             }
 
-            Self::Unit(unit_name, t) => {
-                Self::Unit(unit_name, Box::new(t.simplify_checked(env, i)?))
+            Self::Nominal(unit_name, t) => {
+                Self::Nominal(unit_name, Box::new(t.simplify_checked(env, i)?))
             }
 
             Self::Symbol(ref name) => {
@@ -2482,7 +2482,7 @@ impl fmt::Display for Type {
             }
 
             Self::Symbol(name) => write!(f, "{name}"),
-            Self::Unit(unit_name, _ty) => write!(f, "unit {unit_name}"),
+            Self::Nominal(unit_name, _ty) => write!(f, "unit {unit_name}"),
             Self::Let(name, ty, ret) => write!(f, "let {name} = {ty} in {ret}"),
         }
     }
@@ -2565,7 +2565,7 @@ impl std::hash::Hash for Type {
                 state.write_u8(18);
                 name.hash(state);
             }
-            Self::Unit(unit_name, ty) => {
+            Self::Nominal(unit_name, ty) => {
                 state.write_u8(19);
                 unit_name.hash(state);
                 ty.hash(state);

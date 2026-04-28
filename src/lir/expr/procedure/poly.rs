@@ -248,7 +248,7 @@ impl TypeCheck for PolyProcedure {
                     new_env.define_type(name, ty.clone());
                 }
                 None => {
-                    new_env.define_type(name, Type::Unit(name.clone(), Box::new(Type::None)));
+                    new_env.define_type(name, Type::Nominal(name.clone(), Box::new(Type::None)));
                 }
             }
         }

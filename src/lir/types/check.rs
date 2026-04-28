@@ -44,7 +44,7 @@ impl TypeCheck for Type {
             Self::Type(t) => t.type_check(env),
 
             // Units are sound if their inner type is sound.
-            Self::Unit(_unit_name, t) => t.type_check(env),
+            Self::Nominal(_unit_name, t) => t.type_check(env),
 
             // Symbols are sound if they are defined in the environment
             Self::Symbol(name) => {
@@ -135,7 +135,7 @@ impl TypeCheck for Type {
                     ty_params
                         .clone()
                         .into_iter()
-                        .map(|p| (p.0.clone(), Type::Unit(p.0, Box::new(Type::Any))))
+                        .map(|p| (p.0.clone(), Type::Nominal(p.0, Box::new(Type::Any))))
                         .collect(),
                 );
                 // Check the template type.
@@ -950,7 +950,7 @@ impl TypeCheck for ConstExpr {
                         new_env.define_type(name, ty.clone());
                         new_env.define_var(name, Mutability::Immutable, ty.clone(), false)?;
                     } else {
-                        new_env.define_type(name, Type::Unit(name.clone(), Box::new(Type::None)))
+                        new_env.define_type(name, Type::Nominal(name.clone(), Box::new(Type::None)))
                     }
                 }
                 // Check the template type.

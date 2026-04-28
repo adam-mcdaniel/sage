@@ -100,7 +100,7 @@ impl GetSize for Type {
             }
 
             // Get the size of a unit type. (Its size is the size of its inner type.)
-            Self::Unit(_unit_name, t) => t.get_size_checked(env, i)?,
+            Self::Nominal(_unit_name, t) => t.get_size_checked(env, i)?,
 
             // These types are all one cell.
             Self::Int
