@@ -151,7 +151,7 @@ impl BinaryOp for Arithmetic {
                 output.op(core_op);
             }
 
-            (Type::Unit(_name1, a_type), Type::Unit(_name2, b_type)) => {
+            (Type::Nominal(_name1, a_type), Type::Nominal(_name2, b_type)) => {
                 return self.compile_types(a_type, b_type, env, output);
             }
 
@@ -182,7 +182,7 @@ impl BinaryOp for Arithmetic {
 
             (Type::Int | Type::Float | Type::Cell, Type::Cell)
             | (Type::Cell, Type::Int | Type::Float) => Ok(true),
-            (Type::Unit(name1, a_type), Type::Unit(name2, b_type)) => {
+            (Type::Nominal(name1, a_type), Type::Nominal(name2, b_type)) => {
                 // Make sure that the two units are the same.
                 if name1 != name2 {
                     return Ok(false);
@@ -261,7 +261,7 @@ impl BinaryOp for Arithmetic {
             //         ));
             //     }
             // }
-            (Type::Unit(name1, a_type), Type::Unit(name2, b_type)) => {
+            (Type::Nominal(name1, a_type), Type::Nominal(name2, b_type)) => {
                 // Make sure that the two units are the same.
                 if name1 != name2 {
                     error!("{name1} is not {name2}");
@@ -282,7 +282,7 @@ impl BinaryOp for Arithmetic {
                     ));
                 }
 
-                Type::Unit(name1, a_type)
+                Type::Nominal(name1, a_type)
             }
             (a, b) => {
                 error!("Unhandled case {a} {self} {b}");

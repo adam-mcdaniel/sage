@@ -639,7 +639,7 @@ impl GetType for ConstExpr {
                 // Get the type of the value to get the member of.
                 let val_type = val_type.simplify_until_concrete(env, false)?;
                 match &val_type {
-                    Type::Unit(_unit_name, inner_ty) => {
+                    Type::Nominal(_unit_name, inner_ty) => {
                         // Get the type of the field.
                         env.get_type_of_associated_const(inner_ty, &as_symbol?)
                             .ok_or(Error::MemberNotFound((*val.clone()).into(), *field.clone()))?

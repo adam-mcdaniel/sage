@@ -41,7 +41,7 @@ impl BinaryOp for Comparison {
             | (Type::Float, Self::GreaterThan, Type::Int)
             | (Type::Float, Self::GreaterThan, Type::Float) => Ok(true),
 
-            (Type::Unit(name1, a_type), _, Type::Unit(name2, b_type)) => {
+            (Type::Nominal(name1, a_type), _, Type::Nominal(name2, b_type)) => {
                 // Make sure that the two units are the same.
                 if name1 != name2 {
                     error!("Cannot apply {self} to {lhs} and {lhs}");
@@ -230,7 +230,7 @@ impl BinaryOp for Comparison {
                 output.op(core_op);
             }
 
-            (Type::Unit(_name1, a_type), _, Type::Unit(_name2, b_type)) => {
+            (Type::Nominal(_name1, a_type), _, Type::Nominal(_name2, b_type)) => {
                 return self.compile_types(a_type, b_type, env, output);
             }
 

@@ -49,7 +49,7 @@ impl Add {
             (Type::Tuple(elems1), Type::Tuple(elems2)) => {
                 Ok(Type::Tuple(elems1.into_iter().chain(elems2).collect()))
             }
-            (Type::Unit(_, a), b) => self.return_type_from_types(&b, &a, env),
+            (Type::Nominal(_, a), b) => self.return_type_from_types(&b, &a, env),
             _ => Err(Error::InvalidBinaryOpTypes(
                 self.clone_box(),
                 lhs.clone(),
@@ -110,10 +110,10 @@ impl BinaryOp for Add {
         output: &mut dyn AssemblyProgram,
     ) -> Result<(), Error> {
         match (lhs.clone().simplify(env)?, rhs.clone().simplify(env)?) {
-            (Type::Unit(_, a), b) => {
+            (Type::Nominal(_, a), b) => {
                 self.compile_types(&a, &b, env, output)?;
             }
-            (a, Type::Unit(_, b)) => {
+            (a, Type::Nominal(_, b)) => {
                 self.compile_types(&a, &b, env, output)?;
             }
             (Type::Int, Type::Int)

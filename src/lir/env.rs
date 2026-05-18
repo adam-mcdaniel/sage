@@ -357,7 +357,7 @@ impl Env {
                 return Some(ty);
             }
         }
-        if let Type::Unit(_, inner_ty) = ty {
+        if let Type::Nominal(_, inner_ty) = ty {
             if let Some(ty) = self.get_type_of_associated_const(inner_ty, name) {
                 return Some(ty);
             }
@@ -481,7 +481,7 @@ impl Env {
                 return Some((constant, const_ty));
             }
         }
-        if let Type::Unit(_unit_name, inner_ty) = ty {
+        if let Type::Nominal(_unit_name, inner_ty) = ty {
             if let Some((constant, const_ty)) = self.get_associated_const(inner_ty, name) {
                 // Memoize the associated constant.
                 let expr_ty = constant.get_type(self).ok()?;

@@ -315,7 +315,7 @@ impl GetType for Expr {
                         env.get_type_of_associated_const(&ty, &as_symbol?)
                             .ok_or(Error::MemberNotFound(*val.clone(), field.clone()))?
                     }
-                    Type::Unit(_unit_name, inner_ty) => {
+                    Type::Nominal(_unit_name, inner_ty) => {
                         // Get the associated constant expression's type.
                         env.get_type_of_associated_const(&inner_ty, &as_symbol?)
                             .ok_or(Error::MemberNotFound(*val.clone(), field.clone()))?
