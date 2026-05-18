@@ -13,15 +13,55 @@ use core::{
 use log::*;
 use rayon::prelude::*;
 use serde_derive::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashSet};
+use std::{collections::{BTreeMap, HashSet}, sync::RwLock};
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
+
+#[derive(Debug, Serialize, Deserialize)]
+struct HasCompiled {
+    compiled: Arc<RwLock<bool>>,
+    is_original: bool,
+}
+
+impl HasCompiled {
+    fn mark_compiled(&self) {
+        *self.compiled.write().unwrap() = true;
+    }
+
+    fn is_compiled(&self) -> bool {
+        *self.compiled.read().unwrap()
+    }
+}
+
+impl Default for HasCompiled {
+    fn default() -> Self {
+        Self {
+            compiled: Arc::new(RwLock::new(false)),
+            is_original: true,
+        }
+    }
+}
+
+impl PartialEq for HasCompiled {
+    fn eq(&self, other: &Self) -> bool {
+        return *self.compiled.read().unwrap() == *other.compiled.read().unwrap();
+    }
+}
+
+impl Clone for HasCompiled {
+    fn clone(&self) -> Self {
+        Self {
+            compiled: self.compiled.clone(),
+            is_original: false,
+        }
+    }
+}
 
 /// A declaration of a variable, function, type, etc.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Declaration {
     /// A static variable declaration.
-    StaticVar(String, Mutability, Type, Expr),
+    StaticVar(String, Mutability, Type, Expr, HasCompiled),
     /// A variable declaration.
     Var(String, Mutability, Option<Type>, Expr),
     /// A procedure declaration.
@@ -62,7 +102,7 @@ impl Declaration {
         ty: Type,
         expr: impl Into<Expr>,
     ) -> Self {
-        Self::StaticVar(name.into(), mutability, ty, expr.into())
+        Self::StaticVar(name.into(), mutability, ty, expr.into(), HasCompiled::default())
     }
 
     /// Create a collection of declarations
@@ -285,33 +325,47 @@ impl Declaration {
                 // Add the variable to the environment, so that it can be used in the body.
                 pat.declare_let_bind(expr, &expr_ty, env)?;
             }
-            Declaration::StaticVar(name, _mutability, ty, expr) => {
-                // Get the current instruction (for logging)
-                let current_instruction = output.current_instruction();
-                // A log message
-                let log_message =
-                    format!("Initializing static variable '{name}' with expression '{expr}'");
-
-                // Get the type of the variable.
-                let var_ty = ty.clone();
-                // Get the size of the variable.
-                let static_var_size = var_ty.get_size(env)?;
-
-                let name = name.clone();
-                // Allocate the global variable.
-                output.op(CoreOp::Global {
-                    name: name.clone(),
-                    size: static_var_size,
-                });
-                // Compile the expression to leave the value on the stack.
-                expr.clone().compile_expr(env, output)?;
-                // Write the value of the expression to the global variable.
-                output.op(CoreOp::Pop(
-                    Some(Location::Global(name.clone())),
-                    static_var_size,
-                ));
-                // Log the instructions for the declaration.
-                output.log_instructions_after(&name, &log_message, current_instruction);
+            Declaration::StaticVar(name, _mutability, ty, expr, has_compiled) => {
+                // Check if the env already has the static variable declared first.
+                if !has_compiled.is_compiled() && has_compiled.is_original {
+                    has_compiled.mark_compiled();
+                    // Get the current instruction (for logging)
+                    let current_instruction = output.current_instruction();
+                    // A log message
+                    let log_message =
+                        format!("Initializing static variable '{name}' with expression '{expr}'");
+    
+                    // Get the type of the variable.
+                    let var_ty = ty.clone();
+                    // Get the size of the variable.
+                    let static_var_size = var_ty.get_size(env)?;
+    
+                    let name = name.clone();
+                    // Allocate the global variable.
+                    output.op(CoreOp::Global {
+                        name: name.clone(),
+                        size: static_var_size,
+                    });
+                    // Compile the expression to leave the value on the stack.
+                    expr.clone().compile_expr(env, output)?;
+                    // Write the value of the expression to the global variable.
+                    output.op(CoreOp::Pop(
+                        Some(Location::Global(name.clone())),
+                        static_var_size,
+                    ));
+                    // Log the instructions for the declaration.
+                    output.log_instructions_after(&name, &log_message, current_instruction);
+                }
+            }
+            Declaration::Module(_name, decls, ..) => {
+                // Add all the compile-time declarations to the environment.
+                env.add_compile_time_declaration(self, true)?;
+                Self::Many(decls.clone()).compile_helper(None, env, output)?;
+                // Compile all the sub-declarations.
+                // for decl in decls.iter() {
+                //     // Compile the sub-declaration.
+                //     decl.compile_helper(None, env, output)?;
+                // }
             }
             Declaration::Many(decls) => {
                 for decl in decls.iter() {
@@ -409,7 +463,7 @@ impl Declaration {
     /// Substitute a type symbol for a type.
     pub(crate) fn substitute(&mut self, substitution_name: &str, substitution_ty: &Type) {
         match self {
-            Self::StaticVar(_name, _mutability, expected_ty, expr) => {
+            Self::StaticVar(_name, _mutability, expected_ty, expr, ..) => {
                 expr.substitute(substitution_name, substitution_ty);
                 expected_ty.substitute(substitution_name, substitution_ty);
             }
@@ -520,7 +574,7 @@ impl TypeCheck for Declaration {
                 expr.type_check(&new_env)?;
             }
             // Typecheck a static variable declaration.
-            Self::StaticVar(name, mutability, expected_ty, expr) => {
+            Self::StaticVar(name, mutability, expected_ty, expr, ..) => {
                 // Create a new environment with the static variable declared.
                 let mut new_env = env.clone();
                 new_env.define_static_var(name, *mutability, expected_ty.clone())?;
@@ -726,7 +780,7 @@ impl TypeCheck for Declaration {
 impl Display for Declaration {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            Self::StaticVar(name, mutability, ty, expr) => {
+            Self::StaticVar(name, mutability, ty, expr, ..) => {
                 write!(f, "static {mutability} {name}: {ty} = {expr}")?;
             }
             Self::Var(name, _mutability, ty, expr) => {
@@ -960,7 +1014,7 @@ where
 impl Hash for Declaration {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
-            Self::StaticVar(name, mutability, ty, expr) => {
+            Self::StaticVar(name, mutability, ty, expr, ..) => {
                 state.write_u8(0);
                 name.hash(state);
                 mutability.hash(state);

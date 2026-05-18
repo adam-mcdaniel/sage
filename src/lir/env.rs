@@ -95,6 +95,8 @@ impl Default for Env {
                 map.insert("==".to_owned(), Box::new(crate::lir::Comparison::Equal));
                 map.insert("!=".to_owned(), Box::new(crate::lir::Comparison::NotEqual));
                 map.insert("<".to_owned(), Box::new(crate::lir::Comparison::LessThan));
+                map.insert("<<".to_owned(), Box::new(crate::lir::LeftShift));
+                map.insert(">>".to_owned(), Box::new(crate::lir::RightShift));
                 map.insert(
                     "<=".to_owned(),
                     Box::new(crate::lir::Comparison::LessThanOrEqual),
@@ -706,20 +708,22 @@ impl Env {
                     self.save_type_checked_const(ConstExpr::Symbol(module_name.clone()));
                 }
 
-                if let Some(found_id) = self.modules.get(module_name) {
-                    // Check if the declarations are the same
-                    if *found_id == *defined_id {
-                        // If they are the same, we don't need to recompile the module
-                        return Ok(());
-                    } else {
-                        // If they are different, we need to recompile the module
-                        // Arc::make_mut(&mut self.modules).insert(module_name.clone(), *defined_id);
-                        return Err(Error::ModuleRedefined(module_name.clone()))
-                    }
-                } else {
-                    // If the module is not defined, we need to define it
-                    Arc::make_mut(&mut self.modules).insert(module_name.clone(), *defined_id);
-                }
+
+                // if let Some(found_id) = self.modules.get(module_name) {
+                //     // Check if the declarations are the same
+                //     if *found_id == *defined_id {
+                //         // If they are the same, we don't need to recompile the module
+                //         return Ok(());
+                //     } else {
+                //         // If they are different, we need to recompile the module
+                //         // Arc::make_mut(&mut self.modules).insert(module_name.clone(), *defined_id);
+                //         return Err(Error::ModuleRedefined(module_name.clone()))
+                //     }
+                // } else {
+                //     // If the module is not defined, we need to define it
+                //     Arc::make_mut(&mut self.modules).insert(module_name.clone(), *defined_id);
+                // }
+                Arc::make_mut(&mut self.modules).insert(module_name.clone(), *defined_id);
 
                 let mut exports = vec![];
                 for decl in Declaration::Many(decls.clone()).flatten().iter() {
@@ -824,7 +828,7 @@ impl Env {
             Declaration::ExternProc(name, proc) => {
                 self.define_ffi_proc(name, proc.clone());
             }
-            Declaration::StaticVar(name, mutability, ty, _expr) => {
+            Declaration::StaticVar(name, mutability, ty, ..) => {
                 self.define_static_var(name, *mutability, ty.clone())?;
             }
             Declaration::Impl(ty, impls) => {
@@ -933,7 +937,7 @@ impl Env {
             Declaration::ExternProc(_, _) => {
                 // FFI procedures are not defined at runtime.
             }
-            Declaration::StaticVar(name, mutability, ty, _expr) => {
+            Declaration::StaticVar(name, mutability, ty, ..) => {
                 self.define_static_var(name, *mutability, ty.clone())?;
             }
             Declaration::Impl(_, _) => {
@@ -1014,16 +1018,6 @@ impl Env {
             _ => {
                 Arc::make_mut(&mut self.consts).insert(name.clone(), ConstExpr::Type(ty.clone()));
                 Arc::make_mut(&mut self.types).insert(name.clone(), ty.clone());
-
-                if let Ok(simplified) = ty.simplify_until_concrete(self, false) {
-                    if let Ok(size) = simplified.get_size(self) {
-                        self.set_precalculated_size(simplified.clone(), size);
-                    }
-                    if let Type::ConstParam(cexpr) = simplified {
-                        trace!("Found const param \"{name}\": {cexpr}");
-                        self.define_const(&name, *cexpr);
-                    }
-                }
             }
         }
     }

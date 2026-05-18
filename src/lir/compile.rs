@@ -38,9 +38,9 @@ pub trait Compile: TypeCheck + std::fmt::Debug + std::fmt::Display {
         // First, type check the expression.
         self.type_check(&Env::default())?;
         // Then, attempt to compile the expression into a core assembly program.
-        let mut core_asm = CoreProgram::default();
-
         info!("Compiling...");
+        
+        let mut core_asm = CoreProgram::default();
         if core {
             // If the expression cannot be compiled into a core assembly program,
             // then compile it into a standard assembly program.

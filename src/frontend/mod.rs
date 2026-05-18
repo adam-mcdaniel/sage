@@ -2,7 +2,7 @@ mod parse;
 use crate::lir::Expr;
 pub use parse::{parse_module, parse_source, get_lisp_env};
 
-fn without_comments(code: impl ToString) -> String {
+pub(super) fn without_comments(code: impl ToString) -> String {
     use no_comment::{languages, IntoWithoutComments};
     code.to_string()
         .chars()
@@ -185,7 +185,7 @@ pub fn parse(
             ret: crate::lir::Type::None,
             body: debug_body,
         });
-
+        
         expr = crate::lir::Expr::let_consts(
             vec![
                 ("free", free),

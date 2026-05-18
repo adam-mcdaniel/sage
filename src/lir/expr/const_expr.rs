@@ -368,7 +368,8 @@ impl ConstExpr {
                                 return constant.eval_checked(env, i);
                             }
 
-                            return container.eval_checked(env, i)?.field(member).eval_checked(env, i);
+                            return Ok(container.eval_checked(env, i)?.field(member));
+                            // return Ok(container.eval_checked(env, i)?.field(member).eval_checked(env, i)?);
                             // if let Ok(Some((constant, _))) = member
                             //     .clone()
                             //     .as_symbol(env)
@@ -487,6 +488,9 @@ impl ConstExpr {
 
                 Self::Symbol(name) => {
                     if let Some(c) = env.get_const(&name) {
+                        if c == &Self::Symbol(name) {
+                            return Ok(c.clone());
+                        }
                         c.clone().eval_checked(env, i)
                     } else if let Some(t) = env.get_type(&name) {
                         Ok(Self::Type(t.clone()))

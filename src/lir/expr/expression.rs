@@ -518,6 +518,14 @@ impl Expr {
         self.unop(Not)
     }
 
+    pub fn lshift(self, other: impl Into<Self>) -> Self {
+        self.binop(LeftShift, other)
+    }
+
+    pub fn rshift(self, other: impl Into<Self>) -> Self {
+        self.binop(RightShift, other)
+    }
+
     /// Bitwise this expression with another.
     pub fn bitxor(self, other: impl Into<Self>) -> Self {
         self.binop(BitwiseXor, other)
